@@ -1,0 +1,37 @@
+schedules:
+  commit:
+    # Run short suite on commit
+    schedule: per_commit
+  nightly:
+    # Run full suite nightly on change for all primary branches if they have changes.
+    schedule: nightly
+    branches:
+      # regex matches primary branch format (1.1, 1.x, 1.1.x, etc).
+      include: ["/\\d+(\\.[\\dx]+)+/"]
+  adhoc:
+    # Adhoc job for non-primary braches that doesn't have a schedule but may be used to run all configs.
+    schedule: adhoc
+    branches:
+      exclude: ["/\\d+(\\.[\\dx]+)+/"]
+java:
+  - oraclejdk8
+os:
+  - ubuntu/trusty64
+cassandra:
+  - dse-4.8
+  - dse-5.0
+  - dse-5.1
+build:
+  - type: maven
+    version: 3.2.5
+    goals: verify --fail-never
+    properties: |
+      com.datastax.loader.tests.ccm.JAVA_HOME=$CCM_JAVA_HOME
+      com.datastax.loader.tests.ccm.PATH=$CCM_JAVA_HOME/bin
+      com.datastax.loader.tests.ccm.MAX_POOLED_CCM_NODES=4
+      failIfNoTests=false
+      maven.test.failure.ignore=true
+      maven.javadoc.skip=true
+  - xunit:
+    - "**/target/surefire-reports/TEST-*.xml"
+    - "**/target/failsafe-reports/TEST-*.xml" 
