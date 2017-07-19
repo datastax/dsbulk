@@ -4,7 +4,7 @@ A unified tool for loading into and unloading from DSE storage engines (i.e., Ca
 
 ## Documentation
 
-Read the [documentation].
+Read the [manual].
 
 ## Issue Management
 
@@ -12,6 +12,6 @@ DataStax Loader has its own [Jira project].
 
 The original DSP ticket was [DSP-13637].
 
-[documentation]: docs/
+[manual]: manual/
 [Jira project]: https://datastax.jira.com/projects/DAT/summary
 [DSP-13637]: https://datastax.jira.com/browse/DSP-13637

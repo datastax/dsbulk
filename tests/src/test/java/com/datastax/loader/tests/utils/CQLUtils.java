@@ -19,9 +19,6 @@ public abstract class CQLUtils {
 
   public static String createKeyspace(String keyspace, String strategy, int replicationFactor) {
     return String.format(
-        CREATE_KEYSPACE_FORMAT,
-        Metadata.quoteIfNecessary(keyspace),
-        strategy,
-        replicationFactor);
+        CREATE_KEYSPACE_FORMAT, Metadata.quoteIfNecessary(keyspace), strategy, replicationFactor);
   }
 }

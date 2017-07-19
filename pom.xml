@@ -25,11 +25,10 @@
   <inceptionYear>2017</inceptionYear>
 
   <modules>
-    <module>engine</module>
     <module>connectors</module>
-    <module>services</module>
+    <module>executor</module>
+    <module>engine</module>
     <module>tests</module>
-    <module>dist</module>
   </modules>
 
   <properties>
@@ -63,26 +62,26 @@
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-engine-api</artifactId>
+        <artifactId>datastax-loader-executor-api</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-engine-api</artifactId>
+        <artifactId>datastax-loader-executor-api</artifactId>
         <version>${project.version}</version>
         <type>test-jar</type>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-engine-rxjava</artifactId>
+        <artifactId>datastax-loader-executor-rxjava</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-engine-reactor</artifactId>
+        <artifactId>datastax-loader-executor-reactor</artifactId>
         <version>${project.version}</version>
       </dependency>
 
@@ -90,13 +89,6 @@
         <groupId>com.datastax.dse</groupId>
         <artifactId>datastax-loader-connectors-api</artifactId>
         <version>${project.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-connectors-api</artifactId>
-        <version>${project.version}</version>
-        <type>test-jar</type>
       </dependency>
 
       <dependency>
@@ -119,7 +111,7 @@
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-services</artifactId>
+        <artifactId>datastax-loader-engine</artifactId>
         <version>${project.version}</version>
       </dependency>
 
@@ -396,19 +388,17 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
-          <!-- do not upgrade until https://issues.apache.org/jira/browse/SUREFIRE-1302 is fixed -->
-          <version>2.18</version>
+          <version>2.20</version>
           <configuration>
             <reuseForks>true</reuseForks>
             <parallel>classes</parallel>
-            <threadCountClasses>8</threadCountClasses>
+            <threadCount>8</threadCount>
           </configuration>
         </plugin>
 
         <plugin>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <!-- do not upgrade until https://issues.apache.org/jira/browse/SUREFIRE-1302 is fixed -->
-          <version>2.18</version>
+          <version>2.20</version>
           <executions>
             <execution>
               <goals>
@@ -554,6 +544,10 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>animal-sniffer-maven-plugin</artifactId>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
       </plugin>
 
     </plugins>

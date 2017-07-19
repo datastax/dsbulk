@@ -6,19 +6,20 @@
  */
 package com.datastax.loader.connectors.json;
 
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.loader.connectors.api.Connector;
+import com.datastax.loader.connectors.api.Record;
+import java.util.Map;
 import org.reactivestreams.Publisher;
 
 /** */
 public class JsonConnector implements Connector {
 
   @Override
-  public Publisher<Statement> read() {
+  public Publisher<Record> read() {
+    // TODO
     return null;
   }
 
   @Override
-  public void write(Publisher<Row> rows) {}
+  public void configure(Map<String, Object> settings) {}
 }

@@ -31,19 +31,19 @@
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-engine-api</artifactId>
+      <artifactId>datastax-loader-executor-api</artifactId>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-engine-rxjava</artifactId>
+      <artifactId>datastax-loader-executor-rxjava</artifactId>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-engine-reactor</artifactId>
+      <artifactId>datastax-loader-executor-reactor</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -73,7 +73,7 @@
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-services</artifactId>
+      <artifactId>datastax-loader-engine</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -152,6 +152,13 @@
         <configuration>
           <skip>true</skip>
         </configuration>
+        <!-- http://stackoverflow.com/questions/13218313/unable-to-disable-generation-of-empty-jar-maven-jar-plugin -->
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>
