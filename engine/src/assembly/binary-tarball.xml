@@ -61,7 +61,6 @@
         <include>com.datastax.dse:datastax-loader-executor-api</include>
         <include>com.datastax.dse:datastax-loader-executor-rxjava</include>
         <include>com.datastax.dse:datastax-loader-connectors-*</include>
-        <include>com.datastax.dse:datastax-loader-services</include>
       </includes>
       <binaries>
         <unpack>false</unpack>

@@ -29,8 +29,8 @@ import static java.util.stream.Collectors.toList;
 public class TableScanner {
 
   /**
-   * Creates and returns as many {@link TableScanner}s as necessary to read the entire table, one
-   * per token range.
+   * Creates and returns as many {@link Statement}s as necessary to read the entire table, one per
+   * token range.
    *
    * @param cluster a running {@link Cluster} to gather metadata from.
    * @param keyspace the keyspace to query.
@@ -45,8 +45,8 @@ public class TableScanner {
   }
 
   /**
-   * Creates and returns as many {@link TableScanner}s as necessary to read the entire table, one
-   * per token range.
+   * Creates and returns as many {@link Statement}s as necessary to read the entire table, one per
+   * token range.
    *
    * @param ring the token ranges that define {@link Metadata#getTokenRanges() data distribution} in
    *     the ring.
@@ -59,8 +59,8 @@ public class TableScanner {
   }
 
   /**
-   * Creates and returns as many {@link TableScanner}s as necessary to read the entire table, one
-   * per token range, applying an optional WHERE clause.
+   * Creates and returns as many {@link Statement}s as necessary to read the entire table, one per
+   * token range, applying an optional WHERE clause.
    *
    * @param ring the token ranges that define {@link Metadata#getTokenRanges() data distribution} in
    *     the ring.

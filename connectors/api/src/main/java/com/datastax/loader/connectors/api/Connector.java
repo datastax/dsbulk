@@ -24,5 +24,5 @@ public interface Connector extends AutoCloseable {
 
   default void close() throws Exception {}
 
-  default void configure(Map<String, Object> settings) {}
+  default void configure(Map<String, Object> settings) throws Exception {}
 }
