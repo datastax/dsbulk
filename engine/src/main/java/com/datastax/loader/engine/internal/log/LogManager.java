@@ -208,8 +208,12 @@ public class LogManager implements AutoCloseable {
     Path logFile = operationDirectory.resolve("load.bad");
     PrintWriter writer = openFiles.get(logFile);
     writer.print("Statement: ");
-    writer.print(
-        formatter.format(result.getStatement(), verbosity, protocolVersion, codecRegistry));
+    String format =
+        formatter.format(result.getStatement(), verbosity, protocolVersion, codecRegistry);
+    writer.print(format);
+    if (!Character.isWhitespace(format.charAt(format.length() - 1))) {
+      writer.println();
+    }
     result.getError().orElseThrow(IllegalStateException::new).printStackTrace(writer);
     writer.println();
     writer.flush();

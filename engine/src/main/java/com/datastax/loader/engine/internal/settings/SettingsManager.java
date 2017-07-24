@@ -22,15 +22,24 @@ public class SettingsManager {
 
   private static final Config DEFAULT = ConfigFactory.load().getConfig("datastax-loader");
 
-  private final Config config;
-  private final DriverSettings driverSettings;
-  private final ConnectorSettings connectorSettings;
-  private final SchemaSettings schemaSettings;
-  private final BatchSettings batchSettings;
-  private final ExecutorSettings executorSettings;
-  private final LogSettings logSettings;
+  private final String[] args;
+  private final String operationId;
+
+  private Config config;
+  private DriverSettings driverSettings;
+  private ConnectorSettings connectorSettings;
+  private SchemaSettings schemaSettings;
+  private BatchSettings batchSettings;
+  private ExecutorSettings executorSettings;
+  private LogSettings logSettings;
+  private CodecSettings codecSettings;
 
   public SettingsManager(String[] args, String operationId) {
+    this.args = args;
+    this.operationId = operationId;
+  }
+
+  public void loadConfiguration() throws Exception {
     config = parseUserSettings(args).withFallback(DEFAULT);
     config.checkValid(REFERENCE);
     // TODO check unrecognized config
@@ -40,6 +49,7 @@ public class SettingsManager {
     schemaSettings = new SchemaSettings(config.getConfig("schema"));
     batchSettings = new BatchSettings(config.getConfig("batch"));
     executorSettings = new ExecutorSettings(config.getConfig("executor"));
+    codecSettings = new CodecSettings(config.getConfig("codec"));
   }
 
   public void logEffectiveSettings() {
@@ -70,6 +80,10 @@ public class SettingsManager {
 
   public LogSettings getLogSettings() {
     return logSettings;
+  }
+
+  public CodecSettings getCodecSettings() {
+    return codecSettings;
   }
 
   private static Config parseUserSettings(String[] args) {
