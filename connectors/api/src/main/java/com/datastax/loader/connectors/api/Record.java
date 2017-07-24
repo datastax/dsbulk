@@ -6,7 +6,12 @@
  */
 package com.datastax.loader.connectors.api;
 
-import java.util.Map;
+import java.net.URL;
 
 /** */
-public interface Record extends Map<Object, Object> {}
+public interface Record {
+
+  Object getSource();
+
+  URL getLocation();
+}
