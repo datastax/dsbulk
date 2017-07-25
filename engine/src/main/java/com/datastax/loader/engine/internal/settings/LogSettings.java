@@ -11,13 +11,13 @@ import com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosit
 import com.datastax.loader.engine.internal.log.statement.StatementFormatter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.Config;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 /** */
 public class LogSettings {
@@ -29,11 +29,12 @@ public class LogSettings {
   private final Config config;
   private final Path operationDirectory;
 
-  public LogSettings(Config config, String operationId) {
+  public LogSettings(Config config, String operationId)
+      throws MalformedURLException, URISyntaxException {
     this.config = config;
-    Path outputDirectory = Paths.get(config.getString("output-directory")).normalize();
-    operationDirectory = outputDirectory.resolve(operationId).toAbsolutePath();
-    MDC.put(OPERATION_DIRECTORY_MDC_KEY, operationDirectory.toFile().getAbsolutePath());
+    Path outputDirectory = SettingsUtils.parseAbsolutePath(config.getString("output-directory"));
+    operationDirectory = outputDirectory.resolve(operationId);
+    System.setProperty(OPERATION_DIRECTORY_MDC_KEY, operationDirectory.toFile().getAbsolutePath());
     LOGGER.info("Operation output directory: {}", operationDirectory);
   }
 

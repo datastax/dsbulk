@@ -15,14 +15,14 @@ public class MainTest {
   // TODO temporary, remove when end-to-end integration tests are available
   @Test
   @Ignore
-  public void should_load() {
+  public void should_load() throws Exception {
 
     /*
     create keyspace ks with replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
     create table ks.t1 (Year int primary key,Make varchar,Model varchar,Description varchar,Price decimal);
      */
     String[] args = {
-      "log.output-directory=target",
+      "log.output-directory=\"file:./target\"",
       "connector.class=com.datastax.loader.connectors.csv.CSVConnector",
       "connector.url=\"" + MainTest.class.getResource("/bad.csv").toExternalForm() + "\"",
       "driver.query.consistency=ONE",

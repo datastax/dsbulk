@@ -64,7 +64,7 @@ public class LogSettingsTest {
   public void should_create_log_manager_when_output_directory_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
     Config config =
-        ConfigFactory.parseString("output-directory = " + dir)
+        ConfigFactory.parseString("output-directory = \"" + dir.toUri().toURL() + "\"")
             .withFallback(ConfigFactory.load().getConfig("datastax-loader.log"));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager();

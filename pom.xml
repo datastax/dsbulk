@@ -123,6 +123,12 @@
       </dependency>
 
       <dependency>
+        <groupId>com.datastax.dse</groupId>
+        <artifactId>dse-java-driver-extras</artifactId>
+        <version>${driver.version}</version>
+      </dependency>
+
+      <dependency>
         <groupId>org.reactivestreams</groupId>
         <artifactId>reactive-streams</artifactId>
         <version>${reactive-streams.version}</version>

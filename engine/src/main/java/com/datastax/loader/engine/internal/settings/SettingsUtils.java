@@ -6,6 +6,13 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,5 +32,22 @@ public class SettingsUtils {
       }
     }
     return threads;
+  }
+
+  public static Path parseAbsolutePath(String url) {
+    URI uri;
+    try {
+      uri = new URL(url).toURI();
+      if (!uri.isAbsolute()) {
+        uri = uri.resolve(System.getProperty("user.dir"));
+      } else if (uri.isOpaque() && uri.getScheme().equals("file")) {
+        // handle file:./ relative paths
+        uri =
+            new URI("file:" + new File(uri.getSchemeSpecificPart()).getAbsolutePath()).normalize();
+      }
+      return Paths.get(uri).normalize().toAbsolutePath();
+    } catch (URISyntaxException | MalformedURLException e) {
+      throw new IllegalArgumentException("Invalid URL: " + url, e);
+    }
   }
 }

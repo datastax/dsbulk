@@ -100,9 +100,13 @@ public class RecordMapper {
   }
 
   private static void bindColumn(BoundStatement bs, Object raw, String columnName) {
-    @SuppressWarnings("unchecked")
-    Class<Object> targetClass = (Class<Object>) raw.getClass();
-    // TODO null -> unset
-    bs.set(columnName, raw, targetClass);
+    if (raw == null) {
+      // TODO null -> unset
+      bs.setToNull(columnName);
+    } else {
+      @SuppressWarnings("unchecked")
+      Class<Object> targetClass = (Class<Object>) raw.getClass();
+      bs.set(columnName, raw, targetClass);
+    }
   }
 }

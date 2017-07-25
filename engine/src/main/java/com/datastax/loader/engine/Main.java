@@ -14,6 +14,7 @@ import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.engine.internal.log.LogManager;
 import com.datastax.loader.engine.internal.schema.RecordMapper;
 import com.datastax.loader.engine.internal.settings.BatchSettings;
+import com.datastax.loader.engine.internal.settings.CodecSettings;
 import com.datastax.loader.engine.internal.settings.ConnectorSettings;
 import com.datastax.loader.engine.internal.settings.DriverSettings;
 import com.datastax.loader.engine.internal.settings.ExecutorSettings;
@@ -43,30 +44,32 @@ public class Main {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
-  private final String operationId = newOperationId();
+  public static void main(String[] args) throws Exception {
+    Main main = new Main(args);
+    main.load();
+  }
 
+  private final String operationId = newOperationId();
   private final DriverSettings driverSettings;
   private final ConnectorSettings connectorSettings;
   private final SchemaSettings schemaSettings;
   private final BatchSettings batchSettings;
   private final ExecutorSettings executorSettings;
   private final LogSettings logSettings;
+  private final CodecSettings codecSettings;
 
-  public Main(String[] args) {
+  public Main(String[] args) throws Exception {
     SettingsManager settingsManager = new SettingsManager(args, operationId);
+    settingsManager.loadConfiguration();
+    settingsManager.logEffectiveSettings();
     logSettings = settingsManager.getLogSettings();
     driverSettings = settingsManager.getDriverSettings();
     connectorSettings = settingsManager.getConnectorSettings();
     schemaSettings = settingsManager.getSchemaSettings();
     batchSettings = settingsManager.getBatchSettings();
     executorSettings = settingsManager.getExecutorSettings();
-    settingsManager.logEffectiveSettings();
-    // TODO conversion, monitoring
-  }
-
-  public static void main(String[] args) {
-    Main main = new Main(args);
-    main.load();
+    codecSettings = settingsManager.getCodecSettings();
+    // TODO monitoring
   }
 
   public void load() {
@@ -76,6 +79,7 @@ public class Main {
         ReactiveBulkWriter engine = executorSettings.newWriteEngine(session);
         LogManager logManager = logSettings.newLogManager()) {
 
+      codecSettings.registerCodecs(cluster);
       connector.init();
       session.init();
       logManager.init(cluster);
