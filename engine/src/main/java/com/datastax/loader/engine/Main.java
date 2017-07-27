@@ -75,7 +75,7 @@ public class Main {
   public void load() {
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.newSession();
-        Connector connector = connectorSettings.newConnector();
+        Connector connector = connectorSettings.getConnector();
         ReactiveBulkWriter engine = executorSettings.newWriteEngine(session);
         LogManager logManager = logSettings.newLogManager()) {
 
