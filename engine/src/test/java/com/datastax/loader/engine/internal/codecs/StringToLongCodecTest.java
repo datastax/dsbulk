@@ -6,11 +6,8 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -18,29 +15,49 @@ import org.junit.Test;
 
 public class StringToLongCodecTest {
 
-  private ThreadLocal<DecimalFormat> formatter =
-      ThreadLocal.withInitial(
-          () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US)));
+  private StringToLongCodec codec =
+      new StringToLongCodec(
+          ThreadLocal.withInitial(
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
   @Test
-  public void should_serialize_when_valid_input() throws Exception {
-    StringToLongCodec codec = new StringToLongCodec(formatter);
-    assertSerde(codec, "0");
-    assertSerde(codec, formatter.get().format(Long.MAX_VALUE));
-    assertSerde(codec, formatter.get().format(Long.MIN_VALUE));
+  public void should_convert_from_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsFrom("0")
+        .to(0L)
+        .convertsFrom("9223372036854775807")
+        .to(Long.MAX_VALUE)
+        .convertsFrom("-9223372036854775808")
+        .to(Long.MIN_VALUE)
+        .convertsFrom("9,223,372,036,854,775,807")
+        .to(Long.MAX_VALUE)
+        .convertsFrom("-9,223,372,036,854,775,808")
+        .to(Long.MIN_VALUE)
+        .convertsFrom(null)
+        .to(null)
+        .convertsFrom("")
+        .to(null);
   }
 
   @Test
-  public void should_not_serialize_when_invalid_input() throws Exception {
-    StringToLongCodec codec = new StringToLongCodec(formatter);
-    try {
-      assertSerde(codec, formatter.get().format(0.12345));
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
+  public void should_convert_to_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsTo(0L)
+        .from("0")
+        .convertsTo(Long.MAX_VALUE)
+        .from("9,223,372,036,854,775,807")
+        .convertsTo(Long.MIN_VALUE)
+        .from("-9,223,372,036,854,775,808")
+        .convertsTo(null)
+        .from(null);
   }
 
-  private void assertSerde(StringToLongCodec codec, String input) {
-    assertThat(codec.deserialize(codec.serialize(input, V4), V4)).isEqualTo(input);
+  @Test
+  public void should_not_convert_from_invalid_input() throws Exception {
+    assertThat(codec)
+        .cannotConvertFrom("not a valid long")
+        .cannotConvertFrom("1.2")
+        .cannotConvertFrom("9223372036854775808")
+        .cannotConvertFrom("-9223372036854775809");
   }
 }

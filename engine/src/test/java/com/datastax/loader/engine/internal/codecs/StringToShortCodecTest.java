@@ -6,11 +6,8 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -18,34 +15,49 @@ import org.junit.Test;
 
 public class StringToShortCodecTest {
 
-  private ThreadLocal<DecimalFormat> formatter =
-      ThreadLocal.withInitial(
-          () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US)));
+  private StringToShortCodec codec =
+      new StringToShortCodec(
+          ThreadLocal.withInitial(
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
   @Test
-  public void should_serialize_when_valid_input() throws Exception {
-    StringToShortCodec codec = new StringToShortCodec(formatter);
-    assertSerde(codec, "0");
-    assertSerde(codec, formatter.get().format(Short.MAX_VALUE));
-    assertSerde(codec, formatter.get().format(Short.MIN_VALUE));
+  public void should_convert_from_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsFrom("0")
+        .to((short) 0)
+        .convertsFrom("32767")
+        .to((short) 32767)
+        .convertsFrom("-32768")
+        .to((short) -32768)
+        .convertsFrom("32,767")
+        .to((short) 32767)
+        .convertsFrom("-32,768")
+        .to((short) -32768)
+        .convertsFrom(null)
+        .to(null)
+        .convertsFrom("")
+        .to(null);
   }
 
   @Test
-  public void should_not_serialize_when_invalid_input() throws Exception {
-    StringToShortCodec codec = new StringToShortCodec(formatter);
-    try {
-      assertSerde(codec, formatter.get().format(Short.MAX_VALUE + 1));
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
-    try {
-      assertSerde(codec, formatter.get().format(Short.MIN_VALUE - 1));
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
+  public void should_convert_to_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsTo((short) 0)
+        .from("0")
+        .convertsTo((short) 32767)
+        .from("32,767")
+        .convertsTo((short) -32768)
+        .from("-32,768")
+        .convertsTo(null)
+        .from(null);
   }
 
-  private void assertSerde(StringToShortCodec codec, String input) {
-    assertThat(codec.deserialize(codec.serialize(input, V4), V4)).isEqualTo(input);
+  @Test
+  public void should_not_convert_from_invalid_input() throws Exception {
+    assertThat(codec)
+        .cannotConvertFrom("not a valid short")
+        .cannotConvertFrom("1.2")
+        .cannotConvertFrom("32768")
+        .cannotConvertFrom("-32769");
   }
 }

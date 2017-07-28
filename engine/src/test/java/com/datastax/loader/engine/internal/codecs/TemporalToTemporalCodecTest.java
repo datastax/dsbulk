@@ -6,8 +6,7 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
 
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
@@ -17,51 +16,104 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
-import java.time.temporal.TemporalAccessor;
 import org.junit.Test;
 
 public class TemporalToTemporalCodecTest {
 
   @Test
-  public void should_serialize_when_valid_input() throws Exception {
+  public void should_convert_when_valid_input() throws Exception {
 
-    assertSerde(
-        new TemporalToTemporalCodec<>(ZonedDateTime.class, LocalDateCodec.instance),
-        ZonedDateTime.parse("2010-06-30T00:00:00Z"));
-    assertSerde(
-        new TemporalToTemporalCodec<>(ZonedDateTime.class, LocalTimeCodec.instance),
-        ZonedDateTime.parse("1970-01-01T23:59:59Z"));
-    assertSerde(
-        new TemporalToTemporalCodec<>(ZonedDateTime.class, InstantCodec.instance),
-        ZonedDateTime.parse("2010-06-30T23:59:59Z"));
+    assertThat(new TemporalToTemporalCodec<>(ZonedDateTime.class, LocalDateCodec.instance))
+        .convertsFrom(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
+        .to(LocalDate.parse("2010-06-30"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
 
-    assertSerde(
-        new TemporalToTemporalCodec<>(Instant.class, LocalDateCodec.instance),
-        Instant.parse("2010-06-30T00:00:00Z"));
-    assertSerde(
-        new TemporalToTemporalCodec<>(Instant.class, LocalTimeCodec.instance),
-        Instant.parse("1970-01-01T23:59:59Z"));
+    assertThat(new TemporalToTemporalCodec<>(ZonedDateTime.class, LocalTimeCodec.instance))
+        .convertsFrom(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"))
+        .to(LocalTime.parse("23:59:59"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
 
-    assertSerde(
-        new TemporalToTemporalCodec<>(LocalDateTime.class, LocalDateCodec.instance),
-        LocalDateTime.parse("2010-06-30T00:00:00"));
-    assertSerde(
-        new TemporalToTemporalCodec<>(LocalDateTime.class, LocalTimeCodec.instance),
-        LocalDateTime.parse("1970-01-01T23:59:59"));
-    assertSerde(
-        new TemporalToTemporalCodec<>(LocalDateTime.class, InstantCodec.instance),
-        LocalDateTime.parse("2010-06-30T23:59:59"));
+    assertThat(new TemporalToTemporalCodec<>(ZonedDateTime.class, InstantCodec.instance))
+        .convertsFrom(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
+        .to(Instant.parse("2010-06-29T23:00:00Z"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
 
-    assertSerde(
-        new TemporalToTemporalCodec<>(LocalDate.class, InstantCodec.instance),
-        LocalDate.parse("2010-06-30"));
-    assertSerde(
-        new TemporalToTemporalCodec<>(LocalTime.class, InstantCodec.instance),
-        LocalTime.parse("23:59:59"));
+    assertThat(new TemporalToTemporalCodec<>(Instant.class, LocalDateCodec.instance))
+        .convertsFrom(Instant.parse("2010-06-30T00:00:00Z"))
+        .to(LocalDate.parse("2010-06-30"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new TemporalToTemporalCodec<>(Instant.class, LocalTimeCodec.instance))
+        .convertsFrom(Instant.parse("1970-01-01T23:59:59Z"))
+        .to(LocalTime.parse("23:59:59"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new TemporalToTemporalCodec<>(LocalDateTime.class, LocalDateCodec.instance))
+        .convertsFrom(LocalDateTime.parse("2010-06-30T00:00:00"))
+        .to(LocalDate.parse("2010-06-30"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new TemporalToTemporalCodec<>(LocalDateTime.class, LocalTimeCodec.instance))
+        .convertsFrom(LocalDateTime.parse("1970-01-01T23:59:59"))
+        .to(LocalTime.parse("23:59:59"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new TemporalToTemporalCodec<>(LocalDateTime.class, InstantCodec.instance))
+        .convertsFrom(LocalDateTime.parse("2010-06-30T23:59:59"))
+        .to(Instant.parse("2010-06-30T23:59:59Z"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new TemporalToTemporalCodec<>(LocalDate.class, InstantCodec.instance))
+        .convertsFrom(LocalDate.parse("2010-06-30"))
+        .to(Instant.parse("2010-06-30T00:00:00Z"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new TemporalToTemporalCodec<>(LocalTime.class, InstantCodec.instance))
+        .convertsFrom(LocalTime.parse("23:59:59"))
+        .to(Instant.parse("1970-01-01T23:59:59Z"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
   }
 
-  private <FROM extends TemporalAccessor, TO extends TemporalAccessor> void assertSerde(
-      TemporalToTemporalCodec<FROM, TO> codec, FROM input) {
-    assertThat(codec.deserialize(codec.serialize(input, V4), V4)).isEqualTo(input);
+  @Test
+  public void should_not_convert_when_invalid_input() throws Exception {
+
+    // LocalDate <-> LocalTime is not supported
+    assertThat(new TemporalToTemporalCodec<>(LocalDate.class, LocalTimeCodec.instance))
+        .cannotConvertFrom(LocalDate.parse("2010-06-30"))
+        .cannotConvertTo(LocalTime.parse("23:59:59"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
   }
 }

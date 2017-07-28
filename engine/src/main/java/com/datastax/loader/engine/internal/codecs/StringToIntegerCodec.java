@@ -6,7 +6,7 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 
 public class StringToIntegerCodec extends StringToNumberCodec<Integer> {
@@ -17,12 +17,10 @@ public class StringToIntegerCodec extends StringToNumberCodec<Integer> {
 
   @Override
   protected Integer convertFrom(String s) {
-    Number number = parseAsNumber(s);
-    int value = number.intValue();
-    if (value != number.doubleValue()) {
-      throw new InvalidTypeException(
-          "Invalid integer format: " + s, new ArithmeticException("integer overflow"));
+    BigDecimal number = parseAsBigDecimal(s);
+    if (number == null) {
+      return null;
     }
-    return value;
+    return number.intValueExact();
   }
 }

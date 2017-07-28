@@ -6,12 +6,9 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import org.junit.Test;
@@ -19,53 +16,83 @@ import org.junit.Test;
 public class NumberToNumberCodecTest {
 
   @Test
-  public void should_serialize_when_valid_input() throws Exception {
-    assertSerde(new NumberToNumberCodec<>(Byte.class, TypeCodec.cdouble()), (byte) 123);
-    assertSerde(new NumberToNumberCodec<>(Byte.class, TypeCodec.varint()), (byte) 123);
-    assertSerde(new NumberToNumberCodec<>(Byte.class, TypeCodec.decimal()), (byte) 123);
-    assertSerde(new NumberToNumberCodec<>(Double.class, TypeCodec.cint()), 123d);
-    assertSerde(new NumberToNumberCodec<>(Short.class, TypeCodec.tinyInt()), (short) 123);
-    assertSerde(
-        new NumberToNumberCodec<>(BigInteger.class, TypeCodec.cint()), new BigInteger("123"));
-    assertSerde(
-        new NumberToNumberCodec<>(BigDecimal.class, TypeCodec.cint()), new BigDecimal("123"));
+  public void should_convert_when_valid_input() throws Exception {
+
+    assertThat(new NumberToNumberCodec<>(Byte.class, TypeCodec.cdouble()))
+        .convertsFrom((byte) 123)
+        .to(123d)
+        .convertsTo(123d)
+        .from((byte) 123)
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new NumberToNumberCodec<>(Byte.class, TypeCodec.varint()))
+        .convertsFrom((byte) 123)
+        .to(new BigInteger("123"))
+        .convertsTo(new BigInteger("123"))
+        .from((byte) 123)
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new NumberToNumberCodec<>(BigInteger.class, TypeCodec.cint()))
+        .convertsFrom(new BigInteger("123456"))
+        .to(123456)
+        .convertsTo(123456)
+        .from(new BigInteger("123456"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new NumberToNumberCodec<>(Integer.class, TypeCodec.bigint()))
+        .convertsFrom(123456)
+        .to(123456L)
+        .convertsTo(123456L)
+        .from(123456)
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new NumberToNumberCodec<>(Float.class, TypeCodec.decimal()))
+        .convertsFrom(-123.456f)
+        .to(new BigDecimal("-123.456"))
+        .convertsTo(new BigDecimal("-123.456"))
+        .from(-123.456f)
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
+
+    assertThat(new NumberToNumberCodec<>(BigDecimal.class, TypeCodec.cint()))
+        .convertsFrom(new BigDecimal("123.00"))
+        .to(123)
+        .convertsFrom(null)
+        .to(null)
+        .convertsTo(null)
+        .from(null);
   }
 
   @Test
-  public void should_not_serialize_when_invalid_input() throws Exception {
-    try {
-      assertSerde(new NumberToNumberCodec<>(Double.class, TypeCodec.cint()), 123.45d);
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
-    try {
-      assertSerde(
-          new NumberToNumberCodec<>(Double.class, TypeCodec.cint()), (double) Long.MAX_VALUE);
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
-    try {
-      assertSerde(new NumberToNumberCodec<>(Short.class, TypeCodec.tinyInt()), (short) 1234);
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
-    try {
-      assertSerde(
-          new NumberToNumberCodec<>(BigInteger.class, TypeCodec.cint()),
-          new BigInteger("123000000000000000000000"));
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
-    try {
-      assertSerde(
-          new NumberToNumberCodec<>(BigDecimal.class, TypeCodec.cint()), new BigDecimal("123.456"));
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
-  }
+  public void should_not_convert_when_invalid_input() throws Exception {
 
-  private <FROM extends Number, TO extends Number> void assertSerde(
-      NumberToNumberCodec<FROM, TO> codec, FROM input) {
-    assertThat(codec.deserialize(codec.serialize(input, V4), V4)).isEqualTo(input);
+    assertThat(new NumberToNumberCodec<>(Double.class, TypeCodec.cint()))
+        .cannotConvertFrom(123.45d);
+
+    assertThat(new NumberToNumberCodec<>(Long.class, TypeCodec.cint()))
+        .cannotConvertFrom(Long.MAX_VALUE);
+
+    assertThat(new NumberToNumberCodec<>(Short.class, TypeCodec.tinyInt()))
+        .cannotConvertFrom((short) 1234);
+
+    assertThat(new NumberToNumberCodec<>(BigInteger.class, TypeCodec.cint()))
+        .cannotConvertFrom(new BigInteger("123000000000000000000000"));
+
+    assertThat(new NumberToNumberCodec<>(BigDecimal.class, TypeCodec.cint()))
+        .cannotConvertFrom(new BigDecimal("123.1"));
   }
 }

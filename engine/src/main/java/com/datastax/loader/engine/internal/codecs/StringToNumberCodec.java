@@ -8,6 +8,7 @@ package com.datastax.loader.engine.internal.codecs;
 
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.ParsePosition;
@@ -21,26 +22,34 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
     this.formatter = formatter;
   }
 
-  protected Number parseAsNumber(String s) {
-    if (s == null || s.isEmpty()) return null;
+  protected BigDecimal parseAsBigDecimal(String s) {
+    if (s == null || s.isEmpty()) {
+      return null;
+    }
     ParsePosition pos = new ParsePosition(0);
-    Number number = getNumberFormat().parse(s.trim(), pos);
-    if (number == null)
+    BigDecimal number = (BigDecimal) getNumberFormat().parse(s.trim(), pos);
+    if (number == null) {
       throw new InvalidTypeException(
           "Invalid number format: " + s, new ParseException(s, pos.getErrorIndex()));
-    if (pos.getIndex() != s.length())
+    }
+    if (pos.getIndex() != s.length()) {
       throw new InvalidTypeException(
           "Invalid number format: " + s, new ParseException(s, pos.getIndex()));
+    }
     return number;
   }
 
   protected DecimalFormat getNumberFormat() {
-    return formatter.get();
+    DecimalFormat format = formatter.get();
+    format.setParseBigDecimal(true);
+    return format;
   }
 
   @Override
   protected String convertTo(N value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     return getNumberFormat().format(value);
   }
 }

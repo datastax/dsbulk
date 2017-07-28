@@ -22,7 +22,7 @@ public class StringToBooleanCodec extends ConvertingCodec<String, Boolean> {
 
   @Override
   protected Boolean convertFrom(String s) {
-    if (s == null) {
+    if (s == null || s.isEmpty()) {
       return null;
     }
     Boolean b = inputs.get(s.toLowerCase());

@@ -6,6 +6,7 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
 
@@ -17,6 +18,10 @@ public class StringToBigIntegerCodec extends StringToNumberCodec<BigInteger> {
 
   @Override
   protected BigInteger convertFrom(String s) {
-    return new BigInteger(parseAsNumber(s).toString());
+    BigDecimal number = parseAsBigDecimal(s);
+    if (number == null) {
+      return null;
+    }
+    return number.toBigIntegerExact();
   }
 }
