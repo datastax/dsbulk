@@ -29,7 +29,7 @@ import java.util.Map;
 
 public class CsvUtils {
 
-  private static final Conversion<String, InetAddress> INET_CONVERTER =
+  public static final Conversion<String, InetAddress> INET_CONVERTER =
       new Conversion<String, InetAddress>() {
         @Override
         public InetAddress execute(String input) {
@@ -57,6 +57,11 @@ public class CsvUtils {
                           + record.getString("beginning IP Address"))
               .blockingGet());
 
+  public static final String INSERT_INTO_IP_BY_COUNTRY =
+      "INSERT INTO ip_by_country "
+          + "(country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
+          + "VALUES (?,?,?,?,?,?)";
+
   public static void createIpByCountryTable(Session session) {
     session.execute(
         "CREATE TABLE IF NOT EXISTS ip_by_country ("
@@ -70,10 +75,11 @@ public class CsvUtils {
   }
 
   public static PreparedStatement prepareInsertStatement(Session session) {
-    return session.prepare(
-        "INSERT INTO ip_by_country "
-            + "(country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
-            + "VALUES (?,?,?,?,?,?)");
+    return session.prepare(INSERT_INTO_IP_BY_COUNTRY);
+  }
+
+  public static Map<String, Record> getRecordMap() {
+    return RECORD_MAP;
   }
 
   public static void truncateIpByCountryTable(Session session) {
@@ -117,9 +123,7 @@ public class CsvUtils {
   private static SimpleStatement toSimpleStatement(Record record) {
     SimpleStatement statement =
         new SimpleStatement(
-            "INSERT INTO ip_by_country "
-                + "(country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
-                + "VALUES (?,?,?,?,?,?)",
+            INSERT_INTO_IP_BY_COUNTRY,
             record.getString("ISO 3166 Country Code"),
             record.getString("Country Name"),
             record.getValue("beginning IP Address", InetAddress.class, INET_CONVERTER),

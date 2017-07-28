@@ -4,9 +4,9 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.loader.executor.api;
+package com.datastax.loader.executor.api.ccm;
 
-import com.datastax.driver.dse.DseSession;
+import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.loader.tests.utils.CsvUtils;
 import javax.inject.Inject;
 import org.junit.After;
@@ -14,7 +14,7 @@ import org.junit.BeforeClass;
 
 public abstract class AbstractContinuousBulkExecutorIT extends AbstractBulkExecutorIT {
 
-  @Inject static DseSession session;
+  @Inject static ContinuousPagingSession session;
 
   @BeforeClass
   public static void createTableAndPreparedStatement() {
