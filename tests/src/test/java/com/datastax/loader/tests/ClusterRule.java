@@ -6,17 +6,16 @@
  */
 package com.datastax.loader.tests;
 
+import static com.datastax.driver.core.HostDistance.LOCAL;
+import static com.datastax.driver.core.HostDistance.REMOTE;
+
 import com.datastax.driver.core.*;
 import com.datastax.driver.dse.DseCluster;
-
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static com.datastax.driver.core.HostDistance.LOCAL;
-import static com.datastax.driver.core.HostDistance.REMOTE;
 
 public class ClusterRule extends CassandraResourceRule {
 

@@ -6,31 +6,25 @@
  */
 package com.datastax.loader.engine.internal.schema;
 
-import com.datastax.driver.core.SimpleStatement;
 import com.datastax.loader.connectors.api.Record;
+import com.datastax.loader.executor.api.statement.BulkSimpleStatement;
 import com.google.common.base.MoreObjects;
 import java.net.URL;
 
 /** */
-public class UnmappableStatement extends SimpleStatement {
+public class UnmappableStatement extends BulkSimpleStatement<Record> {
 
   private final URL location;
-  private final Record record;
   private final Throwable error;
 
   public UnmappableStatement(URL location, Record record, Throwable error) {
-    super(error.getMessage());
+    super(record, error.getMessage());
     this.location = location;
-    this.record = record;
     this.error = error;
   }
 
   public URL getLocation() {
     return location;
-  }
-
-  public Record getRecord() {
-    return record;
   }
 
   public Throwable getError() {
@@ -39,6 +33,9 @@ public class UnmappableStatement extends SimpleStatement {
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this).add("record", record).add("error", error).toString();
+    return MoreObjects.toStringHelper(this)
+        .add("record", getSource())
+        .add("error", error)
+        .toString();
   }
 }

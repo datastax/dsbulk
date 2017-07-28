@@ -8,9 +8,11 @@ package com.datastax.loader.engine.internal.log;
 
 import static com.datastax.loader.engine.internal.log.LogUtils.appendRecordInfo;
 import static com.datastax.loader.engine.internal.log.LogUtils.appendStatementInfo;
+import static com.datastax.loader.engine.internal.log.LogUtils.printAndMaybeAddNewLine;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 
+import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ProtocolVersion;
@@ -21,6 +23,7 @@ import com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosit
 import com.datastax.loader.engine.internal.log.statement.StatementFormatter;
 import com.datastax.loader.engine.internal.schema.UnmappableStatement;
 import com.datastax.loader.executor.api.result.Result;
+import com.datastax.loader.executor.api.statement.BulkStatement;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -49,15 +52,11 @@ public class LogManager implements AutoCloseable {
 
   private final Path operationDirectory;
   private final ExecutorService executor;
-  private final int maxExtractErrors;
-  private final int maxTransformErrors;
-  private final int maxLoadErrors;
+  private final int maxErrors;
   private final StatementFormatter formatter;
   private final StatementFormatVerbosity verbosity;
   private final Set<Disposable> disposables = new HashSet<>();
-  private final AtomicInteger extractErrors = new AtomicInteger(0);
-  private final AtomicInteger transformErrors = new AtomicInteger(0);
-  private final AtomicInteger loadErrors = new AtomicInteger(0);
+  private final AtomicInteger errors = new AtomicInteger(0);
   private final LoadingCache<Path, PrintWriter> openFiles =
       CacheBuilder.newBuilder()
           .removalListener(
@@ -81,16 +80,12 @@ public class LogManager implements AutoCloseable {
   public LogManager(
       Path operationDirectory,
       ExecutorService executor,
-      int maxExtractErrors,
-      int maxTransformErrors,
-      int maxLoadErrors,
+      int maxErrors,
       StatementFormatter formatter,
       StatementFormatVerbosity verbosity) {
     this.operationDirectory = operationDirectory;
     this.executor = executor;
-    this.maxExtractErrors = maxExtractErrors;
-    this.maxTransformErrors = maxTransformErrors;
-    this.maxLoadErrors = maxLoadErrors;
+    this.maxErrors = maxErrors;
     this.formatter = formatter;
     this.verbosity = verbosity;
   }
@@ -128,7 +123,8 @@ public class LogManager implements AutoCloseable {
     PublishSubject<FailedRecord> ps = PublishSubject.create();
     disposables.add(
         ps.toFlowable(BackpressureStrategy.BUFFER)
-            .doOnNext(this::logExtractError)
+            .doOnNext(this::appendToBadFile)
+            .doOnNext(this::appendToDebugFile)
             .subscribeOn(Schedulers.from(executor))
             .subscribe());
     return upstream ->
@@ -136,8 +132,8 @@ public class LogManager implements AutoCloseable {
             .doOnNext(
                 r -> {
                   if (r instanceof FailedRecord) {
-                    if (maxExtractErrors > 0 && extractErrors.incrementAndGet() > maxExtractErrors)
-                      throw new TooManyExtractErrorsException(maxExtractErrors);
+                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors)
+                      throw new TooManyErrorsException(maxErrors);
                     ps.onNext((FailedRecord) r);
                   }
                 })
@@ -148,7 +144,8 @@ public class LogManager implements AutoCloseable {
     PublishSubject<UnmappableStatement> ps = PublishSubject.create();
     disposables.add(
         ps.toFlowable(BackpressureStrategy.BUFFER)
-            .doOnNext(this::logTransformError)
+            .doOnNext(this::appendToBadFile)
+            .doOnNext(this::appendToDebugFile)
             .subscribeOn(Schedulers.from(executor))
             .subscribe());
     return upstream ->
@@ -156,9 +153,8 @@ public class LogManager implements AutoCloseable {
             .doOnNext(
                 r -> {
                   if (r instanceof UnmappableStatement) {
-                    if (maxTransformErrors > 0
-                        && transformErrors.incrementAndGet() > maxTransformErrors)
-                      throw new TooManyTransformErrorsException(maxTransformErrors);
+                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors)
+                      throw new TooManyErrorsException(maxErrors);
                     ps.onNext((UnmappableStatement) r);
                   }
                 })
@@ -169,7 +165,8 @@ public class LogManager implements AutoCloseable {
     PublishSubject<Result> ps = PublishSubject.create();
     disposables.add(
         ps.toFlowable(BackpressureStrategy.BUFFER)
-            .doOnNext(this::logLoadError)
+            .doOnNext(this::appendToBadFile)
+            .doOnNext(this::appendToDebugFile)
             .subscribeOn(Schedulers.from(executor))
             .subscribe());
     return upstream ->
@@ -177,17 +174,49 @@ public class LogManager implements AutoCloseable {
             .doOnNext(
                 r -> {
                   if (!r.isSuccess()) {
-                    if (maxLoadErrors > 0 && loadErrors.incrementAndGet() > maxLoadErrors)
-                      throw new TooManyLoadErrorsException(maxLoadErrors);
+                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors)
+                      throw new TooManyErrorsException(maxErrors);
                     ps.onNext(r);
                   }
                 })
             .filter(Result::isSuccess);
   }
 
-  private void logExtractError(FailedRecord record) throws ExecutionException, URISyntaxException {
+  private void appendToBadFile(Record record) throws ExecutionException, URISyntaxException {
+    appendToBadFile(record.getSource());
+  }
+
+  private void appendToBadFile(BulkStatement<Record> statement)
+      throws ExecutionException, URISyntaxException {
+    appendToBadFile(statement.getSource());
+  }
+
+  @SuppressWarnings("unchecked")
+  private void appendToBadFile(Result result) throws ExecutionException, URISyntaxException {
+    Statement statement = result.getStatement();
+    if (statement instanceof BatchStatement) {
+      for (Statement child : ((BatchStatement) statement).getStatements()) {
+        if (child instanceof BulkStatement) {
+          appendToBadFile((BulkStatement<Record>) child);
+        }
+      }
+    } else if (statement instanceof BulkStatement) {
+      appendToBadFile(((BulkStatement<Record>) statement));
+    }
+  }
+
+  private void appendToBadFile(Object source) throws ExecutionException {
+    Path logFile = operationDirectory.resolve("operation.bad");
+    PrintWriter writer = openFiles.get(logFile);
+    printAndMaybeAddNewLine(source == null ? null : source.toString(), writer);
+    writer.flush();
+  }
+
+  private void appendToDebugFile(FailedRecord record)
+      throws ExecutionException, URISyntaxException {
     Path sourceFile = Paths.get(record.getLocation().getPath());
-    Path logFile = operationDirectory.resolve("extract-" + sourceFile.toFile().getName() + ".bad");
+    Path logFile =
+        operationDirectory.resolve("extract-" + sourceFile.toFile().getName() + "-errors.log");
     PrintWriter writer = openFiles.get(logFile);
     appendRecordInfo(record, writer);
     record.getError().printStackTrace(writer);
@@ -195,8 +224,8 @@ public class LogManager implements AutoCloseable {
     writer.flush();
   }
 
-  private void logTransformError(UnmappableStatement statement) throws ExecutionException {
-    Path logFile = operationDirectory.resolve("transform.bad");
+  private void appendToDebugFile(UnmappableStatement statement) throws ExecutionException {
+    Path logFile = operationDirectory.resolve("transform-errors.log");
     PrintWriter writer = openFiles.get(logFile);
     appendStatementInfo(statement, writer);
     statement.getError().printStackTrace(writer);
@@ -204,16 +233,13 @@ public class LogManager implements AutoCloseable {
     writer.flush();
   }
 
-  private void logLoadError(Result result) throws ExecutionException {
-    Path logFile = operationDirectory.resolve("load.bad");
+  private void appendToDebugFile(Result result) throws ExecutionException {
+    Path logFile = operationDirectory.resolve("load-errors.log");
     PrintWriter writer = openFiles.get(logFile);
     writer.print("Statement: ");
     String format =
         formatter.format(result.getStatement(), verbosity, protocolVersion, codecRegistry);
-    writer.print(format);
-    if (!Character.isWhitespace(format.charAt(format.length() - 1))) {
-      writer.println();
-    }
+    printAndMaybeAddNewLine(format, writer);
     result.getError().orElseThrow(IllegalStateException::new).printStackTrace(writer);
     writer.println();
     writer.flush();

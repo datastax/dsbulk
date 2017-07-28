@@ -22,7 +22,7 @@ public class LogUtils {
 
   public static void appendStatementInfo(UnmappableStatement statement, PrintWriter writer) {
     writer.println("Location: " + statement.getLocation());
-    writer.println("Source  : " + formatSource(statement.getRecord()));
+    writer.println("Source  : " + formatSource(statement.getSource()));
   }
 
   public static void appendRecordInfo(Record record, PrintWriter writer) {
@@ -37,7 +37,7 @@ public class LogUtils {
   private static String formatSource(Record record) {
     if (record == null) return "<NULL>";
     String source = record.getSource().toString();
-    return LogUtils.formatSingleLine(source);
+    return formatSingleLine(source);
   }
 
   public static String formatSingleLine(String string) {
@@ -53,5 +53,17 @@ public class LogUtils {
     }
     matcher.appendTail(sb);
     return sb.toString();
+  }
+
+  public static void printAndMaybeAddNewLine(String string, PrintWriter writer) {
+    if (string == null || string.isEmpty()) {
+      writer.println();
+    } else {
+      writer.print(string);
+      char last = string.charAt(string.length() - 1);
+      if (last != '\n' && last != '\r') {
+        writer.println();
+      }
+    }
   }
 }
