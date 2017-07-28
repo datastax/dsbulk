@@ -14,6 +14,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import org.junit.Test;
 
+import static com.datastax.driver.core.BatchStatement.Type.UNLOGGED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** */
@@ -30,9 +31,9 @@ public class StatementBatcherTest {
   static Statement stmt5 = new SimpleStatement("stmt5").setRoutingKey(key3);
   static Statement stmt6 = new SimpleStatement("stmt6").setRoutingKey(key1);
 
-  static BatchStatement batch12 = new BatchStatement().add(stmt1).add(stmt2);
-  static BatchStatement batch126 = new BatchStatement().add(stmt1).add(stmt2).add(stmt6);
-  static BatchStatement batch34 = new BatchStatement().add(stmt3).add(stmt4);
+  static BatchStatement batch12 = new BatchStatement(UNLOGGED).add(stmt1).add(stmt2);
+  static BatchStatement batch126 = new BatchStatement(UNLOGGED).add(stmt1).add(stmt2).add(stmt6);
+  static BatchStatement batch34 = new BatchStatement(UNLOGGED).add(stmt3).add(stmt4);
 
   @Test
   public void should_batch_by_routing_key_iterable() throws Exception {
