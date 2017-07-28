@@ -6,6 +6,10 @@
  */
 package com.datastax.loader.tests.ccm;
 
+import static com.datastax.loader.tests.utils.NetworkUtils.findAvailablePort;
+import static com.datastax.loader.tests.utils.VersionUtils.DEFAULT_DSE_VERSION;
+import static com.datastax.loader.tests.utils.VersionUtils.getOSSVersionForDSEVersion;
+
 import com.datastax.loader.tests.utils.MemoryUtils;
 import com.datastax.loader.tests.utils.NetworkUtils;
 import com.datastax.loader.tests.utils.PlatformUtils;
@@ -49,10 +53,6 @@ import org.apache.commons.exec.LogOutputStream;
 import org.apache.commons.exec.PumpStreamHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.datastax.loader.tests.utils.NetworkUtils.findAvailablePort;
-import static com.datastax.loader.tests.utils.VersionUtils.DEFAULT_DSE_VERSION;
-import static com.datastax.loader.tests.utils.VersionUtils.getOSSVersionForDSEVersion;
 
 @SuppressWarnings("unused")
 public class DefaultCCMCluster implements CCMCluster {

@@ -6,6 +6,12 @@
  */
 package com.datastax.loader.engine.internal.log;
 
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
@@ -32,12 +38,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /** */
 @SuppressWarnings("FieldCanBeLocal")

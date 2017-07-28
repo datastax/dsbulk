@@ -6,12 +6,12 @@
  */
 package com.datastax.loader.tests.ccm.annotations;
 
+import static java.lang.annotation.ElementType.TYPE;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
 import com.datastax.loader.tests.ccm.CCMCluster;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /** Marks the test class as requiring a {@link CCMCluster}. */
 @Retention(RUNTIME)

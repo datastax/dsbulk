@@ -6,6 +6,8 @@
  */
 package com.datastax.loader.tests.utils;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
@@ -24,8 +26,6 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class CsvUtils {
 

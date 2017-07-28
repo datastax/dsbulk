@@ -6,8 +6,8 @@
  */
 package com.datastax.loader.executor.api;
 
-import com.datastax.loader.executor.api.writer.ReactorBulkWriter;
 import com.datastax.loader.executor.api.reader.ReactorBulkReader;
+import com.datastax.loader.executor.api.writer.ReactorBulkWriter;
 
 /**
  * An execution unit for {@link ReactorBulkWriter bulk writes} and {@link ReactorBulkReader bulk

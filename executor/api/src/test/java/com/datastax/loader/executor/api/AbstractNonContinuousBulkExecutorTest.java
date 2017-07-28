@@ -6,6 +6,11 @@
  */
 package com.datastax.loader.executor.api;
 
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ExecutionInfo;
@@ -23,11 +28,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import org.junit.Before;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public abstract class AbstractNonContinuousBulkExecutorTest extends AbstractBulkExecutorTest {
 

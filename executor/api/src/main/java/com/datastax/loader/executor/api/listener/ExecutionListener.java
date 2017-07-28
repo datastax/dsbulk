@@ -7,8 +7,8 @@
 package com.datastax.loader.executor.api.listener;
 
 import com.datastax.driver.core.Statement;
-import com.datastax.loader.executor.api.exception.BulkExecutionException;
 import com.datastax.loader.executor.api.AbstractBulkExecutorBuilder;
+import com.datastax.loader.executor.api.exception.BulkExecutionException;
 import com.datastax.loader.executor.api.result.Result;
 
 /**

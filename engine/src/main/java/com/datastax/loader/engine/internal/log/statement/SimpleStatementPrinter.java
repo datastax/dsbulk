@@ -6,11 +6,11 @@
  */
 package com.datastax.loader.engine.internal.log.statement;
 
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.boundValuesCount;
+
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import java.util.List;
-
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.boundValuesCount;
 
 /** */
 public class SimpleStatementPrinter<T extends SimpleStatement> extends RegularStatementPrinter<T> {

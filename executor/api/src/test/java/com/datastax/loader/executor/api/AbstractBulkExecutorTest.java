@@ -6,6 +6,15 @@
  */
 package com.datastax.loader.executor.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.argThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
@@ -14,9 +23,9 @@ import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
 import com.datastax.loader.executor.api.listener.ExecutionContext;
 import com.datastax.loader.executor.api.listener.ExecutionListener;
+import com.datastax.loader.executor.api.result.ReadResult;
 import com.datastax.loader.executor.api.result.Result;
 import com.datastax.loader.executor.api.result.WriteResult;
-import com.datastax.loader.executor.api.result.ReadResult;
 import io.reactivex.Flowable;
 import io.reactivex.plugins.RxJavaPlugins;
 import java.util.Arrays;
@@ -30,15 +39,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.argThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 @SuppressWarnings("Duplicates")
 public abstract class AbstractBulkExecutorTest {

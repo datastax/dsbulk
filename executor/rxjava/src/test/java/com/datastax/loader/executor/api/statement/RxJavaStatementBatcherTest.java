@@ -6,12 +6,12 @@
  */
 package com.datastax.loader.executor.api.statement;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import io.reactivex.Flowable;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /** */
 public class RxJavaStatementBatcherTest extends StatementBatcherTest {

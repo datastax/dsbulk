@@ -6,6 +6,8 @@
  */
 package com.datastax.loader.executor.api;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 import com.datastax.driver.core.Session;
 import com.datastax.loader.executor.api.listener.ExecutionListener;
 import com.google.common.util.concurrent.RateLimiter;
@@ -15,8 +17,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 /** Base class for implementations of {@link BulkExecutor}. */
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")

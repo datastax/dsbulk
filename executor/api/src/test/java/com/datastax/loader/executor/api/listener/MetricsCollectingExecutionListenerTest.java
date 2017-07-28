@@ -6,16 +6,15 @@
  */
 package com.datastax.loader.executor.api.listener;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
+import com.datastax.driver.core.*;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
 import com.datastax.loader.executor.api.internal.listener.DefaultExecutionContext;
 import com.datastax.loader.executor.api.internal.result.DefaultReadResult;
 import com.datastax.loader.executor.api.internal.result.DefaultWriteResult;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-
-import com.datastax.driver.core.*;
 
 /** */
 public class MetricsCollectingExecutionListenerTest {

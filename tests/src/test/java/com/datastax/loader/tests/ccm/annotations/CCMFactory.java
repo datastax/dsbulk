@@ -6,13 +6,13 @@
  */
 package com.datastax.loader.tests.ccm.annotations;
 
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
 import com.datastax.loader.tests.ccm.CCMCluster;
 import com.datastax.loader.tests.ccm.DefaultCCMCluster;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Annotation that marks a method as being a factory for {@link CCMCluster} instances.

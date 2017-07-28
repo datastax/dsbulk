@@ -6,6 +6,13 @@
  */
 package com.datastax.loader.engine.internal.log.statement;
 
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatterLimits.UNLIMITED;
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.lineSeparator;
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.nameValueSeparator;
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.nullValue;
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.truncatedOutput;
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.unsetValue;
+
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.DataType;
@@ -15,13 +22,6 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.engine.internal.log.LogUtils;
 import java.nio.ByteBuffer;
-
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatterLimits.UNLIMITED;
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.lineSeparator;
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.nameValueSeparator;
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.nullValue;
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.truncatedOutput;
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.unsetValue;
 
 /**
  * This class exposes utility methods to help {@link StatementPrinter statement printers} in

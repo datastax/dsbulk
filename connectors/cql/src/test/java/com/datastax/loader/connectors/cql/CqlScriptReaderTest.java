@@ -6,6 +6,10 @@
  */
 package com.datastax.loader.connectors.cql;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.stream.Collectors.toList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.RegularStatement;
 import com.datastax.driver.core.Statement;
@@ -16,10 +20,6 @@ import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.stream.Collectors.toList;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class CqlScriptReaderTest {
 

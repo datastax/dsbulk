@@ -6,6 +6,9 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Session;
 import com.datastax.loader.executor.api.ContinuousRxJavaBulkExecutor;
@@ -15,9 +18,6 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 /** */
 public class ExecutorSettingsTest {

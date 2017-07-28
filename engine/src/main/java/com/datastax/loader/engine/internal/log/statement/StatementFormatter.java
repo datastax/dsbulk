@@ -6,6 +6,8 @@
  */
 package com.datastax.loader.engine.internal.log.statement;
 
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatterLimits.UNLIMITED;
+
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ProtocolVersion;
@@ -15,8 +17,6 @@ import java.util.Arrays;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatterLimits.UNLIMITED;
 
 /**
  * A component to format instances of {@link Statement}.

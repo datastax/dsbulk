@@ -6,10 +6,10 @@
  */
 package com.datastax.loader.engine.internal.log.statement;
 
+import static com.datastax.driver.core.DriverCoreHooks.wrappedStatement;
+
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.StatementWrapper;
-
-import static com.datastax.driver.core.DriverCoreHooks.wrappedStatement;
 
 /** */
 public class StatementWrapperPrinter implements StatementPrinter<StatementWrapper> {

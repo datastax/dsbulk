@@ -6,6 +6,8 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import static com.datastax.loader.engine.internal.ReflectionUtils.newInstance;
+
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.HostDistance;
 import com.datastax.driver.core.PoolingOptions;
@@ -19,8 +21,6 @@ import com.datastax.driver.dse.DseCluster;
 import com.google.common.base.Preconditions;
 import com.typesafe.config.Config;
 import java.net.InetSocketAddress;
-
-import static com.datastax.loader.engine.internal.ReflectionUtils.newInstance;
 
 /** */
 public class DriverSettings {

@@ -6,11 +6,11 @@
  */
 package com.datastax.loader.tests.ccm.annotations;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Annotation that marks a method as being a factory for {@link com.datastax.driver.core.Cluster}

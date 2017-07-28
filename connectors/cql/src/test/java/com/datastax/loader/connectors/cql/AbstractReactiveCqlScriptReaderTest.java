@@ -6,6 +6,8 @@
  */
 package com.datastax.loader.connectors.cql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.RegularStatement;
 import com.datastax.driver.core.Statement;
@@ -14,8 +16,6 @@ import java.io.IOException;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class AbstractReactiveCqlScriptReaderTest extends CqlScriptReaderTest {
 

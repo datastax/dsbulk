@@ -8,11 +8,11 @@ package com.datastax.loader.executor.api.internal;
 
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
+import com.datastax.loader.executor.api.exception.BulkExecutionException;
 import com.datastax.loader.executor.api.internal.listener.DefaultExecutionContext;
+import com.datastax.loader.executor.api.listener.ExecutionContext;
 import com.datastax.loader.executor.api.listener.ExecutionListener;
 import com.datastax.loader.executor.api.result.Result;
-import com.datastax.loader.executor.api.exception.BulkExecutionException;
-import com.datastax.loader.executor.api.listener.ExecutionContext;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;

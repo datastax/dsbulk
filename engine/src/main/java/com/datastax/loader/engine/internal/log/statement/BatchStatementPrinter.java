@@ -6,9 +6,6 @@
  */
 package com.datastax.loader.engine.internal.log.statement;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.Statement;
-
 import static com.datastax.driver.core.DriverCoreHooks.batchType;
 import static com.datastax.driver.core.DriverCoreHooks.valuesCount;
 import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.NORMAL;
@@ -19,6 +16,9 @@ import static com.datastax.loader.engine.internal.log.statement.StatementFormatt
 import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.summaryEnd;
 import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.summaryStart;
 import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.truncatedOutput;
+
+import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.Statement;
 
 /** */
 public class BatchStatementPrinter implements StatementPrinter<BatchStatement> {

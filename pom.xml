@@ -34,7 +34,6 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <format.validateOnly>false</format.validateOnly>
     <java.version>1.8</java.version>
     <driver.version>1.3.0</driver.version>
     <reactive-streams.version>1.0.0</reactive-streams.version>
@@ -276,10 +275,7 @@
         <plugin>
           <groupId>com.coveo</groupId>
           <artifactId>fmt-maven-plugin</artifactId>
-          <version>1.5.0</version>
-          <configuration>
-            <validateOnly>${format.validateOnly}</validateOnly>
-          </configuration>
+          <version>1.8.0</version>
           <executions>
             <execution>
               <goals>

@@ -6,12 +6,12 @@
  */
 package com.datastax.loader.connectors.cql;
 
+import static reactor.core.publisher.FluxSink.OverflowStrategy.BUFFER;
+
 import com.datastax.driver.core.Statement;
 import java.io.IOException;
 import java.io.Reader;
 import reactor.core.publisher.Flux;
-
-import static reactor.core.publisher.FluxSink.OverflowStrategy.BUFFER;
 
 /**
  * A {@link CqlScriptReader} that exposes <a href="https://projectreactor.io">Reactor</a> types for

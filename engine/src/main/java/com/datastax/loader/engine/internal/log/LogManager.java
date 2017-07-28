@@ -6,6 +6,11 @@
  */
 package com.datastax.loader.engine.internal.log;
 
+import static com.datastax.loader.engine.internal.log.LogUtils.appendRecordInfo;
+import static com.datastax.loader.engine.internal.log.LogUtils.appendStatementInfo;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static java.nio.file.StandardOpenOption.WRITE;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ProtocolVersion;
@@ -38,11 +43,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static com.datastax.loader.engine.internal.log.LogUtils.appendRecordInfo;
-import static com.datastax.loader.engine.internal.log.LogUtils.appendStatementInfo;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static java.nio.file.StandardOpenOption.WRITE;
 
 /** */
 public class LogManager implements AutoCloseable {

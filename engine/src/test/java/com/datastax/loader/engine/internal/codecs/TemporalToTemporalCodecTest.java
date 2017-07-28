@@ -6,6 +6,9 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
+import static com.datastax.driver.core.ProtocolVersion.V4;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
@@ -16,9 +19,6 @@ import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
 import org.junit.Test;
-
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class TemporalToTemporalCodecTest {
 

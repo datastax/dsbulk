@@ -6,14 +6,14 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
+import static com.datastax.driver.core.ProtocolVersion.V4;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import java.util.UUID;
 import org.junit.Test;
-
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 
 public class StringToUUIDCodecTest {
 

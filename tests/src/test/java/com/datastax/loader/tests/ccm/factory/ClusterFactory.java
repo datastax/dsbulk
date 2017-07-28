@@ -6,6 +6,9 @@
  */
 package com.datastax.loader.tests.ccm.factory;
 
+import static com.datastax.driver.core.HostDistance.LOCAL;
+import static com.datastax.driver.core.HostDistance.REMOTE;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.ProtocolOptions;
@@ -25,9 +28,6 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-
-import static com.datastax.driver.core.HostDistance.LOCAL;
-import static com.datastax.driver.core.HostDistance.REMOTE;
 
 /** */
 public abstract class ClusterFactory {

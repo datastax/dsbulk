@@ -6,11 +6,11 @@
  */
 package com.datastax.loader.connectors.cql;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.net.URL;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class ReactorCqlScriptReaderTest extends AbstractReactiveCqlScriptReaderTest {
 

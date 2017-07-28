@@ -6,6 +6,18 @@
  */
 package com.datastax.loader.engine.internal.log.statement;
 
+import static com.datastax.driver.core.DriverCoreTestHooks.newPreparedId;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.ABRIDGED;
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.NORMAL;
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatterLimits.UNLIMITED;
+import static com.google.common.base.Strings.repeat;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.CodecRegistry;
@@ -41,18 +53,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import org.junit.Test;
-
-import static com.datastax.driver.core.DriverCoreTestHooks.newPreparedId;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.ABRIDGED;
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.NORMAL;
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatterLimits.UNLIMITED;
-import static com.google.common.base.Strings.repeat;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class StatementFormatterTest {
 

@@ -9,10 +9,10 @@ package com.datastax.loader.executor.api;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
-import com.datastax.loader.executor.api.result.Result;
-import com.datastax.loader.executor.api.result.WriteResult;
 import com.datastax.loader.executor.api.listener.ExecutionListener;
 import com.datastax.loader.executor.api.result.ReadResult;
+import com.datastax.loader.executor.api.result.Result;
+import com.datastax.loader.executor.api.result.WriteResult;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 

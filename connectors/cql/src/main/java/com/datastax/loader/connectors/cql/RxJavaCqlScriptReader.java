@@ -6,12 +6,12 @@
  */
 package com.datastax.loader.connectors.cql;
 
+import static io.reactivex.BackpressureStrategy.BUFFER;
+
 import com.datastax.driver.core.Statement;
 import io.reactivex.Flowable;
 import java.io.IOException;
 import java.io.Reader;
-
-import static io.reactivex.BackpressureStrategy.BUFFER;
 
 /**
  * A {@link CqlScriptReader} that exposes <a

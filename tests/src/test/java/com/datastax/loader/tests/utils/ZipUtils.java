@@ -6,6 +6,9 @@
  */
 package com.datastax.loader.tests.utils;
 
+import static java.nio.file.FileVisitResult.CONTINUE;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -18,9 +21,6 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
-
-import static java.nio.file.FileVisitResult.CONTINUE;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class ZipUtils {
 

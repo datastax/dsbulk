@@ -6,6 +6,8 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Session;
@@ -20,8 +22,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.Config;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 /** */
 public class ExecutorSettings {

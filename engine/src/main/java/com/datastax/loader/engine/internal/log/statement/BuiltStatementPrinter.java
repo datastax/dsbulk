@@ -6,12 +6,12 @@
  */
 package com.datastax.loader.engine.internal.log.statement;
 
+import static com.datastax.driver.core.DriverCoreHooks.valuesCount;
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.boundValuesCount;
+
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.BuiltStatement;
 import java.util.List;
-
-import static com.datastax.driver.core.DriverCoreHooks.valuesCount;
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.boundValuesCount;
 
 /** */
 public class BuiltStatementPrinter extends RegularStatementPrinter<BuiltStatement> {

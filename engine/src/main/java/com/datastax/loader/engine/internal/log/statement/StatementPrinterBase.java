@@ -6,11 +6,6 @@
  */
 package com.datastax.loader.engine.internal.log.statement;
 
-import com.datastax.driver.core.Statement;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
 import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.NORMAL;
 import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.consistencyLevel;
@@ -22,6 +17,11 @@ import static com.datastax.loader.engine.internal.log.statement.StatementFormatt
 import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.summaryEnd;
 import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.summaryStart;
 import static com.datastax.loader.engine.internal.log.statement.StatementFormatterSymbols.unsetValue;
+
+import com.datastax.driver.core.Statement;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * A common parent class for {@link StatementPrinter} implementations.
@@ -36,7 +36,6 @@ import static com.datastax.loader.engine.internal.log.statement.StatementFormatt
  *             are: the statement's consistency level; its default timestamp; its idempotence flag;
  *             the number of bound values; etc.
  *       </ol>
- *
  *   <li>Query String: this section should print the statement's query string, if it is available;
  *       this section is only enabled if the verbosity is {@link StatementFormatVerbosity#NORMAL
  *       NORMAL} or higher;

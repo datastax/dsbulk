@@ -6,11 +6,11 @@
  */
 package com.datastax.loader.engine.internal.log.statement;
 
+import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
+
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.executor.api.statement.BulkBoundStatement;
-
-import static com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
 
 /** */
 public class BulkBoundStatementPrinter extends BoundStatementPrinter<BulkBoundStatement<Record>> {

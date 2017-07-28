@@ -6,6 +6,12 @@
  */
 package com.datastax.loader.executor.api.statement;
 
+import static com.datastax.driver.core.querybuilder.QueryBuilder.gt;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.token;
+import static java.util.stream.Collectors.toList;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.Metadata;
@@ -18,12 +24,6 @@ import com.datastax.driver.core.querybuilder.Clause;
 import com.datastax.driver.core.querybuilder.Select;
 import java.util.List;
 import java.util.Set;
-
-import static com.datastax.driver.core.querybuilder.QueryBuilder.gt;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.token;
-import static java.util.stream.Collectors.toList;
 
 /** An utility class that helps reading all rows of a table. */
 public class TableScanner {

@@ -6,6 +6,10 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
@@ -21,10 +25,6 @@ import java.nio.file.Paths;
 import java.util.Comparator;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /** */
 public class LogSettingsTest {

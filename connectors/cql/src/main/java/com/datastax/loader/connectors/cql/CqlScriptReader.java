@@ -6,6 +6,11 @@
  */
 package com.datastax.loader.connectors.cql;
 
+import static com.datastax.driver.core.BatchStatement.Type.COUNTER;
+import static com.datastax.driver.core.BatchStatement.Type.LOGGED;
+import static com.datastax.driver.core.BatchStatement.Type.UNLOGGED;
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
@@ -19,11 +24,6 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import static com.datastax.driver.core.BatchStatement.Type.COUNTER;
-import static com.datastax.driver.core.BatchStatement.Type.LOGGED;
-import static com.datastax.driver.core.BatchStatement.Type.UNLOGGED;
-import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * A {@link LineNumberReader reader} for CQL script files.

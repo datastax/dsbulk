@@ -6,6 +6,10 @@
  */
 package com.datastax.loader.engine;
 
+import static java.util.concurrent.TimeUnit.HOURS;
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
@@ -34,10 +38,6 @@ import java.time.temporal.ChronoField;
 import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static java.util.concurrent.TimeUnit.HOURS;
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 /** */
 public class Main {

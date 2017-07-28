@@ -6,6 +6,14 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import static com.datastax.driver.core.ConsistencyLevel.LOCAL_ONE;
+import static com.datastax.driver.core.ConsistencyLevel.LOCAL_SERIAL;
+import static com.datastax.driver.core.HostDistance.LOCAL;
+import static com.datastax.driver.core.HostDistance.REMOTE;
+import static com.datastax.driver.core.ProtocolOptions.Compression.LZ4;
+import static com.datastax.driver.core.ProtocolVersion.V4;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.PoolingOptions;
@@ -25,14 +33,6 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import org.junit.Test;
 import org.mockito.internal.util.reflection.Whitebox;
-
-import static com.datastax.driver.core.ConsistencyLevel.LOCAL_ONE;
-import static com.datastax.driver.core.ConsistencyLevel.LOCAL_SERIAL;
-import static com.datastax.driver.core.HostDistance.LOCAL;
-import static com.datastax.driver.core.HostDistance.REMOTE;
-import static com.datastax.driver.core.ProtocolOptions.Compression.LZ4;
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
 
 /** */
 public class DriverSettingsTest {

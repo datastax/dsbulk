@@ -6,16 +6,16 @@
  */
 package com.datastax.loader.executor.api.listener;
 
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
+
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
-import com.datastax.loader.executor.api.result.Result;
 import com.datastax.loader.executor.api.result.ReadResult;
+import com.datastax.loader.executor.api.result.Result;
 import java.util.stream.IntStream;
-
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /** A {@link ExecutionListener} that records useful metrics about the ongoing bulk operations. */
 public class MetricsCollectingExecutionListener implements ExecutionListener {
