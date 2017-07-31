@@ -16,7 +16,6 @@ followed by normal imports in ASCII sort order).
 * implementation comments: wrap them to respect the column limit of 100 characters.
 * XML files: indent with two spaces and wrap to respect the column limit of 100 characters.
 
-
 ## Coding style -- production code
 
 Use static imports only when they do not make your code hard to understand; 
@@ -219,7 +218,8 @@ with a period:
 Avoid catch-all messages like "Minor cleanup", "Various fixes", etc. They don't provide any useful
 information to reviewers, and might be a sign that your commit contains unrelated changes.
  
-We don't enforce a particular subject line length limit, but try to keep it short.
+We don't enforce a particular subject line length limit, but try to keep it short. 
+Github likes it when commit lines are less than 80 characters long.
 
 You can add more details after the subject line, separated by a blank line. The following pattern
 (inspired by [Netty](http://netty.io/wiki/writing-a-commit-message.html)) is not mandatory, but
@@ -242,9 +242,57 @@ Result:
 After your change, what will change.
 ```
 
+## Branching model
+
+The loader uses [semantic versioning](http://semver.org/) and its branches use the following scheme:
+
+```
+            1.0.1      1.0.2 ...                1.1.1 ...
+         -----*----------*------> 1.0.x      -----*------> 1.1.x
+        /                                   /
+       /                                   /
+      /                                   /
+-----*-----------------------------------*-------------------------> 1.x
+   1.0.0                               1.1.0        ...
+
+Legend:
+ > branch
+ * tag
+```
+
+- new features are developed on "minor" branches such as `1.x`, where minor releases 
+(ending in `.0`) happen.
+- bugfixes go to "patch" branches such as `1.0.x` and `1.1.x`, where patch releases 
+(ending in `.1`, `.2`...) happen.
+- patch branches are regularly merged to the right (`1.0.x` to `1.1.x`) and to the bottom 
+(`1.1.x` to `1.x`) so that bugfixes are applied to newer versions too.
+
 ## Pull requests
 
 Like commits, pull requests should be focused on a single, clearly stated goal.
+
+### Opening a pull request
+
+Name your pull request branches after their corresponding Jira issue where applicable, 
+e.g. "DAT-42".
+
+Before you send your pull request, make sure that you have a unit test that failed before 
+the fix and succeeds after.
+
+If your pull requests addresses a Jira issue, add the corresponding entry to the 
+[changelog](./changelog/README.md), in the following format:
+
+- [_issue type_] DAT-XXX: _issue title_.
+
+Example:
+
+- [new feature] DAT-14: Implement configuration service.
+
+The first commit message should reference the JIRA issue for automatic linking where applicable. The recommended template for the commit title is:
+
+    DAT-XXX: Issue title
+
+See the "Commits" section above for more tips for writing good commit messages.
 
 Avoid basing a pull request onto another one. If possible, the first one should be merged in first,
 and only then should the second one be created.
@@ -264,17 +312,6 @@ where the changes should be squashed:
 ```
 
 (Note that the message refers to the other commit's subject line, not the SHA-1.)
-
-### Changelog entry
-
-Pull requests that address a Jira issue should add the corresponding entry to the [changelog](./changelog/README.md), 
-in the following format:
-
-- [_issue type_] DAT-XXX: _issue title_.
-
-Example:
-
-- [new feature] DAT-14: Implement configuration service.
 
 ### Merging pull requests
 
