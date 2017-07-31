@@ -83,16 +83,6 @@ public class DefaultCCMCluster implements CCMCluster {
    * The environment variables to use when invoking CCM. Inherits the current processes environment,
    * but will also prepend to the PATH variable the value of the 'ccm.path' property and set
    * JAVA_HOME variable to the 'com.datastax.loader.tests.ccm.JAVA_HOME' variable.
-   *
-   * <p>
-   *
-   * <p>
-   *
-   * <p>
-   *
-   * <p>At times it is necessary to use a separate java install for CCM then what is being used for
-   * running tests. For example, if you want to run tests with JDK 6 but against Cassandra 2.0,
-   * which requires JDK 7.
    */
   private static final Map<String, String> ENVIRONMENT_MAP;
 

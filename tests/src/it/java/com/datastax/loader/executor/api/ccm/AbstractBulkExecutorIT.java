@@ -4,14 +4,11 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.loader.executor.api;
+package com.datastax.loader.executor.api.ccm;
 
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.SyntaxError;
+import com.datastax.loader.executor.api.BulkExecutor;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
 import com.datastax.loader.executor.api.result.ReadResult;
 import com.datastax.loader.executor.api.result.Result;
@@ -22,6 +19,14 @@ import com.datastax.loader.tests.utils.CsvUtils;
 import com.univocity.parsers.common.record.Record;
 import io.reactivex.Flowable;
 import io.reactivex.plugins.RxJavaPlugins;
+import org.assertj.core.api.Assertions;
+import org.junit.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+
+import javax.inject.Inject;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -30,17 +35,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import javax.inject.Inject;
-import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 
 import static java.util.stream.StreamSupport.stream;
 import static org.assertj.core.api.Assertions.fail;
