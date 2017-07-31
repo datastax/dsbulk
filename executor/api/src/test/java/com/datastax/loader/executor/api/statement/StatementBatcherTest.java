@@ -6,6 +6,9 @@
  */
 package com.datastax.loader.executor.api.statement;
 
+import static com.datastax.driver.core.BatchStatement.Type.UNLOGGED;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
@@ -13,9 +16,6 @@ import com.datastax.driver.core.utils.Bytes;
 import java.nio.ByteBuffer;
 import java.util.List;
 import org.junit.Test;
-
-import static com.datastax.driver.core.BatchStatement.Type.UNLOGGED;
-import static org.assertj.core.api.Assertions.assertThat;
 
 /** */
 public class StatementBatcherTest {

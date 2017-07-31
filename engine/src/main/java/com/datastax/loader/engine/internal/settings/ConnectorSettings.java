@@ -9,7 +9,6 @@ package com.datastax.loader.engine.internal.settings;
 import com.datastax.loader.connectors.api.Connector;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigObject;
-
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
