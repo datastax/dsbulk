@@ -12,11 +12,11 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.loader.engine.internal.schema.DefaultMapping;
 import com.datastax.loader.engine.internal.schema.RecordMapper;
 import com.google.common.base.Preconditions;
 import com.typesafe.config.Config;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -36,12 +36,19 @@ public class SchemaSettings {
   }
 
   public RecordMapper newRecordMapper(Session session) {
-    Map<String, String> mapping = null;
+    DefaultMapping mapping = null;
     if (config.hasPath("mapping")) {
-      mapping = new LinkedHashMap<>();
+      mapping = new DefaultMapping();
       for (Map.Entry<String, Object> entry :
           config.getConfig("mapping").root().unwrapped().entrySet()) {
-        mapping.put(entry.getKey(), entry.getValue().toString());
+        Object key = entry.getKey();
+        // Since the config library doesn't allow integer map keys,
+        // parse them now if possible
+        try {
+          key = Integer.valueOf(key.toString());
+        } catch (NumberFormatException ignored) {
+        }
+        mapping.put(key, entry.getValue().toString());
       }
     }
     if (config.hasPath("keyspace")) {
@@ -63,37 +70,42 @@ public class SchemaSettings {
       query = config.getString("statement");
     } else {
       Preconditions.checkState(keyspace != null && table != null);
-      query = inferQuery(new LinkedHashSet<>(mapping.values()));
+      query = inferQuery(mapping);
     }
     PreparedStatement ps = session.prepare(query);
     return new RecordMapper(ps, mapping);
   }
 
-  private Map<String, String> inferMapping() {
-    Map<String, String> mapping = new LinkedHashMap<>();
+  private DefaultMapping inferMapping() {
+    DefaultMapping mapping = new DefaultMapping();
     for (int i = 0; i < table.getColumns().size(); i++) {
       ColumnMetadata col = table.getColumns().get(i);
       String name = Metadata.quoteIfNecessary(col.getName());
       // use both indexed and mapped access
       // indexed access can only work if the data source produces
       // indexed records with columns in the same order
-      mapping.put(Integer.toString(i), name);
+      mapping.put(i, name);
       mapping.put(col.getName(), name);
     }
     return mapping;
   }
 
-  private String inferQuery(Set<String> mappedCols) {
+  private String inferQuery(DefaultMapping mapping) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
-    Iterator<String> it = mappedCols.iterator();
+    // de-dup in case the mapping has both indexed and mapped entries
+    // for the same bound variable
+    Set<String> cols = new LinkedHashSet<>(mapping.values());
+    Iterator<String> it = cols.iterator();
     while (it.hasNext()) {
+      // this assumes that the variable name found in the mapping
+      // corresponds to a CQL column having the exact same name.
       String col = it.next();
-      sb.append(col);
+      sb.append(Metadata.quoteIfNecessary(col));
       if (it.hasNext()) sb.append(',');
     }
     sb.append(") VALUES (");
-    it = mappedCols.iterator();
+    it = cols.iterator();
     while (it.hasNext()) {
       String col = it.next();
       sb.append(':');

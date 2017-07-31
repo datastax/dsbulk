@@ -50,6 +50,10 @@ public class SettingsManager {
     batchSettings = new BatchSettings(config.getConfig("batch"));
     executorSettings = new ExecutorSettings(config.getConfig("executor"));
     codecSettings = new CodecSettings(config.getConfig("codec"));
+    config =
+        config
+            .withoutPath("connector")
+            .withFallback(connectorSettings.getConnectorEffectiveSettings().atPath("connector"));
   }
 
   public void logEffectiveSettings() {

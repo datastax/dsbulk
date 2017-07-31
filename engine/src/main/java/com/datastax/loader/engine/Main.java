@@ -25,11 +25,13 @@ import com.datastax.loader.engine.internal.settings.ExecutorSettings;
 import com.datastax.loader.engine.internal.settings.LogSettings;
 import com.datastax.loader.engine.internal.settings.SchemaSettings;
 import com.datastax.loader.engine.internal.settings.SettingsManager;
+import com.datastax.loader.engine.internal.url.MainURLStreamHandlerFactory;
 import com.datastax.loader.executor.api.result.Result;
 import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
 import com.google.common.base.Stopwatch;
 import io.reactivex.Flowable;
 import io.reactivex.FlowableTransformer;
+import java.net.URL;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -45,6 +47,7 @@ public class Main {
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
   public static void main(String[] args) throws Exception {
+    URL.setURLStreamHandlerFactory(new MainURLStreamHandlerFactory());
     Main main = new Main(args);
     main.load();
   }

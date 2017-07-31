@@ -6,7 +6,7 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
+import static com.datastax.loader.engine.internal.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;

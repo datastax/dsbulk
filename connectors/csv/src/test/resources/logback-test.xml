@@ -1,0 +1,21 @@
+<!--
+
+    Copyright (C) 2017 DataStax Inc.
+
+    This software can be used solely with DataStax Enterprise. Please consult the license at
+    http://www.datastax.com/terms/datastax-dse-driver-license-terms
+
+-->
+<configuration>
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%-5level [%thread] %logger{40} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <root level="${log.root.level:-OFF}">
+    <appender-ref ref="STDOUT"/>
+  </root>
+
+</configuration>

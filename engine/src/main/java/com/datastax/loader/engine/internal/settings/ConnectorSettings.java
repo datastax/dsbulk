@@ -8,20 +8,24 @@ package com.datastax.loader.engine.internal.settings;
 
 import com.datastax.loader.connectors.api.Connector;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigObject;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /** */
 public class ConnectorSettings {
+
+  private final Config config;
   private final Connector connector;
 
   public ConnectorSettings(Config config) throws Exception {
     String connectorName = config.getString("name");
     connector = locateConnector(connectorName);
-    ConfigObject connectorSettings = config.withoutPath("name").root();
-    connector.configure(connectorSettings.unwrapped());
+    this.config = connector.configure(config);
+  }
+
+  public Config getConnectorEffectiveSettings() {
+    return config;
   }
 
   public Connector getConnector() {

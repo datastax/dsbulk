@@ -23,8 +23,8 @@ public class MainTest {
      */
     String[] args = {
       "log.output-directory=\"file:./target\"",
-      "connector.class=com.datastax.loader.connectors.csv.CSVConnector",
-      "connector.url=\"" + MainTest.class.getResource("/bad.csv").toExternalForm() + "\"",
+      "connector.name=csv",
+      "connector.url=\"" + MainTest.class.getResource("/good.csv").toExternalForm() + "\"",
       "driver.query.consistency=ONE",
       "schema.keyspace=ks",
       "schema.table=t1",

@@ -13,13 +13,8 @@ import org.assertj.core.api.ObjectAssert;
 
 public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCodec<FROM, TO>> {
 
-  protected ConvertingCodecAssert(ConvertingCodec<FROM, TO> actual) {
+  public ConvertingCodecAssert(ConvertingCodec<FROM, TO> actual) {
     super(actual);
-  }
-
-  public static <FROM, TO> ConvertingCodecAssert<FROM, TO> assertThat(
-      ConvertingCodec<FROM, TO> actual) {
-    return new ConvertingCodecAssert<>(actual);
   }
 
   public ConvertsFromAssert convertsFrom(FROM from) {

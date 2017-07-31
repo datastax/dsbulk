@@ -22,7 +22,7 @@ public class StringRecord implements CQLRecord {
   }
 
   @Override
-  public Object getSource() {
+  public String getSource() {
     return source;
   }
 

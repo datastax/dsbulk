@@ -11,3 +11,4 @@
 - [improvement] DAT-30: Revisit bad files management.
 - [improvement] DAT-37: ConnectorSettings.locateConnector "not found" error should leverage String.format completely.
 - [new feature] DAT-33: Add support for String <-> InetAddress conversion.
+- [new feature] DAT-21: Implement CSV connector.
