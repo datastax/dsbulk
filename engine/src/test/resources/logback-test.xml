@@ -14,7 +14,7 @@
     </encoder>
   </appender>
 
-  <root level="INFO">
+  <root level="${log.root.level:-OFF}">
     <appender-ref ref="STDOUT"/>
   </root>
 

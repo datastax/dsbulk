@@ -12,47 +12,10 @@
     <encoder>
       <pattern>%-5level [%thread] %logger{40} - %msg%n</pattern>
     </encoder>
-    <!-- comment out this filter to have all logs printed to the console
-    (can be quite messy if tests are executed in parallel) -->
-    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-      <level>ERROR</level>
-    </filter>
   </appender>
 
-  <!--
-  A special debug appender that redirects output to different files
-  named after the test class name.
-  -->
-  <appender name="DEBUG" class="ch.qos.logback.classic.sift.SiftingAppender">
-    <discriminator>
-      <key>com.datastax.loader.tests.TEST_CLASS_NAME</key>
-      <defaultValue>Unknown</defaultValue>
-    </discriminator>
-    <sift>
-      <appender name="FILE-${com.datastax.loader.tests.TEST_CLASS_NAME}" class="ch.qos.logback.core.FileAppender">
-        <!--@formatter:off-->
-        <file>target/logs/${com.datastax.loader.tests.TEST_CLASS_NAME}.log</file>
-        <!--@formatter:on-->
-        <append>false</append>
-        <layout class="ch.qos.logback.classic.PatternLayout">
-          <!--@formatter:off-->
-          <pattern>%-6relative %-5level %logger{40} - %msg%n</pattern>
-          <!--@formatter:on-->
-        </layout>
-      </appender>
-    </sift>
-  </appender>
-
-  <!-- Driver logs -->
-  <logger name="com.datastax.driver.core" level="INFO"/>
-
-  <!-- set to DEBUG level to see CCM output, TRACE to see all commands -->
-  <logger name="com.datastax.loader.tests.ccm" level="INFO"/>
-
-  <root level="INFO">
+  <root level="${log.root.level:-OFF}">
     <appender-ref ref="STDOUT"/>
-    <!-- uncomment this to enable the special per-file appender (useful when debugging tests)-->
-    <!--<appender-ref ref="DEBUG"/>-->
   </root>
 
 </configuration>
