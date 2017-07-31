@@ -19,7 +19,7 @@ if [ "$old_stash" = "$new_stash" ]; then
 fi
 
 # Run validations and tests
-mvn clean com.coveo:fmt-maven-plugin:check test -DvalidateOnly=true
+mvn clean fmt:check test -DvalidateOnly=true
 status=$?
 
 # Restore changes
