@@ -53,12 +53,6 @@ public class LogSettings {
         Executors.newFixedThreadPool(
             threads, new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
     return new LogManager(
-        operationDirectory,
-        executor,
-        config.getInt("max-extract-errors"),
-        config.getInt("max-transform-errors"),
-        config.getInt("max-load-errors"),
-        formatter,
-        verbosity);
+        operationDirectory, executor, config.getInt("max-errors"), formatter, verbosity);
   }
 }

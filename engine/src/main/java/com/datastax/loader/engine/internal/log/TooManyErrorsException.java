@@ -7,16 +7,16 @@
 package com.datastax.loader.engine.internal.log;
 
 /** */
-public class TooManyLoadErrorsException extends RuntimeException {
+public class TooManyErrorsException extends RuntimeException {
 
   private final int maxLoadErrors;
 
-  public TooManyLoadErrorsException(int maxLoadErrors) {
-    super("Too many load errors, the maximum allowed is " + maxLoadErrors);
+  public TooManyErrorsException(int maxLoadErrors) {
+    super("Too many errors, the maximum allowed is " + maxLoadErrors);
     this.maxLoadErrors = maxLoadErrors;
   }
 
-  public int getMaxLoadErrors() {
+  public int getMaxErrors() {
     return maxLoadErrors;
   }
 }

@@ -8,3 +8,4 @@
 - [new feature] DAT-20: Implement fault tolerance.
 - [new feature] DAT-17: Implement conversion service.
 - [improvement] DAT-29: Simplify way to select connector.
+- [improvement] DAT-30: Revisit bad files management.

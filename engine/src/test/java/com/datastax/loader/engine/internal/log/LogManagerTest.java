@@ -121,36 +121,44 @@ public class LogManagerTest {
   @Test
   public void should_stop_when_max_extract_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test1");
-    LogManager logManager = new LogManager(outputDir, executor, 2, 0, 0, formatter, EXTENDED);
+    LogManager logManager = new LogManager(outputDir, executor, 2, formatter, EXTENDED);
     logManager.init(cluster);
     Flowable<Record> records = Flowable.fromArray(record1, record2, record3);
     try {
       records.compose(logManager.newExtractErrorHandler()).blockingSubscribe();
-      fail("Expecting TooManyExtractErrorsException to be thrown");
-    } catch (TooManyExtractErrorsException e) {
-      assertThat(e).hasMessage("Too many extract errors, the maximum allowed is 2");
-      assertThat(e.getMaxExtractErrors()).isEqualTo(2);
+      fail("Expecting TooManyErrorsException to be thrown");
+    } catch (TooManyErrorsException e) {
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+      assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path actual1 =
+    Path bad = logManager.getOperationDirectory().resolve("operation.bad");
+    Path errors1 =
         logManager
             .getOperationDirectory()
             .resolve(
-                String.format("extract-%s.bad", Paths.get(location1.getPath()).toFile().getName()));
-    Path actual2 =
+                String.format(
+                    "extract-%s-errors.log", Paths.get(location1.getPath()).toFile().getName()));
+    Path errors2 =
         logManager
             .getOperationDirectory()
             .resolve(
-                String.format("extract-%s.bad", Paths.get(location2.getPath()).toFile().getName()));
-    assertThat(actual1.toFile()).exists();
-    assertThat(actual2.toFile()).exists();
+                String.format(
+                    "extract-%s-errors.log", Paths.get(location2.getPath()).toFile().getName()));
+    assertThat(bad.toFile()).exists();
+    assertThat(errors1.toFile()).exists();
+    assertThat(errors2.toFile()).exists();
     assertThat(Files.list(logManager.getOperationDirectory()).toArray())
-        .containsOnly(actual1, actual2);
-    List<String> lines1 = Files.readAllLines(actual1, Charset.forName("UTF-8"));
+        .containsOnly(bad, errors1, errors2);
+    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    assertThat(badLines).hasSize(2);
+    assertThat(badLines.get(0)).isEqualTo(source1.trim());
+    assertThat(badLines.get(1)).isEqualTo(source2.trim());
+    List<String> lines1 = Files.readAllLines(errors1, Charset.forName("UTF-8"));
     assertThat(lines1.get(0)).isEqualTo("Location: " + location1);
     assertThat(lines1.get(1)).isEqualTo("Source  : " + LogUtils.formatSingleLine(source1));
     assertThat(lines1.get(2)).isEqualTo("java.lang.RuntimeException: error 1");
-    List<String> lines2 = Files.readAllLines(actual2, Charset.forName("UTF-8"));
+    List<String> lines2 = Files.readAllLines(errors2, Charset.forName("UTF-8"));
     assertThat(lines2.get(0)).isEqualTo("Location: " + location2);
     assertThat(lines2.get(1)).isEqualTo("Source  : " + LogUtils.formatSingleLine(source2));
     assertThat(lines2.get(2)).isEqualTo("java.lang.RuntimeException: error 2");
@@ -159,21 +167,27 @@ public class LogManagerTest {
   @Test
   public void should_stop_when_max_transform_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test2");
-    LogManager logManager = new LogManager(outputDir, executor, 0, 2, 0, formatter, EXTENDED);
+    LogManager logManager = new LogManager(outputDir, executor, 2, formatter, EXTENDED);
     logManager.init(cluster);
     Flowable<Statement> stmts = Flowable.fromArray(stmt1, stmt2, stmt3);
     try {
       stmts.compose(logManager.newTransformErrorHandler()).blockingSubscribe();
-      fail("Expecting TooManyTransformErrorsException to be thrown");
-    } catch (TooManyTransformErrorsException e) {
-      assertThat(e).hasMessage("Too many transform errors, the maximum allowed is 2");
-      assertThat(e.getMaxTransformErrors()).isEqualTo(2);
+      fail("Expecting TooManyErrorsException to be thrown");
+    } catch (TooManyErrorsException e) {
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+      assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path actual = logManager.getOperationDirectory().resolve("transform.bad");
-    assertThat(actual.toFile()).exists();
-    assertThat(Files.list(logManager.getOperationDirectory()).toArray()).containsOnly(actual);
-    List<String> lines = Files.readAllLines(actual, Charset.forName("UTF-8"));
+    Path bad = logManager.getOperationDirectory().resolve("operation.bad");
+    Path errors = logManager.getOperationDirectory().resolve("transform-errors.log");
+    assertThat(bad.toFile()).exists();
+    assertThat(errors.toFile()).exists();
+    assertThat(Files.list(logManager.getOperationDirectory()).toArray()).containsOnly(bad, errors);
+    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    assertThat(badLines).hasSize(2);
+    assertThat(badLines.get(0)).isEqualTo(source1.trim());
+    assertThat(badLines.get(1)).isEqualTo(source2.trim());
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Location: " + location1)
@@ -187,21 +201,27 @@ public class LogManagerTest {
   @Test
   public void should_stop_when_max_load_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test3");
-    LogManager logManager = new LogManager(outputDir, executor, 0, 0, 2, formatter, EXTENDED);
+    LogManager logManager = new LogManager(outputDir, executor, 2, formatter, EXTENDED);
     logManager.init(cluster);
     Flowable<Result> stmts = Flowable.fromArray(result1, result2, result3);
     try {
       stmts.compose(logManager.newLoadErrorHandler()).blockingSubscribe();
-      fail("Expecting TooManyLoadErrorsException to be thrown");
-    } catch (TooManyLoadErrorsException e) {
-      assertThat(e).hasMessage("Too many load errors, the maximum allowed is 2");
-      assertThat(e.getMaxLoadErrors()).isEqualTo(2);
+      fail("Expecting TooManyErrorsException to be thrown");
+    } catch (TooManyErrorsException e) {
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+      assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path actual = logManager.getOperationDirectory().resolve("load.bad");
-    assertThat(actual.toFile()).exists();
-    assertThat(Files.list(logManager.getOperationDirectory()).toArray()).containsOnly(actual);
-    List<String> lines = Files.readAllLines(actual, Charset.forName("UTF-8"));
+    Path bad = logManager.getOperationDirectory().resolve("operation.bad");
+    Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
+    assertThat(bad.toFile()).exists();
+    assertThat(errors.toFile()).exists();
+    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    assertThat(badLines).hasSize(2);
+    assertThat(badLines.get(0)).isEqualTo(source1.trim());
+    assertThat(badLines.get(1)).isEqualTo(source2.trim());
+    assertThat(Files.list(logManager.getOperationDirectory()).toArray()).containsOnly(bad, errors);
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Location: " + location1)
@@ -219,21 +239,28 @@ public class LogManagerTest {
   @Test
   public void should_stop_when_max_load_errors_reached_and_statements_batched() throws Exception {
     Path outputDir = Files.createTempDirectory("test4");
-    LogManager logManager = new LogManager(outputDir, executor, 0, 0, 1, formatter, EXTENDED);
+    LogManager logManager = new LogManager(outputDir, executor, 1, formatter, EXTENDED);
     logManager.init(cluster);
     Flowable<Result> stmts = Flowable.fromArray(batchResult, result1);
     try {
       stmts.compose(logManager.newLoadErrorHandler()).blockingSubscribe();
-      fail("Expecting TooManyLoadErrorsException to be thrown");
-    } catch (TooManyLoadErrorsException e) {
-      assertThat(e).hasMessage("Too many load errors, the maximum allowed is 1");
-      assertThat(e.getMaxLoadErrors()).isEqualTo(1);
+      fail("Expecting TooManyErrorsException to be thrown");
+    } catch (TooManyErrorsException e) {
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 1");
+      assertThat(e.getMaxErrors()).isEqualTo(1);
     }
     logManager.close();
-    Path actual = logManager.getOperationDirectory().resolve("load.bad");
-    assertThat(actual.toFile()).exists();
-    assertThat(Files.list(logManager.getOperationDirectory()).toArray()).containsOnly(actual);
-    List<String> lines = Files.readAllLines(actual, Charset.forName("UTF-8"));
+    Path bad = logManager.getOperationDirectory().resolve("operation.bad");
+    Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
+    assertThat(bad.toFile()).exists();
+    assertThat(errors.toFile()).exists();
+    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    assertThat(badLines).hasSize(3);
+    assertThat(badLines.get(0)).isEqualTo(source1.trim());
+    assertThat(badLines.get(1)).isEqualTo(source2.trim());
+    assertThat(badLines.get(2)).isEqualTo(source3.trim());
+    assertThat(Files.list(logManager.getOperationDirectory()).toArray()).containsOnly(bad, errors);
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Location: " + location1.toExternalForm())
