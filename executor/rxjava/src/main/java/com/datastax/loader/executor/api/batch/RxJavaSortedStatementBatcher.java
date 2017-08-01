@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.loader.executor.api.statement;
+package com.datastax.loader.executor.api.batch;
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
@@ -23,6 +23,10 @@ import io.reactivex.functions.Predicate;
  * <p>This operator assumes that the upstream source delivers statements whose partition keys are
  * already grouped together; when a new partition key is detected, a batch is created with the
  * accumulated items and passed downstream.
+ *
+ * <p>Use this operator with caution; if the given statements do not have their {@link
+ * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} already grouped together,
+ * the resulting batch could lead to sub-optimal write performance.
  *
  * @see RxJavaStatementBatcher
  * @see RxJavaUnsortedStatementBatcher
@@ -48,21 +52,16 @@ public class RxJavaSortedStatementBatcher extends RxJavaStatementBatcher
   }
 
   public RxJavaSortedStatementBatcher(Cluster cluster, int maxBufferSize) {
-    super(cluster);
-    this.maxBufferSize = maxBufferSize;
+    this(cluster, BatchMode.PARTITION_KEY, maxBufferSize);
+  }
+
+  public RxJavaSortedStatementBatcher(Cluster cluster, BatchMode batchMode, int maxBufferSize) {
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBufferSize);
   }
 
   public RxJavaSortedStatementBatcher(
-      BatchStatement.Type batchType, ProtocolVersion protocolVersion, CodecRegistry codecRegistry) {
-    this(batchType, protocolVersion, codecRegistry, DEFAULT_MAX_BUFFER_SIZE);
-  }
-
-  public RxJavaSortedStatementBatcher(
-      BatchStatement.Type batchType,
-      ProtocolVersion protocolVersion,
-      CodecRegistry codecRegistry,
-      int maxBufferSize) {
-    super(batchType, protocolVersion, codecRegistry);
+      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBufferSize) {
+    super(cluster, batchMode, batchType);
     this.maxBufferSize = maxBufferSize;
   }
 
@@ -71,23 +70,25 @@ public class RxJavaSortedStatementBatcher extends RxJavaStatementBatcher
     Flowable<Statement> connectableFlowable = upstream.publish().autoConnect(2);
     Flowable<Statement> boundarySelector =
         connectableFlowable.filter(new StatementBatcherPredicate());
-    return connectableFlowable.buffer(boundarySelector).map(this::batchSingle);
+    return connectableFlowable.buffer(boundarySelector).map(this::batchAll);
   }
 
   private class StatementBatcherPredicate implements Predicate<Statement> {
 
-    private Object currentRoutingKey;
+    private Object groupingKey;
 
     private int size = 0;
 
     @Override
     public boolean test(Statement statement) {
       boolean bufferFull = ++size > maxBufferSize;
-      Object routingKey = routingKey(statement);
-      boolean routingKeyChanged = currentRoutingKey != null && currentRoutingKey != routingKey;
-      this.currentRoutingKey = routingKey;
-      boolean shouldFlush = routingKeyChanged || bufferFull;
-      if (shouldFlush) size = 0;
+      Object groupingKey = groupingKey(statement);
+      boolean groupingKeyChanged = this.groupingKey != null && this.groupingKey != groupingKey;
+      this.groupingKey = groupingKey;
+      boolean shouldFlush = groupingKeyChanged || bufferFull;
+      if (shouldFlush) {
+        size = 0;
+      }
       return shouldFlush;
     }
   }

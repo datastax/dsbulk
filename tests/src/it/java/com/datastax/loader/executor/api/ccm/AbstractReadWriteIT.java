@@ -6,15 +6,18 @@
  */
 package com.datastax.loader.executor.api.ccm;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.loader.connectors.cql.CqlScriptReader;
 import com.datastax.loader.executor.api.BulkExecutor;
+import com.datastax.loader.executor.api.batch.StatementBatcher;
 import com.datastax.loader.executor.api.listener.ExecutionListener;
 import com.datastax.loader.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.loader.executor.api.listener.MetricsReportingExecutionListener;
-import com.datastax.loader.executor.api.statement.StatementBatcher;
 import com.datastax.loader.tests.ccm.CCMRule;
 import com.datastax.loader.tests.utils.CsvUtils;
 import com.google.common.base.Stopwatch;
@@ -22,22 +25,18 @@ import com.google.common.io.Resources;
 import com.univocity.parsers.conversions.Conversion;
 import io.reactivex.Flowable;
 import io.reactivex.schedulers.Schedulers;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.URL;
+import java.net.UnknownHostException;
+import java.util.concurrent.TimeUnit;
+import javax.inject.Inject;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.URL;
-import java.net.UnknownHostException;
-import java.util.concurrent.TimeUnit;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class AbstractReadWriteIT {
 
@@ -142,17 +141,17 @@ public abstract class AbstractReadWriteIT {
     CsvUtils.csvRecords()
         .subscribeOn(Schedulers.io())
         .map(
-        record -> insertIntoIpByCountry
-            .bind(
-                record.getString("ISO 3166 Country Code"),
-                record.getString("Country Name"),
-                record.getValue("beginning IP Address", InetAddress.class, inetConverter),
-                record.getValue("ending IP Address", InetAddress.class, inetConverter),
-                record.getLong("beginning IP Number"),
-                record.getLong("ending IP Number"))
-            .setIdempotent(true))
+            record -> insertIntoIpByCountry
+                .bind(
+                    record.getString("ISO 3166 Country Code"),
+                    record.getString("Country Name"),
+                    record.getValue("beginning IP Address", InetAddress.class, inetConverter),
+                    record.getValue("ending IP Address", InetAddress.class, inetConverter),
+                    record.getLong("beginning IP Number"),
+                    record.getLong("ending IP Number"))
+                .setIdempotent(true))
         .buffer(100)
-        .map(batcher::batchByRoutingKey)
+        .map(batcher::batchByGroupingKey)
         .flatMap(executor::writeReactive)
         .doOnNext(
             result ->

@@ -6,12 +6,18 @@
  */
 package com.datastax.loader.executor.api;
 
+import static com.datastax.loader.tests.utils.CsvUtils.createIpByCountryTable;
+import static com.datastax.loader.tests.utils.CsvUtils.csvRecords;
+import static com.datastax.loader.tests.utils.CsvUtils.prepareInsertStatement;
+import static com.datastax.loader.tests.utils.CsvUtils.toBoundStatement;
+import static java.util.concurrent.TimeUnit.MINUTES;
+
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
-import com.datastax.loader.executor.api.statement.ReactorStatementBatcher;
+import com.datastax.loader.executor.api.batch.ReactorStatementBatcher;
 import com.datastax.loader.executor.api.statement.TableScanner;
 import com.datastax.loader.tests.utils.ZipUtils;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -39,12 +45,6 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 import reactor.core.publisher.Flux;
-
-import static com.datastax.loader.tests.utils.CsvUtils.createIpByCountryTable;
-import static com.datastax.loader.tests.utils.CsvUtils.csvRecords;
-import static com.datastax.loader.tests.utils.CsvUtils.prepareInsertStatement;
-import static com.datastax.loader.tests.utils.CsvUtils.toBoundStatement;
-import static java.util.concurrent.TimeUnit.MINUTES;
 
 public class ReactorBulkExecutorBenchmark {
 
@@ -113,7 +113,7 @@ public class ReactorBulkExecutorBenchmark {
   public void benchmarkWriteAsync(ReactorBulkExecutionState state) throws Exception {
     state.executor.writeAsync(state.boundStatements()
         .buffer(1000)
-        .map(state.batcher::batchByRoutingKey)
+        .map(state.batcher::batchByGroupingKey)
         .flatMap(Flowable::fromIterable)).get();
   }
 
@@ -127,7 +127,7 @@ public class ReactorBulkExecutorBenchmark {
   public void benchmarkWriteReactive(ReactorBulkExecutionState state) throws Exception {
     state.boundStatements()
         .buffer(1000)
-        .map(state.batcher::batchByRoutingKey)
+        .map(state.batcher::batchByGroupingKey)
         .flatMap(state.executor::writeReactive)
         .blockLast();
   }
@@ -194,7 +194,7 @@ public class ReactorBulkExecutorBenchmark {
     private Flux<BoundStatement> boundStatements() {
       return Flux.from(csvRecords(csvFile)
           .map(record -> toBoundStatement(insert, record)));
-  }
+    }
 
   }
 

@@ -12,3 +12,4 @@
 - [improvement] DAT-37: ConnectorSettings.locateConnector "not found" error should leverage String.format completely.
 - [new feature] DAT-33: Add support for String <-> InetAddress conversion.
 - [new feature] DAT-21: Implement CSV connector.
+- [improvement] DAT-34: Add grouping by replica set to token-aware batching.
