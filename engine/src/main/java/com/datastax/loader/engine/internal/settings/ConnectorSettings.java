@@ -38,9 +38,11 @@ public class ConnectorSettings {
         return connector;
     }
     throw new IllegalArgumentException(
-        String.format("Cannot find connector '%s'; available connectors are: ", name)
-            + StreamSupport.stream(connectors.spliterator(), false)
+        String.format(
+            "Cannot find connector '%s'; available connectors are: %s",
+            name,
+            StreamSupport.stream(connectors.spliterator(), false)
                 .map(connector -> connector.getClass().getName())
-                .collect(Collectors.joining(", ")));
+                .collect(Collectors.joining(", "))));
   }
 }

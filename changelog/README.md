@@ -9,3 +9,4 @@
 - [new feature] DAT-17: Implement conversion service.
 - [improvement] DAT-29: Simplify way to select connector.
 - [improvement] DAT-30: Revisit bad files management.
+- [improvement] DAT-37: ConnectorSettings.locateConnector "not found" error should leverage String.format completely.
