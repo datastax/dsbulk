@@ -25,13 +25,16 @@ public abstract class StringToTemporalCodec<T extends TemporalAccessor>
   }
 
   protected TemporalAccessor parseAsTemporalAccessor(String s) {
-    if (s == null || s.isEmpty()) return null;
+    if (s == null || s.isEmpty()) {
+      return null;
+    }
     try {
       ParsePosition pos = new ParsePosition(0);
       TemporalAccessor accessor = parser.parse(s, pos);
-      if (pos.getIndex() != s.length())
+      if (pos.getIndex() != s.length()) {
         throw new InvalidTypeException(
             "Cannot parse temporal: " + s, new ParseException(s, pos.getErrorIndex()));
+      }
       return accessor;
     } catch (DateTimeParseException e) {
       throw new InvalidTypeException("Cannot parse temporal: " + s, e);
@@ -40,7 +43,9 @@ public abstract class StringToTemporalCodec<T extends TemporalAccessor>
 
   @Override
   protected String convertTo(T value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     return parser.format(value);
   }
 }

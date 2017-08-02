@@ -6,13 +6,9 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
+import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import org.junit.Test;
@@ -20,30 +16,30 @@ import org.junit.Test;
 public class StringToLocalDateCodecTest {
 
   @Test
-  public void should_serialize_when_valid_iso_input() throws Exception {
+  public void should_convert_from_valid_input() throws Exception {
     StringToLocalDateCodec codec = new StringToLocalDateCodec(ISO_LOCAL_DATE);
-    assertSerde(codec, "2016-07-24", LocalDate.parse("2016-07-24"));
+    assertThat(codec)
+        .convertsFrom("2016-07-24")
+        .to(LocalDate.parse("2016-07-24"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsFrom("")
+        .to(null);
+    codec = new StringToLocalDateCodec(DateTimeFormatter.ofPattern("yyyyMMdd"));
+    assertThat(codec).convertsFrom("20160724").to(LocalDate.parse("2016-07-24"));
   }
 
   @Test
-  public void should_serialize_when_valid_pattern_input() throws Exception {
-    StringToLocalDateCodec codec =
-        new StringToLocalDateCodec(DateTimeFormatter.ofPattern("yyyyMMdd"));
-    assertSerde(codec, "20160724", LocalDate.parse("2016-07-24"));
+  public void should_convert_to_valid_input() throws Exception {
+    StringToLocalDateCodec codec = new StringToLocalDateCodec(ISO_LOCAL_DATE);
+    assertThat(codec).convertsTo(LocalDate.parse("2016-07-24")).from("2016-07-24");
+    codec = new StringToLocalDateCodec(DateTimeFormatter.ofPattern("yyyyMMdd"));
+    assertThat(codec).convertsTo(LocalDate.parse("2016-07-24")).from("20160724");
   }
 
   @Test
-  public void should_not_serialize_when_invalid_input() throws Exception {
+  public void should_not_convert_from_invalid_input() throws Exception {
     StringToLocalDateCodec codec = new StringToLocalDateCodec(ISO_LOCAL_DATE);
-    try {
-      assertSerde(codec, "not a valid date format", null);
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
-  }
-
-  private void assertSerde(StringToLocalDateCodec codec, String input, LocalDate expected) {
-    assertThat(LocalDateCodec.instance.deserialize(codec.serialize(input, V4), V4))
-        .isEqualTo(expected);
+    assertThat(codec).cannotConvertFrom("not a valid date format");
   }
 }

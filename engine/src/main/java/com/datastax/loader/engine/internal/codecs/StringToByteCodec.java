@@ -6,7 +6,7 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 
 public class StringToByteCodec extends StringToNumberCodec<Byte> {
@@ -17,12 +17,10 @@ public class StringToByteCodec extends StringToNumberCodec<Byte> {
 
   @Override
   protected Byte convertFrom(String s) {
-    Number number = parseAsNumber(s);
-    byte value = number.byteValue();
-    if (value != number.doubleValue()) {
-      throw new InvalidTypeException(
-          "Invalid byte format: " + s, new ArithmeticException("byte overflow"));
+    BigDecimal number = parseAsBigDecimal(s);
+    if (number == null) {
+      return null;
     }
-    return value;
+    return number.byteValueExact();
   }
 }

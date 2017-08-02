@@ -38,48 +38,91 @@ public class TemporalToTemporalCodec<FROM extends TemporalAccessor, TO extends T
 
   private TemporalAccessor convert(
       TemporalAccessor value, TypeToken<? extends TemporalAccessor> targetType) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     Class<?> rawType = targetType.getRawType();
     if (rawType.equals(LocalDate.class)) {
-      if (value instanceof LocalDate) return value;
-      if (value instanceof LocalDateTime) return ((LocalDateTime) value).toLocalDate();
-      if (value instanceof Instant) return ((Instant) value).atZone(ZoneOffset.UTC).toLocalDate();
-      if (value instanceof ZonedDateTime) return ((ZonedDateTime) value).toLocalDate();
+      if (value instanceof LocalDate) {
+        return value;
+      }
+      if (value instanceof LocalDateTime) {
+        return ((LocalDateTime) value).toLocalDate();
+      }
+      if (value instanceof Instant) {
+        return ((Instant) value).atZone(ZoneOffset.UTC).toLocalDate();
+      }
+      if (value instanceof ZonedDateTime) {
+        return ((ZonedDateTime) value).toLocalDate();
+      }
     }
     if (rawType.equals(LocalTime.class)) {
-      if (value instanceof LocalTime) return value;
-      if (value instanceof LocalDateTime) return ((LocalDateTime) value).toLocalTime();
-      if (value instanceof Instant) return ((Instant) value).atZone(ZoneOffset.UTC).toLocalTime();
-      if (value instanceof ZonedDateTime) return ((ZonedDateTime) value).toLocalTime();
+      if (value instanceof LocalTime) {
+        return value;
+      }
+      if (value instanceof LocalDateTime) {
+        return ((LocalDateTime) value).toLocalTime();
+      }
+      if (value instanceof Instant) {
+        return ((Instant) value).atZone(ZoneOffset.UTC).toLocalTime();
+      }
+      if (value instanceof ZonedDateTime) {
+        return ((ZonedDateTime) value).toLocalTime();
+      }
     }
     if (rawType.equals(LocalDateTime.class)) {
-      if (value instanceof LocalDate) return ((LocalDate) value).atStartOfDay();
-      if (value instanceof LocalTime) return ((LocalTime) value).atDate(LocalDate.ofEpochDay(0));
-      if (value instanceof LocalDateTime) return value;
-      if (value instanceof Instant)
+      if (value instanceof LocalDate) {
+        return ((LocalDate) value).atStartOfDay();
+      }
+      if (value instanceof LocalTime) {
+        return ((LocalTime) value).atDate(LocalDate.ofEpochDay(0));
+      }
+      if (value instanceof LocalDateTime) {
+        return value;
+      }
+      if (value instanceof Instant) {
         return ((Instant) value).atZone(ZoneOffset.UTC).toLocalDateTime();
-      if (value instanceof ZonedDateTime) return ((ZonedDateTime) value).toLocalDateTime();
+      }
+      if (value instanceof ZonedDateTime) {
+        return ((ZonedDateTime) value).toLocalDateTime();
+      }
     }
     if (rawType.equals(Instant.class)) {
-      if (value instanceof LocalDate)
+      if (value instanceof LocalDate) {
         return ((LocalDate) value).atStartOfDay(ZoneOffset.UTC).toInstant();
-      if (value instanceof LocalTime)
+      }
+      if (value instanceof LocalTime) {
         return ((LocalTime) value)
             .atDate(LocalDate.ofEpochDay(0))
             .atZone(ZoneOffset.UTC)
             .toInstant();
-      if (value instanceof LocalDateTime)
+      }
+      if (value instanceof LocalDateTime) {
         return ((LocalDateTime) value).atZone(ZoneOffset.UTC).toInstant();
-      if (value instanceof Instant) return value;
-      if (value instanceof ZonedDateTime) return ((ZonedDateTime) value).toInstant();
+      }
+      if (value instanceof Instant) {
+        return value;
+      }
+      if (value instanceof ZonedDateTime) {
+        return ((ZonedDateTime) value).toInstant();
+      }
     }
     if (rawType.equals(ZonedDateTime.class)) {
-      if (value instanceof LocalDate) return ((LocalDate) value).atStartOfDay(ZoneOffset.UTC);
-      if (value instanceof LocalTime)
+      if (value instanceof LocalDate) {
+        return ((LocalDate) value).atStartOfDay(ZoneOffset.UTC);
+      }
+      if (value instanceof LocalTime) {
         return ((LocalTime) value).atDate(LocalDate.ofEpochDay(0)).atZone(ZoneOffset.UTC);
-      if (value instanceof LocalDateTime) return ((LocalDateTime) value).atZone(ZoneOffset.UTC);
-      if (value instanceof Instant) return ((Instant) value).atZone(ZoneOffset.UTC);
-      if (value instanceof ZonedDateTime) return value;
+      }
+      if (value instanceof LocalDateTime) {
+        return ((LocalDateTime) value).atZone(ZoneOffset.UTC);
+      }
+      if (value instanceof Instant) {
+        return ((Instant) value).atZone(ZoneOffset.UTC);
+      }
+      if (value instanceof ZonedDateTime) {
+        return value;
+      }
     }
     throw new InvalidTypeException(
         String.format("Cannot convert %s of type %s to %s", value, value.getClass(), rawType));

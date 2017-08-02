@@ -6,13 +6,10 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
+import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import org.junit.Test;
@@ -20,31 +17,32 @@ import org.junit.Test;
 public class StringToLocalTimeCodecTest {
 
   @Test
-  public void should_serialize_when_valid_iso_input() throws Exception {
+  public void should_convert_from_valid_input() throws Exception {
     StringToLocalTimeCodec codec = new StringToLocalTimeCodec(ISO_LOCAL_TIME);
-    assertSerde(codec, "12:24:46", LocalTime.parse("12:24:46"));
-    assertSerde(codec, "12:24:46.999", LocalTime.parse("12:24:46.999"));
+    assertThat(codec)
+        .convertsFrom("12:24:46")
+        .to(LocalTime.parse("12:24:46"))
+        .convertsFrom("12:24:46.999")
+        .to(LocalTime.parse("12:24:46.999"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsFrom("")
+        .to(null);
+    codec = new StringToLocalTimeCodec(DateTimeFormatter.ofPattern("HHmmss.SSS"));
+    assertThat(codec).convertsFrom("122446.999").to(LocalTime.parse("12:24:46.999"));
   }
 
   @Test
-  public void should_serialize_when_valid_pattern_input() throws Exception {
-    StringToLocalTimeCodec codec =
-        new StringToLocalTimeCodec(DateTimeFormatter.ofPattern("HHmmss.SSS"));
-    assertSerde(codec, "122446.999", LocalTime.parse("12:24:46.999"));
+  public void should_convert_to_valid_input() throws Exception {
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(ISO_LOCAL_TIME);
+    assertThat(codec).convertsTo(LocalTime.parse("12:24:46.999")).from("12:24:46.999");
+    codec = new StringToLocalTimeCodec(DateTimeFormatter.ofPattern("HHmmss.SSS"));
+    assertThat(codec).convertsTo(LocalTime.parse("12:24:46.999")).from("122446.999");
   }
 
   @Test
-  public void should_not_serialize_when_invalid_input() throws Exception {
-    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(ISO_LOCAL_TIME);
-    try {
-      assertSerde(codec, "not a valid time format", null);
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
-  }
-
-  private void assertSerde(StringToLocalTimeCodec codec, String input, LocalTime expected) {
-    assertThat(LocalTimeCodec.instance.deserialize(codec.serialize(input, V4), V4))
-        .isEqualTo(expected);
+  public void should_not_convert_from_invalid_input() throws Exception {
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(ISO_LOCAL_DATE);
+    assertThat(codec).cannotConvertFrom("not a valid date format");
   }
 }

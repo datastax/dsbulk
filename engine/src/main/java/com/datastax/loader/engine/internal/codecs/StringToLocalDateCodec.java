@@ -22,6 +22,9 @@ public class StringToLocalDateCodec extends StringToTemporalCodec<LocalDate> {
   @Override
   protected LocalDate convertFrom(String s) {
     TemporalAccessor temporal = parseAsTemporalAccessor(s);
+    if (temporal == null) {
+      return null;
+    }
     try {
       return LocalDate.from(temporal);
     } catch (DateTimeException e) {

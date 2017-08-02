@@ -32,61 +32,115 @@ public class NumberToNumberCodec<FROM extends Number, TO extends Number>
   }
 
   private Number convert(Number value, TypeToken<? extends Number> targetType) {
-    if (value == null) return null;
-    Class<?> rawType = targetType.getRawType();
-    if (rawType.equals(Byte.class)) {
-      if (value instanceof Byte) return value;
-      if (value.byteValue() != value.doubleValue()) {
-        throw new InvalidTypeException(
-            "Cannot convert to byte: " + value, new ArithmeticException("byte overflow"));
+    if (value == null) {
+      return null;
+    }
+    Class<?> targetClass = targetType.getRawType();
+    try {
+      if (targetClass.equals(Byte.class)) {
+        return toByteValueExact(value);
       }
-      return value.byteValue();
-    }
-    if (rawType.equals(Short.class)) {
-      if (value instanceof Short) return value;
-      if (value.shortValue() != value.doubleValue()) {
-        throw new InvalidTypeException(
-            "Cannot convert to short: " + value, new ArithmeticException("short overflow"));
+      if (targetClass.equals(Short.class)) {
+        return toShortValueExact(value);
       }
-      return value.shortValue();
-    }
-    if (rawType.equals(Integer.class)) {
-      if (value instanceof Integer) return value;
-      if (value.intValue() != value.doubleValue()) {
-        throw new InvalidTypeException(
-            "Cannot convert to integer: " + value, new ArithmeticException("integer overflow"));
+      if (targetClass.equals(Integer.class)) {
+        return toIntValueExact(value);
       }
-      return value.intValue();
-    }
-    if (rawType.equals(Long.class)) {
-      if (value instanceof Long) return value;
-      if (value.longValue() != value.doubleValue()) {
-        throw new InvalidTypeException(
-            "Cannot convert to long: " + value, new ArithmeticException("long overflow"));
+      if (targetClass.equals(Long.class)) {
+        return toLongValueExact(value);
       }
-      return value.longValue();
-    }
-    if (rawType.equals(Float.class)) {
-      if (value instanceof Float) return value;
-      if (value.floatValue() != value.doubleValue()) {
-        throw new InvalidTypeException(
-            "Cannot convert to float: " + value, new ArithmeticException("float overflow"));
+      if (targetClass.equals(Float.class)) {
+        return toFloatValue(value);
       }
-      return value.floatValue();
-    }
-    if (rawType.equals(Double.class)) {
-      if (value instanceof Double) return value;
-      else return value.doubleValue();
-    }
-    if (rawType.equals(BigInteger.class)) {
-      if (value instanceof BigInteger) return value;
-      else return new BigInteger(value.toString());
-    }
-    if (rawType.equals(BigDecimal.class)) {
-      if (value instanceof BigDecimal) return value;
-      else return new BigDecimal(value.toString());
+      if (targetClass.equals(Double.class)) {
+        return toDoubleValue(value);
+      }
+      if (targetClass.equals(BigInteger.class)) {
+        return toBigIntegerExact(value);
+      }
+      if (targetClass.equals(BigDecimal.class)) {
+        return toBigDecimal(value);
+      }
+    } catch (ArithmeticException e) {
+      throw new InvalidTypeException(
+          String.format("Cannot convert %s of type %s to %s", value, value.getClass(), targetClass),
+          e);
     }
     throw new InvalidTypeException(
-        String.format("Cannot convert %s of type %s to %s", value, value.getClass(), rawType));
+        String.format("Cannot convert %s of type %s to %s", value, value.getClass(), targetClass));
+  }
+
+  private byte toByteValueExact(Number value) {
+    if (value instanceof Byte) {
+      return (byte) value;
+    } else if (value instanceof BigDecimal) {
+      return ((BigDecimal) value).byteValueExact();
+    } else {
+      return new BigDecimal(value.toString()).byteValueExact();
+    }
+  }
+
+  private short toShortValueExact(Number value) {
+    if (value instanceof Short) {
+      return (short) value;
+    } else if (value instanceof BigDecimal) {
+      return ((BigDecimal) value).shortValueExact();
+    } else {
+      return new BigDecimal(value.toString()).shortValueExact();
+    }
+  }
+
+  private int toIntValueExact(Number value) {
+    if (value instanceof Integer) {
+      return (int) value;
+    } else if (value instanceof BigDecimal) {
+      return ((BigDecimal) value).intValueExact();
+    } else {
+      return new BigDecimal(value.toString()).intValueExact();
+    }
+  }
+
+  private long toLongValueExact(Number value) {
+    if (value instanceof Long) {
+      return (long) value;
+    } else if (value instanceof BigDecimal) {
+      return ((BigDecimal) value).longValueExact();
+    } else {
+      return new BigDecimal(value.toString()).longValueExact();
+    }
+  }
+
+  private Number toFloatValue(Number value) {
+    if (value instanceof Float) {
+      return value;
+    } else {
+      return value.floatValue();
+    }
+  }
+
+  private Number toDoubleValue(Number value) {
+    if (value instanceof Double) {
+      return value;
+    } else {
+      return value.doubleValue();
+    }
+  }
+
+  private BigInteger toBigIntegerExact(Number value) {
+    if (value instanceof BigInteger) {
+      return (BigInteger) value;
+    } else if (value instanceof BigDecimal) {
+      return ((BigDecimal) value).toBigIntegerExact();
+    } else {
+      return new BigDecimal(value.toString()).toBigIntegerExact();
+    }
+  }
+
+  private Number toBigDecimal(Number value) {
+    if (value instanceof BigDecimal) {
+      return value;
+    } else {
+      return new BigDecimal(value.toString());
+    }
   }
 }

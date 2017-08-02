@@ -19,6 +19,7 @@ import com.datastax.loader.engine.internal.codecs.StringToBooleanCodec;
 import com.datastax.loader.engine.internal.codecs.StringToByteCodec;
 import com.datastax.loader.engine.internal.codecs.StringToDoubleCodec;
 import com.datastax.loader.engine.internal.codecs.StringToFloatCodec;
+import com.datastax.loader.engine.internal.codecs.StringToInetAddressCodec;
 import com.datastax.loader.engine.internal.codecs.StringToInstantCodec;
 import com.datastax.loader.engine.internal.codecs.StringToIntegerCodec;
 import com.datastax.loader.engine.internal.codecs.StringToLocalDateCodec;
@@ -52,6 +53,7 @@ import java.util.StringTokenizer;
 /** */
 public class CodecSettings {
 
+  /** A {@link DateTimeFormatter} that formats and parses all accepted CQL timestamp formats. */
   public static final DateTimeFormatter CQL_DATE_TIME_FORMAT =
       new DateTimeFormatterBuilder()
           .parseCaseSensitive()
@@ -76,9 +78,9 @@ public class CodecSettings {
           .toFormatter()
           .withZone(ZoneOffset.UTC);
 
-  public static final String CQL_DATE_TIME = "CQL_DATE_TIME";
+  private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
 
-  public static final Set<TypeCodec<?>> NUMERIC_CODECS =
+  private static final Set<TypeCodec<?>> NUMERIC_CODECS =
       Sets.newHashSet(
           TypeCodec.tinyInt(),
           TypeCodec.smallInt(),
@@ -122,6 +124,7 @@ public class CodecSettings {
         .register(new StringToLocalDateCodec(localDateFormat))
         .register(new StringToLocalTimeCodec(localTimeFormat))
         .register(new StringToInstantCodec(timestampFormat))
+        .register(StringToInetAddressCodec.INSTANCE)
         .register(new StringToUUIDCodec(TypeCodec.uuid()))
         .register(new StringToUUIDCodec(TypeCodec.timeUUID()));
     // Number to Number codecs

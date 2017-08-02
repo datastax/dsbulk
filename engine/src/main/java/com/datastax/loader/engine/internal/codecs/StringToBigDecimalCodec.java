@@ -24,6 +24,6 @@ public class StringToBigDecimalCodec extends StringToNumberCodec<BigDecimal> {
 
   @Override
   protected BigDecimal convertFrom(String s) {
-    return (BigDecimal) parseAsNumber(s);
+    return parseAsBigDecimal(s);
   }
 }

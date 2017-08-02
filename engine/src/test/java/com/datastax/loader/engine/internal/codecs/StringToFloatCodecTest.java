@@ -6,11 +6,8 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -18,34 +15,51 @@ import org.junit.Test;
 
 public class StringToFloatCodecTest {
 
-  private ThreadLocal<DecimalFormat> formatter =
-      ThreadLocal.withInitial(
-          () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US)));
+  private StringToFloatCodec codec =
+      new StringToFloatCodec(
+          ThreadLocal.withInitial(
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
   @Test
-  public void should_serialize_when_valid_input() throws Exception {
-    StringToFloatCodec codec = new StringToFloatCodec(formatter);
-    assertSerde(codec, "0");
-    assertSerde(codec, formatter.get().format(Float.MAX_VALUE));
-    assertSerde(codec, formatter.get().format(Float.MIN_VALUE));
+  public void should_convert_from_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsFrom("0")
+        .to(0f)
+        .convertsFrom("1234.56")
+        .to(1234.56f)
+        .convertsFrom("1,234.56")
+        .to(1234.56f)
+        .convertsFrom("3.4028235E38")
+        .to(Float.MAX_VALUE)
+        .convertsFrom("1.4E-45")
+        .to(Float.MIN_VALUE)
+        .convertsFrom("340,282,346,638,528,860,000,000,000,000,000,000,000")
+        .to(Float.MAX_VALUE)
+        .convertsFrom("0.0000000000000000000000000000000000000000000014")
+        .to(Float.MIN_VALUE)
+        .convertsFrom(null)
+        .to(null)
+        .convertsFrom("")
+        .to(null);
   }
 
   @Test
-  public void should_not_serialize_when_invalid_input() throws Exception {
-    StringToFloatCodec codec = new StringToFloatCodec(formatter);
-    try {
-      assertSerde(codec, Double.toString(Double.MIN_VALUE));
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
-    try {
-      assertSerde(codec, Double.toString(Double.MAX_VALUE));
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
+  public void should_convert_to_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsTo(0f)
+        .from("0")
+        .convertsTo(1234.56f)
+        .from("1,234.56")
+        .convertsTo(Float.MAX_VALUE)
+        .from("340,282,346,638,528,860,000,000,000,000,000,000,000")
+        .convertsTo(0.001f)
+        .from("0") // decimals truncated
+        .convertsTo(null)
+        .from(null);
   }
 
-  private void assertSerde(StringToFloatCodec codec, String input) {
-    assertThat(codec.deserialize(codec.serialize(input, V4), V4)).isEqualTo(input);
+  @Test
+  public void should_not_convert_from_invalid_input() throws Exception {
+    assertThat(codec).cannotConvertFrom("not a valid float");
   }
 }

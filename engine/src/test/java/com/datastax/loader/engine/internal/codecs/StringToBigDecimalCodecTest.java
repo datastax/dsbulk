@@ -6,11 +6,9 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -18,29 +16,37 @@ import org.junit.Test;
 
 public class StringToBigDecimalCodecTest {
 
-  private ThreadLocal<DecimalFormat> formatter =
-      ThreadLocal.withInitial(
-          () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US)));
+  private StringToBigDecimalCodec codec =
+      new StringToBigDecimalCodec(
+          ThreadLocal.withInitial(
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
   @Test
-  public void should_serialize_when_valid_input() throws Exception {
-    StringToBigDecimalCodec codec = new StringToBigDecimalCodec(formatter);
-    assertSerde(codec, "0");
-    assertSerde(codec, formatter.get().format(Double.MAX_VALUE));
-    assertSerde(codec, formatter.get().format(Double.MIN_VALUE));
+  public void should_convert_from_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsFrom("0")
+        .to(BigDecimal.ZERO)
+        .convertsFrom("-1234.56")
+        .to(new BigDecimal("-1234.56"))
+        .convertsFrom(null)
+        .to(null)
+        .convertsFrom("")
+        .to(null);
   }
 
   @Test
-  public void should_not_serialize_when_invalid_input() throws Exception {
-    StringToBigDecimalCodec codec = new StringToBigDecimalCodec(formatter);
-    try {
-      assertSerde(codec, "not a valid decimal");
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
+  public void should_convert_to_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsTo(BigDecimal.ZERO)
+        .from("0")
+        .convertsTo(new BigDecimal("1234.56"))
+        .from("1,234.56")
+        .convertsTo(null)
+        .from(null);
   }
 
-  private void assertSerde(StringToBigDecimalCodec codec, String input) {
-    assertThat(codec.deserialize(codec.serialize(input, V4), V4)).isEqualTo(input);
+  @Test
+  public void should_not_convert_from_invalid_input() throws Exception {
+    assertThat(codec).cannotConvertFrom("not a valid decimal");
   }
 }

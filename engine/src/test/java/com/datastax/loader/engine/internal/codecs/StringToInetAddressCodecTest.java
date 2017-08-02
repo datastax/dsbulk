@@ -8,19 +8,18 @@ package com.datastax.loader.engine.internal.codecs;
 
 import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
 
-import com.datastax.driver.core.TypeCodec;
-import java.util.UUID;
+import java.net.InetAddress;
 import org.junit.Test;
 
-public class StringToUUIDCodecTest {
-
-  StringToUUIDCodec codec = new StringToUUIDCodec(TypeCodec.uuid());
+public class StringToInetAddressCodecTest {
 
   @Test
   public void should_convert_from_valid_input() throws Exception {
-    assertThat(codec)
-        .convertsFrom("a15341ec-ebef-4eab-b91d-ff16bf801a79")
-        .to(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
+    assertThat(StringToInetAddressCodec.INSTANCE)
+        .convertsFrom("1.2.3.4")
+        .to(InetAddress.getByName("1.2.3.4"))
+        .convertsFrom("127.0.0.1")
+        .to(InetAddress.getByName("127.0.0.1"))
         .convertsFrom(null)
         .to(null)
         .convertsFrom("")
@@ -29,13 +28,15 @@ public class StringToUUIDCodecTest {
 
   @Test
   public void should_convert_to_valid_input() throws Exception {
-    assertThat(codec)
-        .convertsTo(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
-        .from("a15341ec-ebef-4eab-b91d-ff16bf801a79");
+    assertThat(StringToInetAddressCodec.INSTANCE)
+        .convertsTo(InetAddress.getByName("1.2.3.4"))
+        .from("1.2.3.4")
+        .convertsTo(InetAddress.getByName("127.0.0.1"))
+        .from("127.0.0.1");
   }
 
   @Test
   public void should_not_convert_from_invalid_input() throws Exception {
-    assertThat(codec).cannotConvertFrom("not a valid UUID");
+    assertThat(StringToInetAddressCodec.INSTANCE).cannotConvertFrom("not a valid inet address");
   }
 }

@@ -6,7 +6,7 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 
 public class StringToShortCodec extends StringToNumberCodec<Short> {
@@ -17,12 +17,10 @@ public class StringToShortCodec extends StringToNumberCodec<Short> {
 
   @Override
   protected Short convertFrom(String s) {
-    Number number = parseAsNumber(s);
-    short value = number.shortValue();
-    if (value != number.doubleValue()) {
-      throw new InvalidTypeException(
-          "Invalid short format: " + s, new ArithmeticException("short overflow"));
+    BigDecimal number = parseAsBigDecimal(s);
+    if (number == null) {
+      return null;
     }
-    return value;
+    return number.shortValueExact();
   }
 }

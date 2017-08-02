@@ -6,11 +6,8 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.junit.Test;
@@ -21,29 +18,38 @@ public class StringToBooleanCodecTest {
       ImmutableMap.<String, Boolean>builder().put("foo", true).put("bar", false).build();
   Map<Boolean, String> outputs =
       ImmutableMap.<Boolean, String>builder().put(true, "foo").put(false, "bar").build();
+  StringToBooleanCodec codec = new StringToBooleanCodec(inputs, outputs);
 
   @Test
-  public void should_serialize_when_valid_input() throws Exception {
-    StringToBooleanCodec codec = new StringToBooleanCodec(inputs, outputs);
-    assertSerde(codec, "FOO");
-    assertSerde(codec, "BAR");
-    assertSerde(codec, "Foo");
-    assertSerde(codec, "Bar");
-    assertSerde(codec, null);
+  public void should_convert_from_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsFrom("FOO")
+        .to(true)
+        .convertsFrom("BAR")
+        .to(false)
+        .convertsFrom("foo")
+        .to(true)
+        .convertsFrom("bar")
+        .to(false)
+        .convertsFrom(null)
+        .to(null)
+        .convertsFrom("")
+        .to(null);
   }
 
   @Test
-  public void should_not_serialize_when_invalid_input() throws Exception {
-    StringToBooleanCodec codec = new StringToBooleanCodec(inputs, outputs);
-    try {
-      assertSerde(codec, "qix");
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
+  public void should_convert_to_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsTo(true)
+        .from("foo")
+        .convertsTo(false)
+        .from("bar")
+        .convertsTo(null)
+        .from(null);
   }
 
-  private void assertSerde(StringToBooleanCodec codec, String input) {
-    assertThat(codec.deserialize(codec.serialize(input, V4), V4))
-        .isEqualTo(input == null ? null : input.toLowerCase());
+  @Test
+  public void should_not_convert_from_invalid_input() throws Exception {
+    assertThat(codec).cannotConvertFrom("not a valid boolean");
   }
 }

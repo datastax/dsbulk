@@ -23,6 +23,9 @@ public class StringToInstantCodec extends StringToTemporalCodec<Instant> {
   @Override
   protected Instant convertFrom(String s) {
     TemporalAccessor temporal = parseAsTemporalAccessor(s);
+    if (temporal == null) {
+      return null;
+    }
     try {
       return ZonedDateTime.from(temporal).toInstant();
     } catch (DateTimeException e) {

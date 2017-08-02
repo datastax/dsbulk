@@ -6,6 +6,7 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 
 public class StringToDoubleCodec extends StringToNumberCodec<Double> {
@@ -16,6 +17,10 @@ public class StringToDoubleCodec extends StringToNumberCodec<Double> {
 
   @Override
   protected Double convertFrom(String s) {
-    return parseAsNumber(s).doubleValue();
+    BigDecimal number = parseAsBigDecimal(s);
+    if (number == null) {
+      return null;
+    }
+    return number.doubleValue();
   }
 }

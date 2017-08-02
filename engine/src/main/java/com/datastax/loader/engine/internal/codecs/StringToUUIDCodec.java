@@ -18,7 +18,7 @@ public class StringToUUIDCodec extends ConvertingCodec<String, UUID> {
 
   @Override
   protected UUID convertFrom(String s) {
-    if (s == null) {
+    if (s == null || s.isEmpty()) {
       return null;
     }
     try {

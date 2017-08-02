@@ -6,11 +6,8 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -18,34 +15,49 @@ import org.junit.Test;
 
 public class StringToIntegerCodecTest {
 
-  private ThreadLocal<DecimalFormat> formatter =
-      ThreadLocal.withInitial(
-          () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US)));
+  private StringToIntegerCodec codec =
+      new StringToIntegerCodec(
+          ThreadLocal.withInitial(
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
   @Test
-  public void should_serialize_when_valid_input() throws Exception {
-    StringToIntegerCodec codec = new StringToIntegerCodec(formatter);
-    assertSerde(codec, "0");
-    assertSerde(codec, formatter.get().format(Integer.MAX_VALUE));
-    assertSerde(codec, formatter.get().format(Integer.MIN_VALUE));
+  public void should_convert_from_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsFrom("0")
+        .to(0)
+        .convertsFrom("2147483647")
+        .to(Integer.MAX_VALUE)
+        .convertsFrom("-2147483648")
+        .to(Integer.MIN_VALUE)
+        .convertsFrom("2,147,483,647")
+        .to(Integer.MAX_VALUE)
+        .convertsFrom("-2,147,483,648")
+        .to(Integer.MIN_VALUE)
+        .convertsFrom(null)
+        .to(null)
+        .convertsFrom("")
+        .to(null);
   }
 
   @Test
-  public void should_not_serialize_when_invalid_input() throws Exception {
-    StringToIntegerCodec codec = new StringToIntegerCodec(formatter);
-    try {
-      assertSerde(codec, formatter.get().format((long) Integer.MAX_VALUE + 1));
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
-    try {
-      assertSerde(codec, formatter.get().format((long) Integer.MIN_VALUE - 1));
-      fail("Expecting InvalidTypeException");
-    } catch (InvalidTypeException ignored) {
-    }
+  public void should_convert_to_valid_input() throws Exception {
+    assertThat(codec)
+        .convertsTo(0)
+        .from("0")
+        .convertsTo(Integer.MAX_VALUE)
+        .from("2,147,483,647")
+        .convertsTo(Integer.MIN_VALUE)
+        .from("-2,147,483,648")
+        .convertsTo(null)
+        .from(null);
   }
 
-  private void assertSerde(StringToIntegerCodec codec, String input) {
-    assertThat(codec.deserialize(codec.serialize(input, V4), V4)).isEqualTo(input);
+  @Test
+  public void should_not_convert_from_invalid_input() throws Exception {
+    assertThat(codec)
+        .cannotConvertFrom("not a valid integer")
+        .cannotConvertFrom("1.2")
+        .cannotConvertFrom("2147483648")
+        .cannotConvertFrom("-2147483649");
   }
 }
