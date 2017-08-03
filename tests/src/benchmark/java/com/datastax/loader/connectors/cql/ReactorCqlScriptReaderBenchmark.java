@@ -36,7 +36,9 @@ public class ReactorCqlScriptReaderBenchmark {
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Fork(1)
   public void benchmarkSingleLine(ReactorBulkExecutionState state, Blackhole bh) throws Exception {
-    ReactorCqlScriptReader reader = new ReactorCqlScriptReader(new BufferedReader(new InputStreamReader(state.cqlFile.openStream())));
+    ReactorCqlScriptReader reader =
+        new ReactorCqlScriptReader(
+            new BufferedReader(new InputStreamReader(state.cqlFile.openStream())));
     reader.readReactive().doOnNext(bh::consume).blockLast();
   }
 
@@ -46,7 +48,9 @@ public class ReactorCqlScriptReaderBenchmark {
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Fork(1)
   public void benchmarkMultiLine(ReactorBulkExecutionState state, Blackhole bh) throws Exception {
-    ReactorCqlScriptReader reader = new ReactorCqlScriptReader(new BufferedReader(new InputStreamReader(state.cqlFile.openStream())), true);
+    ReactorCqlScriptReader reader =
+        new ReactorCqlScriptReader(
+            new BufferedReader(new InputStreamReader(state.cqlFile.openStream())), true);
     reader.readReactive().doOnNext(bh::consume).blockLast();
   }
 
@@ -61,7 +65,5 @@ public class ReactorCqlScriptReaderBenchmark {
       ZipUtils.unzip("ip-by-country-all.cql.zip", dest);
       cqlFile = dest.resolve("ip-by-country.cql").toUri().toURL();
     }
-
   }
-
 }

@@ -6,6 +6,9 @@
  */
 package com.datastax.loader.executor.api.ccm;
 
+import static java.util.stream.StreamSupport.stream;
+import static org.assertj.core.api.Assertions.fail;
+
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.loader.executor.api.BulkExecutor;
@@ -19,14 +22,6 @@ import com.datastax.loader.tests.utils.CsvUtils;
 import com.univocity.parsers.common.record.Record;
 import io.reactivex.Flowable;
 import io.reactivex.plugins.RxJavaPlugins;
-import org.assertj.core.api.Assertions;
-import org.junit.*;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
-
-import javax.inject.Inject;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -35,24 +30,26 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-
-import static java.util.stream.StreamSupport.stream;
-import static org.assertj.core.api.Assertions.fail;
+import javax.inject.Inject;
+import org.assertj.core.api.Assertions;
+import org.junit.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 public abstract class AbstractBulkExecutorIT {
 
-  private static final SimpleStatement readSuccessful = new SimpleStatement("SELECT * FROM ip_by_country");
+  private static final SimpleStatement readSuccessful =
+      new SimpleStatement("SELECT * FROM ip_by_country");
   private static final SimpleStatement failed = new SimpleStatement("should fail");
   private static final String firstQuery = CsvUtils.firstQuery();
 
-  @ClassRule
-  public static CCMRule ccm = new CCMRule();
+  @ClassRule public static CCMRule ccm = new CCMRule();
 
-  @Mock
-  private static Consumer<? super WriteResult> writeConsumer;
+  @Mock private static Consumer<? super WriteResult> writeConsumer;
 
-  @Mock
-  private static Consumer<? super ReadResult> readConsumer;
+  @Mock private static Consumer<? super ReadResult> readConsumer;
 
   @Inject
   @ClusterConfig(queryOptions = "fetchSize:100" /* to force pagination */)
@@ -70,8 +67,7 @@ public abstract class AbstractBulkExecutorIT {
 
   @BeforeClass
   public static void disableStackTraces() {
-    RxJavaPlugins.setErrorHandler((t) -> {
-    });
+    RxJavaPlugins.setErrorHandler((t) -> {});
   }
 
   @Before
@@ -528,18 +524,14 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeReactiveStatementTest() throws Exception {
-    CsvUtils.simpleStatements()
-        .flatMap(failFastExecutor::writeReactive)
-        .blockingSubscribe();
+    CsvUtils.simpleStatements().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
     verifyWrites(500);
   }
 
   @Test
   public void writeReactiveStatementFailFastTest() throws Exception {
     try {
-      sampleStatementsWithLastBad()
-          .flatMap(failFastExecutor::writeReactive)
-          .blockingSubscribe();
+      sampleStatementsWithLastBad().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -910,9 +902,7 @@ public abstract class AbstractBulkExecutorIT {
   public void readAsyncPublisherConsumerFailFastTest() throws Exception {
     loadData();
     try {
-      failFastExecutor
-          .readAsync(Flowable.fromArray(failed), readConsumer)
-          .get();
+      failFastExecutor.readAsync(Flowable.fromArray(failed), readConsumer).get();
       fail("Should have thrown an exception");
     } catch (ExecutionException e) {
       verifyException(e.getCause());
@@ -970,9 +960,7 @@ public abstract class AbstractBulkExecutorIT {
   public void readReactiveStatementTest() throws Exception {
     loadData();
     Iterable<ReadResult> readResults =
-        Flowable.just(readSuccessful)
-            .flatMap(failFastExecutor::readReactive)
-            .blockingIterable();
+        Flowable.just(readSuccessful).flatMap(failFastExecutor::readReactive).blockingIterable();
     verifyReads(500, 0, readResults);
   }
 
@@ -1036,8 +1024,7 @@ public abstract class AbstractBulkExecutorIT {
   public void readReactiveIterableTest() throws Exception {
     loadData();
     Iterable<ReadResult> readResults =
-        Flowable.fromPublisher(
-            failFastExecutor.readReactive(Collections.singleton(readSuccessful)))
+        Flowable.fromPublisher(failFastExecutor.readReactive(Collections.singleton(readSuccessful)))
             .blockingIterable();
     verifyReads(500, 0, readResults);
   }
@@ -1047,8 +1034,7 @@ public abstract class AbstractBulkExecutorIT {
     loadData();
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
     try {
-      Flowable.fromPublisher(
-          failFastExecutor.readReactive(Collections.singleton(failed)))
+      Flowable.fromPublisher(failFastExecutor.readReactive(Collections.singleton(failed)))
           .doOnNext(readResults::add)
           .blockingSubscribe();
       fail("Should have thrown an exception");
@@ -1062,8 +1048,7 @@ public abstract class AbstractBulkExecutorIT {
   public void readReactiveIterableFailSafeTest() throws Exception {
     loadData();
     Iterable<ReadResult> readResults =
-        Flowable.fromPublisher(
-            failSafeExecutor.readReactive(Arrays.asList(readSuccessful, failed)))
+        Flowable.fromPublisher(failSafeExecutor.readReactive(Arrays.asList(readSuccessful, failed)))
             .blockingIterable();
     verifyReads(500, 1, readResults);
   }
@@ -1072,8 +1057,7 @@ public abstract class AbstractBulkExecutorIT {
   public void readReactivePublisherTest() throws Exception {
     loadData();
     Iterable<ReadResult> readResults =
-        Flowable.fromPublisher(
-            failFastExecutor.readReactive(Flowable.just(readSuccessful)))
+        Flowable.fromPublisher(failFastExecutor.readReactive(Flowable.just(readSuccessful)))
             .blockingIterable();
     verifyReads(500, 0, readResults);
   }
@@ -1083,8 +1067,7 @@ public abstract class AbstractBulkExecutorIT {
     loadData();
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
     try {
-      Flowable.fromPublisher(
-          failFastExecutor.readReactive(Flowable.just(failed)))
+      Flowable.fromPublisher(failFastExecutor.readReactive(Flowable.just(failed)))
           .doOnNext(readResults::add)
           .blockingSubscribe();
       fail("Should have thrown an exception");
@@ -1099,8 +1082,9 @@ public abstract class AbstractBulkExecutorIT {
     loadData();
     Iterable<ReadResult> readResults =
         Flowable.fromPublisher(
-            failSafeExecutor.readReactive(Flowable.fromArray(readSuccessful, failed)))
-            .toList().blockingGet();
+                failSafeExecutor.readReactive(Flowable.fromArray(readSuccessful, failed)))
+            .toList()
+            .blockingGet();
     verifyReads(500, 1, readResults);
   }
 
@@ -1112,9 +1096,7 @@ public abstract class AbstractBulkExecutorIT {
   }
 
   private Flowable<String> sampleQueriesWithLastBad() {
-    return CsvUtils.queries()
-        .skipLast(1)
-        .concatWith(Flowable.just(failed.getQueryString()));
+    return CsvUtils.queries().skipLast(1).concatWith(Flowable.just(failed.getQueryString()));
   }
 
   private void loadData() {

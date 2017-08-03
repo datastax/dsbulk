@@ -37,7 +37,9 @@ public class RxJavaCqlScriptReaderBenchmark {
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Fork(1)
   public void benchmarkSingleLine(RxJavaBulkExecutionState state, Blackhole bh) throws Exception {
-    RxJavaCqlScriptReader reader = new RxJavaCqlScriptReader(new BufferedReader(new InputStreamReader(state.cqlFile.openStream())));
+    RxJavaCqlScriptReader reader =
+        new RxJavaCqlScriptReader(
+            new BufferedReader(new InputStreamReader(state.cqlFile.openStream())));
     reader.readReactive().doOnNext(bh::consume).blockingSubscribe();
   }
 
@@ -47,7 +49,9 @@ public class RxJavaCqlScriptReaderBenchmark {
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Fork(1)
   public void benchmarkMultiLine(RxJavaBulkExecutionState state, Blackhole bh) throws Exception {
-    RxJavaCqlScriptReader reader = new RxJavaCqlScriptReader(new BufferedReader(new InputStreamReader(state.cqlFile.openStream())), true);
+    RxJavaCqlScriptReader reader =
+        new RxJavaCqlScriptReader(
+            new BufferedReader(new InputStreamReader(state.cqlFile.openStream())), true);
     reader.readReactive().doOnNext(bh::consume).blockingSubscribe();
   }
 
@@ -58,13 +62,10 @@ public class RxJavaCqlScriptReaderBenchmark {
 
     @Setup(Level.Trial)
     public void init() throws IOException {
-      RxJavaPlugins.setErrorHandler((t) -> {
-      });
+      RxJavaPlugins.setErrorHandler((t) -> {});
       Path dest = Files.createTempDirectory("benchmark");
       ZipUtils.unzip("ip-by-country-all.cql.zip", dest);
       cqlFile = dest.resolve("ip-by-country.cql").toUri().toURL();
     }
-
   }
-
 }

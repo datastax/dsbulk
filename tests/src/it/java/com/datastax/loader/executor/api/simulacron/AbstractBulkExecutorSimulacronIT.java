@@ -13,11 +13,7 @@ import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.when;
 import static java.util.stream.StreamSupport.stream;
 import static org.assertj.core.api.Assertions.fail;
 
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.loader.executor.api.BulkExecutor;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
@@ -29,21 +25,13 @@ import com.datastax.loader.tests.SimulacronRule;
 import com.datastax.loader.tests.utils.CsvUtils;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
-import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.univocity.parsers.common.record.Record;
 import io.reactivex.Flowable;
 import io.reactivex.plugins.RxJavaPlugins;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -85,7 +73,7 @@ public abstract class AbstractBulkExecutorSimulacronIT {
   @BeforeClass
   public static void createTableAndPreparedStatement() {
     //cluster = new ClusterRule(simulacron, new ClusterConfigConcrete());
-    RequestPrime prime = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    RequestPrime prime = CsvUtils.createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.cluster().prime(new Prime(prime));
     simulacron.cluster().prime(when("should fail").then(syntaxError("Bad Syntax")));
     SuccessResult successResult = createLargeSuccessResult();
@@ -1254,19 +1242,6 @@ public abstract class AbstractBulkExecutorSimulacronIT {
               Assertions.assertThat(r.getRow().isPresent()).isFalse();
             });
     return values;
-  }
-
-  private static RequestPrime createSimpleParameterizedQuery(String query) {
-    Map<String, String> paramTypes = new LinkedHashMap<>();
-    paramTypes.put("country_code", "ascii");
-    paramTypes.put("country_name", "ascii");
-    paramTypes.put("beginning_ip_address", "inet");
-    paramTypes.put("ending_ip_address", "inet");
-    paramTypes.put("beginning_ip_number", "bigint");
-    paramTypes.put("ending_ip_number", "bigint");
-    Query when = new Query(query, Collections.emptyList(), new HashMap<>(), paramTypes);
-    SuccessResult then = new SuccessResult(new ArrayList<>(), new HashMap<>());
-    return new RequestPrime(when, then);
   }
 
   private static SuccessResult createLargeSuccessResult() {

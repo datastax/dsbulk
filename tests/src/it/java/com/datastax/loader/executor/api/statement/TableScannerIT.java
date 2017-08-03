@@ -6,6 +6,8 @@
  */
 package com.datastax.loader.executor.api.statement;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Session;
@@ -20,17 +22,13 @@ import javax.inject.Inject;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 @CCMTest
 @CCMConfig(numberOfNodes = 3)
 public class TableScannerIT {
 
-  @ClassRule
-  public static CCMRule ccmRule = new CCMRule();
+  @ClassRule public static CCMRule ccmRule = new CCMRule();
 
-  @Inject
-  public static Session session;
+  @Inject public static Session session;
 
   @Test
   public void should_scan_table() throws Exception {
