@@ -6,7 +6,7 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
-import static com.datastax.loader.engine.internal.codecs.ConvertingCodecAssert.assertThat;
+import static com.datastax.loader.engine.internal.Assertions.assertThat;
 import static com.datastax.loader.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 
 import java.time.Instant;

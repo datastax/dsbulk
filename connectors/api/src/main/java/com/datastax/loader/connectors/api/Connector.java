@@ -7,7 +7,7 @@
 package com.datastax.loader.connectors.api;
 
 import com.datastax.driver.core.Row;
-import java.util.Map;
+import com.typesafe.config.Config;
 import org.reactivestreams.Publisher;
 
 /** */
@@ -20,9 +20,11 @@ public interface Connector extends AutoCloseable {
     throw new UnsupportedOperationException();
   }
 
-  default void init() {}
+  default void init() throws Exception {}
 
   default void close() throws Exception {}
 
-  default void configure(Map<String, Object> settings) throws Exception {}
+  default Config configure(Config settings) throws Exception {
+    return settings;
+  }
 }

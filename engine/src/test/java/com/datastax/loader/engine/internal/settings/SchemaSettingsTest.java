@@ -19,6 +19,7 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.loader.engine.internal.schema.DefaultMapping;
 import com.datastax.loader.engine.internal.schema.RecordMapper;
 import com.google.common.collect.Lists;
 import com.typesafe.config.Config;
@@ -64,8 +65,8 @@ public class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c2,c1) VALUES (:c2,:c1)");
-    assertThat(recordMapper.getMapping())
-        .containsOnlyKeys("0", "2")
+    assertThat(((DefaultMapping) recordMapper.getMapping()))
+        .containsOnlyKeys(0, 2)
         .containsValue("c1")
         .containsValue("c2");
   }
@@ -81,8 +82,8 @@ public class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue()).isEqualTo("insert into ks.table (c1,c2) values (:c1,:c2)");
-    assertThat(recordMapper.getMapping())
-        .containsOnlyKeys("0", "2")
+    assertThat(((DefaultMapping) recordMapper.getMapping()))
+        .containsOnlyKeys(0, 2)
         .containsValue("c1")
         .containsValue("c2");
   }
@@ -96,8 +97,8 @@ public class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c1,c2) VALUES (:c1,:c2)");
-    assertThat(recordMapper.getMapping())
-        .containsOnlyKeys("0", "1", "c1", "c2")
+    assertThat(((DefaultMapping) recordMapper.getMapping()))
+        .containsOnlyKeys(0, 1, "c1", "c2")
         .containsValue("c1")
         .containsValue("c2");
   }

@@ -10,7 +10,6 @@ import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.connectors.api.CQLRecord;
-import com.datastax.loader.connectors.api.IndexedRecord;
 import com.datastax.loader.connectors.api.MappedRecord;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.executor.api.statement.BulkBoundStatement;
@@ -19,94 +18,83 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.util.Map;
 
 /** */
 public class RecordMapper {
 
   private final PreparedStatement insertStatement;
 
-  private final Map<String, String> mapping;
+  private final Mapping mapping;
 
-  public RecordMapper(PreparedStatement insertStatement, Map<String, String> mapping) {
+  public RecordMapper(PreparedStatement insertStatement, Mapping mapping) {
     this.insertStatement = insertStatement;
     this.mapping = mapping;
   }
 
-  public Map<String, String> getMapping() {
+  public Mapping getMapping() {
     return mapping;
   }
 
   public Statement map(Record record) throws MalformedURLException {
-    String fieldName = null;
-    String paramName = null;
+    Object field = null;
+    Object variable = null;
     try {
       if (record instanceof MappedRecord) {
         MappedRecord mappedRecord = (MappedRecord) record;
         BoundStatement bs = new BulkBoundStatement<>(mappedRecord, insertStatement);
-        for (String name : mappedRecord.fieldNames()) {
-          fieldName = name;
-          Object raw = mappedRecord.getValue(fieldName);
-          paramName = mapping.get(fieldName);
-          if (paramName != null) {
-            bindColumn(bs, raw, paramName);
-          }
-        }
-        return bs;
-      } else if (record instanceof IndexedRecord) {
-        IndexedRecord indexedRecord = (IndexedRecord) record;
-        BoundStatement bs = new BulkBoundStatement<>(indexedRecord, insertStatement);
-        for (int i = 0; i < indexedRecord.size(); i++) {
-          fieldName = Integer.toString(i);
-          Object raw = indexedRecord.getValue(i);
-          paramName = mapping.get(fieldName);
-          if (paramName != null) {
-            bindColumn(bs, raw, paramName);
+        for (Object f : mappedRecord.fields()) {
+          field = f;
+          Object raw = mappedRecord.getFieldValue(field);
+          variable = mapping.map(field);
+          if (variable != null) {
+            bindColumn(bs, raw, variable);
           }
         }
         return bs;
       } else if (record instanceof CQLRecord) {
-        CQLRecord cqlRecord = (CQLRecord) record;
-        return new BulkSimpleStatement<>(cqlRecord, cqlRecord.getQueryString());
+        CQLRecord CQLRecord = (CQLRecord) record;
+        return new BulkSimpleStatement<>(CQLRecord, CQLRecord.getQueryString());
       }
     } catch (Exception e) {
-      return new UnmappableStatement(getLocation(record, fieldName, paramName), record, e);
+      return new UnmappableStatement(getLocation(record, field, variable), record, e);
     }
     throw new IllegalStateException("Unknown Record implementation: " + record.getClass());
   }
 
-  private static URL getLocation(Record record, String fieldName, String paramName) {
+  private static URL getLocation(Record record, Object field, Object variable) {
     URL location = record.getLocation();
     try {
-      if (fieldName != null) {
+      if (field != null) {
         location =
             new URL(
                 location.toExternalForm()
                     + (location.getQuery() == null ? '?' : '&')
                     + "field="
-                    + URLEncoder.encode(fieldName, "UTF-8"));
+                    + URLEncoder.encode(field.toString(), "UTF-8"));
       }
-      if (paramName != null) {
+      if (variable != null) {
         location =
             new URL(
                 location.toExternalForm()
                     + (location.getQuery() == null ? '?' : '&')
                     + "param="
-                    + URLEncoder.encode(paramName, "UTF-8"));
+                    + URLEncoder.encode(variable.toString(), "UTF-8"));
       }
     } catch (MalformedURLException | UnsupportedEncodingException ignored) {
     }
     return location;
   }
 
-  private static void bindColumn(BoundStatement bs, Object raw, String columnName) {
+  private static void bindColumn(BoundStatement bs, Object raw, Object variable) {
     if (raw == null) {
       // TODO null -> unset
-      bs.setToNull(columnName);
+      if (variable instanceof String) bs.setToNull((String) variable);
+      else bs.setToNull((int) variable);
     } else {
       @SuppressWarnings("unchecked")
       Class<Object> targetClass = (Class<Object>) raw.getClass();
-      bs.set(columnName, raw, targetClass);
+      if (variable instanceof String) bs.set(((String) variable), raw, targetClass);
+      else bs.set(((int) variable), raw, targetClass);
     }
   }
 }

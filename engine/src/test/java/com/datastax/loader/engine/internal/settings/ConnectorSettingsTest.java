@@ -6,7 +6,7 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.datastax.loader.engine.internal.Assertions.assertThat;
 
 import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.connectors.csv.CSVConnector;
@@ -27,22 +27,43 @@ public class ConnectorSettingsTest {
     Config config =
         ConfigFactory.parseString(
             "name: com.datastax.loader.connectors.csv.CSVConnector, url:\"file:///a/b.csv\"");
-    Connector connector = new ConnectorSettings(config).getConnector();
-    assertThat(connector).isNotNull().isInstanceOf(CSVConnector.class);
+    ConnectorSettings connectorSettings = new ConnectorSettings(config);
+    assertCSVConnectorSettings(connectorSettings);
   }
 
   @Test
   public void should_find_csv_connector_simple_name() throws Exception {
     Config config = ConfigFactory.parseString("name: csvConnector, url:\"file:///a/b.csv\"");
-    Connector connector = new ConnectorSettings(config).getConnector();
-    assertThat(connector).isNotNull().isInstanceOf(CSVConnector.class);
+    ConnectorSettings connectorSettings = new ConnectorSettings(config);
+    assertCSVConnectorSettings(connectorSettings);
   }
 
   @Test
   public void should_find_csv_connector_short_name() throws Exception {
     Config config = ConfigFactory.parseString("name: csv, url:\"file:///a/b.csv\"");
-    Connector connector = new ConnectorSettings(config).getConnector();
+    ConnectorSettings connectorSettings = new ConnectorSettings(config);
+    assertCSVConnectorSettings(connectorSettings);
+  }
+
+  private static void assertCSVConnectorSettings(ConnectorSettings connectorSettings) {
+    Connector connector = connectorSettings.getConnector();
     assertThat(connector).isNotNull().isInstanceOf(CSVConnector.class);
+    assertThat(connectorSettings.getConnectorEffectiveSettings())
+        .hasPaths(
+            "name",
+            "url",
+            "pattern",
+            "recursive",
+            "maxThreads",
+            "encoding",
+            "header",
+            "delimiter",
+            "quote",
+            "escape",
+            "comment",
+            "linesToSkip",
+            "maxLines")
+        .doesNotHavePath("csv");
   }
 
   @Test

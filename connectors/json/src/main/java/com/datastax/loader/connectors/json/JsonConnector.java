@@ -8,7 +8,7 @@ package com.datastax.loader.connectors.json;
 
 import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.connectors.api.Record;
-import java.util.Map;
+import com.typesafe.config.Config;
 import org.reactivestreams.Publisher;
 
 /** */
@@ -21,5 +21,7 @@ public class JsonConnector implements Connector {
   }
 
   @Override
-  public void configure(Map<String, Object> settings) {}
+  public Config configure(Config settings) {
+    return settings;
+  }
 }

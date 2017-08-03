@@ -6,85 +6,234 @@
  */
 package com.datastax.loader.connectors.csv;
 
+import static java.nio.file.FileVisitResult.CONTINUE;
+import static java.nio.file.FileVisitResult.TERMINATE;
+
 import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.connectors.api.Record;
-import com.datastax.loader.connectors.api.internal.ArrayRecord;
-import com.datastax.loader.connectors.api.internal.ErrorRecord;
+import com.datastax.loader.connectors.api.internal.MapRecord;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import com.univocity.parsers.common.ParsingContext;
-import com.univocity.parsers.common.RowProcessorErrorHandler;
+import com.univocity.parsers.csv.CsvFormat;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
+import io.reactivex.schedulers.Schedulers;
 import java.io.BufferedInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.util.Map;
+import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Collections;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/** */
+/**
+ * A connector for CSV files.
+ *
+ * <p>It is capable of reading from any URL, provided that there is a {@link
+ * java.net.URLStreamHandler handler} installed for it. For file URLs, it is also capable of reading
+ * several files at once from a given root directory.
+ *
+ * <p>This connector is highly configurable; see its {@code reference.conf} file, bundled within its
+ * jar archive, for detailed information.
+ */
 public class CSVConnector implements Connector {
 
-  // TODO can be a file or a directory or stdin, for the time being, it is assumed it is a file
+  private static final Config CSV_CONNECTOR_DEFAULT_SETTINGS =
+      ConfigFactory.defaultReference().getConfig("datastax-loader.connector.csv");
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
+
   private URL url;
+  private Path root;
+  private String pattern;
   private Charset encoding;
+  private char delimiter;
+  private char quote;
+  private char escape;
+  private char comment;
+  private long linesToSkip;
+  private long maxLines;
+  private int maxThreads;
+  private boolean recursive;
+  private boolean header;
+  private CsvParserSettings settings;
+
+  @Override
+  public Config configure(Config settings) throws MalformedURLException {
+    settings = settings.withoutPath("csv").withFallback(CSV_CONNECTOR_DEFAULT_SETTINGS);
+    url = new URL(settings.getString("url"));
+    pattern = settings.getString("pattern");
+    encoding = Charset.forName(settings.getString("encoding"));
+    delimiter = getAsChar(settings, "delimiter");
+    quote = getAsChar(settings, "quote");
+    escape = getAsChar(settings, "escape");
+    comment = getAsChar(settings, "comment");
+    linesToSkip = settings.getLong("linesToSkip");
+    maxLines = settings.getLong("maxLines");
+    maxThreads = settings.getInt("maxThreads");
+    recursive = settings.getBoolean("recursive");
+    header = settings.getBoolean("header");
+    return settings;
+  }
+
+  @Override
+  public void init() throws URISyntaxException, IOException {
+    try {
+      Path root = Paths.get(url.toURI());
+      if (Files.isDirectory(root)) {
+        this.root = root;
+      }
+    } catch (FileSystemNotFoundException ignored) {
+      // not a path on a known filesystem
+    }
+    CsvFormat format = new CsvFormat();
+    format.setDelimiter(delimiter);
+    format.setQuote(quote);
+    format.setQuoteEscape(escape);
+    format.setComment(comment);
+    settings = new CsvParserSettings();
+    settings.setFormat(format);
+    settings.setNumberOfRowsToSkip(linesToSkip);
+    settings.setHeaderExtractionEnabled(header);
+  }
 
   @Override
   public Publisher<Record> read() {
-    // TODO if reading from several files, use Flowable.merge(flowable1, flowable2,...); each flowable should be subscribed to in a scheduler e.g. Schedulers.io()
-    // TODO replace with a full-blown Publisher<Record> to improve backpressure, see ResultPublisher
+    if (root != null) {
+      return Flowable.merge(
+          scan(root).map(p -> records(p.toUri().toURL()).subscribeOn(Schedulers.io())), maxThreads);
+    } else {
+      return records(url);
+    }
+  }
+
+  private Flowable<Path> scan(Path root) {
     return Flowable.create(
         e -> {
-          CsvParserSettings settings = new CsvParserSettings();
-          settings.setHeaderExtractionEnabled(true);
-          settings.setProcessorErrorHandler(
-              (RowProcessorErrorHandler)
-                  (error, inputRow, context) -> {
-                    // this is actually never going to be called;
-                    // DataProcessingExceptions are only thrown by processors and we don't use any.
-                    // Actually, the parser is almost infallible. And when it fails,
-                    // the error is unrecoverable and this method is not called.
-                    String source = context.currentParsedContent();
-                    URL location = getLocation(context);
-                    if (!e.isCancelled()) e.onNext(new ErrorRecord(source, location, error));
-                  });
-          CsvParser parser = new CsvParser(settings);
-          try (InputStream is = new BufferedInputStream(url.openStream())) {
-            parser.beginParsing(is, encoding);
-            while (true) {
-              com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
-              ParsingContext context = parser.getContext();
-              String source = context.currentParsedContent();
-              URL location = getLocation(context);
-              if (row == null) break;
-              if (e.isCancelled()) break;
-              e.onNext(new ArrayRecord(source, location, row.getValues()));
-            }
-            e.onComplete();
-            parser.stopParsing();
-          }
+          PathMatcher matcher = root.getFileSystem().getPathMatcher("glob:" + pattern);
+          Files.walkFileTree(
+              root,
+              Collections.emptySet(),
+              recursive ? Integer.MAX_VALUE : 1,
+              new SimpleFileVisitor<Path>() {
+
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+                    throws IOException {
+                  return e.isCancelled() ? TERMINATE : CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                    throws IOException {
+                  if (Files.isReadable(file)
+                      && Files.isRegularFile(file)
+                      && matcher.matches(file)
+                      && !e.isCancelled()) {
+                    LOGGER.debug("Emitting file {}", file);
+                    e.onNext(file);
+                  }
+                  return e.isCancelled() ? TERMINATE : CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFileFailed(Path file, IOException ex)
+                    throws IOException {
+                  LOGGER.warn("Could not read " + file.toAbsolutePath().toUri().toURL(), e);
+                  return e.isCancelled() ? TERMINATE : CONTINUE;
+                }
+              });
+          e.onComplete();
         },
         BackpressureStrategy.BUFFER);
   }
 
-  private URL getLocation(ParsingContext context) {
+  private Flowable<Record> records(URL url) {
+    Flowable<Record> records =
+        Flowable.create(
+            e -> {
+              CsvParser parser = new CsvParser(settings);
+              try (InputStream is = openStream(url)) {
+                parser.beginParsing(is, encoding);
+                while (true) {
+                  com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
+                  ParsingContext context = parser.getContext();
+                  String source = context.currentParsedContent();
+                  URL location = getCurrentLocation(url, context);
+                  if (row == null) {
+                    break;
+                  }
+                  if (e.isCancelled()) {
+                    break;
+                  }
+                  Record record;
+                  if (header) {
+                    record =
+                        new MapRecord(source, location, context.parsedHeaders(), row.getValues());
+                  } else {
+                    record = new MapRecord(source, location, row.getValues());
+                  }
+                  LOGGER.trace("Emitting record {}", record);
+                  e.onNext(record);
+                }
+                e.onComplete();
+                parser.stopParsing();
+              }
+            },
+            BackpressureStrategy.BUFFER);
+    if (maxLines != -1) {
+      records = records.take(maxLines);
+    }
+    return records;
+  }
+
+  private URL getCurrentLocation(URL url, ParsingContext context) {
     URL location;
     try {
       long line = context.currentLine();
       int column = context.currentColumn();
-      location = new URL(url.toExternalForm() + "?line=" + line + "&column=" + column);
-    } catch (MalformedURLException ignored) {
+      location =
+          new URL(
+              url.toExternalForm()
+                  + (url.getQuery() == null ? '?' : '&')
+                  + "?line="
+                  + line
+                  + "&column="
+                  + column);
+    } catch (MalformedURLException e) {
+      // should not happen, but no reason to fail for that
       location = url;
     }
     return location;
   }
 
-  @Override
-  public void configure(Map<String, Object> settings) throws MalformedURLException {
-    url = new URL((String) settings.get("url"));
-    encoding = Charset.forName((String) settings.getOrDefault("encoding", "UTF-8"));
-    // TODO: encoding, delim, escape char, file or directory, header, footer, comment lines, null word...
+  private static char getAsChar(Config settings, String path) {
+    String setting = settings.getString(path);
+    if (setting.length() != 1) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid setting for %s: expecting a single character, got '%s'", path, setting));
+    }
+    return setting.charAt(0);
+  }
+
+  private static InputStream openStream(URL url) throws IOException {
+    InputStream in = url.openStream();
+    return in instanceof BufferedInputStream ? in : new BufferedInputStream(in);
   }
 }
