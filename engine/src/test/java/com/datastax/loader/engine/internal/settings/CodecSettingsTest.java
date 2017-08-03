@@ -61,7 +61,7 @@ public class CodecSettingsTest {
 
     Config config = ConfigFactory.load().getConfig("datastax-loader.codec");
     CodecSettings settings = new CodecSettings(config);
-    settings.registerCodecs(cluster);
+    settings.init(cluster);
 
     assertThat(codecRegistry.codecFor(DataType.cboolean(), String.class))
         .isNotNull()

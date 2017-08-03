@@ -29,7 +29,7 @@ public class MapRecord extends LinkedHashMap<Object, Object> implements MappedRe
     Streams.forEachPair(IntStream.range(0, size()).boxed(), values().stream(), this::put);
   }
 
-  public MapRecord(String source, URL location, Object[] values) {
+  public MapRecord(Object source, URL location, Object... values) {
     super();
     this.source = source;
     this.location = location;
@@ -37,7 +37,7 @@ public class MapRecord extends LinkedHashMap<Object, Object> implements MappedRe
         IntStream.range(0, values.length).boxed(), Arrays.stream(values), this::put);
   }
 
-  public MapRecord(String source, URL location, Object[] keys, Object[] values) {
+  public MapRecord(Object source, URL location, Object[] keys, Object[] values) {
     this(source, location, values);
     if (keys.length != values.length)
       throw new IllegalArgumentException("Keys and values have different sizes");

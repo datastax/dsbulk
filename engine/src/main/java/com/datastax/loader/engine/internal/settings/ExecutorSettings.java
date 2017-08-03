@@ -17,6 +17,7 @@ import com.datastax.loader.executor.api.ContinuousRxJavaBulkExecutorBuilder;
 import com.datastax.loader.executor.api.DefaultRxJavaBulkExecutor;
 import com.datastax.loader.executor.api.DefaultRxJavaBulkExecutorBuilder;
 import com.datastax.loader.executor.api.RxJavaBulkExecutor;
+import com.datastax.loader.executor.api.listener.ExecutionListener;
 import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.Config;
@@ -32,11 +33,11 @@ public class ExecutorSettings {
     this.config = config;
   }
 
-  public ReactiveBulkWriter newWriteEngine(Session session) {
+  public ReactiveBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
     if (session instanceof ContinuousPagingSession) {
       ContinuousRxJavaBulkExecutorBuilder builder =
           ContinuousRxJavaBulkExecutor.builder(((ContinuousPagingSession) session));
-      configure(builder);
+      configure(builder, executionListener);
       Config continuousPagingConfig = config.getConfig("continuous-paging");
       ContinuousPagingOptions options =
           ContinuousPagingOptions.builder()
@@ -51,12 +52,14 @@ public class ExecutorSettings {
       return builder.build();
     } else {
       DefaultRxJavaBulkExecutorBuilder builder = DefaultRxJavaBulkExecutor.builder(session);
-      configure(builder);
+      configure(builder, executionListener);
       return builder.build();
     }
   }
 
-  private void configure(AbstractBulkExecutorBuilder<? extends RxJavaBulkExecutor> builder) {
+  private void configure(
+      AbstractBulkExecutorBuilder<? extends RxJavaBulkExecutor> builder,
+      ExecutionListener executionListener) {
     String maxThreads = config.getString("max-threads");
     int threads = SettingsUtils.parseNumThreads(maxThreads);
     ThreadPoolExecutor executor =
@@ -70,6 +73,7 @@ public class ExecutorSettings {
             new ThreadPoolExecutor.CallerRunsPolicy());
     builder
         .withExecutor(executor)
+        .withExecutionListener(executionListener)
         .withMaxInFlightRequests(config.getInt("max-inflight"))
         .withMaxRequestsPerSecond(config.getInt("max-per-second"))
         .failSafe();

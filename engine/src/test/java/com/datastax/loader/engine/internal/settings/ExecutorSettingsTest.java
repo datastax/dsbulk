@@ -36,7 +36,7 @@ public class ExecutorSettingsTest {
   public void should_create_non_continuous_executor_when_session_not_dse() throws Exception {
     Config config = ConfigFactory.load().getConfig("datastax-loader.executor");
     ExecutorSettings settings = new ExecutorSettings(config);
-    ReactiveBulkWriter executor = settings.newWriteEngine(session);
+    ReactiveBulkWriter executor = settings.newWriteExecutor(session, null);
     assertThat(executor).isNotNull().isInstanceOf(DefaultRxJavaBulkExecutor.class);
   }
 
@@ -44,7 +44,7 @@ public class ExecutorSettingsTest {
   public void should_create_continuous_executor_when_session_dse() throws Exception {
     Config config = ConfigFactory.load().getConfig("datastax-loader.executor");
     ExecutorSettings settings = new ExecutorSettings(config);
-    ReactiveBulkWriter executor = settings.newWriteEngine(dseSession);
+    ReactiveBulkWriter executor = settings.newWriteExecutor(dseSession, null);
     assertThat(executor).isNotNull().isInstanceOf(ContinuousRxJavaBulkExecutor.class);
   }
 }

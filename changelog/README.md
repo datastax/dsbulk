@@ -13,3 +13,4 @@
 - [new feature] DAT-33: Add support for String <-> InetAddress conversion.
 - [new feature] DAT-21: Implement CSV connector.
 - [improvement] DAT-34: Add grouping by replica set to token-aware batching.
+- [new feature] DAT-19: Implement monitoring service.
