@@ -16,8 +16,8 @@ import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
-import com.datastax.loader.executor.api.statement.RxJavaSortedStatementBatcher;
-import com.datastax.loader.executor.api.statement.RxJavaUnsortedStatementBatcher;
+import com.datastax.loader.executor.api.batch.RxJavaSortedStatementBatcher;
+import com.datastax.loader.executor.api.batch.RxJavaUnsortedStatementBatcher;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.reactivex.FlowableTransformer;
@@ -50,7 +50,7 @@ public class BatchSettingsTest {
 
   @Test
   public void should_create_sorted_batcher_when_sorted_mode_provided() throws Exception {
-    Config config = ConfigFactory.parseString("mode = SORTED, buffer-size = 100");
+    Config config = ConfigFactory.parseString("sorted = true, buffer-size = 100");
     BatchSettings settings = new BatchSettings(config);
     FlowableTransformer<Statement, Statement> batcher = settings.newStatementBatcher(cluster);
     assertThat(batcher).isNotNull().isInstanceOf(RxJavaSortedStatementBatcher.class);
@@ -58,7 +58,7 @@ public class BatchSettingsTest {
 
   @Test
   public void should_create_unsorted_batcher_when_unsorted_mode_provided() throws Exception {
-    Config config = ConfigFactory.parseString("mode = UNSORTED, buffer-size = 100");
+    Config config = ConfigFactory.parseString("sorted = false, buffer-size = 100");
     BatchSettings settings = new BatchSettings(config);
     FlowableTransformer<Statement, Statement> batcher = settings.newStatementBatcher(cluster);
     assertThat(batcher).isNotNull().isInstanceOf(RxJavaUnsortedStatementBatcher.class);

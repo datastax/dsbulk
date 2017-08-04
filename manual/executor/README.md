@@ -25,7 +25,7 @@ This library comes with several components, among which:
 
 1. A bulk execution unit, called `BulkExecutor`;
 2. Some minor utilities, e.g. 
-[`StatementBatcher`](api/src/main/java/com/datastax/oss/driver/bulk/api/statement/StatementBatcher.java) and 
+[`StatementBatcher`](./batcher/README.md) and 
 [`TableScanner`](api/src/main/java/com/datastax/oss/driver/bulk/api/statement/TableScanner.java).
  
 The first one is detailed below. For the others, refer to their respective javadocs.

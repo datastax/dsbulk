@@ -12,7 +12,7 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.loader.executor.api.statement.TableScanner;
-import com.datastax.loader.executor.api.statement.RxJavaUnsortedStatementBatcher;
+import com.datastax.loader.executor.api.batch.RxJavaUnsortedStatementBatcher;
 import com.datastax.loader.tests.utils.ZipUtils;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reactivex.Flowable;

@@ -4,12 +4,10 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.loader.executor.api.statement;
+package com.datastax.loader.executor.api.batch;
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import io.reactivex.Flowable;
 import io.reactivex.FlowableTransformer;
@@ -47,26 +45,24 @@ public class RxJavaUnsortedStatementBatcher extends RxJavaStatementBatcher
   }
 
   public RxJavaUnsortedStatementBatcher(Cluster cluster, int bufferSize) {
-    super(cluster);
-    this.bufferSize = bufferSize;
+    this(cluster, BatchMode.PARTITION_KEY, bufferSize);
+  }
+
+  public RxJavaUnsortedStatementBatcher(Cluster cluster, BatchMode batchMode, int bufferSize) {
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, bufferSize);
   }
 
   public RxJavaUnsortedStatementBatcher(
-      BatchStatement.Type batchType, ProtocolVersion protocolVersion, CodecRegistry codecRegistry) {
-    this(batchType, protocolVersion, codecRegistry, DEFAULT_BUFFER_SIZE);
-  }
-
-  public RxJavaUnsortedStatementBatcher(
-      BatchStatement.Type batchType,
-      ProtocolVersion protocolVersion,
-      CodecRegistry codecRegistry,
-      int bufferSize) {
-    super(batchType, protocolVersion, codecRegistry);
+      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int bufferSize) {
+    super(cluster, batchMode, batchType);
     this.bufferSize = bufferSize;
   }
 
   @Override
   public Flowable<Statement> apply(Flowable<Statement> upstream) {
-    return upstream.buffer(bufferSize).map(this::batchByRoutingKey).flatMap(Flowable::fromIterable);
+    return upstream
+        .buffer(bufferSize)
+        .map(this::batchByGroupingKey)
+        .flatMap(Flowable::fromIterable);
   }
 }
