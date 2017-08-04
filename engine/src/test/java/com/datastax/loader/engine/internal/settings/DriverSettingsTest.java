@@ -11,7 +11,6 @@ import static com.datastax.driver.core.ConsistencyLevel.LOCAL_SERIAL;
 import static com.datastax.driver.core.HostDistance.LOCAL;
 import static com.datastax.driver.core.HostDistance.REMOTE;
 import static com.datastax.driver.core.ProtocolOptions.Compression.LZ4;
-import static com.datastax.driver.core.ProtocolVersion.V4;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
@@ -63,7 +62,7 @@ public class DriverSettingsTest {
     DseConfiguration configuration = cluster.getConfiguration();
     assertThat(
             Whitebox.getInternalState(configuration.getProtocolOptions(), "initialProtocolVersion"))
-        .isEqualTo(V4);
+        .isNull();
     assertThat(configuration.getProtocolOptions().getCompression()).isEqualTo(LZ4);
     QueryOptions queryOptions = configuration.getQueryOptions();
     assertThat(queryOptions.getConsistencyLevel()).isEqualTo(LOCAL_ONE);

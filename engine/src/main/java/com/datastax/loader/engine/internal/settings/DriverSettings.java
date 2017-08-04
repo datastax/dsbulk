@@ -47,12 +47,16 @@ public class DriverSettings {
                   new InetSocketAddress(tokens[0], Integer.parseInt(tokens[1])));
             });
 
-    ProtocolVersion protocolVersion = config.getEnum(ProtocolVersion.class, "protocol.version");
-    Preconditions.checkArgument(
-        protocolVersion.compareTo(ProtocolVersion.V3) >= 0,
-        "This loader does not support protocols version lower than 3");
+    ProtocolVersion protocolVersion;
+
+    if (config.hasPath("protocol.version")) {
+      protocolVersion = config.getEnum(ProtocolVersion.class, "protocol.version");
+      Preconditions.checkArgument(
+          protocolVersion.compareTo(ProtocolVersion.V3) >= 0,
+          "This loader does not support protocol versions lower than 3");
+      builder.withProtocolVersion(protocolVersion);
+    }
     builder
-        .withProtocolVersion(protocolVersion)
         .withCompression(config.getEnum(ProtocolOptions.Compression.class, "protocol.compression"))
         .withPoolingOptions(
             new PoolingOptions()
