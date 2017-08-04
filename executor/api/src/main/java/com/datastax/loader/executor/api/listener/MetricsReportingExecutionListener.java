@@ -23,6 +23,7 @@ import com.datastax.loader.executor.api.result.Result;
 import com.google.common.base.Preconditions;
 import java.util.Objects;
 import java.util.SortedMap;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -55,7 +56,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
     private TimeUnit rateUnit = SECONDS;
     private TimeUnit durationUnit = MILLISECONDS;
     private MetricType metricType = MetricType.READS_AND_WRITES;
-    private ScheduledThreadPoolExecutor scheduler;
+    private ScheduledExecutorService scheduler;
 
     private Builder() {}
 
@@ -80,7 +81,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
      *
      * @return {@code this} (for method chaining).
      */
-    public Builder reportingReadsOnly() {
+    public Builder reportingReads() {
       this.metricType = MetricType.READS;
       return this;
     }
@@ -91,7 +92,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
      *
      * @return {@code this} (for method chaining).
      */
-    public Builder reportingWritesOnly() {
+    public Builder reportingWrites() {
       this.metricType = MetricType.WRITES;
       return this;
     }
@@ -163,7 +164,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
      * @param scheduler the {@link ScheduledThreadPoolExecutor scheduler} to use.
      * @return {@code this} (for method chaining)
      */
-    public Builder withScheduler(ScheduledThreadPoolExecutor scheduler) {
+    public Builder withScheduler(ScheduledExecutorService scheduler) {
       this.scheduler = scheduler;
       return this;
     }
@@ -240,7 +241,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
         durationUnit);
     this.delegate = delegate;
     this.expectedTotal = expectedTotal;
-    this.msg = createMessageTemplate(expectedTotal, metricType.eventName());
+    this.msg = createMessageTemplate(expectedTotal, metricType);
     this.totalTimer = metricType.totalTimer(delegate);
     this.successfulTimer = metricType.successfulTimer(delegate);
     this.failedTimer = metricType.failedTimer(delegate);
@@ -252,7 +253,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
       TimeUnit rateUnit,
       TimeUnit durationUnit,
       long expectedTotal,
-      ScheduledThreadPoolExecutor scheduler) {
+      ScheduledExecutorService scheduler) {
     super(
         delegate.getRegistry(),
         "bulk-execution-reporter",
@@ -262,7 +263,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
         scheduler);
     this.delegate = delegate;
     this.expectedTotal = expectedTotal;
-    this.msg = createMessageTemplate(expectedTotal, metricType.eventName());
+    this.msg = createMessageTemplate(expectedTotal, metricType);
     this.totalTimer = metricType.totalTimer(delegate);
     this.successfulTimer = metricType.successfulTimer(delegate);
     this.failedTimer = metricType.failedTimer(delegate);
@@ -343,30 +344,32 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
     }
   }
 
-  private static String createMessageTemplate(long expectedTotal, String eventName) {
+  private static String createMessageTemplate(long expectedTotal, MetricType metricType) {
     if (expectedTotal < 0) {
-      return "Total: %,d, successful: %,d, failed: %,d; %,.0f "
-          + eventName
+      return metricType.eventName()
+          + ": total: %,d, successful: %,d, failed: %,d; %,.0f "
+          + metricType.unit()
           + "/%s (mean %,.2f, 75p %,.2f, 99p %,.2f %s)";
     } else {
-      int numDigits = expectedTotal > 0 ? String.format("%,d", expectedTotal).length() : -1;
-      return "Total: %,"
+      int numDigits = String.format("%,d", expectedTotal).length();
+      return metricType.eventName()
+          + ": total: %,"
           + numDigits
           + "d, successful: %,"
           + numDigits
           + "d, failed: %,d; %,.0f "
-          + eventName
-          + "/%s, progression: %,.0f%%"
-          + " (mean %,.2f, 75p %,.2f, 99p %,.2f %s)";
+          + metricType.unit()
+          + "/%s, "
+          + "progression: %,.0f%% "
+          + "(mean %,.2f, 75p %,.2f, 99p %,.2f %s)";
     }
   }
 
   private enum MetricType {
     READS_AND_WRITES {
-
       @Override
       protected MetricFilter filter() {
-        return (name, metric) -> name.endsWith("-operations-timer");
+        return (name, metric) -> name.startsWith("executor/reads-writes/");
       }
 
       @Override
@@ -386,7 +389,12 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
 
       @Override
       protected String eventName() {
-        return "ops";
+        return "Reads/Writes";
+      }
+
+      @Override
+      protected String unit() {
+        return "reads-writes";
       }
     },
 
@@ -394,7 +402,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
 
       @Override
       protected MetricFilter filter() {
-        return (name, metric) -> name.endsWith("-reads-timer");
+        return (name, metric) -> name.startsWith("executor/reads/");
       }
 
       @Override
@@ -414,6 +422,11 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
 
       @Override
       protected String eventName() {
+        return "Reads";
+      }
+
+      @Override
+      protected String unit() {
         return "reads";
       }
     },
@@ -422,7 +435,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
 
       @Override
       protected MetricFilter filter() {
-        return (name, metric) -> name.endsWith("-writes-timer");
+        return (name, metric) -> name.startsWith("executor/writes/");
       }
 
       @Override
@@ -442,6 +455,11 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
 
       @Override
       protected String eventName() {
+        return "Writes";
+      }
+
+      @Override
+      protected String unit() {
         return "writes";
       }
     },
@@ -450,7 +468,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
 
       @Override
       protected MetricFilter filter() {
-        return (name, metric) -> name.endsWith("-statements-timer");
+        return (name, metric) -> name.startsWith("executor/statements/");
       }
 
       @Override
@@ -470,6 +488,11 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
 
       @Override
       protected String eventName() {
+        return "Statements";
+      }
+
+      @Override
+      protected String unit() {
         return "stmts";
       }
     };
@@ -483,5 +506,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
     protected abstract Timer failedTimer(MetricsCollectingExecutionListener delegate);
 
     protected abstract String eventName();
+
+    protected abstract String unit();
   }
 }

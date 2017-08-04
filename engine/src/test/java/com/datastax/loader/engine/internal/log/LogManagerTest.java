@@ -85,12 +85,9 @@ public class LogManagerTest {
     when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
     when(protocolOptions.getProtocolVersion()).thenReturn(ProtocolVersion.V4);
     when(configuration.getCodecRegistry()).thenReturn(CodecRegistry.DEFAULT_INSTANCE);
-    URL file1 = Files.createTempFile("file1_", ".csv").toFile().toURI().toURL();
-    URL file2 = Files.createTempFile("file2_", ".csv").toFile().toURI().toURL();
-    URL file3 = Files.createTempFile("file3_", ".csv").toFile().toURI().toURL();
-    location1 = new URL(file1.toExternalForm() + "?line=1");
-    location2 = new URL(file2.toExternalForm() + "?line=2");
-    location3 = new URL(file3.toExternalForm() + "?line=3");
+    location1 = new URL("file:///file1.csv?line=1");
+    location2 = new URL("file:///file2.csv?line=2");
+    location3 = new URL("file:///file3.csv?line=3");
     record1 = new ErrorRecord(source1, this.location1, new RuntimeException("error 1"));
     record2 = new ErrorRecord(source2, this.location2, new RuntimeException("error 2"));
     record3 = new ErrorRecord(source3, this.location3, new RuntimeException("error 3"));
@@ -125,7 +122,7 @@ public class LogManagerTest {
     logManager.init(cluster);
     Flowable<Record> records = Flowable.fromArray(record1, record2, record3);
     try {
-      records.compose(logManager.newExtractErrorHandler()).blockingSubscribe();
+      records.compose(logManager.newConnectorErrorHandler()).blockingSubscribe();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
@@ -171,7 +168,7 @@ public class LogManagerTest {
     logManager.init(cluster);
     Flowable<Statement> stmts = Flowable.fromArray(stmt1, stmt2, stmt3);
     try {
-      stmts.compose(logManager.newTransformErrorHandler()).blockingSubscribe();
+      stmts.compose(logManager.newMapperErrorHandler()).blockingSubscribe();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
@@ -205,7 +202,7 @@ public class LogManagerTest {
     logManager.init(cluster);
     Flowable<Result> stmts = Flowable.fromArray(result1, result2, result3);
     try {
-      stmts.compose(logManager.newLoadErrorHandler()).blockingSubscribe();
+      stmts.compose(logManager.newExecutorErrorHandler()).blockingSubscribe();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
@@ -243,7 +240,7 @@ public class LogManagerTest {
     logManager.init(cluster);
     Flowable<Result> stmts = Flowable.fromArray(batchResult, result1);
     try {
-      stmts.compose(logManager.newLoadErrorHandler()).blockingSubscribe();
+      stmts.compose(logManager.newExecutorErrorHandler()).blockingSubscribe();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 1");

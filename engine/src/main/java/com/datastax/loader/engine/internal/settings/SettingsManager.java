@@ -33,6 +33,7 @@ public class SettingsManager {
   private ExecutorSettings executorSettings;
   private LogSettings logSettings;
   private CodecSettings codecSettings;
+  private MonitoringSettings monitoringSettings;
 
   public SettingsManager(String[] args, String operationId) {
     this.args = args;
@@ -44,12 +45,13 @@ public class SettingsManager {
     config.checkValid(REFERENCE);
     // TODO check unrecognized config
     logSettings = new LogSettings(config.getConfig("log"), operationId);
-    driverSettings = new DriverSettings(config.getConfig("driver"));
+    driverSettings = new DriverSettings(config.getConfig("driver"), operationId);
     connectorSettings = new ConnectorSettings(config.getConfig("connector"));
     schemaSettings = new SchemaSettings(config.getConfig("schema"));
     batchSettings = new BatchSettings(config.getConfig("batch"));
     executorSettings = new ExecutorSettings(config.getConfig("executor"));
     codecSettings = new CodecSettings(config.getConfig("codec"));
+    monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), operationId);
     config =
         config
             .withoutPath("connector")
@@ -88,6 +90,10 @@ public class SettingsManager {
 
   public CodecSettings getCodecSettings() {
     return codecSettings;
+  }
+
+  public MonitoringSettings getMonitoringSettings() {
+    return monitoringSettings;
   }
 
   private static Config parseUserSettings(String[] args) {

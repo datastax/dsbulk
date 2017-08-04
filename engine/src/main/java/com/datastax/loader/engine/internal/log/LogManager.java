@@ -119,7 +119,7 @@ public class LogManager implements AutoCloseable {
     executor.shutdownNow();
   }
 
-  public FlowableTransformer<Record, Record> newExtractErrorHandler() {
+  public FlowableTransformer<Record, Record> newConnectorErrorHandler() {
     PublishSubject<FailedRecord> ps = PublishSubject.create();
     disposables.add(
         ps.toFlowable(BackpressureStrategy.BUFFER)
@@ -140,7 +140,7 @@ public class LogManager implements AutoCloseable {
             .filter(r -> !(r instanceof FailedRecord));
   }
 
-  public FlowableTransformer<Statement, Statement> newTransformErrorHandler() {
+  public FlowableTransformer<Statement, Statement> newMapperErrorHandler() {
     PublishSubject<UnmappableStatement> ps = PublishSubject.create();
     disposables.add(
         ps.toFlowable(BackpressureStrategy.BUFFER)
@@ -161,7 +161,7 @@ public class LogManager implements AutoCloseable {
             .filter(r -> !(r instanceof UnmappableStatement));
   }
 
-  public FlowableTransformer<Result, Result> newLoadErrorHandler() {
+  public FlowableTransformer<Result, Result> newExecutorErrorHandler() {
     PublishSubject<Result> ps = PublishSubject.create();
     disposables.add(
         ps.toFlowable(BackpressureStrategy.BUFFER)

@@ -10,12 +10,11 @@ import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.loader.connectors.api.Connector;
-import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.engine.internal.log.LogManager;
+import com.datastax.loader.engine.internal.metrics.MetricsManager;
 import com.datastax.loader.engine.internal.schema.RecordMapper;
 import com.datastax.loader.engine.internal.settings.BatchSettings;
 import com.datastax.loader.engine.internal.settings.CodecSettings;
@@ -23,14 +22,13 @@ import com.datastax.loader.engine.internal.settings.ConnectorSettings;
 import com.datastax.loader.engine.internal.settings.DriverSettings;
 import com.datastax.loader.engine.internal.settings.ExecutorSettings;
 import com.datastax.loader.engine.internal.settings.LogSettings;
+import com.datastax.loader.engine.internal.settings.MonitoringSettings;
 import com.datastax.loader.engine.internal.settings.SchemaSettings;
 import com.datastax.loader.engine.internal.settings.SettingsManager;
 import com.datastax.loader.engine.internal.url.MainURLStreamHandlerFactory;
-import com.datastax.loader.executor.api.result.Result;
 import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
 import com.google.common.base.Stopwatch;
 import io.reactivex.Flowable;
-import io.reactivex.FlowableTransformer;
 import java.net.URL;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -60,6 +58,7 @@ public class Main {
   private final ExecutorSettings executorSettings;
   private final LogSettings logSettings;
   private final CodecSettings codecSettings;
+  private final MonitoringSettings monitoringSettings;
 
   public Main(String[] args) throws Exception {
     SettingsManager settingsManager = new SettingsManager(args, operationId);
@@ -72,52 +71,52 @@ public class Main {
     batchSettings = settingsManager.getBatchSettings();
     executorSettings = settingsManager.getExecutorSettings();
     codecSettings = settingsManager.getCodecSettings();
-    // TODO monitoring
+    monitoringSettings = settingsManager.getMonitoringSettings();
   }
 
   public void load() {
+
+    LOGGER.info("Starting operation " + operationId);
+    Stopwatch timer = Stopwatch.createStarted();
+
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.newSession();
         Connector connector = connectorSettings.getConnector();
-        ReactiveBulkWriter engine = executorSettings.newWriteEngine(session);
-        LogManager logManager = logSettings.newLogManager()) {
+        MetricsManager metricsManager = monitoringSettings.newMetricsManager();
+        LogManager logManager = logSettings.newLogManager();
+        ReactiveBulkWriter executor =
+            executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener())) {
 
-      codecSettings.registerCodecs(cluster);
-      connector.init();
       session.init();
+      codecSettings.init(cluster);
+      connector.init();
+      metricsManager.init();
       logManager.init(cluster);
 
       RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
-      FlowableTransformer<Statement, Statement> batcher =
-          batchSettings.newStatementBatcher(cluster);
-      FlowableTransformer<Record, Record> extractErrorHandler = logManager.newExtractErrorHandler();
-      FlowableTransformer<Statement, Statement> transformErrorHandler =
-          logManager.newTransformErrorHandler();
-      FlowableTransformer<Result, Result> loadErrorHandler = logManager.newLoadErrorHandler();
-
-      LOGGER.info("Starting operation " + operationId);
-      Stopwatch timer = Stopwatch.createStarted();
 
       Flowable.fromPublisher(connector.read())
-          .compose(extractErrorHandler)
+          .compose(metricsManager.newConnectorMonitor())
+          .compose(logManager.newConnectorErrorHandler())
           .map(recordMapper::map)
-          .compose(transformErrorHandler)
-          .compose(batcher)
-          .flatMap(engine::writeReactive)
-          .compose(loadErrorHandler)
+          .compose(metricsManager.newMapperMonitor())
+          .compose(logManager.newMapperErrorHandler())
+          .compose(batchSettings.newStatementBatcher(cluster))
+          .compose(metricsManager.newBatcherMonitor())
+          .flatMap(executor::writeReactive)
+          .compose(logManager.newExecutorErrorHandler())
           .blockingSubscribe();
-
-      // TODO monitoring
-
-      timer.stop();
-      long seconds = timer.elapsed(SECONDS);
-      LOGGER.info("Operation {} finished in {}.", operationId, formatElapsed(seconds));
 
     } catch (Exception e) {
       LOGGER.error(
-          String.format("Operation %s: uncaught exception during engine execution.", operationId),
+          String.format(
+              "Operation %s: uncaught exception during workflow engine execution.", operationId),
           e);
     }
+
+    timer.stop();
+    long seconds = timer.elapsed(SECONDS);
+    LOGGER.info("Operation {} finished in {}.", operationId, formatElapsed(seconds));
   }
 
   public void unload() {

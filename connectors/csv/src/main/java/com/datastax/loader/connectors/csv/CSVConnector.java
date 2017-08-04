@@ -186,7 +186,7 @@ public class CSVConnector implements Connector {
                     record =
                         new MapRecord(source, location, context.parsedHeaders(), row.getValues());
                   } else {
-                    record = new MapRecord(source, location, row.getValues());
+                    record = new MapRecord(source, location, (Object[]) row.getValues());
                   }
                   LOGGER.trace("Emitting record {}", record);
                   e.onNext(record);

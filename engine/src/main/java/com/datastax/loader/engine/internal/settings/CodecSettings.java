@@ -97,7 +97,7 @@ public class CodecSettings {
     this.config = config;
   }
 
-  public void registerCodecs(Cluster cluster) {
+  public void init(Cluster cluster) {
     Locale locale = parseLocale(config.getString("locale"));
     Map<String, Boolean> booleanInputs = getBooleanInputs(config.getStringList("boolean"));
     Map<Boolean, String> booleanOutputs = getBooleanOutputs(config.getStringList("boolean"));

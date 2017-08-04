@@ -39,7 +39,7 @@ public class DriverSettingsTest {
   @Test(expected = ConfigException.Missing.class)
   public void should_not_create_mapper_when_contact_points_not_provided() throws Exception {
     Config config = ConfigFactory.load().getConfig("datastax-loader.batch");
-    DriverSettings driverSettings = new DriverSettings(config);
+    DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.newCluster();
   }
 
@@ -48,7 +48,7 @@ public class DriverSettingsTest {
     Config config =
         ConfigFactory.parseString("contact-points = [ \"1.2.3.4:9042\", \"2.3.4.5:9042\" ]")
             .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"));
-    DriverSettings driverSettings = new DriverSettings(config);
+    DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
     Cluster delegate = (Cluster) Whitebox.getInternalState(cluster, "delegate");

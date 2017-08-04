@@ -398,11 +398,6 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>2.20</version>
-          <configuration>
-            <reuseForks>true</reuseForks>
-            <parallel>classes</parallel>
-            <threadCount>8</threadCount>
-          </configuration>
         </plugin>
 
         <plugin>

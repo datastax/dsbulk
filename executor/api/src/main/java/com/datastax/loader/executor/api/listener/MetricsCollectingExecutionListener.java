@@ -51,21 +51,21 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   public MetricsCollectingExecutionListener(MetricRegistry registry) {
     this.registry = registry;
 
-    totalStatementsTimer = registry.timer("total-statements-timer");
-    successfulStatementsTimer = registry.timer("successful-statements-timer");
-    failedStatementsTimer = registry.timer("failed-statements-timer");
+    totalStatementsTimer = registry.timer("executor/statements/total");
+    successfulStatementsTimer = registry.timer("executor/statements/successful");
+    failedStatementsTimer = registry.timer("executor/statements/failed");
 
-    totalReadsTimer = registry.timer("total-reads-timer");
-    successfulReadsTimer = registry.timer("successful-reads-timer");
-    failedReadsTimer = registry.timer("failed-reads-timer");
+    totalReadsTimer = registry.timer("executor/reads/total");
+    successfulReadsTimer = registry.timer("executor/reads/successful");
+    failedReadsTimer = registry.timer("executor/reads/failed");
 
-    totalWritesTimer = registry.timer("total-writes-timer");
-    successfulWritesTimer = registry.timer("successful-writes-timer");
-    failedWritesTimer = registry.timer("failed-writes-timer");
+    totalWritesTimer = registry.timer("executor/writes/total");
+    successfulWritesTimer = registry.timer("executor/writes/successful");
+    failedWritesTimer = registry.timer("executor/writes/failed");
 
-    totalOperationsTimer = registry.timer("total-operations-timer");
-    successfulOperationsTimer = registry.timer("successful-operations-timer");
-    failedOperationsTimer = registry.timer("failed-operations-timer");
+    totalOperationsTimer = registry.timer("executor/reads-writes/total");
+    successfulOperationsTimer = registry.timer("executor/reads-writes/successful");
+    failedOperationsTimer = registry.timer("executor/reads-writes/failed");
   }
 
   /**

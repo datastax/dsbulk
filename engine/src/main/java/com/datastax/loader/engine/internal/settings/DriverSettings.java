@@ -31,13 +31,15 @@ public class DriverSettings {
       NoSpeculativeExecutionPolicy.class.getName();
 
   private final Config config;
+  private final String operationId;
 
-  public DriverSettings(Config config) {
+  public DriverSettings(Config config, String operationId) {
     this.config = config;
+    this.operationId = operationId;
   }
 
   public DseCluster newCluster() {
-    DseCluster.Builder builder = DseCluster.builder();
+    DseCluster.Builder builder = DseCluster.builder().withClusterName(operationId + "-driver");
     config
         .getStringList("contact-points")
         .forEach(
