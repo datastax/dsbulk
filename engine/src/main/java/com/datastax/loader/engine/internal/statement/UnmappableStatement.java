@@ -4,10 +4,9 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.loader.engine.internal.schema;
+package com.datastax.loader.engine.internal.statement;
 
 import com.datastax.loader.connectors.api.Record;
-import com.datastax.loader.executor.api.statement.BulkSimpleStatement;
 import com.google.common.base.MoreObjects;
 import java.net.URL;
 

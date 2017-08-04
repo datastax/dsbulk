@@ -17,7 +17,7 @@ import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.connectors.api.FailedRecord;
 import com.datastax.loader.connectors.api.Record;
-import com.datastax.loader.engine.internal.schema.UnmappableStatement;
+import com.datastax.loader.engine.internal.statement.UnmappableStatement;
 import com.datastax.loader.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.loader.executor.api.listener.MetricsReportingExecutionListener;
 import io.reactivex.FlowableTransformer;

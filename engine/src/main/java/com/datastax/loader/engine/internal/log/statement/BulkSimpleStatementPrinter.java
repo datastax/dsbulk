@@ -10,7 +10,7 @@ import static com.datastax.loader.engine.internal.log.statement.StatementFormatV
 
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.connectors.api.Record;
-import com.datastax.loader.executor.api.statement.BulkSimpleStatement;
+import com.datastax.loader.engine.internal.statement.BulkSimpleStatement;
 
 /** */
 public class BulkSimpleStatementPrinter

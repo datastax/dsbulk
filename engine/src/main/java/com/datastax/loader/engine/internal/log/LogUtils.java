@@ -7,7 +7,7 @@
 package com.datastax.loader.engine.internal.log;
 
 import com.datastax.loader.connectors.api.Record;
-import com.datastax.loader.engine.internal.schema.UnmappableStatement;
+import com.datastax.loader.engine.internal.statement.UnmappableStatement;
 import java.io.PrintWriter;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
