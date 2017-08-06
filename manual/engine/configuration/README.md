@@ -6,7 +6,7 @@ Settings can be specified in [HOCON] format, or in flattened properties format.
 
 For example, to set the protocol version to use, you can either use the following HOCON format:
 
-```json
+```hocon
 driver {
   protocol {
     version = V4
@@ -416,6 +416,21 @@ The following options can be configured:
           
         Defaults to `ISO_LOCAL_TIME`.
 
+
+* `schema.mapping`
+    Schema-mapping-specific settings.
+
+    * `input-null-word` [string]
+
+        Value in input to map to null in DSE.
+        Defaults to `null`.
+
+    * `null-to-unset` [boolean]
+
+        Whether or not to map `null` input values to "unset" in DSE, meaning don't
+        modify a potentially pre-existing value of this field for this row. `null`
+        input includes the value from the input-null-word setting above.
+        Defaults to true.
 
 * `monitoring`
 

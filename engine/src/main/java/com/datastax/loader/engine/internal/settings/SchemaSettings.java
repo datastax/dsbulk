@@ -25,22 +25,27 @@ import java.util.Set;
 public class SchemaSettings {
 
   private final Config config;
+  private final Config fieldMappingConfig;
 
   private KeyspaceMetadata keyspace;
   private TableMetadata table;
   private String keyspaceName;
   private String tableName;
 
-  public SchemaSettings(Config config) {
+  SchemaSettings(Config config) {
     this.config = config;
+    fieldMappingConfig =
+        config
+            .withoutPath("mapping.null-to-unset")
+            .withoutPath("mapping.input-null-word")
+            .getConfig("mapping");
   }
 
   public RecordMapper newRecordMapper(Session session) {
     DefaultMapping mapping = null;
-    if (config.hasPath("mapping")) {
+    if (!fieldMappingConfig.isEmpty()) {
       mapping = new DefaultMapping();
-      for (Map.Entry<String, Object> entry :
-          config.getConfig("mapping").root().unwrapped().entrySet()) {
+      for (Map.Entry<String, Object> entry : fieldMappingConfig.root().unwrapped().entrySet()) {
         Object key = entry.getKey();
         // Since the config library doesn't allow integer map keys,
         // parse them now if possible
@@ -60,7 +65,7 @@ public class SchemaSettings {
       table = keyspace.getTable(tableName);
       Preconditions.checkNotNull(table);
     }
-    if (!config.hasPath("mapping")) {
+    if (fieldMappingConfig.isEmpty()) {
       Preconditions.checkState(keyspace != null && table != null);
       mapping = inferMapping();
     }
@@ -73,7 +78,13 @@ public class SchemaSettings {
       query = inferQuery(mapping);
     }
     PreparedStatement ps = session.prepare(query);
-    return new RecordMapper(ps, mapping);
+    return new RecordMapper(
+        ps,
+        mapping,
+        config.getIsNull("mapping.input-null-word")
+            ? null
+            : config.getString("mapping.input-null-word"),
+        config.getBoolean("mapping.null-to-unset"));
   }
 
   private DefaultMapping inferMapping() {

@@ -7,12 +7,14 @@
 
 Year,Make,Model,Description,Price
 1997,Ford,E350,"ac, abs, moon",3000.00
-1999,Chevy,"Venture ""Extended Edition""","",4900.00
+1999,Chevy,"Venture \"Extended Edition\"","",4900.00
+2100,Tesla,S,My Car,3210.50
+2100,,"",NIL,5555.50
 
 # Look, a multi line value. And blank rows around it!
 
 1996,Jeep,Grand Cherokee,"MUST SELL!
 air, moon roof, loaded",4799.00
-1999,Chevy,"Venture ""Extended Edition, Very Large""",,5000.00
-,,"Venture ""Extended Edition""","",4900.00
+1999,Chevy,"Venture \"Extended Edition, Very Large\"",,5000.00
+,,"Venture \"Extended Edition\"","",4900.00
 

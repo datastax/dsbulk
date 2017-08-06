@@ -58,7 +58,11 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_mapper_when_mapping_keyspace_and_table_provided() throws Exception {
     Config config =
-        ConfigFactory.parseString("mapping = { 0 = c2 , 2 = c1 }, keyspace=ks, table=t1");
+        ConfigFactory.parseString(
+            "mapping = { 0 = c2 , 2 = c1 }, "
+                + "mapping.null-to-unset = true, "
+                + "mapping.input-null-word = null, "
+                + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
     assertThat(recordMapper).isNotNull();
@@ -69,13 +73,18 @@ public class SchemaSettingsTest {
         .containsOnlyKeys(0, 2)
         .containsValue("c1")
         .containsValue("c2");
+    assertThat(recordMapper.getNullToUnset()).isTrue();
+    assertThat(recordMapper.getNullWord()).isNull();
   }
 
   @Test
   public void should_create_mapper_when_mapping_and_statement_provided() throws Exception {
     Config config =
         ConfigFactory.parseString(
-            "mapping = { 0 = c2 , 2 = c1 }, statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"");
+            "mapping = { 0 = c2 , 2 = c1 }, "
+                + "mapping.null-to-unset = true, "
+                + "mapping.input-null-word = null, "
+                + "statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
     assertThat(recordMapper).isNotNull();
@@ -86,11 +95,17 @@ public class SchemaSettingsTest {
         .containsOnlyKeys(0, 2)
         .containsValue("c1")
         .containsValue("c2");
+    assertThat(recordMapper.getNullToUnset()).isTrue();
+    assertThat(recordMapper.getNullWord()).isNull();
   }
 
   @Test
   public void should_create_mapper_when_keyspace_and_table_provided() throws Exception {
-    Config config = ConfigFactory.parseString("keyspace=ks, table=t1");
+    Config config =
+        ConfigFactory.parseString(
+            "mapping.null-to-unset = true, "
+                + "mapping.input-null-word = null, "
+                + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
     assertThat(recordMapper).isNotNull();
@@ -101,5 +116,49 @@ public class SchemaSettingsTest {
         .containsOnlyKeys(0, 1, "c1", "c2")
         .containsValue("c1")
         .containsValue("c2");
+    assertThat(recordMapper.getNullToUnset()).isTrue();
+    assertThat(recordMapper.getNullWord()).isNull();
+  }
+
+  @Test
+  public void should_create_mapper_when_null_to_unset_is_false() throws Exception {
+    Config config =
+        ConfigFactory.parseString(
+            "mapping.null-to-unset = false, "
+                + "mapping.input-null-word = null, "
+                + "keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c1,c2) VALUES (:c1,:c2)");
+    assertThat(((DefaultMapping) recordMapper.getMapping()))
+        .containsOnlyKeys(0, 1, "c1", "c2")
+        .containsValue("c1")
+        .containsValue("c2");
+    assertThat(recordMapper.getNullToUnset()).isFalse();
+    assertThat(recordMapper.getNullWord()).isNull();
+  }
+
+  @Test
+  public void should_create_mapper_when_null_word_is_provided() throws Exception {
+    Config config =
+        ConfigFactory.parseString(
+            "mapping.null-to-unset = false, "
+                + "mapping.input-null-word = \"NIL\", "
+                + "keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c1,c2) VALUES (:c1,:c2)");
+    assertThat(((DefaultMapping) recordMapper.getMapping()))
+        .containsOnlyKeys(0, 1, "c1", "c2")
+        .containsValue("c1")
+        .containsValue("c2");
+    assertThat(recordMapper.getNullToUnset()).isFalse();
+    assertThat(recordMapper.getNullWord()).isEqualTo("NIL");
   }
 }

@@ -19,6 +19,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
+import org.jetbrains.annotations.TestOnly;
 
 /** */
 public class RecordMapper {
@@ -27,28 +28,54 @@ public class RecordMapper {
 
   private final Mapping mapping;
 
-  public RecordMapper(PreparedStatement insertStatement, Mapping mapping) {
-    this.insertStatement = insertStatement;
-    this.mapping = mapping;
+  /** Value in input that we treat as null in the loader. */
+  private final String nullWord;
+
+  /** Whether to map null input to "unset" */
+  private final boolean nullToUnset;
+
+  /** Static that represents a converted value that we do not want to insert. */
+  private static final Object UNSET = new Object();
+
+  private final BoundStatementFactory boundStatementFactory;
+
+  public RecordMapper(
+      PreparedStatement insertStatement, Mapping mapping, String nullWord, boolean nullToUnset) {
+    this(
+        insertStatement,
+        mapping,
+        nullWord,
+        nullToUnset,
+        (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
   }
 
-  public Mapping getMapping() {
-    return mapping;
+  RecordMapper(
+      PreparedStatement insertStatement,
+      Mapping mapping,
+      String nullWord,
+      boolean nullToUnset,
+      BoundStatementFactory boundStatementFactory) {
+    this.insertStatement = insertStatement;
+    this.mapping = mapping;
+    this.nullWord = nullWord;
+    this.nullToUnset = nullToUnset;
+    this.boundStatementFactory = boundStatementFactory;
   }
 
   public Statement map(Record record) throws MalformedURLException {
     Object field = null;
-    Object variable = null;
+    String variable = null;
     try {
       if (record instanceof MappedRecord) {
         MappedRecord mappedRecord = (MappedRecord) record;
-        BoundStatement bs = new BulkBoundStatement<>(mappedRecord, insertStatement);
+        BoundStatement bs =
+            boundStatementFactory.createBoundStatement(mappedRecord, insertStatement);
         for (Object f : mappedRecord.fields()) {
           field = f;
           Object raw = mappedRecord.getFieldValue(field);
           variable = mapping.map(field);
           if (variable != null) {
-            bindColumn(bs, raw, variable);
+            bindColumn(bs, maybe_convert_null(raw), variable);
           }
         }
         return bs;
@@ -60,6 +87,40 @@ public class RecordMapper {
       return new UnmappableStatement(getLocation(record, field, variable), record, e);
     }
     throw new IllegalStateException("Unknown Record implementation: " + record.getClass());
+  }
+
+  @TestOnly
+  public Mapping getMapping() {
+    return mapping;
+  }
+
+  @TestOnly
+  public String getNullWord() {
+    return nullWord;
+  }
+
+  @TestOnly
+  public boolean getNullToUnset() {
+    return nullToUnset;
+  }
+
+  @TestOnly
+  interface BoundStatementFactory {
+    BoundStatement createBoundStatement(MappedRecord mappedRecord, PreparedStatement statement);
+  }
+
+  private Object maybe_convert_null(Object raw) {
+    // If the raw value is the null-word, the input represents null. Set result accordingly.
+    Object result = null;
+    if (raw != null && !(nullWord != null && nullWord.equals(raw))) {
+      result = raw;
+    }
+
+    // Account for nullToUnset.
+    if (result == null && nullToUnset) {
+      result = UNSET;
+    }
+    return result;
   }
 
   private static URL getLocation(Record record, Object field, Object variable) {
@@ -86,16 +147,16 @@ public class RecordMapper {
     return location;
   }
 
-  private static void bindColumn(BoundStatement bs, Object raw, Object variable) {
-    if (raw == null) {
-      // TODO null -> unset
-      if (variable instanceof String) bs.setToNull((String) variable);
-      else bs.setToNull((int) variable);
+  private static void bindColumn(BoundStatement bs, Object convertedValue, String variable) {
+    if (convertedValue == UNSET) {
+      return;
+    }
+
+    if (convertedValue == null) {
+      bs.setToNull(variable);
     } else {
-      @SuppressWarnings("unchecked")
-      Class<Object> targetClass = (Class<Object>) raw.getClass();
-      if (variable instanceof String) bs.set(((String) variable), raw, targetClass);
-      else bs.set(((int) variable), raw, targetClass);
+      //noinspection unchecked
+      bs.set(variable, convertedValue, (Class<Object>) convertedValue.getClass());
     }
   }
 }
