@@ -140,6 +140,20 @@
       </dependency>
 
       <dependency>
+        <groupId>com.datastax.dse</groupId>
+        <artifactId>dse-java-driver-core</artifactId>
+        <version>${driver.version}</version>
+        <classifier>sources</classifier>
+      </dependency>
+
+      <dependency>
+        <groupId>com.datastax.dse</groupId>
+        <artifactId>dse-java-driver-extras</artifactId>
+        <version>${driver.version}</version>
+        <classifier>sources</classifier>
+      </dependency>
+
+      <dependency>
         <groupId>org.reactivestreams</groupId>
         <artifactId>reactive-streams</artifactId>
         <version>${reactive-streams.version}</version>
@@ -548,6 +562,20 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
           <artifactId>nexus-staging-maven-plugin</artifactId>
           <version>1.6.8</version>
           <extensions>true</extensions>
+        </plugin>
+
+        <plugin>
+          <groupId>org.codehaus.gmavenplus</groupId>
+          <artifactId>gmavenplus-plugin</artifactId>
+          <version>1.5</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.codehaus.groovy</groupId>
+              <artifactId>groovy-all</artifactId>
+              <version>2.4.12</version>
+              <scope>runtime</scope>
+            </dependency>
+          </dependencies>
         </plugin>
 
       </plugins>

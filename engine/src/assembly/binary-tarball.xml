@@ -34,22 +34,46 @@
     </fileSet>
 
     <fileSet>
-      <directory>../docs</directory>
+      <directory>../manual</directory>
     </fileSet>
 
     <fileSet>
-      <directory>target/apidocs</directory>
+      <directory>${project.build.directory}/apidocs</directory>
       <outputDirectory>apidocs</outputDirectory>
+    </fileSet>
+
+    <fileSet>
+      <directory>${project.build.directory}/conf</directory>
+      <outputDirectory>conf</outputDirectory>
     </fileSet>
 
   </fileSets>
 
   <dependencySets>
+
     <dependencySet>
       <outputDirectory>lib</outputDirectory>
       <useProjectArtifact>true</useProjectArtifact>
       <scope>runtime</scope>
+      <excludes>
+        <!-- Guava dependency that must be kept during build, but can be discarded now -->
+        <exclude>org.codehaus.mojo:animal-sniffer-annotations*</exclude>
+        <!-- do not include source jars here -->
+        <exclude>com.datastax.*:*:jar:sources:*</exclude>
+      </excludes>
     </dependencySet>
+
+    <dependencySet>
+      <outputDirectory>src</outputDirectory>
+      <useProjectArtifact>true</useProjectArtifact>
+      <scope>runtime</scope>
+      <includes>
+        <include>com.datastax.*:*:jar:sources:*</include>
+      </includes>
+      <unpack>false</unpack>
+      <outputFileNameMapping>${artifact.artifactId}-${artifact.version}-src.zip</outputFileNameMapping>
+    </dependencySet>
+
   </dependencySets>
 
   <moduleSets>
@@ -57,11 +81,9 @@
     <!-- sources for all modules -->
     <moduleSet>
       <useAllReactorProjects>true</useAllReactorProjects>
-      <includes>
-        <include>com.datastax.dse:datastax-loader-executor-api</include>
-        <include>com.datastax.dse:datastax-loader-executor-rxjava</include>
-        <include>com.datastax.dse:datastax-loader-connectors-*</include>
-      </includes>
+      <excludes>
+        <exclude>com.datastax.dse:datastax-loader-integration-tests</exclude>
+      </excludes>
       <binaries>
         <unpack>false</unpack>
         <attachmentClassifier>sources</attachmentClassifier>

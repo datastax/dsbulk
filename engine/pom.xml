@@ -119,6 +119,20 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- source artifacts -->
+
+    <dependency>
+      <groupId>com.datastax.dse</groupId>
+      <artifactId>dse-java-driver-core</artifactId>
+      <classifier>sources</classifier>
+    </dependency>
+
+    <dependency>
+      <groupId>com.datastax.dse</groupId>
+      <artifactId>dse-java-driver-extras</artifactId>
+      <classifier>sources</classifier>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -128,23 +142,30 @@
     <plugins>
 
       <plugin>
-        <artifactId>maven-source-plugin</artifactId>
+        <groupId>org.codehaus.gmavenplus</groupId>
+        <artifactId>gmavenplus-plugin</artifactId>
+        <version>1.5</version>
+        <executions>
+          <execution>
+            <id>merge-config</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>execute</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
-          <skipSource>true</skipSource>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <artifactId>maven-install-plugin</artifactId>
-        <configuration>
-          <skip>true</skip>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <artifactId>maven-deploy-plugin</artifactId>
-        <configuration>
-          <skip>true</skip>
+          <scripts>
+            <script><![CDATA[
+            import com.typesafe.config.*
+            import java.nio.file.*
+            Config config = ConfigFactory.defaultReference().withOnlyPath("datastax-loader")
+            def string = config.root().render(ConfigRenderOptions.defaults().setOriginComments(false))
+            def conf = Paths.get("${project.build.directory}/conf")
+            Files.createDirectories(conf)
+            Files.write(conf.resolve("reference.conf"), string.getBytes("UTF-8"))
+          ]]></script>
+          </scripts>
         </configuration>
       </plugin>
 
@@ -237,6 +258,8 @@
                 <descriptor>src/assembly/binary-tarball.xml</descriptor>
               </descriptors>
               <tarLongFileMode>posix</tarLongFileMode>
+              <!-- do not deploy final binary distribution -->
+              <attach>false</attach>
             </configuration>
           </plugin>
           <plugin>
