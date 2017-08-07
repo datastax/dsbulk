@@ -114,7 +114,7 @@
     <dependency>
       <groupId>org.jetbrains</groupId>
       <artifactId>annotations</artifactId>
-      <scope>compile</scope>
+      <scope>provided</scope>
     </dependency>
 
   </dependencies>

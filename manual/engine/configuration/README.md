@@ -417,13 +417,13 @@ The following options can be configured:
         Defaults to `ISO_LOCAL_TIME`.
 
 
-* `schema.mapping`
-    Schema-mapping-specific settings.
+* `schema`
+    Schema-specific settings.
 
-    * `input-null-word` [string]
+    * `input-null-words` [string list]
 
-        Value in input to map to null in DSE.
-        Defaults to `null`.
+        Values in input to map to null in DSE.
+        Defaults to empty.
 
     * `null-to-unset` [boolean]
 

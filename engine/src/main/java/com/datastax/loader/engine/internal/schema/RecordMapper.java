@@ -19,7 +19,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
-import org.jetbrains.annotations.TestOnly;
+import java.util.List;
+import java.util.function.BiFunction;
 
 /** */
 public class RecordMapper {
@@ -28,23 +29,23 @@ public class RecordMapper {
 
   private final Mapping mapping;
 
-  /** Value in input that we treat as null in the loader. */
-  private final String nullWord;
+  /** Values in input that we treat as null in the loader. */
+  private final List<String> nullWords;
 
   /** Whether to map null input to "unset" */
   private final boolean nullToUnset;
 
-  /** Static that represents a converted value that we do not want to insert. */
-  private static final Object UNSET = new Object();
-
-  private final BoundStatementFactory boundStatementFactory;
+  private final BiFunction<MappedRecord, PreparedStatement, BoundStatement> boundStatementFactory;
 
   public RecordMapper(
-      PreparedStatement insertStatement, Mapping mapping, String nullWord, boolean nullToUnset) {
+      PreparedStatement insertStatement,
+      Mapping mapping,
+      List<String> nullWords,
+      boolean nullToUnset) {
     this(
         insertStatement,
         mapping,
-        nullWord,
+        nullWords,
         nullToUnset,
         (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
   }
@@ -52,30 +53,29 @@ public class RecordMapper {
   RecordMapper(
       PreparedStatement insertStatement,
       Mapping mapping,
-      String nullWord,
+      List<String> nullWords,
       boolean nullToUnset,
-      BoundStatementFactory boundStatementFactory) {
+      BiFunction<MappedRecord, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
     this.mapping = mapping;
-    this.nullWord = nullWord;
+    this.nullWords = nullWords;
     this.nullToUnset = nullToUnset;
     this.boundStatementFactory = boundStatementFactory;
   }
 
-  public Statement map(Record record) throws MalformedURLException {
+  public Statement map(Record record) {
     Object field = null;
     String variable = null;
     try {
       if (record instanceof MappedRecord) {
         MappedRecord mappedRecord = (MappedRecord) record;
-        BoundStatement bs =
-            boundStatementFactory.createBoundStatement(mappedRecord, insertStatement);
+        BoundStatement bs = boundStatementFactory.apply(mappedRecord, insertStatement);
         for (Object f : mappedRecord.fields()) {
           field = f;
           Object raw = mappedRecord.getFieldValue(field);
           variable = mapping.map(field);
           if (variable != null) {
-            bindColumn(bs, maybe_convert_null(raw), variable);
+            bindColumn(bs, raw, variable);
           }
         }
         return bs;
@@ -87,40 +87,6 @@ public class RecordMapper {
       return new UnmappableStatement(getLocation(record, field, variable), record, e);
     }
     throw new IllegalStateException("Unknown Record implementation: " + record.getClass());
-  }
-
-  @TestOnly
-  public Mapping getMapping() {
-    return mapping;
-  }
-
-  @TestOnly
-  public String getNullWord() {
-    return nullWord;
-  }
-
-  @TestOnly
-  public boolean getNullToUnset() {
-    return nullToUnset;
-  }
-
-  @TestOnly
-  interface BoundStatementFactory {
-    BoundStatement createBoundStatement(MappedRecord mappedRecord, PreparedStatement statement);
-  }
-
-  private Object maybe_convert_null(Object raw) {
-    // If the raw value is the null-word, the input represents null. Set result accordingly.
-    Object result = null;
-    if (raw != null && !(nullWord != null && nullWord.equals(raw))) {
-      result = raw;
-    }
-
-    // Account for nullToUnset.
-    if (result == null && nullToUnset) {
-      result = UNSET;
-    }
-    return result;
   }
 
   private static URL getLocation(Record record, Object field, Object variable) {
@@ -147,8 +113,15 @@ public class RecordMapper {
     return location;
   }
 
-  private static void bindColumn(BoundStatement bs, Object convertedValue, String variable) {
-    if (convertedValue == UNSET) {
+  private void bindColumn(BoundStatement bs, Object raw, String variable) {
+    // If the raw value is one of the null-words, the input represents null.
+    Object convertedValue = raw;
+    if (raw == null || (raw instanceof String && nullWords.contains(raw))) {
+      convertedValue = null;
+    }
+
+    // Account for nullToUnset.
+    if (convertedValue == null && nullToUnset) {
       return;
     }
 
