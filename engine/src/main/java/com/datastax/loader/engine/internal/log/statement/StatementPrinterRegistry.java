@@ -52,12 +52,12 @@ public final class StatementPrinterRegistry {
    * @return The best {@link StatementPrinter printer} for the given statement. Cannot be {@code
    *     null}.
    */
-  public <S extends Statement> StatementPrinter<? super S> findPrinter(Class<?> statementClass) {
+  public StatementPrinter<Statement> findPrinter(Class<?> statementClass) {
     StatementPrinter<?> printer = lookupPrinter(statementClass, printers);
     if (printer == null) printer = lookupPrinter(statementClass, BUILT_IN_PRINTERS);
     assert printer != null;
     @SuppressWarnings("unchecked")
-    StatementPrinter<? super S> sp = (StatementPrinter<? super S>) printer;
+    StatementPrinter<Statement> sp = (StatementPrinter<Statement>) printer;
     return sp;
   }
 

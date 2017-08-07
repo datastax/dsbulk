@@ -56,7 +56,7 @@ public class StatementBatcher {
      * Groups together statements that share the same replica set. This mode might yield better
      * results for small clusters and lower replication factors, but tends to perform equally well
      * or even worse than {@link #PARTITION_KEY} for larger clusters or high replication factors
-     * (i.e. RF > 3).
+     * (i.e. RF &gt; 3).
      *
      * <p>Note that this mode can only work if the statements to batch have their {@link
      * Statement#getKeyspace() keypsace} set. If this condition is not met, the batcher will
@@ -105,21 +105,20 @@ public class StatementBatcher {
    * {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
-   * @param batchMode The {@link BatchMode batch mode} to use; cannot be {@code null}.
+   * @param batchMode The batch mode to use; cannot be {@code null}.
    */
   public StatementBatcher(Cluster cluster, BatchMode batchMode) {
     this(cluster, batchMode, BatchStatement.Type.UNLOGGED);
   }
 
   /**
-   * Creates a new {@link StatementBatcher} that produces batches of the given {@link
-   * com.datastax.driver.core.BatchStatement.Type batch type}, operates in the specified {@link
-   * BatchMode batch mode} and uses the given {@link Cluster} as its source for the {@link
-   * ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
+   * Creates a new {@link StatementBatcher} that produces batches of the given {@code batchType},
+   * operates in the specified {@code batchMode} and uses the given {@link Cluster} as its source
+   * for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
-   * @param batchMode The {@link BatchMode batch mode} to use; cannot be {@code null}.
-   * @param batchType The {@link BatchStatement.Type batch type} to use; cannot be {@code null}.
+   * @param batchMode The batch mode to use; cannot be {@code null}.
+   * @param batchType The batch type to use; cannot be {@code null}.
    */
   public StatementBatcher(Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType) {
     this.cluster = Objects.requireNonNull(cluster);

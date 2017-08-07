@@ -68,8 +68,8 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
    * Sets the maximum number of "in-flight" requests. In other words, sets the maximum amount of
    * concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard
    * against workflows that generate more requests that they can handle. The default is {@link
-   * AbstractBulkExecutor#DEFAULT_MAX_INFLIGHT_REQUESTS}. Setting this option to any negative value
-   * will disable it.
+   * com.datastax.loader.executor.api.AbstractBulkExecutor#DEFAULT_MAX_INFLIGHT_REQUESTS}. Setting
+   * this option to any negative value will disable it.
    *
    * @param maxInFlightRequests the maximum number of "in-flight" requests.
    * @return this builder (for method chaining).
@@ -83,8 +83,9 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
   /**
    * Sets the maximum number of concurrent requests per second. This acts as a safeguard against
    * workflows that could overwhelm the cluster with more requests that it can handle. The default
-   * is {@value AbstractBulkExecutor#DEFAULT_MAX_REQUESTS_PER_SECOND}. Setting this option to any
-   * negative value will disable it.
+   * is {@value
+   * com.datastax.loader.executor.api.AbstractBulkExecutor#DEFAULT_MAX_REQUESTS_PER_SECOND}. Setting
+   * this option to any negative value will disable it.
    *
    * @param maxRequestsPerSecond the maximum number of concurrent requests per second.
    * @return this builder (for method chaining).
@@ -115,9 +116,9 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
    *
    * <p>By default, the internal executor is a {@link ThreadPoolExecutor} configured with 0 threads
    * initially, but the amount of threads is allowed to grow up to 4 times the number of available
-   * cores. Its {@link ThreadPoolExecutor#getRejectedExecutionHandler() RejectedExecutionHandler} is
-   * {@link ThreadPoolExecutor.CallerRunsPolicy}, which is a simple way to apply backpressure to
-   * upstream producers.
+   * cores. Its {@link java.util.concurrent.ThreadPoolExecutor#getRejectedExecutionHandler()
+   * RejectedExecutionHandler} is {@link java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy},
+   * which is a simple way to apply backpressure to upstream producers.
    *
    * @param executor the {@link Executor} to use.
    * @return this builder (for method chaining).

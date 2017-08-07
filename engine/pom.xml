@@ -26,6 +26,13 @@
     Execution engine and binary distribution of the DataStax Loader.
   </description>
 
+  <properties>
+    <joda.version>2.9.9</joda.version>
+    <jsr353-api.version>1.0</jsr353-api.version>
+    <esri.version>1.2.1</esri.version>
+    <reactor-core.version>3.0.7.RELEASE</reactor-core.version>
+  </properties>
+
   <dependencies>
 
     <dependency>
@@ -161,10 +168,57 @@
                   <goal>jar</goal>
                 </goals>
                 <configuration>
-                  <includeDependencySources>false</includeDependencySources>
+                  <includeDependencySources>true</includeDependencySources>
+                  <includeTransitiveDependencySources>true</includeTransitiveDependencySources>
+                  <dependencySourceIncludes>
+                    <dependencySourceInclude>com.datastax.*</dependencySourceInclude>
+                  </dependencySourceIncludes>
+                  <excludePackageNames>*.internal:internal.*</excludePackageNames>
+                  <!-- required unfortunately because javadocs from the java driver do not comply -->
+                  <additionalparam>-Xdoclint:none</additionalparam>
                 </configuration>
               </execution>
             </executions>
+            <configuration>
+              <additionalDependencies>
+                <!--
+                dependencies from this project;
+                not used in the binary distribution but required
+                for javadoc generation
+                -->
+                <additionalDependency>
+                  <!-- cannot use a bom here -->
+                  <groupId>io.projectreactor</groupId>
+                  <artifactId>reactor-core</artifactId>
+                  <version>${reactor-core.version}</version>
+                </additionalDependency>
+                <!--
+                dependencies from the java driver;
+                not used in this project but required
+                for javadoc generation
+                -->
+                <additionalDependency>
+                  <groupId>org.osgi</groupId>
+                  <artifactId>org.osgi.core</artifactId>
+                  <version>4.3.0</version>
+                </additionalDependency>
+                <additionalDependency>
+                  <groupId>joda-time</groupId>
+                  <artifactId>joda-time</artifactId>
+                  <version>${joda.version}</version>
+                </additionalDependency>
+                <additionalDependency>
+                  <groupId>javax.json</groupId>
+                  <artifactId>javax.json-api</artifactId>
+                  <version>${jsr353-api.version}</version>
+                </additionalDependency>
+                <additionalDependency>
+                  <groupId>com.esri.geometry</groupId>
+                  <artifactId>esri-geometry-api</artifactId>
+                  <version>${esri.version}</version>
+                </additionalDependency>
+              </additionalDependencies>
+            </configuration>
           </plugin>
           <plugin>
             <artifactId>maven-assembly-plugin</artifactId>

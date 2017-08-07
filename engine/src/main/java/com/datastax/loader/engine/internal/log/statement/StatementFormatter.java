@@ -145,8 +145,9 @@ public final class StatementFormatter {
      * <p>If the query string length exceeds this threshold, printers should truncate it.
      *
      * @param maxQueryStringLength the maximum length allowed for query strings.
-     * @throws IllegalArgumentException if the value is not > 0, or {@value
-     *     StatementFormatterLimits#UNLIMITED} (unlimited).
+     * @throws IllegalArgumentException if the value is not &gt; 0, or {@value
+     *     com.datastax.loader.engine.internal.log.statement.StatementFormatterLimits#UNLIMITED}
+     *     (unlimited).
      * @return this (for method chaining).
      */
     public Builder withMaxQueryStringLength(int maxQueryStringLength) {
@@ -166,8 +167,9 @@ public final class StatementFormatter {
      *
      * @param maxBoundValueLength the maximum length, in numbers of printed characters, allowed for
      *     a single bound value.
-     * @throws IllegalArgumentException if the value is not > 0, or {@value
-     *     StatementFormatterLimits#UNLIMITED} (unlimited).
+     * @throws IllegalArgumentException if the value is not &gt; 0, or {@value
+     *     com.datastax.loader.engine.internal.log.statement.StatementFormatterLimits#UNLIMITED}
+     *     (unlimited).
      * @return this (for method chaining).
      */
     public Builder withMaxBoundValueLength(int maxBoundValueLength) {
@@ -186,8 +188,9 @@ public final class StatementFormatter {
      * <p>If the number of bound values exceeds this threshold, printers should truncate it.
      *
      * @param maxBoundValues the maximum number of printed bound values.
-     * @throws IllegalArgumentException if the value is not > 0, or {@value
-     *     StatementFormatterLimits#UNLIMITED} (unlimited).
+     * @throws IllegalArgumentException if the value is not &gt; 0, or {@value
+     *     com.datastax.loader.engine.internal.log.statement.StatementFormatterLimits#UNLIMITED}
+     *     (unlimited).
      * @return this (for method chaining).
      */
     public Builder withMaxBoundValues(int maxBoundValues) {
@@ -209,8 +212,9 @@ public final class StatementFormatter {
      *
      * @param maxInnerStatements the maximum number of printed inner statements of a {@link
      *     BatchStatement}.
-     * @throws IllegalArgumentException if the value is not >= 0, or {@value
-     *     StatementFormatterLimits#UNLIMITED} (unlimited).
+     * @throws IllegalArgumentException if the value is not &gt;= 0, or {@value
+     *     com.datastax.loader.engine.internal.log.statement.StatementFormatterLimits#UNLIMITED}
+     *     (unlimited).
      * @return this (for method chaining).
      */
     public Builder withMaxInnerStatements(int maxInnerStatements) {
@@ -263,13 +267,14 @@ public final class StatementFormatter {
    * @return The statement as a formatted string.
    * @throws StatementFormatException if the formatting failed.
    */
-  public <S extends Statement> String format(
-      S statement,
+  public String format(
+      Statement statement,
       StatementFormatVerbosity verbosity,
       ProtocolVersion protocolVersion,
       CodecRegistry codecRegistry) {
     try {
-      StatementPrinter<? super S> printer = printerRegistry.findPrinter(statement.getClass());
+      StatementPrinter<? super Statement> printer =
+          printerRegistry.findPrinter(statement.getClass());
       assert printer != null : "Could not find printer for statement class " + statement.getClass();
       StatementWriter out =
           new StatementWriter(
