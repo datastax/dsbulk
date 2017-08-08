@@ -48,15 +48,14 @@ The engine collects and reports the following metrics for each operation:
 
 Metrics are collected and reported to two channels:
 
-1. The console: a summary is printed for each component. A typical output for a write operation is as follows:
-
-
+1. The console: a summary is printed for each component at a configurable rate (5 seconds by default). A typical output for a write operation is as follows:
+    ```
     2017-08-03 10:25:50,293 INFO  Records: total: 75865, successful: 75865, failed: 0, mean: 34127 records/second
     2017-08-03 10:25:50,293 INFO  Mappings: total: 75865, successful: 75865, failed: 0, mean: 33856 mappings/second
     2017-08-03 10:25:50,294 INFO  Batches: total: 10765, avg batch size 7.05
     2017-08-03 10:25:50,296 INFO  Writes: total: 75865, successful: 72369, failed: 3496; 32865 writes/second (mean 10.34, 75p 15.98, 99p 21.99 milliseconds)
     2017-08-03 10:25:50,296 INFO  Reads: total: 0, successful: 0, failed: 0; 0 reads/second (mean 0.00, 75p 0.00, 99p 0.00 milliseconds)
-
+    ```
 2. JMX: if enabled, all the available metrics are exposed under the following MBean hierarchy:
 
 * `com.datastax.loader`
