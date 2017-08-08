@@ -27,16 +27,12 @@ import java.nio.ByteBuffer;
  * This class exposes utility methods to help {@link StatementPrinter statement printers} in
  * formatting a statement.
  *
- * <p>
- *
  * <p>Instances of this class are designed to format one single statement; they keep internal
  * counters such as the current number of printed bound values, and for this reason, they should not
  * be reused to format more than one statement. When formatting more than one statement (e.g. when
  * formatting a {@link BatchStatement} and its children), one should call {@link
  * #createChildWriter()} to create child instances of the main writer to format each individual
  * statement.
- *
- * <p>
  *
  * <p>This class is NOT thread-safe.
  */
@@ -74,8 +70,6 @@ public final class StatementWriter implements Appendable {
 
   /**
    * Creates and returns a child {@link StatementWriter}.
-   *
-   * <p>
    *
    * <p>A child writer shares the same buffer as its parent, but has its own independent state. It
    * is most useful when dealing with inner statements in batches (each inner statement should use a
@@ -165,6 +159,7 @@ public final class StatementWriter implements Appendable {
    * Appends the statement's class name and hash code, as done by {@link Object#toString()}.
    *
    * @param statement The statement to format.
+   * @return this (for method chaining).
    */
   public StatementWriter appendClassNameAndHashCode(Statement statement) {
     String fqcn = statement.getClass().getName();
@@ -182,12 +177,8 @@ public final class StatementWriter implements Appendable {
   /**
    * Appends the given fragment as a query string fragment.
    *
-   * <p>
-   *
    * <p>This method can be called multiple times, in case the printer needs to compute the query
    * string by pieces.
-   *
-   * <p>
    *
    * <p>This methods also keeps track of the amount of characters used so far to print the query
    * string, and automatically detects when the query string exceeds {@link
