@@ -74,7 +74,7 @@ public class SchemaSettings {
     }
     PreparedStatement ps = session.prepare(query);
     return new RecordMapper(
-        ps, mapping, config.getStringList("input-null-words"), config.getBoolean("null-to-unset"));
+        ps, mapping, config.getStringList("null-words"), config.getBoolean("null-to-unset"));
   }
 
   private DefaultMapping inferMapping() {

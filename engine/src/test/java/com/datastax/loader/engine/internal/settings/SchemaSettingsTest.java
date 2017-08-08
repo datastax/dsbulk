@@ -62,7 +62,7 @@ public class SchemaSettingsTest {
         ConfigFactory.parseString(
             "mapping = { 0 = c2 , 2 = c1 }, "
                 + "null-to-unset = true, "
-                + "input-null-words = [], "
+                + "null-words = [], "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
@@ -84,7 +84,7 @@ public class SchemaSettingsTest {
         ConfigFactory.parseString(
             "mapping = { 0 = c2 , 2 = c1 }, "
                 + "null-to-unset = true, "
-                + "input-null-words = [], "
+                + "null-words = [], "
                 + "statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
@@ -104,7 +104,7 @@ public class SchemaSettingsTest {
   public void should_create_mapper_when_keyspace_and_table_provided() throws Exception {
     Config config =
         ConfigFactory.parseString(
-            "null-to-unset = true, " + "input-null-words = [], " + "keyspace=ks, table=t1");
+            "null-to-unset = true, " + "null-words = [], " + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
     assertThat(recordMapper).isNotNull();
@@ -123,7 +123,7 @@ public class SchemaSettingsTest {
   public void should_create_mapper_when_null_to_unset_is_false() throws Exception {
     Config config =
         ConfigFactory.parseString(
-            "null-to-unset = false, " + "input-null-words = [], " + "keyspace=ks, table=t1");
+            "null-to-unset = false, " + "null-words = [], " + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
     assertThat(recordMapper).isNotNull();
@@ -143,7 +143,7 @@ public class SchemaSettingsTest {
     Config config =
         ConfigFactory.parseString(
             "null-to-unset = false, "
-                + "input-null-words = [\"NIL\", \"NULL\"], "
+                + "null-words = [\"NIL\", \"NULL\"], "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);

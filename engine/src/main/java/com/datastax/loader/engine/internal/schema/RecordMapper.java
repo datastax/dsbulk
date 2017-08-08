@@ -116,7 +116,7 @@ public class RecordMapper {
   private void bindColumn(BoundStatement bs, Object raw, String variable) {
     // If the raw value is one of the null-words, the input represents null.
     Object convertedValue = raw;
-    if (raw == null || (raw instanceof String && nullWords.contains(raw))) {
+    if (raw == null || nullWords.contains(raw.toString())) {
       convertedValue = null;
     }
 

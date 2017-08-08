@@ -16,7 +16,7 @@ driver {
 
 Or alternatively, you can use the following properties format:
 
-```properties
+```hocon
 driver.protocol.version=V4
 ```
  
@@ -35,8 +35,7 @@ The following options can be configured:
          a DNS name that resolves to multiple A-records, all the corresponding addresses will be used.
          Do not use "localhost" as the host name (since it resolves to both IPv4 and IPv6 addresses on
          some platforms).
-         Note that the current version of Cassandra (3.11) requires all nodes in a cluster to share the
-         same port.
+         Note that all nodes in a cluster must share the same port.
          Defaults to `["127.0.0.1:9042"]`.
 
     * `protocol`
@@ -420,17 +419,61 @@ The following options can be configured:
 * `schema`
     Schema-specific settings.
 
-    * `input-null-words` [string list]
+    * `keyspace` [string]
 
-        Values in input to map to null in DSE.
+        The keyspace to connect to.
+        If not specified, then the "statement" setting below must be specified.
+
+    * `table` [string]
+
+        The destination table.
+        If not specified, then the "statement" setting below must be specified.
+
+    * `statement` [string]
+
+        The INSERT or UPDATE statement to use to load data.
+        If not specified, the loader will infer the statement
+        based on the destination table's metadata using all availble columns.
+        Note that statements *must* use named bound variables;
+        positional bound variables will not work.
+        Their names usually match those of the columns in the destination table,
+        but this is not a strict requirement; it is however required that
+        their names match those specified in the mapping. See "mapping" setting below.
+
+    * `null-words` [string list]
+
+        Values to map to null in the database when loading data.
         Defaults to empty.
 
     * `null-to-unset` [boolean]
 
-        Whether or not to map `null` input values to "unset" in DSE, meaning don't
+        Whether or not to map `null` input values to "unset" in the database, meaning don't
         modify a potentially pre-existing value of this field for this row. `null`
-        input includes the value from the input-null-word setting above.
+        input includes the values from the null-words setting above.
+        Note that setting this to false leads to tombstones being created in the database 
+        to represent null.
         Defaults to true.
+
+    * `mapping` [map]
+
+        The field-to-column mapping to use.
+        If not specified, the loader will apply a strict one-to-one mapping
+        between the source fields and the target table.
+        If that is not what you want, then you must supply an explicit mapping.
+        Mappings should be specified as a HOCON map of the following form:
+        - Indexed data sources:
+          { 0 = col1, 1 = col2, 2 = col3 }
+          where 0, 1, 2, etc. are the zero-based indices of fields in the source data;
+          and col1, col2, col3 are bound variable names in the insert statement.
+        - Mapped data sources:
+          { fieldA = col1, fieldB = col2, fieldC = col3 }
+          where fieldA, fieldB, fieldC, etc. are field names in the source data;
+          and col1, col2, col3 are bound variable names in the insert statement.
+        The exact type of mapping to use depends on the connector being used.
+        Some connectors can only produce indexed records; others can only produce
+        mapped ones, while others are capable of producing both indexed and mapped
+        records at the same time. Refer to the connector's documentation
+        to know which kinds of mapping it supports.
 
 * `monitoring`
 

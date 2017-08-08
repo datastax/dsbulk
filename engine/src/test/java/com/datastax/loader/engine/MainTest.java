@@ -30,7 +30,7 @@ public class MainTest {
       "driver.query.consistency=ONE",
       "schema.keyspace=ks",
       "schema.table=t1",
-//      "schema.input-null-words=[\"NIL\", \"NULL\"]",
+//      "schema.null-words=[\"NIL\", \"NULL\"]",
 //      "schema.null-to-unset=false",
       "schema.mapping={0=year,1=make,2=model,3=description,4=price}"
     };
