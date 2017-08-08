@@ -93,7 +93,7 @@ public class CodecSettings {
 
   private final Config config;
 
-  public CodecSettings(Config config) {
+  CodecSettings(Config config) {
     this.config = config;
   }
 
@@ -204,8 +204,8 @@ public class CodecSettings {
         .map(str -> new StringTokenizer(str, ":"))
         .forEach(
             tokenizer -> {
-              builder.put(tokenizer.nextToken().toLowerCase(), true);
-              builder.put(tokenizer.nextToken().toLowerCase(), false);
+              builder.put(tokenizer.nextToken(), true);
+              builder.put(tokenizer.nextToken(), false);
             });
     return builder.build();
   }
@@ -213,8 +213,8 @@ public class CodecSettings {
   private static Map<Boolean, String> getBooleanOutputs(List<String> list) {
     StringTokenizer tokenizer = new StringTokenizer(list.get(0), ":");
     ImmutableMap.Builder<Boolean, String> builder = ImmutableMap.builder();
-    builder.put(true, tokenizer.nextToken().toLowerCase());
-    builder.put(false, tokenizer.nextToken().toLowerCase());
+    builder.put(true, tokenizer.nextToken());
+    builder.put(false, tokenizer.nextToken());
     return builder.build();
   }
 }

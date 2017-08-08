@@ -14,19 +14,15 @@ import org.junit.Test;
 
 public class StringToBooleanCodecTest {
 
-  Map<String, Boolean> inputs =
+  private Map<String, Boolean> inputs =
       ImmutableMap.<String, Boolean>builder().put("foo", true).put("bar", false).build();
-  Map<Boolean, String> outputs =
+  private Map<Boolean, String> outputs =
       ImmutableMap.<Boolean, String>builder().put(true, "foo").put(false, "bar").build();
   StringToBooleanCodec codec = new StringToBooleanCodec(inputs, outputs);
 
   @Test
   public void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
-        .convertsFrom("FOO")
-        .to(true)
-        .convertsFrom("BAR")
-        .to(false)
         .convertsFrom("foo")
         .to(true)
         .convertsFrom("bar")
@@ -51,5 +47,8 @@ public class StringToBooleanCodecTest {
   @Test
   public void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec).cannotConvertFrom("not a valid boolean");
+
+    // The codec is case-sensitive.
+    assertThat(codec).cannotConvertFrom("FOO");
   }
 }

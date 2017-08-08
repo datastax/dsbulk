@@ -25,7 +25,7 @@ public class StringToBooleanCodec extends ConvertingCodec<String, Boolean> {
     if (s == null || s.isEmpty()) {
       return null;
     }
-    Boolean b = inputs.get(s.toLowerCase());
+    Boolean b = inputs.get(s);
     if (b == null) {
       throw new InvalidTypeException("Invalid boolean value: " + s);
     }
