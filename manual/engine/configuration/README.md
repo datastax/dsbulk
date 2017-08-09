@@ -442,7 +442,7 @@ The following options can be configured:
 
     * `null-words` [string list]
 
-        Values to map to null in the database when loading data.
+        Values (case-sensitive) to map to null in the database when loading data.
         Defaults to empty.
 
     * `null-to-unset` [boolean]
