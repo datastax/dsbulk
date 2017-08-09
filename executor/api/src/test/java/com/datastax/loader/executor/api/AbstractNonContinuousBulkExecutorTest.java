@@ -31,83 +31,93 @@ import org.junit.Before;
 
 public abstract class AbstractNonContinuousBulkExecutorTest extends AbstractBulkExecutorTest {
 
-  ResultSetFuture successFuture1 = mock(ResultSetFuture.class);
-  ResultSetFuture successFuture2 = mock(ResultSetFuture.class);
+  ResultSetFuture successFuture1a = mock(ResultSetFuture.class);
+  ResultSetFuture successFuture1b = mock(ResultSetFuture.class);
+  ResultSetFuture successFuture2a = mock(ResultSetFuture.class);
   ResultSetFuture failedFuture = mock(ResultSetFuture.class);
 
-  ResultSet successfulResultSet1 = mock(ResultSet.class);
-  ResultSet successfulResultSet2 = mock(ResultSet.class);
+  ResultSet successfulResultSet1a = mock(ResultSet.class);
+  ResultSet successfulResultSet1b = mock(ResultSet.class);
+  ResultSet successfulResultSet2a = mock(ResultSet.class);
 
-  Row row1a = mock(Row.class);
-  Row row1b = mock(Row.class);
-  Row row1c = mock(Row.class);
-  Row row1d = mock(Row.class);
-  Row row2a = mock(Row.class);
+  Row row1aa = mock(Row.class);
+  Row row1ab = mock(Row.class);
+  Row row1ac = mock(Row.class);
+  Row row1ba = mock(Row.class);
+  Row row2aa = mock(Row.class);
 
-  List<Row> rows1 = Arrays.asList(row1a, row1b, row1c, row1d);
-  List<Row> rows2 = Collections.singletonList(row2a);
+  List<Row> page1a = Arrays.asList(row1aa, row1ab, row1ac);
+  List<Row> page1b = Collections.singletonList(row1ba);
+  List<Row> page2a = Collections.singletonList(row2aa);
 
   @Before
   public void setUpSession() throws ExecutionException, InterruptedException {
-
     when(session.executeAsync(any(SimpleStatement.class)))
         .thenAnswer(
             invocation -> {
               SimpleStatement stmt = (SimpleStatement) invocation.getArguments()[0];
               switch (stmt.getQueryString()) {
                 case "should succeed":
-                  return successFuture1;
+                  return successFuture1a;
                 case "should succeed 2":
-                  return successFuture2;
+                  return successFuture2a;
                 case "should fail":
                 default:
                   return failedFuture;
               }
             });
 
-    when(successFuture1.isDone()).thenReturn(true);
-    when(successFuture2.isDone()).thenReturn(true);
-    when(failedFuture.isDone()).thenReturn(true);
-
-    doAnswer(
-            invocation -> {
-              ((Runnable) invocation.getArguments()[0]).run();
-              return null;
-            })
-        .when(successFuture1)
-        .addListener(any(Runnable.class), any(Executor.class));
-    doAnswer(
-            invocation -> {
-              ((Runnable) invocation.getArguments()[0]).run();
-              return null;
-            })
-        .when(successFuture2)
-        .addListener(any(Runnable.class), any(Executor.class));
-    doAnswer(
-            invocation -> {
-              ((Runnable) invocation.getArguments()[0]).run();
-              return null;
-            })
-        .when(failedFuture)
-        .addListener(any(Runnable.class), any(Executor.class));
-
-    // request 1 (also used for write tests, but the resultset is not consumed)
-    when(successFuture1.get()).thenReturn(successfulResultSet1);
-    when(successfulResultSet1.iterator()).thenReturn(rows1.iterator());
-    when(successfulResultSet1.isFullyFetched()).thenReturn(true);
+    // request 1a (also used for write tests, but the resultset is not consumed)
+    when(successFuture1a.get()).thenReturn(successfulResultSet1a);
+    when(successFuture1a.isDone()).thenReturn(true);
+    when(successfulResultSet1a.iterator()).thenReturn(page1a.iterator());
+    when(successfulResultSet1a.getAvailableWithoutFetching()).thenReturn(page1a.size());
+    when(successfulResultSet1a.isFullyFetched()).thenReturn(true); // only useful in write tests
     ExecutionInfo executionInfo1a = mock(ExecutionInfo.class);
-    when(successfulResultSet1.getExecutionInfo()).thenReturn(executionInfo1a);
+    when(successfulResultSet1a.getExecutionInfo()).thenReturn(executionInfo1a);
     PagingState ps = mock(PagingState.class);
     when(executionInfo1a.getPagingState()).thenReturn(ps);
+    when(successfulResultSet1a.fetchMoreResults()).thenReturn(successFuture1b);
+    doAnswer(
+            invocation -> {
+              ((Runnable) invocation.getArguments()[0]).run();
+              return null;
+            })
+        .when(successFuture1a)
+        .addListener(any(Runnable.class), any(Executor.class));
 
-    // request 2
-    when(successFuture2.get()).thenReturn(successfulResultSet2);
-    when(successfulResultSet2.iterator()).thenReturn(rows2.iterator());
-    when(successfulResultSet2.isFullyFetched()).thenReturn(true);
-    when(successfulResultSet2.getAvailableWithoutFetching()).thenReturn(rows2.size());
+    // request 1b
+    when(successFuture1b.get()).thenReturn(successfulResultSet1b);
+    when(successFuture1b.isDone()).thenReturn(true);
+    when(successfulResultSet1b.iterator()).thenReturn(page1b.iterator());
+    when(successfulResultSet1b.getAvailableWithoutFetching()).thenReturn(page1b.size());
+    ExecutionInfo executionInfo1b = mock(ExecutionInfo.class);
+    when(successfulResultSet1b.getExecutionInfo()).thenReturn(executionInfo1b);
+    when(executionInfo1b.getPagingState()).thenReturn(null);
+    doAnswer(
+            invocation -> {
+              ((Runnable) invocation.getArguments()[0]).run();
+              return null;
+            })
+        .when(successFuture1b)
+        .addListener(any(Runnable.class), any(Executor.class));
+
+    // request 2a
+    when(successFuture2a.get()).thenReturn(successfulResultSet2a);
+    when(successFuture2a.isDone()).thenReturn(true);
+    when(successfulResultSet2a.iterator()).thenReturn(page2a.iterator());
+    when(successfulResultSet2a.getAvailableWithoutFetching()).thenReturn(page2a.size());
+    when(successfulResultSet2a.isFullyFetched()).thenReturn(true); // only useful in write tests
     ExecutionInfo executionInfo2a = mock(ExecutionInfo.class);
-    when(successfulResultSet2.getExecutionInfo()).thenReturn(executionInfo2a);
+    when(successfulResultSet2a.getExecutionInfo()).thenReturn(executionInfo2a);
     when(executionInfo2a.getPagingState()).thenReturn(null);
+    doAnswer(
+            invocation -> {
+              ((Runnable) invocation.getArguments()[0]).run();
+              return null;
+            })
+        .when(successFuture2a)
+        .addListener(any(Runnable.class), any(Executor.class));
 
     // failed request
     when(failedFuture.get())
@@ -116,6 +126,14 @@ public abstract class AbstractNonContinuousBulkExecutorTest extends AbstractBulk
                 new SyntaxError(
                     InetSocketAddress.createUnresolved("localhost", 9042),
                     "line 1:0 no viable alternative at input 'should' ([should]...)")));
+    when(failedFuture.isDone()).thenReturn(true);
+    doAnswer(
+            invocation -> {
+              ((Runnable) invocation.getArguments()[0]).run();
+              return null;
+            })
+        .when(failedFuture)
+        .addListener(any(Runnable.class), any(Executor.class));
 
     Cluster cluster = mock(Cluster.class);
     when(session.getCluster()).thenReturn(cluster);

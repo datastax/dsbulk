@@ -16,3 +16,4 @@
 - [new feature] DAT-19: Implement monitoring service.
 - [new feature] DAT-27: Support NULL and UNSET values.
 - [improvement] DAT-28: Support short class names for settings that expect a FQCN.
+- [improvement] DAT-44: Do not block a thread while reading results.

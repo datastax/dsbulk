@@ -15,7 +15,6 @@ import com.datastax.loader.executor.api.internal.result.DefaultReadResult;
 import com.datastax.loader.executor.api.listener.ExecutionListener;
 import com.datastax.loader.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.RateLimiter;
-import java.util.Iterator;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
@@ -35,20 +34,21 @@ public class ReadResultPublisher extends ResultSetPublisher<ReadResult> {
     super(statement, session, executor, listener, rateLimiter, requestPermits, failFast);
   }
 
-  @SuppressWarnings("WhileLoopReplaceableByForEach")
   @Override
   protected void consumePage(Subscriber<? super ReadResult> subscriber, ResultSet rs) {
-    Iterator<Row> it = rs.iterator();
-    while (it.hasNext()) {
-      if (canceled) break;
-      if (!rs.isFullyFetched() && rs.getAvailableWithoutFetching() == fetchThreshold) {
-        rs.fetchMoreResults();
-      }
-      Row row = it.next();
+    for (Row row : rs) {
       DefaultReadResult result = new DefaultReadResult(statement, row);
+      if (canceled) {
+        break;
+      }
       onNext(subscriber, result);
     }
-    onComplete(subscriber);
+    boolean lastPage = rs.getExecutionInfo().getPagingState() == null;
+    if (lastPage) {
+      onComplete(subscriber);
+    } else if (!canceled) {
+      fetchNextPage(subscriber, rs::fetchMoreResults);
+    }
   }
 
   @Override
