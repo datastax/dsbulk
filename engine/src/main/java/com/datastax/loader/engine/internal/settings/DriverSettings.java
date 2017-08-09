@@ -7,6 +7,7 @@
 package com.datastax.loader.engine.internal.settings;
 
 import static com.datastax.loader.engine.internal.ReflectionUtils.newInstance;
+import static com.datastax.loader.engine.internal.ReflectionUtils.resolveClass;
 
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.HostDistance;
@@ -17,6 +18,8 @@ import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.policies.NoSpeculativeExecutionPolicy;
+import com.datastax.driver.core.policies.RetryPolicy;
+import com.datastax.driver.core.policies.SpeculativeExecutionPolicy;
 import com.datastax.driver.dse.DseCluster;
 import com.google.common.base.Preconditions;
 import com.typesafe.config.Config;
@@ -33,7 +36,7 @@ public class DriverSettings {
   private final Config config;
   private final String operationId;
 
-  public DriverSettings(Config config, String operationId) {
+  DriverSettings(Config config, String operationId) {
     this.config = config;
     this.operationId = operationId;
   }
@@ -90,14 +93,19 @@ public class DriverSettings {
         .withAddressTranslator(newInstance(config.getString("address-translator")));
 
     builder.withLoadBalancingPolicy(newInstance(config.getString("policy.lbp")));
-    String retry = config.getString("policy.retry");
-    if (retry.equals(DEFAULT_RETRY_POLICY_FQDN))
+    Class<RetryPolicy> retryPolicyClass = resolveClass(config.getString("policy.retry"));
+    if (retryPolicyClass.getName().equals(DEFAULT_RETRY_POLICY_FQDN)) {
       builder.withRetryPolicy(DefaultRetryPolicy.INSTANCE);
-    else builder.withRetryPolicy(newInstance(retry));
-    String specexec = config.getString("policy.specexec");
-    if (specexec.equals(NO_SPECULATIVE_EXECUTION_POLICY_FQDN))
+    } else {
+      builder.withRetryPolicy(newInstance(retryPolicyClass));
+    }
+    Class<SpeculativeExecutionPolicy> speculativeExecutionPolicyClass =
+        resolveClass(config.getString("policy.specexec"));
+    if (speculativeExecutionPolicyClass.getName().equals(NO_SPECULATIVE_EXECUTION_POLICY_FQDN)) {
       builder.withSpeculativeExecutionPolicy(NoSpeculativeExecutionPolicy.INSTANCE);
-    else builder.withSpeculativeExecutionPolicy(newInstance(specexec));
+    } else {
+      builder.withSpeculativeExecutionPolicy(newInstance(speculativeExecutionPolicyClass));
+    }
     // TODO configure policies
 
     if (config.hasPath("auth.provider")) {
