@@ -43,12 +43,12 @@ public class BatchSettings {
 
   private final Config config;
 
-  public BatchSettings(Config config) {
+  BatchSettings(Config config) {
     this.config = config;
   }
 
   public FlowableTransformer<Statement, Statement> newStatementBatcher(Cluster cluster) {
     SortingMode sortingMode = config.getBoolean("sorted") ? SORTED : UNSORTED;
-    return sortingMode.newStatementBatcher(cluster, config.getInt("buffer-size"));
+    return sortingMode.newStatementBatcher(cluster, config.getInt("bufferSize"));
   }
 }

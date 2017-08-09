@@ -72,7 +72,7 @@ public class CSVConnectorBenchmark {
       csvFile = dest.resolve("ip-by-country.csv").toUri().toURL();
       cluster.close();
       args = new String[]{
-          "log.output-directory=./target",
+          "log.outputDirectory=./target",
           "connector.class=com.datastax.loader.connectors.csv.CSVConnector",
           "connector.url=\"" + csvFile.toExternalForm() + "\"",
           "schema.keyspace=csv_connector_benchmark",

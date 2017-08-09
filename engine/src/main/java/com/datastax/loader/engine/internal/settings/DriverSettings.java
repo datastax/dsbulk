@@ -39,7 +39,7 @@ public class DriverSettings {
   public DseCluster newCluster() {
     DseCluster.Builder builder = DseCluster.builder().withClusterName(operationId + "-driver");
     config
-        .getStringList("contact-points")
+        .getStringList("contactPoints")
         .forEach(
             s -> {
               String[] tokens = s.split(":");
@@ -78,14 +78,14 @@ public class DriverSettings {
             new QueryOptions()
                 .setConsistencyLevel(config.getEnum(ConsistencyLevel.class, "query.consistency"))
                 .setSerialConsistencyLevel(
-                    config.getEnum(ConsistencyLevel.class, "query.serial-consistency"))
-                .setFetchSize(config.getInt("query.fetch-size"))
+                    config.getEnum(ConsistencyLevel.class, "query.serialConsistency"))
+                .setFetchSize(config.getInt("query.fetchSize"))
                 .setDefaultIdempotence(config.getBoolean("query.idempotence")))
         .withSocketOptions(
             new SocketOptions()
-                .setReadTimeoutMillis((int) config.getDuration("socket.read-timeout").toMillis()))
-        .withTimestampGenerator(newInstance(config.getString("timestamp-generator")))
-        .withAddressTranslator(newInstance(config.getString("address-translator")));
+                .setReadTimeoutMillis((int) config.getDuration("socket.readTimeout").toMillis()))
+        .withTimestampGenerator(newInstance(config.getString("timestampGenerator")))
+        .withAddressTranslator(newInstance(config.getString("addressTranslator")));
 
     builder.withLoadBalancingPolicy(newInstance(config.getString("policy.lbp")));
     Class<RetryPolicy> retryPolicyClass = resolveClass(config.getString("policy.retry"));

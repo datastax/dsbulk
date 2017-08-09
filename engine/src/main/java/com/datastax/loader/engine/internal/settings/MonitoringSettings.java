@@ -20,7 +20,7 @@ public class MonitoringSettings {
   private final Config config;
   private final String operationId;
 
-  public MonitoringSettings(Config config, String operationId) {
+  MonitoringSettings(Config config, String operationId) {
     this.config = config;
     this.operationId = operationId;
   }
@@ -33,11 +33,11 @@ public class MonitoringSettings {
             .setPriority(Thread.MIN_PRIORITY)
             .build();
     ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(1, threadFactory);
-    TimeUnit rateUnit = config.getEnum(TimeUnit.class, "rate-unit");
-    TimeUnit durationUnit = config.getEnum(TimeUnit.class, "duration-unit");
-    Duration reportInterval = config.getDuration("report-interval");
-    long expectedWrites = config.getLong("expected-writes");
-    long expectedReads = config.getLong("expected-reads");
+    TimeUnit rateUnit = config.getEnum(TimeUnit.class, "rateUnit");
+    TimeUnit durationUnit = config.getEnum(TimeUnit.class, "durationUnit");
+    Duration reportInterval = config.getDuration("reportInterval");
+    long expectedWrites = config.getLong("expectedWrites");
+    long expectedReads = config.getLong("expectedReads");
     boolean jmx = config.getBoolean("jmx");
     return new MetricsManager(
         operationId,

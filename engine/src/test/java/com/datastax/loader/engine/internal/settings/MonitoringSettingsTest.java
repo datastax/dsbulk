@@ -40,11 +40,11 @@ public class MonitoringSettingsTest {
   public void should_create_metrics_manager_with_user_supplied_settings() throws Exception {
     Config config =
         ConfigFactory.parseString(
-            "rate-unit = MINUTES, "
-                + "duration-unit = SECONDS, "
-                + "report-interval = 30 minutes, "
-                + "expected-writes = 1000, "
-                + "expected-reads = 50,"
+            "rateUnit = MINUTES, "
+                + "durationUnit = SECONDS, "
+                + "reportInterval = 30 minutes, "
+                + "expectedWrites = 1000, "
+                + "expectedReads = 50,"
                 + "jmx = false");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     MetricsManager metricsManager = settings.newMetricsManager();

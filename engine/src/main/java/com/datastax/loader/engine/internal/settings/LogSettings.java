@@ -29,10 +29,10 @@ public class LogSettings {
   private final Config config;
   private final Path operationDirectory;
 
-  public LogSettings(Config config, String operationId)
+  LogSettings(Config config, String operationId)
       throws MalformedURLException, URISyntaxException {
     this.config = config;
-    Path outputDirectory = SettingsUtils.parseAbsolutePath(config.getString("output-directory"));
+    Path outputDirectory = SettingsUtils.parseAbsolutePath(config.getString("outputDirectory"));
     operationDirectory = outputDirectory.resolve(operationId);
     System.setProperty(OPERATION_DIRECTORY_MDC_KEY, operationDirectory.toFile().getAbsolutePath());
     LOGGER.info("Operation output directory: {}", operationDirectory);
@@ -41,18 +41,18 @@ public class LogSettings {
   public LogManager newLogManager() {
     StatementFormatter formatter =
         StatementFormatter.builder()
-            .withMaxQueryStringLength(config.getInt("stmt.max-query-string-length"))
-            .withMaxBoundValueLength(config.getInt("stmt.max-bound-value-length"))
-            .withMaxBoundValues(config.getInt("stmt.max-bound-values"))
-            .withMaxInnerStatements(config.getInt("stmt.max-inner-statements"))
+            .withMaxQueryStringLength(config.getInt("stmt.maxQueryStringLength"))
+            .withMaxBoundValueLength(config.getInt("stmt.maxBoundValueLength"))
+            .withMaxBoundValues(config.getInt("stmt.maxBoundValues"))
+            .withMaxInnerStatements(config.getInt("stmt.maxInnerStatements"))
             .build();
     StatementFormatVerbosity verbosity =
         config.getEnum(StatementFormatVerbosity.class, "stmt.verbosity");
-    int threads = SettingsUtils.parseNumThreads(config.getString("max-threads"));
+    int threads = SettingsUtils.parseNumThreads(config.getString("maxThreads"));
     ExecutorService executor =
         Executors.newFixedThreadPool(
             threads, new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
     return new LogManager(
-        operationDirectory, executor, config.getInt("max-errors"), formatter, verbosity);
+        operationDirectory, executor, config.getInt("maxErrors"), formatter, verbosity);
   }
 }
