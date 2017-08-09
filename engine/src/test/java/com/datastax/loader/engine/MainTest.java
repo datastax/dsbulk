@@ -25,9 +25,13 @@ public class MainTest {
       "log.output-directory=\"file:./target\"",
       "connector.name=csv",
       "connector.url=\"" + MainTest.class.getResource("/good.csv").toExternalForm() + "\"",
+      "connector.comment=\"#\"",
+      "connector.header=true",
       "driver.query.consistency=ONE",
       "schema.keyspace=ks",
       "schema.table=t1",
+//      "schema.null-words=[\"NIL\", \"NULL\"]",
+//      "schema.null-to-unset=false",
       "schema.mapping={0=year,1=make,2=model,3=description,4=price}"
     };
 

@@ -31,7 +31,7 @@ public class SchemaSettings {
   private String keyspaceName;
   private String tableName;
 
-  public SchemaSettings(Config config) {
+  SchemaSettings(Config config) {
     this.config = config;
   }
 
@@ -73,7 +73,8 @@ public class SchemaSettings {
       query = inferQuery(mapping);
     }
     PreparedStatement ps = session.prepare(query);
-    return new RecordMapper(ps, mapping);
+    return new RecordMapper(
+        ps, mapping, config.getStringList("null-words"), config.getBoolean("null-to-unset"));
   }
 
   private DefaultMapping inferMapping() {

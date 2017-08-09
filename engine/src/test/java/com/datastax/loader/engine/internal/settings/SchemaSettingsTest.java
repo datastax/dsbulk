@@ -28,6 +28,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
 public class SchemaSettingsTest {
@@ -58,48 +59,105 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_mapper_when_mapping_keyspace_and_table_provided() throws Exception {
     Config config =
-        ConfigFactory.parseString("mapping = { 0 = c2 , 2 = c1 }, keyspace=ks, table=t1");
+        ConfigFactory.parseString(
+            "mapping = { 0 = c2 , 2 = c1 }, "
+                + "null-to-unset = true, "
+                + "null-words = [], "
+                + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c2,c1) VALUES (:c2,:c1)");
-    assertThat(((DefaultMapping) recordMapper.getMapping()))
+    assertThat((DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"))
         .containsOnlyKeys(0, 2)
         .containsValue("c1")
         .containsValue("c2");
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isTrue();
+    assertThat((List) Whitebox.getInternalState(recordMapper, "nullWords")).isEmpty();
   }
 
   @Test
   public void should_create_mapper_when_mapping_and_statement_provided() throws Exception {
     Config config =
         ConfigFactory.parseString(
-            "mapping = { 0 = c2 , 2 = c1 }, statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"");
+            "mapping = { 0 = c2 , 2 = c1 }, "
+                + "null-to-unset = true, "
+                + "null-words = [], "
+                + "statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue()).isEqualTo("insert into ks.table (c1,c2) values (:c1,:c2)");
-    assertThat(((DefaultMapping) recordMapper.getMapping()))
+    assertThat((DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"))
         .containsOnlyKeys(0, 2)
         .containsValue("c1")
         .containsValue("c2");
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isTrue();
+    assertThat((List) Whitebox.getInternalState(recordMapper, "nullWords")).isEmpty();
   }
 
   @Test
   public void should_create_mapper_when_keyspace_and_table_provided() throws Exception {
-    Config config = ConfigFactory.parseString("keyspace=ks, table=t1");
+    Config config =
+        ConfigFactory.parseString(
+            "null-to-unset = true, " + "null-words = [], " + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c1,c2) VALUES (:c1,:c2)");
-    assertThat(((DefaultMapping) recordMapper.getMapping()))
+    assertThat((DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"))
         .containsOnlyKeys(0, 1, "c1", "c2")
         .containsValue("c1")
         .containsValue("c2");
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isTrue();
+    assertThat((List) Whitebox.getInternalState(recordMapper, "nullWords")).isEmpty();
+  }
+
+  @Test
+  public void should_create_mapper_when_null_to_unset_is_false() throws Exception {
+    Config config =
+        ConfigFactory.parseString(
+            "null-to-unset = false, " + "null-words = [], " + "keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c1,c2) VALUES (:c1,:c2)");
+    assertThat((DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"))
+        .containsOnlyKeys(0, 1, "c1", "c2")
+        .containsValue("c1")
+        .containsValue("c2");
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isFalse();
+    assertThat((List) Whitebox.getInternalState(recordMapper, "nullWords")).isEmpty();
+  }
+
+  @Test
+  public void should_create_mapper_when_null_words_are_provided() throws Exception {
+    Config config =
+        ConfigFactory.parseString(
+            "null-to-unset = false, "
+                + "null-words = [\"NIL\", \"NULL\"], "
+                + "keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c1,c2) VALUES (:c1,:c2)");
+    assertThat((DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"))
+        .containsOnlyKeys(0, 1, "c1", "c2")
+        .containsValue("c1")
+        .containsValue("c2");
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isFalse();
+    //noinspection unchecked
+    assertThat((List<String>) Whitebox.getInternalState(recordMapper, "nullWords"))
+        .containsOnly("NIL", "NULL");
   }
 }
