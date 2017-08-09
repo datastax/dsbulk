@@ -30,10 +30,10 @@ public final class ReflectionUtils {
 
   public static <T> Class<T> resolveClass(String className) {
     for (String packagePrefix : PACKAGE_PREFIXES) {
-      String fqdn = packagePrefix + className;
+      String fqcn = packagePrefix + className;
       try {
         //noinspection unchecked
-        return (Class<T>) Class.forName(fqdn);
+        return (Class<T>) Class.forName(fqcn);
       } catch (ClassNotFoundException e) {
         // swallow
       }

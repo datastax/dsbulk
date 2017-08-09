@@ -28,11 +28,6 @@ import java.net.InetSocketAddress;
 /** */
 public class DriverSettings {
 
-  private static final String DEFAULT_RETRY_POLICY_FQDN = DefaultRetryPolicy.class.getName();
-
-  private static final String NO_SPECULATIVE_EXECUTION_POLICY_FQDN =
-      NoSpeculativeExecutionPolicy.class.getName();
-
   private final Config config;
   private final String operationId;
 
@@ -94,14 +89,14 @@ public class DriverSettings {
 
     builder.withLoadBalancingPolicy(newInstance(config.getString("policy.lbp")));
     Class<RetryPolicy> retryPolicyClass = resolveClass(config.getString("policy.retry"));
-    if (retryPolicyClass.getName().equals(DEFAULT_RETRY_POLICY_FQDN)) {
+    if (retryPolicyClass.equals(DefaultRetryPolicy.class)) {
       builder.withRetryPolicy(DefaultRetryPolicy.INSTANCE);
     } else {
       builder.withRetryPolicy(newInstance(retryPolicyClass));
     }
     Class<SpeculativeExecutionPolicy> speculativeExecutionPolicyClass =
         resolveClass(config.getString("policy.specexec"));
-    if (speculativeExecutionPolicyClass.getName().equals(NO_SPECULATIVE_EXECUTION_POLICY_FQDN)) {
+    if (speculativeExecutionPolicyClass.equals(NoSpeculativeExecutionPolicy.class)) {
       builder.withSpeculativeExecutionPolicy(NoSpeculativeExecutionPolicy.INSTANCE);
     } else {
       builder.withSpeculativeExecutionPolicy(newInstance(speculativeExecutionPolicyClass));
