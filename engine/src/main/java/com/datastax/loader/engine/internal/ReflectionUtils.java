@@ -6,16 +6,38 @@
  */
 package com.datastax.loader.engine.internal;
 
+import java.util.Arrays;
+import java.util.List;
+
 /** */
 public final class ReflectionUtils {
 
-  @SuppressWarnings("unchecked")
-  public static <T> T newInstance(String fqdn) {
+  private static final List<String> PACKAGE_PREFIXES =
+      Arrays.asList("", "com.datastax.driver.core.policies.", "com.datastax.driver.core.");
+
+  public static <T> T newInstance(String className) {
+    Class<T> cl = resolveClass(className);
+    return newInstance(cl);
+  }
+
+  public static <T> T newInstance(Class<T> cl) {
     try {
-      Class<T> cl = (Class<T>) Class.forName(fqdn);
       return cl.newInstance();
-    } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+    } catch (IllegalAccessException | InstantiationException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public static <T> Class<T> resolveClass(String className) {
+    for (String packagePrefix : PACKAGE_PREFIXES) {
+      String fqcn = packagePrefix + className;
+      try {
+        //noinspection unchecked
+        return (Class<T>) Class.forName(fqcn);
+      } catch (ClassNotFoundException e) {
+        // swallow
+      }
+    }
+    throw new RuntimeException(new ClassNotFoundException("Class " + className + " not found"));
   }
 }

@@ -14,3 +14,5 @@
 - [new feature] DAT-21: Implement CSV connector.
 - [improvement] DAT-34: Add grouping by replica set to token-aware batching.
 - [new feature] DAT-19: Implement monitoring service.
+- [new feature] DAT-27: Support NULL and UNSET values.
+- [improvement] DAT-28: Support short class names for settings that expect a FQCN.
