@@ -7,12 +7,23 @@
 
 Year,Make,Model,Description,Price
 1997,Ford,E350,"ac, abs, moon",3000.00
-1999,Chevy,"Venture ""Extended Edition""","",4900.00
+1999,Chevy,"Venture \"Extended Edition\"","",4900.00
+
+# For null testing, swap out pairs of these statements because
+# if one batch contains statements for the same primary key,
+# the result is non-deterministic: some columns get old value, some
+# new. Thus, run with the first two lines. Then run with the second two.
+# Evaluate the result of that.
+
+2017,Tesla,S,My Dream Car,123456.78
+2018,Tesla,"3",Cool Eco Car,35123.45
+#2017,,"",NIL,98765.43
+#2018,NULL,NULL,NULL,45987.65
 
 # Look, a multi line value. And blank rows around it!
 
 1996,Jeep,Grand Cherokee,"MUST SELL!
 air, moon roof, loaded",4799.00
-1999,Chevy,"Venture ""Extended Edition, Very Large""",,5000.00
-,,"Venture ""Extended Edition""","",4900.00
+1999,Chevy,"Venture \"Extended Edition, Very Large\"",,5000.00
+,,"Venture \"Extended Edition\"","",4900.00
 

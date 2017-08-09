@@ -19,6 +19,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.List;
+import java.util.function.BiFunction;
 
 /** */
 public class RecordMapper {
@@ -27,22 +29,47 @@ public class RecordMapper {
 
   private final Mapping mapping;
 
-  public RecordMapper(PreparedStatement insertStatement, Mapping mapping) {
+  /** Values in input that we treat as null in the loader. */
+  private final List<String> nullWords;
+
+  /** Whether to map null input to "unset" */
+  private final boolean nullToUnset;
+
+  private final BiFunction<MappedRecord, PreparedStatement, BoundStatement> boundStatementFactory;
+
+  public RecordMapper(
+      PreparedStatement insertStatement,
+      Mapping mapping,
+      List<String> nullWords,
+      boolean nullToUnset) {
+    this(
+        insertStatement,
+        mapping,
+        nullWords,
+        nullToUnset,
+        (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
+  }
+
+  RecordMapper(
+      PreparedStatement insertStatement,
+      Mapping mapping,
+      List<String> nullWords,
+      boolean nullToUnset,
+      BiFunction<MappedRecord, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
     this.mapping = mapping;
+    this.nullWords = nullWords;
+    this.nullToUnset = nullToUnset;
+    this.boundStatementFactory = boundStatementFactory;
   }
 
-  public Mapping getMapping() {
-    return mapping;
-  }
-
-  public Statement map(Record record) throws MalformedURLException {
+  public Statement map(Record record) {
     Object field = null;
-    Object variable = null;
+    String variable = null;
     try {
       if (record instanceof MappedRecord) {
         MappedRecord mappedRecord = (MappedRecord) record;
-        BoundStatement bs = new BulkBoundStatement<>(mappedRecord, insertStatement);
+        BoundStatement bs = boundStatementFactory.apply(mappedRecord, insertStatement);
         for (Object f : mappedRecord.fields()) {
           field = f;
           Object raw = mappedRecord.getFieldValue(field);
@@ -86,16 +113,23 @@ public class RecordMapper {
     return location;
   }
 
-  private static void bindColumn(BoundStatement bs, Object raw, Object variable) {
-    if (raw == null) {
-      // TODO null -> unset
-      if (variable instanceof String) bs.setToNull((String) variable);
-      else bs.setToNull((int) variable);
+  private void bindColumn(BoundStatement bs, Object raw, String variable) {
+    // If the raw value is one of the null-words, the input represents null.
+    Object convertedValue = raw;
+    if (raw == null || nullWords.contains(raw.toString())) {
+      convertedValue = null;
+    }
+
+    // Account for nullToUnset.
+    if (convertedValue == null && nullToUnset) {
+      return;
+    }
+
+    if (convertedValue == null) {
+      bs.setToNull(variable);
     } else {
-      @SuppressWarnings("unchecked")
-      Class<Object> targetClass = (Class<Object>) raw.getClass();
-      if (variable instanceof String) bs.set(((String) variable), raw, targetClass);
-      else bs.set(((int) variable), raw, targetClass);
+      //noinspection unchecked
+      bs.set(variable, convertedValue, (Class<Object>) convertedValue.getClass());
     }
   }
 }
