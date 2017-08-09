@@ -372,8 +372,7 @@ The following options can be configured:
  
         All possible combinations for `true:false`; the first combination is considered the default
         and used when formatting.
-        Combinations are all case-insensitive.
-        Defaults to `["1:0", "Y:N", "T:F", "YES:NO", "TRUE:FALSE"]`
+        Defaults to `["1:0", "Y:N", "y:n", "T:F", "t:f", "YES:NO", "yes:no", "Yes:No", "TRUE:FALSE", "true:false", "True:False"]`
 
     * `number ` [string]
 
