@@ -19,8 +19,6 @@ import org.reactivestreams.Subscriber;
 
 public abstract class ResultSetPublisher<T extends Result> extends ResultPublisher<T, ResultSet> {
 
-  protected final int fetchThreshold;
-
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
   protected ResultSetPublisher(
       Statement statement,
@@ -31,11 +29,6 @@ public abstract class ResultSetPublisher<T extends Result> extends ResultPublish
       Optional<Semaphore> requestPermits,
       boolean failFast) {
     super(statement, session, executor, listener, rateLimiter, requestPermits, failFast);
-    int fetchSize =
-        statement.getFetchSize() <= 0
-            ? session.getCluster().getConfiguration().getQueryOptions().getFetchSize()
-            : statement.getFetchSize();
-    fetchThreshold = Math.max(1, fetchSize / 4);
   }
 
   @Override
