@@ -29,7 +29,7 @@ public class ExecutorSettings {
 
   private final Config config;
 
-  public ExecutorSettings(Config config) {
+  ExecutorSettings(Config config) {
     this.config = config;
   }
 
@@ -38,15 +38,15 @@ public class ExecutorSettings {
       ContinuousRxJavaBulkExecutorBuilder builder =
           ContinuousRxJavaBulkExecutor.builder(((ContinuousPagingSession) session));
       configure(builder, executionListener);
-      Config continuousPagingConfig = config.getConfig("continuous-paging");
+      Config continuousPagingConfig = config.getConfig("continuousPaging");
       ContinuousPagingOptions options =
           ContinuousPagingOptions.builder()
               .withPageSize(
-                  continuousPagingConfig.getInt("page-size"),
+                  continuousPagingConfig.getInt("pageSize"),
                   continuousPagingConfig.getEnum(
-                      ContinuousPagingOptions.PageUnit.class, "page-unit"))
-              .withMaxPages(continuousPagingConfig.getInt("max-pages"))
-              .withMaxPagesPerSecond(continuousPagingConfig.getInt("max-pages-per-second"))
+                      ContinuousPagingOptions.PageUnit.class, "pageUnit"))
+              .withMaxPages(continuousPagingConfig.getInt("maxPages"))
+              .withMaxPagesPerSecond(continuousPagingConfig.getInt("maxPagesPerSecond"))
               .build();
       builder.withContinuousPagingOptions(options);
       return builder.build();
@@ -60,7 +60,7 @@ public class ExecutorSettings {
   private void configure(
       AbstractBulkExecutorBuilder<? extends RxJavaBulkExecutor> builder,
       ExecutionListener executionListener) {
-    String maxThreads = config.getString("max-threads");
+    String maxThreads = config.getString("maxThreads");
     int threads = SettingsUtils.parseNumThreads(maxThreads);
     ThreadPoolExecutor executor =
         new ThreadPoolExecutor(
@@ -74,8 +74,8 @@ public class ExecutorSettings {
     builder
         .withExecutor(executor)
         .withExecutionListener(executionListener)
-        .withMaxInFlightRequests(config.getInt("max-inflight"))
-        .withMaxRequestsPerSecond(config.getInt("max-per-second"))
+        .withMaxInFlightRequests(config.getInt("maxInflight"))
+        .withMaxRequestsPerSecond(config.getInt("maxPerSecond"))
         .failSafe();
   }
 }

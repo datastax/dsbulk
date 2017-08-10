@@ -22,7 +22,7 @@ public class MainTest {
     create table ks.t1 (Year int primary key,Make varchar,Model varchar,Description varchar,Price decimal);
      */
     String[] args = {
-      "log.output-directory=\"file:./target\"",
+      "log.outputDirectory=\"file:./target\"",
       "connector.name=csv",
       "connector.url=\"" + MainTest.class.getResource("/good.csv").toExternalForm() + "\"",
       "connector.comment=\"#\"",
@@ -30,8 +30,8 @@ public class MainTest {
       "driver.query.consistency=ONE",
       "schema.keyspace=ks",
       "schema.table=t1",
-//      "schema.null-words=[\"NIL\", \"NULL\"]",
-//      "schema.null-to-unset=false",
+      //      "schema.nullWords=[\"NIL\", \"NULL\"]",
+      //      "schema.nullToUnset=false",
       "schema.mapping={0=year,1=make,2=model,3=description,4=price}"
     };
 

@@ -50,7 +50,7 @@ public class BatchSettingsTest {
 
   @Test
   public void should_create_sorted_batcher_when_sorted_mode_provided() throws Exception {
-    Config config = ConfigFactory.parseString("sorted = true, buffer-size = 100");
+    Config config = ConfigFactory.parseString("sorted = true, bufferSize = 100");
     BatchSettings settings = new BatchSettings(config);
     FlowableTransformer<Statement, Statement> batcher = settings.newStatementBatcher(cluster);
     assertThat(batcher).isNotNull().isInstanceOf(RxJavaSortedStatementBatcher.class);
@@ -58,7 +58,7 @@ public class BatchSettingsTest {
 
   @Test
   public void should_create_unsorted_batcher_when_unsorted_mode_provided() throws Exception {
-    Config config = ConfigFactory.parseString("sorted = false, buffer-size = 100");
+    Config config = ConfigFactory.parseString("sorted = false, bufferSize = 100");
     BatchSettings settings = new BatchSettings(config);
     FlowableTransformer<Statement, Statement> batcher = settings.newStatementBatcher(cluster);
     assertThat(batcher).isNotNull().isInstanceOf(RxJavaUnsortedStatementBatcher.class);

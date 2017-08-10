@@ -48,11 +48,9 @@ public class RecordMapperTest {
     when(mapping.map(0)).thenReturn("f0");
     when(mapping.map(1)).thenReturn("f1");
     when(mapping.map(2)).thenReturn("f2");
-
   }
 
-  private void assertParameter(
-      int index, String expectedVariable, Object expectedValue) {
+  private void assertParameter(int index, String expectedVariable, Object expectedValue) {
     assertThat(variableCaptor.getAllValues().get(index)).isEqualTo(expectedVariable);
     assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
     assertThat(classCaptor.getAllValues().get(index)).isSameAs(expectedValue.getClass());
@@ -63,7 +61,11 @@ public class RecordMapperTest {
     when(record.getFieldValue(1)).thenReturn("NIL");
     RecordMapper mapper =
         new RecordMapper(
-            null, mapping, Collections.emptyList(), true, (mappedRecord, statement) -> boundStatement);
+            null,
+            mapping,
+            Collections.emptyList(),
+            true,
+            (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
 
@@ -81,7 +83,11 @@ public class RecordMapperTest {
     when(record.getFieldValue(1)).thenReturn(null);
     RecordMapper mapper =
         new RecordMapper(
-            null, mapping, Collections.emptyList(), true, (mappedRecord, statement) -> boundStatement);
+            null,
+            mapping,
+            Collections.emptyList(),
+            true,
+            (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
 
@@ -107,7 +113,8 @@ public class RecordMapperTest {
     assertThat(result).isSameAs(boundStatement);
 
     //noinspection unchecked
-    verify(boundStatement).set(variableCaptor.capture(), valueCaptor.capture(), classCaptor.capture());
+    verify(boundStatement)
+        .set(variableCaptor.capture(), valueCaptor.capture(), classCaptor.capture());
 
     assertParameter(0, "f0", 42);
   }
@@ -117,7 +124,11 @@ public class RecordMapperTest {
     when(record.getFieldValue(1)).thenReturn(null);
     RecordMapper mapper =
         new RecordMapper(
-            null, mapping, Collections.emptyList(), false, (mappedRecord, statement) -> boundStatement);
+            null,
+            mapping,
+            Collections.emptyList(),
+            false,
+            (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
 

@@ -93,7 +93,7 @@ public class CodecSettings {
 
   private final Config config;
 
-  public CodecSettings(Config config) {
+  CodecSettings(Config config) {
     this.config = config;
   }
 
@@ -102,7 +102,7 @@ public class CodecSettings {
     Map<String, Boolean> booleanInputs = getBooleanInputs(config.getStringList("boolean"));
     Map<Boolean, String> booleanOutputs = getBooleanOutputs(config.getStringList("boolean"));
     ThreadLocal<DecimalFormat> numberFormat = getNumberFormat(locale, config.getString("number"));
-    String timeZone = config.getString("time-zone");
+    String timeZone = config.getString("timeZone");
     DateTimeFormatter localDateFormat = getDateFormat(config.getString("date"), timeZone, locale);
     DateTimeFormatter localTimeFormat = getDateFormat(config.getString("time"), timeZone, locale);
     DateTimeFormatter timestampFormat =

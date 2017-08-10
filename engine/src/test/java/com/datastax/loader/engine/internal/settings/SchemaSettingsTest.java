@@ -61,8 +61,8 @@ public class SchemaSettingsTest {
     Config config =
         ConfigFactory.parseString(
             "mapping = { 0 = c2 , 2 = c1 }, "
-                + "null-to-unset = true, "
-                + "null-words = [], "
+                + "nullToUnset = true, "
+                + "nullWords = [], "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
@@ -83,8 +83,8 @@ public class SchemaSettingsTest {
     Config config =
         ConfigFactory.parseString(
             "mapping = { 0 = c2 , 2 = c1 }, "
-                + "null-to-unset = true, "
-                + "null-words = [], "
+                + "nullToUnset = true, "
+                + "nullWords = [], "
                 + "statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
@@ -104,7 +104,7 @@ public class SchemaSettingsTest {
   public void should_create_mapper_when_keyspace_and_table_provided() throws Exception {
     Config config =
         ConfigFactory.parseString(
-            "null-to-unset = true, " + "null-words = [], " + "keyspace=ks, table=t1");
+            "nullToUnset = true, " + "nullWords = [], " + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
     assertThat(recordMapper).isNotNull();
@@ -123,7 +123,7 @@ public class SchemaSettingsTest {
   public void should_create_mapper_when_null_to_unset_is_false() throws Exception {
     Config config =
         ConfigFactory.parseString(
-            "null-to-unset = false, " + "null-words = [], " + "keyspace=ks, table=t1");
+            "nullToUnset = false, " + "nullWords = [], " + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
     assertThat(recordMapper).isNotNull();
@@ -142,8 +142,8 @@ public class SchemaSettingsTest {
   public void should_create_mapper_when_null_words_are_provided() throws Exception {
     Config config =
         ConfigFactory.parseString(
-            "null-to-unset = false, "
-                + "null-words = [\"NIL\", \"NULL\"], "
+            "nullToUnset = false, "
+                + "nullWords = [\"NIL\", \"NULL\"], "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.newRecordMapper(session);

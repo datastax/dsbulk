@@ -28,7 +28,7 @@ The following options can be configured:
 
     Driver-specific settings.
  
-    * `contact-points` [string list]
+    * `contactPoints` [string list]
     
          The contact points to use for the initial connection to the cluster
          This must be a list of strings with each contact point specified as "host:port". If the host is
@@ -110,7 +110,7 @@ The following options can be configured:
             `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
             Defaults to `LOCAL_ONE`.
 
-        * `serial-consistency` [enum]
+        * `serialConsistency` [enum]
 
             The serial consistency level to use for writes.
             The allowed values are: `SERIAL` and `LOCAL_SERIAL`.
@@ -118,7 +118,7 @@ The following options can be configured:
             ignored otherwise.
             Defaults to `LOCAL_SERIAL`.
 
-        * `fetch-size` [int]
+        * `fetchSize` [int]
 
             The page size. This controls how many rows will be retrieved simultaneously in a single
             network round trip (the goal being to avoid loading too many results in memory at the same
@@ -135,12 +135,12 @@ The following options can be configured:
     
         Socket-related settings.
 
-        * `read-timeout` [duration]
+        * `readTimeout` [duration]
 
             How long the driver waits for a request to complete. This is a global limit on the duration
             of a session.execute() call, including any internal retries the driver might do.
 
-    * `timestamp-generator` [string]
+    * `timestampGenerator` [string]
     
         The fully-qualified class name of the timestamp generator to use.
         
@@ -153,7 +153,7 @@ The following options can be configured:
         
         Defaults to `com.datastax.driver.core.AtomicMonotonicTimestampGenerator`.
 
-    * `address-translator` [string]
+    * `addressTranslator` [string]
     
         The fully-qualified class name of the address translator to use.
         
@@ -209,7 +209,7 @@ The following options can be configured:
         otherwise the batching might not function properly.
         If in doubt, leave this settings to `false`.
 
-    * `buffer-size` [int]
+    * `bufferSize` [int]
 
         The buffer size to use when batching.
         Defaults to 1000.
@@ -218,7 +218,7 @@ The following options can be configured:
 
     Executor-specific settings.
 
-    * `max-threads` [string]
+    * `maxThreads` [string]
 
         The maximum number of threads to allocate for the executor.
         
@@ -228,7 +228,7 @@ The following options can be configured:
         
         Defaults to 4C.
 
-    * `max-inflight` [int]
+    * `maxInflight` [int]
         
         The maximum number of "in-flight" requests. In other words, sets the maximum number of
         concurrent uncompleted futures waiting for a response from the server. 
@@ -240,7 +240,7 @@ The following options can be configured:
         
         Setting this option to any negative value will disable it.
 
-    * `max-per-second` [int]
+    * `maxPerSecond` [int]
 
         The maximum number of concurrent requests per second. 
         
@@ -251,29 +251,29 @@ The following options can be configured:
         
         Setting this option to any negative value will disable it.
 
-    * `continuous-paging`
+    * `continuousPaging`
     
         Continuous-paging-specific settings.
         Only applicable for reads, and only if this feature is available in the remote cluster, ignored otherwise.
 
-        * `page-unit` [enum]
+        * `pageUnit` [enum]
         
             The unit to use for the page-size setting.
             Possible values are: `ROWS`, `BYTES`.
             Defaults to `ROWS`.
 
-        * `page-size` [int]
+        * `pageSize` [int]
 
             The size of the page. The unit to use
-            is determined by the page-unit settings.
+            is determined by the pageUnit settings.
             Defaults to 5000 (rows).
       
-        * `max-pages` [int]
+        * `maxPages` [int]
 
             The maximum number of pages to retrieve.
             Defaults to 0, which means retrieve all pages available.
       
-        * `max-pages-per-second` [int]
+        * `maxPagesPerSecond` [int]
 
             The maximum number of pages per second.
             Defaults to 0, which indicates no limit.
@@ -282,7 +282,7 @@ The following options can be configured:
 
     Log and error management settings.
 
-    * `output-directory` [string]
+    * `outputDirectory` [string]
 
         The output directory where all log files will be stored.
         Log files for a specific run will be located in a sub-directory
@@ -291,7 +291,7 @@ The following options can be configured:
         is basically a timestamp in the format: `yyyy_MM_dd_HH_mm_ss_nnnnnnnnn`.
         Defaults to `file:.`, which translates into the current directory.
 
-    * `max-threads` [string]
+    * `maxThreads` [string]
 
         The maximum number of threads to allocate to log files management.
         The special syntax "NC" can be used to specify a number of threads
@@ -299,7 +299,7 @@ The following options can be configured:
         if the number of cores is 8, then 4C = 4 * `8 = 32 threads.`
         Defaults to 4.
 
-    * `max-errors` [int]
+    * `maxErrors` [int]
 
         The maximum number of errors to tolerate before aborting
         the entire operation.
@@ -324,26 +324,26 @@ The following options can be configured:
             
             Defaults to `EXTENDED`.
         
-        * `max-query-string-length` [int]
+        * `maxQueryStringLength` [int]
 
             The maximum length for a query string. Query strings longer than this value will be truncated.
             Defaults to 500.
             Setting this value to -1 disables this feature (not recommended).
 
-        * `max-bound-values` [int]
+        * `maxBoundValues` [int]
 
             The maximum number of bound values to print. If the statement has more bound values than this limit,
             the exceeding values will not be printed.
             Defaults to 50.
             Setting this value to -1 disables this feature (not recommended).
 
-        * `max-bound-value-length` [int]
+        * `maxBoundValueLength` [int]
 
             The maximum length for a bound value. Bound values longer than this value will be truncated.
             Defaults to 50.
             Setting this value to -1 disables this feature (not recommended).
 
-        * `max-inner-statements` [int]
+        * `maxInnerStatements` [int]
 
             The maximum number of inner statements to print for a batch statement.
             Only applicable for batch statements, ignored otherwise.
@@ -361,7 +361,7 @@ The following options can be configured:
         The locale to use for locale-sensitive conversions.
         Defaults to `en_US` (US English).
 
-    * `time-zone` [string]
+    * `timeZone` [string]
         
         The time zone to use for temporal conversions that do not convey any explicit time zone information.
         See the [`java.time.ZoneId`](https://docs.oracle.com/javase/8/docs/api/java/time/ZoneId.html) javadocs for
@@ -440,16 +440,16 @@ The following options can be configured:
         but this is not a strict requirement; it is however required that
         their names match those specified in the mapping. See "mapping" setting below.
 
-    * `null-words` [string list]
+    * `nullWords` [string list]
 
         Values (case-sensitive) to map to null in the database when loading data.
         Defaults to empty.
 
-    * `null-to-unset` [boolean]
+    * `nullToUnset` [boolean]
 
         Whether or not to map `null` input values to "unset" in the database, meaning don't
         modify a potentially pre-existing value of this field for this row. `null`
-        input includes the values from the null-words setting above.
+        input includes the values from the nullWords setting above.
         Note that setting this to false leads to tombstones being created in the database 
         to represent null.
         Defaults to true.
@@ -479,7 +479,7 @@ The following options can be configured:
 
     Monitoring-specific settings.
 
-    * `report-interval` [duration]
+    * `reportInterval` [duration]
     
         The report interval for the console reporter.
         The console reporter will print useful metrics
@@ -488,19 +488,19 @@ The following options can be configured:
         to 1 second.
         Defaults to 5 seconds.
 
-    * `rate-unit` [enum]
+    * `rateUnit` [enum]
 
         The time unit to use when printing throughput rates.
         Valid values: all TimeUnit enum constants.
         Defaults to SECONDS.
 
-    * `duration-unit` [enum]
+    * `durationUnit` [enum]
 
         The time unit to use when printing latency durations.
         Valid values: all TimeUnit enum constants.
         Defaults to MILLISECONDS.
 
-    * `expected-writes` [long]
+    * `expectedWrites` [long]
 
         The expected total number of writes.
         This information is optional; if present,
@@ -508,7 +508,7 @@ The following options can be configured:
         the overall achievement percentage.
         Defaults to -1, which disables this feature.
 
-    * `expected-reads` [long]
+    * `expectedReads` [long]
 
         The expected total number of reads.
         This information is optional; if present,
