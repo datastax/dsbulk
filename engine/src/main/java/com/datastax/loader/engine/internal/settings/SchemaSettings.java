@@ -37,7 +37,7 @@ public class SchemaSettings {
 
   public RecordMapper newRecordMapper(Session session) {
     DefaultMapping mapping = null;
-    if (config.hasPath("mapping")) {
+    if (config.hasPath("mapping") && !config.getConfig("mapping").isEmpty()) {
       mapping = new DefaultMapping();
       for (Map.Entry<String, Object> entry :
           config.getConfig("mapping").root().unwrapped().entrySet()) {
@@ -60,7 +60,7 @@ public class SchemaSettings {
       table = keyspace.getTable(tableName);
       Preconditions.checkNotNull(table);
     }
-    if (!config.hasPath("mapping")) {
+    if (!config.hasPath("mapping") || config.getConfig("mapping").isEmpty()) {
       Preconditions.checkState(keyspace != null && table != null);
       mapping = inferMapping();
     }

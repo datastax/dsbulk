@@ -18,3 +18,4 @@
 - [improvement] DAT-28: Support short class names for settings that expect a FQCN.
 - [improvement] DAT-44: Do not block a thread while reading results.
 - [new feature] DAT-24: Add support for authentication and encryption.
+- [bug] DAT-48: Mappings are not being inferred.
