@@ -102,6 +102,19 @@ public class CSVConnectorTest {
   }
 
   @Test
+  public void should_scan_directory_with_path() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        ConfigFactory.parseString(
+            String.format(
+                "header = true, url = \"%s\", recursive = false",
+                CSVConnectorTest.class.getResource("/root").getPath()));
+    connector.configure(settings);
+    connector.init();
+    assertThat(Flowable.fromPublisher(connector.read()).count().blockingGet()).isEqualTo(300);
+  }
+
+  @Test
   public void should_scan_directory_recursively() throws Exception {
     CSVConnector connector = new CSVConnector();
     Config settings =

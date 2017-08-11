@@ -16,9 +16,9 @@ import java.nio.file.Paths;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class SettingsUtils {
+class SettingsUtils {
 
-  public static int parseNumThreads(String maxThreads) {
+  static int parseNumThreads(String maxThreads) {
     int threads;
     try {
       threads = Integer.parseInt(maxThreads);
@@ -34,10 +34,9 @@ public class SettingsUtils {
     return threads;
   }
 
-  public static Path parseAbsolutePath(String url) {
-    URI uri;
+  static Path parseAbsolutePath(String url) {
     try {
-      uri = new URL(url).toURI();
+      URI uri = parseUrlOrPath(url).toURI();
       if (!uri.isAbsolute()) {
         uri = uri.resolve(System.getProperty("user.dir"));
       } else if (uri.isOpaque() && uri.getScheme().equals("file")) {
@@ -46,8 +45,23 @@ public class SettingsUtils {
             new URI("file:" + new File(uri.getSchemeSpecificPart()).getAbsolutePath()).normalize();
       }
       return Paths.get(uri).normalize().toAbsolutePath();
-    } catch (URISyntaxException | MalformedURLException e) {
+    } catch (URISyntaxException e) {
       throw new IllegalArgumentException("Invalid URL: " + url, e);
+    }
+  }
+
+  private static URL parseUrlOrPath(String urlOrPath) {
+    try {
+      return new URL(urlOrPath);
+    } catch (MalformedURLException e) {
+      // Parsing failed, so guess that it's a file path and prepend it
+      // to make a valid url.
+      try {
+        return new URL("file:" + urlOrPath);
+      } catch (MalformedURLException e1) {
+        // Still bad...
+        throw new IllegalArgumentException("Invalid URL: " + urlOrPath, e1);
+      }
     }
   }
 }

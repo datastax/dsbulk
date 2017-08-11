@@ -62,10 +62,23 @@ public class LogSettingsTest {
   }
 
   @Test
-  public void should_create_log_manager_when_output_directory_provided() throws Exception {
+  public void should_create_log_manager_when_output_directory_url_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
     Config config =
         ConfigFactory.parseString("outputDirectory = \"" + dir.toUri().toURL() + "\"")
+            .withFallback(ConfigFactory.load().getConfig("datastax-loader.log"));
+    LogSettings settings = new LogSettings(config, "test");
+    LogManager logManager = settings.newLogManager();
+    logManager.init(cluster);
+    assertThat(logManager).isNotNull();
+    assertThat(logManager.getOperationDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
+  }
+
+  @Test
+  public void should_create_log_manager_when_output_directory_path_provided() throws Exception {
+    Path dir = Files.createTempDirectory("test");
+    Config config =
+        ConfigFactory.parseString("output-directory = \"" + dir.toString() + "\"")
             .withFallback(ConfigFactory.load().getConfig("datastax-loader.log"));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager();

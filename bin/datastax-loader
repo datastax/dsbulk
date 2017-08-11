@@ -1,0 +1,129 @@
+#!/bin/sh
+
+# Copyright (C) 2017 DataStax Inc.
+#
+# This software can be used solely with DataStax Enterprise. Please consult the license at
+# http://www.datastax.com/terms/datastax-dse-driver-license-terms
+
+function usage() {
+  local BIN_NAME=`basename "$0"`
+  cat << END
+Usage: $BIN_NAME <options> [contact-point1] ...
+Options:
+ -c, --connector <connector name>   Name of connector; may be the fqcn or simple name
+                                    of an implementation of the Connector interface,
+                                    or a prefix of the simple name.
+                                    Only the built-in CSVConnector is supported at
+                                    this time, so "csv" is a good value for this.
+                                    Maps to the connector.name loader setting.
+ -s, --source <source url or path>  Url or file path of data to load.
+                                    Maps to the connector.url loader setting.
+ -k, --keyspace <keyspace>          Keyspace into which to load data.
+                                    Maps to the schema.keyspace loader setting.
+ -t, --table <table>                Table into which to load data.
+                                    Maps to the schema.table loader setting.
+ -m, --mapping <mapping>            Mapping of fields in data to columns in
+                                    the database.
+                                    Maps to the schema.mapping loader setting.
+     --loader-options <options>     Extra options to send to the loader, as a
+                                    single comma-separated string.
+                                    See conf/reference.conf for details.
+
+The list of contact points maps to the driver.contactPoints loader setting.
+
+All arguments are optional in that values fall back to defaults in conf/reference.conf
+or are inferred from the input data.
+
+NOTE: The user is free to update defaults to meet particular requirements,
+thus reducing the command-line arguments specified in invocations.
+
+Examples:
+* Load CSV data from /opt/data/export.csv to the ks1.table1 table in a cluster with
+  a localhost contact point. Field names in the data match column names in the
+  table. Field names are obtained from a "header row" in the data:
+
+  $BIN_NAME -c csv -s /opt/data/export.csv -k ks1 -t table1 --loader-options "connector.header=true"
+
+* Same as last example, but load data from a url:
+  $BIN_NAME -c csv -s https://svr/data/export.csv -k ks1 -t table1 --loader-options "connector.header=true"
+
+* Same as last example, but there is no header row and we specify an explicit field mapping based
+  on field indices in the input:
+  $BIN_NAME -c csv -s https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}"
+
+* Same as last example, but specify a few contact points:
+  $BIN_NAME -c csv -s https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" 10.200.1.3 10.200.1.4
+
+* Same as last example, but with connector-name, keyspace, table, and mapping set in
+  conf/reference.conf:
+  $BIN_NAME -s https://svr/data/export.csv 10.200.1.3 10.200.1.4
+END
+
+  exit 1
+}
+
+
+#### Main logic of script ####
+
+# Use JAVA_HOME if set, otherwise look for java in PATH
+if [ -n "$JAVA_HOME" ]; then
+  if [ -x "$JAVA_HOME"/bin/java ]; then
+    JAVA="$JAVA_HOME"/bin/java
+  fi
+else
+  JAVA=java
+fi
+
+if [ -z "$JAVA" ] ; then
+  echo "Unable to find java executable. Check JAVA_HOME and PATH environment variables." >&2
+  exit 1
+fi
+
+# Check that gnu getopt is available.
+for i in getopt /usr/bin/getopt /opt/local/bin/getopt /usr/local/bin/getopt /usr/local/opt/gnu-getopt/bin/getopt ; do
+  if [ -f $i ] ; then
+    $i --version | grep -E "(enhanced)|(util-linux)" > /dev/null 2>&1
+    if [ $? -eq 0 ] ; then
+      # Found it!
+      GETOPT=$i
+    fi
+  fi
+done
+
+if [ -z "$GETOPT" ] ; then
+  echo "Unable to find GNU getopt. Please install it, or set your PATH to include it." >&2
+  echo "Note that some systems (Mac in particular) have a non-GNU getopt that is not compatible" >&2
+  echo "with this script." >&2
+  exit 1
+fi
+
+INSTALL_DIR=`dirname "$0"`/..
+
+# Set CLASSPATH to include all the jars in the lib dir + the conf directory
+# (which contains reference.conf).
+for i in $INSTALL_DIR/lib/*.jar ; do
+  CLASSPATH="$CLASSPATH:$i"
+done
+
+export CLASSPATH
+
+# Parse command-line options.
+
+TEMP=`$GETOPT -o "c:k:t:m:s:h" --long "connector:keyspace:,table:,mapping:,source:,help,loader-options:" -n datastax-loader -- "$@"`
+if [ $? != 0 ] ; then
+  usage
+  exit 1
+fi
+eval set -- "$TEMP"
+
+while true; do
+  case "$1" in
+    -c | --connector ) CONNECTOR="$2"; shift 2 ;;
+    -h | --help ) usage ;;
+    -- ) shift ; break ;;
+    * ) break ;;
+  esac
+done
+
+# Run the tool.
+#$JAVA com.datastax.loader.engine.Main connector.name=csv 'connector.url="file:///Users/sandeeptamhankar/tmp/good.csv"' 'log.output-directory="file:///Users/sandeeptamhankar/tmp/loader"' 'connector.comment="#"' connector.header=true schema.keyspace=ks schema.table=t1 'schema.mapping={0=year,1=make,2=model,3=description,4=price}'
