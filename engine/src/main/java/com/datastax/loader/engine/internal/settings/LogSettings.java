@@ -29,8 +29,7 @@ public class LogSettings {
   private final Config config;
   private final Path operationDirectory;
 
-  LogSettings(Config config, String operationId)
-      throws MalformedURLException, URISyntaxException {
+  LogSettings(Config config, String operationId) throws MalformedURLException, URISyntaxException {
     this.config = config;
     Path outputDirectory = SettingsUtils.parseAbsolutePath(config.getString("outputDirectory"));
     operationDirectory = outputDirectory.resolve(operationId);

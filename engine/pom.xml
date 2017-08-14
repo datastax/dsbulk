@@ -261,7 +261,7 @@
             <configuration>
               <appendAssemblyId>false</appendAssemblyId>
               <descriptors>
-                <descriptor>src/assembly/binary-tarball.xml</descriptor>
+                <descriptor>src/assembly/binary-distro.xml</descriptor>
               </descriptors>
               <tarLongFileMode>posix</tarLongFileMode>
               <!-- do not deploy final binary distribution -->

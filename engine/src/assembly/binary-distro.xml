@@ -18,7 +18,6 @@
   </formats>
 
   <includeBaseDirectory>true</includeBaseDirectory>
-  <baseDirectory>datastax-loader</baseDirectory>
 
   <fileSets>
 

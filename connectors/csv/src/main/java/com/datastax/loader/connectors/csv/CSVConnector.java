@@ -13,7 +13,6 @@ import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.connectors.api.internal.MapRecord;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.csv.CsvFormat;
 import com.univocity.parsers.csv.CsvParser;
@@ -54,9 +53,6 @@ import org.slf4j.LoggerFactory;
  */
 public class CSVConnector implements Connector {
 
-  private static final Config CSV_CONNECTOR_DEFAULT_SETTINGS =
-      ConfigFactory.defaultReference().getConfig("datastax-loader.connector.csv");
-
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
 
   private URL url;
@@ -76,7 +72,19 @@ public class CSVConnector implements Connector {
 
   @Override
   public Config configure(Config settings) throws MalformedURLException {
-    settings = settings.withoutPath("csv").withFallback(CSV_CONNECTOR_DEFAULT_SETTINGS);
+    // Create a Config object that effectively merges the csv level with
+    // the connector level. The csv level in settings is a merge of
+    // user-provided values and the values from reference.conf. That is
+    // our fallback (e.g. think attributes like header, url under csv, but
+    // where the root is now csv).
+    // If the user specifies overrides like config.comment, those
+    // take precedence over those specified in csv.
+    // The net effect is that a user can specify a command-line override
+    // like connector.csv.comment, and it'll be respected, while
+    // at the same time an override like connector.url will also be
+    // respected.
+
+    settings = settings.withoutPath("csv").withFallback(settings.getConfig("csv"));
     url = parseUrlOrPath(settings.getString("url"));
     pattern = settings.getString("pattern");
     encoding = Charset.forName(settings.getString("encoding"));

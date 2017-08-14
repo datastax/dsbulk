@@ -17,16 +17,17 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /** Base class for implementations of {@link BulkExecutor}. */
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseable {
 
   /** The default number of maximum in-flight requests. */
-  public static final int DEFAULT_MAX_INFLIGHT_REQUESTS = 1_000;
+  static final int DEFAULT_MAX_INFLIGHT_REQUESTS = 1_000;
 
   /** The default maximum number of concurrent requests per second. */
-  public static final int DEFAULT_MAX_REQUESTS_PER_SECOND = 100_000;
+  static final int DEFAULT_MAX_REQUESTS_PER_SECOND = 100_000;
 
   final Session session;
 
@@ -74,5 +75,19 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
               new ThreadPoolExecutor.CallerRunsPolicy());
     }
     this.executor = executor;
+  }
+
+  @Override
+  public void close() {
+    if (executor instanceof ThreadPoolExecutor) {
+      ThreadPoolExecutor tpe = (ThreadPoolExecutor) executor;
+      tpe.shutdown();
+      try {
+        tpe.awaitTermination(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        // swallow; best effort
+      }
+      tpe.shutdownNow();
+    }
   }
 }

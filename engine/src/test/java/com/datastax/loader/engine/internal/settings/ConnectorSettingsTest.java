@@ -19,6 +19,8 @@ import org.junit.rules.ExpectedException;
 
 /** */
 public class ConnectorSettingsTest {
+  private static final Config CONNECTOR_DEFAULT_SETTINGS =
+      ConfigFactory.defaultReference().getConfig("datastax-loader.connector");
 
   @Rule public ExpectedException exception = ExpectedException.none();
 
@@ -26,21 +28,26 @@ public class ConnectorSettingsTest {
   public void should_find_csv_connector_full_path() throws Exception {
     Config config =
         ConfigFactory.parseString(
-            "name: com.datastax.loader.connectors.csv.CSVConnector, url:\"file:///a/b.csv\"");
+                "name: com.datastax.loader.connectors.csv.CSVConnector, url:\"file:///a/b.csv\"")
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     ConnectorSettings connectorSettings = new ConnectorSettings(config);
     assertCSVConnectorSettings(connectorSettings);
   }
 
   @Test
   public void should_find_csv_connector_simple_name() throws Exception {
-    Config config = ConfigFactory.parseString("name: csvConnector, url:\"file:///a/b.csv\"");
+    Config config =
+        ConfigFactory.parseString("name: csvConnector, url:\"file:///a/b.csv\"")
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     ConnectorSettings connectorSettings = new ConnectorSettings(config);
     assertCSVConnectorSettings(connectorSettings);
   }
 
   @Test
   public void should_find_csv_connector_short_name() throws Exception {
-    Config config = ConfigFactory.parseString("name: csv, url:\"file:///a/b.csv\"");
+    Config config =
+        ConfigFactory.parseString("name: csv, url:\"file:///a/b.csv\"")
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     ConnectorSettings connectorSettings = new ConnectorSettings(config);
     assertCSVConnectorSettings(connectorSettings);
   }
