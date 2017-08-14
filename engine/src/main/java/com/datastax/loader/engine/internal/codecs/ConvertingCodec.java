@@ -9,6 +9,7 @@ package com.datastax.loader.engine.internal.codecs;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.google.common.reflect.TypeToken;
 import java.nio.ByteBuffer;
 
 public abstract class ConvertingCodec<FROM, TO> extends TypeCodec<FROM> {
@@ -18,6 +19,10 @@ public abstract class ConvertingCodec<FROM, TO> extends TypeCodec<FROM> {
   protected ConvertingCodec(TypeCodec<TO> targetCodec, Class<FROM> javaType) {
     super(targetCodec.getCqlType(), javaType);
     this.targetCodec = targetCodec;
+  }
+
+  public TypeToken<TO> getTargetJavaType() {
+    return targetCodec.getJavaType();
   }
 
   @Override

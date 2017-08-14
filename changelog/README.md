@@ -19,3 +19,4 @@
 - [improvement] DAT-44: Do not block a thread while reading results.
 - [new feature] DAT-24: Add support for authentication and encryption.
 - [bug] DAT-48: Mappings are not being inferred.
+- [improvement] DAT-31: Support String to Collection, UDT and Tuple conversion.
