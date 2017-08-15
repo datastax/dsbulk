@@ -182,11 +182,21 @@ public class MetricsManager implements AutoCloseable {
     if (jmxReporter != null) {
       jmxReporter.close();
     }
-    recordReporter.close();
-    mappingReporter.close();
-    batchReporter.close();
-    writesReporter.close();
-    readsReporter.close();
+    if (recordReporter != null) {
+      recordReporter.close();
+    }
+    if (mappingReporter != null) {
+      mappingReporter.close();
+    }
+    if (batchReporter != null) {
+      batchReporter.close();
+    }
+    if (writesReporter != null) {
+      writesReporter.close();
+    }
+    if (readsReporter != null) {
+      readsReporter.close();
+    }
   }
 
   private void reportFinalMetrics() {
