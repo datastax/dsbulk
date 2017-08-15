@@ -170,6 +170,7 @@
             def conf = Paths.get("${project.build.directory}/conf")
             Files.createDirectories(conf)
             Files.write(conf.resolve("reference.conf"), string.getBytes("UTF-8"))
+            Files.write(conf.resolve("application.conf"), "# Set application-specific settings here.\n# Example:\n# datastax-loader.connector.name = \"csv\"".getBytes("UTF-8"))
           ]]></script>
           </scripts>
         </configuration>
@@ -251,7 +252,7 @@
             <artifactId>maven-assembly-plugin</artifactId>
             <executions>
               <execution>
-                <id>assemble-binary-tarball</id>
+                <id>assemble-binary-distro</id>
                 <phase>package</phase>
                 <goals>
                   <goal>single</goal>

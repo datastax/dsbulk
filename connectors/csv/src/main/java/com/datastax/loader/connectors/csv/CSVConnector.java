@@ -143,7 +143,7 @@ public class CSVConnector implements Connector {
       // Parsing failed, so guess that it's a file path and prepend it
       // to make a valid url.
       try {
-        return new URL("file:" + urlOrPath);
+        return Paths.get(urlOrPath).normalize().toAbsolutePath().toUri().toURL();
       } catch (MalformedURLException e1) {
         // Still bad...
         throw new IllegalArgumentException("Invalid URL: " + urlOrPath, e1);

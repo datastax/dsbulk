@@ -25,21 +25,44 @@ Options:
                                    or a prefix of the simple name. Only the built-in
                                    CSVConnector is supported at this time, so "csv"
                                    is a good value for this.
- -s, --connector.csv.url <source url or path>
-                                   Url or file path of data to load.
+ -s, --connector.url <source url or path>
+                                   Url or file path of data to load; the actual meaning
+                                   of this option depends on the selected connector,
+                                   and might not be supported by every connector (but
+                                   most of them do).
  -k, --schema.keyspace <keyspace>  Keyspace into which to load data.
  -t, --schema.table <table>        Table into which to load data.
  -m, --schema.mapping <mapping>    Mapping of fields in data to columns in the database.
 
-All arguments except connector.csv.url are optional in that values fall back to defaults
-in conf/reference.conf or are inferred from the input data. In addition, any setting
-specified in conf/reference.conf may be overridden on the command-line with a long
-option.
+All arguments except connector.name are optional in that values fall back to defaults
+or are inferred from the input data. However, some connectors require certain settings
+to be set. The CSV connector, for example, requires that the source url be set
+(connector.url, which is really a shortcut to connector.csv.url when this is the active
+connector).
 
-NOTE: The user is free to update defaults in reference.conf to meet particular requirements,
-      thus reducing the command-line arguments specified in invocations.
 
-Examples:
+CONFIG FILES, SETTINGS SEARCH ORDER, AND OVERRIDES:
+
+Available settings along with defaults are recorded in conf/reference.conf. This file
+also contains detailed descriptions of settings and is a great source of information.
+When the loader starts up, settings are first loaded from conf/reference.conf.
+
+The conf directory also contains an applicaton.conf where a user may specify permanent
+overrides of settings. These may be in nested-structure form like this:
+
+datastax-loader {
+  connector {
+    name="csv"
+  }
+}
+
+or dotted form: datastax-loader.connector.name="csv"
+
+Finally, a user may specify impromptu overrides via long options on the command line.
+See examples for details.
+
+
+EXAMPLES:
 * Load CSV data from /opt/data/export.csv to the ks1.table1 table in a cluster with
   a localhost contact point. Field names in the data match column names in the
   table. Field names are obtained from a "header row" in the data:
@@ -51,6 +74,9 @@ Examples:
 
   datastax-loader -c csv -s /opt/data/export.csv -k ks1 -t table1 --connector.header=true
 
+  NOTE: Another example of this feature is how connector.url maps to the connector.csv.url
+  setting when using the CSV connector.
+
 * Same as last example, but load data from a url:
   datastax-loader -c csv -s https://svr/data/export.csv -k ks1 -t table1 --connector.header=true
 
@@ -58,10 +84,11 @@ Examples:
   on field indices in the input:
   datastax-loader -c csv -s https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}"
 
-* Same as last example, but specify a few contact points; note how the value is quoted:
+* Same as last example, but specify a few contact points; note how the value is quoted because
+  this setting is an array of strings:
   datastax-loader -c csv -s https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints '["10.200.1.3","10.200.1.4"]'
 
 * Same as last example, but with connector-name, keyspace, table, and mapping set in
-  conf/reference.conf:
+  conf/application.conf:
   datastax-loader -s https://svr/data/export.csv --driver.contactPoints '["10.200.1.3","10.200.1.4"]'
 ```
