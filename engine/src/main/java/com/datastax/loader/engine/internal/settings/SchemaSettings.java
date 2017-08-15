@@ -52,24 +52,28 @@ public class SchemaSettings {
       }
     }
     if (config.hasPath("keyspace")) {
-      Preconditions.checkState(config.hasPath("table"));
+      Preconditions.checkState(config.hasPath("table"), "Keyspace and table must be specified");
       keyspaceName = Metadata.quoteIfNecessary(config.getString("keyspace"));
       tableName = Metadata.quoteIfNecessary(config.getString("table"));
       keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
-      Preconditions.checkNotNull(keyspace);
+      Preconditions.checkNotNull(keyspace, "Keyspace does not exist: " + keyspaceName);
       table = keyspace.getTable(tableName);
-      Preconditions.checkNotNull(table);
+      Preconditions.checkNotNull(
+          table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
     }
     if (!config.hasPath("mapping") || config.getConfig("mapping").isEmpty()) {
       Preconditions.checkState(keyspace != null && table != null);
       mapping = inferMapping();
     }
-    Preconditions.checkNotNull(mapping);
+    Preconditions.checkNotNull(
+        mapping,
+        "Mapping was absent and could not be inferred, please provide an explicit mapping");
     String query;
     if (config.hasPath("statement")) {
       query = config.getString("statement");
     } else {
-      Preconditions.checkState(keyspace != null && table != null);
+      Preconditions.checkState(
+          keyspace != null && table != null, "Keyspace and table must be specified");
       query = inferQuery(mapping);
     }
     PreparedStatement ps = session.prepare(query);
