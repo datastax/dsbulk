@@ -6,6 +6,7 @@
  */
 package com.datastax.loader.executor.api.internal.result;
 
+import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
@@ -17,8 +18,8 @@ public final class DefaultReadResult extends DefaultResult implements ReadResult
 
   private final Row row;
 
-  public DefaultReadResult(Statement statement, Row row) {
-    super(statement);
+  public DefaultReadResult(Statement statement, ExecutionInfo executionInfo, Row row) {
+    super(statement, executionInfo);
     this.row = row;
   }
 

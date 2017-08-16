@@ -24,7 +24,7 @@ import com.datastax.loader.connectors.api.internal.MapRecord;
 import com.datastax.loader.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.loader.engine.internal.statement.UnmappableStatement;
 import io.reactivex.Flowable;
-import java.net.URL;
+import java.net.URI;
 import java.time.Duration;
 import java.util.concurrent.Executors;
 import org.junit.After;
@@ -75,18 +75,18 @@ public class MetricsManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    URL location1 = new URL("file:///file1.csv?line=1");
-    URL location2 = new URL("file:///file2.csv?line=2");
-    URL location3 = new URL("file:///file3.csv?line=3");
+    URI location1 = new URI("file:///file1.csv?line=1");
+    URI location2 = new URI("file:///file2.csv?line=2");
+    URI location3 = new URI("file:///file3.csv?line=3");
     String source1 = "line1\n";
     String source2 = "line2\n";
     String source3 = "line3\n";
-    record1 = new MapRecord(source1, location1, "irrelevant");
-    record2 = new MapRecord(source2, location2, "irrelevant");
-    record3 = new ErrorRecord(source3, location3, new RuntimeException("irrelevant"));
+    record1 = new MapRecord(source1, () -> location1, "irrelevant");
+    record2 = new MapRecord(source2, () -> location2, "irrelevant");
+    record3 = new ErrorRecord(source3, () -> location3, new RuntimeException("irrelevant"));
     stmt1 = new BulkSimpleStatement<>(record1, "irrelevant");
     stmt2 = new BulkSimpleStatement<>(record2, "irrelevant");
-    stmt3 = new UnmappableStatement(location3, record3, new RuntimeException("irrelevant"));
+    stmt3 = new UnmappableStatement(record3, new RuntimeException("irrelevant"));
     batch = new BatchStatement().add(stmt1).add(stmt2);
   }
 
@@ -104,7 +104,7 @@ public class MetricsManagerTest {
             Duration.ofSeconds(5));
     manager.init();
     Flowable<Record> records = Flowable.fromArray(record1, record2, record3);
-    records.compose(manager.newConnectorMonitor()).blockingSubscribe();
+    records.compose(manager.newRecordMonitor()).blockingSubscribe();
     manager.close();
     MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
     assertThat(registry.meter("records/total").getCount()).isEqualTo(3);

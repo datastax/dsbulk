@@ -8,21 +8,21 @@ package com.datastax.loader.engine.internal.statement;
 
 import com.datastax.loader.connectors.api.Record;
 import com.google.common.base.MoreObjects;
-import java.net.URL;
+import java.net.URI;
 
 /** */
 public class UnmappableStatement extends BulkSimpleStatement<Record> {
 
-  private final URL location;
+  private final URI location;
   private final Throwable error;
 
-  public UnmappableStatement(URL location, Record record, Throwable error) {
+  public UnmappableStatement(Record record, Throwable error) {
     super(record, error.getMessage());
-    this.location = location;
+    this.location = record.getLocation();
     this.error = error;
   }
 
-  public URL getLocation() {
+  public URI getLocation() {
     return location;
   }
 

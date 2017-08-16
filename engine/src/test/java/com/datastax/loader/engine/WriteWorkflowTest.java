@@ -10,21 +10,21 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 /** */
-public class MainTest {
+public class WriteWorkflowTest {
 
   // TODO temporary, remove when end-to-end integration tests are available
   @Test
   @Ignore
-  public void should_load() throws Exception {
+  public void should_write() throws Exception {
 
     /*
     create keyspace ks with replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
     create table ks.t1 (Year int primary key,Make varchar,Model varchar,Description varchar,Price decimal);
      */
     String[] args = {
-      "log.outputDirectory=\"./target\"",
+      "log.outputDirectory=./target",
       "connector.name=csv",
-      "connector.csv.url=\"" + MainTest.class.getResource("/good.csv").toExternalForm() + "\"",
+      "connector.url=\"" + WriteWorkflowTest.class.getResource("/good.csv").toExternalForm() + "\"",
       "connector.comment=\"#\"",
       "connector.header=true",
       "driver.query.consistency=ONE",
@@ -35,6 +35,6 @@ public class MainTest {
       "schema.mapping={0=year,1=make,2=model,3=description,4=price}"
     };
 
-    new Main(args).load();
+    new WriteWorkflow(args).execute();
   }
 }

@@ -37,7 +37,7 @@ public class ReadResultPublisher extends ResultSetPublisher<ReadResult> {
   @Override
   protected void consumePage(Subscriber<? super ReadResult> subscriber, ResultSet rs) {
     for (Row row : rs) {
-      DefaultReadResult result = new DefaultReadResult(statement, row);
+      DefaultReadResult result = new DefaultReadResult(statement, rs.getExecutionInfo(), row);
       if (canceled) {
         break;
       }

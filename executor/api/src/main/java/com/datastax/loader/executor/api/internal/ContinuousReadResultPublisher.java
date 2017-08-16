@@ -56,7 +56,8 @@ public class ContinuousReadResultPublisher
         pagingResult.cancel();
         return;
       }
-      DefaultReadResult result = new DefaultReadResult(statement, row);
+      DefaultReadResult result =
+          new DefaultReadResult(statement, pagingResult.getExecutionInfo(), row);
       onNext(subscriber, result);
     }
     if (pagingResult.isLast()) {

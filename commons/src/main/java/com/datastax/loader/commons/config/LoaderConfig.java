@@ -17,6 +17,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,6 +28,7 @@ public interface LoaderConfig extends Config {
    *
    * <p>Short class names are allowed and will be resolved against common package names.
    *
+   * @param <T> the expected type.
    * @param path path expression.
    * @return the newly-allocated object corresponding to the class name at the requested path.
    * @throws ConfigException.Missing if value is absent or null.
@@ -46,6 +48,7 @@ public interface LoaderConfig extends Config {
    *
    * <p>Short class names are allowed and will be resolved against common package names.
    *
+   * @param <T> the expected type.
    * @param path path expression.
    * @return the Class object corresponding to the class name at the requested path.
    * @throws ConfigException.Missing if value is absent or null.
@@ -163,6 +166,23 @@ public interface LoaderConfig extends Config {
     } catch (Exception e) {
       throw new ConfigException.WrongType(origin(), path, "valid charset name", setting, e);
     }
+  }
+
+  /**
+   * Returns the first string in the string list at the given path, if it exists, or null otherwise.
+   *
+   * @param path path expression.
+   * @return the the first string in the string list at the given path, if it exists, or null
+   *     otherwise.
+   * @throws ConfigException.Missing if value is absent or null.
+   * @throws ConfigException.WrongType if value is not convertible to a String list.
+   */
+  default String getFirstString(String path) {
+    List<String> list = getStringList(path);
+    if (list.isEmpty()) {
+      return null;
+    }
+    return list.get(0);
   }
 
   @Override

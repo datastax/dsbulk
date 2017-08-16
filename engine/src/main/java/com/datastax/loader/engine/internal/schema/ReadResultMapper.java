@@ -6,11 +6,10 @@
  */
 package com.datastax.loader.engine.internal.schema;
 
-import com.datastax.driver.core.Statement;
 import com.datastax.loader.connectors.api.Record;
+import com.datastax.loader.executor.api.result.ReadResult;
 
-/** */
-public interface RecordMapper {
+public interface ReadResultMapper {
 
-  Statement map(Record record);
+  Record map(ReadResult result);
 }

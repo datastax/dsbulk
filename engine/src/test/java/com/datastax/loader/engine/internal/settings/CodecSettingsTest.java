@@ -27,7 +27,7 @@ import static com.datastax.driver.core.DataType.varint;
 import static com.datastax.driver.core.DriverCoreTestHooks.newField;
 import static com.datastax.driver.core.DriverCoreTestHooks.newTupleType;
 import static com.datastax.driver.core.DriverCoreTestHooks.newUserType;
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.datastax.loader.engine.internal.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -59,6 +59,7 @@ import com.datastax.loader.engine.internal.codecs.StringToTupleCodec;
 import com.datastax.loader.engine.internal.codecs.StringToUDTCodec;
 import com.datastax.loader.engine.internal.codecs.StringToUUIDCodec;
 import com.datastax.loader.engine.internal.codecs.TemporalToTemporalCodec;
+import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -88,48 +89,48 @@ public class CodecSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
     CodecSettings settings = new CodecSettings(config);
-    ExtendedCodecRegistry codecRegistry = settings.init(cluster);
+    ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
-    assertThat(codecRegistry.codecFor(cboolean(), String.class))
+    assertThat(codecRegistry.codecFor(cboolean(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToBooleanCodec.class);
-    assertThat(codecRegistry.codecFor(tinyint(), String.class))
+    assertThat(codecRegistry.codecFor(tinyint(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToByteCodec.class);
-    assertThat(codecRegistry.codecFor(smallint(), String.class))
+    assertThat(codecRegistry.codecFor(smallint(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToShortCodec.class);
-    assertThat(codecRegistry.codecFor(cint(), String.class))
+    assertThat(codecRegistry.codecFor(cint(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToIntegerCodec.class);
-    assertThat(codecRegistry.codecFor(bigint(), String.class))
+    assertThat(codecRegistry.codecFor(bigint(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToLongCodec.class);
-    assertThat(codecRegistry.codecFor(cfloat(), String.class))
+    assertThat(codecRegistry.codecFor(cfloat(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToFloatCodec.class);
-    assertThat(codecRegistry.codecFor(cdouble(), String.class))
+    assertThat(codecRegistry.codecFor(cdouble(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToDoubleCodec.class);
-    assertThat(codecRegistry.codecFor(varint(), String.class))
+    assertThat(codecRegistry.codecFor(varint(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToBigIntegerCodec.class);
-    assertThat(codecRegistry.codecFor(decimal(), String.class))
+    assertThat(codecRegistry.codecFor(decimal(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToBigDecimalCodec.class);
-    assertThat(codecRegistry.codecFor(date(), String.class))
+    assertThat(codecRegistry.codecFor(date(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToLocalDateCodec.class);
-    assertThat(codecRegistry.codecFor(time(), String.class))
+    assertThat(codecRegistry.codecFor(time(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToLocalTimeCodec.class);
-    assertThat(codecRegistry.codecFor(timestamp(), String.class))
+    assertThat(codecRegistry.codecFor(timestamp(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToInstantCodec.class);
-    assertThat(codecRegistry.codecFor(uuid(), String.class))
+    assertThat(codecRegistry.codecFor(uuid(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToUUIDCodec.class);
-    assertThat(codecRegistry.codecFor(timeuuid(), String.class))
+    assertThat(codecRegistry.codecFor(timeuuid(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToUUIDCodec.class);
   }
@@ -140,30 +141,30 @@ public class CodecSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
     CodecSettings settings = new CodecSettings(config);
-    ExtendedCodecRegistry codecRegistry = settings.init(cluster);
+    ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
-    assertThat(codecRegistry.codecFor(tinyint(), Short.class))
+    assertThat(codecRegistry.codecFor(tinyint(), TypeToken.of(Short.class)))
         .isNotNull()
         .isInstanceOf(NumberToNumberCodec.class);
-    assertThat(codecRegistry.codecFor(smallint(), Integer.class))
+    assertThat(codecRegistry.codecFor(smallint(), TypeToken.of(Integer.class)))
         .isNotNull()
         .isInstanceOf(NumberToNumberCodec.class);
-    assertThat(codecRegistry.codecFor(cint(), Long.class))
+    assertThat(codecRegistry.codecFor(cint(), TypeToken.of(Long.class)))
         .isNotNull()
         .isInstanceOf(NumberToNumberCodec.class);
-    assertThat(codecRegistry.codecFor(bigint(), Float.class))
+    assertThat(codecRegistry.codecFor(bigint(), TypeToken.of(Float.class)))
         .isNotNull()
         .isInstanceOf(NumberToNumberCodec.class);
-    assertThat(codecRegistry.codecFor(cfloat(), Double.class))
+    assertThat(codecRegistry.codecFor(cfloat(), TypeToken.of(Double.class)))
         .isNotNull()
         .isInstanceOf(NumberToNumberCodec.class);
-    assertThat(codecRegistry.codecFor(cdouble(), BigDecimal.class))
+    assertThat(codecRegistry.codecFor(cdouble(), TypeToken.of(BigDecimal.class)))
         .isNotNull()
         .isInstanceOf(NumberToNumberCodec.class);
-    assertThat(codecRegistry.codecFor(varint(), Integer.class))
+    assertThat(codecRegistry.codecFor(varint(), TypeToken.of(Integer.class)))
         .isNotNull()
         .isInstanceOf(NumberToNumberCodec.class);
-    assertThat(codecRegistry.codecFor(decimal(), Float.class))
+    assertThat(codecRegistry.codecFor(decimal(), TypeToken.of(Float.class)))
         .isNotNull()
         .isInstanceOf(NumberToNumberCodec.class);
   }
@@ -174,36 +175,36 @@ public class CodecSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
     CodecSettings settings = new CodecSettings(config);
-    ExtendedCodecRegistry codecRegistry = settings.init(cluster);
+    ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
-    assertThat(codecRegistry.codecFor(date(), ZonedDateTime.class))
+    assertThat(codecRegistry.codecFor(date(), TypeToken.of(ZonedDateTime.class)))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(time(), ZonedDateTime.class))
+    assertThat(codecRegistry.codecFor(time(), TypeToken.of(ZonedDateTime.class)))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(timestamp(), ZonedDateTime.class))
+    assertThat(codecRegistry.codecFor(timestamp(), TypeToken.of(ZonedDateTime.class)))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(date(), Instant.class))
+    assertThat(codecRegistry.codecFor(date(), TypeToken.of(Instant.class)))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(time(), Instant.class))
+    assertThat(codecRegistry.codecFor(time(), TypeToken.of(Instant.class)))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(date(), LocalDateTime.class))
+    assertThat(codecRegistry.codecFor(date(), TypeToken.of(LocalDateTime.class)))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(time(), LocalDateTime.class))
+    assertThat(codecRegistry.codecFor(time(), TypeToken.of(LocalDateTime.class)))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(timestamp(), LocalDateTime.class))
+    assertThat(codecRegistry.codecFor(timestamp(), TypeToken.of(LocalDateTime.class)))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(timestamp(), LocalDate.class))
+    assertThat(codecRegistry.codecFor(timestamp(), TypeToken.of(LocalDate.class)))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(timestamp(), LocalTime.class))
+    assertThat(codecRegistry.codecFor(timestamp(), TypeToken.of(LocalTime.class)))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
   }
@@ -214,23 +215,23 @@ public class CodecSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
     CodecSettings settings = new CodecSettings(config);
-    ExtendedCodecRegistry codecRegistry = settings.init(cluster);
+    ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
-    assertThat(codecRegistry.codecFor(list(cint()), String.class))
+    assertThat(codecRegistry.codecFor(list(cint()), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToListCodec.class);
-    assertThat(codecRegistry.codecFor(set(cdouble()), String.class))
+    assertThat(codecRegistry.codecFor(set(cdouble()), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToSetCodec.class);
-    assertThat(codecRegistry.codecFor(map(time(), varchar()), String.class))
+    assertThat(codecRegistry.codecFor(map(time(), varchar()), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToMapCodec.class);
     TupleType tupleType = newTupleType(cint(), cdouble());
-    assertThat(codecRegistry.codecFor(tupleType, String.class))
+    assertThat(codecRegistry.codecFor(tupleType, TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToTupleCodec.class);
     UserType udtType = newUserType(newField("f1", cint()), newField("f2", cdouble()));
-    assertThat(codecRegistry.codecFor(udtType, String.class))
+    assertThat(codecRegistry.codecFor(udtType, TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToUDTCodec.class);
   }

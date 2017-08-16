@@ -45,4 +45,8 @@ public class DriverCoreHooks {
   public static Statement wrappedStatement(StatementWrapper statement) {
     return statement.getWrappedStatement();
   }
+
+  public static CodecRegistry getCodecRegistry(ColumnDefinitions variables) {
+    return variables.codecRegistry;
+  }
 }

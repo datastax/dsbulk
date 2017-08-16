@@ -56,15 +56,15 @@ public class DriverSettings {
 
   private final LoaderConfig config;
 
-  private final String operationId;
+  private final String executionId;
 
-  DriverSettings(LoaderConfig config, String operationId) {
+  DriverSettings(LoaderConfig config, String executionId) {
     this.config = config;
-    this.operationId = operationId;
+    this.executionId = executionId;
   }
 
   public DseCluster newCluster() throws Exception {
-    DseCluster.Builder builder = DseCluster.builder().withClusterName(operationId + "-driver");
+    DseCluster.Builder builder = DseCluster.builder().withClusterName(executionId + "-driver");
     int defaultPort = config.getInt("port");
     config
         .getStringList("contactPoints")
@@ -115,21 +115,27 @@ public class DriverSettings {
         .withTimestampGenerator(config.getInstance("timestampGenerator"))
         .withAddressTranslator(config.getInstance("addressTranslator"));
 
-    builder.withLoadBalancingPolicy(config.getInstance("policy.lbp"));
-    Class<RetryPolicy> retryPolicyClass = config.getClass("policy.retry");
-    if (retryPolicyClass.equals(DefaultRetryPolicy.class)) {
-      builder.withRetryPolicy(DefaultRetryPolicy.INSTANCE);
-    } else {
-      builder.withRetryPolicy(config.getInstance("policy.retry"));
-    }
-    Class<SpeculativeExecutionPolicy> speculativeExecutionPolicyClass =
-        config.getClass("policy.specexec");
-    if (speculativeExecutionPolicyClass.equals(NoSpeculativeExecutionPolicy.class)) {
-      builder.withSpeculativeExecutionPolicy(NoSpeculativeExecutionPolicy.INSTANCE);
-    } else {
-      builder.withSpeculativeExecutionPolicy(config.getInstance("policy.specexec"));
-    }
     // TODO configure policies
+    if (config.hasPath("policy.lbp")) {
+      builder.withLoadBalancingPolicy(config.getInstance("policy.lbp"));
+    }
+    if (config.hasPath("policy.retry")) {
+      Class<RetryPolicy> retryPolicyClass = config.getClass("policy.retry");
+      if (retryPolicyClass.equals(DefaultRetryPolicy.class)) {
+        builder.withRetryPolicy(DefaultRetryPolicy.INSTANCE);
+      } else {
+        builder.withRetryPolicy(config.getInstance("policy.retry"));
+      }
+    }
+    if (config.hasPath("policy.specexec")) {
+      Class<SpeculativeExecutionPolicy> speculativeExecutionPolicyClass =
+          config.getClass("policy.specexec");
+      if (speculativeExecutionPolicyClass.equals(NoSpeculativeExecutionPolicy.class)) {
+        builder.withSpeculativeExecutionPolicy(NoSpeculativeExecutionPolicy.INSTANCE);
+      } else {
+        builder.withSpeculativeExecutionPolicy(config.getInstance("policy.specexec"));
+      }
+    }
 
     if (config.hasPath("auth.provider")) {
       AuthProvider authProvider = createAuthProvider();

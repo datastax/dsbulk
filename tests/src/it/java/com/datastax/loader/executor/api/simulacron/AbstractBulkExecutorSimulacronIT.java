@@ -13,7 +13,11 @@ import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.when;
 import static java.util.stream.StreamSupport.stream;
 import static org.assertj.core.api.Assertions.fail;
 
-import com.datastax.driver.core.*;
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SimpleStatement;
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.loader.executor.api.BulkExecutor;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
@@ -31,7 +35,13 @@ import com.univocity.parsers.common.record.Record;
 import io.reactivex.Flowable;
 import io.reactivex.plugins.RxJavaPlugins;
 import java.net.InetAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -1172,14 +1182,14 @@ public abstract class AbstractBulkExecutorSimulacronIT {
     Assertions.assertThat(r.isSuccess()).isTrue();
     Assertions.assertThat(((SimpleStatement) r.getStatement()).getQueryString())
         .isEqualTo(CsvUtils.firstQuery());
-    Assertions.assertThat(r.getResultSet().isPresent()).isTrue();
+    Assertions.assertThat(r.getExecutionInfo().isPresent()).isTrue();
   }
 
   private void verifyFailedWriteResult(WriteResult r) {
     Assertions.assertThat(r.isSuccess()).isFalse();
     Assertions.assertThat(((SimpleStatement) r.getStatement()).getQueryString())
         .isEqualTo(failed.getQueryString());
-    Assertions.assertThat(r.getResultSet().isPresent()).isFalse();
+    Assertions.assertThat(r.getExecutionInfo().isPresent()).isFalse();
   }
 
   private void verifyException(Throwable t) {
@@ -1201,7 +1211,7 @@ public abstract class AbstractBulkExecutorSimulacronIT {
         .forEach(
             r -> {
               Assertions.assertThat(r.getError().isPresent()).isFalse();
-              Assertions.assertThat(r.getResultSet().isPresent()).isTrue();
+              Assertions.assertThat(r.getExecutionInfo().isPresent()).isTrue();
             });
     values
         .stream()
@@ -1209,7 +1219,7 @@ public abstract class AbstractBulkExecutorSimulacronIT {
         .forEach(
             r -> {
               Assertions.assertThat(r.getError().isPresent()).isTrue();
-              Assertions.assertThat(r.getResultSet().isPresent()).isFalse();
+              Assertions.assertThat(r.getExecutionInfo().isPresent()).isFalse();
             });
   }
 

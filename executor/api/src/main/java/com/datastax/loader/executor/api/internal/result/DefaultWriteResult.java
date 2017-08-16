@@ -6,29 +6,19 @@
  */
 package com.datastax.loader.executor.api.internal.result;
 
-import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
 import com.datastax.loader.executor.api.result.WriteResult;
-import java.util.Optional;
 
 /** */
 public final class DefaultWriteResult extends DefaultResult implements WriteResult {
 
-  private final ResultSet rs;
-
-  public DefaultWriteResult(Statement statement, ResultSet rs) {
-    super(statement);
-    this.rs = rs;
+  public DefaultWriteResult(Statement statement, ExecutionInfo executionInfo) {
+    super(statement, executionInfo);
   }
 
   public DefaultWriteResult(BulkExecutionException error) {
     super(error);
-    this.rs = null;
-  }
-
-  @Override
-  public Optional<ResultSet> getResultSet() {
-    return Optional.ofNullable(rs);
   }
 }

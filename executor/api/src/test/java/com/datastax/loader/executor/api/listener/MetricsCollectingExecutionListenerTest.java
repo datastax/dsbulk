@@ -9,7 +9,11 @@ package com.datastax.loader.executor.api.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import com.datastax.driver.core.*;
+import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.ExecutionInfo;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.SimpleStatement;
+import com.datastax.driver.core.Statement;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
 import com.datastax.loader.executor.api.internal.listener.DefaultExecutionContext;
 import com.datastax.loader.executor.api.internal.result.DefaultReadResult;
@@ -42,14 +46,17 @@ public class MetricsCollectingExecutionListenerTest {
     listener.onExecutionFailed(
         new BulkExecutionException(new RuntimeException(), failedWrite), context);
 
-    listener.onResultReceived(new DefaultReadResult(successfulRead, mock(Row.class)), context);
-    listener.onResultReceived(new DefaultReadResult(successfulRead, mock(Row.class)), context);
-    listener.onResultReceived(new DefaultReadResult(successfulRead, mock(Row.class)), context);
+    listener.onResultReceived(
+        new DefaultReadResult(successfulRead, mock(ExecutionInfo.class), mock(Row.class)), context);
+    listener.onResultReceived(
+        new DefaultReadResult(successfulRead, mock(ExecutionInfo.class), mock(Row.class)), context);
+    listener.onResultReceived(
+        new DefaultReadResult(successfulRead, mock(ExecutionInfo.class), mock(Row.class)), context);
     listener.onResultReceived(
         new DefaultReadResult(new BulkExecutionException(new RuntimeException(), failedRead)),
         context);
     listener.onResultReceived(
-        new DefaultWriteResult(successfulWrite, mock(ResultSet.class)), context);
+        new DefaultWriteResult(successfulWrite, mock(ExecutionInfo.class)), context);
     listener.onResultReceived(
         new DefaultWriteResult(new BulkExecutionException(new RuntimeException(), failedWrite)),
         context);
