@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.TypeCodec;
 import com.datastax.loader.connectors.api.MappedRecord;
 import com.google.common.collect.Sets;
 import java.util.Arrays;
@@ -29,13 +30,13 @@ public class RecordMapperTest {
   private BoundStatement boundStatement;
   private ArgumentCaptor<String> variableCaptor;
   private ArgumentCaptor<Object> valueCaptor;
-  private ArgumentCaptor<Class> classCaptor;
+  private ArgumentCaptor<TypeCodec> codecCaptor;
 
   @Before
   public void setUp() throws Exception {
     variableCaptor = ArgumentCaptor.forClass(String.class);
     valueCaptor = ArgumentCaptor.forClass(Object.class);
-    classCaptor = ArgumentCaptor.forClass(Class.class);
+    codecCaptor = ArgumentCaptor.forClass(TypeCodec.class);
 
     boundStatement = mock(BoundStatement.class);
     mapping = mock(Mapping.class);
@@ -48,12 +49,16 @@ public class RecordMapperTest {
     when(mapping.map(0)).thenReturn("f0");
     when(mapping.map(1)).thenReturn("f1");
     when(mapping.map(2)).thenReturn("f2");
-  }
 
-  private void assertParameter(int index, String expectedVariable, Object expectedValue) {
-    assertThat(variableCaptor.getAllValues().get(index)).isEqualTo(expectedVariable);
-    assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
-    assertThat(classCaptor.getAllValues().get(index)).isSameAs(expectedValue.getClass());
+    TypeCodec codec1 = TypeCodec.cint();
+    TypeCodec codec2 = TypeCodec.varchar();
+
+    //noinspection unchecked
+    when(mapping.codec("f0", 42)).thenReturn(codec1);
+    //noinspection unchecked
+    when(mapping.codec("f1", "NIL")).thenReturn(codec2);
+    //noinspection unchecked
+    when(mapping.codec("f2", "NULL")).thenReturn(codec2);
   }
 
   @Test
@@ -71,11 +76,11 @@ public class RecordMapperTest {
 
     //noinspection unchecked
     verify(boundStatement, times(3))
-        .set(variableCaptor.capture(), valueCaptor.capture(), classCaptor.capture());
+        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42);
-    assertParameter(1, "f1", "NIL");
-    assertParameter(2, "f2", "NULL");
+    assertParameter(0, "f0", 42, TypeCodec.cint());
+    assertParameter(1, "f1", "NIL", TypeCodec.varchar());
+    assertParameter(2, "f2", "NULL", TypeCodec.varchar());
   }
 
   @Test
@@ -93,10 +98,10 @@ public class RecordMapperTest {
 
     //noinspection unchecked
     verify(boundStatement, times(2))
-        .set(variableCaptor.capture(), valueCaptor.capture(), classCaptor.capture());
+        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42);
-    assertParameter(1, "f2", "NULL");
+    assertParameter(0, "f0", 42, TypeCodec.cint());
+    assertParameter(1, "f2", "NULL", TypeCodec.varchar());
   }
 
   @Test
@@ -114,9 +119,9 @@ public class RecordMapperTest {
 
     //noinspection unchecked
     verify(boundStatement)
-        .set(variableCaptor.capture(), valueCaptor.capture(), classCaptor.capture());
+        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42);
+    assertParameter(0, "f0", 42, TypeCodec.cint());
   }
 
   @Test
@@ -134,10 +139,10 @@ public class RecordMapperTest {
 
     //noinspection unchecked
     verify(boundStatement, times(2))
-        .set(variableCaptor.capture(), valueCaptor.capture(), classCaptor.capture());
+        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42);
-    assertParameter(1, "f2", "NULL");
+    assertParameter(0, "f0", 42, TypeCodec.cint());
+    assertParameter(1, "f2", "NULL", TypeCodec.varchar());
 
     verify(boundStatement).setToNull(variableCaptor.capture());
     assertThat(variableCaptor.getValue()).isEqualTo("f1");
@@ -158,12 +163,19 @@ public class RecordMapperTest {
 
     //noinspection unchecked
     verify(boundStatement, times(2))
-        .set(variableCaptor.capture(), valueCaptor.capture(), classCaptor.capture());
+        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42);
-    assertParameter(1, "f2", "NULL");
+    assertParameter(0, "f0", 42, TypeCodec.cint());
+    assertParameter(1, "f2", "NULL", TypeCodec.varchar());
 
     verify(boundStatement).setToNull(variableCaptor.capture());
     assertThat(variableCaptor.getValue()).isEqualTo("f1");
+  }
+
+  private void assertParameter(
+      int index, String expectedVariable, Object expectedValue, TypeCodec<?> expectedCodec) {
+    assertThat(variableCaptor.getAllValues().get(index)).isEqualTo(expectedVariable);
+    assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
+    assertThat(codecCaptor.getAllValues().get(index)).isSameAs(expectedCodec);
   }
 }

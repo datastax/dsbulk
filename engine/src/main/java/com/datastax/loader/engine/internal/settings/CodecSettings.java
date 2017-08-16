@@ -8,46 +8,20 @@ package com.datastax.loader.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
-import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
-import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
-import com.datastax.loader.engine.internal.codecs.NumberToNumberCodec;
-import com.datastax.loader.engine.internal.codecs.StringToBigDecimalCodec;
-import com.datastax.loader.engine.internal.codecs.StringToBigIntegerCodec;
-import com.datastax.loader.engine.internal.codecs.StringToBooleanCodec;
-import com.datastax.loader.engine.internal.codecs.StringToByteCodec;
-import com.datastax.loader.engine.internal.codecs.StringToDoubleCodec;
-import com.datastax.loader.engine.internal.codecs.StringToFloatCodec;
-import com.datastax.loader.engine.internal.codecs.StringToInetAddressCodec;
-import com.datastax.loader.engine.internal.codecs.StringToInstantCodec;
-import com.datastax.loader.engine.internal.codecs.StringToIntegerCodec;
-import com.datastax.loader.engine.internal.codecs.StringToLocalDateCodec;
-import com.datastax.loader.engine.internal.codecs.StringToLocalTimeCodec;
-import com.datastax.loader.engine.internal.codecs.StringToLongCodec;
-import com.datastax.loader.engine.internal.codecs.StringToShortCodec;
-import com.datastax.loader.engine.internal.codecs.StringToUUIDCodec;
-import com.datastax.loader.engine.internal.codecs.TemporalToTemporalCodec;
+import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Sets;
 import com.typesafe.config.Config;
 import java.lang.reflect.Field;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.StringTokenizer;
 
 /** */
@@ -80,24 +54,13 @@ public class CodecSettings {
 
   private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
 
-  private static final Set<TypeCodec<?>> NUMERIC_CODECS =
-      Sets.newHashSet(
-          TypeCodec.tinyInt(),
-          TypeCodec.smallInt(),
-          TypeCodec.cint(),
-          TypeCodec.bigint(),
-          TypeCodec.cfloat(),
-          TypeCodec.cdouble(),
-          TypeCodec.varint(),
-          TypeCodec.decimal());
-
   private final Config config;
 
   CodecSettings(Config config) {
     this.config = config;
   }
 
-  public void init(Cluster cluster) {
+  public ExtendedCodecRegistry init(Cluster cluster) {
     Locale locale = parseLocale(config.getString("locale"));
     Map<String, Boolean> booleanInputs = getBooleanInputs(config.getStringList("boolean"));
     Map<Boolean, String> booleanOutputs = getBooleanOutputs(config.getStringList("boolean"));
@@ -107,54 +70,19 @@ public class CodecSettings {
     DateTimeFormatter localTimeFormat = getDateFormat(config.getString("time"), timeZone, locale);
     DateTimeFormatter timestampFormat =
         getDateFormat(config.getString("timestamp"), timeZone, locale);
+    String delimiter = config.getString("delimiter");
+    String keyValueSeparator = config.getString("keyValueSeparator");
     CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
-    // JDK8 codecs
-    codecRegistry.register(LocalDateCodec.instance, LocalTimeCodec.instance, InstantCodec.instance);
-    // String to X codecs
-    codecRegistry
-        .register(new StringToBooleanCodec(booleanInputs, booleanOutputs))
-        .register(new StringToByteCodec(numberFormat))
-        .register(new StringToShortCodec(numberFormat))
-        .register(new StringToIntegerCodec(numberFormat))
-        .register(new StringToLongCodec(numberFormat))
-        .register(new StringToFloatCodec(numberFormat))
-        .register(new StringToDoubleCodec(numberFormat))
-        .register(new StringToBigIntegerCodec(numberFormat))
-        .register(new StringToBigDecimalCodec(numberFormat))
-        .register(new StringToLocalDateCodec(localDateFormat))
-        .register(new StringToLocalTimeCodec(localTimeFormat))
-        .register(new StringToInstantCodec(timestampFormat))
-        .register(StringToInetAddressCodec.INSTANCE)
-        .register(new StringToUUIDCodec(TypeCodec.uuid()))
-        .register(new StringToUUIDCodec(TypeCodec.timeUUID()));
-    // Number to Number codecs
-    for (TypeCodec<?> codec1 : NUMERIC_CODECS) {
-      for (TypeCodec<?> codec2 : NUMERIC_CODECS) {
-        if (codec1 == codec2) continue;
-        @SuppressWarnings("unchecked")
-        NumberToNumberCodec<Number, Number> codec =
-            new NumberToNumberCodec<>(
-                (Class<Number>) codec1.getJavaType().getRawType(), (TypeCodec<Number>) codec2);
-        codecRegistry.register(codec);
-      }
-    }
-    // Temporal to Temporal codecs
-    codecRegistry.register(
-        new TemporalToTemporalCodec<>(ZonedDateTime.class, LocalDateCodec.instance));
-    codecRegistry.register(
-        new TemporalToTemporalCodec<>(ZonedDateTime.class, LocalTimeCodec.instance));
-    codecRegistry.register(
-        new TemporalToTemporalCodec<>(ZonedDateTime.class, InstantCodec.instance));
-    codecRegistry.register(new TemporalToTemporalCodec<>(Instant.class, LocalDateCodec.instance));
-    codecRegistry.register(new TemporalToTemporalCodec<>(Instant.class, LocalTimeCodec.instance));
-    codecRegistry.register(
-        new TemporalToTemporalCodec<>(LocalDateTime.class, LocalDateCodec.instance));
-    codecRegistry.register(
-        new TemporalToTemporalCodec<>(LocalDateTime.class, LocalTimeCodec.instance));
-    codecRegistry.register(
-        new TemporalToTemporalCodec<>(LocalDateTime.class, InstantCodec.instance));
-    codecRegistry.register(new TemporalToTemporalCodec<>(LocalDate.class, InstantCodec.instance));
-    codecRegistry.register(new TemporalToTemporalCodec<>(LocalTime.class, InstantCodec.instance));
+    return new ExtendedCodecRegistry(
+        codecRegistry,
+        booleanInputs,
+        booleanOutputs,
+        numberFormat,
+        localDateFormat,
+        localTimeFormat,
+        timestampFormat,
+        delimiter,
+        keyValueSeparator);
   }
 
   private static Locale parseLocale(String s) {

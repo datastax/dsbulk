@@ -6,6 +6,9 @@
  */
 package com.datastax.loader.executor.api;
 
+import static com.datastax.loader.tests.utils.CsvUtils.createIpByCountryTable;
+import static java.util.concurrent.TimeUnit.MINUTES;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.datastax.loader.engine.Main;
@@ -28,9 +31,6 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
-
-import static com.datastax.loader.tests.utils.CsvUtils.createIpByCountryTable;
-import static java.util.concurrent.TimeUnit.MINUTES;
 
 public class CSVConnectorBenchmark {
 
@@ -72,8 +72,8 @@ public class CSVConnectorBenchmark {
       csvFile = dest.resolve("ip-by-country.csv").toUri().toURL();
       cluster.close();
       args = new String[]{
-          "log.outputDirectory=./target",
-          "connector.class=com.datastax.loader.connectors.csv.CSVConnector",
+          "log.outputDirectory=\"file:./target\"",
+          "connector.name=csv",
           "connector.url=\"" + csvFile.toExternalForm() + "\"",
           "schema.keyspace=csv_connector_benchmark",
           "schema.table=ip_by_country"
