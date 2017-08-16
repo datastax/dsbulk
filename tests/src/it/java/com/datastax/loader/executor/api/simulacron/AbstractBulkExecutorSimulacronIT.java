@@ -1131,8 +1131,7 @@ public abstract class AbstractBulkExecutorSimulacronIT {
             .getLogs()
             .getQueryLogs()
             .stream()
-            .filter(
-                (l) -> !l.getQuery().equals(failedStr))
+            .filter((l) -> !l.getQuery().equals(failedStr))
             .count();
 
     Assertions.assertThat(size).isEqualTo(expected);

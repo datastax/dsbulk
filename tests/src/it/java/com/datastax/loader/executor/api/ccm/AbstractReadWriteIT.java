@@ -62,8 +62,7 @@ public abstract class AbstractReadWriteIT {
 
   @ClassRule public static CCMRule ccm = new CCMRule();
 
-  @Inject
-  private static Session session;
+  @Inject private static Session session;
 
   private static PreparedStatement insertIntoIpByCountry;
   private static PreparedStatement insertIntoCountryByIp;

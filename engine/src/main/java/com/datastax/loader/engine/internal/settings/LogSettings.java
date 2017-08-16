@@ -11,14 +11,13 @@ import com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosit
 import com.datastax.loader.engine.internal.log.statement.StatementFormatter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.Config;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** */
 public class LogSettings {

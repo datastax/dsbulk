@@ -6,21 +6,20 @@
  */
 package com.datastax.loader.executor.api;
 
+import static com.datastax.loader.tests.utils.CsvUtils.createIpByCountryTable;
+import static java.util.concurrent.TimeUnit.MINUTES;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.datastax.loader.engine.Main;
 import com.datastax.loader.tests.utils.ZipUtils;
 import io.reactivex.plugins.RxJavaPlugins;
-import org.openjdk.jmh.annotations.*;
-
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
-
-import static com.datastax.loader.tests.utils.CsvUtils.createIpByCountryTable;
-import static java.util.concurrent.TimeUnit.MINUTES;
+import org.openjdk.jmh.annotations.*;
 
 public class CSVConnectorBenchmark {
 
