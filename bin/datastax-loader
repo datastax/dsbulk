@@ -32,7 +32,7 @@ Available settings along with defaults are recorded in conf/reference.conf. This
 also contains detailed descriptions of settings and is a great source of information.
 When the loader starts up, settings are first loaded from conf/reference.conf.
 
-The conf directory also contains an applicaton.conf where a user may specify permanent
+The conf directory also contains an application.conf where a user may specify permanent
 overrides of settings. These may be in nested-structure form like this:
 
 datastax-loader {
