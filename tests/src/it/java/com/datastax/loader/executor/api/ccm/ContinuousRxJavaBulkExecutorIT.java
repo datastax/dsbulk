@@ -16,8 +16,6 @@ public class ContinuousRxJavaBulkExecutorIT extends AbstractContinuousBulkExecut
   @BeforeClass
   public static void createBulkExecutors() {
     failFastExecutor = ContinuousRxJavaBulkExecutor.builder(session).build();
-    failSafeExecutor =
-        ContinuousRxJavaBulkExecutor.builder(session).failSafe().build();
+    failSafeExecutor = ContinuousRxJavaBulkExecutor.builder(session).failSafe().build();
   }
-
 }

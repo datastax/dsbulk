@@ -60,12 +60,9 @@ public abstract class AbstractReadWriteIT {
         }
       };
 
+  @ClassRule public static CCMRule ccm = new CCMRule();
 
-  @ClassRule
-  public static CCMRule ccm = new CCMRule();
-
-  @Inject
-  static Session session;
+  @Inject static Session session;
 
   private static PreparedStatement insertIntoIpByCountry;
   private static PreparedStatement insertIntoCountryByIp;
@@ -141,15 +138,16 @@ public abstract class AbstractReadWriteIT {
     CsvUtils.csvRecords()
         .subscribeOn(Schedulers.io())
         .map(
-            record -> insertIntoIpByCountry
-                .bind(
-                    record.getString("ISO 3166 Country Code"),
-                    record.getString("Country Name"),
-                    record.getValue("beginning IP Address", InetAddress.class, inetConverter),
-                    record.getValue("ending IP Address", InetAddress.class, inetConverter),
-                    record.getLong("beginning IP Number"),
-                    record.getLong("ending IP Number"))
-                .setIdempotent(true))
+            record ->
+                insertIntoIpByCountry
+                    .bind(
+                        record.getString("ISO 3166 Country Code"),
+                        record.getString("Country Name"),
+                        record.getValue("beginning IP Address", InetAddress.class, inetConverter),
+                        record.getValue("ending IP Address", InetAddress.class, inetConverter),
+                        record.getLong("beginning IP Number"),
+                        record.getLong("ending IP Number"))
+                    .setIdempotent(true))
         .buffer(100)
         .map(batcher::batchByGroupingKey)
         .flatMap(executor::writeReactive)
@@ -159,8 +157,7 @@ public abstract class AbstractReadWriteIT {
                     .getError()
                     .ifPresent(
                         e -> {
-                          LOGGER.warn(
-                              "Failed: " + result.getStatement(), result.getError().get());
+                          LOGGER.warn("Failed: " + result.getStatement(), result.getError().get());
                         }))
         .blockingSubscribe();
     timer.stop();
@@ -183,10 +180,10 @@ public abstract class AbstractReadWriteIT {
     reporter.start(1, TimeUnit.SECONDS);
 
     Flowable.fromPublisher(
-        executor.readReactive(
-            "SELECT beginning_ip_address, ending_ip_address, "
-                + "beginning_ip_number, ending_ip_number, "
-                + "country_code, country_name FROM ip_by_country"))
+            executor.readReactive(
+                "SELECT beginning_ip_address, ending_ip_address, "
+                    + "beginning_ip_number, ending_ip_number, "
+                    + "country_code, country_name FROM ip_by_country"))
         .map(
             r -> {
               Row row = r.getRow().orElseThrow(IllegalStateException::new);
@@ -219,5 +216,4 @@ public abstract class AbstractReadWriteIT {
     URL url = Resources.getResource(resource);
     return new CqlScriptReader(Resources.asCharSource(url, UTF_8).openBufferedStream(), multiLine);
   }
-
 }

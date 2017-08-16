@@ -13,6 +13,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.loader.connectors.api.Connector;
+import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.loader.engine.internal.log.LogManager;
 import com.datastax.loader.engine.internal.metrics.MetricsManager;
 import com.datastax.loader.engine.internal.schema.RecordMapper;
@@ -88,12 +89,12 @@ public class Main {
             executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener())) {
 
       session.init();
-      codecSettings.init(cluster);
       connector.init();
       metricsManager.init();
       logManager.init(cluster);
 
-      RecordMapper recordMapper = schemaSettings.newRecordMapper(session);
+      ExtendedCodecRegistry codecRegistry = codecSettings.init(cluster);
+      RecordMapper recordMapper = schemaSettings.init(session, codecRegistry);
 
       Flowable.fromPublisher(connector.read())
           .compose(metricsManager.newConnectorMonitor())

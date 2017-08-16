@@ -12,9 +12,11 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.loader.engine.internal.schema.DefaultMapping;
 import com.datastax.loader.engine.internal.schema.RecordMapper;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -35,10 +37,10 @@ public class SchemaSettings {
     this.config = config;
   }
 
-  public RecordMapper newRecordMapper(Session session) {
-    DefaultMapping mapping = null;
-    if (config.hasPath("mapping")) {
-      mapping = new DefaultMapping();
+  public RecordMapper init(Session session, ExtendedCodecRegistry codecRegistry) {
+    ImmutableMap.Builder<Object, String> fieldsToVariablesBuilder = null;
+    if (config.hasPath("mapping") && !config.getConfig("mapping").isEmpty()) {
+      fieldsToVariablesBuilder = new ImmutableMap.Builder<>();
       for (Map.Entry<String, Object> entry :
           config.getConfig("mapping").root().unwrapped().entrySet()) {
         Object key = entry.getKey();
@@ -48,55 +50,62 @@ public class SchemaSettings {
           key = Integer.valueOf(key.toString());
         } catch (NumberFormatException ignored) {
         }
-        mapping.put(key, entry.getValue().toString());
+        fieldsToVariablesBuilder.put(key, entry.getValue().toString());
       }
     }
     if (config.hasPath("keyspace")) {
-      Preconditions.checkState(config.hasPath("table"));
+      Preconditions.checkState(config.hasPath("table"), "Keyspace and table must be specified");
       keyspaceName = Metadata.quoteIfNecessary(config.getString("keyspace"));
       tableName = Metadata.quoteIfNecessary(config.getString("table"));
       keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
-      Preconditions.checkNotNull(keyspace);
+      Preconditions.checkNotNull(keyspace, "Keyspace does not exist: " + keyspaceName);
       table = keyspace.getTable(tableName);
-      Preconditions.checkNotNull(table);
+      Preconditions.checkNotNull(
+          table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
     }
-    if (!config.hasPath("mapping")) {
+    if (!config.hasPath("mapping") || config.getConfig("mapping").isEmpty()) {
       Preconditions.checkState(keyspace != null && table != null);
-      mapping = inferMapping();
+      fieldsToVariablesBuilder = inferFieldsToVariablesMap();
     }
-    Preconditions.checkNotNull(mapping);
+    Preconditions.checkNotNull(
+        fieldsToVariablesBuilder,
+        "Mapping was absent and could not be inferred, please provide an explicit mapping");
+    ImmutableMap<Object, String> fieldsToVariables = fieldsToVariablesBuilder.build();
     String query;
     if (config.hasPath("statement")) {
       query = config.getString("statement");
     } else {
-      Preconditions.checkState(keyspace != null && table != null);
-      query = inferQuery(mapping);
+      Preconditions.checkState(
+          keyspace != null && table != null, "Keyspace and table must be specified");
+      query = inferQuery(fieldsToVariables);
     }
     PreparedStatement ps = session.prepare(query);
+    DefaultMapping mapping =
+        new DefaultMapping(fieldsToVariables, codecRegistry, ps.getVariables());
     return new RecordMapper(
         ps, mapping, config.getStringList("nullWords"), config.getBoolean("nullToUnset"));
   }
 
-  private DefaultMapping inferMapping() {
-    DefaultMapping mapping = new DefaultMapping();
+  private ImmutableMap.Builder<Object, String> inferFieldsToVariablesMap() {
+    ImmutableMap.Builder<Object, String> fieldsToVariables = new ImmutableMap.Builder<>();
     for (int i = 0; i < table.getColumns().size(); i++) {
       ColumnMetadata col = table.getColumns().get(i);
       String name = Metadata.quoteIfNecessary(col.getName());
       // use both indexed and mapped access
       // indexed access can only work if the data source produces
       // indexed records with columns in the same order
-      mapping.put(i, name);
-      mapping.put(col.getName(), name);
+      fieldsToVariables.put(i, name);
+      fieldsToVariables.put(col.getName(), name);
     }
-    return mapping;
+    return fieldsToVariables;
   }
 
-  private String inferQuery(DefaultMapping mapping) {
+  private String inferQuery(ImmutableMap<Object, String> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
-    Set<String> cols = new LinkedHashSet<>(mapping.values());
+    Set<String> cols = new LinkedHashSet<>(fieldsToVariables.values());
     Iterator<String> it = cols.iterator();
     while (it.hasNext()) {
       // this assumes that the variable name found in the mapping

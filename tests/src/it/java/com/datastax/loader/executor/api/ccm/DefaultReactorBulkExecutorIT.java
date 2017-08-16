@@ -16,9 +16,6 @@ public class DefaultReactorBulkExecutorIT extends AbstractBulkExecutorIT {
   @BeforeClass
   public static void createBulkExecutors() {
     failFastExecutor = DefaultReactorBulkExecutor.builder(session).build();
-    failSafeExecutor =
-        DefaultReactorBulkExecutor.builder(session).failSafe().build();
+    failSafeExecutor = DefaultReactorBulkExecutor.builder(session).failSafe().build();
   }
-
 }
-

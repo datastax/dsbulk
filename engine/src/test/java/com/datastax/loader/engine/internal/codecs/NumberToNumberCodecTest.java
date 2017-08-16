@@ -69,7 +69,7 @@ public class NumberToNumberCodecTest {
         .from(null);
 
     assertThat(new NumberToNumberCodec<>(BigDecimal.class, TypeCodec.cint()))
-        .convertsFrom(new BigDecimal("123.00"))
+        .convertsFrom(new BigDecimal("123"))
         .to(123)
         .convertsFrom(null)
         .to(null)

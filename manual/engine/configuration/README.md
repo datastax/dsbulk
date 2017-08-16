@@ -182,6 +182,183 @@ The following options can be configured:
             The fully-qualified class name of the `SpeculativeExecutionPolicy` implementation to use.
             Defaults to `com.datastax.driver.core.policies.NoSpeculativeExecutionPolicy`.
 
+    * auth: Authentication settings.
+
+        * `provider` [string]
+        
+            The name of the AuthProvider to use.
+            This property is optional; if it is not present, no authentication will occur.
+            Valid values are:
+            
+            - `PlainTextAuthProvider`:
+                Uses [PlainTextAuthProvider] for authentication.
+                Supports SASL authentication using the `PLAIN` mechanism (plain text authentication).
+            - `DsePlainTextAuthProvider`:
+                Uses [DsePlainTextAuthProvider] for authentication.
+                Supports SASL authentication to DSE clusters using the `PLAIN` mechanism 
+                (plain text authentication), and also supports optional proxy authentication; 
+                should be preferred to `PlainTextAuthProvider` when connecting to secured DSE clusters.
+            - `DseGSSAPIAuthProvider`:
+                Uses [DseGSSAPIAuthProvider] for authentication.
+                Supports SASL authentication to DSE clusters using the `GSSAPI` mechanism 
+                (Kerberos authentication), and also supports optional proxy authentication.
+
+        * `username` [string]
+        
+            The username to use. Required.
+            Providers that accept this setting:
+            
+            - `PlainTextAuthProvider`
+            - `DsePlainTextAuthProvider`
+        
+        * `password` [string] 
+        
+            The password to use. Required.
+            Providers that accept this setting:
+        
+            - `PlainTextAuthProvider`
+            - `DsePlainTextAuthProvider`
+        
+        * `authorizationId` [string]
+
+            The authorization ID to use. Optional.
+            An authorization ID allows the currently authenticated user
+            to act as a different user (a.k.a. proxy authentication).
+            Providers that accept this setting:
+
+            - `DsePlainTextAuthProvider`
+            - `DseGSSAPIAuthProvider`
+        
+        * `principal` [string]
+        
+            The Kerberos principal to use. Required.
+            Providers that accept this setting:
+
+            - `DseGSSAPIAuthProvider`
+            
+        * `keyTab` [string]
+        
+            The URL of the Kerberos keytab file to use for authentication, e.g.
+            "file:///path/to/my/keyTab".
+            Optional. If left unspecified, it is assumed that authentication will
+            be done with a ticket cache instead.
+            Providers that accept this setting:
+
+            - `DseGSSAPIAuthProvider`
+        
+        * `saslProtocol` [string]
+
+            The SASL protocol name to use. Required.
+            This value should match the username of the
+            Kerberos service principal used by the DSE server.
+            This information is specified in the dse.yaml file by the
+            `service_principal` option under the `kerberos_options` section,
+            and may vary from one DSE installation to another – especially
+            if you installed DSE with an automated package installer.
+            Defaults to `dse`.
+            Providers that accept this setting:
+    
+            - `DseGSSAPIAuthProvider`
+            
+    * `ssl`
+    
+        Encryption-specific settings.
+        For more information about how to configure this section,
+        see the [Java Secure Socket Extension (JSSE) Reference Guide](http://docs.oracle.com/javase/6/docs/technotes/guides/security/jsse/JSSERefGuide.html).
+        You can also check the [DataStax Java driver documentation on SSL](http://docs.datastax.com/en/developer/java-driver-dse/latest/manual/ssl/).
+
+        * `provider` [string]
+        
+            The SSL provider to use.
+            This property is optional; if it is not present, SSL won't be activated.
+            Valid values are:
+            
+            - `JDK`: uses JDK's SSLContext
+            - `OpenSSL`: uses Netty's native support for OpenSSL.
+            
+                Using OpenSSL provides better performance and generates less garbage.
+                A disadvantage of using the OpenSSL provider is that, unlike the JDK provider,
+                it requires a platform-specific dependency, named "netty-tcnative",
+                which must be added manually to the loader's classpath
+                (typically by dropping its jar in the lib subdirectory of the Loader archive).
+                Follow [these instructions](http://netty.io/wiki/forked-tomcat-native.html) 
+                to find out how to add this dependency.
+        
+        * `cipherSuites` [string list]
+
+            The cipher suites to enable.
+            Example: 
+            
+                cipherSuites = [ "TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA" ]`
+                
+            This property is optional. If it is not present, 
+            the driver won't explicitly enable cipher
+            suites, which according to the JDK documentation results in 
+            "a minimum quality of service".
+        
+        * `truststore`
+        
+            The truststore to use to validate remote peer certificates.
+            This section is valid for both `JDK` and `OpenSSL` providers.
+        
+            * `url` [string]
+            
+                The URL of the truststore file, e.g.
+                "file:///path/to/my/truststore".
+                This setting is optional. If left unspecified,
+                server certificates will not be validated.
+            
+            * `password` [string]
+            
+                The truststore password.
+            
+            * `algorithm` [string]
+            
+                The algorithm to use.
+                Valid values are: `PKIX`, `SunX509`.
+                Defaults to `SunX509`.
+            
+        * `keystore`
+        
+            The keystore to use for client authentication.
+            This section is only valid when using `JDK` provider;
+            it is ignored otherwise.
+        
+            * `url` [string]
+            
+                The URL of the keystore file, e.g.
+                "file:///path/to/my/keystore".
+                This setting is optional. If left unspecified,
+                no client authentication will be used.
+            
+            * `password` [string]
+            
+                The keystore password.
+            
+            * `algorithm` [string]
+            
+                The algorithm to use.
+                Valid values are: `SunX509`, `NewSunX509`.
+                Defaults to `SunX509`.
+                    
+        * `openssl`
+        
+            OpenSSL configuration for client authentication.
+            This section is only valid when using `OpenSSL` provider;
+            it is ignored otherwise.
+        
+            * `keyCertChain` [string]
+            
+                The URL of the certificate chain file, e.g.
+                "file:///path/to/my/keyCertChain".
+                This setting is optional. If left unspecified,
+                no client authentication will be used.
+            
+            * `privateKey` [string]
+
+                The URL of the private key file, e.g.
+                "file:///path/to/my/privateKey".
+
 * `batch`
 
     Batch-specific settings.

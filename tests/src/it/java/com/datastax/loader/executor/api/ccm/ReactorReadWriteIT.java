@@ -6,11 +6,11 @@
  */
 package com.datastax.loader.executor.api.ccm;
 
+import com.datastax.driver.core.Session;
 import com.datastax.loader.executor.api.BulkExecutor;
 import com.datastax.loader.executor.api.DefaultReactorBulkExecutor;
-import com.datastax.loader.tests.ccm.annotations.CCMTest;
-import com.datastax.driver.core.Session;
 import com.datastax.loader.executor.api.listener.ExecutionListener;
+import com.datastax.loader.tests.ccm.annotations.CCMTest;
 
 @CCMTest
 public class ReactorReadWriteIT extends AbstractReadWriteIT {
@@ -18,5 +18,4 @@ public class ReactorReadWriteIT extends AbstractReadWriteIT {
   protected BulkExecutor getBulkExecutor(ExecutionListener listener, Session session) {
     return DefaultReactorBulkExecutor.builder(session).withExecutionListener(listener).build();
   }
-
 }

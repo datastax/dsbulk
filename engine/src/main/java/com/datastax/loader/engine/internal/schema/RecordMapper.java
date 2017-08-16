@@ -129,7 +129,7 @@ public class RecordMapper {
       bs.setToNull(variable);
     } else {
       //noinspection unchecked
-      bs.set(variable, convertedValue, (Class<Object>) convertedValue.getClass());
+      bs.set(variable, convertedValue, mapping.codec(variable, convertedValue));
     }
   }
 }

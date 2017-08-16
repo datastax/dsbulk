@@ -6,9 +6,9 @@
  */
 package com.datastax.loader.engine.internal.codecs;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
-import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ObjectAssert;
 
 public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCodec<FROM, TO>> {
@@ -77,8 +77,8 @@ public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCode
     }
 
     public ConvertingCodecAssert<FROM, TO> to(TO to) {
-      Assertions.assertThat(this.to)
-          .as("Expecting codec to convert from %s to %s but it was to %s", from, to, this.to)
+      assertThat(this.to)
+          .as("Expecting codec to convert to %s from %s but it was to %s", to, from, this.to)
           .isEqualTo(to);
       return this;
     }
@@ -96,7 +96,7 @@ public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCode
     }
 
     public ConvertingCodecAssert<FROM, TO> from(FROM from) {
-      Assertions.assertThat(this.from)
+      assertThat(this.from)
           .as("Expecting codec to convert to %s from %s but it was from %s", to, from, this.from)
           .isEqualTo(from);
       return this;

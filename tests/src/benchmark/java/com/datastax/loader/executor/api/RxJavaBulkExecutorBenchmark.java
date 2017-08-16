@@ -6,13 +6,19 @@
  */
 package com.datastax.loader.executor.api;
 
+import static com.datastax.loader.tests.utils.CsvUtils.createIpByCountryTable;
+import static com.datastax.loader.tests.utils.CsvUtils.csvRecords;
+import static com.datastax.loader.tests.utils.CsvUtils.prepareInsertStatement;
+import static com.datastax.loader.tests.utils.CsvUtils.toBoundStatement;
+import static java.util.concurrent.TimeUnit.MINUTES;
+
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
-import com.datastax.loader.executor.api.statement.TableScanner;
 import com.datastax.loader.executor.api.batch.RxJavaUnsortedStatementBatcher;
+import com.datastax.loader.executor.api.statement.TableScanner;
 import com.datastax.loader.tests.utils.ZipUtils;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.reactivex.Flowable;
@@ -40,12 +46,6 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
-import static com.datastax.loader.tests.utils.CsvUtils.createIpByCountryTable;
-import static com.datastax.loader.tests.utils.CsvUtils.csvRecords;
-import static com.datastax.loader.tests.utils.CsvUtils.prepareInsertStatement;
-import static com.datastax.loader.tests.utils.CsvUtils.toBoundStatement;
-import static java.util.concurrent.TimeUnit.MINUTES;
-
 public class RxJavaBulkExecutorBenchmark {
 
   private static final int TOTAL_RECORDS = 70865;
@@ -58,7 +58,11 @@ public class RxJavaBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
   public void benchmarkReadAsync(RxJavaBulkExecutionState state, Blackhole bh) throws Exception {
     state.executor.readAsync("SELECT * FROM read_benchmark.ip_by_country", bh::consume).get();
@@ -69,10 +73,16 @@ public class RxJavaBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
   public void benchmarkReadReactive(RxJavaBulkExecutionState state, Blackhole bh) throws Exception {
-    state.executor.readReactive("SELECT * FROM read_benchmark.ip_by_country")
+    state
+        .executor
+        .readReactive("SELECT * FROM read_benchmark.ip_by_country")
         .doOnNext(bh::consume)
         .blockingSubscribe();
   }
@@ -82,12 +92,14 @@ public class RxJavaBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
   public void benchmarkReadRanges(RxJavaBulkExecutionState state, Blackhole bh) throws Exception {
-    state.executor.readReactive(state.selects)
-        .doOnNext(bh::consume)
-        .blockingSubscribe();
+    state.executor.readReactive(state.selects).doOnNext(bh::consume).blockingSubscribe();
   }
 
   @Benchmark
@@ -95,12 +107,15 @@ public class RxJavaBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
-  public void benchmarkReadContinuously(RxJavaBulkExecutionState state, Blackhole bh) throws Exception {
-    state.continuousExecutor.readReactive(state.selects)
-        .doOnNext(bh::consume)
-        .blockingSubscribe();
+  public void benchmarkReadContinuously(RxJavaBulkExecutionState state, Blackhole bh)
+      throws Exception {
+    state.continuousExecutor.readReactive(state.selects).doOnNext(bh::consume).blockingSubscribe();
   }
 
   @Benchmark
@@ -108,7 +123,11 @@ public class RxJavaBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
   public void benchmarkWriteAsync(RxJavaBulkExecutionState state) throws Exception {
     state.executor.writeAsync(state.boundStatements().compose(state.batcher)).get();
@@ -119,15 +138,19 @@ public class RxJavaBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
   public void benchmarkWriteReactive(RxJavaBulkExecutionState state) throws Exception {
-    state.boundStatements()
+    state
+        .boundStatements()
         .compose(state.batcher)
         .flatMap(state.executor::writeReactive)
         .blockingSubscribe();
   }
-
 
   @State(Scope.Benchmark)
   public static class RxJavaBulkExecutionState {
@@ -145,24 +168,22 @@ public class RxJavaBulkExecutorBenchmark {
     @Setup(Level.Trial)
     public void init() throws IOException {
 
-      RxJavaPlugins.setErrorHandler((t) -> {
-      });
+      RxJavaPlugins.setErrorHandler((t) -> {});
 
       cluster = DseCluster.builder().addContactPoint("127.0.0.1").build();
       session = (ContinuousPagingSession) cluster.connect();
-      pool = Executors.newFixedThreadPool(
-          Runtime.getRuntime().availableProcessors() * 2,
-          new ThreadFactoryBuilder()
-              .setDaemon(true)
-              .setNameFormat("bulk-executor-%d")
-              .build());
+      pool =
+          Executors.newFixedThreadPool(
+              Runtime.getRuntime().availableProcessors() * 2,
+              new ThreadFactoryBuilder().setDaemon(true).setNameFormat("bulk-executor-%d").build());
       executor = DefaultRxJavaBulkExecutor.builder(session).withExecutor(pool).build();
       continuousExecutor = ContinuousRxJavaBulkExecutor.builder(session).withExecutor(pool).build();
       batcher = new RxJavaUnsortedStatementBatcher(session.getCluster());
 
       // fixtures for write benchmarks
       session.execute("DROP KEYSPACE IF EXISTS write_benchmark");
-      session.execute("CREATE KEYSPACE write_benchmark WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+      session.execute(
+          "CREATE KEYSPACE write_benchmark WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
       session.execute("USE write_benchmark");
       Path dest = Files.createTempDirectory("benchmark");
       ZipUtils.unzip("ip-by-country-all.csv.zip", dest);
@@ -172,7 +193,8 @@ public class RxJavaBulkExecutorBenchmark {
 
       // fixtures for read benchmarks
       session.execute("DROP KEYSPACE IF EXISTS read_benchmark");
-      session.execute("CREATE KEYSPACE read_benchmark WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+      session.execute(
+          "CREATE KEYSPACE read_benchmark WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
       session.execute("USE read_benchmark");
       createIpByCountryTable(session);
       PreparedStatement insert = prepareInsertStatement(session);
@@ -192,10 +214,7 @@ public class RxJavaBulkExecutorBenchmark {
     }
 
     private Flowable<BoundStatement> boundStatements() {
-      return csvRecords(csvFile)
-          .map(record -> toBoundStatement(insert, record));
+      return csvRecords(csvFile).map(record -> toBoundStatement(insert, record));
     }
-
   }
-
 }

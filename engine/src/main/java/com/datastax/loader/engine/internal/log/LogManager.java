@@ -24,10 +24,9 @@ import com.datastax.loader.engine.internal.log.statement.StatementFormatter;
 import com.datastax.loader.engine.internal.statement.BulkStatement;
 import com.datastax.loader.engine.internal.statement.UnmappableStatement;
 import com.datastax.loader.executor.api.result.Result;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.cache.RemovalNotification;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.FlowableTransformer;
 import io.reactivex.disposables.Disposable;
@@ -57,22 +56,20 @@ public class LogManager implements AutoCloseable {
   private final StatementFormatVerbosity verbosity;
   private final Set<Disposable> disposables = new HashSet<>();
   private final AtomicInteger errors = new AtomicInteger(0);
+
   private final LoadingCache<Path, PrintWriter> openFiles =
-      CacheBuilder.newBuilder()
+      Caffeine.newBuilder()
           .removalListener(
-              (RemovalNotification<Path, PrintWriter> notification) -> {
-                PrintWriter writer = notification.getValue();
-                writer.flush();
-                writer.close();
+              (Path path, PrintWriter writer, RemovalCause cause) -> {
+                if (writer != null) {
+                  writer.flush();
+                  writer.close();
+                }
               })
           .build(
-              new CacheLoader<Path, PrintWriter>() {
-                @Override
-                public PrintWriter load(Path path) throws Exception {
-                  return new PrintWriter(
-                      Files.newBufferedWriter(path, Charset.forName("UTF-8"), CREATE_NEW, WRITE));
-                }
-              });
+              path ->
+                  new PrintWriter(
+                      Files.newBufferedWriter(path, Charset.forName("UTF-8"), CREATE_NEW, WRITE)));
 
   private CodecRegistry codecRegistry;
   private ProtocolVersion protocolVersion;

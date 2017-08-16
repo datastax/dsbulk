@@ -6,6 +6,10 @@
  */
 package com.datastax.loader.engine.internal.schema;
 
+import com.datastax.driver.core.TypeCodec;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 public interface Mapping {
 
   /**
@@ -16,5 +20,16 @@ public interface Mapping {
    * @return the bound variable name the given field maps to, or {@code null} if the field does not
    *     map to any known bound variable.
    */
-  String map(Object field);
+  @Nullable
+  String map(@NotNull Object field);
+
+  /**
+   * Returns the codec to use for the given bound variable.
+   *
+   * @param name the bound variable name; never {@code null}.
+   * @param raw The raw value to find a codec for, as emitted by the connector; never {@code null}.
+   * @return the codec to use; never {@code null}.
+   */
+  @NotNull
+  TypeCodec<Object> codec(@NotNull String name, @NotNull Object raw);
 }

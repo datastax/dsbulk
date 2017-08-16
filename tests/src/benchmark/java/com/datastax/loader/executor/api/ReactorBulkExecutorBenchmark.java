@@ -58,7 +58,11 @@ public class ReactorBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
   public void benchmarkReadAsync(ReactorBulkExecutionState state, Blackhole bh) throws Exception {
     state.executor.readAsync("SELECT * FROM read_benchmark.ip_by_country", bh::consume).get();
@@ -69,10 +73,17 @@ public class ReactorBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
-  public void benchmarkReadReactive(ReactorBulkExecutionState state, Blackhole bh) throws Exception {
-    state.executor.readReactive("SELECT * FROM read_benchmark.ip_by_country")
+  public void benchmarkReadReactive(ReactorBulkExecutionState state, Blackhole bh)
+      throws Exception {
+    state
+        .executor
+        .readReactive("SELECT * FROM read_benchmark.ip_by_country")
         .doOnNext(bh::consume)
         .blockLast();
   }
@@ -82,12 +93,14 @@ public class ReactorBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
   public void benchmarkReadRanges(ReactorBulkExecutionState state, Blackhole bh) throws Exception {
-    state.executor.readReactive(state.selects)
-        .doOnNext(bh::consume)
-        .blockLast();
+    state.executor.readReactive(state.selects).doOnNext(bh::consume).blockLast();
   }
 
   @Benchmark
@@ -95,12 +108,15 @@ public class ReactorBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
-  public void benchmarkReadContinuously(ReactorBulkExecutionState state, Blackhole bh) throws Exception {
-    state.continuousExecutor.readReactive(state.selects)
-        .doOnNext(bh::consume)
-        .blockLast();
+  public void benchmarkReadContinuously(ReactorBulkExecutionState state, Blackhole bh)
+      throws Exception {
+    state.continuousExecutor.readReactive(state.selects).doOnNext(bh::consume).blockLast();
   }
 
   @Benchmark
@@ -108,13 +124,22 @@ public class ReactorBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
   public void benchmarkWriteAsync(ReactorBulkExecutionState state) throws Exception {
-    state.executor.writeAsync(state.boundStatements()
-        .buffer(1000)
-        .map(state.batcher::batchByGroupingKey)
-        .flatMap(Flowable::fromIterable)).get();
+    state
+        .executor
+        .writeAsync(
+            state
+                .boundStatements()
+                .buffer(1000)
+                .map(state.batcher::batchByGroupingKey)
+                .flatMap(Flowable::fromIterable))
+        .get();
   }
 
   @Benchmark
@@ -122,16 +147,20 @@ public class ReactorBulkExecutorBenchmark {
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
   @Warmup(iterations = WARMUP_ITERATIONS)
-  @Measurement(time = MEASUREMENT_TIME_IN_MINUTES, timeUnit = MINUTES, iterations = MEASUREMENT_ITERATIONS)
+  @Measurement(
+    time = MEASUREMENT_TIME_IN_MINUTES,
+    timeUnit = MINUTES,
+    iterations = MEASUREMENT_ITERATIONS
+  )
   @Fork(1)
   public void benchmarkWriteReactive(ReactorBulkExecutionState state) throws Exception {
-    state.boundStatements()
+    state
+        .boundStatements()
         .buffer(1000)
         .map(state.batcher::batchByGroupingKey)
         .flatMap(state.executor::writeReactive)
         .blockLast();
   }
-
 
   @State(Scope.Benchmark)
   public static class ReactorBulkExecutionState {
@@ -150,19 +179,19 @@ public class ReactorBulkExecutorBenchmark {
     public void init() throws IOException {
       cluster = DseCluster.builder().addContactPoint("127.0.0.1").build();
       session = (ContinuousPagingSession) cluster.connect();
-      pool = Executors.newFixedThreadPool(
-          Runtime.getRuntime().availableProcessors() * 2,
-          new ThreadFactoryBuilder()
-              .setDaemon(true)
-              .setNameFormat("bulk-executor-%d")
-              .build());
+      pool =
+          Executors.newFixedThreadPool(
+              Runtime.getRuntime().availableProcessors() * 2,
+              new ThreadFactoryBuilder().setDaemon(true).setNameFormat("bulk-executor-%d").build());
       executor = DefaultReactorBulkExecutor.builder(session).withExecutor(pool).build();
-      continuousExecutor = ContinuousReactorBulkExecutor.builder(session).withExecutor(pool).build();
+      continuousExecutor =
+          ContinuousReactorBulkExecutor.builder(session).withExecutor(pool).build();
       batcher = new ReactorStatementBatcher(session.getCluster());
 
       // fixtures for write benchmarks
       session.execute("DROP KEYSPACE IF EXISTS write_benchmark");
-      session.execute("CREATE KEYSPACE write_benchmark WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+      session.execute(
+          "CREATE KEYSPACE write_benchmark WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
       session.execute("USE write_benchmark");
       Path dest = Files.createTempDirectory("benchmark");
       ZipUtils.unzip("ip-by-country-all.csv.zip", dest);
@@ -172,7 +201,8 @@ public class ReactorBulkExecutorBenchmark {
 
       // fixtures for read benchmarks
       session.execute("DROP KEYSPACE IF EXISTS read_benchmark");
-      session.execute("CREATE KEYSPACE read_benchmark WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+      session.execute(
+          "CREATE KEYSPACE read_benchmark WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
       session.execute("USE read_benchmark");
       createIpByCountryTable(session);
       PreparedStatement insert = prepareInsertStatement(session);
@@ -192,10 +222,7 @@ public class ReactorBulkExecutorBenchmark {
     }
 
     private Flux<BoundStatement> boundStatements() {
-      return Flux.from(csvRecords(csvFile)
-          .map(record -> toBoundStatement(insert, record)));
+      return Flux.from(csvRecords(csvFile).map(record -> toBoundStatement(insert, record)));
     }
-
   }
-
 }
