@@ -6,9 +6,6 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
-import static com.datastax.loader.engine.internal.ReflectionUtils.newInstance;
-import static com.datastax.loader.engine.internal.ReflectionUtils.resolveClass;
-
 import com.datastax.driver.core.AuthProvider;
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.HostDistance;
@@ -28,10 +25,10 @@ import com.datastax.driver.core.policies.SpeculativeExecutionPolicy;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import com.typesafe.config.Config;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
 import java.io.File;
@@ -57,11 +54,11 @@ public class DriverSettings {
     OpenSSL
   }
 
-  private final Config config;
+  private final LoaderConfig config;
 
   private final String operationId;
 
-  DriverSettings(Config config, String operationId) {
+  DriverSettings(LoaderConfig config, String operationId) {
     this.config = config;
     this.operationId = operationId;
   }
@@ -114,22 +111,22 @@ public class DriverSettings {
         .withSocketOptions(
             new SocketOptions()
                 .setReadTimeoutMillis((int) config.getDuration("socket.readTimeout").toMillis()))
-        .withTimestampGenerator(newInstance(config.getString("timestampGenerator")))
-        .withAddressTranslator(newInstance(config.getString("addressTranslator")));
+        .withTimestampGenerator(config.getInstance("timestampGenerator"))
+        .withAddressTranslator(config.getInstance("addressTranslator"));
 
-    builder.withLoadBalancingPolicy(newInstance(config.getString("policy.lbp")));
-    Class<RetryPolicy> retryPolicyClass = resolveClass(config.getString("policy.retry"));
+    builder.withLoadBalancingPolicy(config.getInstance("policy.lbp"));
+    Class<RetryPolicy> retryPolicyClass = config.getClass("policy.retry");
     if (retryPolicyClass.equals(DefaultRetryPolicy.class)) {
       builder.withRetryPolicy(DefaultRetryPolicy.INSTANCE);
     } else {
-      builder.withRetryPolicy(newInstance(retryPolicyClass));
+      builder.withRetryPolicy(config.getInstance("policy.retry"));
     }
     Class<SpeculativeExecutionPolicy> speculativeExecutionPolicyClass =
-        resolveClass(config.getString("policy.specexec"));
+        config.getClass("policy.specexec");
     if (speculativeExecutionPolicyClass.equals(NoSpeculativeExecutionPolicy.class)) {
       builder.withSpeculativeExecutionPolicy(NoSpeculativeExecutionPolicy.INSTANCE);
     } else {
-      builder.withSpeculativeExecutionPolicy(newInstance(speculativeExecutionPolicyClass));
+      builder.withSpeculativeExecutionPolicy(config.getInstance("policy.specexec"));
     }
     // TODO configure policies
 

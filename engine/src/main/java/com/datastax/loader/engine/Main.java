@@ -12,6 +12,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
+import com.datastax.loader.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.loader.engine.internal.log.LogManager;
@@ -26,7 +27,6 @@ import com.datastax.loader.engine.internal.settings.LogSettings;
 import com.datastax.loader.engine.internal.settings.MonitoringSettings;
 import com.datastax.loader.engine.internal.settings.SchemaSettings;
 import com.datastax.loader.engine.internal.settings.SettingsManager;
-import com.datastax.loader.engine.internal.url.MainURLStreamHandlerFactory;
 import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
 import com.google.common.base.Stopwatch;
 import io.reactivex.Flowable;
@@ -46,7 +46,7 @@ public class Main {
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
   public static void main(String[] args) throws Exception {
-    URL.setURLStreamHandlerFactory(new MainURLStreamHandlerFactory());
+    URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
     Main main = new Main(args);
     main.load();
   }

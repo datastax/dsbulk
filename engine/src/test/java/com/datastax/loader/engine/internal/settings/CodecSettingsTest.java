@@ -36,6 +36,8 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.TupleType;
 import com.datastax.driver.core.UserType;
+import com.datastax.loader.commons.config.DefaultLoaderConfig;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.loader.engine.internal.codecs.NumberToNumberCodec;
 import com.datastax.loader.engine.internal.codecs.StringToBigDecimalCodec;
@@ -57,7 +59,6 @@ import com.datastax.loader.engine.internal.codecs.StringToTupleCodec;
 import com.datastax.loader.engine.internal.codecs.StringToUDTCodec;
 import com.datastax.loader.engine.internal.codecs.StringToUUIDCodec;
 import com.datastax.loader.engine.internal.codecs.TemporalToTemporalCodec;
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -84,7 +85,8 @@ public class CodecSettingsTest {
   @Test
   public void should_return_string_converting_codecs() throws Exception {
 
-    Config config = ConfigFactory.load().getConfig("datastax-loader.codec");
+    LoaderConfig config =
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.init(cluster);
 
@@ -135,7 +137,8 @@ public class CodecSettingsTest {
   @Test
   public void should_return_number_converting_codecs() throws Exception {
 
-    Config config = ConfigFactory.load().getConfig("datastax-loader.codec");
+    LoaderConfig config =
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.init(cluster);
 
@@ -168,7 +171,8 @@ public class CodecSettingsTest {
   @Test
   public void should_return_temporal_converting_codecs() throws Exception {
 
-    Config config = ConfigFactory.load().getConfig("datastax-loader.codec");
+    LoaderConfig config =
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.init(cluster);
 
@@ -207,7 +211,8 @@ public class CodecSettingsTest {
   @Test
   public void should_return_codecs_for_tokenizable_fields() throws Exception {
 
-    Config config = ConfigFactory.load().getConfig("datastax-loader.codec");
+    LoaderConfig config =
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.init(cluster);
 

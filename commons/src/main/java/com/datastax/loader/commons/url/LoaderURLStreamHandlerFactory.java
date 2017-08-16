@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.loader.engine.internal.url;
+package com.datastax.loader.commons.url;
 
 import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
@@ -18,7 +18,7 @@ import java.net.URLStreamHandlerFactory;
  * <p>All non-standard URL schemes supported by DataStax loader should have an entry added here
  * forwarding to the appropriate URL stream handler.
  */
-public class MainURLStreamHandlerFactory implements URLStreamHandlerFactory {
+public class LoaderURLStreamHandlerFactory implements URLStreamHandlerFactory {
 
   /** The scheme for standard input URLs. The only supported URL with such scheme is "stdin:/". */
   private static final String STDIN = "stdin";

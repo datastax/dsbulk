@@ -32,7 +32,8 @@ import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseConfiguration;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
-import com.typesafe.config.Config;
+import com.datastax.loader.commons.config.DefaultLoaderConfig;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import io.netty.handler.ssl.SslContext;
@@ -48,16 +49,20 @@ public class DriverSettingsTest {
 
   @Test(expected = ConfigException.Missing.class)
   public void should_not_create_mapper_when_contact_points_not_provided() throws Exception {
-    Config config = ConfigFactory.load().getConfig("datastax-loader.batch");
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.batch")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.newCluster();
   }
 
   @Test
   public void should_create_mapper_when_contact_points_provided() throws Exception {
-    Config config =
-        ConfigFactory.parseString("contactPoints = [ \"1.2.3.4:9042\", \"2.3.4.5:9042\" ]")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            new DefaultLoaderConfig(
+                ConfigFactory.parseString("contactPoints = [ \"1.2.3.4:9042\", \"2.3.4.5:9042\" ]")
+                    .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"))));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -103,10 +108,11 @@ public class DriverSettingsTest {
 
   @Test
   public void should_configure_authentication_with_PlainTextAuthProvider() throws Exception {
-    Config config =
-        ConfigFactory.parseString(
-                " auth { provider = PlainTextAuthProvider, username = alice, password = s3cr3t }")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    " auth { provider = PlainTextAuthProvider, username = alice, password = s3cr3t }")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -119,10 +125,11 @@ public class DriverSettingsTest {
 
   @Test
   public void should_configure_authentication_with_DsePlainTextAuthProvider() throws Exception {
-    Config config =
-        ConfigFactory.parseString(
-                " auth { provider = DsePlainTextAuthProvider, username = alice, password = s3cr3t, authorizationId = bob }")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    " auth { provider = DsePlainTextAuthProvider, username = alice, password = s3cr3t, authorizationId = bob }")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -137,15 +144,16 @@ public class DriverSettingsTest {
   @Test
   public void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab()
       throws Exception {
-    Config config =
-        ConfigFactory.parseString(
-                " auth { "
-                    + "provider = DseGSSAPIAuthProvider, "
-                    + "principal = \"alice@DATASTAX.COM\", "
-                    + "keyTab = \"file:///path/to/my/keyTab\", "
-                    + "authorizationId = \"bob@DATASTAX.COM\","
-                    + "saslProtocol = foo }")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    " auth { "
+                        + "provider = DseGSSAPIAuthProvider, "
+                        + "principal = \"alice@DATASTAX.COM\", "
+                        + "keyTab = \"file:///path/to/my/keyTab\", "
+                        + "authorizationId = \"bob@DATASTAX.COM\","
+                        + "saslProtocol = foo }")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -167,14 +175,15 @@ public class DriverSettingsTest {
   @Test
   public void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache()
       throws Exception {
-    Config config =
-        ConfigFactory.parseString(
-                " auth { "
-                    + "provider = DseGSSAPIAuthProvider, "
-                    + "principal = \"alice@DATASTAX.COM\", "
-                    + "authorizationId = \"bob@DATASTAX.COM\","
-                    + "saslProtocol = foo }")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    " auth { "
+                        + "provider = DseGSSAPIAuthProvider, "
+                        + "principal = \"alice@DATASTAX.COM\", "
+                        + "authorizationId = \"bob@DATASTAX.COM\","
+                        + "saslProtocol = foo }")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -195,23 +204,24 @@ public class DriverSettingsTest {
   public void should_configure_encryption_with_SSLContext() throws Exception {
     URL keystore = getClass().getResource("/client.keystore");
     URL truststore = getClass().getResource("/client.truststore");
-    Config config =
-        ConfigFactory.parseString(
-                String.format(
-                    " ssl { "
-                        + "provider = JDK, "
-                        + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
-                        + "keystore { "
-                        + "   url = \"%s\","
-                        + "   password = cassandra1sfun "
-                        + "}, "
-                        + "truststore { "
-                        + "   url = \"%s\","
-                        + "   password = cassandra1sfun "
-                        + "}"
-                        + "}",
-                    keystore, truststore))
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        " ssl { "
+                            + "provider = JDK, "
+                            + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
+                            + "keystore { "
+                            + "   url = \"%s\","
+                            + "   password = cassandra1sfun "
+                            + "}, "
+                            + "truststore { "
+                            + "   url = \"%s\","
+                            + "   password = cassandra1sfun "
+                            + "}"
+                            + "}",
+                        keystore, truststore))
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -227,23 +237,24 @@ public class DriverSettingsTest {
     URL keyCertChain = getClass().getResource("/client.crt");
     URL privateKey = getClass().getResource("/client.key");
     URL truststore = getClass().getResource("/client.truststore");
-    Config config =
-        ConfigFactory.parseString(
-                String.format(
-                    " ssl { "
-                        + "provider = OpenSSL, "
-                        + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
-                        + "openssl { "
-                        + "   keyCertChain = \"%s\","
-                        + "   privateKey = \"%s\""
-                        + "}, "
-                        + "truststore { "
-                        + "   url = \"%s\","
-                        + "   password = cassandra1sfun "
-                        + "}"
-                        + "}",
-                    keyCertChain, privateKey, truststore))
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        " ssl { "
+                            + "provider = OpenSSL, "
+                            + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
+                            + "openssl { "
+                            + "   keyCertChain = \"%s\","
+                            + "   privateKey = \"%s\""
+                            + "}, "
+                            + "truststore { "
+                            + "   url = \"%s\","
+                            + "   password = cassandra1sfun "
+                            + "}"
+                            + "}",
+                        keyCertChain, privateKey, truststore))
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();

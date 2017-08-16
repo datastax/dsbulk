@@ -11,8 +11,9 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.loader.commons.config.DefaultLoaderConfig;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.engine.internal.metrics.MetricsManager;
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.time.Duration;
 import org.junit.Test;
@@ -23,7 +24,8 @@ public class MonitoringSettingsTest {
 
   @Test
   public void should_create_metrics_manager_with_default_settings() throws Exception {
-    Config config = ConfigFactory.load().getConfig("datastax-loader.monitoring");
+    LoaderConfig config =
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.monitoring"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     MetricsManager metricsManager = settings.newMetricsManager();
     assertThat(metricsManager).isNotNull();
@@ -38,14 +40,15 @@ public class MonitoringSettingsTest {
 
   @Test
   public void should_create_metrics_manager_with_user_supplied_settings() throws Exception {
-    Config config =
-        ConfigFactory.parseString(
-            "rateUnit = MINUTES, "
-                + "durationUnit = SECONDS, "
-                + "reportInterval = 30 minutes, "
-                + "expectedWrites = 1000, "
-                + "expectedReads = 50,"
-                + "jmx = false");
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                "rateUnit = MINUTES, "
+                    + "durationUnit = SECONDS, "
+                    + "reportInterval = 30 minutes, "
+                    + "expectedWrites = 1000, "
+                    + "expectedReads = 50,"
+                    + "jmx = false"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     MetricsManager metricsManager = settings.newMetricsManager();
     assertThat(metricsManager).isNotNull();
