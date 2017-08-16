@@ -16,9 +16,6 @@ public class DefaultRxJavaBulkExecutorIT extends AbstractBulkExecutorIT {
   @BeforeClass
   public static void createBulkExecutors() {
     failFastExecutor = DefaultRxJavaBulkExecutor.builder(session).build();
-    failSafeExecutor =
-        DefaultRxJavaBulkExecutor.builder(session).failSafe().build();
+    failSafeExecutor = DefaultRxJavaBulkExecutor.builder(session).failSafe().build();
   }
-
 }
-

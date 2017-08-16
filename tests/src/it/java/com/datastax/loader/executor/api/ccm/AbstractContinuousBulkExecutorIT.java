@@ -27,5 +27,4 @@ public abstract class AbstractContinuousBulkExecutorIT extends AbstractBulkExecu
   public void truncateTable() {
     CsvUtils.truncateIpByCountryTable(session);
   }
-
 }

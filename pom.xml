@@ -352,6 +352,12 @@
               </goals>
             </execution>
           </executions>
+          <configuration>
+            <additionalSourceDirectories>
+              <additionalSourceDirectory>src/it/java</additionalSourceDirectory>
+              <additionalSourceDirectory>src/benchmark/java</additionalSourceDirectory>
+            </additionalSourceDirectories>
+          </configuration>
         </plugin>
 
         <plugin>

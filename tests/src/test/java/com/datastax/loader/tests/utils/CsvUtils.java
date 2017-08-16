@@ -8,11 +8,11 @@ package com.datastax.loader.tests.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SimpleStatement;
+import com.datastax.driver.core.*;
+import com.datastax.oss.simulacron.common.cluster.RequestPrime;
+import com.datastax.oss.simulacron.common.request.Query;
+import com.datastax.oss.simulacron.common.result.Result;
+import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.google.common.collect.ImmutableMap;
 import com.univocity.parsers.common.record.Record;
 import com.univocity.parsers.conversions.Conversion;
@@ -25,7 +25,7 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.Map;
+import java.util.*;
 
 public class CsvUtils {
 
@@ -46,7 +46,15 @@ public class CsvUtils {
         }
       };
 
-  private static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
+  public static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
+  public static final URL CSV_RECORDS_UNIQUE =
+      ClassLoader.getSystemResource("ip-by-country-unique.csv");
+  public static final URL CSV_RECORDS_PARTIAL_BAD =
+      ClassLoader.getSystemResource("ip-by-country-partial-bad.csv");
+  public static final URL CSV_RECORDS_SKIP =
+      ClassLoader.getSystemResource("ip-by-country-skip-bad.csv");
+  public static final URL CSV_RECORDS_ERROR =
+      ClassLoader.getSystemResource("ip-by-country-error.csv");
 
   private static final Map<String, Record> RECORD_MAP =
       ImmutableMap.copyOf(
@@ -180,5 +188,45 @@ public class CsvUtils {
           }
         },
         BackpressureStrategy.BUFFER);
+  }
+
+  public static RequestPrime createSimpleParameterizedQuery(String query) {
+    Map<String, String> paramTypes = new LinkedHashMap<>();
+    paramTypes.put("country_code", "ascii");
+    paramTypes.put("country_name", "ascii");
+    paramTypes.put("beginning_ip_address", "inet");
+    paramTypes.put("ending_ip_address", "inet");
+    paramTypes.put("beginning_ip_number", "bigint");
+    paramTypes.put("ending_ip_number", "bigint");
+    Query when = new Query(query, Collections.emptyList(), new HashMap<>(), paramTypes);
+    SuccessResult then = new SuccessResult(new ArrayList<>(), new HashMap<>());
+    return new RequestPrime(when, then);
+  }
+
+  public static RequestPrime createParameterizedQuery(
+      String query, Map<String, Object> params, Result then) {
+    Map<String, String> paramTypes = new LinkedHashMap<>();
+    paramTypes.put("country_code", "ascii");
+    paramTypes.put("country_name", "ascii");
+    paramTypes.put("beginning_ip_address", "inet");
+    paramTypes.put("ending_ip_address", "inet");
+    paramTypes.put("beginning_ip_number", "bigint");
+    paramTypes.put("ending_ip_number", "bigint");
+
+    Map<String, Object> defaultParams = new LinkedHashMap<String, Object>();
+    defaultParams.put("country_code", "*");
+    defaultParams.put("country_name", "*");
+    defaultParams.put("beginning_ip_address", "*");
+    defaultParams.put("ending_ip_address", "*");
+    defaultParams.put("beginning_ip_number", "*");
+    defaultParams.put("ending_ip_number", "*");
+
+    for (String key : params.keySet()) {
+      defaultParams.put(key, params.get(key));
+    }
+
+    Query when = new Query(query, Collections.emptyList(), defaultParams, paramTypes);
+
+    return new RequestPrime(when, then);
   }
 }
