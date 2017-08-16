@@ -14,14 +14,14 @@ import java.nio.ByteBuffer;
 
 public abstract class ConvertingCodec<FROM, TO> extends TypeCodec<FROM> {
 
-  protected final TypeCodec<TO> targetCodec;
+  final TypeCodec<TO> targetCodec;
 
   protected ConvertingCodec(TypeCodec<TO> targetCodec, Class<FROM> javaType) {
     super(targetCodec.getCqlType(), javaType);
     this.targetCodec = targetCodec;
   }
 
-  public TypeToken<TO> getTargetJavaType() {
+  TypeToken<TO> getTargetJavaType() {
     return targetCodec.getJavaType();
   }
 

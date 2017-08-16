@@ -55,7 +55,7 @@ public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCode
     return this;
   }
 
-  public ConvertingCodecAssert<FROM, TO> cannotConvertTo(TO to) {
+  ConvertingCodecAssert<FROM, TO> cannotConvertTo(TO to) {
     try {
       FROM from = actual.convertTo(to);
       fail(
@@ -70,7 +70,7 @@ public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCode
     private final FROM from;
     private final TO to;
 
-    public ConvertsFromAssert(ConvertingCodec<FROM, TO> actual, FROM from, TO to) {
+    ConvertsFromAssert(ConvertingCodec<FROM, TO> actual, FROM from, TO to) {
       super(actual);
       this.from = from;
       this.to = to;
@@ -89,7 +89,7 @@ public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCode
     private final FROM from;
     private final TO to;
 
-    public ConvertsToAssert(ConvertingCodec<FROM, TO> actual, FROM from, TO to) {
+    ConvertsToAssert(ConvertingCodec<FROM, TO> actual, FROM from, TO to) {
       super(actual);
       this.from = from;
       this.to = to;

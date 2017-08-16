@@ -66,7 +66,7 @@ public abstract class AbstractBulkExecutorSimulacronIT {
 
   @Mock private static Consumer<? super ReadResult> readConsumer;
 
-  static PreparedStatement insertStatement;
+  private static PreparedStatement insertStatement;
   static BulkExecutor failFastExecutor;
   static BulkExecutor failSafeExecutor;
 
@@ -1132,9 +1132,7 @@ public abstract class AbstractBulkExecutorSimulacronIT {
             .getQueryLogs()
             .stream()
             .filter(
-                (l) -> {
-                  return !l.getQuery().equals(failedStr);
-                })
+                (l) -> !l.getQuery().equals(failedStr))
             .count();
 
     Assertions.assertThat(size).isEqualTo(expected);

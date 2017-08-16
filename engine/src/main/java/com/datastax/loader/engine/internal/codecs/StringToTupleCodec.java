@@ -20,7 +20,7 @@ public class StringToTupleCodec extends ConvertingCodec<String, TupleValue> {
   private final List<ConvertingCodec<String, Object>> eltCodecs;
   private final String delimiter;
 
-  public StringToTupleCodec(
+  StringToTupleCodec(
       TypeCodec<TupleValue> tupleCodec,
       List<ConvertingCodec<String, Object>> eltCodecs,
       String delimiter) {

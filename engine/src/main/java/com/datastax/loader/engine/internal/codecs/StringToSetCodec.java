@@ -14,7 +14,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class StringToSetCodec<E> extends StringToCollectionCodec<E, Set<E>> {
 
-  public StringToSetCodec(
+  StringToSetCodec(
       TypeCodec<Set<E>> collectionCodec, ConvertingCodec<String, E> eltCodec, String delimiter) {
     super(collectionCodec, eltCodec, delimiter);
   }
