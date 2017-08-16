@@ -228,6 +228,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
 
   @Override
   public void close() {
+    super.close();
     scheduler.shutdown();
   }
 }

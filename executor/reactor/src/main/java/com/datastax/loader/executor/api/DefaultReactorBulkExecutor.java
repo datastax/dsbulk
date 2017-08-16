@@ -52,7 +52,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
    *
    * @param session the {@link Session} to use.
    */
-  public DefaultReactorBulkExecutor(Session session) {
+  DefaultReactorBulkExecutor(Session session) {
     super(session);
     this.scheduler = Schedulers.fromExecutor(executor);
   }
@@ -228,6 +228,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
 
   @Override
   public void close() {
+    super.close();
     scheduler.dispose();
   }
 }

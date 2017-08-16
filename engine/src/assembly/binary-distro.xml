@@ -17,7 +17,7 @@
     <format>zip</format>
   </formats>
 
-  <includeBaseDirectory>false</includeBaseDirectory>
+  <includeBaseDirectory>true</includeBaseDirectory>
 
   <fileSets>
 
@@ -35,6 +35,10 @@
 
     <fileSet>
       <directory>../manual</directory>
+    </fileSet>
+
+    <fileSet>
+      <directory>../bin</directory>
     </fileSet>
 
     <fileSet>

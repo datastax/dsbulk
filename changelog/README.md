@@ -20,3 +20,4 @@
 - [new feature] DAT-24: Add support for authentication and encryption.
 - [bug] DAT-48: Mappings are not being inferred.
 - [improvement] DAT-31: Support String to Collection, UDT and Tuple conversion.
+- [new feature] DAT-18: Create an executable bundle

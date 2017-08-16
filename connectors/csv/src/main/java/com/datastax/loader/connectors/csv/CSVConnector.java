@@ -13,7 +13,6 @@ import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.connectors.api.internal.MapRecord;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.csv.CsvFormat;
 import com.univocity.parsers.csv.CsvParser;
@@ -37,6 +36,7 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
+import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,9 +52,6 @@ import org.slf4j.LoggerFactory;
  * jar archive, for detailed information.
  */
 public class CSVConnector implements Connector {
-
-  private static final Config CSV_CONNECTOR_DEFAULT_SETTINGS =
-      ConfigFactory.defaultReference().getConfig("datastax-loader.connector.csv");
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
 
@@ -75,8 +72,20 @@ public class CSVConnector implements Connector {
 
   @Override
   public Config configure(Config settings) throws MalformedURLException {
-    settings = settings.withoutPath("csv").withFallback(CSV_CONNECTOR_DEFAULT_SETTINGS);
-    url = new URL(settings.getString("url"));
+    // Create a Config object that effectively merges the csv level with
+    // the connector level. The csv level in settings is a merge of
+    // user-provided values and the values from reference.conf. That is
+    // our fallback (e.g. think attributes like header, url under csv, but
+    // where the root is now csv).
+    // If the user specifies overrides like config.comment, those
+    // take precedence over those specified in csv.
+    // The net effect is that a user can specify a command-line override
+    // like connector.csv.comment, and it'll be respected, while
+    // at the same time an override like connector.url will also be
+    // respected.
+
+    settings = settings.withoutPath("csv").withFallback(settings.getConfig("csv"));
+    url = parseUrlOrPath(settings.getString("url"));
     pattern = settings.getString("pattern");
     encoding = Charset.forName(settings.getString("encoding"));
     delimiter = getAsChar(settings, "delimiter");
@@ -119,6 +128,26 @@ public class CSVConnector implements Connector {
           scan(root).map(p -> records(p.toUri().toURL()).subscribeOn(Schedulers.io())), maxThreads);
     } else {
       return records(url);
+    }
+  }
+
+  @NotNull
+  private static URL parseUrlOrPath(String urlOrPath) {
+    // NOTE: This is a good candidate for moving into a commons module / utility class.
+    // This logic also exists in SettingsUtils, but can't be directly referenced
+    // here due to circular dependencies between modules.
+
+    try {
+      return new URL(urlOrPath);
+    } catch (MalformedURLException e) {
+      // Parsing failed, so guess that it's a file path and prepend it
+      // to make a valid url.
+      try {
+        return Paths.get(urlOrPath).normalize().toAbsolutePath().toUri().toURL();
+      } catch (MalformedURLException e1) {
+        // Still bad...
+        throw new IllegalArgumentException("Invalid URL: " + urlOrPath, e1);
+      }
     }
   }
 

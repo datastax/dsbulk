@@ -135,7 +135,7 @@
       <classifier>${os.detected.classifier}</classifier>
       <scope>test</scope>
     </dependency>
-    
+
     <dependency>
       <groupId>org.jetbrains</groupId>
       <artifactId>annotations</artifactId>
@@ -186,7 +186,8 @@
             def string = config.root().render(ConfigRenderOptions.defaults().setOriginComments(false))
             def conf = Paths.get("${project.build.directory}/conf")
             Files.createDirectories(conf)
-            Files.write(conf.resolve("application.conf"), string.getBytes("UTF-8"))
+            Files.write(conf.resolve("reference.conf"), string.getBytes("UTF-8"))
+            Files.write(conf.resolve("application.conf"), "# Set application-specific settings here.\n# Example:\n# datastax-loader.connector.name = \"csv\"".getBytes("UTF-8"))
           ]]></script>
           </scripts>
         </configuration>
@@ -268,7 +269,7 @@
             <artifactId>maven-assembly-plugin</artifactId>
             <executions>
               <execution>
-                <id>assemble-binary-tarball</id>
+                <id>assemble-binary-distro</id>
                 <phase>package</phase>
                 <goals>
                   <goal>single</goal>
@@ -278,7 +279,7 @@
             <configuration>
               <appendAssemblyId>false</appendAssemblyId>
               <descriptors>
-                <descriptor>src/assembly/binary-tarball.xml</descriptor>
+                <descriptor>src/assembly/binary-distro.xml</descriptor>
               </descriptors>
               <tarLongFileMode>posix</tarLongFileMode>
               <!-- do not deploy final binary distribution -->

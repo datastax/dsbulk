@@ -24,15 +24,18 @@ import org.junit.Test;
 
 /** */
 public class CSVConnectorTest {
+  private static final Config CONNECTOR_DEFAULT_SETTINGS =
+      ConfigFactory.defaultReference().getConfig("datastax-loader.connector");
 
   @Test
   public void should_read_single_file() throws Exception {
     CSVConnector connector = new CSVConnector();
     Config settings =
         ConfigFactory.parseString(
-            String.format(
-                "header = true, url = \"%s\", escape = \"\\\"\", comment = \"#\"",
-                url("/sample.csv")));
+                String.format(
+                    "csv.header = true, url = \"%s\", escape = \"\\\"\", comment = \"#\"",
+                    url("/sample.csv")))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     connector.configure(settings);
     connector.init();
     List<Record> actual = Flowable.fromPublisher(connector.read()).toList().blockingGet();
@@ -78,7 +81,9 @@ public class CSVConnectorTest {
       InputStream is = new ByteArrayInputStream(line.getBytes("ISO-8859-1"));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
-      Config settings = ConfigFactory.parseString("url = \"stdin:/\", encoding = ISO-8859-1");
+      Config settings =
+          ConfigFactory.parseString("url = \"stdin:/\", encoding = ISO-8859-1")
+              .withFallback(CONNECTOR_DEFAULT_SETTINGS);
       connector.configure(settings);
       connector.init();
       List<Record> actual = Flowable.fromPublisher(connector.read()).toList().blockingGet();
@@ -95,7 +100,22 @@ public class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         ConfigFactory.parseString(
-            String.format("header = true, url = \"%s\", recursive = false", url("/root")));
+                String.format("header = true, url = \"%s\", recursive = false", url("/root")))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    connector.configure(settings);
+    connector.init();
+    assertThat(Flowable.fromPublisher(connector.read()).count().blockingGet()).isEqualTo(300);
+  }
+
+  @Test
+  public void should_scan_directory_with_path() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        ConfigFactory.parseString(
+                String.format(
+                    "header = true, url = \"%s\", recursive = false",
+                    CSVConnectorTest.class.getResource("/root").getPath()))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     connector.configure(settings);
     connector.init();
     assertThat(Flowable.fromPublisher(connector.read()).count().blockingGet()).isEqualTo(300);
@@ -106,7 +126,8 @@ public class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         ConfigFactory.parseString(
-            String.format("header = true, url = \"%s\", recursive = true", url("/root")));
+                String.format("header = true, url = \"%s\", recursive = true", url("/root")))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     connector.configure(settings);
     connector.init();
     assertThat(Flowable.fromPublisher(connector.read()).count().blockingGet()).isEqualTo(500);
