@@ -64,7 +64,8 @@ public class SchemaSettings {
           table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
     }
     if (!config.hasPath("mapping") || config.getConfig("mapping").isEmpty()) {
-      Preconditions.checkState(keyspace != null && table != null);
+      Preconditions.checkState(
+          keyspace != null && table != null, "Keyspace and table must be specified");
       fieldsToVariablesBuilder = inferFieldsToVariablesMap();
     }
     Preconditions.checkNotNull(
