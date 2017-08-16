@@ -34,7 +34,7 @@ public class StringToTupleCodecTest {
     tupleType = newTupleType(V4, codecRegistry, timestamp(), varchar());
     ConvertingCodec eltCodec1 = new StringToInstantCodec(CQL_DATE_TIME_FORMAT);
     ConvertingCodec eltCodec2 = new ExtendedCodecRegistry.StringToStringCodec(TypeCodec.varchar());
-    //noinspection unchecked
+    @SuppressWarnings("unchecked")
     List<ConvertingCodec<String, Object>> eltCodecs = Lists.newArrayList(eltCodec1, eltCodec2);
     codec = new StringToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, ",");
   }

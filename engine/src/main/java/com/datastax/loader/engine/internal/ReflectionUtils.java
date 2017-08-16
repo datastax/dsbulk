@@ -32,8 +32,9 @@ public final class ReflectionUtils {
     for (String packagePrefix : PACKAGE_PREFIXES) {
       String fqcn = packagePrefix + className;
       try {
-        //noinspection unchecked
-        return (Class<T>) Class.forName(fqcn);
+        @SuppressWarnings("unchecked")
+        Class<T> clazz = (Class<T>) Class.forName(fqcn);
+        return clazz;
       } catch (ClassNotFoundException e) {
         // swallow
       }
