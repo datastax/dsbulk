@@ -62,7 +62,8 @@ public abstract class AbstractReadWriteIT {
 
   @ClassRule public static CCMRule ccm = new CCMRule();
 
-  @Inject static Session session;
+  @Inject
+  private static Session session;
 
   private static PreparedStatement insertIntoIpByCountry;
   private static PreparedStatement insertIntoCountryByIp;
@@ -212,6 +213,7 @@ public abstract class AbstractReadWriteIT {
 
   protected abstract BulkExecutor getBulkExecutor(ExecutionListener metrics, Session session);
 
+  @SuppressWarnings("SameParameterValue")
   private static CqlScriptReader getReader(String resource, boolean multiLine) throws IOException {
     URL url = Resources.getResource(resource);
     return new CqlScriptReader(Resources.asCharSource(url, UTF_8).openBufferedStream(), multiLine);

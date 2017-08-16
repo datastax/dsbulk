@@ -20,7 +20,7 @@ public class StringToMapCodec<K, V> extends ConvertingCodec<String, Map<K, V>> {
   private final String delimiter;
   private final String keyValueSeparator;
 
-  public StringToMapCodec(
+  StringToMapCodec(
       TypeCodec<Map<K, V>> collectionCodec,
       ConvertingCodec<String, K> keyCodec,
       ConvertingCodec<String, V> valueCodec,

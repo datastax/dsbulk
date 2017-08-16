@@ -14,7 +14,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class StringToListCodec<E> extends StringToCollectionCodec<E, List<E>> {
 
-  public StringToListCodec(
+  StringToListCodec(
       TypeCodec<List<E>> collectionCodec, ConvertingCodec<String, E> eltCodec, String delimiter) {
     super(collectionCodec, eltCodec, delimiter);
   }

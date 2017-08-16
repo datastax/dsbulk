@@ -24,7 +24,7 @@ public class StringToUDTCodec extends ConvertingCodec<String, UDTValue> {
   private final String delimiter;
   private final String keyValueSeparator;
 
-  public StringToUDTCodec(
+  StringToUDTCodec(
       TypeCodec<UDTValue> udtCodec,
       Map<String, ConvertingCodec<String, Object>> fieldCodecs,
       String delimiter,

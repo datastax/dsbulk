@@ -46,7 +46,7 @@ public class CsvUtils {
         }
       };
 
-  public static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
+  private static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
   public static final URL CSV_RECORDS_UNIQUE =
       ClassLoader.getSystemResource("ip-by-country-unique.csv");
   public static final URL CSV_RECORDS_PARTIAL_BAD =
@@ -213,7 +213,7 @@ public class CsvUtils {
     paramTypes.put("beginning_ip_number", "bigint");
     paramTypes.put("ending_ip_number", "bigint");
 
-    Map<String, Object> defaultParams = new LinkedHashMap<String, Object>();
+    Map<String, Object> defaultParams = new LinkedHashMap<>();
     defaultParams.put("country_code", "*");
     defaultParams.put("country_name", "*");
     defaultParams.put("beginning_ip_address", "*");

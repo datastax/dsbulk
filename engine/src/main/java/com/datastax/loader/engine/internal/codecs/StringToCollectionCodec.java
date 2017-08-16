@@ -23,7 +23,7 @@ public abstract class StringToCollectionCodec<E, C extends Collection<E>>
   private final ConvertingCodec<String, E> eltCodec;
   private final String delimiter;
 
-  public StringToCollectionCodec(
+  StringToCollectionCodec(
       TypeCodec<C> collectionCodec, ConvertingCodec<String, E> eltCodec, String delimiter) {
     super(collectionCodec, String.class);
     this.delimiter = delimiter;

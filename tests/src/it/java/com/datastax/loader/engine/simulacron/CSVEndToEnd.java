@@ -88,9 +88,7 @@ public class CSVEndToEnd {
   public void load_errors() throws Exception {
     simulacron.cluster().clearPrimes(true);
 
-    HashMap<String, Object> params = new HashMap<String, Object>();
-
-    params = new HashMap<String, Object>();
+    HashMap<String, Object> params = new HashMap<>();
     params.put("country_name", "Sweden");
     RequestPrime prime1 =
         CsvUtils.createParameterizedQuery(
@@ -121,7 +119,7 @@ public class CSVEndToEnd {
             new AlreadyExistsResult("Not a real country", "keyspace", "table"));
     simulacron.cluster().prime(new Prime(prime1));
 
-    params = new HashMap<String, Object>();
+    params = new HashMap<>();
     params.put("country_name", "United States");
     prime1 =
         CsvUtils.createParameterizedQuery(
@@ -199,8 +197,7 @@ public class CSVEndToEnd {
 
   private Path getLogDirectory() {
     String logPath = System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY);
-    Path opsDirectory = Paths.get(logPath);
-    return opsDirectory;
+    return Paths.get(logPath);
   }
 
   private String fetchSimulacronContactPointsForArg() {
