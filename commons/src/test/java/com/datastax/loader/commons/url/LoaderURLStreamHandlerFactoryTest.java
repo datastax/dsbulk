@@ -4,17 +4,17 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.loader.engine.internal.url;
+package com.datastax.loader.commons.url;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
 
-public class MainURLStreamHandlerFactoryTest {
+public class LoaderURLStreamHandlerFactoryTest {
 
   @Test
   public void should_handle_stdin_protocol() throws Exception {
-    MainURLStreamHandlerFactory factory = new MainURLStreamHandlerFactory();
+    LoaderURLStreamHandlerFactory factory = new LoaderURLStreamHandlerFactory();
     assertThat(factory.createURLStreamHandler("stdin"))
         .isNotNull()
         .isInstanceOf(StandardInputURLStreamHandler.class);

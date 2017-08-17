@@ -19,11 +19,12 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.loader.commons.config.DefaultLoaderConfig;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.loader.engine.internal.schema.DefaultMapping;
 import com.datastax.loader.engine.internal.schema.RecordMapper;
 import com.google.common.collect.Lists;
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.util.List;
 import java.util.Map;
@@ -61,13 +62,14 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_mapper_when_mapping_keyspace_and_table_provided() throws Exception {
-    Config config =
-        ConfigFactory.parseString(
-                "mapping = { 0 = c2 , 2 = c1 }, "
-                    + "nullToUnset = true, "
-                    + "nullWords = [], "
-                    + "keyspace=ks, table=t1")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "mapping = { 0 = c2 , 2 = c1 }, "
+                        + "nullToUnset = true, "
+                        + "nullWords = [], "
+                        + "keyspace=ks, table=t1")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.init(session, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -85,13 +87,14 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_mapper_when_mapping_and_statement_provided() throws Exception {
-    Config config =
-        ConfigFactory.parseString(
-                "mapping = { 0 = c2 , 2 = c1 }, "
-                    + "nullToUnset = true, "
-                    + "nullWords = [], "
-                    + "statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "mapping = { 0 = c2 , 2 = c1 }, "
+                        + "nullToUnset = true, "
+                        + "nullWords = [], "
+                        + "statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.init(session, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -109,10 +112,11 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_mapper_when_keyspace_and_table_provided() throws Exception {
-    Config config =
-        ConfigFactory.parseString(
-                "nullToUnset = true, " + "nullWords = [], " + "keyspace=ks, table=t1")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "nullToUnset = true, " + "nullWords = [], " + "keyspace=ks, table=t1")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.init(session, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -133,10 +137,11 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_mapper_when_null_to_unset_is_false() throws Exception {
-    Config config =
-        ConfigFactory.parseString(
-                "nullToUnset = false, " + "nullWords = [], " + "keyspace=ks, table=t1")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "nullToUnset = false, " + "nullWords = [], " + "keyspace=ks, table=t1")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.init(session, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -157,12 +162,13 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_mapper_when_null_words_are_provided() throws Exception {
-    Config config =
-        ConfigFactory.parseString(
-                "nullToUnset = false, "
-                    + "nullWords = [\"NIL\", \"NULL\"], "
-                    + "keyspace=ks, table=t1")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "nullToUnset = false, "
+                        + "nullWords = [\"NIL\", \"NULL\"], "
+                        + "keyspace=ks, table=t1")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper = schemaSettings.init(session, codecRegistry);
     assertThat(recordMapper).isNotNull();

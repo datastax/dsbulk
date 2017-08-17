@@ -11,10 +11,11 @@ import static org.mockito.Mockito.mock;
 
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Session;
+import com.datastax.loader.commons.config.DefaultLoaderConfig;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.executor.api.ContinuousRxJavaBulkExecutor;
 import com.datastax.loader.executor.api.DefaultRxJavaBulkExecutor;
 import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,7 +35,8 @@ public class ExecutorSettingsTest {
 
   @Test
   public void should_create_non_continuous_executor_when_session_not_dse() throws Exception {
-    Config config = ConfigFactory.load().getConfig("datastax-loader.executor");
+    LoaderConfig config =
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkWriter executor = settings.newWriteExecutor(session, null);
     assertThat(executor).isNotNull().isInstanceOf(DefaultRxJavaBulkExecutor.class);
@@ -42,7 +44,8 @@ public class ExecutorSettingsTest {
 
   @Test
   public void should_create_continuous_executor_when_session_dse() throws Exception {
-    Config config = ConfigFactory.load().getConfig("datastax-loader.executor");
+    LoaderConfig config =
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkWriter executor = settings.newWriteExecutor(dseSession, null);
     assertThat(executor).isNotNull().isInstanceOf(ContinuousRxJavaBulkExecutor.class);

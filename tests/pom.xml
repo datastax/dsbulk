@@ -26,7 +26,6 @@
     Integration tests for the DataStax Loader.
   </description>
 
-
   <dependencies>
 
     <dependency>

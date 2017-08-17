@@ -9,10 +9,10 @@ package com.datastax.loader.connectors.csv;
 import static java.nio.file.FileVisitResult.CONTINUE;
 import static java.nio.file.FileVisitResult.TERMINATE;
 
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.connectors.api.internal.MapRecord;
-import com.typesafe.config.Config;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.csv.CsvFormat;
 import com.univocity.parsers.csv.CsvParser;
@@ -36,7 +36,6 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
-import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +70,7 @@ public class CSVConnector implements Connector {
   private CsvParserSettings settings;
 
   @Override
-  public Config configure(Config settings) throws MalformedURLException {
+  public LoaderConfig configure(LoaderConfig settings) throws MalformedURLException {
     // Create a Config object that effectively merges the csv level with
     // the connector level. The csv level in settings is a merge of
     // user-provided values and the values from reference.conf. That is
@@ -83,18 +82,17 @@ public class CSVConnector implements Connector {
     // like connector.csv.comment, and it'll be respected, while
     // at the same time an override like connector.url will also be
     // respected.
-
     settings = settings.withoutPath("csv").withFallback(settings.getConfig("csv"));
-    url = parseUrlOrPath(settings.getString("url"));
+    url = settings.getURL("url");
     pattern = settings.getString("pattern");
-    encoding = Charset.forName(settings.getString("encoding"));
-    delimiter = getAsChar(settings, "delimiter");
-    quote = getAsChar(settings, "quote");
-    escape = getAsChar(settings, "escape");
-    comment = getAsChar(settings, "comment");
+    encoding = settings.getCharset("encoding");
+    delimiter = settings.getChar("delimiter");
+    quote = settings.getChar("quote");
+    escape = settings.getChar("escape");
+    comment = settings.getChar("comment");
     linesToSkip = settings.getLong("linesToSkip");
     maxLines = settings.getLong("maxLines");
-    maxThreads = settings.getInt("maxThreads");
+    maxThreads = settings.getThreads("maxThreads");
     recursive = settings.getBoolean("recursive");
     header = settings.getBoolean("header");
     return settings;
@@ -128,26 +126,6 @@ public class CSVConnector implements Connector {
           scan(root).map(p -> records(p.toUri().toURL()).subscribeOn(Schedulers.io())), maxThreads);
     } else {
       return records(url);
-    }
-  }
-
-  @NotNull
-  private static URL parseUrlOrPath(String urlOrPath) {
-    // NOTE: This is a good candidate for moving into a commons module / utility class.
-    // This logic also exists in SettingsUtils, but can't be directly referenced
-    // here due to circular dependencies between modules.
-
-    try {
-      return new URL(urlOrPath);
-    } catch (MalformedURLException e) {
-      // Parsing failed, so guess that it's a file path and prepend it
-      // to make a valid url.
-      try {
-        return Paths.get(urlOrPath).normalize().toAbsolutePath().toUri().toURL();
-      } catch (MalformedURLException e1) {
-        // Still bad...
-        throw new IllegalArgumentException("Invalid URL: " + urlOrPath, e1);
-      }
     }
   }
 
@@ -249,16 +227,6 @@ public class CSVConnector implements Connector {
       location = url;
     }
     return location;
-  }
-
-  private static char getAsChar(Config settings, String path) {
-    String setting = settings.getString(path);
-    if (setting.length() != 1) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Invalid setting for %s: expecting a single character, got '%s'", path, setting));
-    }
-    return setting.charAt(0);
   }
 
   private static InputStream openStream(URL url) throws IOException {

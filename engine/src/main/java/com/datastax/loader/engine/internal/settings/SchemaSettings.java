@@ -12,12 +12,12 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.loader.engine.internal.schema.DefaultMapping;
 import com.datastax.loader.engine.internal.schema.RecordMapper;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import com.typesafe.config.Config;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -26,14 +26,14 @@ import java.util.Set;
 /** */
 public class SchemaSettings {
 
-  private final Config config;
+  private final LoaderConfig config;
 
   private KeyspaceMetadata keyspace;
   private TableMetadata table;
   private String keyspaceName;
   private String tableName;
 
-  SchemaSettings(Config config) {
+  SchemaSettings(LoaderConfig config) {
     this.config = config;
   }
 

@@ -6,6 +6,7 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.connectors.api.Connector;
 import com.typesafe.config.Config;
 import java.util.ServiceLoader;
@@ -15,16 +16,16 @@ import java.util.stream.StreamSupport;
 /** */
 public class ConnectorSettings {
 
-  private final Config config;
+  private final LoaderConfig config;
   private final Connector connector;
 
-  public ConnectorSettings(Config config) throws Exception {
+  ConnectorSettings(LoaderConfig config) throws Exception {
     String connectorName = config.getString("name");
     connector = locateConnector(connectorName);
     this.config = connector.configure(config);
   }
 
-  public Config getConnectorEffectiveSettings() {
+  Config getConnectorEffectiveSettings() {
     return config;
   }
 

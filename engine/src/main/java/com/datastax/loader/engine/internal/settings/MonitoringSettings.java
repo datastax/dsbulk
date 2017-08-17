@@ -6,9 +6,9 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.engine.internal.metrics.MetricsManager;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.typesafe.config.Config;
 import java.time.Duration;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
@@ -17,10 +17,10 @@ import java.util.concurrent.TimeUnit;
 /** */
 public class MonitoringSettings {
 
-  private final Config config;
+  private final LoaderConfig config;
   private final String operationId;
 
-  MonitoringSettings(Config config, String operationId) {
+  MonitoringSettings(LoaderConfig config, String operationId) {
     this.config = config;
     this.operationId = operationId;
   }

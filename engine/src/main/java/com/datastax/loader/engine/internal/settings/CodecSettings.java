@@ -8,9 +8,9 @@ package com.datastax.loader.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.google.common.collect.ImmutableMap;
-import com.typesafe.config.Config;
 import java.lang.reflect.Field;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -54,9 +54,9 @@ public class CodecSettings {
 
   private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
 
-  private final Config config;
+  private final LoaderConfig config;
 
-  CodecSettings(Config config) {
+  CodecSettings(LoaderConfig config) {
     this.config = config;
   }
 

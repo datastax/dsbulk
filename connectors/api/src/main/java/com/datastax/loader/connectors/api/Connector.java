@@ -7,7 +7,7 @@
 package com.datastax.loader.connectors.api;
 
 import com.datastax.driver.core.Row;
-import com.typesafe.config.Config;
+import com.datastax.loader.commons.config.LoaderConfig;
 import org.reactivestreams.Publisher;
 
 /** */
@@ -24,7 +24,7 @@ public interface Connector extends AutoCloseable {
 
   default void close() throws Exception {}
 
-  default Config configure(Config settings) throws Exception {
+  default LoaderConfig configure(LoaderConfig settings) throws Exception {
     return settings;
   }
 }

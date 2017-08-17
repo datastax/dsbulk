@@ -11,9 +11,9 @@ import static com.datastax.loader.engine.internal.settings.BatchSettings.Sorting
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Statement;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.executor.api.batch.RxJavaSortedStatementBatcher;
 import com.datastax.loader.executor.api.batch.RxJavaUnsortedStatementBatcher;
-import com.typesafe.config.Config;
 import io.reactivex.FlowableTransformer;
 
 /** */
@@ -41,9 +41,9 @@ public class BatchSettings {
         Cluster cluster, int bufferSize);
   }
 
-  private final Config config;
+  private final LoaderConfig config;
 
-  BatchSettings(Config config) {
+  BatchSettings(LoaderConfig config) {
     this.config = config;
   }
 

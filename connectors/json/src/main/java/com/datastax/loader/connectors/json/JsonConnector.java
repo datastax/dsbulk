@@ -6,9 +6,9 @@
  */
 package com.datastax.loader.connectors.json;
 
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.connectors.api.Record;
-import com.typesafe.config.Config;
 import org.reactivestreams.Publisher;
 
 /** */
@@ -21,7 +21,7 @@ public class JsonConnector implements Connector {
   }
 
   @Override
-  public Config configure(Config settings) {
+  public LoaderConfig configure(LoaderConfig settings) {
     return settings;
   }
 }

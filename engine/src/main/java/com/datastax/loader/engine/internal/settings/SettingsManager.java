@@ -6,6 +6,8 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import com.datastax.loader.commons.config.DefaultLoaderConfig;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
@@ -25,7 +27,7 @@ public class SettingsManager {
   private final String[] args;
   private final String operationId;
 
-  private Config config;
+  private LoaderConfig config;
   private DriverSettings driverSettings;
   private ConnectorSettings connectorSettings;
   private SchemaSettings schemaSettings;
@@ -41,17 +43,18 @@ public class SettingsManager {
   }
 
   public void loadConfiguration() throws Exception {
-    config = parseUserSettings(args).withFallback(DEFAULT);
-    config.checkValid(REFERENCE);
+    Config delegate = parseUserSettings(args).withFallback(DEFAULT);
+    delegate.checkValid(REFERENCE);
     // TODO check unrecognized config
-    logSettings = new LogSettings(config.getConfig("log"), operationId);
-    driverSettings = new DriverSettings(config.getConfig("driver"), operationId);
-    connectorSettings = new ConnectorSettings(config.getConfig("connector"));
-    schemaSettings = new SchemaSettings(config.getConfig("schema"));
-    batchSettings = new BatchSettings(config.getConfig("batch"));
-    executorSettings = new ExecutorSettings(config.getConfig("executor"));
-    codecSettings = new CodecSettings(config.getConfig("codec"));
-    monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), operationId);
+    this.config = new DefaultLoaderConfig(delegate);
+    logSettings = new LogSettings(this.config.getConfig("log"), operationId);
+    driverSettings = new DriverSettings(this.config.getConfig("driver"), operationId);
+    connectorSettings = new ConnectorSettings(this.config.getConfig("connector"));
+    schemaSettings = new SchemaSettings(this.config.getConfig("schema"));
+    batchSettings = new BatchSettings(this.config.getConfig("batch"));
+    executorSettings = new ExecutorSettings(this.config.getConfig("executor"));
+    codecSettings = new CodecSettings(this.config.getConfig("codec"));
+    monitoringSettings = new MonitoringSettings(this.config.getConfig("monitoring"), operationId);
     config =
         config
             .withoutPath("connector")

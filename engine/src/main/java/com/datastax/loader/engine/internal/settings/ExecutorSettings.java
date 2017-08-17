@@ -11,6 +11,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Session;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.loader.executor.api.ContinuousRxJavaBulkExecutor;
 import com.datastax.loader.executor.api.ContinuousRxJavaBulkExecutorBuilder;
@@ -27,9 +28,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 /** */
 public class ExecutorSettings {
 
-  private final Config config;
+  private final LoaderConfig config;
 
-  ExecutorSettings(Config config) {
+  ExecutorSettings(LoaderConfig config) {
     this.config = config;
   }
 
@@ -60,8 +61,7 @@ public class ExecutorSettings {
   private void configure(
       AbstractBulkExecutorBuilder<? extends RxJavaBulkExecutor> builder,
       ExecutionListener executionListener) {
-    String maxThreads = config.getString("maxThreads");
-    int threads = SettingsUtils.parseNumThreads(maxThreads);
+    int threads = config.getThreads("maxThreads");
     ThreadPoolExecutor executor =
         new ThreadPoolExecutor(
             0,

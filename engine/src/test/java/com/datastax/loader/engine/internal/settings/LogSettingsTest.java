@@ -15,8 +15,9 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
+import com.datastax.loader.commons.config.DefaultLoaderConfig;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.engine.internal.log.LogManager;
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.io.File;
 import java.nio.file.Files;
@@ -44,7 +45,8 @@ public class LogSettingsTest {
 
   @Test
   public void should_create_log_manager_with_default_output_directory() throws Exception {
-    Config config = ConfigFactory.load().getConfig("datastax-loader.log");
+    LoaderConfig config =
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.log"));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager();
     try {
@@ -64,9 +66,10 @@ public class LogSettingsTest {
   @Test
   public void should_create_log_manager_when_output_directory_url_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    Config config =
-        ConfigFactory.parseString("outputDirectory = \"" + dir.toUri().toURL() + "\"")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.log"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("outputDirectory = \"" + dir + "\"")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager();
     logManager.init(cluster);
@@ -77,9 +80,10 @@ public class LogSettingsTest {
   @Test
   public void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    Config config =
-        ConfigFactory.parseString("outputDirectory = \"" + dir.toString() + "\"")
-            .withFallback(ConfigFactory.load().getConfig("datastax-loader.log"));
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("outputDirectory = \"" + dir.toString() + "\"")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager();
     logManager.init(cluster);

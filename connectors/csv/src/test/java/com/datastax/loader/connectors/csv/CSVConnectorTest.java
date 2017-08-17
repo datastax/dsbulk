@@ -8,17 +8,17 @@ package com.datastax.loader.connectors.csv;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.loader.commons.config.DefaultLoaderConfig;
+import com.datastax.loader.commons.config.LoaderConfig;
+import com.datastax.loader.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.connectors.api.internal.MapRecord;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.reactivex.Flowable;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLStreamHandler;
 import java.util.List;
 import org.junit.Test;
 
@@ -30,12 +30,13 @@ public class CSVConnectorTest {
   @Test
   public void should_read_single_file() throws Exception {
     CSVConnector connector = new CSVConnector();
-    Config settings =
-        ConfigFactory.parseString(
-                String.format(
-                    "csv.header = true, url = \"%s\", escape = \"\\\"\", comment = \"#\"",
-                    url("/sample.csv")))
-            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "header = true, url = \"%s\", escape = \"\\\"\", comment = \"#\"",
+                        url("/sample.csv")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings);
     connector.init();
     List<Record> actual = Flowable.fromPublisher(connector.read()).toList().blockingGet();
@@ -55,35 +56,17 @@ public class CSVConnectorTest {
 
   @Test
   public void should_read_from_stdin_with_special_encoding() throws Exception {
-    URL.setURLStreamHandlerFactory(
-        protocol -> {
-          if (protocol.equalsIgnoreCase("stdin")) {
-            return new URLStreamHandler() {
-              @Override
-              protected URLConnection openConnection(URL u) throws IOException {
-                return new URLConnection(u) {
-                  @Override
-                  public void connect() throws IOException {}
-
-                  @Override
-                  public InputStream getInputStream() throws IOException {
-                    return System.in;
-                  }
-                };
-              }
-            };
-          }
-          return null;
-        });
+    URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
     InputStream stdin = System.in;
     try {
       String line = "fóô,bàr,qïx\n";
       InputStream is = new ByteArrayInputStream(line.getBytes("ISO-8859-1"));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
-      Config settings =
-          ConfigFactory.parseString("url = \"stdin:/\", encoding = ISO-8859-1")
-              .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString("url = \"stdin:/\", encoding = ISO-8859-1")
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings);
       connector.init();
       List<Record> actual = Flowable.fromPublisher(connector.read()).toList().blockingGet();
@@ -98,10 +81,11 @@ public class CSVConnectorTest {
   @Test
   public void should_scan_directory() throws Exception {
     CSVConnector connector = new CSVConnector();
-    Config settings =
-        ConfigFactory.parseString(
-                String.format("header = true, url = \"%s\", recursive = false", url("/root")))
-            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format("header = true, url = \"%s\", recursive = false", url("/root")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings);
     connector.init();
     assertThat(Flowable.fromPublisher(connector.read()).count().blockingGet()).isEqualTo(300);
@@ -110,12 +94,13 @@ public class CSVConnectorTest {
   @Test
   public void should_scan_directory_with_path() throws Exception {
     CSVConnector connector = new CSVConnector();
-    Config settings =
-        ConfigFactory.parseString(
-                String.format(
-                    "header = true, url = \"%s\", recursive = false",
-                    CSVConnectorTest.class.getResource("/root").getPath()))
-            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "header = true, url = \"%s\", recursive = false",
+                        CSVConnectorTest.class.getResource("/root").getPath()))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings);
     connector.init();
     assertThat(Flowable.fromPublisher(connector.read()).count().blockingGet()).isEqualTo(300);
@@ -124,10 +109,11 @@ public class CSVConnectorTest {
   @Test
   public void should_scan_directory_recursively() throws Exception {
     CSVConnector connector = new CSVConnector();
-    Config settings =
-        ConfigFactory.parseString(
-                String.format("header = true, url = \"%s\", recursive = true", url("/root")))
-            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format("header = true, url = \"%s\", recursive = true", url("/root")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings);
     connector.init();
     assertThat(Flowable.fromPublisher(connector.read()).count().blockingGet()).isEqualTo(500);
