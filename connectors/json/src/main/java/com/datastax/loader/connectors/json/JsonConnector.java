@@ -21,7 +21,5 @@ public class JsonConnector implements Connector {
   }
 
   @Override
-  public LoaderConfig configure(LoaderConfig settings) {
-    return settings;
-  }
+  public void configure(LoaderConfig settings) {}
 }

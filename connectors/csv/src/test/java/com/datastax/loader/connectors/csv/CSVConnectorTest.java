@@ -25,7 +25,7 @@ import org.junit.Test;
 /** */
 public class CSVConnectorTest {
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
-      ConfigFactory.defaultReference().getConfig("datastax-loader.connector");
+      ConfigFactory.defaultReference().getConfig("datastax-loader.connector.csv");
 
   @Test
   public void should_read_single_file() throws Exception {

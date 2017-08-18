@@ -8,25 +8,25 @@ package com.datastax.loader.engine.internal.settings;
 
 import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.connectors.api.Connector;
-import com.typesafe.config.Config;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-/** */
 public class ConnectorSettings {
-
-  private final LoaderConfig config;
   private final Connector connector;
 
   ConnectorSettings(LoaderConfig config) throws Exception {
     String connectorName = config.getString("name");
     connector = locateConnector(connectorName);
-    this.config = connector.configure(config);
-  }
-
-  Config getConnectorEffectiveSettings() {
-    return config;
+    //Uses the connector specific configuration.
+    LoaderConfig connectorConfig;
+    if (config.hasPath(connectorName)) {
+      connectorConfig = config.getConfig(connectorName);
+      connector.configure(connectorConfig);
+    } else {
+      throw new IllegalArgumentException(
+          String.format("Cannot find configuration entry for connector '%s'", connectorName));
+    }
   }
 
   public Connector getConnector() {
