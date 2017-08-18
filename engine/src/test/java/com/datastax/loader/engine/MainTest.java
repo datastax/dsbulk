@@ -22,7 +22,7 @@ public class MainTest {
     create table ks.t1 (Year int primary key,Make varchar,Model varchar,Description varchar,Price decimal);
      */
     String[] args = {
-      "log.outputDirectory=\"file:./target\"",
+      "log.outputDirectory=\"./target\"",
       "connector.name=csv",
       "connector.url=\"" + MainTest.class.getResource("/good.csv").toExternalForm() + "\"",
       "connector.comment=\"#\"",
