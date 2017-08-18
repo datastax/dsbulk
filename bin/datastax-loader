@@ -15,14 +15,14 @@ Options:
                                    or a prefix of the simple name. Only the built-in
                                    CSVConnector is supported at this time, so "csv"
                                    is a good value for this.
- -s, --connector.common.source <source url or path>
+ -s, --connector.url <source url or path>
                                    Url or file path of data to load; the actual meaning
                                    of this option depends on the selected connector.
  -k, --schema.keyspace <keyspace>  Keyspace into which to load data.
  -t, --schema.table <table>        Table into which to load data.
  -m, --schema.mapping <mapping>    Mapping of fields in data to columns in the database.
 
-All arguments except connector.name and connector.common.source are optional in that
+All arguments except connector.name and connector.url are optional in that
 values fall back to defaults or are inferred from the input data.
 
 
@@ -65,11 +65,11 @@ EXAMPLES:
 
 * Same as last example, but specify a few contact points; note how the value is quoted because
   this setting is an array of strings:
-    $BIN_NAME -c csv -s https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints '["10.200.1.3","10.200.1.4"]'
+    $BIN_NAME -c csv -s https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints '["10.200.1.3:9042","10.200.1.4:9042"]'
 
 * Same as last example, but with connector-name, keyspace, table, and mapping set in
   conf/application.conf:
-    $BIN_NAME -s https://svr/data/export.csv --driver.contactPoints '["10.200.1.3","10.200.1.4"]'
+    $BIN_NAME -s https://svr/data/export.csv --driver.contactPoints '["10.200.1.3:9042","10.200.1.4:9042"]'
 END
 }
 
@@ -174,9 +174,11 @@ eval set -- "$PARSERESULT"
 while [ $# -gt 0 ] ; do
   OPT=$(echo $1 | sed -e 's/--//')
   VAL=$2
-  if echo $VAL | grep -E '[#:]' > /dev/null 2>&1 ; then
-    # The value has a special character in it. Quote the value.
-    VAL="\"$VAL\""
+  if ! echo $VAL | grep -E '^[\[{]' > /dev/null 2>&1 ; then
+    if echo $VAL | grep -E '[#:]' > /dev/null 2>&1 ; then
+      # The value has a special character in it. Quote the value.
+      VAL="\"$VAL\""
+    fi
   fi
   if [ -n "$LOADER_CONFIG" ] ; then
     LOADER_CONFIG="$LOADER_CONFIG,"
