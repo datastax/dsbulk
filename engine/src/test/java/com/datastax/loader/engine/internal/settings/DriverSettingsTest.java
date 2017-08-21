@@ -168,8 +168,9 @@ public class DriverSettingsTest {
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
     assertThat(Whitebox.getInternalState(loginConfiguration, "principal"))
         .isEqualTo("alice@DATASTAX.COM");
+    boolean isWin = System.getProperty("os.name").toLowerCase().contains("win");
     assertThat(Whitebox.getInternalState(loginConfiguration, "keyTab"))
-        .isEqualTo("/path/to/my/keyTab");
+        .isEqualTo(isWin ? "C:\\path\\to\\my\\keyTab" : "/path/to/my/keyTab");
   }
 
   @Test

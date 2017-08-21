@@ -99,7 +99,7 @@ public class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "header = true, url = \"%s\", recursive = false",
-                        CSVConnectorTest.class.getResource("/root").getPath()))
+                        CSVConnectorTest.class.getResource("/root").toExternalForm()))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings);
     connector.init();
