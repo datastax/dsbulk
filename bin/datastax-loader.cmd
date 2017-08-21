@@ -62,7 +62,6 @@ REM Logic for parsing one command-line arg (which may be an option or value).
         REM This is a short option.
         IF "!PARAM!" == "-h" SET OPT_NAME=help
         IF "!PARAM!" == "-c" SET OPT_NAME=connector.name
-        IF "!PARAM!" == "-s" SET OPT_NAME=connector.url
         IF "!PARAM!" == "-k" SET OPT_NAME=schema.keyspace
         IF "!PARAM!" == "-t" SET OPT_NAME=schema.table
         IF "!PARAM!" == "-m" SET OPT_NAME=schema.mapping
@@ -84,14 +83,13 @@ REM Logic for parsing one command-line arg (which may be an option or value).
     SET STATE=GETVAL
     GOTO :eof
   ) ELSE (
-    REM This is a value. If it contains a #, quote the value.
-    IF NOT "!PARAM:#=!" == "!PARAM!" (
-      SET PARAM=""!PARAM!""
-    ) ELSE (
-      REM If it contains a :, quote the value, but only if the setting 
-      REM is not a map or array (e.g. beginning with { or [).
-      IF NOT "!PARAM:~0,1!" == "[" (
-        IF NOT "!PARAM:~0,1!" == "{" (
+    REM This is a value. If it contains a # or :, quote the value,
+    REM as long as the value isn't an array or map.
+    IF NOT "!PARAM:~0,1!" == "[" (
+      IF NOT "!PARAM:~0,1!" == "{" (
+        IF NOT "!PARAM:#=!" == "!PARAM!" (
+          SET PARAM=""!PARAM!""
+        ) ELSE (
           IF NOT "!PARAM::=!" == "!PARAM!" (
             SET PARAM=""!PARAM!""
           )
@@ -113,19 +111,17 @@ REM Simple subroutine to emit usage text.
   SET BATCH_FILENAME=%~N0%
   ECHO Usage: !BATCH_FILENAME! ^<options^>
   ECHO Options:
-  ECHO  -c, --connector.name ^<name^>       Name of connector; may be the fqcn or simple name
-  ECHO                                    of an implementation of the Connector interface,
-  ECHO                                    or a prefix of the simple name. Only the built-in
-  ECHO                                    CSVConnector is supported at this time, so "csv"
-  ECHO                                    is a good value for this.
-  ECHO  -s, --connector.url ^<source url or path^>
-  ECHO                                    Url or file path of data to load.
+  ECHO  -c, --connector.name ^<name^>       Name of connector; only the built-in csv connector
+  ECHO                                    is supported at this time, so this option must have
+  ECHO                                    value csv.
   ECHO  -k, --schema.keyspace ^<keyspace^>  Keyspace into which to load data.
   ECHO  -t, --schema.table ^<table^>        Table into which to load data.
   ECHO  -m, --schema.mapping ^<mapping^>    Mapping of fields in data to columns in the database.
   ECHO.
-  ECHO All arguments except connector.name and connector.url are optional in that
-  ECHO values fall back to defaults or are inferred from the input data.
+  ECHO All arguments except connector.name are optional in that values fall back to defaults or
+  ECHO are inferred from the input data. However, some connectors have required settings of
+  ECHO their own and those must be set as well. For example, the csv connector requires the
+  ECHO connector.csv.url setting to specify the source path/url of the csv data to load.
   ECHO.
   ECHO.
   ECHO CONFIG FILES, SETTINGS SEARCH ORDER, AND OVERRIDES:
@@ -145,7 +141,7 @@ REM Simple subroutine to emit usage text.
   ECHO.
   ECHO or dotted form: datastax-loader.connector.name="csv"
   ECHO.
-  ECHO Finally, a user may specify impromptu overrides via long options on the command line.
+  ECHO Finally, a user may specify impromptu overrides via options on the command line.
   ECHO See examples for details.
   ECHO.
   ECHO.
@@ -153,24 +149,24 @@ REM Simple subroutine to emit usage text.
   ECHO * Load CSV data from stdin to the ks1.table1 table in a cluster with
   ECHO   a localhost contact point. Field names in the data match column names in the
   ECHO   table. Field names are obtained from a "header row" in the data:
-  ECHO     generate_data ^| !BATCH_FILENAME! -c csv -s stdin:/ -k ks1 -t table1 --connector.csv.header=true
+  ECHO     generate_data ^| !BATCH_FILENAME! -c csv --connector.csv.url stdin:/ -k ks1 -t table1 --connector.csv.header=true
   ECHO.
   ECHO * Same as last example, but load from a local file:
-  ECHO     !BATCH_FILENAME! -c csv -s C:\data\export.csv -k ks1 -t table1 --connector.csv.header=true
+  ECHO     !BATCH_FILENAME! -c csv --connector.csv.url C:\data\export.csv -k ks1 -t table1 --connector.csv.header=true
   ECHO.
   ECHO * Same as last example, but load data from a url:
-  ECHO     !BATCH_FILENAME! -c csv -s https://svr/data/export.csv -k ks1 -t table1 --connector.csv.header=true
+  ECHO     !BATCH_FILENAME! -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 --connector.csv.header=true
   ECHO.
   ECHO * Same as last example, but there is no header row and we specify an explicit field mapping based
   ECHO   on field indices in the input:
-  ECHO     !BATCH_FILENAME! -c csv -s https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}"
+  ECHO     !BATCH_FILENAME! -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}"
   ECHO.
   ECHO * Same as last example, but specify a few contact points; note how the value is quoted:
-  ECHO     !BATCH_FILENAME! -c csv -s https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints [""10.200.1.3:9042"",""10.200.1.4:9042""]
+  ECHO     !BATCH_FILENAME! -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints "[""10.200.1.3:9042"",""10.200.1.4:9042""]"
   ECHO.
   ECHO * Same as last example, but with connector-name, keyspace, table, and mapping set in
   ECHO   conf/application.conf:
-  ECHO     !BATCH_FILENAME! -s https://svr/data/export.csv --driver.contactPoints [""10.200.1.3:9042"",""10.200.1.4:9042""]
+  ECHO     !BATCH_FILENAME! --connector.csv.url https://svr/data/export.csv --driver.contactPoints "[""10.200.1.3:9042"",""10.200.1.4:9042""]"
 
   GOTO :eof
 

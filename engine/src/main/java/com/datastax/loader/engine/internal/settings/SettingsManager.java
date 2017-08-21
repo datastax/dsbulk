@@ -55,10 +55,6 @@ public class SettingsManager {
     executorSettings = new ExecutorSettings(this.config.getConfig("executor"));
     codecSettings = new CodecSettings(this.config.getConfig("codec"));
     monitoringSettings = new MonitoringSettings(this.config.getConfig("monitoring"), operationId);
-    config =
-        config
-            .withoutPath("connector")
-            .withFallback(connectorSettings.getConnectorEffectiveSettings().atPath("connector"));
   }
 
   public void logEffectiveSettings() {

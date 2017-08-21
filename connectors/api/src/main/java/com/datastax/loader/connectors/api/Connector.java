@@ -24,7 +24,5 @@ public interface Connector extends AutoCloseable {
 
   default void close() throws Exception {}
 
-  default LoaderConfig configure(LoaderConfig settings) throws Exception {
-    return settings;
-  }
+  default void configure(LoaderConfig settings) throws Exception {}
 }
