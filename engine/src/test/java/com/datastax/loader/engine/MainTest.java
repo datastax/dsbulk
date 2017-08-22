@@ -24,7 +24,7 @@ public class MainTest {
     String[] args = {
       "log.outputDirectory=\"./target\"",
       "connector.name=csv",
-      "connector.url=\"" + MainTest.class.getResource("/good.csv").toExternalForm() + "\"",
+      "connector.csv.url=\"" + MainTest.class.getResource("/good.csv").toExternalForm() + "\"",
       "connector.comment=\"#\"",
       "connector.header=true",
       "driver.query.consistency=ONE",

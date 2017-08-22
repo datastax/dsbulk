@@ -65,13 +65,14 @@ public class DriverSettings {
 
   public DseCluster newCluster() throws Exception {
     DseCluster.Builder builder = DseCluster.builder().withClusterName(operationId + "-driver");
+    int defaultPort = config.getInt("port");
     config
         .getStringList("contactPoints")
         .forEach(
             s -> {
               String[] tokens = s.split(":");
-              builder.addContactPointsWithPorts(
-                  new InetSocketAddress(tokens[0], Integer.parseInt(tokens[1])));
+              int port = tokens.length > 1 ? Integer.parseInt(tokens[1]) : defaultPort;
+              builder.addContactPointsWithPorts(new InetSocketAddress(tokens[0], port));
             });
 
     ProtocolVersion protocolVersion;

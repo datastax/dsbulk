@@ -70,10 +70,13 @@ EXAMPLES:
   on field indices in the input:
     datastax-loader -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}"
 
-* Same as last example, but specify a few contact points; note how the value is quoted:
-    datastax-loader -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints '["10.200.1.3:9042","10.200.1.4:9042"]'
+* Same as last example, but specify a few contact points at the default port:
+    datastax-loader -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints '[10.200.1.3, 10.200.1.4]'
 
-* Same as last example, but with connector-name, keyspace, table, and mapping set in
+* Same as last example, but specify port 9876 for the contact points:
+    datastax-loader -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints '[10.200.1.3, 10.200.1.4]' --driver.port 9876
+
+* Same as last example, but with default port for contact points, and connector-name, keyspace, table, and mapping set in
   conf/application.conf:
-    datastax-loader --connector.csv.url https://svr/data/export.csv --driver.contactPoints '["10.200.1.3:9042","10.200.1.4:9042"]'
+    datastax-loader --connector.csv.url https://svr/data/export.csv --driver.contactPoints '[10.200.1.3, 10.200.1.4]'
 ```
