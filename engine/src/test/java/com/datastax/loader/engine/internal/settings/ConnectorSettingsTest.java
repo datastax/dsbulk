@@ -6,6 +6,8 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import static com.datastax.loader.engine.internal.Assertions.assertThat;
+
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.connectors.api.Connector;
@@ -17,9 +19,6 @@ import com.typesafe.config.ConfigValue;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
-import static com.datastax.loader.engine.internal.Assertions.assertThat;
-
 
 public class ConnectorSettingsTest {
   private static final Config CONNECTOR_DEFAULT_SETTINGS =

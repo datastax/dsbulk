@@ -61,7 +61,8 @@ public class DriverSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             new DefaultLoaderConfig(
-                ConfigFactory.parseString("contactPoints = [ \"1.2.3.4:9042\", \"2.3.4.5:9042\" ]")
+                ConfigFactory.parseString(
+                        "port = 9876, contactPoints = [ \"1.2.3.4:9042\", \"2.3.4.5\" ]")
                     .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"))));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
@@ -73,7 +74,7 @@ public class DriverSettingsTest {
         (List<InetSocketAddress>) Whitebox.getInternalState(manager, "contactPoints");
     assertThat(contactPoints)
         .containsExactly(
-            new InetSocketAddress("1.2.3.4", 9042), new InetSocketAddress("2.3.4.5", 9042));
+            new InetSocketAddress("1.2.3.4", 9042), new InetSocketAddress("2.3.4.5", 9876));
     DseConfiguration configuration = cluster.getConfiguration();
     assertThat(
             Whitebox.getInternalState(configuration.getProtocolOptions(), "initialProtocolVersion"))
