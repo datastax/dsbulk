@@ -6,21 +6,36 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.driver.core.TokenRange;
 import com.datastax.loader.commons.config.LoaderConfig;
+import com.datastax.loader.connectors.api.RecordMetadata;
+import com.datastax.loader.engine.WorkflowType;
 import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.loader.engine.internal.schema.DefaultMapping;
+import com.datastax.loader.engine.internal.schema.DefaultReadResultMapper;
+import com.datastax.loader.engine.internal.schema.DefaultRecordMapper;
+import com.datastax.loader.engine.internal.schema.MergedRecordMetadata;
+import com.datastax.loader.engine.internal.schema.ReadResultMapper;
 import com.datastax.loader.engine.internal.schema.RecordMapper;
+import com.datastax.loader.executor.api.statement.TableScanner;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.reflect.TypeToken;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 /** */
@@ -32,25 +47,60 @@ public class SchemaSettings {
   private TableMetadata table;
   private String keyspaceName;
   private String tableName;
+  private PreparedStatement preparedStatement;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
   }
 
-  public RecordMapper init(Session session, ExtendedCodecRegistry codecRegistry) {
-    ImmutableMap.Builder<Object, String> fieldsToVariablesBuilder = null;
+  public RecordMapper createRecordMapper(
+      Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry) {
+    ImmutableBiMap<String, String> fieldsToVariables = createFieldsToVariablesMap(session);
+    PreparedStatement statement = prepareStatement(session, fieldsToVariables, WorkflowType.WRITE);
+    DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
+    return new DefaultRecordMapper(
+        statement,
+        mapping,
+        mergeRecordMetadata(recordMetadata),
+        ImmutableSet.copyOf(config.getStringList("nullWords")),
+        config.getBoolean("nullToUnset"));
+  }
+
+  public ReadResultMapper createReadResultMapper(
+      Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry) {
+    ImmutableBiMap<String, String> fieldsToVariables = createFieldsToVariablesMap(session);
+    preparedStatement = prepareStatement(session, fieldsToVariables, WorkflowType.READ);
+    DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
+    return new DefaultReadResultMapper(
+        mapping, mergeRecordMetadata(recordMetadata), config.getFirstString("nullWords"));
+  }
+
+  public List<Statement> createReadStatements(Cluster cluster) {
+    ColumnDefinitions variables = preparedStatement.getVariables();
+    if (variables.size() == 0) {
+      return Collections.singletonList(preparedStatement.bind());
+    }
+    assert variables.size() == 2
+            && variables.getIndexOf("start") != -1
+            && variables.getIndexOf("end") != -1
+        : "The provided statement contains unrecognized bound variables; only 'start' and 'end' can be used";
+    Set<TokenRange> ring = cluster.getMetadata().getTokenRanges();
+    return TableScanner.scan(
+        ring,
+        range ->
+            preparedStatement
+                .bind()
+                .setToken("start", range.getStart())
+                .setToken("end", range.getEnd()));
+  }
+
+  private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session) {
+    ImmutableBiMap.Builder<String, String> fieldsToVariablesBuilder = null;
     if (config.hasPath("mapping") && !config.getConfig("mapping").isEmpty()) {
-      fieldsToVariablesBuilder = new ImmutableMap.Builder<>();
-      for (Map.Entry<String, Object> entry :
-          config.getConfig("mapping").root().unwrapped().entrySet()) {
-        Object key = entry.getKey();
-        // Since the config library doesn't allow integer map keys,
-        // parse them now if possible
-        try {
-          key = Integer.valueOf(key.toString());
-        } catch (NumberFormatException ignored) {
-        }
-        fieldsToVariablesBuilder.put(key, entry.getValue().toString());
+      fieldsToVariablesBuilder = new ImmutableBiMap.Builder<>();
+      LoaderConfig mapping = config.getConfig("mapping");
+      for (String path : mapping.root().keySet()) {
+        fieldsToVariablesBuilder.put(path, mapping.getString(path));
       }
     }
     if (config.hasPath("keyspace")) {
@@ -71,39 +121,79 @@ public class SchemaSettings {
     Preconditions.checkNotNull(
         fieldsToVariablesBuilder,
         "Mapping was absent and could not be inferred, please provide an explicit mapping");
-    ImmutableMap<Object, String> fieldsToVariables = fieldsToVariablesBuilder.build();
+    return fieldsToVariablesBuilder.build();
+  }
+
+  private RecordMetadata mergeRecordMetadata(RecordMetadata fallback) {
+    if (config.hasPath("recordMetadata") && !config.getConfig("recordMetadata").isEmpty()) {
+      ImmutableMap.Builder<String, TypeToken<?>> fieldsToTypes = new ImmutableMap.Builder<>();
+      LoaderConfig recordMetadata = config.getConfig("recordMetadata");
+      for (String path : recordMetadata.root().keySet()) {
+        fieldsToTypes.put(path, TypeToken.of(recordMetadata.getClass(path)));
+      }
+      return new MergedRecordMetadata(fieldsToTypes.build(), fallback);
+    }
+    return fallback;
+  }
+
+  private PreparedStatement prepareStatement(
+      Session session,
+      ImmutableBiMap<String, String> fieldsToVariables,
+      WorkflowType workflowType) {
     String query;
     if (config.hasPath("statement")) {
       query = config.getString("statement");
     } else {
       Preconditions.checkState(
           keyspace != null && table != null, "Keyspace and table must be specified");
-      query = inferQuery(fieldsToVariables);
+      query =
+          workflowType == WorkflowType.WRITE
+              ? inferWriteQuery(fieldsToVariables)
+              : inferReadQuery(fieldsToVariables);
     }
-    PreparedStatement ps = session.prepare(query);
-    DefaultMapping mapping =
-        new DefaultMapping(fieldsToVariables, codecRegistry, ps.getVariables());
-    return new RecordMapper(
-        ps, mapping, config.getStringList("nullWords"), config.getBoolean("nullToUnset"));
+    return session.prepare(query);
   }
 
-  private ImmutableMap.Builder<Object, String> inferFieldsToVariablesMap() {
-    ImmutableMap.Builder<Object, String> fieldsToVariables = new ImmutableMap.Builder<>();
+  private ImmutableBiMap.Builder<String, String> inferFieldsToVariablesMap() {
+    ImmutableBiMap.Builder<String, String> fieldsToVariables = new ImmutableBiMap.Builder<>();
     for (int i = 0; i < table.getColumns().size(); i++) {
       ColumnMetadata col = table.getColumns().get(i);
       String name = Metadata.quoteIfNecessary(col.getName());
-      // use both indexed and mapped access
-      // indexed access can only work if the data source produces
-      // indexed records with columns in the same order
-      fieldsToVariables.put(i, name);
       fieldsToVariables.put(col.getName(), name);
     }
     return fieldsToVariables;
   }
 
-  private String inferQuery(ImmutableMap<Object, String> fieldsToVariables) {
+  private String inferWriteQuery(ImmutableBiMap<String, String> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
+    appendColumnNames(fieldsToVariables, sb);
+    sb.append(") VALUES (");
+    Set<String> cols = new LinkedHashSet<>(fieldsToVariables.values());
+    Iterator<String> it = cols.iterator();
+    while (it.hasNext()) {
+      String col = it.next();
+      sb.append(':');
+      sb.append(col);
+      if (it.hasNext()) sb.append(',');
+    }
+    sb.append(')');
+    return sb.toString();
+  }
+
+  private String inferReadQuery(ImmutableBiMap<String, String> fieldsToVariables) {
+    StringBuilder sb = new StringBuilder("SELECT ");
+    appendColumnNames(fieldsToVariables, sb);
+    sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
+    appendTokenFunction(sb);
+    sb.append(" > :start AND ");
+    appendTokenFunction(sb);
+    sb.append(" <= :end");
+    return sb.toString();
+  }
+
+  private void appendColumnNames(
+      ImmutableBiMap<String, String> fieldsToVariables, StringBuilder sb) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
     Set<String> cols = new LinkedHashSet<>(fieldsToVariables.values());
@@ -113,17 +203,22 @@ public class SchemaSettings {
       // corresponds to a CQL column having the exact same name.
       String col = it.next();
       sb.append(Metadata.quoteIfNecessary(col));
-      if (it.hasNext()) sb.append(',');
+      if (it.hasNext()) {
+        sb.append(',');
+      }
     }
-    sb.append(") VALUES (");
-    it = cols.iterator();
-    while (it.hasNext()) {
-      String col = it.next();
-      sb.append(':');
-      sb.append(col);
-      if (it.hasNext()) sb.append(',');
+  }
+
+  private void appendTokenFunction(StringBuilder sb) {
+    sb.append("token(");
+    Iterator<ColumnMetadata> pks = table.getPartitionKey().iterator();
+    while (pks.hasNext()) {
+      ColumnMetadata pk = pks.next();
+      sb.append(Metadata.quoteIfNecessary(pk.getName()));
+      if (pks.hasNext()) {
+        sb.append(',');
+      }
     }
-    sb.append(')');
-    return sb.toString();
+    sb.append(")");
   }
 }

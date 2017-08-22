@@ -4,10 +4,10 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.loader.connectors.api;
+package com.datastax.loader.engine;
 
-/** */
-public interface CQLRecord extends Record {
+public enum WorkflowType {
+  WRITE,
 
-  String getQueryString();
+  READ
 }

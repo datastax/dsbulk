@@ -83,7 +83,7 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
   /**
    * Sets the maximum number of concurrent requests per second. This acts as a safeguard against
    * workflows that could overwhelm the cluster with more requests that it can handle. The default
-   * is {@value
+   * is {@link
    * com.datastax.loader.executor.api.AbstractBulkExecutor#DEFAULT_MAX_REQUESTS_PER_SECOND}. Setting
    * this option to any negative value will disable it.
    *

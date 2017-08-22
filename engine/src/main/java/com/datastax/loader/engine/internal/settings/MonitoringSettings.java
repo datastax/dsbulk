@@ -18,11 +18,11 @@ import java.util.concurrent.TimeUnit;
 public class MonitoringSettings {
 
   private final LoaderConfig config;
-  private final String operationId;
+  private final String executionId;
 
-  MonitoringSettings(LoaderConfig config, String operationId) {
+  MonitoringSettings(LoaderConfig config, String executionId) {
     this.config = config;
-    this.operationId = operationId;
+    this.executionId = executionId;
   }
 
   public MetricsManager newMetricsManager() {
@@ -40,7 +40,7 @@ public class MonitoringSettings {
     long expectedReads = config.getLong("expectedReads");
     boolean jmx = config.getBoolean("jmx");
     return new MetricsManager(
-        operationId,
+        executionId,
         scheduler,
         rateUnit,
         durationUnit,

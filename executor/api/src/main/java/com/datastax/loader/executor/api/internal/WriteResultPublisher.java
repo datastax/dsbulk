@@ -36,7 +36,7 @@ public class WriteResultPublisher extends ResultSetPublisher<WriteResult> {
   @Override
   protected void consumePage(Subscriber<? super WriteResult> subscriber, ResultSet rs) {
     assert rs.isFullyFetched();
-    onNext(subscriber, new DefaultWriteResult(statement, rs));
+    onNext(subscriber, new DefaultWriteResult(statement, rs.getExecutionInfo()));
     onComplete(subscriber);
   }
 

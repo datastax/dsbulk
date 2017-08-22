@@ -60,10 +60,10 @@ public class CodecSettings {
     this.config = config;
   }
 
-  public ExtendedCodecRegistry init(Cluster cluster) {
+  public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {
     Locale locale = parseLocale(config.getString("locale"));
-    Map<String, Boolean> booleanInputs = getBooleanInputs(config.getStringList("boolean"));
-    Map<Boolean, String> booleanOutputs = getBooleanOutputs(config.getStringList("boolean"));
+    Map<String, Boolean> booleanInputs = getBooleanInputs(config.getStringList("booleanWords"));
+    Map<Boolean, String> booleanOutputs = getBooleanOutputs(config.getStringList("booleanWords"));
     ThreadLocal<DecimalFormat> numberFormat = getNumberFormat(locale, config.getString("number"));
     String timeZone = config.getString("timeZone");
     DateTimeFormatter localDateFormat = getDateFormat(config.getString("date"), timeZone, locale);

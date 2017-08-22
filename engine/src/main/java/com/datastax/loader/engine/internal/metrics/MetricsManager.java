@@ -35,7 +35,7 @@ public class MetricsManager implements AutoCloseable {
   private final MetricsCollectingExecutionListener listener =
       new MetricsCollectingExecutionListener(registry);
 
-  private final String operationId;
+  private final String executionId;
   private final ScheduledExecutorService scheduler;
   private final TimeUnit rateUnit;
   private final TimeUnit durationUnit;
@@ -59,7 +59,7 @@ public class MetricsManager implements AutoCloseable {
   private JmxReporter jmxReporter;
 
   public MetricsManager(
-      String operationId,
+      String executionId,
       ScheduledExecutorService scheduler,
       TimeUnit rateUnit,
       TimeUnit durationUnit,
@@ -67,7 +67,7 @@ public class MetricsManager implements AutoCloseable {
       long expectedReads,
       boolean jmx,
       Duration reportInterval) {
-    this.operationId = operationId;
+    this.executionId = executionId;
     this.scheduler = scheduler;
     this.rateUnit = rateUnit;
     this.durationUnit = durationUnit;
@@ -104,7 +104,7 @@ public class MetricsManager implements AutoCloseable {
                 (type, domain, name) -> {
                   try {
                     StringBuilder sb =
-                        new StringBuilder("com.datastax.loader:0=").append(operationId).append(',');
+                        new StringBuilder("com.datastax.loader:0=").append(executionId).append(',');
                     StringTokenizer tokenizer = new StringTokenizer(name, "/");
                     int i = 1;
                     while (tokenizer.hasMoreTokens()) {
@@ -207,7 +207,7 @@ public class MetricsManager implements AutoCloseable {
     readsReporter.report();
   }
 
-  public FlowableTransformer<Record, Record> newConnectorMonitor() {
+  public FlowableTransformer<Record, Record> newRecordMonitor() {
     return upstream ->
         upstream.doOnNext(
             r -> {

@@ -6,38 +6,33 @@
  */
 package com.datastax.loader.connectors.api.internal;
 
-import com.datastax.loader.connectors.api.MappedRecord;
+import com.datastax.loader.connectors.api.Record;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Streams;
-import java.net.URL;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 /** */
-public class MapRecord extends LinkedHashMap<Object, Object> implements MappedRecord {
+public class MapRecord extends LinkedHashMap<String, Object> implements Record {
 
   private final Object source;
-  private final URL location;
+  private final Supplier<URI> location;
 
-  public MapRecord(Object source, URL location, Map<Object, Object> values) {
-    super(values);
-    this.source = source;
-    this.location = location;
-    Streams.forEachPair(IntStream.range(0, size()).boxed(), values().stream(), this::put);
-  }
-
-  public MapRecord(Object source, URL location, Object... values) {
+  public MapRecord(Object source, Supplier<URI> location, Object... values) {
     super();
     this.source = source;
     this.location = location;
     Streams.forEachPair(
-        IntStream.range(0, values.length).boxed(), Arrays.stream(values), this::put);
+        IntStream.range(0, values.length).boxed().map(Object::toString),
+        Arrays.stream(values),
+        this::put);
   }
 
-  public MapRecord(Object source, URL location, Object[] keys, Object[] values) {
+  public MapRecord(Object source, Supplier<URI> location, String[] keys, Object[] values) {
     this(source, location, values);
     if (keys.length != values.length)
       throw new IllegalArgumentException("Keys and values have different sizes");
@@ -50,18 +45,28 @@ public class MapRecord extends LinkedHashMap<Object, Object> implements MappedRe
   }
 
   @Override
-  public URL getLocation() {
-    return location;
+  public URI getLocation() {
+    return location.get();
   }
 
   @Override
-  public Set<Object> fields() {
+  public Set<String> fields() {
     return keySet();
   }
 
   @Override
-  public Object getFieldValue(Object field) {
+  public Object getFieldValue(String field) {
     return get(field);
+  }
+
+  /**
+   * Sets the value associated with the given field.
+   *
+   * @param field the field name.
+   * @param value The value to set.
+   */
+  public void setFieldValue(String field, Object value) {
+    put(field, value);
   }
 
   @Override

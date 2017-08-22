@@ -30,7 +30,7 @@ import com.datastax.loader.executor.api.result.Result;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.reactivex.Flowable;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,9 +47,9 @@ public class LogManagerTest {
   private String source2 = "line2\n";
   private String source3 = "line3\n";
 
-  private URL location1;
-  private URL location2;
-  private URL location3;
+  private URI location1;
+  private URI location2;
+  private URI location3;
 
   private Record record1;
   private Record record2;
@@ -85,15 +85,15 @@ public class LogManagerTest {
     when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
     when(protocolOptions.getProtocolVersion()).thenReturn(ProtocolVersion.V4);
     when(configuration.getCodecRegistry()).thenReturn(CodecRegistry.DEFAULT_INSTANCE);
-    location1 = new URL("file:///file1.csv?line=1");
-    location2 = new URL("file:///file2.csv?line=2");
-    location3 = new URL("file:///file3.csv?line=3");
-    record1 = new ErrorRecord(source1, this.location1, new RuntimeException("error 1"));
-    record2 = new ErrorRecord(source2, this.location2, new RuntimeException("error 2"));
-    record3 = new ErrorRecord(source3, this.location3, new RuntimeException("error 3"));
-    stmt1 = new UnmappableStatement(location1, record1, new RuntimeException("error 1"));
-    stmt2 = new UnmappableStatement(location2, record2, new RuntimeException("error 2"));
-    stmt3 = new UnmappableStatement(location3, record3, new RuntimeException("error 3"));
+    location1 = new URI("file:///file1.csv?line=1");
+    location2 = new URI("file:///file2.csv?line=2");
+    location3 = new URI("file:///file3.csv?line=3");
+    record1 = new ErrorRecord(source1, () -> this.location1, new RuntimeException("error 1"));
+    record2 = new ErrorRecord(source2, () -> this.location2, new RuntimeException("error 2"));
+    record3 = new ErrorRecord(source3, () -> this.location3, new RuntimeException("error 3"));
+    stmt1 = new UnmappableStatement(record1, new RuntimeException("error 1"));
+    stmt2 = new UnmappableStatement(record2, new RuntimeException("error 2"));
+    stmt3 = new UnmappableStatement(record3, new RuntimeException("error 3"));
     result1 =
         new DefaultReadResult(
             new BulkExecutionException(
@@ -122,30 +122,30 @@ public class LogManagerTest {
     logManager.init(cluster);
     Flowable<Record> records = Flowable.fromArray(record1, record2, record3);
     try {
-      records.compose(logManager.newConnectorErrorHandler()).blockingSubscribe();
+      records.compose(logManager.newRecordErrorHandler()).blockingSubscribe();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path bad = logManager.getOperationDirectory().resolve("operation.bad");
+    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
     Path errors1 =
         logManager
-            .getOperationDirectory()
+            .getExecutionDirectory()
             .resolve(
                 String.format(
                     "extract-%s-errors.log", Paths.get(location1.getPath()).toFile().getName()));
     Path errors2 =
         logManager
-            .getOperationDirectory()
+            .getExecutionDirectory()
             .resolve(
                 String.format(
                     "extract-%s-errors.log", Paths.get(location2.getPath()).toFile().getName()));
     assertThat(bad.toFile()).exists();
     assertThat(errors1.toFile()).exists();
     assertThat(errors2.toFile()).exists();
-    assertThat(Files.list(logManager.getOperationDirectory()).toArray())
+    assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
         .containsOnly(bad, errors1, errors2);
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(2);
@@ -175,11 +175,11 @@ public class LogManagerTest {
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path bad = logManager.getOperationDirectory().resolve("operation.bad");
-    Path errors = logManager.getOperationDirectory().resolve("transform-errors.log");
+    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
+    Path errors = logManager.getExecutionDirectory().resolve("transform-errors.log");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(Files.list(logManager.getOperationDirectory()).toArray()).containsOnly(bad, errors);
+    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(bad, errors);
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(2);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
@@ -209,15 +209,15 @@ public class LogManagerTest {
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path bad = logManager.getOperationDirectory().resolve("operation.bad");
-    Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
+    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
+    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(2);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
-    assertThat(Files.list(logManager.getOperationDirectory()).toArray()).containsOnly(bad, errors);
+    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
@@ -247,8 +247,8 @@ public class LogManagerTest {
       assertThat(e.getMaxErrors()).isEqualTo(1);
     }
     logManager.close();
-    Path bad = logManager.getOperationDirectory().resolve("operation.bad");
-    Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
+    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
+    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
@@ -256,13 +256,13 @@ public class LogManagerTest {
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
-    assertThat(Files.list(logManager.getOperationDirectory()).toArray()).containsOnly(bad, errors);
+    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
-        .containsOnlyOnce("Location: " + location1.toExternalForm())
-        .containsOnlyOnce("Location: " + location2.toExternalForm())
-        .containsOnlyOnce("Location: " + location3.toExternalForm())
+        .containsOnlyOnce("Location: " + location1.toString())
+        .containsOnlyOnce("Location: " + location2.toString())
+        .containsOnlyOnce("Location: " + location3.toString())
         .containsOnlyOnce("Source  : " + LogUtils.formatSingleLine(source1))
         .containsOnlyOnce("Source  : " + LogUtils.formatSingleLine(source2))
         .containsOnlyOnce("Source  : " + LogUtils.formatSingleLine(source3))

@@ -30,13 +30,18 @@ The following options can be configured:
  
     * `contactPoints` [string list]
     
-         The contact points to use for the initial connection to the cluster
-         This must be a list of strings with each contact point specified as "host:port". If the host is
+         The contact points to use for the initial connection to the cluster.
+         This must be a list of strings with each contact point's host-name or ip address. If the host is
          a DNS name that resolves to multiple A-records, all the corresponding addresses will be used.
          Do not use "localhost" as the host name (since it resolves to both IPv4 and IPv6 addresses on
          some platforms).
+         Defaults to `["127.0.0.1"]`.
+
+    * `port` [int]
+
+         The port to connect to on contact points.
          Note that all nodes in a cluster must share the same port.
-         Defaults to `["127.0.0.1:9042"]`.
+         Defaults to 9042.
 
     * `protocol`
     

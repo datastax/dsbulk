@@ -161,12 +161,15 @@ REM Simple subroutine to emit usage text.
   ECHO   on field indices in the input:
   ECHO     !BATCH_FILENAME! -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}"
   ECHO.
-  ECHO * Same as last example, but specify a few contact points; note how the value is quoted:
-  ECHO     !BATCH_FILENAME! -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints "[""10.200.1.3:9042"",""10.200.1.4:9042""]"
+  ECHO * Same as last example, but specify a few contact points at the default port:
+  ECHO     !BATCH_FILENAME! -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints "[10.200.1.3, 10.200.1.4]"
   ECHO.
-  ECHO * Same as last example, but with connector-name, keyspace, table, and mapping set in
+  ECHO * Same as last example, but specify port 9876 for the contact points:
+  ECHO     !BATCH_FILENAME! -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints "[10.200.1.3, 10.200.1.4]" --driver.port 9876
+  ECHO.
+  ECHO * Same as last example, but with default port for contact points, and connector-name, keyspace, table, and mapping set in
   ECHO   conf/application.conf:
-  ECHO     !BATCH_FILENAME! --connector.csv.url https://svr/data/export.csv --driver.contactPoints "[""10.200.1.3:9042"",""10.200.1.4:9042""]"
+  ECHO     !BATCH_FILENAME! --connector.csv.url https://svr/data/export.csv --driver.contactPoints "[10.200.1.3, 10.200.1.4]"
 
   GOTO :eof
 

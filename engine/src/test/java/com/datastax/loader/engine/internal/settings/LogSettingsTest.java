@@ -52,11 +52,11 @@ public class LogSettingsTest {
     try {
       logManager.init(cluster);
       assertThat(logManager).isNotNull();
-      assertThat(logManager.getOperationDirectory().toFile().getAbsolutePath())
+      assertThat(logManager.getExecutionDirectory().toFile().getAbsolutePath())
           .isEqualTo(Paths.get("./test").normalize().toFile().getAbsolutePath());
     } finally {
       //noinspection ResultOfMethodCallIgnored
-      Files.walk(logManager.getOperationDirectory())
+      Files.walk(logManager.getExecutionDirectory())
           .sorted(Comparator.reverseOrder())
           .map(Path::toFile)
           .forEach(File::delete);
@@ -74,7 +74,7 @@ public class LogSettingsTest {
     LogManager logManager = settings.newLogManager();
     logManager.init(cluster);
     assertThat(logManager).isNotNull();
-    assertThat(logManager.getOperationDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
+    assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
   }
 
   @Test
@@ -88,6 +88,6 @@ public class LogSettingsTest {
     LogManager logManager = settings.newLogManager();
     logManager.init(cluster);
     assertThat(logManager).isNotNull();
-    assertThat(logManager.getOperationDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
+    assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
   }
 }

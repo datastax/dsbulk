@@ -6,14 +6,14 @@
  */
 package com.datastax.loader.engine;
 
-import static java.util.concurrent.TimeUnit.HOURS;
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.loader.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.loader.connectors.api.Connector;
+import com.datastax.loader.connectors.api.RecordMetadata;
+import com.datastax.loader.engine.internal.WorkflowUtils;
 import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.loader.engine.internal.log.LogManager;
 import com.datastax.loader.engine.internal.metrics.MetricsManager;
@@ -31,27 +31,21 @@ import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
 import com.google.common.base.Stopwatch;
 import io.reactivex.Flowable;
 import java.net.URL;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
-import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** */
-public class Main {
+/** The main class for write workflows. */
+public class WriteWorkflow {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(WriteWorkflow.class);
 
   public static void main(String[] args) throws Exception {
     URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    Main main = new Main(args);
-    main.load();
+    WriteWorkflow writeWorkflow = new WriteWorkflow(args);
+    writeWorkflow.execute();
   }
 
-  private final String operationId = newOperationId();
+  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.WRITE);
   private final DriverSettings driverSettings;
   private final ConnectorSettings connectorSettings;
   private final SchemaSettings schemaSettings;
@@ -61,8 +55,8 @@ public class Main {
   private final CodecSettings codecSettings;
   private final MonitoringSettings monitoringSettings;
 
-  public Main(String[] args) throws Exception {
-    SettingsManager settingsManager = new SettingsManager(args, operationId);
+  public WriteWorkflow(String[] args) throws Exception {
+    SettingsManager settingsManager = new SettingsManager(args, executionId);
     settingsManager.loadConfiguration();
     settingsManager.logEffectiveSettings();
     logSettings = settingsManager.getLogSettings();
@@ -75,30 +69,31 @@ public class Main {
     monitoringSettings = settingsManager.getMonitoringSettings();
   }
 
-  public void load() {
+  public void execute() {
 
-    LOGGER.info("Starting operation " + operationId);
+    LOGGER.info("Starting write workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
 
     try (DseCluster cluster = driverSettings.newCluster();
-        DseSession session = cluster.newSession();
+        DseSession session = cluster.connect();
         Connector connector = connectorSettings.getConnector();
         MetricsManager metricsManager = monitoringSettings.newMetricsManager();
         LogManager logManager = logSettings.newLogManager();
         ReactiveBulkWriter executor =
             executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener())) {
 
-      session.init();
       connector.init();
       metricsManager.init();
       logManager.init(cluster);
 
-      ExtendedCodecRegistry codecRegistry = codecSettings.init(cluster);
-      RecordMapper recordMapper = schemaSettings.init(session, codecRegistry);
+      RecordMetadata recordMetadata = connector.getRecordMetadata();
+      ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
+      RecordMapper recordMapper =
+          schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
 
       Flowable.fromPublisher(connector.read())
-          .compose(metricsManager.newConnectorMonitor())
-          .compose(logManager.newConnectorErrorHandler())
+          .compose(metricsManager.newRecordMonitor())
+          .compose(logManager.newRecordErrorHandler())
           .map(recordMapper::map)
           .compose(metricsManager.newMapperMonitor())
           .compose(logManager.newMapperErrorHandler())
@@ -109,36 +104,14 @@ public class Main {
           .blockingSubscribe();
 
     } catch (Exception e) {
-      LOGGER.error(
-          String.format(
-              "Operation %s: uncaught exception during workflow engine execution.", operationId),
-          e);
+      LOGGER.error("Uncaught exception during write workflow engine execution " + executionId, e);
     }
 
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
-    LOGGER.info("Operation {} finished in {}.", operationId, formatElapsed(seconds));
-  }
-
-  public void unload() {
-    // TODO
-  }
-
-  private static String newOperationId() {
-    return "load_"
-        + DateTimeFormatter.ofPattern("uuuu_MM_dd_HH_mm_ss_nnnnnnnnn")
-            .format(
-                ZonedDateTime.ofInstant(
-                        Instant.ofEpochMilli(System.currentTimeMillis()), ZoneId.of("UTC"))
-                    .with(ChronoField.NANO_OF_SECOND, new Random().nextInt(1_000_000_000)));
-  }
-
-  private static String formatElapsed(long seconds) {
-    long hr = SECONDS.toHours(seconds);
-    long min = SECONDS.toMinutes(seconds - HOURS.toSeconds(hr));
-    long sec = SECONDS.toSeconds(seconds - HOURS.toSeconds(hr) - MINUTES.toSeconds(min));
-    if (hr > 0) return String.format("%d hours, %d minutes and %d seconds", hr, min, sec);
-    else if (min > 0) return String.format("%d minutes and %d seconds", min, sec);
-    else return String.format("%d seconds", sec);
+    LOGGER.info(
+        "Write workflow engine execution {} finished in {}.",
+        executionId,
+        WorkflowUtils.formatElapsed(seconds));
   }
 }

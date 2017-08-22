@@ -1179,14 +1179,14 @@ public abstract class AbstractBulkExecutorTest {
     assertThat(r.isSuccess()).isTrue();
     assertThat(((SimpleStatement) r.getStatement()).getQueryString())
         .isEqualTo(successful1.getQueryString());
-    assertThat(r.getResultSet().isPresent()).isTrue();
+    assertThat(r.getExecutionInfo().isPresent()).isTrue();
   }
 
   private void verifyFailedWriteResult(WriteResult r) {
     assertThat(r.isSuccess()).isFalse();
     assertThat(((SimpleStatement) r.getStatement()).getQueryString())
         .isEqualTo(failed.getQueryString());
-    assertThat(r.getResultSet().isPresent()).isFalse();
+    assertThat(r.getExecutionInfo().isPresent()).isFalse();
   }
 
   private void verifyException(Throwable t) {
@@ -1211,7 +1211,7 @@ public abstract class AbstractBulkExecutorTest {
         .forEach(
             r -> {
               assertThat(r.getError().isPresent()).isFalse();
-              assertThat(r.getResultSet().isPresent()).isTrue();
+              assertThat(r.getExecutionInfo().isPresent()).isTrue();
             });
     values
         .stream()
@@ -1219,7 +1219,7 @@ public abstract class AbstractBulkExecutorTest {
         .forEach(
             r -> {
               assertThat(r.getError().isPresent()).isTrue();
-              assertThat(r.getResultSet().isPresent()).isFalse();
+              assertThat(r.getExecutionInfo().isPresent()).isFalse();
             });
     verifyStatements(values);
   }

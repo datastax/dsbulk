@@ -25,7 +25,7 @@ public class SettingsManager {
   private static final Config DEFAULT = ConfigFactory.load().getConfig("datastax-loader");
 
   private final String[] args;
-  private final String operationId;
+  private final String executionId;
 
   private LoaderConfig config;
   private DriverSettings driverSettings;
@@ -37,9 +37,9 @@ public class SettingsManager {
   private CodecSettings codecSettings;
   private MonitoringSettings monitoringSettings;
 
-  public SettingsManager(String[] args, String operationId) {
+  public SettingsManager(String[] args, String executionId) {
     this.args = args;
-    this.operationId = operationId;
+    this.executionId = executionId;
   }
 
   public void loadConfiguration() throws Exception {
@@ -47,14 +47,14 @@ public class SettingsManager {
     delegate.checkValid(REFERENCE);
     // TODO check unrecognized config
     this.config = new DefaultLoaderConfig(delegate);
-    logSettings = new LogSettings(this.config.getConfig("log"), operationId);
-    driverSettings = new DriverSettings(this.config.getConfig("driver"), operationId);
+    logSettings = new LogSettings(this.config.getConfig("log"), executionId);
+    driverSettings = new DriverSettings(this.config.getConfig("driver"), executionId);
     connectorSettings = new ConnectorSettings(this.config.getConfig("connector"));
     schemaSettings = new SchemaSettings(this.config.getConfig("schema"));
     batchSettings = new BatchSettings(this.config.getConfig("batch"));
     executorSettings = new ExecutorSettings(this.config.getConfig("executor"));
     codecSettings = new CodecSettings(this.config.getConfig("codec"));
-    monitoringSettings = new MonitoringSettings(this.config.getConfig("monitoring"), operationId);
+    monitoringSettings = new MonitoringSettings(this.config.getConfig("monitoring"), executionId);
   }
 
   public void logEffectiveSettings() {
