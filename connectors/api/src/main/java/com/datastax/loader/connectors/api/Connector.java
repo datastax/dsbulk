@@ -6,23 +6,60 @@
  */
 package com.datastax.loader.connectors.api;
 
-import com.datastax.driver.core.Row;
 import com.datastax.loader.commons.config.LoaderConfig;
 import org.reactivestreams.Publisher;
 
-/** */
+/** A Connector is a component capable of reading from and writing to a datasource. */
 public interface Connector extends AutoCloseable {
 
+  /**
+   * Reads records from the datasource.
+   *
+   * @return a {@link Publisher} of records read from the datasource.
+   */
   Publisher<Record> read();
 
-  default void write(Publisher<Row> rows) {
-    // TODO
-    throw new UnsupportedOperationException();
-  }
+  /**
+   * Writes a record to the datasource.
+   *
+   * @param record the record to write to the datasource.
+   */
+  void write(Record record);
 
+  /**
+   * Initializes the connector.
+   *
+   * @throws Exception if the connector fails to initialize properly.
+   */
   default void init() throws Exception {}
 
+  /**
+   * Closes the connector.
+   *
+   * @throws Exception if the connector fails to close properly.
+   */
   default void close() throws Exception {}
 
+  /**
+   * Configures the connector.
+   *
+   * @param settings the connector settings.
+   * @throws Exception if the connector fails to configure properly.
+   */
   default void configure(LoaderConfig settings) throws Exception {}
+
+  /**
+   * Returns metadata about the records that this connector can read or write.
+   *
+   * <p>This method should only be called after {@link #configure(LoaderConfig)} and {@link
+   * #init()}, i.e., when the connector is fully initialized and ready to read or write.
+   *
+   * <p>If this connector cannot gather metadata, or if the metadata is inaccurate, then it should
+   * signal this situation by returning {@link RecordMetadata#DEFAULT}.
+   *
+   * @return the metadata about the records that this connector can read or write.
+   */
+  default RecordMetadata getRecordMetadata() {
+    return RecordMetadata.DEFAULT;
+  }
 }

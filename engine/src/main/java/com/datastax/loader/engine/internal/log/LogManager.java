@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** */
 public class LogManager implements AutoCloseable {
 
-  private final Path operationDirectory;
+  private final Path executionDirectory;
   private final ExecutorService executor;
   private final int maxErrors;
   private final StatementFormatter formatter;
@@ -75,12 +75,12 @@ public class LogManager implements AutoCloseable {
   private ProtocolVersion protocolVersion;
 
   public LogManager(
-      Path operationDirectory,
+      Path executionDirectory,
       ExecutorService executor,
       int maxErrors,
       StatementFormatter formatter,
       StatementFormatVerbosity verbosity) {
-    this.operationDirectory = operationDirectory;
+    this.executionDirectory = executionDirectory;
     this.executor = executor;
     this.maxErrors = maxErrors;
     this.formatter = formatter;
@@ -88,22 +88,21 @@ public class LogManager implements AutoCloseable {
   }
 
   public void init(Cluster cluster) throws IOException {
-    // TODO monitor current number of failures
     codecRegistry = cluster.getConfiguration().getCodecRegistry();
     protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
-    Files.createDirectories(operationDirectory);
-    if (!Files.isDirectory(operationDirectory)) {
+    Files.createDirectories(executionDirectory);
+    if (!Files.isDirectory(executionDirectory)) {
       throw new IllegalArgumentException(
-          String.format("File %s is not a directory", operationDirectory));
+          String.format("File %s is not a directory", executionDirectory));
     }
-    if (!Files.isWritable(operationDirectory)) {
+    if (!Files.isWritable(executionDirectory)) {
       throw new IllegalArgumentException(
-          String.format("Directory %s is not writable", operationDirectory));
+          String.format("Directory %s is not writable", executionDirectory));
     }
   }
 
-  public Path getOperationDirectory() {
-    return operationDirectory;
+  public Path getExecutionDirectory() {
+    return executionDirectory;
   }
 
   @Override
@@ -116,7 +115,7 @@ public class LogManager implements AutoCloseable {
     executor.shutdownNow();
   }
 
-  public FlowableTransformer<Record, Record> newConnectorErrorHandler() {
+  public FlowableTransformer<Record, Record> newRecordErrorHandler() {
     PublishSubject<FailedRecord> ps = PublishSubject.create();
     disposables.add(
         ps.toFlowable(BackpressureStrategy.BUFFER)
@@ -158,7 +157,7 @@ public class LogManager implements AutoCloseable {
             .filter(r -> !(r instanceof UnmappableStatement));
   }
 
-  public FlowableTransformer<Result, Result> newExecutorErrorHandler() {
+  public <R extends Result> FlowableTransformer<R, R> newExecutorErrorHandler() {
     PublishSubject<Result> ps = PublishSubject.create();
     disposables.add(
         ps.toFlowable(BackpressureStrategy.BUFFER)
@@ -203,7 +202,7 @@ public class LogManager implements AutoCloseable {
   }
 
   private void appendToBadFile(Object source) throws ExecutionException {
-    Path logFile = operationDirectory.resolve("operation.bad");
+    Path logFile = executionDirectory.resolve("operation.bad");
     PrintWriter writer = openFiles.get(logFile);
     printAndMaybeAddNewLine(source == null ? null : source.toString(), writer);
     writer.flush();
@@ -213,7 +212,7 @@ public class LogManager implements AutoCloseable {
       throws ExecutionException, URISyntaxException {
     Path sourceFile = Paths.get(record.getLocation().getPath());
     Path logFile =
-        operationDirectory.resolve("extract-" + sourceFile.toFile().getName() + "-errors.log");
+        executionDirectory.resolve("extract-" + sourceFile.toFile().getName() + "-errors.log");
     PrintWriter writer = openFiles.get(logFile);
     appendRecordInfo(record, writer);
     record.getError().printStackTrace(writer);
@@ -222,7 +221,7 @@ public class LogManager implements AutoCloseable {
   }
 
   private void appendToDebugFile(UnmappableStatement statement) throws ExecutionException {
-    Path logFile = operationDirectory.resolve("transform-errors.log");
+    Path logFile = executionDirectory.resolve("transform-errors.log");
     PrintWriter writer = openFiles.get(logFile);
     appendStatementInfo(statement, writer);
     statement.getError().printStackTrace(writer);
@@ -231,7 +230,7 @@ public class LogManager implements AutoCloseable {
   }
 
   private void appendToDebugFile(Result result) throws ExecutionException {
-    Path logFile = operationDirectory.resolve("load-errors.log");
+    Path logFile = executionDirectory.resolve("load-errors.log");
     PrintWriter writer = openFiles.get(logFile);
     writer.print("Statement: ");
     String format =

@@ -7,6 +7,7 @@
 package com.datastax.loader.executor.api.result;
 
 import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
 import java.util.Optional;
@@ -35,6 +36,8 @@ public interface Result {
    * @return the statement that has been executed.
    */
   Statement getStatement();
+
+  Optional<ExecutionInfo> getExecutionInfo();
 
   /**
    * Returns the size of the batch, if the executed statement was a {@link BatchStatement batch

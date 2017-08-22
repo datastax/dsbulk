@@ -42,4 +42,17 @@ public class DriverCoreTestHooks {
   public static UserType.Field newField(String name, DataType type) {
     return new UserType.Field(name, type);
   }
+
+  public static ColumnDefinitions.Definition newDefinition(String name, DataType type) {
+    return newDefinition("ks", "t", name, type);
+  }
+
+  public static ColumnDefinitions.Definition newDefinition(
+      String keyspace, String table, String name, DataType type) {
+    return new ColumnDefinitions.Definition(keyspace, table, name, type);
+  }
+
+  public static ColumnDefinitions newColumnDefinitions(ColumnDefinitions.Definition... cols) {
+    return new ColumnDefinitions(cols, CodecRegistry.DEFAULT_INSTANCE);
+  }
 }

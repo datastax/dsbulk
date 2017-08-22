@@ -26,15 +26,15 @@ public class LogSettings {
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.loader.OPERATION_DIRECTORY";
 
   private final LoaderConfig config;
-  private final Path operationDirectory;
+  private final Path executionDirectory;
 
-  LogSettings(LoaderConfig config, String operationId)
+  LogSettings(LoaderConfig config, String executionId)
       throws MalformedURLException, URISyntaxException {
     this.config = config;
     Path outputDirectory = config.getPath("outputDirectory");
-    operationDirectory = outputDirectory.resolve(operationId);
-    System.setProperty(OPERATION_DIRECTORY_KEY, operationDirectory.toFile().getAbsolutePath());
-    LOGGER.info("Operation output directory: {}", operationDirectory);
+    executionDirectory = outputDirectory.resolve(executionId);
+    System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
+    LOGGER.info("Operation output directory: {}", executionDirectory);
   }
 
   public LogManager newLogManager() {
@@ -52,6 +52,6 @@ public class LogSettings {
         Executors.newFixedThreadPool(
             threads, new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
     return new LogManager(
-        operationDirectory, executor, config.getInt("maxErrors"), formatter, verbosity);
+        executionDirectory, executor, config.getInt("maxErrors"), formatter, verbosity);
   }
 }

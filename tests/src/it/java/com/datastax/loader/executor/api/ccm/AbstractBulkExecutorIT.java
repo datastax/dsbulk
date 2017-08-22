@@ -9,7 +9,11 @@ package com.datastax.loader.executor.api.ccm;
 import static java.util.stream.StreamSupport.stream;
 import static org.assertj.core.api.Assertions.fail;
 
-import com.datastax.driver.core.*;
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SimpleStatement;
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.loader.executor.api.BulkExecutor;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
@@ -32,7 +36,11 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.inject.Inject;
 import org.assertj.core.api.Assertions;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -1156,14 +1164,14 @@ public abstract class AbstractBulkExecutorIT {
     Assertions.assertThat(r.isSuccess()).isTrue();
     Assertions.assertThat(((SimpleStatement) r.getStatement()).getQueryString())
         .isEqualTo(CsvUtils.firstQuery());
-    Assertions.assertThat(r.getResultSet().isPresent()).isTrue();
+    Assertions.assertThat(r.getExecutionInfo().isPresent()).isTrue();
   }
 
   private void verifyFailedWriteResult(WriteResult r) {
     Assertions.assertThat(r.isSuccess()).isFalse();
     Assertions.assertThat(((SimpleStatement) r.getStatement()).getQueryString())
         .isEqualTo(failed.getQueryString());
-    Assertions.assertThat(r.getResultSet().isPresent()).isFalse();
+    Assertions.assertThat(r.getExecutionInfo().isPresent()).isFalse();
   }
 
   private void verifyException(Throwable t) {
@@ -1192,7 +1200,7 @@ public abstract class AbstractBulkExecutorIT {
         .forEach(
             r -> {
               Assertions.assertThat(r.getError().isPresent()).isFalse();
-              Assertions.assertThat(r.getResultSet().isPresent()).isTrue();
+              Assertions.assertThat(r.getExecutionInfo().isPresent()).isTrue();
             });
     values
         .stream()
@@ -1200,7 +1208,7 @@ public abstract class AbstractBulkExecutorIT {
         .forEach(
             r -> {
               Assertions.assertThat(r.getError().isPresent()).isTrue();
-              Assertions.assertThat(r.getResultSet().isPresent()).isFalse();
+              Assertions.assertThat(r.getExecutionInfo().isPresent()).isFalse();
             });
   }
 

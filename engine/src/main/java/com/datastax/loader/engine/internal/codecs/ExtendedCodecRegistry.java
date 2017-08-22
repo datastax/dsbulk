@@ -24,6 +24,7 @@ import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.reflect.TypeToken;
 import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -42,6 +43,8 @@ import org.jetbrains.annotations.Nullable;
  * types + CQL types that the original CodecRegistry cannot handle?
  */
 public class ExtendedCodecRegistry {
+
+  private static final TypeToken<String> STRING_TYPE_TOKEN = TypeToken.of(String.class);
 
   private final CodecRegistry codecRegistry;
   private final Map<String, Boolean> booleanInputs;
@@ -76,7 +79,7 @@ public class ExtendedCodecRegistry {
 
   @SuppressWarnings("unchecked")
   public <T> TypeCodec<T> codecFor(
-      @NotNull DataType cqlType, @NotNull Class<? extends T> javaType) {
+      @NotNull DataType cqlType, @NotNull TypeToken<? extends T> javaType) {
     try {
       return (TypeCodec<T>) codecRegistry.codecFor(cqlType, javaType);
     } catch (CodecNotFoundException e) {
@@ -90,27 +93,27 @@ public class ExtendedCodecRegistry {
   }
 
   @Nullable
-  private TypeCodec<?> maybeCreateCodec(@NotNull DataType cqlType, @NotNull Class<?> javaType) {
-    if (cqlType == DataType.date() && javaType.equals(LocalDate.class)) {
+  private TypeCodec<?> maybeCreateCodec(@NotNull DataType cqlType, @NotNull TypeToken<?> javaType) {
+    if (cqlType == DataType.date() && javaType.getRawType().equals(LocalDate.class)) {
       return LocalDateCodec.instance;
     }
-    if (cqlType == DataType.time() && javaType.equals(LocalTimeCodec.class)) {
+    if (cqlType == DataType.time() && javaType.getRawType().equals(LocalTimeCodec.class)) {
       return LocalTimeCodec.instance;
     }
-    if (cqlType == DataType.timestamp() && javaType.equals(Instant.class)) {
+    if (cqlType == DataType.timestamp() && javaType.getRawType().equals(Instant.class)) {
       return InstantCodec.instance;
     }
-    if (String.class.equals(javaType)) {
+    if (String.class.equals(javaType.getRawType())) {
       return createStringConvertingCodec(cqlType);
     }
-    if (Number.class.isAssignableFrom(javaType) && isNumeric(cqlType)) {
+    if (Number.class.isAssignableFrom(javaType.getRawType()) && isNumeric(cqlType)) {
       //noinspection unchecked
-      Class<Number> numberType = (Class<Number>) javaType;
+      Class<Number> numberType = (Class<Number>) javaType.getRawType();
       return new NumberToNumberCodec<>(numberType, codecRegistry.codecFor(cqlType));
     }
-    if (Temporal.class.isAssignableFrom(javaType) && isTemporal(cqlType)) {
+    if (Temporal.class.isAssignableFrom(javaType.getRawType()) && isTemporal(cqlType)) {
       //noinspection unchecked
-      Class<Temporal> temporalType = (Class<Temporal>) javaType;
+      Class<Temporal> temporalType = (Class<Temporal>) javaType.getRawType();
       return new TemporalToTemporalCodec<>(temporalType, codecRegistry.codecFor(cqlType));
     }
     return null;
@@ -205,7 +208,7 @@ public class ExtendedCodecRegistry {
       return (ConvertingCodec<String, T>) new StringToStringCodec(codecRegistry.codecFor(cqlType));
     }
     // for all other CQL types it is guaranteed to be a converting codec
-    return (ConvertingCodec<String, T>) codecFor(cqlType, String.class);
+    return (ConvertingCodec<String, T>) codecFor(cqlType, STRING_TYPE_TOKEN);
   }
 
   private static boolean isNumeric(@NotNull DataType cqlType) {

@@ -23,13 +23,13 @@ import com.datastax.driver.core.RemoteEndpointAwareJdkSSLOptions;
 import com.datastax.driver.core.RemoteEndpointAwareNettySSLOptions;
 import com.datastax.driver.core.SSLOptions;
 import com.datastax.driver.core.SocketOptions;
+import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.policies.IdentityTranslator;
 import com.datastax.driver.core.policies.NoSpeculativeExecutionPolicy;
 import com.datastax.driver.core.policies.Policies;
-import com.datastax.driver.core.policies.RetryPolicy;
-import com.datastax.driver.core.policies.RoundRobinPolicy;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseConfiguration;
+import com.datastax.driver.dse.DseLoadBalancingPolicy;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
@@ -99,8 +99,8 @@ public class DriverSettingsTest {
     assertThat(policies.getTimestampGenerator())
         .isInstanceOf(AtomicMonotonicTimestampGenerator.class);
     assertThat(policies.getAddressTranslator()).isInstanceOf(IdentityTranslator.class);
-    assertThat(policies.getLoadBalancingPolicy()).isInstanceOf(RoundRobinPolicy.class);
-    assertThat(policies.getRetryPolicy()).isInstanceOf(RetryPolicy.class);
+    assertThat(policies.getLoadBalancingPolicy()).isInstanceOf(DseLoadBalancingPolicy.class);
+    assertThat(policies.getRetryPolicy()).isInstanceOf(DefaultRetryPolicy.class);
     assertThat(policies.getSpeculativeExecutionPolicy())
         .isInstanceOf(NoSpeculativeExecutionPolicy.class);
     assertThat(configuration.getProtocolOptions().getSSLOptions()).isNull();

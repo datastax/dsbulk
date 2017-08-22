@@ -7,20 +7,22 @@
 package com.datastax.loader.connectors.api.internal;
 
 import com.datastax.loader.connectors.api.FailedRecord;
-import com.google.common.base.MoreObjects;
-import java.net.URL;
+import com.google.common.collect.ImmutableSet;
+import java.net.URI;
+import java.util.Set;
+import java.util.function.Supplier;
 
 /** */
 public class ErrorRecord implements FailedRecord {
 
   private final Object source;
-  private final URL location;
+  private final Supplier<URI> location;
   private final Throwable error;
 
-  public ErrorRecord(Object source, URL location, Throwable error) {
+  public ErrorRecord(Object source, Supplier<URI> location, Throwable error) {
     this.source = source;
-    this.error = error;
     this.location = location;
+    this.error = error;
   }
 
   @Override
@@ -29,21 +31,22 @@ public class ErrorRecord implements FailedRecord {
   }
 
   @Override
+  public URI getLocation() {
+    return location.get();
+  }
+
+  @Override
+  public Set<String> fields() {
+    return ImmutableSet.of();
+  }
+
+  @Override
+  public Object getFieldValue(String field) {
+    return null;
+  }
+
+  @Override
   public Throwable getError() {
     return error;
-  }
-
-  @Override
-  public URL getLocation() {
-    return location;
-  }
-
-  @Override
-  public String toString() {
-    return MoreObjects.toStringHelper(this)
-        .add("source", source)
-        .add("location", location)
-        .add("error", error)
-        .toString();
   }
 }

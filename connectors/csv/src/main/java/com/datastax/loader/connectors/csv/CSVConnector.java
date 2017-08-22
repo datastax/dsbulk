@@ -13,6 +13,7 @@ import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.connectors.api.internal.MapRecord;
+import com.google.common.base.Suppliers;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.csv.CsvFormat;
 import com.univocity.parsers.csv.CsvParser;
@@ -24,6 +25,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -71,7 +73,6 @@ public class CSVConnector implements Connector {
 
   @Override
   public void configure(LoaderConfig settings) throws MalformedURLException {
-
     url = settings.getURL("url");
     pattern = settings.getString("pattern");
     encoding = settings.getCharset("encoding");
@@ -111,10 +112,15 @@ public class CSVConnector implements Connector {
   public Publisher<Record> read() {
     if (root != null) {
       return Flowable.merge(
-          scan(root).map(p -> records(p.toUri().toURL()).subscribeOn(Schedulers.io())), maxThreads);
+          scan(root).map(p -> read(p.toUri().toURL()).subscribeOn(Schedulers.io())), maxThreads);
     } else {
-      return records(url);
+      return read(url);
     }
+  }
+
+  @Override
+  public void write(Record record) {
+    // TODO
   }
 
   private Flowable<Path> scan(Path root) {
@@ -158,7 +164,7 @@ public class CSVConnector implements Connector {
         BackpressureStrategy.BUFFER);
   }
 
-  private Flowable<Record> records(URL url) {
+  private Flowable<Record> read(URL url) {
     Flowable<Record> records =
         Flowable.create(
             e -> {
@@ -169,7 +175,6 @@ public class CSVConnector implements Connector {
                   com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
                   ParsingContext context = parser.getContext();
                   String source = context.currentParsedContent();
-                  URL location = getCurrentLocation(url, context);
                   if (row == null) {
                     break;
                   }
@@ -179,9 +184,17 @@ public class CSVConnector implements Connector {
                   Record record;
                   if (header) {
                     record =
-                        new MapRecord(source, location, context.parsedHeaders(), row.getValues());
+                        new MapRecord(
+                            source,
+                            Suppliers.memoize(() -> getCurrentLocation(url, context)),
+                            context.parsedHeaders(),
+                            row.getValues());
                   } else {
-                    record = new MapRecord(source, location, (Object[]) row.getValues());
+                    record =
+                        new MapRecord(
+                            source,
+                            Suppliers.memoize(() -> getCurrentLocation(url, context)),
+                            (Object[]) row.getValues());
                   }
                   LOGGER.trace("Emitting record {}", record);
                   e.onNext(record);
@@ -197,24 +210,16 @@ public class CSVConnector implements Connector {
     return records;
   }
 
-  private URL getCurrentLocation(URL url, ParsingContext context) {
-    URL location;
-    try {
-      long line = context.currentLine();
-      int column = context.currentColumn();
-      location =
-          new URL(
-              url.toExternalForm()
-                  + (url.getQuery() == null ? '?' : '&')
-                  + "?line="
-                  + line
-                  + "&column="
-                  + column);
-    } catch (MalformedURLException e) {
-      // should not happen, but no reason to fail for that
-      location = url;
-    }
-    return location;
+  private URI getCurrentLocation(URL url, ParsingContext context) {
+    long line = context.currentLine();
+    int column = context.currentColumn();
+    return URI.create(
+        url.toExternalForm()
+            + (url.getQuery() == null ? '?' : '&')
+            + "?line="
+            + line
+            + "&column="
+            + column);
   }
 
   private static InputStream openStream(URL url) throws IOException {

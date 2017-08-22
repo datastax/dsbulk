@@ -8,13 +8,19 @@ package com.datastax.loader.engine.internal.settings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ContinuousPagingSession;
+import com.datastax.driver.core.ProtocolOptions;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.executor.api.ContinuousRxJavaBulkExecutor;
 import com.datastax.loader.executor.api.DefaultRxJavaBulkExecutor;
+import com.datastax.loader.executor.api.reader.ReactiveBulkReader;
 import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Before;
@@ -31,10 +37,17 @@ public class ExecutorSettingsTest {
   public void setUp() throws Exception {
     session = mock(Session.class);
     dseSession = mock(ContinuousPagingSession.class);
+    Cluster cluster = mock(Cluster.class);
+    when(dseSession.getCluster()).thenReturn(cluster);
+    Configuration configuration = mock(Configuration.class);
+    when(cluster.getConfiguration()).thenReturn(configuration);
+    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
+    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
+    when(protocolOptions.getProtocolVersion()).thenReturn(ProtocolVersion.DSE_V1);
   }
 
   @Test
-  public void should_create_non_continuous_executor_when_session_not_dse() throws Exception {
+  public void should_create_non_continuous_executor_when_write_workflow() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
@@ -43,11 +56,22 @@ public class ExecutorSettingsTest {
   }
 
   @Test
-  public void should_create_continuous_executor_when_session_dse() throws Exception {
+  public void should_create_non_continuous_executor_when_read_workflow_and_session_not_dse()
+      throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
-    ReactiveBulkWriter executor = settings.newWriteExecutor(dseSession, null);
+    ReactiveBulkReader executor = settings.newReadExecutor(session, null);
+    assertThat(executor).isNotNull().isInstanceOf(DefaultRxJavaBulkExecutor.class);
+  }
+
+  @Test
+  public void should_create_continuous_executor_when_read_workflow_and_session_dse()
+      throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null);
     assertThat(executor).isNotNull().isInstanceOf(ContinuousRxJavaBulkExecutor.class);
   }
 }

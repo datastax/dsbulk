@@ -6,42 +6,43 @@
  */
 package com.datastax.loader.engine.internal.schema;
 
-import com.datastax.driver.core.ColumnDefinitions;
+import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableBiMap;
+import com.google.common.reflect.TypeToken;
 import org.jetbrains.annotations.NotNull;
 
 public class DefaultMapping implements Mapping {
 
-  private final ImmutableMap<Object, String> fieldsToVariables;
+  private final ImmutableBiMap<String, String> fieldsToVariables;
   private final ExtendedCodecRegistry codecRegistry;
-  private final ColumnDefinitions variables;
   private final Cache<String, TypeCodec<Object>> variablesToCodecs;
 
   public DefaultMapping(
-      ImmutableMap<Object, String> fieldsToVariables,
-      ExtendedCodecRegistry codecRegistry,
-      ColumnDefinitions variables) {
+      ImmutableBiMap<String, String> fieldsToVariables, ExtendedCodecRegistry codecRegistry) {
     this.fieldsToVariables = fieldsToVariables;
     this.codecRegistry = codecRegistry;
-    this.variables = variables;
     variablesToCodecs = Caffeine.newBuilder().build();
   }
 
   @Override
-  public String map(@NotNull Object field) {
+  public String fieldToVariable(String field) {
     return fieldsToVariables.get(field);
   }
 
-  @NotNull
   @Override
-  public TypeCodec<Object> codec(@NotNull String name, @NotNull Object raw) {
+  public String variableToField(@NotNull String variable) {
+    return fieldsToVariables.inverse().get(variable);
+  }
+
+  @Override
+  public TypeCodec<Object> codec(
+      @NotNull String variable, DataType cqlType, TypeToken<?> javaType) {
     TypeCodec<Object> codec =
-        variablesToCodecs.get(
-            name, n -> codecRegistry.codecFor(variables.getType(n), raw.getClass()));
+        variablesToCodecs.get(variable, n -> codecRegistry.codecFor(cqlType, javaType));
     assert codec != null;
     return codec;
   }
