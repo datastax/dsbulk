@@ -6,9 +6,6 @@
  */
 package com.datastax.loader.connectors.csv;
 
-import static java.nio.file.FileVisitResult.CONTINUE;
-import static java.nio.file.FileVisitResult.TERMINATE;
-
 import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.connectors.api.Record;
@@ -20,6 +17,10 @@ import com.univocity.parsers.csv.CsvParserSettings;
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
 import io.reactivex.schedulers.Schedulers;
+import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,9 +37,9 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
-import org.reactivestreams.Publisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static java.nio.file.FileVisitResult.CONTINUE;
+import static java.nio.file.FileVisitResult.TERMINATE;
 
 /**
  * A connector for CSV files.
@@ -70,19 +71,8 @@ public class CSVConnector implements Connector {
   private CsvParserSettings settings;
 
   @Override
-  public LoaderConfig configure(LoaderConfig settings) throws MalformedURLException {
-    // Create a Config object that effectively merges the csv level with
-    // the connector level. The csv level in settings is a merge of
-    // user-provided values and the values from reference.conf. That is
-    // our fallback (e.g. think attributes like header, url under csv, but
-    // where the root is now csv).
-    // If the user specifies overrides like config.comment, those
-    // take precedence over those specified in csv.
-    // The net effect is that a user can specify a command-line override
-    // like connector.csv.comment, and it'll be respected, while
-    // at the same time an override like connector.url will also be
-    // respected.
-    settings = settings.withoutPath("csv").withFallback(settings.getConfig("csv"));
+  public void configure(LoaderConfig settings) throws MalformedURLException {
+
     url = settings.getURL("url");
     pattern = settings.getString("pattern");
     encoding = settings.getCharset("encoding");
@@ -95,7 +85,6 @@ public class CSVConnector implements Connector {
     maxThreads = settings.getThreads("maxThreads");
     recursive = settings.getBoolean("recursive");
     header = settings.getBoolean("header");
-    return settings;
   }
 
   @Override

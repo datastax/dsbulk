@@ -35,7 +35,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-public class CSVEndToEnd {
+public class CSVEndToEndIT {
 
   @Rule public SimulacronRule simulacron = new SimulacronRule(ClusterSpec.builder().withNodes(1));
 
@@ -51,7 +51,7 @@ public class CSVEndToEnd {
     String[] args = {
       "log.output-directory=\"file:./target\"",
       "connector.name=csv",
-      "connector.url=\"" + CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm() + "\"",
+      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm() + "\"",
       "driver.query.consistency=ONE",
       "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
       "driver.protocol.compression=NONE",
@@ -87,7 +87,7 @@ public class CSVEndToEnd {
     String[] args = {
       "log.output-directory=\"file:./target\"",
       "connector.name=csv",
-      "connector.url=\"" + CsvUtils.CSV_RECORDS_PARTIAL_BAD.toExternalForm() + "\"",
+      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_PARTIAL_BAD.toExternalForm() + "\"",
       "driver.query.consistency=LOCAL_ONE",
       "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
       "driver.protocol.compression=NONE",
@@ -147,7 +147,7 @@ public class CSVEndToEnd {
     String[] args = {
       "log.output-directory=\"file:./target\"",
       "connector.name=csv",
-      "connector.url=\"" + CsvUtils.CSV_RECORDS_ERROR.toExternalForm() + "\"",
+      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_ERROR.toExternalForm() + "\"",
       "driver.query.consistency=LOCAL_ONE",
       "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
       "driver.protocol.compression=NONE",
@@ -168,12 +168,12 @@ public class CSVEndToEnd {
     String[] args = {
       "log.output-directory=\"file:./target\"",
       "connector.name=csv",
-      "connector.url=\"" + CsvUtils.CSV_RECORDS_SKIP.toExternalForm() + "\"",
+      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_SKIP.toExternalForm() + "\"",
       "driver.query.consistency=LOCAL_ONE",
       "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
       "driver.protocol.compression=NONE",
-      "connector.linesToSkip=3",
-      "connector.maxLines=24",
+      "connector.csv.linesToSkip=3",
+      "connector.csv.maxLines=24",
       "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
       "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
