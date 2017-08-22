@@ -94,12 +94,17 @@ public class CSVConnectorTest {
   @Test
   public void should_scan_directory_with_path() throws Exception {
     CSVConnector connector = new CSVConnector();
+    String rootPath = CSVConnectorTest.class.getResource("/root").getPath();
+    if (isWindows()) {
+      // Root-path is of the form "/C:/foo/bar/root". We want forward
+      // slashes, but we don't want the leading slash.
+
+      rootPath = rootPath.substring(1);
+    }
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "header = true, url = \"%s\", recursive = false",
-                        CSVConnectorTest.class.getResource("/root").toExternalForm()))
+                    String.format("header = true, url = \"%s\", recursive = false", rootPath))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings);
     connector.init();
@@ -121,5 +126,10 @@ public class CSVConnectorTest {
 
   private static String url(String resource) {
     return CSVConnectorTest.class.getResource(resource).toExternalForm();
+  }
+
+  private static boolean isWindows() {
+    String osName = System.getProperty("os.name");
+    return osName != null && osName.startsWith("Windows");
   }
 }
