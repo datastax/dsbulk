@@ -10,9 +10,9 @@ import static com.datastax.loader.tests.utils.NetworkUtils.findAvailablePort;
 import static com.datastax.loader.tests.utils.VersionUtils.DEFAULT_DSE_VERSION;
 import static com.datastax.loader.tests.utils.VersionUtils.getOSSVersionForDSEVersion;
 
+import com.datastax.loader.commons.PlatformUtils;
 import com.datastax.loader.tests.utils.MemoryUtils;
 import com.datastax.loader.tests.utils.NetworkUtils;
-import com.datastax.loader.tests.utils.PlatformUtils;
 import com.datastax.loader.tests.utils.StringUtils;
 import com.datastax.loader.tests.utils.VersionUtils;
 import com.google.common.base.Joiner;

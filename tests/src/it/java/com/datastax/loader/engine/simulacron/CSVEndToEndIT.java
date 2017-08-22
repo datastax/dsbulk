@@ -69,7 +69,7 @@ public class CSVEndToEndIT {
     String[] args = {
       "log.output-directory=\"file:./target\"",
       "connector.name=csv",
-      "connector.url=\"" + CsvUtils.CSV_RECORDS_CRLF.toExternalForm() + "\"",
+      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_CRLF.toExternalForm() + "\"",
       "driver.query.consistency=ONE",
       "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
       "driver.protocol.compression=NONE",
