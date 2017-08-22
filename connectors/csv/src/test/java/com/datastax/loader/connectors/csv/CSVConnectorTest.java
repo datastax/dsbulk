@@ -8,6 +8,7 @@ package com.datastax.loader.connectors.csv;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.loader.commons.PlatformUtils;
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.commons.url.LoaderURLStreamHandlerFactory;
@@ -94,12 +95,17 @@ public class CSVConnectorTest {
   @Test
   public void should_scan_directory_with_path() throws Exception {
     CSVConnector connector = new CSVConnector();
+    String rootPath = CSVConnectorTest.class.getResource("/root").getPath();
+    if (PlatformUtils.isWindows()) {
+      // Root-path is of the form "/C:/foo/bar/root". We want forward
+      // slashes, but we don't want the leading slash.
+
+      rootPath = rootPath.substring(1);
+    }
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "header = true, url = \"%s\", recursive = false",
-                        CSVConnectorTest.class.getResource("/root").getPath()))
+                    String.format("header = true, url = \"%s\", recursive = false", rootPath))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings);
     connector.init();

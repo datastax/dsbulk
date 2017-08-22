@@ -64,6 +64,24 @@ public class CSVWriteEndToEndIT {
   }
 
   @Test
+  public void full_load_crlf() throws Exception {
+
+    String[] args = {
+      "log.output-directory=\"file:./target\"",
+      "connector.name=csv",
+      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_CRLF.toExternalForm() + "\"",
+      "driver.query.consistency=ONE",
+      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
+      "driver.protocol.compression=NONE",
+      "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
+      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+    };
+
+    new Main(args).load();
+    validateQueryCount(24, ConsistencyLevel.ONE);
+  }
+
+  @Test
   public void partial_load() throws Exception {
 
     String[] args = {

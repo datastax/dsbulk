@@ -32,6 +32,7 @@ import com.datastax.driver.dse.DseConfiguration;
 import com.datastax.driver.dse.DseLoadBalancingPolicy;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
+import com.datastax.loader.commons.PlatformUtils;
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
 import com.typesafe.config.ConfigException;
@@ -170,7 +171,7 @@ public class DriverSettingsTest {
     assertThat(Whitebox.getInternalState(loginConfiguration, "principal"))
         .isEqualTo("alice@DATASTAX.COM");
     assertThat(Whitebox.getInternalState(loginConfiguration, "keyTab"))
-        .isEqualTo("/path/to/my/keyTab");
+        .isEqualTo(PlatformUtils.isWindows() ? "C:\\path\\to\\my\\keyTab" : "/path/to/my/keyTab");
   }
 
   @Test

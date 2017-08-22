@@ -106,6 +106,7 @@ public class CSVConnector implements Connector {
     settings.setFormat(format);
     settings.setNumberOfRowsToSkip(linesToSkip);
     settings.setHeaderExtractionEnabled(header);
+    settings.setLineSeparatorDetectionEnabled(true);
   }
 
   @Override
