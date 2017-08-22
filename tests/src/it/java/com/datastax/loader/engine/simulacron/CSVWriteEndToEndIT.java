@@ -67,7 +67,7 @@ public class CSVWriteEndToEndIT {
   public void full_load_crlf() throws Exception {
 
     String[] args = {
-      "log.output-directory=\"file:./target\"",
+      "log.outputDirectory=./target",
       "connector.name=csv",
       "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_CRLF.toExternalForm() + "\"",
       "driver.query.consistency=ONE",

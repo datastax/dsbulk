@@ -12,6 +12,7 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
+import com.datastax.loader.tests.categories.LongTests;
 import com.datastax.loader.tests.ccm.CCMRule;
 import com.datastax.loader.tests.ccm.annotations.CCMConfig;
 import com.datastax.loader.tests.ccm.annotations.CCMTest;
@@ -21,9 +22,11 @@ import java.util.List;
 import javax.inject.Inject;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 @CCMTest
 @CCMConfig(numberOfNodes = 3)
+@Category(LongTests.class)
 public class TableScannerIT {
 
   @ClassRule public static CCMRule ccmRule = new CCMRule();
