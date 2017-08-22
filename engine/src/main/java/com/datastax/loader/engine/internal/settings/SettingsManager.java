@@ -8,9 +8,11 @@ package com.datastax.loader.engine.internal.settings;
 
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
+import com.google.common.collect.Iterators;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
+import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +45,7 @@ public class SettingsManager {
   }
 
   public void loadConfiguration() throws Exception {
-    Config delegate = parseUserSettings(args).withFallback(DEFAULT);
+    Config delegate = parseUserSettings().withFallback(DEFAULT);
     delegate.checkValid(REFERENCE);
     // TODO check unrecognized config
     this.config = new DefaultLoaderConfig(delegate);
@@ -95,10 +97,24 @@ public class SettingsManager {
     return monitoringSettings;
   }
 
-  private static Config parseUserSettings(String[] args) {
+  private Config parseUserSettings() {
     Config userSettings = ConfigFactory.empty();
-    for (String arg : args) {
-      userSettings = ConfigFactory.parseString(arg).withFallback(userSettings);
+    Iterator<String> it = Iterators.forArray(args);
+    boolean option = true;
+    String key = null;
+    String value;
+    while (it.hasNext()) {
+      String arg = it.next();
+      if (arg.startsWith("--")) {
+        key = arg.substring(2);
+      } else if (arg.startsWith("-")) {
+        key = mapToLongOption(arg.substring(1));
+      } else {
+        assert key != null;
+        userSettings = ConfigFactory.parseString(key + "=" + arg).withFallback(userSettings);
+        key = null;
+      }
+      option = !option;
     }
     return userSettings;
   }

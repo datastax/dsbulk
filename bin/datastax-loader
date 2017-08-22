@@ -164,26 +164,5 @@ done
 
 export CLASSPATH
 
-# Parse command-line args.
-
-canonicalizeArgs "$@"
-eval set -- "$PARSERESULT"
-
-while [ $# -gt 0 ] ; do
-  OPT=$(echo $1 | sed -e 's/--//')
-  VAL=$2
-  if ! echo $VAL | grep -E '^[\[{]' > /dev/null 2>&1 ; then
-    if echo $VAL | grep -E '[#:]' > /dev/null 2>&1 ; then
-      # The value has a special character in it. Quote the value.
-      VAL="\"$VAL\""
-    fi
-  fi
-  if [ -n "$LOADER_CONFIG" ] ; then
-    LOADER_CONFIG="$LOADER_CONFIG,"
-  fi
-  LOADER_CONFIG="$LOADER_CONFIG$OPT=$VAL"
-  shift 2
-done
-
 # Run the tool.
-$JAVA com.datastax.loader.engine.WriteWorkflow $LOADER_CONFIG
+$JAVA com.datastax.loader.engine.Main $0
