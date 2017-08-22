@@ -48,9 +48,9 @@ public class LogSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.log"));
     LogSettings settings = new LogSettings(config, "test");
-    LogManager logManager = settings.newLogManager();
+    LogManager logManager = settings.newLogManager(cluster);
     try {
-      logManager.init(cluster);
+      logManager.init();
       assertThat(logManager).isNotNull();
       assertThat(logManager.getExecutionDirectory().toFile().getAbsolutePath())
           .isEqualTo(Paths.get("./test").normalize().toFile().getAbsolutePath());
@@ -71,8 +71,8 @@ public class LogSettingsTest {
             ConfigFactory.parseString("outputDirectory = \"" + dir + "\"")
                 .withFallback(ConfigFactory.load().getConfig("datastax-loader.log")));
     LogSettings settings = new LogSettings(config, "test");
-    LogManager logManager = settings.newLogManager();
-    logManager.init(cluster);
+    LogManager logManager = settings.newLogManager(cluster);
+    logManager.init();
     assertThat(logManager).isNotNull();
     assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
   }
@@ -85,8 +85,8 @@ public class LogSettingsTest {
             ConfigFactory.parseString("outputDirectory = \"" + dir.toString() + "\"")
                 .withFallback(ConfigFactory.load().getConfig("datastax-loader.log")));
     LogSettings settings = new LogSettings(config, "test");
-    LogManager logManager = settings.newLogManager();
-    logManager.init(cluster);
+    LogManager logManager = settings.newLogManager(cluster);
+    logManager.init();
     assertThat(logManager).isNotNull();
     assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
   }

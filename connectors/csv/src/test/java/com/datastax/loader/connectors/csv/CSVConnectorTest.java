@@ -13,15 +13,22 @@ import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.loader.connectors.api.Record;
-import com.datastax.loader.connectors.api.internal.MapRecord;
+import com.datastax.loader.connectors.api.internal.DefaultRecord;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import io.reactivex.Flowable;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.Test;
+import reactor.core.publisher.Flux;
 
 /** */
 public class CSVConnectorTest {
@@ -38,21 +45,22 @@ public class CSVConnectorTest {
                         "header = true, url = \"%s\", escape = \"\\\"\", comment = \"#\"",
                         url("/sample.csv")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings);
+    connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flowable.fromPublisher(connector.read()).toList().blockingGet();
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
     assertThat(actual).hasSize(5);
-    assertThat(((MapRecord) actual.get(0)).values())
+    assertThat(actual.get(0).values())
         .containsOnly("1997", "Ford", "E350", "ac, abs, moon", "3000.00");
-    assertThat(((MapRecord) actual.get(1)).values())
+    assertThat(actual.get(1).values())
         .containsOnly("1999", "Chevy", "Venture \"Extended Edition\"", null, "4900.00");
-    assertThat(((MapRecord) actual.get(2)).values())
+    assertThat(actual.get(2).values())
         .containsOnly(
             "1996", "Jeep", "Grand Cherokee", "MUST SELL!\nair, moon roof, loaded", "4799.00");
-    assertThat(((MapRecord) actual.get(3)).values())
+    assertThat(actual.get(3).values())
         .containsOnly("1999", "Chevy", "Venture \"Extended Edition, Very Large\"", null, "5000.00");
-    assertThat(((MapRecord) actual.get(4)).values())
+    assertThat(actual.get(4).values())
         .containsOnly(null, null, "Venture \"Extended Edition\"", null, "4900.00");
+    connector.close();
   }
 
   @Test
@@ -68,12 +76,13 @@ public class CSVConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString("url = \"stdin:/\", encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-      connector.configure(settings);
+      connector.configure(settings, true);
       connector.init();
-      List<Record> actual = Flowable.fromPublisher(connector.read()).toList().blockingGet();
+      List<Record> actual = Flux.from(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
-      assertThat(((MapRecord) actual.get(0)).values()).containsExactly("fóô", "bàr", "qïx");
+      assertThat(actual.get(0).values()).containsExactly("fóô", "bàr", "qïx");
+      connector.close();
     } finally {
       System.setIn(stdin);
     }
@@ -87,9 +96,10 @@ public class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format("header = true, url = \"%s\", recursive = false", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings);
+    connector.configure(settings, true);
     connector.init();
-    assertThat(Flowable.fromPublisher(connector.read()).count().blockingGet()).isEqualTo(300);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
+    connector.close();
   }
 
   @Test
@@ -107,9 +117,10 @@ public class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format("header = true, url = \"%s\", recursive = false", rootPath))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings);
+    connector.configure(settings, true);
     connector.init();
-    assertThat(Flowable.fromPublisher(connector.read()).count().blockingGet()).isEqualTo(300);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
+    connector.close();
   }
 
   @Test
@@ -120,12 +131,157 @@ public class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format("header = true, url = \"%s\", recursive = true", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings);
+    connector.configure(settings, true);
     connector.init();
-    assertThat(Flowable.fromPublisher(connector.read()).count().blockingGet()).isEqualTo(500);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
+    connector.close();
+  }
+
+  @Test
+  public void should_write_single_file() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    // test directory creation
+    Path out = Files.createTempDirectory("test").resolve("nonexistent");
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "header = true, url = \"%s\", escape = \"\\\"\", maxThreads = 1", out))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
+    records.subscribe(connector.write());
+    records.blockLast();
+    List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
+    assertThat(actual).hasSize(7);
+    assertThat(actual)
+        .containsExactly(
+            "Year,Make,Model,Description,Price",
+            "1997,Ford,E350,\"ac, abs, moon\",3000.00",
+            "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+            "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+            "air, moon roof, loaded\",4799.00",
+            "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+            ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    connector.close();
+  }
+
+  @Test
+  public void should_write_multiple_files() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Path out = Files.createTempDirectory("test");
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "header = true, url = \"%s\", escape = \"\\\"\", maxThreads = 4", out))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
+    records.subscribe(connector.write());
+    records.blockLast();
+    List<String> actual = collectLines(out);
+    assertThat(actual)
+        .containsOnly(
+            "Year,Make,Model,Description,Price",
+            "1997,Ford,E350,\"ac, abs, moon\",3000.00",
+            "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+            "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+            "air, moon roof, loaded\",4799.00",
+            "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+            ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    connector.close();
+  }
+
+  @Test
+  public void should_roll_file_when_max_lines_reached() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Path out = Files.createTempDirectory("test");
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "header = true, url = \"%s\", escape = \"\\\"\", maxThreads = 1, maxLines = 4",
+                        out))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
+    records.subscribe(connector.write());
+    records.blockLast();
+    List<String> csv1 = Files.readAllLines(out.resolve("output-000001.csv"));
+    List<String> csv2 = Files.readAllLines(out.resolve("output-000002.csv"));
+    assertThat(csv1)
+        .hasSize(5); // 1 header + 4 lines (3 records actually, but one record spans over 2 lines)
+    assertThat(csv2).hasSize(3); // 1 header + 2 lines
+    assertThat(csv1)
+        .containsOnly(
+            "Year,Make,Model,Description,Price",
+            "1997,Ford,E350,\"ac, abs, moon\",3000.00",
+            "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+            "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+            "air, moon roof, loaded\",4799.00");
+    assertThat(csv2)
+        .containsOnly(
+            "Year,Make,Model,Description,Price",
+            "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+            ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    connector.close();
+  }
+
+  private static List<Record> createRecords() {
+    ArrayList<Record> records = new ArrayList<>();
+    String[] fields = new String[] {"Year", "Make", "Model", "Description", "Price"};
+    records.add(
+        new DefaultRecord(null, null, fields, "1997", "Ford", "E350", "ac, abs, moon", "3000.00"));
+    records.add(
+        new DefaultRecord(
+            null, null, fields, "1999", "Chevy", "Venture \"Extended Edition\"", null, "4900.00"));
+    records.add(
+        new DefaultRecord(
+            null,
+            null,
+            fields,
+            "1996",
+            "Jeep",
+            "Grand Cherokee",
+            "MUST SELL!\nair, moon roof, loaded",
+            "4799.00"));
+    records.add(
+        new DefaultRecord(
+            null,
+            null,
+            fields,
+            "1999",
+            "Chevy",
+            "Venture \"Extended Edition, Very Large\"",
+            null,
+            "5000.00"));
+    records.add(
+        new DefaultRecord(
+            null, null, fields, null, null, "Venture \"Extended Edition\"", null, "4900.00"));
+    return records;
   }
 
   private static String url(String resource) {
     return CSVConnectorTest.class.getResource(resource).toExternalForm();
+  }
+
+  private static List<String> collectLines(Path out) throws IOException {
+    try (Stream<Path> paths = Files.walk(out)) {
+      return paths
+          .filter(Files::isRegularFile)
+          .flatMap(
+              path -> {
+                try {
+                  return Files.readAllLines(path).stream();
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              })
+          .collect(Collectors.toList());
+    }
   }
 }

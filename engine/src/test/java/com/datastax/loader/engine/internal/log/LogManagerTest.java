@@ -20,24 +20,25 @@ import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.connectors.api.Record;
-import com.datastax.loader.connectors.api.internal.ErrorRecord;
 import com.datastax.loader.engine.internal.log.statement.StatementFormatter;
+import com.datastax.loader.engine.internal.record.DefaultUnmappableRecord;
 import com.datastax.loader.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.loader.engine.internal.statement.UnmappableStatement;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
 import com.datastax.loader.executor.api.internal.result.DefaultReadResult;
-import com.datastax.loader.executor.api.result.Result;
+import com.datastax.loader.executor.api.internal.result.DefaultWriteResult;
+import com.datastax.loader.executor.api.result.ReadResult;
+import com.datastax.loader.executor.api.result.WriteResult;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
-import io.reactivex.Flowable;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import reactor.core.publisher.Flux;
 
 /** */
 @SuppressWarnings("FieldCanBeLocal")
@@ -59,10 +60,14 @@ public class LogManagerTest {
   private Statement stmt2;
   private Statement stmt3;
 
-  private Result result1;
-  private Result result2;
-  private Result result3;
-  private Result batchResult;
+  private WriteResult writeResult1;
+  private WriteResult writeResult2;
+  private WriteResult writeResult3;
+  private WriteResult batchWriteResult;
+
+  private ReadResult readResult1;
+  private ReadResult readResult2;
+  private ReadResult readResult3;
 
   private Cluster cluster;
 
@@ -88,87 +93,56 @@ public class LogManagerTest {
     location1 = new URI("file:///file1.csv?line=1");
     location2 = new URI("file:///file2.csv?line=2");
     location3 = new URI("file:///file3.csv?line=3");
-    record1 = new ErrorRecord(source1, () -> this.location1, new RuntimeException("error 1"));
-    record2 = new ErrorRecord(source2, () -> this.location2, new RuntimeException("error 2"));
-    record3 = new ErrorRecord(source3, () -> this.location3, new RuntimeException("error 3"));
+    record1 =
+        new DefaultUnmappableRecord(source1, () -> this.location1, new RuntimeException("error 1"));
+    record2 =
+        new DefaultUnmappableRecord(source2, () -> this.location2, new RuntimeException("error 2"));
+    record3 =
+        new DefaultUnmappableRecord(source3, () -> this.location3, new RuntimeException("error 3"));
     stmt1 = new UnmappableStatement(record1, new RuntimeException("error 1"));
     stmt2 = new UnmappableStatement(record2, new RuntimeException("error 2"));
     stmt3 = new UnmappableStatement(record3, new RuntimeException("error 3"));
-    result1 =
-        new DefaultReadResult(
+    writeResult1 =
+        new DefaultWriteResult(
             new BulkExecutionException(
                 new RuntimeException("error 1"), new BulkSimpleStatement<>(record1, "INSERT 1")));
-    result2 =
-        new DefaultReadResult(
+    writeResult2 =
+        new DefaultWriteResult(
             new BulkExecutionException(
                 new RuntimeException("error 2"), new BulkSimpleStatement<>(record2, "INSERT 2")));
-    result3 =
-        new DefaultReadResult(
+    writeResult3 =
+        new DefaultWriteResult(
             new BulkExecutionException(
                 new RuntimeException("error 3"), new BulkSimpleStatement<>(record3, "INSERT 3")));
+    readResult1 =
+        new DefaultReadResult(
+            new BulkExecutionException(
+                new RuntimeException("error 1"), new BulkSimpleStatement<>(record1, "SELECT 1")));
+    readResult2 =
+        new DefaultReadResult(
+            new BulkExecutionException(
+                new RuntimeException("error 2"), new BulkSimpleStatement<>(record2, "SELECT 2")));
+    readResult3 =
+        new DefaultReadResult(
+            new BulkExecutionException(
+                new RuntimeException("error 3"), new BulkSimpleStatement<>(record3, "SELECT 3")));
     BatchStatement batch = new BatchStatement(BatchStatement.Type.UNLOGGED);
     batch.add(new BulkSimpleStatement<>(record1, "INSERT 1", "foo", 42));
     batch.add(new BulkSimpleStatement<>(record2, "INSERT 2", "bar", 43));
     batch.add(new BulkSimpleStatement<>(record3, "INSERT 3", "qix", 44));
-    batchResult =
-        new DefaultReadResult(
+    batchWriteResult =
+        new DefaultWriteResult(
             new BulkExecutionException(new RuntimeException("error batch"), batch));
   }
 
   @Test
-  public void should_stop_when_max_extract_errors_reached() throws Exception {
-    Path outputDir = Files.createTempDirectory("test1");
-    LogManager logManager = new LogManager(outputDir, executor, 2, formatter, EXTENDED);
-    logManager.init(cluster);
-    Flowable<Record> records = Flowable.fromArray(record1, record2, record3);
-    try {
-      records.compose(logManager.newRecordErrorHandler()).blockingSubscribe();
-      fail("Expecting TooManyErrorsException to be thrown");
-    } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
-    }
-    logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
-    Path errors1 =
-        logManager
-            .getExecutionDirectory()
-            .resolve(
-                String.format(
-                    "extract-%s-errors.log", Paths.get(location1.getPath()).toFile().getName()));
-    Path errors2 =
-        logManager
-            .getExecutionDirectory()
-            .resolve(
-                String.format(
-                    "extract-%s-errors.log", Paths.get(location2.getPath()).toFile().getName()));
-    assertThat(bad.toFile()).exists();
-    assertThat(errors1.toFile()).exists();
-    assertThat(errors2.toFile()).exists();
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
-        .containsOnly(bad, errors1, errors2);
-    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
-    assertThat(badLines).hasSize(2);
-    assertThat(badLines.get(0)).isEqualTo(source1.trim());
-    assertThat(badLines.get(1)).isEqualTo(source2.trim());
-    List<String> lines1 = Files.readAllLines(errors1, Charset.forName("UTF-8"));
-    assertThat(lines1.get(0)).isEqualTo("Location: " + location1);
-    assertThat(lines1.get(1)).isEqualTo("Source  : " + LogUtils.formatSingleLine(source1));
-    assertThat(lines1.get(2)).isEqualTo("java.lang.RuntimeException: error 1");
-    List<String> lines2 = Files.readAllLines(errors2, Charset.forName("UTF-8"));
-    assertThat(lines2.get(0)).isEqualTo("Location: " + location2);
-    assertThat(lines2.get(1)).isEqualTo("Source  : " + LogUtils.formatSingleLine(source2));
-    assertThat(lines2.get(2)).isEqualTo("java.lang.RuntimeException: error 2");
-  }
-
-  @Test
-  public void should_stop_when_max_transform_errors_reached() throws Exception {
+  public void should_stop_when_max_record_mapping_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test2");
-    LogManager logManager = new LogManager(outputDir, executor, 2, formatter, EXTENDED);
-    logManager.init(cluster);
-    Flowable<Statement> stmts = Flowable.fromArray(stmt1, stmt2, stmt3);
+    LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
+    logManager.init();
+    Flux<Statement> stmts = Flux.just(stmt1, stmt2, stmt3);
     try {
-      stmts.compose(logManager.newMapperErrorHandler()).blockingSubscribe();
+      stmts.compose(logManager.newRecordMapperErrorHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
@@ -176,7 +150,7 @@ public class LogManagerTest {
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("transform-errors.log");
+    Path errors = logManager.getExecutionDirectory().resolve("record-mapping-errors.log");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(bad, errors);
@@ -196,13 +170,41 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_stop_when_max_load_errors_reached() throws Exception {
-    Path outputDir = Files.createTempDirectory("test3");
-    LogManager logManager = new LogManager(outputDir, executor, 2, formatter, EXTENDED);
-    logManager.init(cluster);
-    Flowable<Result> stmts = Flowable.fromArray(result1, result2, result3);
+  public void should_stop_when_max_result_mapping_errors_reached() throws Exception {
+    Path outputDir = Files.createTempDirectory("test1");
+    LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
+    logManager.init();
+    Flux<Record> records = Flux.just(record1, record2, record3);
     try {
-      stmts.compose(logManager.newExecutorErrorHandler()).blockingSubscribe();
+      records.compose(logManager.newResultMapperErrorHandler()).blockLast();
+      fail("Expecting TooManyErrorsException to be thrown");
+    } catch (TooManyErrorsException e) {
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+      assertThat(e.getMaxErrors()).isEqualTo(2);
+    }
+    logManager.close();
+    Path errors = logManager.getExecutionDirectory().resolve("result-mapping-errors.log");
+    assertThat(errors.toFile()).exists();
+    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(errors);
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .containsOnlyOnce("Location: " + location1)
+        .containsOnlyOnce("Source  : " + LogUtils.formatSingleLine(source1))
+        .containsOnlyOnce("java.lang.RuntimeException: error 1")
+        .containsOnlyOnce("Location: " + location2)
+        .containsOnlyOnce("Source  : " + LogUtils.formatSingleLine(source2))
+        .containsOnlyOnce("java.lang.RuntimeException: error 2");
+  }
+
+  @Test
+  public void should_stop_when_max_write_errors_reached() throws Exception {
+    Path outputDir = Files.createTempDirectory("test3");
+    LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
+    logManager.init();
+    Flux<WriteResult> stmts = Flux.just(writeResult1, writeResult2, writeResult3);
+    try {
+      stmts.compose(logManager.newWriteErrorHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
@@ -210,7 +212,7 @@ public class LogManagerTest {
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
+    Path errors = logManager.getExecutionDirectory().resolve("write-errors.log");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
@@ -234,13 +236,13 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_stop_when_max_load_errors_reached_and_statements_batched() throws Exception {
+  public void should_stop_when_max_write_errors_reached_and_statements_batched() throws Exception {
     Path outputDir = Files.createTempDirectory("test4");
-    LogManager logManager = new LogManager(outputDir, executor, 1, formatter, EXTENDED);
-    logManager.init(cluster);
-    Flowable<Result> stmts = Flowable.fromArray(batchResult, result1);
+    LogManager logManager = new LogManager(cluster, outputDir, executor, 1, formatter, EXTENDED);
+    logManager.init();
+    Flux<WriteResult> stmts = Flux.just(batchWriteResult, writeResult1);
     try {
-      stmts.compose(logManager.newExecutorErrorHandler()).blockingSubscribe();
+      stmts.compose(logManager.newWriteErrorHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 1");
@@ -248,7 +250,7 @@ public class LogManagerTest {
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
+    Path errors = logManager.getExecutionDirectory().resolve("write-errors.log");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
@@ -272,5 +274,37 @@ public class LogManagerTest {
         .containsOnlyOnce(
             "com.datastax.loader.executor.api.exception.BulkExecutionException: Statement execution failed")
         .contains("error batch");
+  }
+
+  @Test
+  public void should_stop_when_max_read_errors_reached() throws Exception {
+    Path outputDir = Files.createTempDirectory("test3");
+    LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
+    logManager.init();
+    Flux<ReadResult> stmts = Flux.just(readResult1, readResult2, readResult3);
+    try {
+      stmts.compose(logManager.newReadErrorHandler()).blockLast();
+      fail("Expecting TooManyErrorsException to be thrown");
+    } catch (TooManyErrorsException e) {
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+      assertThat(e.getMaxErrors()).isEqualTo(2);
+    }
+    logManager.close();
+    Path errors = logManager.getExecutionDirectory().resolve("read-errors.log");
+    assertThat(errors.toFile()).exists();
+    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(errors);
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .containsOnlyOnce("Location: " + location1)
+        .containsOnlyOnce("Source  : " + LogUtils.formatSingleLine(source1))
+        .contains("SELECT 1")
+        .containsOnlyOnce(
+            "com.datastax.loader.executor.api.exception.BulkExecutionException: Statement execution failed: SELECT 1 (error 1)")
+        .containsOnlyOnce("Location: " + location2)
+        .containsOnlyOnce("Source  : " + LogUtils.formatSingleLine(source2))
+        .contains("SELECT 2")
+        .containsOnlyOnce(
+            "com.datastax.loader.executor.api.exception.BulkExecutionException: Statement execution failed: SELECT 2 (error 2)");
   }
 }

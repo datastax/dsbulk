@@ -8,29 +8,31 @@ package com.datastax.loader.engine.internal.settings;
 
 import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.connectors.api.Connector;
+import com.datastax.loader.engine.WorkflowType;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class ConnectorSettings {
-  private final Connector connector;
+
+  private final LoaderConfig config;
 
   ConnectorSettings(LoaderConfig config) throws Exception {
+    this.config = config;
+  }
+
+  public Connector getConnector(WorkflowType workflowType) throws Exception {
     String connectorName = config.getString("name");
-    connector = locateConnector(connectorName);
-    //Uses the connector specific configuration.
-    LoaderConfig connectorConfig;
+    Connector connector = locateConnector(connectorName);
     if (config.hasPath(connectorName)) {
-      connectorConfig = config.getConfig(connectorName);
-      connector.configure(connectorConfig);
+      // the connector should be configured for reads when the workflow is WRITE
+      boolean read = workflowType == WorkflowType.WRITE;
+      connector.configure(config.getConfig(connectorName), read);
+      return connector;
     } else {
       throw new IllegalArgumentException(
           String.format("Cannot find configuration entry for connector '%s'", connectorName));
     }
-  }
-
-  public Connector getConnector() {
-    return connector;
   }
 
   private static Connector locateConnector(String name) {

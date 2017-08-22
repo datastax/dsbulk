@@ -246,7 +246,7 @@ public class StatementBatcher {
       case PARTITION_KEY:
         if (routingToken != null) {
           return routingToken;
-        } else if (routingKey != null) {
+        } else if (routingKey != null && routingKey.hasRemaining()) {
           return routingKey;
         }
     }

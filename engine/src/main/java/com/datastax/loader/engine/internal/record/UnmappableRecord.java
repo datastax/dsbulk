@@ -4,10 +4,12 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.loader.connectors.api;
+package com.datastax.loader.engine.internal.record;
+
+import com.datastax.loader.connectors.api.Record;
 
 /** */
-public interface FailedRecord extends Record {
+public interface UnmappableRecord extends Record {
 
   Throwable getError();
 }

@@ -12,9 +12,10 @@ import static com.datastax.loader.engine.internal.settings.BatchSettings.Sorting
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.commons.config.LoaderConfig;
-import com.datastax.loader.executor.api.batch.RxJavaSortedStatementBatcher;
-import com.datastax.loader.executor.api.batch.RxJavaUnsortedStatementBatcher;
-import io.reactivex.FlowableTransformer;
+import com.datastax.loader.executor.api.batch.ReactorSortedStatementBatcher;
+import com.datastax.loader.executor.api.batch.ReactorUnsortedStatementBatcher;
+import java.util.function.Function;
+import reactor.core.publisher.Flux;
 
 /** */
 public class BatchSettings {
@@ -23,22 +24,20 @@ public class BatchSettings {
   public enum SortingMode {
     UNSORTED {
       @Override
-      public FlowableTransformer<Statement, Statement> newStatementBatcher(
-          Cluster cluster, int bufferSize) {
-        return new RxJavaUnsortedStatementBatcher(cluster, bufferSize);
+      public ReactorUnsortedStatementBatcher newStatementBatcher(Cluster cluster, int bufferSize) {
+        return new ReactorUnsortedStatementBatcher(cluster, bufferSize);
       }
     },
 
     SORTED {
       @Override
-      public FlowableTransformer<Statement, Statement> newStatementBatcher(
-          Cluster cluster, int bufferSize) {
-        return new RxJavaSortedStatementBatcher(cluster, bufferSize);
+      public ReactorSortedStatementBatcher newStatementBatcher(Cluster cluster, int bufferSize) {
+        return new ReactorSortedStatementBatcher(cluster, bufferSize);
       }
     };
 
-    public abstract FlowableTransformer<Statement, Statement> newStatementBatcher(
-        Cluster cluster, int bufferSize);
+    public abstract Function<? super Flux<Statement>, ? extends Flux<Statement>>
+        newStatementBatcher(Cluster cluster, int bufferSize);
   }
 
   private final LoaderConfig config;
@@ -47,7 +46,8 @@ public class BatchSettings {
     this.config = config;
   }
 
-  public FlowableTransformer<Statement, Statement> newStatementBatcher(Cluster cluster) {
+  public Function<? super Flux<Statement>, ? extends Flux<Statement>> newStatementBatcher(
+      Cluster cluster) {
     SortingMode sortingMode = config.getBoolean("sorted") ? SORTED : UNSORTED;
     return sortingMode.newStatementBatcher(cluster, config.getInt("bufferSize"));
   }

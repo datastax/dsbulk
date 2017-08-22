@@ -11,14 +11,14 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
-import io.reactivex.Flowable;
-import io.reactivex.FlowableTransformer;
-import io.reactivex.functions.Predicate;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import reactor.core.publisher.Flux;
 
 /**
- * An {@link RxJavaStatementBatcher} that implements {@link FlowableTransformer} so that it can be
- * used in a {@link Flowable#compose(FlowableTransformer) compose} operation to batch statements
- * together.
+ * An {@link ReactorStatementBatcher} that implements {@code Function<Flux<Statement>,
+ * Flux<Statement>>} so that it can be used in a {@link Flux#compose(Function) compose} operation to
+ * batch statements together.
  *
  * <p>This operator assumes that the upstream source delivers statements whose partition keys are
  * already grouped together; when a new partition key is detected, a batch is created with the
@@ -28,49 +28,53 @@ import io.reactivex.functions.Predicate;
  * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} already grouped together,
  * the resulting batch could lead to sub-optimal write performance.
  *
- * @see RxJavaStatementBatcher
- * @see RxJavaUnsortedStatementBatcher
+ * @see ReactorStatementBatcher
+ * @see ReactorUnsortedStatementBatcher
  */
-public class RxJavaSortedStatementBatcher extends RxJavaStatementBatcher
-    implements FlowableTransformer<Statement, Statement> {
+public class ReactorSortedStatementBatcher extends ReactorStatementBatcher
+    implements Function<Flux<? extends Statement>, Flux<Statement>> {
 
   /** The default maximum size for a batch. */
   public static final int DEFAULT_MAX_BUFFER_SIZE = 1000;
 
   private final int maxBufferSize;
 
-  public RxJavaSortedStatementBatcher() {
+  public ReactorSortedStatementBatcher() {
     this(DEFAULT_MAX_BUFFER_SIZE);
   }
 
-  public RxJavaSortedStatementBatcher(int maxBufferSize) {
+  public ReactorSortedStatementBatcher(int maxBufferSize) {
     this.maxBufferSize = maxBufferSize;
   }
 
-  public RxJavaSortedStatementBatcher(Cluster cluster) {
+  public ReactorSortedStatementBatcher(Cluster cluster) {
     this(cluster, DEFAULT_MAX_BUFFER_SIZE);
   }
 
-  public RxJavaSortedStatementBatcher(Cluster cluster, int maxBufferSize) {
-    this(cluster, BatchMode.PARTITION_KEY, maxBufferSize);
+  public ReactorSortedStatementBatcher(Cluster cluster, int maxBufferSize) {
+    this(cluster, StatementBatcher.BatchMode.PARTITION_KEY, maxBufferSize);
   }
 
-  public RxJavaSortedStatementBatcher(Cluster cluster, BatchMode batchMode, int maxBufferSize) {
+  public ReactorSortedStatementBatcher(
+      Cluster cluster, StatementBatcher.BatchMode batchMode, int maxBufferSize) {
     this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBufferSize);
   }
 
-  public RxJavaSortedStatementBatcher(
-      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBufferSize) {
+  public ReactorSortedStatementBatcher(
+      Cluster cluster,
+      StatementBatcher.BatchMode batchMode,
+      BatchStatement.Type batchType,
+      int maxBufferSize) {
     super(cluster, batchMode, batchType);
     this.maxBufferSize = maxBufferSize;
   }
 
   @Override
-  public Flowable<Statement> apply(Flowable<Statement> upstream) {
-    Flowable<Statement> connectableFlowable = upstream.publish().autoConnect(2);
-    Flowable<Statement> boundarySelector =
-        connectableFlowable.filter(new StatementBatcherPredicate());
-    return connectableFlowable.buffer(boundarySelector).map(this::batchAll);
+  public Flux<Statement> apply(Flux<? extends Statement> upstream) {
+    Flux<? extends Statement> connectableFlux = upstream.publish().autoConnect(2);
+    Flux<? extends Statement> boundarySelector =
+        connectableFlux.filter(new StatementBatcherPredicate());
+    return connectableFlux.buffer(boundarySelector).map(this::batchAll);
   }
 
   private class StatementBatcherPredicate implements Predicate<Statement> {

@@ -7,6 +7,7 @@
 package com.datastax.loader.engine.internal.settings;
 
 import com.datastax.loader.commons.config.LoaderConfig;
+import com.datastax.loader.engine.WorkflowType;
 import com.datastax.loader.engine.internal.metrics.MetricsManager;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.time.Duration;
@@ -25,7 +26,7 @@ public class MonitoringSettings {
     this.executionId = executionId;
   }
 
-  public MetricsManager newMetricsManager() {
+  public MetricsManager newMetricsManager(WorkflowType workflowType) {
     ThreadFactory threadFactory =
         new ThreadFactoryBuilder()
             .setDaemon(true)
@@ -40,6 +41,7 @@ public class MonitoringSettings {
     long expectedReads = config.getLong("expectedReads");
     boolean jmx = config.getBoolean("jmx");
     return new MetricsManager(
+        workflowType,
         executionId,
         scheduler,
         rateUnit,

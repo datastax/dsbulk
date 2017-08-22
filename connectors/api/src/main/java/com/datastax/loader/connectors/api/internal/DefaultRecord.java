@@ -11,19 +11,19 @@ import com.google.common.base.MoreObjects;
 import com.google.common.collect.Streams;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 /** */
-public class MapRecord extends LinkedHashMap<String, Object> implements Record {
+public class DefaultRecord extends LinkedHashMap<String, Object> implements Record {
 
   private final Object source;
   private final Supplier<URI> location;
 
-  public MapRecord(Object source, Supplier<URI> location, Object... values) {
-    super();
+  public DefaultRecord(Object source, Supplier<URI> location, Object... values) {
     this.source = source;
     this.location = location;
     Streams.forEachPair(
@@ -32,10 +32,12 @@ public class MapRecord extends LinkedHashMap<String, Object> implements Record {
         this::put);
   }
 
-  public MapRecord(Object source, Supplier<URI> location, String[] keys, Object[] values) {
-    this(source, location, values);
-    if (keys.length != values.length)
+  public DefaultRecord(Object source, Supplier<URI> location, String[] keys, Object... values) {
+    if (keys.length != values.length) {
       throw new IllegalArgumentException("Keys and values have different sizes");
+    }
+    this.source = source;
+    this.location = location;
     Streams.forEachPair(Arrays.stream(keys), Arrays.stream(values), this::put);
   }
 
@@ -52,6 +54,11 @@ public class MapRecord extends LinkedHashMap<String, Object> implements Record {
   @Override
   public Set<String> fields() {
     return keySet();
+  }
+
+  @Override
+  public Collection<Object> values() {
+    return super.values();
   }
 
   @Override

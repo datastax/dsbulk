@@ -8,7 +8,11 @@ package com.datastax.loader.tests.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.driver.core.*;
+import com.datastax.driver.core.BoundStatement;
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SimpleStatement;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.Result;
@@ -25,7 +29,11 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class CsvUtils {
 
@@ -46,7 +54,7 @@ public class CsvUtils {
         }
       };
 
-  private static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
+  public static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
   public static final URL CSV_RECORDS_UNIQUE =
       ClassLoader.getSystemResource("ip-by-country-unique.csv");
   public static final URL CSV_RECORDS_CRLF =

@@ -21,7 +21,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
   /**
    * Creates a new {@link ReactorStatementBatcher} that produces {@link
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
-   * BatchMode#PARTITION_KEY partition key} mode and uses the {@link
+   * StatementBatcher.BatchMode#PARTITION_KEY partition key} mode and uses the {@link
    * ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and the default {@link
    * CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance.
    */
@@ -30,8 +30,9 @@ public class ReactorStatementBatcher extends StatementBatcher {
   /**
    * Creates a new {@link ReactorStatementBatcher} that produces {@link
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
-   * BatchMode#PARTITION_KEY partition key} mode and uses the given {@link Cluster} as its source
-   * for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
+   * StatementBatcher.BatchMode#PARTITION_KEY partition key} mode and uses the given {@link Cluster}
+   * as its source for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry}
+   * instance to use.
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    */
@@ -42,25 +43,25 @@ public class ReactorStatementBatcher extends StatementBatcher {
   /**
    * Creates a new {@link ReactorStatementBatcher} that produces {@link
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in the
-   * specified {@link BatchMode batch mode} and uses the given {@link Cluster} as its source for the
-   * {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
+   * specified {@link StatementBatcher.BatchMode batch mode} and uses the given {@link Cluster} as
+   * its source for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry}
+   * instance to use.
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
-   * @param batchMode The {@link BatchMode batch mode} to use; cannot be {@code null}.
+   * @param batchMode The batch mode to use; cannot be {@code null}.
    */
   public ReactorStatementBatcher(Cluster cluster, BatchMode batchMode) {
     super(cluster, batchMode);
   }
 
   /**
-   * Creates a new {@link ReactorStatementBatcher} that produces batches of the given {@link
-   * com.datastax.driver.core.BatchStatement.Type batch type}, operates in the specified {@link
-   * BatchMode batch mode} and uses the given {@link Cluster} as its source for the {@link
-   * ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
+   * Creates a new {@link StatementBatcher} that produces batches of the given {@code batchType},
+   * operates in the specified {@code batchMode} and uses the given {@link Cluster} as its source
+   * for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
-   * @param batchMode The {@link BatchMode batch mode} to use; cannot be {@code null}.
-   * @param batchType The {@link BatchStatement.Type batch type} to use; cannot be {@code null}.
+   * @param batchMode The batch mode to use; cannot be {@code null}.
+   * @param batchType The batch type to use; cannot be {@code null}.
    */
   public ReactorStatementBatcher(
       Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType) {
@@ -70,16 +71,17 @@ public class ReactorStatementBatcher extends StatementBatcher {
   /**
    * Batches together the given statements into groups of statements having the same grouping key.
    *
-   * <p>The grouping key to use is determined by the {@link BatchMode batch mode} in use by this
-   * statement batcher.
+   * <p>The grouping key to use is determined by the {@link StatementBatcher.BatchMode batch mode}
+   * in use by this statement batcher.
    *
-   * <p>When {@link BatchMode#PARTITION_KEY PARTITION_KEY} is used, the grouping key is the
-   * statement's {@link Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or
-   * {@link Statement#getRoutingToken() routing token}, whichever is available.
-   *
-   * <p>When {@link BatchMode#REPLICA_SET REPLICA_SET} is used, the grouping key is the replica set
-   * owning the statement's {@link Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing
+   * <p>When {@link StatementBatcher.BatchMode#PARTITION_KEY PARTITION_KEY} is used, the grouping
+   * key is the statement's {@link Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing
    * key} or {@link Statement#getRoutingToken() routing token}, whichever is available.
+   *
+   * <p>When {@link StatementBatcher.BatchMode#REPLICA_SET REPLICA_SET} is used, the grouping key is
+   * the replica set owning the statement's {@link Statement#getRoutingKey(ProtocolVersion,
+   * CodecRegistry) routing key} or {@link Statement#getRoutingToken() routing token}, whichever is
+   * available.
    *
    * @param statements the statements to batch together.
    * @return A publisher of batched statements.

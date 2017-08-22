@@ -15,15 +15,16 @@ import com.datastax.driver.core.Session;
 import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.engine.WorkflowType;
 import com.datastax.loader.executor.api.AbstractBulkExecutorBuilder;
-import com.datastax.loader.executor.api.ContinuousRxJavaBulkExecutor;
-import com.datastax.loader.executor.api.ContinuousRxJavaBulkExecutorBuilder;
-import com.datastax.loader.executor.api.DefaultRxJavaBulkExecutor;
-import com.datastax.loader.executor.api.DefaultRxJavaBulkExecutorBuilder;
-import com.datastax.loader.executor.api.RxJavaBulkExecutor;
+import com.datastax.loader.executor.api.ContinuousReactorBulkExecutor;
+import com.datastax.loader.executor.api.ContinuousReactorBulkExecutorBuilder;
+import com.datastax.loader.executor.api.DefaultReactorBulkExecutor;
+import com.datastax.loader.executor.api.DefaultReactorBulkExecutorBuilder;
+import com.datastax.loader.executor.api.ReactiveBulkExecutor;
+import com.datastax.loader.executor.api.ReactorBulkExecutor;
 import com.datastax.loader.executor.api.listener.ExecutionListener;
 import com.datastax.loader.executor.api.listener.MetricsCollectingExecutionListener;
-import com.datastax.loader.executor.api.reader.RxJavaBulkReader;
-import com.datastax.loader.executor.api.writer.RxJavaBulkWriter;
+import com.datastax.loader.executor.api.reader.ReactorBulkReader;
+import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.Config;
 import java.util.concurrent.SynchronousQueue;
@@ -37,16 +38,17 @@ public class ExecutorSettings {
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
   private final LoaderConfig config;
+  private ThreadPoolExecutor executor;
 
   ExecutorSettings(LoaderConfig config) {
     this.config = config;
   }
 
-  public RxJavaBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
+  public ReactiveBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
     return newBulkExecutor(session, executionListener, WorkflowType.WRITE);
   }
 
-  public RxJavaBulkReader newReadExecutor(
+  public ReactorBulkReader newReadExecutor(
       Session session, MetricsCollectingExecutionListener executionListener) {
     return newBulkExecutor(session, executionListener, WorkflowType.READ);
   }
@@ -55,12 +57,16 @@ public class ExecutorSettings {
     return config.getInt("maxConcurrentReads");
   }
 
-  private RxJavaBulkExecutor newBulkExecutor(
+  public ThreadPoolExecutor getExecutorThreadPool() {
+    return executor;
+  }
+
+  private ReactorBulkExecutor newBulkExecutor(
       Session session, ExecutionListener executionListener, WorkflowType workflowType) {
     if (workflowType == WorkflowType.READ) {
       if (continuousPagingAvailable(session)) {
-        ContinuousRxJavaBulkExecutorBuilder builder =
-            ContinuousRxJavaBulkExecutor.builder(((ContinuousPagingSession) session));
+        ContinuousReactorBulkExecutorBuilder builder =
+            ContinuousReactorBulkExecutor.builder(((ContinuousPagingSession) session));
         configure(builder, executionListener);
         Config continuousPagingConfig = config.getConfig("continuousPaging");
         ContinuousPagingOptions options =
@@ -78,7 +84,7 @@ public class ExecutorSettings {
         LOGGER.warn("Continuous paging is not available, read performance will not be optimal");
       }
     }
-    DefaultRxJavaBulkExecutorBuilder builder = DefaultRxJavaBulkExecutor.builder(session);
+    DefaultReactorBulkExecutorBuilder builder = DefaultReactorBulkExecutor.builder(session);
     configure(builder, executionListener);
     return builder.build();
   }
@@ -95,17 +101,18 @@ public class ExecutorSettings {
   }
 
   private void configure(
-      AbstractBulkExecutorBuilder<? extends RxJavaBulkExecutor> builder,
+      AbstractBulkExecutorBuilder<? extends ReactiveBulkExecutor> builder,
       ExecutionListener executionListener) {
     int threads = config.getThreads("maxThreads");
-    ThreadPoolExecutor executor =
+    // will be closed when the Bulk Executor gets closed
+    executor =
         new ThreadPoolExecutor(
             0,
             threads,
             60,
             SECONDS,
             new SynchronousQueue<>(),
-            new ThreadFactoryBuilder().setNameFormat("bulk-executor-%d").build(),
+            new ThreadFactoryBuilder().setNameFormat("bulk-executor-%0,2d").build(),
             new ThreadPoolExecutor.CallerRunsPolicy());
     builder
         .withExecutor(executor)

@@ -12,6 +12,7 @@ import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.connectors.api.RecordMetadata;
 import com.datastax.loader.connectors.json.internal.SchemaFreeJsonRecordMetadata;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 
 /** */
 public class JsonConnector implements Connector {
@@ -23,8 +24,9 @@ public class JsonConnector implements Connector {
   }
 
   @Override
-  public void write(Record record) {
+  public Subscriber<Record> write() {
     // TODO
+    return null;
   }
 
   @Override
@@ -43,5 +45,5 @@ public class JsonConnector implements Connector {
   }
 
   @Override
-  public void configure(LoaderConfig settings) {}
+  public void configure(LoaderConfig settings, boolean read) {}
 }

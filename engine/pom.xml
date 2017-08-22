@@ -35,7 +35,7 @@
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-executor-rxjava</artifactId>
+      <artifactId>datastax-loader-executor-reactor</artifactId>
     </dependency>
 
     <dependency>

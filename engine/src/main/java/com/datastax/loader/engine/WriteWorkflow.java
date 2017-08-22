@@ -12,9 +12,7 @@ import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.loader.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.loader.connectors.api.Connector;
-import com.datastax.loader.connectors.api.RecordMetadata;
 import com.datastax.loader.engine.internal.WorkflowUtils;
-import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.loader.engine.internal.log.LogManager;
 import com.datastax.loader.engine.internal.metrics.MetricsManager;
 import com.datastax.loader.engine.internal.schema.RecordMapper;
@@ -29,10 +27,10 @@ import com.datastax.loader.engine.internal.settings.SchemaSettings;
 import com.datastax.loader.engine.internal.settings.SettingsManager;
 import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
 import com.google.common.base.Stopwatch;
-import io.reactivex.Flowable;
 import java.net.URL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 
 /** The main class for write workflows. */
 public class WriteWorkflow {
@@ -76,32 +74,29 @@ public class WriteWorkflow {
 
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.connect();
-        Connector connector = connectorSettings.getConnector();
-        MetricsManager metricsManager = monitoringSettings.newMetricsManager();
-        LogManager logManager = logSettings.newLogManager();
+        Connector connector = connectorSettings.getConnector(WorkflowType.WRITE);
+        MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.WRITE);
+        LogManager logManager = logSettings.newLogManager(cluster);
         ReactiveBulkWriter executor =
             executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener())) {
 
       connector.init();
       metricsManager.init();
-      logManager.init(cluster);
+      logManager.init();
 
-      RecordMetadata recordMetadata = connector.getRecordMetadata();
-      ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
       RecordMapper recordMapper =
-          schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+          schemaSettings.createRecordMapper(
+              session, connector.getRecordMetadata(), codecSettings.createCodecRegistry(cluster));
 
-      Flowable.fromPublisher(connector.read())
-          .compose(metricsManager.newRecordMonitor())
-          .compose(logManager.newRecordErrorHandler())
+      Flux.from(connector.read())
           .map(recordMapper::map)
-          .compose(metricsManager.newMapperMonitor())
-          .compose(logManager.newMapperErrorHandler())
+          .compose(metricsManager.newRecordMapperMonitor())
+          .compose(logManager.newRecordMapperErrorHandler())
           .compose(batchSettings.newStatementBatcher(cluster))
           .compose(metricsManager.newBatcherMonitor())
           .flatMap(executor::writeReactive)
-          .compose(logManager.newExecutorErrorHandler())
-          .blockingSubscribe();
+          .compose(logManager.newWriteErrorHandler())
+          .blockLast();
 
     } catch (Exception e) {
       LOGGER.error("Uncaught exception during write workflow engine execution " + executionId, e);
