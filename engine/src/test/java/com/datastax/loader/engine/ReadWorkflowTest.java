@@ -24,7 +24,9 @@ public class ReadWorkflowTest {
     String[] args = {
       "log.outputDirectory=./target",
       "connector.name=csv",
-      "connector.csv.url=\"" + ReadWorkflowTest.class.getResource("/good.csv").toExternalForm() + "\"",
+      "connector.csv.url=\""
+          + ReadWorkflowTest.class.getResource("/good.csv").toExternalForm()
+          + "\"",
       "connector.comment=\"#\"",
       "connector.header=true",
       "driver.query.consistency=ONE",
