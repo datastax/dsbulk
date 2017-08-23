@@ -148,7 +148,75 @@
     <plugins>
 
       <plugin>
+        <groupId>com.coveo</groupId>
+        <artifactId>fmt-maven-plugin</artifactId>
+        <configuration>
+          <additionalSourceDirectories>
+            <additionalSourceDirectory>src/it/java</additionalSourceDirectory>
+            <additionalSourceDirectory>src/benchmark/java</additionalSourceDirectory>
+          </additionalSourceDirectories>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>add-integration-test-sources</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/it/java</source>
+                <source>src/benchmark/java</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-integration-test-resources</id>
+            <phase>generate-test-resources</phase>
+            <goals>
+              <goal>add-test-resource</goal>
+            </goals>
+            <configuration>
+              <resources>
+                <resource>
+                  <filtering>false</filtering>
+                  <directory>src/it/resources</directory>
+                </resource>
+                <resource>
+                  <filtering>false</filtering>
+                  <directory>src/benchmark/resources</directory>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>short-tests</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <!-- skip long tests by default -->
+              <excludedGroups>
+                com.datastax.loader.tests.categories.LongTests
+              </excludedGroups>
+              <reportNameSuffix>short</reportNameSuffix>
+              <!-- set so test can exit with rc 0 (ci will mark test failures accordingly) -->
+            </configuration>
+          </execution>
+        </executions>
+
       </plugin>
 
       <plugin>
@@ -196,5 +264,34 @@
     </plugins>
 
   </build>
-  
+
+  <profiles>
+
+    <profile>
+      <id>long</id>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <executions>
+              <!-- add a special execution that only runs long tests -->
+              <execution>
+                <id>long-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <groups>com.datastax.loader.tests.categories.LongTests</groups>
+                  <reportNameSuffix>long</reportNameSuffix>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+  </profiles>
+
 </project>
