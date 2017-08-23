@@ -7,6 +7,7 @@
 package com.datastax.loader.connectors.api;
 
 import java.net.URI;
+import java.util.Collection;
 import java.util.Set;
 
 /**
@@ -42,6 +43,15 @@ public interface Record {
    * @return a set containing all the field names in this record.
    */
   Set<String> fields();
+
+  /**
+   * Returns a collection containing all the values in this record.
+   *
+   * <p>The iteration order of this collection should match that of {@link #fields()}.
+   *
+   * @return a collection containing all the values in this record.
+   */
+  Collection<Object> values();
 
   /**
    * Returns the value associated with the given field.

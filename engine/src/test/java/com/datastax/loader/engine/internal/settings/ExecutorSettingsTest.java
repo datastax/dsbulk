@@ -18,8 +18,8 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
-import com.datastax.loader.executor.api.ContinuousRxJavaBulkExecutor;
-import com.datastax.loader.executor.api.DefaultRxJavaBulkExecutor;
+import com.datastax.loader.executor.api.ContinuousReactorBulkExecutor;
+import com.datastax.loader.executor.api.DefaultReactorBulkExecutor;
 import com.datastax.loader.executor.api.reader.ReactiveBulkReader;
 import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
 import com.typesafe.config.ConfigFactory;
@@ -52,7 +52,7 @@ public class ExecutorSettingsTest {
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkWriter executor = settings.newWriteExecutor(session, null);
-    assertThat(executor).isNotNull().isInstanceOf(DefaultRxJavaBulkExecutor.class);
+    assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
   }
 
   @Test
@@ -62,7 +62,7 @@ public class ExecutorSettingsTest {
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkReader executor = settings.newReadExecutor(session, null);
-    assertThat(executor).isNotNull().isInstanceOf(DefaultRxJavaBulkExecutor.class);
+    assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
   }
 
   @Test
@@ -72,6 +72,6 @@ public class ExecutorSettingsTest {
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null);
-    assertThat(executor).isNotNull().isInstanceOf(ContinuousRxJavaBulkExecutor.class);
+    assertThat(executor).isNotNull().isInstanceOf(ContinuousReactorBulkExecutor.class);
   }
 }

@@ -6,6 +6,7 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
+import com.datastax.driver.core.Cluster;
 import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.engine.internal.log.LogManager;
 import com.datastax.loader.engine.internal.log.statement.StatementFormatVerbosity;
@@ -37,7 +38,7 @@ public class LogSettings {
     LOGGER.info("Operation output directory: {}", executionDirectory);
   }
 
-  public LogManager newLogManager() {
+  public LogManager newLogManager(Cluster cluster) {
     StatementFormatter formatter =
         StatementFormatter.builder()
             .withMaxQueryStringLength(config.getInt("stmt.maxQueryStringLength"))
@@ -52,6 +53,6 @@ public class LogSettings {
         Executors.newFixedThreadPool(
             threads, new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
     return new LogManager(
-        executionDirectory, executor, config.getInt("maxErrors"), formatter, verbosity);
+        cluster, executionDirectory, executor, config.getInt("maxErrors"), formatter, verbosity);
   }
 }

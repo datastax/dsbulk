@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.loader.executor.api;
+package com.datastax.loader.connectors.csv;
 
 import static com.datastax.loader.tests.utils.CsvUtils.createIpByCountryTable;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -14,7 +14,6 @@ import com.datastax.driver.core.Session;
 import com.datastax.loader.engine.ReadWorkflow;
 import com.datastax.loader.engine.WriteWorkflow;
 import com.datastax.loader.tests.utils.ZipUtils;
-import io.reactivex.plugins.RxJavaPlugins;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,7 +36,7 @@ public class CSVConnectorBenchmark {
   private static final int TOTAL_RECORDS = 70865;
   private static final int WARMUP_ITERATIONS = 10;
   private static final int MEASUREMENT_ITERATIONS = 1;
-  private static final int MEASUREMENT_TIME_IN_MINUTES = 5;
+  private static final int MEASUREMENT_TIME_IN_MINUTES = 1;
 
   @Benchmark
   @OperationsPerInvocation(TOTAL_RECORDS)
@@ -51,7 +50,7 @@ public class CSVConnectorBenchmark {
   )
   @Fork(1)
   public void benchmarkCsvConnectorWrite(CSVConnectorBenchmarkState state) throws Exception {
-    new WriteWorkflow(state.args).execute();
+    new WriteWorkflow(state.writeArgs).execute();
   }
 
   @Benchmark
@@ -66,18 +65,18 @@ public class CSVConnectorBenchmark {
   )
   @Fork(1)
   public void benchmarkCsvConnectorRead(CSVConnectorBenchmarkState state) throws Exception {
-    new ReadWorkflow(state.args).execute();
+    new ReadWorkflow(state.readArgs).execute();
   }
 
   @State(Scope.Benchmark)
   public static class CSVConnectorBenchmarkState {
 
     private URL csvFile;
-    private String[] args;
+    private String[] readArgs;
+    private String[] writeArgs;
 
     @Setup(Level.Trial)
     public void init() throws Exception {
-      RxJavaPlugins.setErrorHandler((t) -> {});
       Cluster cluster = Cluster.builder().addContactPoint("127.0.0.1").build();
       Session session = cluster.connect();
       // fixtures for write benchmarks
@@ -90,16 +89,42 @@ public class CSVConnectorBenchmark {
       createIpByCountryTable(session);
       csvFile = dest.resolve("ip-by-country.csv").toUri().toURL();
       cluster.close();
-      args =
+      Path output = Files.createTempDirectory("output");
+      readArgs =
           new String[] {
-            "log.outputDirectory=\"file:./target\"",
+            "log.outputDirectory=./target",
             "connector.name=csv",
-            "connector.url=\"" + csvFile.toExternalForm() + "\"",
+            "connector.csv.url=\"" + output.toUri().toURL().toExternalForm() + "\"",
+            "connector.csv.header=true",
             "schema.keyspace=csv_connector_benchmark",
-            "schema.table=ip_by_country"
-            //        "schema.mapping={0=year,1=make,2=model,3=description}
+            "schema.table=ip_by_country",
+            "schema.mapping={"
+                + "\"beginning IP Address\"=beginning_ip_address,"
+                + "\"ending IP Address\"=ending_ip_address,"
+                + "\"beginning IP Number\"=beginning_ip_number,"
+                + "\"ending IP Number\"=ending_ip_number,"
+                + "\"ISO 3166 Country Code\"=country_code,"
+                + "\"Country Name\"=country_name"
+                + "}"
           };
-      new WriteWorkflow(args).execute();
+      writeArgs =
+          new String[] {
+            "log.outputDirectory=./target",
+            "connector.name=csv",
+            "connector.csv.url=\"" + csvFile.toExternalForm() + "\"",
+            "connector.csv.header=true",
+            "schema.keyspace=csv_connector_benchmark",
+            "schema.table=ip_by_country",
+            "schema.mapping={"
+                + "\"beginning IP Address\"=beginning_ip_address,"
+                + "\"ending IP Address\"=ending_ip_address,"
+                + "\"beginning IP Number\"=beginning_ip_number,"
+                + "\"ending IP Number\"=ending_ip_number,"
+                + "\"ISO 3166 Country Code\"=country_code,"
+                + "\"Country Name\"=country_name"
+                + "}"
+          };
+      new WriteWorkflow(writeArgs).execute();
     }
   }
 }

@@ -16,7 +16,7 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.loader.connectors.api.Record;
-import com.datastax.loader.connectors.api.internal.MapRecord;
+import com.datastax.loader.connectors.api.internal.DefaultRecord;
 import com.datastax.loader.executor.api.result.ReadResult;
 import com.google.common.base.Suppliers;
 
@@ -25,7 +25,7 @@ public class CQLReadResultMapper implements ReadResultMapper {
 
   @Override
   public Record map(ReadResult result) {
-    return new MapRecord(
+    return new DefaultRecord(
         result, Suppliers.memoize(() -> ResultUtils.getLocation(result)), inferWriteQuery(result));
   }
 

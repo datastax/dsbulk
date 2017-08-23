@@ -12,6 +12,7 @@ import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.loader.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.loader.connectors.api.Connector;
+import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.connectors.api.RecordMetadata;
 import com.datastax.loader.engine.internal.WorkflowUtils;
 import com.datastax.loader.engine.internal.codecs.ExtendedCodecRegistry;
@@ -26,13 +27,15 @@ import com.datastax.loader.engine.internal.settings.LogSettings;
 import com.datastax.loader.engine.internal.settings.MonitoringSettings;
 import com.datastax.loader.engine.internal.settings.SchemaSettings;
 import com.datastax.loader.engine.internal.settings.SettingsManager;
-import com.datastax.loader.executor.api.reader.RxJavaBulkReader;
+import com.datastax.loader.executor.api.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
-import io.reactivex.Flowable;
-import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 /** The main class for read workflows. */
 public class ReadWorkflow {
@@ -74,32 +77,40 @@ public class ReadWorkflow {
 
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.connect();
-        Connector connector = connectorSettings.getConnector();
-        MetricsManager metricsManager = monitoringSettings.newMetricsManager();
-        LogManager logManager = logSettings.newLogManager();
-        RxJavaBulkReader executor =
+        Connector connector = connectorSettings.getConnector(WorkflowType.READ);
+        MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.READ);
+        LogManager logManager = logSettings.newLogManager(cluster);
+        ReactorBulkReader executor =
             executorSettings.newReadExecutor(session, metricsManager.getExecutionListener())) {
 
       connector.init();
       metricsManager.init();
-      logManager.init(cluster);
+      logManager.init();
 
       RecordMetadata recordMetadata = connector.getRecordMetadata();
       ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
       ReadResultMapper readResultMapper =
           schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+      ThreadPoolExecutor threadPool = executorSettings.getExecutorThreadPool();
+      Scheduler executorScheduler = Schedulers.fromExecutor(threadPool);
+      int maxConcurrentReads = executorSettings.getMaxConcurrentReads();
 
-      Flowable.fromIterable(schemaSettings.createReadStatements(cluster))
-          .flatMap(
-              statement -> executor.readReactive(statement).subscribeOn(Schedulers.io()),
-              executorSettings.getMaxConcurrentReads())
-          .compose(logManager.newExecutorErrorHandler())
-          .map(readResultMapper::map)
-          .compose(metricsManager.newRecordMonitor())
-          .compose(logManager.newRecordErrorHandler())
-          .doOnNext(connector::write)
-          .doOnNext(System.out::println) // TODO remove
-          .blockingSubscribe();
+      Flux<Record> records =
+          Flux.fromIterable(schemaSettings.createReadStatements(cluster))
+              .flatMap(
+                  statement -> executor.readReactive(statement).subscribeOn(executorScheduler),
+                  maxConcurrentReads)
+              .compose(logManager.newReadErrorHandler())
+              .map(readResultMapper::map)
+              .compose(metricsManager.newResultMapperMonitor())
+              .compose(logManager.newResultMapperErrorHandler())
+              .publish()
+              .autoConnect(2);
+
+      // publish results to two subscribers: the connector,
+      // and a dummy blockLast subscription to block until complete
+      records.subscribe(connector.write());
+      records.blockLast();
 
     } catch (Exception e) {
       LOGGER.error("Uncaught exception during read workflow engine execution " + executionId, e);

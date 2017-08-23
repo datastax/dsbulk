@@ -15,8 +15,7 @@ public class CQLRecordMapper implements RecordMapper {
 
   @Override
   public Statement map(Record record) {
-    String field = record.fields().iterator().next();
-    String queryString = (String) record.getFieldValue(field);
+    String queryString = (String) record.values().iterator().next();
     return new BulkSimpleStatement<>(record, queryString);
   }
 }

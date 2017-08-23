@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
+import com.datastax.loader.engine.WorkflowType;
 import com.datastax.loader.engine.internal.metrics.MetricsManager;
 import com.typesafe.config.ConfigFactory;
 import java.time.Duration;
@@ -27,7 +28,7 @@ public class MonitoringSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.monitoring"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
-    MetricsManager metricsManager = settings.newMetricsManager();
+    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.READ);
     assertThat(metricsManager).isNotNull();
     assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
     assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(MILLISECONDS);
@@ -50,7 +51,7 @@ public class MonitoringSettingsTest {
                     + "expectedReads = 50,"
                     + "jmx = false"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
-    MetricsManager metricsManager = settings.newMetricsManager();
+    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.READ);
     assertThat(metricsManager).isNotNull();
     assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);
     assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(SECONDS);

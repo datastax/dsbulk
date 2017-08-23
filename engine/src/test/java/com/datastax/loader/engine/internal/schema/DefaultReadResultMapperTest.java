@@ -21,10 +21,10 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.CodecNotFoundException;
-import com.datastax.loader.connectors.api.FailedRecord;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.connectors.api.RecordMetadata;
 import com.datastax.loader.connectors.api.internal.DefaultRecordMetadata;
+import com.datastax.loader.engine.internal.record.UnmappableRecord;
 import com.datastax.loader.executor.api.result.ReadResult;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
@@ -115,7 +115,7 @@ public class DefaultReadResultMapperTest {
         new CodecNotFoundException("not really", DataType.varchar(), TypeToken.of(String.class));
     when(mapping.codec("c3", DataType.varchar(), TypeToken.of(String.class))).thenThrow(exception);
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata, null);
-    FailedRecord record = (FailedRecord) mapper.map(result);
+    UnmappableRecord record = (UnmappableRecord) mapper.map(result);
     assertThat(record.getError()).isSameAs(exception);
     assertThat(record.getSource()).isSameAs(result);
     assertThat(record.getLocation())

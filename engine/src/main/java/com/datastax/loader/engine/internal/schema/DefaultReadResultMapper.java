@@ -12,11 +12,13 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.connectors.api.RecordMetadata;
-import com.datastax.loader.connectors.api.internal.ErrorRecord;
-import com.datastax.loader.connectors.api.internal.MapRecord;
+import com.datastax.loader.connectors.api.internal.DefaultRecord;
+import com.datastax.loader.engine.internal.record.DefaultUnmappableRecord;
 import com.datastax.loader.executor.api.result.ReadResult;
 import com.google.common.base.Suppliers;
 import com.google.common.reflect.TypeToken;
+import java.net.URI;
+import java.util.function.Supplier;
 
 public class DefaultReadResultMapper implements ReadResultMapper {
 
@@ -35,9 +37,9 @@ public class DefaultReadResultMapper implements ReadResultMapper {
   @Override
   public Record map(ReadResult result) {
     Row row = result.getRow().orElseThrow(IllegalStateException::new);
+    Supplier<URI> location = Suppliers.memoize(() -> ResultUtils.getLocation(result));
     try {
-      MapRecord record =
-          new MapRecord(result, Suppliers.memoize(() -> ResultUtils.getLocation(result)));
+      DefaultRecord record = new DefaultRecord(result, location);
       for (ColumnDefinitions.Definition col : row.getColumnDefinitions()) {
         String variable = Metadata.quoteIfNecessary(col.getName());
         String field = mapping.variableToField(variable);
@@ -55,7 +57,7 @@ public class DefaultReadResultMapper implements ReadResultMapper {
       }
       return record;
     } catch (Exception e) {
-      return new ErrorRecord(result, Suppliers.memoize(() -> ResultUtils.getLocation(result)), e);
+      return new DefaultUnmappableRecord(result, location, e);
     }
   }
 }

@@ -8,6 +8,7 @@ package com.datastax.loader.connectors.api;
 
 import com.datastax.loader.commons.config.LoaderConfig;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 
 /** A Connector is a component capable of reading from and writing to a datasource. */
 public interface Connector extends AutoCloseable {
@@ -20,11 +21,11 @@ public interface Connector extends AutoCloseable {
   Publisher<Record> read();
 
   /**
-   * Writes a record to the datasource.
+   * Writes records to the datasource.
    *
-   * @param record the record to write to the datasource.
+   * @return A {@link Subscriber} of records to write to the datasource.
    */
-  void write(Record record);
+  Subscriber<Record> write();
 
   /**
    * Initializes the connector.
@@ -44,14 +45,15 @@ public interface Connector extends AutoCloseable {
    * Configures the connector.
    *
    * @param settings the connector settings.
+   * @param read whether the connector should be configured for reading or writing.
    * @throws Exception if the connector fails to configure properly.
    */
-  default void configure(LoaderConfig settings) throws Exception {}
+  default void configure(LoaderConfig settings, boolean read) throws Exception {}
 
   /**
    * Returns metadata about the records that this connector can read or write.
    *
-   * <p>This method should only be called after {@link #configure(LoaderConfig)} and {@link
+   * <p>This method should only be called after {@link #configure(LoaderConfig, boolean)} and {@link
    * #init()}, i.e., when the connector is fully initialized and ready to read or write.
    *
    * <p>If this connector cannot gather metadata, or if the metadata is inaccurate, then it should

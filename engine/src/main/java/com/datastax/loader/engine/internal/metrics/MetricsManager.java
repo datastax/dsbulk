@@ -6,6 +6,7 @@
  */
 package com.datastax.loader.engine.internal.metrics;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.codahale.metrics.Histogram;
@@ -15,18 +16,20 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.UniformReservoir;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
-import com.datastax.loader.connectors.api.FailedRecord;
 import com.datastax.loader.connectors.api.Record;
+import com.datastax.loader.engine.WorkflowType;
+import com.datastax.loader.engine.internal.record.UnmappableRecord;
 import com.datastax.loader.engine.internal.statement.UnmappableStatement;
 import com.datastax.loader.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.loader.executor.api.listener.MetricsReportingExecutionListener;
-import io.reactivex.FlowableTransformer;
 import java.time.Duration;
 import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import reactor.core.publisher.Flux;
 
 /** */
 public class MetricsManager implements AutoCloseable {
@@ -35,6 +38,7 @@ public class MetricsManager implements AutoCloseable {
   private final MetricsCollectingExecutionListener listener =
       new MetricsCollectingExecutionListener(registry);
 
+  private final WorkflowType workflowType;
   private final String executionId;
   private final ScheduledExecutorService scheduler;
   private final TimeUnit rateUnit;
@@ -51,14 +55,15 @@ public class MetricsManager implements AutoCloseable {
   private Meter failedMappings;
   private Meter successfulMappings;
   private Histogram batchSize;
-  private RecordReporter recordReporter;
-  private MappingReporter mappingReporter;
-  private BatchReporter batchReporter;
+  private RecordReporter resultMappingsReporter;
+  private MappingReporter recordMappingsReporter;
+  private BatchReporter batchesReporter;
   private MetricsReportingExecutionListener writesReporter;
   private MetricsReportingExecutionListener readsReporter;
   private JmxReporter jmxReporter;
 
   public MetricsManager(
+      WorkflowType workflowType,
       String executionId,
       ScheduledExecutorService scheduler,
       TimeUnit rateUnit,
@@ -67,6 +72,7 @@ public class MetricsManager implements AutoCloseable {
       long expectedReads,
       boolean jmx,
       Duration reportInterval) {
+    this.workflowType = workflowType;
     this.executionId = executionId;
     this.scheduler = scheduler;
     this.rateUnit = rateUnit;
@@ -88,11 +94,18 @@ public class MetricsManager implements AutoCloseable {
     if (jmx) {
       startJMXReporter();
     }
-    startRecordReporter();
-    startMappingReporter();
-    startBatchReporter();
-    startWritesReporter();
-    startReadsReporter();
+    switch (workflowType) {
+      case WRITE:
+        startRecordMappingsReporter();
+        startBatchesReporter();
+        startWritesReporter();
+        break;
+
+      case READ:
+        startReadsReporter();
+        startResultMappingsReporter();
+        break;
+    }
   }
 
   private void startJMXReporter() {
@@ -124,19 +137,19 @@ public class MetricsManager implements AutoCloseable {
     jmxReporter.start();
   }
 
-  private void startRecordReporter() {
-    recordReporter = new RecordReporter(registry, rateUnit, scheduler, expectedWrites);
-    recordReporter.start(reportInterval.getSeconds(), SECONDS);
+  private void startResultMappingsReporter() {
+    resultMappingsReporter = new RecordReporter(registry, rateUnit, scheduler, expectedWrites);
+    resultMappingsReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
-  private void startMappingReporter() {
-    mappingReporter = new MappingReporter(registry, rateUnit, scheduler, expectedWrites);
-    mappingReporter.start(reportInterval.getSeconds(), SECONDS);
+  private void startRecordMappingsReporter() {
+    recordMappingsReporter = new MappingReporter(registry, rateUnit, scheduler, expectedWrites);
+    recordMappingsReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
-  private void startBatchReporter() {
-    batchReporter = new BatchReporter(registry, scheduler);
-    batchReporter.start(reportInterval.getSeconds(), SECONDS);
+  private void startBatchesReporter() {
+    batchesReporter = new BatchReporter(registry, scheduler);
+    batchesReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
   private void startWritesReporter() {
@@ -174,7 +187,7 @@ public class MetricsManager implements AutoCloseable {
     closeReporters();
     reportFinalMetrics();
     scheduler.shutdown();
-    scheduler.awaitTermination(1, TimeUnit.MINUTES);
+    scheduler.awaitTermination(1, MINUTES);
     scheduler.shutdownNow();
   }
 
@@ -182,14 +195,14 @@ public class MetricsManager implements AutoCloseable {
     if (jmxReporter != null) {
       jmxReporter.close();
     }
-    if (recordReporter != null) {
-      recordReporter.close();
+    if (resultMappingsReporter != null) {
+      resultMappingsReporter.close();
     }
-    if (mappingReporter != null) {
-      mappingReporter.close();
+    if (recordMappingsReporter != null) {
+      recordMappingsReporter.close();
     }
-    if (batchReporter != null) {
-      batchReporter.close();
+    if (batchesReporter != null) {
+      batchesReporter.close();
     }
     if (writesReporter != null) {
       writesReporter.close();
@@ -200,19 +213,29 @@ public class MetricsManager implements AutoCloseable {
   }
 
   private void reportFinalMetrics() {
-    recordReporter.report();
-    mappingReporter.report();
-    batchReporter.report();
-    writesReporter.report();
-    readsReporter.report();
+    if (resultMappingsReporter != null) {
+      resultMappingsReporter.report();
+    }
+    if (recordMappingsReporter != null) {
+      recordMappingsReporter.report();
+    }
+    if (batchesReporter != null) {
+      batchesReporter.report();
+    }
+    if (writesReporter != null) {
+      writesReporter.report();
+    }
+    if (readsReporter != null) {
+      readsReporter.report();
+    }
   }
 
-  public FlowableTransformer<Record, Record> newRecordMonitor() {
+  public Function<Flux<Record>, Flux<Record>> newResultMapperMonitor() {
     return upstream ->
         upstream.doOnNext(
             r -> {
               records.mark();
-              if (r instanceof FailedRecord) {
+              if (r instanceof UnmappableRecord) {
                 failedRecords.mark();
               } else {
                 successfulRecords.mark();
@@ -220,7 +243,7 @@ public class MetricsManager implements AutoCloseable {
             });
   }
 
-  public FlowableTransformer<Statement, Statement> newMapperMonitor() {
+  public Function<Flux<Statement>, Flux<Statement>> newRecordMapperMonitor() {
     return upstream ->
         upstream.doOnNext(
             stmt -> {
@@ -233,7 +256,7 @@ public class MetricsManager implements AutoCloseable {
             });
   }
 
-  public FlowableTransformer<Statement, Statement> newBatcherMonitor() {
+  public Function<Flux<Statement>, Flux<Statement>> newBatcherMonitor() {
     return upstream ->
         upstream.doOnNext(
             stmt -> {

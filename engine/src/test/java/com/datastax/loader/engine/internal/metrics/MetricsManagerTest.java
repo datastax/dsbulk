@@ -19,11 +19,11 @@ import com.codahale.metrics.MetricRegistry;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.connectors.api.Record;
-import com.datastax.loader.connectors.api.internal.ErrorRecord;
-import com.datastax.loader.connectors.api.internal.MapRecord;
+import com.datastax.loader.connectors.api.internal.DefaultRecord;
+import com.datastax.loader.engine.WorkflowType;
+import com.datastax.loader.engine.internal.record.DefaultUnmappableRecord;
 import com.datastax.loader.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.loader.engine.internal.statement.UnmappableStatement;
-import io.reactivex.Flowable;
 import java.net.URI;
 import java.time.Duration;
 import java.util.concurrent.Executors;
@@ -34,6 +34,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.internal.util.reflection.Whitebox;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 
 public class MetricsManagerTest {
 
@@ -81,9 +82,10 @@ public class MetricsManagerTest {
     String source1 = "line1\n";
     String source2 = "line2\n";
     String source3 = "line3\n";
-    record1 = new MapRecord(source1, () -> location1, "irrelevant");
-    record2 = new MapRecord(source2, () -> location2, "irrelevant");
-    record3 = new ErrorRecord(source3, () -> location3, new RuntimeException("irrelevant"));
+    record1 = new DefaultRecord(source1, () -> location1, "irrelevant");
+    record2 = new DefaultRecord(source2, () -> location2, "irrelevant");
+    record3 =
+        new DefaultUnmappableRecord(source3, () -> location3, new RuntimeException("irrelevant"));
     stmt1 = new BulkSimpleStatement<>(record1, "irrelevant");
     stmt2 = new BulkSimpleStatement<>(record2, "irrelevant");
     stmt3 = new UnmappableStatement(record3, new RuntimeException("irrelevant"));
@@ -94,6 +96,7 @@ public class MetricsManagerTest {
   public void should_increment_records() throws Exception {
     MetricsManager manager =
         new MetricsManager(
+            WorkflowType.READ,
             "test",
             Executors.newSingleThreadScheduledExecutor(),
             SECONDS,
@@ -103,8 +106,8 @@ public class MetricsManagerTest {
             false,
             Duration.ofSeconds(5));
     manager.init();
-    Flowable<Record> records = Flowable.fromArray(record1, record2, record3);
-    records.compose(manager.newRecordMonitor()).blockingSubscribe();
+    Flux<Record> records = Flux.just(record1, record2, record3);
+    records.compose(manager.newResultMapperMonitor()).blockLast();
     manager.close();
     MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
     assertThat(registry.meter("records/total").getCount()).isEqualTo(3);
@@ -116,6 +119,7 @@ public class MetricsManagerTest {
   public void should_increment_mappings() throws Exception {
     MetricsManager manager =
         new MetricsManager(
+            WorkflowType.WRITE,
             "test",
             Executors.newSingleThreadScheduledExecutor(),
             SECONDS,
@@ -125,8 +129,8 @@ public class MetricsManagerTest {
             false,
             Duration.ofSeconds(5));
     manager.init();
-    Flowable<Statement> statements = Flowable.fromArray(stmt1, stmt2, stmt3);
-    statements.compose(manager.newMapperMonitor()).blockingSubscribe();
+    Flux<Statement> statements = Flux.just(stmt1, stmt2, stmt3);
+    statements.compose(manager.newRecordMapperMonitor()).blockLast();
     manager.close();
     MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
     assertThat(registry.meter("mappings/total").getCount()).isEqualTo(3);
@@ -138,6 +142,7 @@ public class MetricsManagerTest {
   public void should_increment_batches() throws Exception {
     MetricsManager manager =
         new MetricsManager(
+            WorkflowType.WRITE,
             "test",
             Executors.newSingleThreadScheduledExecutor(),
             SECONDS,
@@ -147,8 +152,8 @@ public class MetricsManagerTest {
             false,
             Duration.ofSeconds(5));
     manager.init();
-    Flowable<Statement> statements = Flowable.fromArray(batch, stmt3);
-    statements.compose(manager.newBatcherMonitor()).blockingSubscribe();
+    Flux<Statement> statements = Flux.just(batch, stmt3);
+    statements.compose(manager.newBatcherMonitor()).blockLast();
     manager.close();
     MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
     assertThat(registry.histogram("batches/size").getCount()).isEqualTo(2);

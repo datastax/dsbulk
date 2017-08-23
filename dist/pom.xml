@@ -43,7 +43,7 @@
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-executor-rxjava</artifactId>
+      <artifactId>datastax-loader-executor-reactor</artifactId>
     </dependency>
 
     <dependency>
@@ -204,10 +204,9 @@
                     for javadoc generation
                     -->
                     <additionalDependency>
-                      <!-- cannot use a bom here -->
-                      <groupId>io.projectreactor</groupId>
-                      <artifactId>reactor-core</artifactId>
-                      <version>${reactor-core.version}</version>
+                      <groupId>io.reactivex.rxjava2</groupId>
+                      <artifactId>rxjava</artifactId>
+                      <version>${rx-java.version}</version>
                     </additionalDependency>
                     <!--
                     dependencies from the java driver;

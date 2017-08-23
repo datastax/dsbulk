@@ -6,7 +6,7 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.datastax.loader.engine.internal.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -18,12 +18,13 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
-import com.datastax.loader.executor.api.batch.RxJavaSortedStatementBatcher;
-import com.datastax.loader.executor.api.batch.RxJavaUnsortedStatementBatcher;
+import com.datastax.loader.executor.api.batch.ReactorSortedStatementBatcher;
+import com.datastax.loader.executor.api.batch.ReactorUnsortedStatementBatcher;
 import com.typesafe.config.ConfigFactory;
-import io.reactivex.FlowableTransformer;
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
+import reactor.core.publisher.Flux;
 
 /** */
 public class BatchSettingsTest {
@@ -46,8 +47,9 @@ public class BatchSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.batch"));
     BatchSettings settings = new BatchSettings(config);
-    FlowableTransformer<Statement, Statement> batcher = settings.newStatementBatcher(cluster);
-    assertThat(batcher).isNotNull().isInstanceOf(RxJavaUnsortedStatementBatcher.class);
+    Function<? super Flux<Statement>, ? extends Flux<Statement>> batcher =
+        settings.newStatementBatcher(cluster);
+    assertThat(batcher).isNotNull().isInstanceOf(ReactorUnsortedStatementBatcher.class);
   }
 
   @Test
@@ -55,8 +57,9 @@ public class BatchSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.parseString("sorted = true, bufferSize = 100"));
     BatchSettings settings = new BatchSettings(config);
-    FlowableTransformer<Statement, Statement> batcher = settings.newStatementBatcher(cluster);
-    assertThat(batcher).isNotNull().isInstanceOf(RxJavaSortedStatementBatcher.class);
+    Function<? super Flux<Statement>, ? extends Flux<Statement>> batcher =
+        settings.newStatementBatcher(cluster);
+    assertThat(batcher).isNotNull().isInstanceOf(ReactorSortedStatementBatcher.class);
   }
 
   @Test
@@ -64,7 +67,8 @@ public class BatchSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.parseString("sorted = false, bufferSize = 100"));
     BatchSettings settings = new BatchSettings(config);
-    FlowableTransformer<Statement, Statement> batcher = settings.newStatementBatcher(cluster);
-    assertThat(batcher).isNotNull().isInstanceOf(RxJavaUnsortedStatementBatcher.class);
+    Function<? super Flux<Statement>, ? extends Flux<Statement>> batcher =
+        settings.newStatementBatcher(cluster);
+    assertThat(batcher).isNotNull().isInstanceOf(ReactorUnsortedStatementBatcher.class);
   }
 }

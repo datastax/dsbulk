@@ -22,3 +22,7 @@
 - [improvement] DAT-31: Support String to Collection, UDT and Tuple conversion.
 - [new feature] DAT-18: Create an executable bundle.
 - [new feature] DAT-55: Implement Read Workflow Engine.
+- [improvement] DAT-51: Simplify way to specify connector settings.
+- [improvement ]DAT-60: driver.contactPoints should support hostnames/ip's without port.
+- [bug] DAT-69: CSV Connector fails to parse files with non-native line-ending.
+- [new feature] DAT-64: Implement connector writes.
