@@ -8,6 +8,9 @@ package com.datastax.loader.connectors.csv;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import com.datastax.loader.commons.PlatformUtils;
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
@@ -17,8 +20,10 @@ import com.datastax.loader.connectors.api.internal.DefaultRecord;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -27,13 +32,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 /** */
 public class CSVConnectorTest {
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
       ConfigFactory.defaultReference().getConfig("datastax-loader.connector.csv");
+
+  @BeforeClass
+  public static void setupURLStreamHandlerFactory() throws Exception {
+    try {
+      URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
+    } catch (Exception ignored) {
+      // if this happens, that's because another test already installed the factory
+    }
+  }
 
   @Test
   public void should_read_single_file() throws Exception {
@@ -65,7 +81,6 @@ public class CSVConnectorTest {
 
   @Test
   public void should_read_from_stdin_with_special_encoding() throws Exception {
-    URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
     InputStream stdin = System.in;
     try {
       String line = "fóô,bàr,qïx\n";
@@ -85,6 +100,37 @@ public class CSVConnectorTest {
       connector.close();
     } finally {
       System.setIn(stdin);
+    }
+  }
+
+  @Test
+  public void should_write_to_stdout_with_special_encoding() throws Exception {
+    PrintStream stdout = System.out;
+    Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    Appender<ILoggingEvent> stdoutAppender = root.getAppender("STDOUT");
+    try {
+      root.detachAppender(stdoutAppender);
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      PrintStream out = new PrintStream(baos);
+      System.setOut(out);
+      CSVConnector connector = new CSVConnector();
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString("url = \"stdout:/\", encoding = ISO-8859-1")
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Flux<Record> records =
+          Flux.<Record>just(new DefaultRecord(null, null, "fóô", "bàr", "qïx"))
+              .publish()
+              .autoConnect(2);
+      records.subscribe(connector.write());
+      records.blockLast();
+      assertThat(new String(baos.toByteArray(), "UTF-8")).isEqualTo("fóô,bàr,qïx\n");
+      connector.close();
+    } finally {
+      System.setOut(stdout);
+      root.addAppender(stdoutAppender);
     }
   }
 
@@ -109,7 +155,6 @@ public class CSVConnectorTest {
     if (PlatformUtils.isWindows()) {
       // Root-path is of the form "/C:/foo/bar/root". We want forward
       // slashes, but we don't want the leading slash.
-
       rootPath = rootPath.substring(1);
     }
     LoaderConfig settings =

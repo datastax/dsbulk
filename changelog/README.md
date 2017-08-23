@@ -26,3 +26,4 @@
 - [improvement ]DAT-60: driver.contactPoints should support hostnames/ip's without port.
 - [bug] DAT-69: CSV Connector fails to parse files with non-native line-ending.
 - [new feature] DAT-64: Implement connector writes.
+- [new feature] DAT-63: Support writing to standard output.
