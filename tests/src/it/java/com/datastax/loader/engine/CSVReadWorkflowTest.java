@@ -31,13 +31,21 @@ public class CSVReadWorkflowTest {
 
     URL output = Files.createTempDirectory("output").toUri().toURL();
     String[] args = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + output + "\"",
-      "connector.csv.header=true",
-      "schema.keyspace=test",
-      "schema.table=ip_by_country",
-      "schema.mapping={"
+      "read",
+      "log.outputDirectory",
+      "./target",
+      "connector.name",
+      "csv",
+      "connector.csv.url",
+      output.toExternalForm(),
+      "connector.csv.header",
+      "true",
+      "schema.keyspace",
+      "test",
+      "schema.table",
+      "ip_by_country",
+      "schema.mapping",
+      "{"
           + "\"beginning IP Address\"=beginning_ip_address,"
           + "\"ending IP Address\"=ending_ip_address,"
           + "\"beginning IP Number\"=beginning_ip_number,"
@@ -47,6 +55,6 @@ public class CSVReadWorkflowTest {
           + "}"
     };
 
-    new ReadWorkflow(args).execute();
+    new Main(args);
   }
 }

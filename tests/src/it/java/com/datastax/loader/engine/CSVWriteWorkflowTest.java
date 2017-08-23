@@ -28,13 +28,21 @@ public class CSVWriteWorkflowTest {
     CsvUtils.createIpByCountryTable(session);
 
     String[] args = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS + "\"",
-      "connector.csv.header=true",
-      "schema.keyspace=test",
-      "schema.table=ip_by_country",
-      "schema.mapping={"
+      "write",
+      "log.outputDirectory",
+      "./target",
+      "connector.name",
+      "csv",
+      "connector.csv.url",
+      CsvUtils.CSV_RECORDS.toExternalForm(),
+      "connector.csv.header",
+      "true",
+      "schema.keyspace",
+      "test",
+      "schema.table",
+      "ip_by_country",
+      "schema.mapping",
+      "{"
           + "\"beginning IP Address\"=beginning_ip_address,"
           + "\"ending IP Address\"=ending_ip_address,"
           + "\"beginning IP Number\"=beginning_ip_number,"
@@ -44,6 +52,6 @@ public class CSVWriteWorkflowTest {
           + "}"
     };
 
-    new WriteWorkflow(args).execute();
+    new Main(args);
   }
 }

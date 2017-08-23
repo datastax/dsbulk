@@ -48,64 +48,6 @@ REM Helper for adding a particular item to CLASSPATH.
   SET CLASSPATH=!CLASSPATH!;%1
   GOTO :eof
 
-REM Logic for parsing one command-line arg (which may be an option or value).
-:process_arg
-  SET PARAM=%~1
-  IF !STATE! == GETOPT (
-    SET OPT_NAME=
-    IF "!PARAM:~0,2!" == "--" (
-      REM This is a long option.
-      REM Strip off the leading --
-      SET OPT_NAME=%PARAM:~2%
-    ) ELSE (
-      IF "!PARAM:~0,1!" == "-" (
-        REM This is a short option.
-        IF "!PARAM!" == "-h" SET OPT_NAME=help
-        IF "!PARAM!" == "-c" SET OPT_NAME=connector.name
-        IF "!PARAM!" == "-k" SET OPT_NAME=schema.keyspace
-        IF "!PARAM!" == "-t" SET OPT_NAME=schema.table
-        IF "!PARAM!" == "-m" SET OPT_NAME=schema.mapping
-      )
-    )
-    IF NOT DEFINED OPT_NAME (
-      REM Illegal arg
-      call :usage
-      ECHO.
-      ECHO Unrecognized option !PARAM!
-      EXIT /B 1
-    )
-    IF "!OPT_NAME!" == "help" (
-      EXIT /B 2
-    )
-    
-    REM Tack on the new option to LOADER_ARGS.
-    SET LOADER_ARGS=!LOADER_ARGS!,!OPT_NAME!=
-    SET STATE=GETVAL
-    GOTO :eof
-  ) ELSE (
-    REM This is a value. If it contains a # or :, quote the value,
-    REM as long as the value isn't an array or map.
-    IF NOT "!PARAM:~0,1!" == "[" (
-      IF NOT "!PARAM:~0,1!" == "{" (
-        IF NOT "!PARAM:#=!" == "!PARAM!" (
-          SET PARAM=""!PARAM!""
-        ) ELSE (
-          IF NOT "!PARAM::=!" == "!PARAM!" (
-            SET PARAM=""!PARAM!""
-          )
-        )
-      )
-    )
-
-    REM Replace \ with /.
-    set PARAM=!PARAM:\=/!
-
-    REM Finally, append the value to our collection of args.
-    SET LOADER_ARGS=!LOADER_ARGS!!PARAM!
-    SET STATE=GETOPT
-  )
-  GOTO :eof
- 
 REM Simple subroutine to emit usage text.
 :usage
   SET BATCH_FILENAME=%~N0%

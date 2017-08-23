@@ -77,7 +77,7 @@ public class DriverSettings {
 
     ProtocolVersion protocolVersion;
 
-    if (config.hasPath("protocol.version")) {
+    if (!config.getString("protocol.version").isEmpty()) {
       protocolVersion = config.getEnum(ProtocolVersion.class, "protocol.version");
       Preconditions.checkArgument(
           protocolVersion.compareTo(ProtocolVersion.V3) >= 0,
@@ -137,11 +137,11 @@ public class DriverSettings {
       }
     }
 
-    if (config.hasPath("auth.provider")) {
+    if (!config.getString("auth.provider").equals("None")) {
       AuthProvider authProvider = createAuthProvider();
       builder.withAuthProvider(authProvider);
     }
-    if (config.hasPath("ssl.provider")) {
+    if (!config.getString("ssl.provider").equals("None")) {
       RemoteEndpointAwareSSLOptions sslOptions = createSSLOptions();
       builder.withSSL(sslOptions);
     }
@@ -190,74 +190,70 @@ public class DriverSettings {
 
   private RemoteEndpointAwareSSLOptions createSSLOptions() throws Exception {
 
-    if (config.hasPath("ssl.provider")) {
+    TrustManagerFactory tmf = null;
+    if (config.hasPath("ssl.truststore.url")) {
+      KeyStore ks = KeyStore.getInstance("JKS");
+      ks.load(
+          new URL(config.getString("ssl.truststore.url")).openStream(),
+          config.getString("ssl.truststore.password").toCharArray());
 
-      TrustManagerFactory tmf = null;
-      if (config.hasPath("ssl.truststore.url")) {
-        KeyStore ks = KeyStore.getInstance("JKS");
-        ks.load(
-            new URL(config.getString("ssl.truststore.url")).openStream(),
-            config.getString("ssl.truststore.password").toCharArray());
-
-        tmf = TrustManagerFactory.getInstance(config.getString("ssl.truststore.algorithm"));
-        tmf.init(ks);
-      }
-
-      List<String> cipherSuites = config.getStringList("ssl.cipherSuites");
-
-      SSLProvider sslProvider = config.getEnum(SSLProvider.class, "ssl.provider");
-
-      switch (sslProvider) {
-        case JDK:
-          {
-            KeyManagerFactory kmf = null;
-            if (config.hasPath("ssl.keystore.url")) {
-              KeyStore ks = KeyStore.getInstance("JKS");
-              ks.load(
-                  new URL(config.getString("ssl.keystore.url")).openStream(),
-                  config.getString("ssl.keystore.password").toCharArray());
-
-              kmf = KeyManagerFactory.getInstance(config.getString("ssl.truststore.algorithm"));
-              kmf.init(ks, config.getString("ssl.keystore.password").toCharArray());
-            }
-
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(
-                kmf != null ? kmf.getKeyManagers() : null,
-                tmf != null ? tmf.getTrustManagers() : null,
-                new SecureRandom());
-
-            RemoteEndpointAwareJdkSSLOptions.Builder builder =
-                (RemoteEndpointAwareJdkSSLOptions.Builder)
-                    RemoteEndpointAwareJdkSSLOptions.builder().withSSLContext(sslContext);
-            if (!cipherSuites.isEmpty()) {
-              builder.withCipherSuites(cipherSuites.toArray(new String[cipherSuites.size()]));
-            }
-            return builder.build();
-          }
-
-        case OpenSSL:
-          {
-            SslContextBuilder builder =
-                SslContextBuilder.forClient().sslProvider(SslProvider.OPENSSL).trustManager(tmf);
-
-            if (config.hasPath("ssl.openssl.keyCertChain")) {
-              URL keyCertChain = new URL(config.getString("ssl.openssl.keyCertChain"));
-              URL privateKey = new URL(config.getString("ssl.openssl.privateKey"));
-              builder.keyManager(keyCertChain.openStream(), privateKey.openStream());
-            }
-
-            if (!cipherSuites.isEmpty()) {
-              builder.ciphers(cipherSuites);
-            }
-            return new RemoteEndpointAwareNettySSLOptions(builder.build());
-          }
-        default:
-          // cannot happen
-          return null;
-      }
+      tmf = TrustManagerFactory.getInstance(config.getString("ssl.truststore.algorithm"));
+      tmf.init(ks);
     }
-    return null;
+
+    List<String> cipherSuites = config.getStringList("ssl.cipherSuites");
+
+    SSLProvider sslProvider = config.getEnum(SSLProvider.class, "ssl.provider");
+
+    switch (sslProvider) {
+      case JDK:
+        {
+          KeyManagerFactory kmf = null;
+          if (config.hasPath("ssl.keystore.url")) {
+            KeyStore ks = KeyStore.getInstance("JKS");
+            ks.load(
+                new URL(config.getString("ssl.keystore.url")).openStream(),
+                config.getString("ssl.keystore.password").toCharArray());
+
+            kmf = KeyManagerFactory.getInstance(config.getString("ssl.truststore.algorithm"));
+            kmf.init(ks, config.getString("ssl.keystore.password").toCharArray());
+          }
+
+          SSLContext sslContext = SSLContext.getInstance("TLS");
+          sslContext.init(
+              kmf != null ? kmf.getKeyManagers() : null,
+              tmf != null ? tmf.getTrustManagers() : null,
+              new SecureRandom());
+
+          RemoteEndpointAwareJdkSSLOptions.Builder builder =
+              (RemoteEndpointAwareJdkSSLOptions.Builder)
+                  RemoteEndpointAwareJdkSSLOptions.builder().withSSLContext(sslContext);
+          if (!cipherSuites.isEmpty()) {
+            builder.withCipherSuites(cipherSuites.toArray(new String[cipherSuites.size()]));
+          }
+          return builder.build();
+        }
+
+      case OpenSSL:
+        {
+          SslContextBuilder builder =
+              SslContextBuilder.forClient().sslProvider(SslProvider.OPENSSL).trustManager(tmf);
+
+          if (config.hasPath("ssl.openssl.keyCertChain")) {
+            URL keyCertChain = new URL(config.getString("ssl.openssl.keyCertChain"));
+            URL privateKey = new URL(config.getString("ssl.openssl.privateKey"));
+            builder.keyManager(keyCertChain.openStream(), privateKey.openStream());
+          }
+
+          if (!cipherSuites.isEmpty()) {
+            builder.ciphers(cipherSuites);
+          }
+          return new RemoteEndpointAwareNettySSLOptions(builder.build());
+        }
+      default:
+        // cannot happen
+        return null;
+    }
   }
 
   @VisibleForTesting

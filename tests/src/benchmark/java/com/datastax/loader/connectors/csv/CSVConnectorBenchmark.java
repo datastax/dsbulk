@@ -11,8 +11,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
-import com.datastax.loader.engine.ReadWorkflow;
-import com.datastax.loader.engine.WriteWorkflow;
+import com.datastax.loader.engine.Main;
 import com.datastax.loader.tests.utils.ZipUtils;
 import java.net.URL;
 import java.nio.file.Files;
@@ -50,7 +49,7 @@ public class CSVConnectorBenchmark {
   )
   @Fork(1)
   public void benchmarkCsvConnectorWrite(CSVConnectorBenchmarkState state) throws Exception {
-    new WriteWorkflow(state.writeArgs).execute();
+    new Main(state.writeArgs);
   }
 
   @Benchmark
@@ -65,7 +64,7 @@ public class CSVConnectorBenchmark {
   )
   @Fork(1)
   public void benchmarkCsvConnectorRead(CSVConnectorBenchmarkState state) throws Exception {
-    new ReadWorkflow(state.readArgs).execute();
+    new Main(state.readArgs);
   }
 
   @State(Scope.Benchmark)
@@ -92,13 +91,21 @@ public class CSVConnectorBenchmark {
       Path output = Files.createTempDirectory("output");
       readArgs =
           new String[] {
-            "log.outputDirectory=./target",
-            "connector.name=csv",
-            "connector.csv.url=\"" + output.toUri().toURL().toExternalForm() + "\"",
-            "connector.csv.header=true",
-            "schema.keyspace=csv_connector_benchmark",
-            "schema.table=ip_by_country",
-            "schema.mapping={"
+            "read",
+            "log.outputDirectory",
+            "./target",
+            "connector.name",
+            "csv",
+            "connector.csv.url",
+            output.toUri().toURL().toExternalForm(),
+            "connector.csv.header",
+            "true",
+            "schema.keyspace",
+            "csv_connector_benchmark",
+            "schema.table",
+            "ip_by_country",
+            "schema.mapping",
+            "{"
                 + "\"beginning IP Address\"=beginning_ip_address,"
                 + "\"ending IP Address\"=ending_ip_address,"
                 + "\"beginning IP Number\"=beginning_ip_number,"
@@ -109,13 +116,21 @@ public class CSVConnectorBenchmark {
           };
       writeArgs =
           new String[] {
-            "log.outputDirectory=./target",
-            "connector.name=csv",
-            "connector.csv.url=\"" + csvFile.toExternalForm() + "\"",
-            "connector.csv.header=true",
-            "schema.keyspace=csv_connector_benchmark",
-            "schema.table=ip_by_country",
-            "schema.mapping={"
+            "write",
+            "log.outputDirectory",
+            "./target",
+            "connector.name",
+            "csv",
+            "connector.csv.url",
+            csvFile.toExternalForm(),
+            "connector.csv.header",
+            "true",
+            "schema.keyspace",
+            "csv_connector_benchmark",
+            "schema.table",
+            "ip_by_country",
+            "schema.mapping",
+            "{"
                 + "\"beginning IP Address\"=beginning_ip_address,"
                 + "\"ending IP Address\"=ending_ip_address,"
                 + "\"beginning IP Number\"=beginning_ip_number,"
@@ -124,7 +139,7 @@ public class CSVConnectorBenchmark {
                 + "\"Country Name\"=country_name"
                 + "}"
           };
-      new WriteWorkflow(writeArgs).execute();
+      new Main(writeArgs);
     }
   }
 }

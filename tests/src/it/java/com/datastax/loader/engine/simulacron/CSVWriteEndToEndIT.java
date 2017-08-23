@@ -8,7 +8,7 @@ package com.datastax.loader.engine.simulacron;
 
 import static com.datastax.loader.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
 
-import com.datastax.loader.engine.WriteWorkflow;
+import com.datastax.loader.engine.Main;
 import com.datastax.loader.engine.internal.settings.LogSettings;
 import com.datastax.loader.tests.SimulacronRule;
 import com.datastax.loader.tests.utils.CsvUtils;
@@ -49,17 +49,25 @@ public class CSVWriteEndToEndIT {
   public void full_load() throws Exception {
 
     String[] args = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm() + "\"",
-      "driver.query.consistency=ONE",
-      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
-      "driver.protocol.compression=NONE",
-      "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
+      "write",
+      "log.outputDirectory",
+      "./target",
+      "connector.name",
+      "csv",
+      "connector.csv.url",
+      "\"" + CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm() + "\"",
+      "driver.query.consistency",
+      "ONE",
+      "driver.contactPoints",
+      "" + fetchSimulacronContactPointsForArg(),
+      "driver.protocol.compression",
+      "NONE",
+      "schema.statement",
+      "\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
       "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new WriteWorkflow(args).execute();
+    new Main(args);
     validateQueryCount(24, ConsistencyLevel.ONE);
   }
 
@@ -67,17 +75,25 @@ public class CSVWriteEndToEndIT {
   public void full_load_crlf() throws Exception {
 
     String[] args = {
-      "log.output-directory=\"file:./target\"",
-      "connector.name=csv",
-      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_CRLF.toExternalForm() + "\"",
-      "driver.query.consistency=ONE",
-      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
-      "driver.protocol.compression=NONE",
-      "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
+      "write",
+      "log.output-directory",
+      "\"file:./target\"",
+      "connector.name",
+      "csv",
+      "connector.csv.url",
+      "\"" + CsvUtils.CSV_RECORDS_CRLF.toExternalForm() + "\"",
+      "driver.query.consistency",
+      "ONE",
+      "driver.contactPoints",
+      "" + fetchSimulacronContactPointsForArg(),
+      "driver.protocol.compression",
+      "NONE",
+      "schema.statement",
+      "\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
       "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new WriteWorkflow(args).execute();
+    new Main(args);
     validateQueryCount(24, ConsistencyLevel.ONE);
   }
 
@@ -85,18 +101,25 @@ public class CSVWriteEndToEndIT {
   public void partial_load() throws Exception {
 
     String[] args = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_PARTIAL_BAD.toExternalForm() + "\"",
-      "driver.query.consistency=LOCAL_ONE",
-      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
-      "driver.protocol.compression=NONE",
-      "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
+      "write",
+      "log.outputDirectory",
+      "./target",
+      "connector.name",
+      "csv",
+      "connector.csv.url",
+      "\"" + CsvUtils.CSV_RECORDS_PARTIAL_BAD.toExternalForm() + "\"",
+      "driver.query.consistency",
+      "LOCAL_ONE",
+      "driver.contactPoints",
+      "" + fetchSimulacronContactPointsForArg(),
+      "driver.protocol.compression",
+      "NONE",
+      "schema.statement",
+      "\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
       "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    WriteWorkflow writeWorkflow = new WriteWorkflow(args);
-    writeWorkflow.execute();
+    new Main(args);
     validateQueryCount(21, ConsistencyLevel.LOCAL_ONE);
     validateBadOps(3);
     validateExceptionsLog(3, "record-mapping-errors.log");
@@ -145,18 +168,25 @@ public class CSVWriteEndToEndIT {
     simulacron.cluster().prime(new Prime(prime1));
 
     String[] args = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_ERROR.toExternalForm() + "\"",
-      "driver.query.consistency=LOCAL_ONE",
-      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
-      "driver.protocol.compression=NONE",
-      "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
+      "write",
+      "log.outputDirectory",
+      "./target",
+      "connector.name",
+      "csv",
+      "connector.csv.url",
+      "\"" + CsvUtils.CSV_RECORDS_ERROR.toExternalForm() + "\"",
+      "driver.query.consistency",
+      "LOCAL_ONE",
+      "driver.contactPoints",
+      "" + fetchSimulacronContactPointsForArg(),
+      "driver.protocol.compression",
+      "NONE",
+      "schema.statement",
+      "\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
       "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    WriteWorkflow writeWorkflow = new WriteWorkflow(args);
-    writeWorkflow.execute();
+    new Main(args);
     validateQueryCount(24, ConsistencyLevel.LOCAL_ONE);
     validateBadOps(4);
     validateExceptionsLog(4, "write-errors.log");
@@ -166,19 +196,28 @@ public class CSVWriteEndToEndIT {
   public void skip_test_load() throws Exception {
 
     String[] args = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_SKIP.toExternalForm() + "\"",
-      "driver.query.consistency=LOCAL_ONE",
-      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
-      "driver.protocol.compression=NONE",
-      "connector.csv.linesToSkip=3",
-      "connector.csv.maxLines=24",
+      "write",
+      "log.outputDirectory",
+      "./target",
+      "connector.name",
+      "csv",
+      "connector.csv.url",
+      "\"" + CsvUtils.CSV_RECORDS_SKIP.toExternalForm() + "\"",
+      "driver.query.consistency",
+      "LOCAL_ONE",
+      "driver.contactPoints",
+      "" + fetchSimulacronContactPointsForArg(),
+      "driver.protocol.compression",
+      "NONE",
+      "connector.csv.linesToSkip",
+      "3",
+      "connector.csv.maxLines",
+      "24",
       "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "schema.mapping",
+      "{0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
-    WriteWorkflow writeWorkflow = new WriteWorkflow(args);
-    writeWorkflow.execute();
+    new Main(args);
     validateQueryCount(21, ConsistencyLevel.LOCAL_ONE);
     validateBadOps(3);
     validateExceptionsLog(3, "record-mapping-errors.log");

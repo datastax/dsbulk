@@ -10,7 +10,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
-import com.datastax.loader.commons.url.LoaderURLStreamHandlerFactory;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.engine.internal.WorkflowUtils;
 import com.datastax.loader.engine.internal.log.LogManager;
@@ -27,34 +27,34 @@ import com.datastax.loader.engine.internal.settings.SchemaSettings;
 import com.datastax.loader.engine.internal.settings.SettingsManager;
 import com.datastax.loader.executor.api.writer.ReactiveBulkWriter;
 import com.google.common.base.Stopwatch;
-import java.net.URL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 /** The main class for write workflows. */
-public class WriteWorkflow {
+public class WriteWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteWorkflow.class);
 
-  public static void main(String[] args) throws Exception {
-    URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    WriteWorkflow writeWorkflow = new WriteWorkflow(args);
-    writeWorkflow.execute();
+  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.WRITE);
+  private final LoaderConfig config;
+
+  private DriverSettings driverSettings;
+  private ConnectorSettings connectorSettings;
+  private SchemaSettings schemaSettings;
+  private BatchSettings batchSettings;
+  private ExecutorSettings executorSettings;
+  private LogSettings logSettings;
+  private CodecSettings codecSettings;
+  private MonitoringSettings monitoringSettings;
+
+  public WriteWorkflow(LoaderConfig config) throws Exception {
+    this.config = config;
   }
 
-  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.WRITE);
-  private final DriverSettings driverSettings;
-  private final ConnectorSettings connectorSettings;
-  private final SchemaSettings schemaSettings;
-  private final BatchSettings batchSettings;
-  private final ExecutorSettings executorSettings;
-  private final LogSettings logSettings;
-  private final CodecSettings codecSettings;
-  private final MonitoringSettings monitoringSettings;
-
-  public WriteWorkflow(String[] args) throws Exception {
-    SettingsManager settingsManager = new SettingsManager(args, executionId);
+  @Override
+  public void init() throws Exception {
+    SettingsManager settingsManager = new SettingsManager(config, executionId);
     settingsManager.loadConfiguration();
     settingsManager.logEffectiveSettings();
     logSettings = settingsManager.getLogSettings();
@@ -67,6 +67,7 @@ public class WriteWorkflow {
     monitoringSettings = settingsManager.getMonitoringSettings();
   }
 
+  @Override
   public void execute() {
 
     LOGGER.info("Starting write workflow engine execution " + executionId);
