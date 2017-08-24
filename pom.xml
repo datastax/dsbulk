@@ -6,14 +6,13 @@
     http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.datastax.dse</groupId>
   <artifactId>datastax-loader-parent</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0-alpha1</version>
   <packaging>pom</packaging>
 
   <name>DataStax Loader</name>
@@ -676,7 +675,7 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
       <name>DataStax DSE Driver License</name>
       <url>http://www.datastax.com/terms/datastax-dse-driver-license-terms</url>
       <distribution>repo</distribution>
-      <comments/>
+      <comments />
     </license>
   </licenses>
 
@@ -684,7 +683,7 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
     <connection>scm:git:git@github.com:riptano/datastax-loader.git</connection>
     <developerConnection>scm:git:git@github.com:riptano/datastax-loader.git</developerConnection>
     <url>https://github.com/riptano/datastax-loader</url>
-    <tag>HEAD</tag>
+    <tag>1.0.0-alpha1</tag>
   </scm>
 
   <developers>
