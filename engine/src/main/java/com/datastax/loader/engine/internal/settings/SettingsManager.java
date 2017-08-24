@@ -36,6 +36,7 @@ public class SettingsManager {
   private LogSettings logSettings;
   private CodecSettings codecSettings;
   private MonitoringSettings monitoringSettings;
+  private EngineSettings engineSettings;
 
   public SettingsManager(String[] args, String executionId) {
     this.args = args;
@@ -46,15 +47,16 @@ public class SettingsManager {
     Config delegate = parseUserSettings(args).withFallback(DEFAULT);
     delegate.checkValid(REFERENCE);
     // TODO check unrecognized config
-    this.config = new DefaultLoaderConfig(delegate);
-    logSettings = new LogSettings(this.config.getConfig("log"), executionId);
-    driverSettings = new DriverSettings(this.config.getConfig("driver"), executionId);
-    connectorSettings = new ConnectorSettings(this.config.getConfig("connector"));
-    schemaSettings = new SchemaSettings(this.config.getConfig("schema"));
-    batchSettings = new BatchSettings(this.config.getConfig("batch"));
-    executorSettings = new ExecutorSettings(this.config.getConfig("executor"));
-    codecSettings = new CodecSettings(this.config.getConfig("codec"));
-    monitoringSettings = new MonitoringSettings(this.config.getConfig("monitoring"), executionId);
+    config = new DefaultLoaderConfig(delegate);
+    logSettings = new LogSettings(config.getConfig("log"), executionId);
+    driverSettings = new DriverSettings(config.getConfig("driver"), executionId);
+    connectorSettings = new ConnectorSettings(config.getConfig("connector"));
+    schemaSettings = new SchemaSettings(config.getConfig("schema"));
+    batchSettings = new BatchSettings(config.getConfig("batch"));
+    executorSettings = new ExecutorSettings(config.getConfig("executor"));
+    codecSettings = new CodecSettings(config.getConfig("codec"));
+    monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), executionId);
+    engineSettings = new EngineSettings(config.getConfig("engine"));
   }
 
   public void logEffectiveSettings() {
@@ -93,6 +95,10 @@ public class SettingsManager {
 
   public MonitoringSettings getMonitoringSettings() {
     return monitoringSettings;
+  }
+
+  public EngineSettings getEngineSettings() {
+    return engineSettings;
   }
 
   private static Config parseUserSettings(String[] args) {

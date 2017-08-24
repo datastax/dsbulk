@@ -61,10 +61,9 @@ public class DriverSettingsTest {
   public void should_create_mapper_when_contact_points_provided() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            new DefaultLoaderConfig(
-                ConfigFactory.parseString(
-                        "port = 9876, contactPoints = [ \"1.2.3.4:9042\", \"2.3.4.5\" ]")
-                    .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"))));
+            ConfigFactory.parseString(
+                    "port = 9876, contactPoints = [ \"1.2.3.4:9042\", \"2.3.4.5\" ]")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
