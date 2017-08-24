@@ -23,7 +23,8 @@
 - [new feature] DAT-18: Create an executable bundle.
 - [new feature] DAT-55: Implement Read Workflow Engine.
 - [improvement] DAT-51: Simplify way to specify connector settings.
-- [improvement ]DAT-60: driver.contactPoints should support hostnames/ip's without port.
+- [improvement] DAT-60: driver.contactPoints should support hostnames/ip's without port.
 - [bug] DAT-69: CSV Connector fails to parse files with non-native line-ending.
 - [new feature] DAT-64: Implement connector writes.
 - [new feature] DAT-63: Support writing to standard output.
+- [improvement] DAT-42: Add LOADER_JAVA_OPTS env var support to allow users to set JVM options.
