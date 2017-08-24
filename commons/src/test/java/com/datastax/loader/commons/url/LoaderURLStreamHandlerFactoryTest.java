@@ -22,4 +22,15 @@ public class LoaderURLStreamHandlerFactoryTest {
         .isNotNull()
         .isInstanceOf(StandardInputURLStreamHandler.class);
   }
+
+  @Test
+  public void should_handle_stdout_protocol() throws Exception {
+    LoaderURLStreamHandlerFactory factory = new LoaderURLStreamHandlerFactory();
+    assertThat(factory.createURLStreamHandler("stdout"))
+        .isNotNull()
+        .isInstanceOf(StandardOutputURLStreamHandler.class);
+    assertThat(factory.createURLStreamHandler("STDOUT"))
+        .isNotNull()
+        .isInstanceOf(StandardOutputURLStreamHandler.class);
+  }
 }

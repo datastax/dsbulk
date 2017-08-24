@@ -23,10 +23,16 @@ public class LoaderURLStreamHandlerFactory implements URLStreamHandlerFactory {
   /** The scheme for standard input URLs. The only supported URL with such scheme is "stdin:/". */
   private static final String STDIN = "stdin";
 
+  /** The scheme for standard output URLs. The only supported URL with such scheme is "stdout:/". */
+  private static final String STDOUT = "stdout";
+
   @Override
   public URLStreamHandler createURLStreamHandler(String protocol) {
     if (STDIN.equalsIgnoreCase(protocol)) {
       return new StandardInputURLStreamHandler();
+    }
+    if (STDOUT.equalsIgnoreCase(protocol)) {
+      return new StandardOutputURLStreamHandler();
     }
     // TODO other schemes: NFS, DSEFS...
     return null;
