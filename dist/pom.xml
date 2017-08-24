@@ -14,7 +14,7 @@
   <parent>
     <artifactId>datastax-loader-parent</artifactId>
     <groupId>com.datastax.dse</groupId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.0-alpha2-SNAPSHOT</version>
   </parent>
 
   <artifactId>datastax-loader-dist</artifactId>
