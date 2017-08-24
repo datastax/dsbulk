@@ -6,14 +6,13 @@
     http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.datastax.dse</groupId>
   <artifactId>datastax-loader-parent</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0-alpha2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>DataStax Loader</name>
@@ -366,52 +365,12 @@
               </goals>
             </execution>
           </executions>
-          <configuration>
-            <additionalSourceDirectories>
-              <additionalSourceDirectory>src/it/java</additionalSourceDirectory>
-              <additionalSourceDirectory>src/benchmark/java</additionalSourceDirectory>
-            </additionalSourceDirectories>
-          </configuration>
         </plugin>
 
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>build-helper-maven-plugin</artifactId>
           <version>3.0.0</version>
-          <executions>
-            <execution>
-              <id>add-integration-test-sources</id>
-              <phase>generate-test-sources</phase>
-              <goals>
-                <goal>add-test-source</goal>
-              </goals>
-              <configuration>
-                <sources>
-                  <source>src/it/java</source>
-                  <source>src/benchmark/java</source>
-                </sources>
-              </configuration>
-            </execution>
-            <execution>
-              <id>add-integration-test-resources</id>
-              <phase>generate-test-resources</phase>
-              <goals>
-                <goal>add-test-resource</goal>
-              </goals>
-              <configuration>
-                <resources>
-                  <resource>
-                    <filtering>false</filtering>
-                    <directory>src/it/resources</directory>
-                  </resource>
-                  <resource>
-                    <filtering>false</filtering>
-                    <directory>src/benchmark/resources</directory>
-                  </resource>
-                </resources>
-              </configuration>
-            </execution>
-          </executions>
         </plugin>
 
         <plugin>
@@ -492,14 +451,6 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
         <plugin>
           <artifactId>maven-failsafe-plugin</artifactId>
           <version>2.20</version>
-          <executions>
-            <execution>
-              <goals>
-                <goal>integration-test</goal>
-                <goal>verify</goal>
-              </goals>
-            </execution>
-          </executions>
         </plugin>
 
         <plugin>
@@ -602,7 +553,8 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
             <autoVersionSubmodules>true</autoVersionSubmodules>
             <useReleaseProfile>false</useReleaseProfile>
             <releaseProfiles>release</releaseProfiles>
-            <goals>deploy</goals>
+            <!-- deployment is not configured yet -->
+            <goals>install</goals>
           </configuration>
         </plugin>
 
@@ -641,11 +593,6 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
       <plugin>
         <groupId>com.mycila</groupId>
         <artifactId>license-maven-plugin</artifactId>
-      </plugin>
-
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
       </plugin>
 
       <plugin>
@@ -734,7 +681,7 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
       <name>DataStax DSE Driver License</name>
       <url>http://www.datastax.com/terms/datastax-dse-driver-license-terms</url>
       <distribution>repo</distribution>
-      <comments/>
+      <comments />
     </license>
   </licenses>
 

@@ -76,8 +76,8 @@ public class CSVWriteEndToEndIT {
 
     String[] args = {
       "write",
-      "log.output-directory",
-      "\"file:./target\"",
+      "log.outputDirectory",
+      "\"./target\"",
       "connector.name",
       "csv",
       "connector.csv.url",

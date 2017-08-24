@@ -40,7 +40,7 @@ IF DEFINED JAVA_HOME (
 )
 
 REM Run the Java tool.
-"%JAVA%" com.datastax.loader.engine.Main "!LOADER_ARGS!"
+"%JAVA%" %LOADER_JAVA_OPTS% com.datastax.loader.engine.WriteWorkflow "!LOADER_ARGS!"
 GOTO :eof
 
 REM Helper for adding a particular item to CLASSPATH.

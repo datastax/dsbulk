@@ -165,4 +165,4 @@ done
 export CLASSPATH
 
 # Run the tool.
-$JAVA com.datastax.loader.engine.Main $0
+$JAVA $LOADER_JAVA_OPTS com.datastax.loader.engine.Main $0

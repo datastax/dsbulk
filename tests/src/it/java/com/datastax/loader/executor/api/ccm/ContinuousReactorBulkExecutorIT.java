@@ -7,10 +7,13 @@
 package com.datastax.loader.executor.api.ccm;
 
 import com.datastax.loader.executor.api.ContinuousReactorBulkExecutor;
+import com.datastax.loader.tests.categories.LongTests;
 import com.datastax.loader.tests.ccm.annotations.CCMTest;
 import org.junit.BeforeClass;
+import org.junit.experimental.categories.Category;
 
 @CCMTest
+@Category(LongTests.class)
 public class ContinuousReactorBulkExecutorIT extends AbstractContinuousBulkExecutorIT {
 
   @BeforeClass
