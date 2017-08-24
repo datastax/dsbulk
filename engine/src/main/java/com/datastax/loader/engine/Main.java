@@ -63,9 +63,18 @@ public class Main {
   private static Options createOptions() {
     Options options = new Options();
     Set<String> shortNames = new HashSet<>();
+    // special-case options of type OBJECT as these do not show up in entrySet()
+    // FIXME maybe we should transform these in regular STRING values and parse the string in SchemaSettings
+    // As a bonus, we could get rid of enclosing braces, e.g.
+    // schema.mapping = { fieldA = col1, fieldB = col2 }
+    // would become:
+    // schema.mapping = "fieldA = col1, fieldB = col2"
     Option schemaMapping =
       createOption(shortNames, "schema.mapping", DEFAULT.getConfig("schema.mapping").root());
     options.addOption(schemaMapping);
+    Option recordMetadata =
+        createOption(shortNames, "schema.recordMetadata", DEFAULT.getConfig("schema.recordMetadata").root());
+    options.addOption(recordMetadata);
     for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
       String longName = entry.getKey();
       Option option = createOption(shortNames, longName, entry.getValue());
