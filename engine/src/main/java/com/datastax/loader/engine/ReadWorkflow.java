@@ -77,6 +77,12 @@ public class ReadWorkflow {
     LOGGER.info("Starting read workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
 
+    int maxConcurrentReads = engineSettings.getMaxConcurrentReads();
+    int maxMappingThreads = engineSettings.getMaxMappingThreads();
+
+    Scheduler readsScheduler = Schedulers.newParallel("range-reads", maxConcurrentReads);
+    Scheduler mapperScheduler = Schedulers.newParallel("result-mapper", maxMappingThreads);
+
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.connect();
         Connector connector = connectorSettings.getConnector(WorkflowType.READ);
@@ -93,10 +99,6 @@ public class ReadWorkflow {
       ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
       ReadResultMapper readResultMapper =
           schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-      int maxConcurrentReads = engineSettings.getMaxConcurrentReads();
-      int maxMappingThreads = engineSettings.getMaxMappingThreads();
-      Scheduler readsScheduler = Schedulers.newParallel("range-reads", maxConcurrentReads);
-      Scheduler mapperScheduler = Schedulers.newParallel("result-mapper", maxMappingThreads);
 
       Flux<Record> records =
           Flux.fromIterable(schemaSettings.createReadStatements(cluster))
@@ -120,6 +122,9 @@ public class ReadWorkflow {
 
     } catch (Exception e) {
       LOGGER.error("Uncaught exception during read workflow engine execution " + executionId, e);
+    } finally {
+      readsScheduler.dispose();
+      mapperScheduler.dispose();
     }
 
     timer.stop();

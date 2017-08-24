@@ -77,6 +77,9 @@ public class WriteWorkflow {
     LOGGER.info("Starting write workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
 
+    int maxMappingThreads = engineSettings.getMaxMappingThreads();
+    Scheduler mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
+
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.connect();
         Connector connector = connectorSettings.getConnector(WorkflowType.WRITE);
@@ -93,9 +96,6 @@ public class WriteWorkflow {
           schemaSettings.createRecordMapper(
               session, connector.getRecordMetadata(), codecSettings.createCodecRegistry(cluster));
 
-      int maxMappingThreads = engineSettings.getMaxMappingThreads();
-      Scheduler mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
-
       Flux.from(connector.read())
           .parallel(maxMappingThreads)
           .runOn(mapperScheduler)
@@ -111,6 +111,8 @@ public class WriteWorkflow {
 
     } catch (Exception e) {
       LOGGER.error("Uncaught exception during write workflow engine execution " + executionId, e);
+    } finally {
+      mapperScheduler.dispose();
     }
 
     timer.stop();
