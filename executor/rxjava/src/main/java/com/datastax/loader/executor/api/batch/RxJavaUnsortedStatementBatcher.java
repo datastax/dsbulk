@@ -45,16 +45,21 @@ public class RxJavaUnsortedStatementBatcher extends RxJavaStatementBatcher
   }
 
   public RxJavaUnsortedStatementBatcher(Cluster cluster, int bufferSize) {
-    this(cluster, BatchMode.PARTITION_KEY, bufferSize);
-  }
-
-  public RxJavaUnsortedStatementBatcher(Cluster cluster, BatchMode batchMode, int bufferSize) {
-    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, bufferSize);
+    this(cluster, BatchMode.PARTITION_KEY, DEFAULT_MAX_BATCH_SIZE, bufferSize);
   }
 
   public RxJavaUnsortedStatementBatcher(
-      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int bufferSize) {
-    super(cluster, batchMode, batchType);
+      Cluster cluster, BatchMode batchMode, int maxBatchSize, int bufferSize) {
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchSize, bufferSize);
+  }
+
+  public RxJavaUnsortedStatementBatcher(
+      Cluster cluster,
+      BatchMode batchMode,
+      BatchStatement.Type batchType,
+      int maxBatchSize,
+      int bufferSize) {
+    super(cluster, batchMode, batchType, maxBatchSize);
     this.bufferSize = bufferSize;
   }
 

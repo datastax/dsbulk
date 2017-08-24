@@ -21,18 +21,34 @@ public class ReactorStatementBatcher extends StatementBatcher {
   /**
    * Creates a new {@link ReactorStatementBatcher} that produces {@link
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
-   * StatementBatcher.BatchMode#PARTITION_KEY partition key} mode and uses the {@link
-   * ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and the default {@link
-   * CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance.
+   * com.datastax.loader.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
+   * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
+   * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It also uses the
+   * default maximum batch size (100).
    */
   public ReactorStatementBatcher() {}
 
   /**
    * Creates a new {@link ReactorStatementBatcher} that produces {@link
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
-   * StatementBatcher.BatchMode#PARTITION_KEY partition key} mode and uses the given {@link Cluster}
-   * as its source for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry}
-   * instance to use.
+   * com.datastax.loader.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
+   * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
+   * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It uses the given
+   * maximum batch size.
+   *
+   * @param maxBatchSize The maximum batch size; must be &gt; 1.
+   */
+  public ReactorStatementBatcher(int maxBatchSize) {
+    super(maxBatchSize);
+  }
+
+  /**
+   * Creates a new {@link ReactorStatementBatcher} that produces {@link
+   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
+   * com.datastax.loader.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
+   * mode and uses the given {@link Cluster} as its source for the {@link ProtocolVersion protocol
+   * version} and the {@link CodecRegistry} instance to use. It also uses the default maximum batch
+   * size (100).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    */
@@ -43,9 +59,10 @@ public class ReactorStatementBatcher extends StatementBatcher {
   /**
    * Creates a new {@link ReactorStatementBatcher} that produces {@link
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in the
-   * specified {@link StatementBatcher.BatchMode batch mode} and uses the given {@link Cluster} as
-   * its source for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry}
-   * instance to use.
+   * specified {@link com.datastax.loader.executor.api.batch.StatementBatcher.BatchMode batch mode}
+   * and uses the given {@link Cluster} as its source for the {@link ProtocolVersion protocol
+   * version} and the {@link CodecRegistry} instance to use. It also uses the default maximum batch
+   * size (100).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
@@ -62,26 +79,29 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    * @param batchType The batch type to use; cannot be {@code null}.
+   * @param maxBatchSize The maximum batch size; must be &gt; 1.
    */
   public ReactorStatementBatcher(
-      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType) {
-    super(cluster, batchMode, batchType);
+      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBatchSize) {
+    super(cluster, batchMode, batchType, maxBatchSize);
   }
 
   /**
    * Batches together the given statements into groups of statements having the same grouping key.
    *
-   * <p>The grouping key to use is determined by the {@link StatementBatcher.BatchMode batch mode}
-   * in use by this statement batcher.
+   * <p>The grouping key to use is determined by the {@link
+   * com.datastax.loader.executor.api.batch.StatementBatcher.BatchMode batch mode} in use by this
+   * statement batcher.
    *
-   * <p>When {@link StatementBatcher.BatchMode#PARTITION_KEY PARTITION_KEY} is used, the grouping
-   * key is the statement's {@link Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing
-   * key} or {@link Statement#getRoutingToken() routing token}, whichever is available.
+   * <p>When {@link com.datastax.loader.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
+   * PARTITION_KEY} is used, the grouping key is the statement's {@link
+   * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or {@link
+   * Statement#getRoutingToken() routing token}, whichever is available.
    *
-   * <p>When {@link StatementBatcher.BatchMode#REPLICA_SET REPLICA_SET} is used, the grouping key is
-   * the replica set owning the statement's {@link Statement#getRoutingKey(ProtocolVersion,
-   * CodecRegistry) routing key} or {@link Statement#getRoutingToken() routing token}, whichever is
-   * available.
+   * <p>When {@link com.datastax.loader.executor.api.batch.StatementBatcher.BatchMode#REPLICA_SET
+   * REPLICA_SET} is used, the grouping key is the replica set owning the statement's {@link
+   * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or {@link
+   * Statement#getRoutingToken() routing token}, whichever is available.
    *
    * @param statements the statements to batch together.
    * @return A publisher of batched statements.
