@@ -13,10 +13,6 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
-import com.datastax.oss.simulacron.common.cluster.RequestPrime;
-import com.datastax.oss.simulacron.common.request.Query;
-import com.datastax.oss.simulacron.common.result.Result;
-import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.google.common.collect.ImmutableMap;
 import com.univocity.parsers.common.record.Record;
 import com.univocity.parsers.conversions.Conversion;
@@ -29,10 +25,6 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class CsvUtils {
@@ -79,6 +71,8 @@ public class CsvUtils {
       "INSERT INTO ip_by_country "
           + "(country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
           + "VALUES (?,?,?,?,?,?)";
+
+  public static final String SELECT_FROM_IP_BY_COUNTRY = "SELECT * FROM ip_by_country";
 
   public static void createIpByCountryTable(Session session) {
     session.execute(
@@ -198,45 +192,5 @@ public class CsvUtils {
           }
         },
         BackpressureStrategy.BUFFER);
-  }
-
-  public static RequestPrime createSimpleParameterizedQuery(String query) {
-    Map<String, String> paramTypes = new LinkedHashMap<>();
-    paramTypes.put("country_code", "ascii");
-    paramTypes.put("country_name", "ascii");
-    paramTypes.put("beginning_ip_address", "inet");
-    paramTypes.put("ending_ip_address", "inet");
-    paramTypes.put("beginning_ip_number", "bigint");
-    paramTypes.put("ending_ip_number", "bigint");
-    Query when = new Query(query, Collections.emptyList(), new HashMap<>(), paramTypes);
-    SuccessResult then = new SuccessResult(new ArrayList<>(), new HashMap<>());
-    return new RequestPrime(when, then);
-  }
-
-  public static RequestPrime createParameterizedQuery(
-      String query, Map<String, Object> params, Result then) {
-    Map<String, String> paramTypes = new LinkedHashMap<>();
-    paramTypes.put("country_code", "ascii");
-    paramTypes.put("country_name", "ascii");
-    paramTypes.put("beginning_ip_address", "inet");
-    paramTypes.put("ending_ip_address", "inet");
-    paramTypes.put("beginning_ip_number", "bigint");
-    paramTypes.put("ending_ip_number", "bigint");
-
-    Map<String, Object> defaultParams = new LinkedHashMap<>();
-    defaultParams.put("country_code", "*");
-    defaultParams.put("country_name", "*");
-    defaultParams.put("beginning_ip_address", "*");
-    defaultParams.put("ending_ip_address", "*");
-    defaultParams.put("beginning_ip_number", "*");
-    defaultParams.put("ending_ip_number", "*");
-
-    for (String key : params.keySet()) {
-      defaultParams.put(key, params.get(key));
-    }
-
-    Query when = new Query(query, Collections.emptyList(), defaultParams, paramTypes);
-
-    return new RequestPrime(when, then);
   }
 }

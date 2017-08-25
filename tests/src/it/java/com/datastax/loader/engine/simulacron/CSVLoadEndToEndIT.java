@@ -9,9 +9,9 @@ package com.datastax.loader.engine.simulacron;
 import static com.datastax.loader.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
 
 import com.datastax.loader.engine.WriteWorkflow;
-import com.datastax.loader.engine.internal.settings.LogSettings;
 import com.datastax.loader.tests.SimulacronRule;
 import com.datastax.loader.tests.utils.CsvUtils;
+import com.datastax.loader.tests.utils.EndToEndUtils;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -22,10 +22,6 @@ import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.result.SyntaxErrorResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,13 +31,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-public class CSVWriteEndToEndIT {
+public class CSVLoadEndToEndIT {
 
   @Rule public SimulacronRule simulacron = new SimulacronRule(ClusterSpec.builder().withNodes(1));
 
   @Before
   public void primeStatements() {
-    RequestPrime prime = CsvUtils.createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    RequestPrime prime = EndToEndUtils.createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.cluster().prime(new Prime(prime));
   }
 
@@ -53,7 +49,7 @@ public class CSVWriteEndToEndIT {
       "connector.name=csv",
       "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm() + "\"",
       "driver.query.consistency=ONE",
-      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
+      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "driver.protocol.compression=NONE",
       "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
       "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
@@ -71,7 +67,7 @@ public class CSVWriteEndToEndIT {
       "connector.name=csv",
       "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_CRLF.toExternalForm() + "\"",
       "driver.query.consistency=ONE",
-      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
+      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "driver.protocol.compression=NONE",
       "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
       "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
@@ -89,7 +85,7 @@ public class CSVWriteEndToEndIT {
       "connector.name=csv",
       "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_PARTIAL_BAD.toExternalForm() + "\"",
       "driver.query.consistency=LOCAL_ONE",
-      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
+      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "driver.protocol.compression=NONE",
       "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
       "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
@@ -98,8 +94,8 @@ public class CSVWriteEndToEndIT {
     WriteWorkflow writeWorkflow = new WriteWorkflow(args);
     writeWorkflow.execute();
     validateQueryCount(21, ConsistencyLevel.LOCAL_ONE);
-    validateBadOps(3);
-    validateExceptionsLog(3, "record-mapping-errors.log");
+    EndToEndUtils.validateBadOps(3);
+    EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");
   }
 
   @Test
@@ -109,7 +105,7 @@ public class CSVWriteEndToEndIT {
     HashMap<String, Object> params = new HashMap<>();
     params.put("country_name", "Sweden");
     RequestPrime prime1 =
-        CsvUtils.createParameterizedQuery(
+        EndToEndUtils.createParametrizedQuery(
             INSERT_INTO_IP_BY_COUNTRY,
             params,
             new SuccessResult(new ArrayList<>(), new HashMap<>()));
@@ -117,13 +113,13 @@ public class CSVWriteEndToEndIT {
 
     params.put("country_name", "France");
     prime1 =
-        CsvUtils.createParameterizedQuery(
+        EndToEndUtils.createParametrizedQuery(
             INSERT_INTO_IP_BY_COUNTRY, params, new SyntaxErrorResult("France is not a keyword"));
     simulacron.cluster().prime(new Prime(prime1));
 
     params.put("country_name", "Gregistan");
     prime1 =
-        CsvUtils.createParameterizedQuery(
+        EndToEndUtils.createParametrizedQuery(
             INSERT_INTO_IP_BY_COUNTRY,
             params,
             new WriteTimeoutResult(ConsistencyLevel.ONE, 0, 0, WriteType.BATCH));
@@ -131,7 +127,7 @@ public class CSVWriteEndToEndIT {
 
     params.put("country_name", "Andybaijan");
     prime1 =
-        CsvUtils.createParameterizedQuery(
+        EndToEndUtils.createParametrizedQuery(
             INSERT_INTO_IP_BY_COUNTRY,
             params,
             new AlreadyExistsResult("Not a real country", "keyspace", "table"));
@@ -140,7 +136,7 @@ public class CSVWriteEndToEndIT {
     params = new HashMap<>();
     params.put("country_name", "United States");
     prime1 =
-        CsvUtils.createParameterizedQuery(
+        EndToEndUtils.createParametrizedQuery(
             INSERT_INTO_IP_BY_COUNTRY, params, new SyntaxErrorResult("USA is not keyword"));
     simulacron.cluster().prime(new Prime(prime1));
 
@@ -149,7 +145,7 @@ public class CSVWriteEndToEndIT {
       "connector.name=csv",
       "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_ERROR.toExternalForm() + "\"",
       "driver.query.consistency=LOCAL_ONE",
-      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
+      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "driver.protocol.compression=NONE",
       "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
       "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
@@ -158,8 +154,8 @@ public class CSVWriteEndToEndIT {
     WriteWorkflow writeWorkflow = new WriteWorkflow(args);
     writeWorkflow.execute();
     validateQueryCount(24, ConsistencyLevel.LOCAL_ONE);
-    validateBadOps(4);
-    validateExceptionsLog(4, "write-errors.log");
+    EndToEndUtils.validateBadOps(4);
+    EndToEndUtils.validateExceptionsLog(4, "Source  :", "write-errors.log");
   }
 
   @Test
@@ -170,7 +166,7 @@ public class CSVWriteEndToEndIT {
       "connector.name=csv",
       "connector.csv.url=\"" + CsvUtils.CSV_RECORDS_SKIP.toExternalForm() + "\"",
       "driver.query.consistency=LOCAL_ONE",
-      "driver.contactPoints=" + fetchSimulacronContactPointsForArg(),
+      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "driver.protocol.compression=NONE",
       "connector.csv.linesToSkip=3",
       "connector.csv.maxLines=24",
@@ -180,25 +176,8 @@ public class CSVWriteEndToEndIT {
     WriteWorkflow writeWorkflow = new WriteWorkflow(args);
     writeWorkflow.execute();
     validateQueryCount(21, ConsistencyLevel.LOCAL_ONE);
-    validateBadOps(3);
-    validateExceptionsLog(3, "record-mapping-errors.log");
-  }
-
-  private void validateBadOps(int size) throws Exception {
-    Path logPath = getLogDirectory();
-    Path badOps = logPath.resolve("operation.bad");
-    List<String> lines = Files.lines(badOps, Charset.defaultCharset()).collect(Collectors.toList());
-    Assertions.assertThat(lines.size()).isEqualTo(size);
-  }
-
-  private void validateExceptionsLog(int size, String file_name) throws Exception {
-    Path logPath = getLogDirectory();
-    Path exceptionFile = logPath.resolve(file_name);
-    List<String> exceptionLines =
-        Files.lines(exceptionFile, Charset.defaultCharset()).collect(Collectors.toList());
-    List<String> sourceErrors =
-        exceptionLines.stream().filter(l -> l.startsWith("Source  :")).collect(Collectors.toList());
-    Assertions.assertThat(sourceErrors.size()).isEqualTo(size);
+    EndToEndUtils.validateBadOps(3);
+    EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");
   }
 
   private void validateQueryCount(int numOfQueries, ConsistencyLevel level) {
@@ -211,14 +190,5 @@ public class CSVWriteEndToEndIT {
     for (QueryLog log : ipLogs) {
       Assertions.assertThat(log.getConsistency()).isEqualTo(level);
     }
-  }
-
-  private Path getLogDirectory() {
-    String logPath = System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY);
-    return Paths.get(logPath);
-  }
-
-  private String fetchSimulacronContactPointsForArg() {
-    return "[\"" + simulacron.getContactPoints().iterator().next().toString().substring(1) + "\"]";
   }
 }

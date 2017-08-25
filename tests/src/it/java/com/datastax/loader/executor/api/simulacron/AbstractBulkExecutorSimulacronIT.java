@@ -27,6 +27,7 @@ import com.datastax.loader.executor.api.result.WriteResult;
 import com.datastax.loader.tests.ClusterRule;
 import com.datastax.loader.tests.SimulacronRule;
 import com.datastax.loader.tests.utils.CsvUtils;
+import com.datastax.loader.tests.utils.EndToEndUtils;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
@@ -83,7 +84,7 @@ public abstract class AbstractBulkExecutorSimulacronIT {
   @BeforeClass
   public static void createTableAndPreparedStatement() {
     //cluster = new ClusterRule(simulacron, new ClusterConfigConcrete());
-    RequestPrime prime = CsvUtils.createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    RequestPrime prime = EndToEndUtils.createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.cluster().prime(new Prime(prime));
     simulacron.cluster().prime(when("should fail").then(syntaxError("Bad Syntax")));
     SuccessResult successResult = createLargeSuccessResult();
