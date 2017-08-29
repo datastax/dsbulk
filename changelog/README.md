@@ -28,3 +28,4 @@
 - [new feature] DAT-64: Implement connector writes.
 - [new feature] DAT-63: Support writing to standard output.
 - [improvement] DAT-42: Add LOADER_JAVA_OPTS env var support to allow users to set JVM options.
+- [improvement] DAT-62: Add end-to-end tests for CSV read workflow
