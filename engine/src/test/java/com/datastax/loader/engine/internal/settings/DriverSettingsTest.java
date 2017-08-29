@@ -61,10 +61,8 @@ public class DriverSettingsTest {
   public void should_create_mapper_when_hosts_provided() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-
-                ConfigFactory.parseString(
-                        "port = 9876, hosts = [ \"1.2.3.4:9042\", \"2.3.4.5\" ]")
-                    .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+            ConfigFactory.parseString("port = 9876, hosts = [ \"1.2.3.4:9042\", \"2.3.4.5\" ]")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();

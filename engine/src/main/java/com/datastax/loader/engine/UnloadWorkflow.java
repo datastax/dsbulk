@@ -30,8 +30,6 @@ import com.datastax.loader.engine.internal.settings.SchemaSettings;
 import com.datastax.loader.engine.internal.settings.SettingsManager;
 import com.datastax.loader.executor.api.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
-import java.net.URL;
-import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
