@@ -27,4 +27,5 @@
 - [bug] DAT-69: CSV Connector fails to parse files with non-native line-ending.
 - [new feature] DAT-64: Implement connector writes.
 - [new feature] DAT-63: Support writing to standard output.
+- [improvement] DAT-74: executor.maxPerSecond and executor.maxInflight should account for batch size.
 - [improvement] DAT-42: Add LOADER_JAVA_OPTS env var support to allow users to set JVM options.
