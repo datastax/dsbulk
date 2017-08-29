@@ -186,4 +186,4 @@ while [ $# -gt 0 ] ; do
 done
 
 # Run the tool.
-$JAVA com.datastax.loader.engine.WriteWorkflow $LOADER_CONFIG
+$JAVA $LOADER_JAVA_OPTS com.datastax.loader.engine.WriteWorkflow $LOADER_CONFIG

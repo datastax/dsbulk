@@ -20,6 +20,7 @@ import com.datastax.loader.engine.internal.settings.BatchSettings;
 import com.datastax.loader.engine.internal.settings.CodecSettings;
 import com.datastax.loader.engine.internal.settings.ConnectorSettings;
 import com.datastax.loader.engine.internal.settings.DriverSettings;
+import com.datastax.loader.engine.internal.settings.EngineSettings;
 import com.datastax.loader.engine.internal.settings.ExecutorSettings;
 import com.datastax.loader.engine.internal.settings.LogSettings;
 import com.datastax.loader.engine.internal.settings.MonitoringSettings;
@@ -31,6 +32,8 @@ import java.net.URL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 /** The main class for write workflows. */
 public class WriteWorkflow {
@@ -52,6 +55,7 @@ public class WriteWorkflow {
   private final LogSettings logSettings;
   private final CodecSettings codecSettings;
   private final MonitoringSettings monitoringSettings;
+  private final EngineSettings engineSettings;
 
   public WriteWorkflow(String[] args) throws Exception {
     SettingsManager settingsManager = new SettingsManager(args, executionId);
@@ -65,12 +69,16 @@ public class WriteWorkflow {
     executorSettings = settingsManager.getExecutorSettings();
     codecSettings = settingsManager.getCodecSettings();
     monitoringSettings = settingsManager.getMonitoringSettings();
+    engineSettings = settingsManager.getEngineSettings();
   }
 
   public void execute() {
 
     LOGGER.info("Starting write workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
+
+    int maxMappingThreads = engineSettings.getMaxMappingThreads();
+    Scheduler mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
 
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.connect();
@@ -89,17 +97,22 @@ public class WriteWorkflow {
               session, connector.getRecordMetadata(), codecSettings.createCodecRegistry(cluster));
 
       Flux.from(connector.read())
+          .parallel(maxMappingThreads)
+          .runOn(mapperScheduler)
           .map(recordMapper::map)
-          .compose(metricsManager.newRecordMapperMonitor())
-          .compose(logManager.newRecordMapperErrorHandler())
-          .compose(batchSettings.newStatementBatcher(cluster))
-          .compose(metricsManager.newBatcherMonitor())
+          .composeGroup(metricsManager.newRecordMapperMonitor())
+          .composeGroup(logManager.newRecordMapperErrorHandler())
+          .composeGroup(batchSettings.newStatementBatcher(cluster))
+          .composeGroup(metricsManager.newBatcherMonitor())
           .flatMap(executor::writeReactive)
-          .compose(logManager.newWriteErrorHandler())
+          .composeGroup(logManager.newWriteErrorHandler())
+          .sequential()
           .blockLast();
 
     } catch (Exception e) {
       LOGGER.error("Uncaught exception during write workflow engine execution " + executionId, e);
+    } finally {
+      mapperScheduler.dispose();
     }
 
     timer.stop();
