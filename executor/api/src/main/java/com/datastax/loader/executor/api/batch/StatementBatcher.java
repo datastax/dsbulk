@@ -14,9 +14,12 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.Token;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -65,18 +68,22 @@ public class StatementBatcher {
     REPLICA_SET
   }
 
+  public static final int DEFAULT_MAX_BATCH_SIZE = 100;
+
   protected final Cluster cluster;
   protected final BatchMode batchMode;
   protected final BatchStatement.Type batchType;
   protected final ProtocolVersion protocolVersion;
   protected final CodecRegistry codecRegistry;
+  protected final int maxBatchSize;
 
   /**
    * Creates a new {@link StatementBatcher} that produces {@link
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
    * BatchMode#PARTITION_KEY partition key} mode and uses the {@link
    * ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and the default {@link
-   * CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance.
+   * CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It also uses the default maximum batch
+   * size (100).
    */
   public StatementBatcher() {
     this.cluster = null;
@@ -84,6 +91,25 @@ public class StatementBatcher {
     this.batchType = BatchStatement.Type.UNLOGGED;
     protocolVersion = ProtocolVersion.NEWEST_SUPPORTED;
     codecRegistry = CodecRegistry.DEFAULT_INSTANCE;
+    maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
+  }
+
+  /**
+   * Creates a new {@link StatementBatcher} that produces {@link
+   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
+   * BatchMode#PARTITION_KEY partition key} mode and uses the {@link
+   * ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and the default {@link
+   * CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It uses the given maximum batch size.
+   *
+   * @param maxBatchSize The maximum batch size; must be &gt; 1.
+   */
+  public StatementBatcher(int maxBatchSize) {
+    this.cluster = null;
+    this.batchMode = BatchMode.PARTITION_KEY;
+    this.batchType = BatchStatement.Type.UNLOGGED;
+    protocolVersion = ProtocolVersion.NEWEST_SUPPORTED;
+    codecRegistry = CodecRegistry.DEFAULT_INSTANCE;
+    this.maxBatchSize = maxBatchSize;
   }
 
   /**
@@ -91,6 +117,7 @@ public class StatementBatcher {
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
    * BatchMode#PARTITION_KEY partition key} mode and uses the given {@link Cluster} as its source
    * for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
+   * It also uses the default maximum batch size (100).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    */
@@ -102,13 +129,14 @@ public class StatementBatcher {
    * Creates a new {@link StatementBatcher} that produces {@link
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in the
    * specified {@link BatchMode batch mode} and uses the given {@link Cluster} as its source for the
-   * {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
+   * {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use. It also
+   * uses the default maximum batch size (100).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    */
   public StatementBatcher(Cluster cluster, BatchMode batchMode) {
-    this(cluster, batchMode, BatchStatement.Type.UNLOGGED);
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, DEFAULT_MAX_BATCH_SIZE);
   }
 
   /**
@@ -119,13 +147,19 @@ public class StatementBatcher {
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    * @param batchType The batch type to use; cannot be {@code null}.
+   * @param maxBatchSize The maximum batch size; must be &gt; 1.
    */
-  public StatementBatcher(Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType) {
+  public StatementBatcher(
+      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBatchSize) {
     this.cluster = Objects.requireNonNull(cluster);
     this.batchMode = Objects.requireNonNull(batchMode);
     this.batchType = Objects.requireNonNull(batchType);
     protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
     codecRegistry = cluster.getConfiguration().getCodecRegistry();
+    if (maxBatchSize <= 1) {
+      throw new IllegalArgumentException("Maximum batch size must be greater than 1");
+    }
+    this.maxBatchSize = maxBatchSize;
   }
 
   /**
@@ -171,7 +205,7 @@ public class StatementBatcher {
         .collect(Collectors.groupingBy(this::groupingKey))
         .values()
         .stream()
-        .map(this::maybeBatch)
+        .flatMap(stmts -> maybeBatch(stmts).stream())
         .collect(Collectors.toList());
   }
 
@@ -186,10 +220,10 @@ public class StatementBatcher {
    * lead to write throughput degradation.
    *
    * @param statements the statements to batch together.
-   * @return A single {@link BatchStatement} containing all the given statements batched together,
+   * @return A list of {@link BatchStatement}s containing all the given statements batched together,
    *     or the original statement, if only one was provided.
    */
-  public Statement batchAll(Statement... statements) {
+  public List<Statement> batchAll(Statement... statements) {
     return batchAll(Arrays.asList(statements));
   }
 
@@ -204,23 +238,27 @@ public class StatementBatcher {
    * lead to write throughput degradation.
    *
    * @param statements the statements to batch together.
-   * @return A single {@link BatchStatement} containing all the given statements batched together,
+   * @return A list of {@link BatchStatement}s containing all the given statements batched together,
    *     or the original statement, if only one was provided.
    */
-  public Statement batchAll(Collection<? extends Statement> statements) {
+  public List<Statement> batchAll(Collection<? extends Statement> statements) {
     return maybeBatch(statements);
   }
 
-  private Statement maybeBatch(Collection<? extends Statement> stmts) {
+  private List<Statement> maybeBatch(Collection<? extends Statement> stmts) {
     Objects.requireNonNull(stmts);
     Preconditions.checkArgument(!stmts.isEmpty());
     // Don't wrap single statements in batch.
     if (stmts.size() == 1) {
-      return stmts.iterator().next();
+      return Collections.singletonList(stmts.iterator().next());
     } else {
-      BatchStatement batch = new BatchStatement(batchType);
-      stmts.forEach(batch::add);
-      return batch;
+      List<Statement> batches = new ArrayList<>(stmts.size() / maxBatchSize);
+      for (List<? extends Statement> chunk : Iterables.partition(stmts, maxBatchSize)) {
+        BatchStatement batch = new BatchStatement(batchType);
+        chunk.forEach(batch::add);
+        batches.add(batch);
+      }
+      return batches;
     }
   }
 

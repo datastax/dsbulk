@@ -8,6 +8,7 @@ package com.datastax.loader.executor.api.batch;
 
 import static com.datastax.driver.core.BatchStatement.Type.UNLOGGED;
 import static com.datastax.loader.executor.api.batch.StatementBatcher.BatchMode.REPLICA_SET;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
@@ -26,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -81,9 +81,7 @@ public class StatementBatcherTest {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
-    Assertions.assertThat(statements)
-        .usingFieldByFieldElementComparator()
-        .contains(batch126, batch34, stmt5);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch126, batch34, stmt5);
   }
 
   @Test
@@ -92,9 +90,7 @@ public class StatementBatcherTest {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
-    Assertions.assertThat(statements)
-        .usingFieldByFieldElementComparator()
-        .contains(batch1256, batch34);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch1256, batch34);
   }
 
   @Test
@@ -108,9 +104,7 @@ public class StatementBatcherTest {
     StatementBatcher batcher = new StatementBatcher(cluster, REPLICA_SET);
     List<Statement> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
-    Assertions.assertThat(statements)
-        .usingFieldByFieldElementComparator()
-        .contains(batch1256, batch34);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch1256, batch34);
   }
 
   @Test
@@ -124,9 +118,7 @@ public class StatementBatcherTest {
     StatementBatcher batcher = new StatementBatcher(cluster, REPLICA_SET);
     List<Statement> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
-    Assertions.assertThat(statements)
-        .usingFieldByFieldElementComparator()
-        .contains(batch1256, batch34);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch1256, batch34);
   }
 
   @Test
@@ -140,9 +132,7 @@ public class StatementBatcherTest {
     StatementBatcher batcher = new StatementBatcher(cluster, REPLICA_SET);
     List<Statement> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
-    Assertions.assertThat(statements)
-        .usingFieldByFieldElementComparator()
-        .contains(batch126, batch34, stmt5);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch126, batch34, stmt5);
   }
 
   @Test
@@ -156,16 +146,16 @@ public class StatementBatcherTest {
     StatementBatcher batcher = new StatementBatcher(cluster, REPLICA_SET);
     List<Statement> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
-    Assertions.assertThat(statements)
-        .usingFieldByFieldElementComparator()
-        .contains(batch1256, batch34);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch1256, batch34);
   }
 
   @Test
   public void should_batch_all() throws Exception {
     StatementBatcher batcher = new StatementBatcher();
-    Statement statement = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
-    Assertions.assertThat(((BatchStatement) statement).getStatements())
+    List<Statement> statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
+    assertThat(statements).hasSize(1);
+    Statement statement = statements.get(0);
+    assertThat(((BatchStatement) statement).getStatements())
         .containsExactly(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
   }
 
@@ -173,14 +163,16 @@ public class StatementBatcherTest {
   public void should_not_batch_one_statement_when_batching_by_routing_key() throws Exception {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements = batcher.batchByGroupingKey(stmt1);
-    Assertions.assertThat(statements).containsOnly(stmt1);
+    assertThat(statements).containsOnly(stmt1);
   }
 
   @Test
   public void should_not_batch_one_statement_when_batching_all() throws Exception {
     StatementBatcher batcher = new StatementBatcher();
-    Statement statement = batcher.batchAll(stmt1);
-    Assertions.assertThat(statement).isSameAs(stmt1);
+    List<Statement> statements = batcher.batchAll(stmt1);
+    assertThat(statements).hasSize(1);
+    Statement statement = statements.get(0);
+    assertThat(statement).isSameAs(stmt1);
   }
 
   protected void assignRoutingKeys() {

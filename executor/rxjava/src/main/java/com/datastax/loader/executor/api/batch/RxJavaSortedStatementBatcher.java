@@ -34,35 +34,29 @@ import io.reactivex.functions.Predicate;
 public class RxJavaSortedStatementBatcher extends RxJavaStatementBatcher
     implements FlowableTransformer<Statement, Statement> {
 
-  /** The default maximum size for a batch. */
-  public static final int DEFAULT_MAX_BUFFER_SIZE = 1000;
-
-  private final int maxBufferSize;
-
   public RxJavaSortedStatementBatcher() {
-    this(DEFAULT_MAX_BUFFER_SIZE);
+    this(DEFAULT_MAX_BATCH_SIZE);
   }
 
-  public RxJavaSortedStatementBatcher(int maxBufferSize) {
-    this.maxBufferSize = maxBufferSize;
+  public RxJavaSortedStatementBatcher(int maxBatchSize) {
+    super(maxBatchSize);
   }
 
   public RxJavaSortedStatementBatcher(Cluster cluster) {
-    this(cluster, DEFAULT_MAX_BUFFER_SIZE);
+    this(cluster, DEFAULT_MAX_BATCH_SIZE);
   }
 
-  public RxJavaSortedStatementBatcher(Cluster cluster, int maxBufferSize) {
-    this(cluster, BatchMode.PARTITION_KEY, maxBufferSize);
+  public RxJavaSortedStatementBatcher(Cluster cluster, int maxBatchSize) {
+    this(cluster, BatchMode.PARTITION_KEY, maxBatchSize);
   }
 
-  public RxJavaSortedStatementBatcher(Cluster cluster, BatchMode batchMode, int maxBufferSize) {
-    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBufferSize);
+  public RxJavaSortedStatementBatcher(Cluster cluster, BatchMode batchMode, int maxBatchSize) {
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchSize);
   }
 
   public RxJavaSortedStatementBatcher(
-      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBufferSize) {
-    super(cluster, batchMode, batchType);
-    this.maxBufferSize = maxBufferSize;
+      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBatchSize) {
+    super(cluster, batchMode, batchType, maxBatchSize);
   }
 
   @Override
@@ -70,7 +64,7 @@ public class RxJavaSortedStatementBatcher extends RxJavaStatementBatcher
     Flowable<Statement> connectableFlowable = upstream.publish().autoConnect(2);
     Flowable<Statement> boundarySelector =
         connectableFlowable.filter(new StatementBatcherPredicate());
-    return connectableFlowable.buffer(boundarySelector).map(this::batchAll);
+    return connectableFlowable.buffer(boundarySelector).flatMapIterable(this::batchAll);
   }
 
   private class StatementBatcherPredicate implements Predicate<Statement> {
@@ -81,7 +75,7 @@ public class RxJavaSortedStatementBatcher extends RxJavaStatementBatcher
 
     @Override
     public boolean test(Statement statement) {
-      boolean bufferFull = ++size > maxBufferSize;
+      boolean bufferFull = ++size > maxBatchSize;
       Object groupingKey = groupingKey(statement);
       boolean groupingKeyChanged =
           this.groupingKey != null && !this.groupingKey.equals(groupingKey);

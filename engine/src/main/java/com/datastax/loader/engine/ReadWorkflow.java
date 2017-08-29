@@ -22,6 +22,7 @@ import com.datastax.loader.engine.internal.schema.ReadResultMapper;
 import com.datastax.loader.engine.internal.settings.CodecSettings;
 import com.datastax.loader.engine.internal.settings.ConnectorSettings;
 import com.datastax.loader.engine.internal.settings.DriverSettings;
+import com.datastax.loader.engine.internal.settings.EngineSettings;
 import com.datastax.loader.engine.internal.settings.ExecutorSettings;
 import com.datastax.loader.engine.internal.settings.LogSettings;
 import com.datastax.loader.engine.internal.settings.MonitoringSettings;
@@ -30,7 +31,6 @@ import com.datastax.loader.engine.internal.settings.SettingsManager;
 import com.datastax.loader.executor.api.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
 import java.net.URL;
-import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -56,6 +56,7 @@ public class ReadWorkflow {
   private final LogSettings logSettings;
   private final CodecSettings codecSettings;
   private final MonitoringSettings monitoringSettings;
+  private final EngineSettings engineSettings;
 
   public ReadWorkflow(String[] args) throws Exception {
     SettingsManager settingsManager = new SettingsManager(args, executionId);
@@ -68,12 +69,19 @@ public class ReadWorkflow {
     executorSettings = settingsManager.getExecutorSettings();
     codecSettings = settingsManager.getCodecSettings();
     monitoringSettings = settingsManager.getMonitoringSettings();
+    engineSettings = settingsManager.getEngineSettings();
   }
 
   public void execute() {
 
     LOGGER.info("Starting read workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
+
+    int maxConcurrentReads = engineSettings.getMaxConcurrentReads();
+    int maxMappingThreads = engineSettings.getMaxMappingThreads();
+
+    Scheduler readsScheduler = Schedulers.newParallel("range-reads", maxConcurrentReads);
+    Scheduler mapperScheduler = Schedulers.newParallel("result-mapper", maxMappingThreads);
 
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.connect();
@@ -91,19 +99,19 @@ public class ReadWorkflow {
       ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
       ReadResultMapper readResultMapper =
           schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-      ThreadPoolExecutor threadPool = executorSettings.getExecutorThreadPool();
-      Scheduler executorScheduler = Schedulers.fromExecutor(threadPool);
-      int maxConcurrentReads = executorSettings.getMaxConcurrentReads();
 
       Flux<Record> records =
           Flux.fromIterable(schemaSettings.createReadStatements(cluster))
               .flatMap(
-                  statement -> executor.readReactive(statement).subscribeOn(executorScheduler),
+                  statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
                   maxConcurrentReads)
-              .compose(logManager.newReadErrorHandler())
+              .parallel(maxMappingThreads)
+              .runOn(mapperScheduler)
+              .composeGroup(logManager.newReadErrorHandler())
               .map(readResultMapper::map)
-              .compose(metricsManager.newResultMapperMonitor())
-              .compose(logManager.newResultMapperErrorHandler())
+              .composeGroup(metricsManager.newResultMapperMonitor())
+              .composeGroup(logManager.newResultMapperErrorHandler())
+              .sequential()
               .publish()
               .autoConnect(2);
 
@@ -114,6 +122,9 @@ public class ReadWorkflow {
 
     } catch (Exception e) {
       LOGGER.error("Uncaught exception during read workflow engine execution " + executionId, e);
+    } finally {
+      readsScheduler.dispose();
+      mapperScheduler.dispose();
     }
 
     timer.stop();
