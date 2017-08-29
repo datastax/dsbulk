@@ -9,17 +9,17 @@ package com.datastax.loader.engine;
 import com.datastax.loader.commons.config.LoaderConfig;
 
 public enum WorkflowType {
-  WRITE {
+  LOAD {
     @Override
     public Workflow newWorkflow(LoaderConfig config) throws Exception {
-      return new WriteWorkflow(config);
+      return new LoadWorkflow(config);
     }
   },
 
-  READ {
+  UNLOAD {
     @Override
     public Workflow newWorkflow(LoaderConfig config) throws Exception {
-      return new ReadWorkflow(config);
+      return new UnloadWorkflow(config);
     }
   };
 

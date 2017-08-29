@@ -52,19 +52,18 @@ public class DriverSettingsTest {
   public void should_not_create_mapper_when_contact_points_not_provided() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.batch")));
+            new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.newCluster();
   }
 
   @Test
-  public void should_create_mapper_when_contact_points_provided() throws Exception {
+  public void should_create_mapper_when_hosts_provided() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             new DefaultLoaderConfig(
-                ConfigFactory.parseString(
-                        "port = 9876, contactPoints = [ \"1.2.3.4:9042\", \"2.3.4.5\" ]")
-                    .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver"))));
+                ConfigFactory.parseString("port = 9876, hosts = [ \"1.2.3.4:9042\", \"2.3.4.5\" ]")
+                    .withFallback(ConfigFactory.load().getConfig("dsbulk.driver"))));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -114,7 +113,7 @@ public class DriverSettingsTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     " auth { provider = PlainTextAuthProvider, username = alice, password = s3cr3t }")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -131,7 +130,7 @@ public class DriverSettingsTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     " auth { provider = DsePlainTextAuthProvider, username = alice, password = s3cr3t, authorizationId = bob }")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -155,7 +154,7 @@ public class DriverSettingsTest {
                         + "keyTab = \"file:///path/to/my/keyTab\", "
                         + "authorizationId = \"bob@DATASTAX.COM\","
                         + "saslProtocol = foo }")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -185,7 +184,7 @@ public class DriverSettingsTest {
                         + "principal = \"alice@DATASTAX.COM\", "
                         + "authorizationId = \"bob@DATASTAX.COM\","
                         + "saslProtocol = foo }")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -223,7 +222,7 @@ public class DriverSettingsTest {
                             + "}"
                             + "}",
                         keystore, truststore))
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -256,7 +255,7 @@ public class DriverSettingsTest {
                             + "}"
                             + "}",
                         keyCertChain, privateKey, truststore))
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.driver")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();

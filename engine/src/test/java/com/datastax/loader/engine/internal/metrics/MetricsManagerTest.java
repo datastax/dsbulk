@@ -96,7 +96,7 @@ public class MetricsManagerTest {
   public void should_increment_records() throws Exception {
     MetricsManager manager =
         new MetricsManager(
-            WorkflowType.READ,
+            WorkflowType.UNLOAD,
             "test",
             Executors.newSingleThreadScheduledExecutor(),
             SECONDS,
@@ -119,7 +119,7 @@ public class MetricsManagerTest {
   public void should_increment_mappings() throws Exception {
     MetricsManager manager =
         new MetricsManager(
-            WorkflowType.WRITE,
+            WorkflowType.LOAD,
             "test",
             Executors.newSingleThreadScheduledExecutor(),
             SECONDS,
@@ -142,7 +142,7 @@ public class MetricsManagerTest {
   public void should_increment_batches() throws Exception {
     MetricsManager manager =
         new MetricsManager(
-            WorkflowType.WRITE,
+            WorkflowType.LOAD,
             "test",
             Executors.newSingleThreadScheduledExecutor(),
             SECONDS,

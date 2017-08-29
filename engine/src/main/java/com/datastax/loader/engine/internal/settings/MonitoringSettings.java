@@ -36,7 +36,7 @@ public class MonitoringSettings {
     ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(1, threadFactory);
     TimeUnit rateUnit = config.getEnum(TimeUnit.class, "rateUnit");
     TimeUnit durationUnit = config.getEnum(TimeUnit.class, "durationUnit");
-    Duration reportInterval = config.getDuration("reportInterval");
+    Duration reportInterval = config.getDuration("reportRate");
     long expectedWrites = config.getLong("expectedWrites");
     long expectedReads = config.getLong("expectedReads");
     boolean jmx = config.getBoolean("jmx");

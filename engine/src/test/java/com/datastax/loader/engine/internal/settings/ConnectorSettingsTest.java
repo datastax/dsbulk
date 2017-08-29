@@ -23,7 +23,7 @@ import org.junit.rules.ExpectedException;
 
 public class ConnectorSettingsTest {
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
-      ConfigFactory.defaultReference().getConfig("datastax-loader.connector");
+      ConfigFactory.defaultReference().getConfig("dsbulk.connector");
 
   @Rule public ExpectedException exception = ExpectedException.none();
 
@@ -51,7 +51,7 @@ public class ConnectorSettingsTest {
   private static void assertCSVConnectorSettings(
       ConnectorSettings connectorSettings, LoaderConfig config, String connectorName)
       throws Exception {
-    Connector connector = connectorSettings.getConnector(WorkflowType.WRITE);
+    Connector connector = connectorSettings.getConnector(WorkflowType.LOAD);
     assertThat(connector).isNotNull().isInstanceOf(CSVConnector.class);
     assertThat(config.getConfig(connectorName))
         .hasPaths(
@@ -65,7 +65,7 @@ public class ConnectorSettingsTest {
             "quote",
             "escape",
             "comment",
-            "linesToSkip",
+            "skipLines",
             "maxLines")
         .doesNotHavePath(connectorName);
   }
@@ -76,7 +76,7 @@ public class ConnectorSettingsTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                 "name: com.datastax.loader.connectors.json.JsonConnector,  com.datastax.loader.connectors.json.JsonConnector{ url:\"file:///a/b.json\"}"));
-    Connector connector = new ConnectorSettings(config).getConnector(WorkflowType.WRITE);
+    Connector connector = new ConnectorSettings(config).getConnector(WorkflowType.LOAD);
     assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
   }
 
@@ -86,7 +86,7 @@ public class ConnectorSettingsTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                 "name: jsonConnector, jsonConnector{ url:\"file:///a/b.json\"}"));
-    Connector connector = new ConnectorSettings(config).getConnector(WorkflowType.WRITE);
+    Connector connector = new ConnectorSettings(config).getConnector(WorkflowType.LOAD);
     assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
   }
 
@@ -95,7 +95,7 @@ public class ConnectorSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("name: json, json{ url:\"file:///a/b.json\"}"));
-    Connector connector = new ConnectorSettings(config).getConnector(WorkflowType.WRITE);
+    Connector connector = new ConnectorSettings(config).getConnector(WorkflowType.LOAD);
     assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
   }
 
@@ -107,7 +107,7 @@ public class ConnectorSettingsTest {
     exception.expect(IllegalArgumentException.class);
     exception.expectMessage("Cannot find connector 'foo'; available connectors are");
     ConnectorSettings connectorSettings = new ConnectorSettings(config);
-    connectorSettings.getConnector(WorkflowType.WRITE);
+    connectorSettings.getConnector(WorkflowType.LOAD);
   }
 
   private Config replaceDefaultConnectorPathWithName(

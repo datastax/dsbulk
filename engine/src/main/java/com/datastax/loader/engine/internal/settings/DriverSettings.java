@@ -67,7 +67,7 @@ public class DriverSettings {
     DseCluster.Builder builder = DseCluster.builder().withClusterName(executionId + "-driver");
     int defaultPort = config.getInt("port");
     config
-        .getStringList("contactPoints")
+        .getStringList("hosts")
         .forEach(
             s -> {
               String[] tokens = s.split(":");

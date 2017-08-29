@@ -44,8 +44,7 @@ public class BatchSettingsTest {
 
   @Test
   public void should_create_unsorted_batcher_when_mode_is_default() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.batch"));
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch"));
     BatchSettings settings = new BatchSettings(config);
     Function<? super Flux<Statement>, ? extends Flux<Statement>> batcher =
         settings.newStatementBatcher(cluster);

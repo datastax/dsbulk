@@ -45,8 +45,7 @@ public class LogSettingsTest {
 
   @Test
   public void should_create_log_manager_with_default_output_directory() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.log"));
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.log"));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(cluster);
     try {
@@ -69,7 +68,7 @@ public class LogSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("outputDirectory = \"" + dir + "\"")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.log")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(cluster);
     logManager.init();
@@ -83,7 +82,7 @@ public class LogSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("outputDirectory = \"" + dir.toString() + "\"")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.log")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(cluster);
     logManager.init();

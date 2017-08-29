@@ -49,22 +49,22 @@ public class CSVWriteEndToEndIT {
   public void full_load() throws Exception {
 
     String[] args = {
-      "write",
-      "log.outputDirectory",
+      "load",
+      "--log.outputDirectory",
       "./target",
-      "connector.name",
+      "--connector.name",
       "csv",
-      "connector.csv.url",
+      "--connector.csv.url",
       "\"" + CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm() + "\"",
-      "driver.query.consistency",
+      "--driver.query.consistency",
       "ONE",
-      "driver.contactPoints",
+      "--driver.hosts",
       "" + fetchSimulacronContactPointsForArg(),
-      "driver.protocol.compression",
+      "--driver.protocol.compression",
       "NONE",
-      "schema.statement",
+      "--schema.statement",
       "\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
     new Main(args);
@@ -75,22 +75,22 @@ public class CSVWriteEndToEndIT {
   public void full_load_crlf() throws Exception {
 
     String[] args = {
-      "write",
-      "log.outputDirectory",
+      "load",
+      "--log.outputDirectory",
       "\"./target\"",
-      "connector.name",
+      "--connector.name",
       "csv",
-      "connector.csv.url",
+      "--connector.csv.url",
       "\"" + CsvUtils.CSV_RECORDS_CRLF.toExternalForm() + "\"",
-      "driver.query.consistency",
+      "--driver.query.consistency",
       "ONE",
-      "driver.contactPoints",
+      "--driver.hosts",
       "" + fetchSimulacronContactPointsForArg(),
-      "driver.protocol.compression",
+      "--driver.protocol.compression",
       "NONE",
-      "schema.statement",
+      "--schema.statement",
       "\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
     new Main(args);
@@ -101,22 +101,22 @@ public class CSVWriteEndToEndIT {
   public void partial_load() throws Exception {
 
     String[] args = {
-      "write",
-      "log.outputDirectory",
+      "load",
+      "--log.outputDirectory",
       "./target",
-      "connector.name",
+      "--connector.name",
       "csv",
-      "connector.csv.url",
+      "--connector.csv.url",
       "\"" + CsvUtils.CSV_RECORDS_PARTIAL_BAD.toExternalForm() + "\"",
-      "driver.query.consistency",
+      "--driver.query.consistency",
       "LOCAL_ONE",
-      "driver.contactPoints",
+      "--driver.hosts",
       "" + fetchSimulacronContactPointsForArg(),
-      "driver.protocol.compression",
+      "--driver.protocol.compression",
       "NONE",
-      "schema.statement",
+      "--schema.statement",
       "\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
     new Main(args);
@@ -168,53 +168,53 @@ public class CSVWriteEndToEndIT {
     simulacron.cluster().prime(new Prime(prime1));
 
     String[] args = {
-      "write",
-      "log.outputDirectory",
+      "load",
+      "--log.outputDirectory",
       "./target",
-      "connector.name",
+      "--connector.name",
       "csv",
-      "connector.csv.url",
+      "--connector.csv.url",
       "\"" + CsvUtils.CSV_RECORDS_ERROR.toExternalForm() + "\"",
-      "driver.query.consistency",
+      "--driver.query.consistency",
       "LOCAL_ONE",
-      "driver.contactPoints",
+      "--driver.hosts",
       "" + fetchSimulacronContactPointsForArg(),
-      "driver.protocol.compression",
+      "--driver.protocol.compression",
       "NONE",
-      "schema.statement",
+      "--schema.statement",
       "\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
     new Main(args);
     validateQueryCount(24, ConsistencyLevel.LOCAL_ONE);
     validateBadOps(4);
-    validateExceptionsLog(4, "write-errors.log");
+    validateExceptionsLog(4, "load-errors.log");
   }
 
   @Test
   public void skip_test_load() throws Exception {
 
     String[] args = {
-      "write",
-      "log.outputDirectory",
+      "load",
+      "--log.outputDirectory",
       "./target",
-      "connector.name",
+      "--connector.name",
       "csv",
-      "connector.csv.url",
-      "\"" + CsvUtils.CSV_RECORDS_SKIP.toExternalForm() + "\"",
-      "driver.query.consistency",
+      "--connector.csv.url",
+      CsvUtils.CSV_RECORDS_SKIP.toExternalForm(),
+      "--driver.query.consistency",
       "LOCAL_ONE",
-      "driver.contactPoints",
+      "--driver.hosts",
       "" + fetchSimulacronContactPointsForArg(),
-      "driver.protocol.compression",
+      "--driver.protocol.compression",
       "NONE",
-      "connector.csv.linesToSkip",
-      "3",
-      "connector.csv.maxLines",
+      "--connector.csv.skipLines=3",
+      "--connector.csv.maxLines",
       "24",
-      "schema.statement=\"" + CsvUtils.INSERT_INTO_IP_BY_COUNTRY + "\"",
-      "schema.mapping",
+      "--schema.statement",
+      CsvUtils.INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
       "{0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
     new Main(args);

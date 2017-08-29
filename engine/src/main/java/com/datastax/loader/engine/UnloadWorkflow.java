@@ -37,11 +37,11 @@ import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 /** The main class for read workflows. */
-public class ReadWorkflow implements Workflow {
+public class UnloadWorkflow implements Workflow {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ReadWorkflow.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(UnloadWorkflow.class);
 
-  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.READ);
+  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.UNLOAD);
   private final LoaderConfig config;
 
   private DriverSettings driverSettings;
@@ -52,7 +52,7 @@ public class ReadWorkflow implements Workflow {
   private CodecSettings codecSettings;
   private MonitoringSettings monitoringSettings;
 
-  public ReadWorkflow(LoaderConfig config) {
+  UnloadWorkflow(LoaderConfig config) {
     this.config = config;
   }
 
@@ -78,8 +78,8 @@ public class ReadWorkflow implements Workflow {
 
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.connect();
-        Connector connector = connectorSettings.getConnector(WorkflowType.READ);
-        MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.READ);
+        Connector connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
+        MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD);
         LogManager logManager = logSettings.newLogManager(cluster);
         ReactorBulkReader executor =
             executorSettings.newReadExecutor(session, metricsManager.getExecutionListener())) {

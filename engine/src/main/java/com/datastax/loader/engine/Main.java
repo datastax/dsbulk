@@ -17,10 +17,10 @@ import com.typesafe.config.ConfigValueType;
 import java.io.PrintWriter;
 import java.net.URL;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -29,22 +29,41 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** */
 public class Main {
 
-  private static final Config REFERENCE = ConfigFactory.defaultReference().getConfig("datastax-loader");
-  private static final Config DEFAULT = ConfigFactory.load().getConfig("datastax-loader");
+  private static final Config REFERENCE = ConfigFactory.defaultReference().getConfig("dsbulk");
+  private static final Config DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+  private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+  private static final Config SHORTCUTS = ConfigFactory.parseResourcesAnySyntax("shortcuts.conf");
 
   public static void main(String[] args) {
+    URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
     new Main(args);
   }
 
   public Main(String[] args) {
-    URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    Options options = createOptions();
+    String connectorName = DEFAULT.getString("connector.name");
+    if (connectorName.isEmpty()) {
+      connectorName = null;
+    }
     try {
-      Config cmdLineConfig = parseCommandLine(options, args);
+      if (args.length == 0) {
+        throw new ParseException("First argument must be subcommand \"load\" or \"unload\"");
+      }
+
+      String[] optionArgs =
+          (args[0].startsWith("-")) ? args : Arrays.copyOfRange(args, 1, args.length);
+
+      String connectorNameFromArgs = getConnectorNameFromArgs(optionArgs);
+      if (connectorNameFromArgs != null && !connectorNameFromArgs.isEmpty()) {
+        connectorName = connectorNameFromArgs;
+      }
+
+      Config cmdLineConfig = parseCommandLine(connectorName, args[0], optionArgs);
       DefaultLoaderConfig config = new DefaultLoaderConfig(cmdLineConfig.withFallback(DEFAULT));
       config.checkValid(REFERENCE);
       WorkflowType workflowType = WorkflowType.valueOf(args[0].toUpperCase());
@@ -52,17 +71,72 @@ public class Main {
       workflow.init();
       workflow.execute();
     } catch (Exception e) {
-      e.printStackTrace();
       HelpFormatter formatter = new HelpFormatter();
+      formatter.setOptionComparator(Comparator.comparing(Option::getLongOpt));
+
       PrintWriter pw = new PrintWriter(System.err);
+      Options options = createOptions(connectorName);
+      String footer =
+          "NOTE: short options for some connectors may not be shown. "
+              + "Run with \"--help -c <connector-name>\" to see the short options available for "
+              + "those connectors.";
       formatter.printHelp(
-        pw, 150, "datastax-loader (read|write) [options]", "options:", options, 0, 5, "", true);
+          pw, 150, "dsbulk (load|unload) [options]", "options:", options, 0, 5, footer);
+      pw.println(e.getMessage());
+      pw.flush();
     }
   }
 
-  private static Options createOptions() {
+  private String getConnectorNameFromArgs(String[] args) throws ParseException {
+    String connectorName = null;
+    Options basicOptions = new Options();
+    basicOptions.addOption(Option.builder("c").hasArg().longOpt("connector.name").build());
+
+    String[] remainingArgs = args;
+    while (remainingArgs.length > 0) {
+      CommandLineParser parser = new DefaultParser();
+
+      CommandLine cmd = parser.parse(basicOptions, remainingArgs, true);
+
+      if (cmd.hasOption("connector.name")) {
+        connectorName = cmd.getOptionValue("connector.name");
+        break;
+      }
+      // Not found.
+      remainingArgs = Arrays.copyOfRange(cmd.getArgs(), 1, cmd.getArgs().length);
+    }
+    return connectorName;
+  }
+
+  private static Options createOptions(String connectorName) {
+    Map<String, String> longToShortOptions = new HashMap<>();
+
+    // Add global shortcuts first
+    for (Map.Entry<String, ConfigValue> entry :
+        SHORTCUTS.getConfig("dsbulk.shortcuts").entrySet()) {
+      longToShortOptions.put(entry.getValue().unwrapped().toString(), entry.getKey());
+    }
+
+    // Add connector-specific entries next. If there's overlap of shortcuts, log a warning.
+    if (connectorName != null) {
+      for (Map.Entry<String, ConfigValue> entry :
+          SHORTCUTS.getConfig("dsbulk." + connectorName + "-shortcuts").entrySet()) {
+        String longOption = entry.getValue().unwrapped().toString();
+        String shortOption = entry.getKey();
+        if (longToShortOptions.containsKey(longOption)
+            || longToShortOptions.containsValue(shortOption)) {
+          LOGGER.warn(
+              String.format(
+                  "Shortcut %s => %s in %s shortcuts overlaps with global shortcuts and will be ignored",
+                  shortOption, longOption, connectorName));
+          continue;
+        }
+        longToShortOptions.put(longOption, shortOption);
+      }
+    }
+
     Options options = new Options();
-    Set<String> shortNames = new HashSet<>();
+
     // special-case options of type OBJECT as these do not show up in entrySet()
     // FIXME maybe we should transform these in regular STRING values and parse the string in SchemaSettings
     // As a bonus, we could get rid of enclosing braces, e.g.
@@ -70,37 +144,64 @@ public class Main {
     // would become:
     // schema.mapping = "fieldA = col1, fieldB = col2"
     Option schemaMapping =
-      createOption(shortNames, "schema.mapping", DEFAULT.getConfig("schema.mapping").root());
+        createOption(
+            longToShortOptions, "schema.mapping", DEFAULT.getConfig("schema.mapping").root());
     options.addOption(schemaMapping);
     Option recordMetadata =
-        createOption(shortNames, "schema.recordMetadata", DEFAULT.getConfig("schema.recordMetadata").root());
+        createOption(
+            longToShortOptions,
+            "schema.recordMetadata",
+            DEFAULT.getConfig("schema.recordMetadata").root());
     options.addOption(recordMetadata);
     for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
       String longName = entry.getKey();
-      Option option = createOption(shortNames, longName, entry.getValue());
+      Option option = createOption(longToShortOptions, longName, entry.getValue());
       options.addOption(option);
     }
+
+    // Add the --help option
+    options.addOption(
+        null,
+        "help",
+        false,
+        "This help text. May be combined with -c <connectorName> to see short options for a "
+            + "particular connector");
     return options;
   }
 
-  private static Option createOption(Set<String> shortNames, String longName, ConfigValue value) {
-    String shortName = createShortName(longName, shortNames);
+  private static Option createOption(
+      Map<String, String> longToShortOptions, String longName, ConfigValue value) {
     Option.Builder option;
+    String shortName = longToShortOptions.get(longName);
     if (shortName == null) {
       option = Option.builder();
     } else {
       option = Option.builder(shortName);
     }
-    option.hasArg();
-    option.longOpt(longName);
-    option.argName(getArgName(longName, value.valueType()));
-    option.desc(getSanitizedDescription(longName, value));
+    option
+        .hasArg()
+        .longOpt(longName)
+        .argName(getArgName(longName, value.valueType()))
+        .desc(getSanitizedDescription(longName, value));
     return option.build();
   }
 
-  private static Config parseCommandLine(Options options, String[] args) throws ParseException {
+  static Config parseCommandLine(String connectorName, String subcommand, String[] args)
+      throws ParseException {
+    Options options = createOptions(connectorName);
     CommandLineParser parser = new DefaultParser();
-    CommandLine cmd = parser.parse(options, Arrays.copyOfRange(args, 1, args.length));
+    CommandLine cmd = parser.parse(options, args);
+
+    if (cmd.hasOption("help")) {
+      // User is asking for help. No real error here, but raising an empty
+      // exception gets the job done.
+      throw new ParseException("");
+    }
+
+    if (!Arrays.asList("load", "unload").contains(subcommand)) {
+      throw new ParseException("First argument must be subcommand \"load\" or \"unload\"");
+    }
+
     Iterator<Option> it = cmd.iterator();
     Config userSettings = ConfigFactory.empty();
     while (it.hasNext()) {
@@ -137,27 +238,9 @@ public class Main {
 
   private static String getSanitizedDescription(String longName, ConfigValue value) {
     String desc =
-      DEFAULT.getValue(longName).origin().comments().stream().collect(Collectors.joining("\n"));
+        DEFAULT.getValue(longName).origin().comments().stream().collect(Collectors.joining("\n"));
     desc = desc.replaceAll(" +", " ").trim();
     desc += "\nDefaults to " + value.render(ConfigRenderOptions.concise()) + ".";
     return desc;
-  }
-
-  private static String createShortName(String longName, Set<String> shortNames) {
-    String[] tokens = longName.split("(\\.|(?=[A-Z]))");
-    String shortName = tentativeShortName(tokens);
-    if (shortNames.contains(shortName)) {
-      return null;
-    }
-    shortNames.add(shortName);
-    return shortName;
-  }
-
-  private static String tentativeShortName(String[] tokens) {
-    StringBuilder sb = new StringBuilder();
-    for (String token : tokens) {
-      sb.append(token.substring(0, 1).toLowerCase());
-    }
-    return sb.toString();
   }
 }

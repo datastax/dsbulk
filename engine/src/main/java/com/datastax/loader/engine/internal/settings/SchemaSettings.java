@@ -56,23 +56,23 @@ public class SchemaSettings {
   public RecordMapper createRecordMapper(
       Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry) {
     ImmutableBiMap<String, String> fieldsToVariables = createFieldsToVariablesMap(session);
-    PreparedStatement statement = prepareStatement(session, fieldsToVariables, WorkflowType.WRITE);
+    PreparedStatement statement = prepareStatement(session, fieldsToVariables, WorkflowType.LOAD);
     DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
     return new DefaultRecordMapper(
         statement,
         mapping,
         mergeRecordMetadata(recordMetadata),
-        ImmutableSet.copyOf(config.getStringList("nullWords")),
+        ImmutableSet.copyOf(config.getStringList("nullStrings")),
         config.getBoolean("nullToUnset"));
   }
 
   public ReadResultMapper createReadResultMapper(
       Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry) {
     ImmutableBiMap<String, String> fieldsToVariables = createFieldsToVariablesMap(session);
-    preparedStatement = prepareStatement(session, fieldsToVariables, WorkflowType.READ);
+    preparedStatement = prepareStatement(session, fieldsToVariables, WorkflowType.UNLOAD);
     DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
     return new DefaultReadResultMapper(
-        mapping, mergeRecordMetadata(recordMetadata), config.getFirstString("nullWords"));
+        mapping, mergeRecordMetadata(recordMetadata), config.getFirstString("nullStrings"));
   }
 
   public List<Statement> createReadStatements(Cluster cluster) {
@@ -147,7 +147,7 @@ public class SchemaSettings {
       Preconditions.checkState(
           keyspace != null && table != null, "Keyspace and table must be specified");
       query =
-          workflowType == WorkflowType.WRITE
+          workflowType == WorkflowType.LOAD
               ? inferWriteQuery(fieldsToVariables)
               : inferReadQuery(fieldsToVariables);
     }

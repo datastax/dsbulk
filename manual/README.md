@@ -1,8 +1,8 @@
-# DataStax Loader Overview
+# DataStax Bulk Loader/Unloader Overview
 
-The Datastax Loader tool provides the ability to load large amounts of data 
-into the database efficiently and reliably. In this release, only csv file
-loading is supported.  
+The Datastax Bulk Loader/Unloader tool provides the ability to load large amounts of data 
+into the database efficiently and reliably as well as conversely unload data from the
+database. In this release, only csv file loading is supported.  
 
 The tool consists of three main components:
 * [Connectors](./connectors)
@@ -10,73 +10,99 @@ The tool consists of three main components:
 * [Engine](./engine).
 
 Launch the tool with the appropriate script in the bin directory of
-your distribution of this tool. All settings governing execution of
-the loader are defined in `conf/reference.conf` with detailed descriptions.
-You may change default values in that file to meet your needs or override default values with
-command line arguments.
+your distribution. The help text of the tool provides summaries of all 
+supported settings.
 
-The help output from the Unix script should help you get up and running quickly:
-
+## Basic Usage
+The `dsbulk` command takes a subcommand argument followed by options:
 ```
-Usage: datastax-loader <options>
-Options:
- -c, --connector.name <name>       Name of connector; only the built-in csv connector
-                                   is supported at this time, so this option must have
-                                   value csv.
- -k, --schema.keyspace <keyspace>  Keyspace into which to load data.
- -t, --schema.table <table>        Table into which to load data.
- -m, --schema.mapping <mapping>    Mapping of fields in data to columns in the database.
+# Load data
+dsbulk load <options>
 
-All arguments except connector.name are optional in that values fall back to defaults or
-are inferred from the input data. However, some connectors have required settings of
-their own and those must be set as well. For example, the csv connector requires the
-connector.csv.url setting to specify the source path/url of the csv data to load.
+# Unload data
+dsbulk unload <options>
+``` 
 
+All arguments except `connector.name` are optional in that values fall back to defaults or
+are inferred from the input data (when performing a load). However, some connectors have 
+required settings of their own and those must be set as well. For example, the csv connector
+requires the `connector.csv.url` setting to specify the source path/url of the csv data to 
+load (or path/url where to send unloaded data).
 
-CONFIG FILES, SETTINGS SEARCH ORDER, AND OVERRIDES:
+### Shortcuts
+For convenience, many options (prefaced with `--`), have shortcut variants (prefaced with `-`).
+For example, `--connector.name` has an equivalent short option `-c`. 
 
-Available settings along with defaults are recorded in conf/reference.conf. This file
+Connector-specific options also have shortcut variants, but they are only available when
+the appropriate connector is chosen. This allows multiple connectors to overlap shortcut
+options. For example, both `--connector.csv.url` and `--connector.json.url` have a
+`-url` shortcut option, but in a given invocation of dsbulk, only the appropriate one
+will be active.  
+
+## Config Files, Settings, Search Order, and Overrides
+
+Available settings along with defaults are recorded in `conf/reference.conf`. This file
 also contains detailed descriptions of settings and is a great source of information.
 When the loader starts up, settings are first loaded from conf/reference.conf.
 
-The conf directory also contains an application.conf where a user may specify permanent
+The conf directory also contains an application.conf file where a user may specify permanent
 overrides of settings. These may be in nested-structure form like this:
 
-datastax-loader {
+dsbulk {
   connector {
     name="csv"
   }
 }
 
-or dotted form: datastax-loader.connector.name="csv"
+or dotted form: dsbulk.connector.name="csv"
 
 Finally, a user may specify impromptu overrides via options on the command line.
 See examples for details.
 
+## Load Examples
+* Load CSV data from `stdin` to the `ks1.table1` table in a cluster with
+  a `localhost` contact point. Field names in the data match column names in the
+  table. Field names are obtained from a *header row* in the data:
 
-EXAMPLES:
-* Load CSV data from stdin to the ks1.table1 table in a cluster with
-  a localhost contact point. Field names in the data match column names in the
-  table. Field names are obtained from a "header row" in the data:
-    generate_data | datastax-loader -c csv --connector.csv.url stdin:/ -k ks1 -t table1 --connector.csv.header=true
+  `generate_data | dsbulk load -c csv -url stdin:/ -k ks1 -t table1 -header=true`
 
 * Same as last example, but load from a local file:
-    datastax-loader -c csv --connector.csv.url ~/export.csv -k ks1 -t table1 --connector.csv.header=true
+
+  `dsbulk load -c csv -url ~/export.csv -k ks1 -t table1 -header=true`
 
 * Same as last example, but load data from a url:
-    datastax-loader -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 --connector.csv.header=true
+
+  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -header=true`
 
 * Same as last example, but there is no header row and we specify an explicit field mapping based
   on field indices in the input:
-    datastax-loader -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}"
+
+  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -m '{0=col1,1=col3}'`
 
 * Same as last example, but specify a few contact points at the default port:
-    datastax-loader -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints '[10.200.1.3, 10.200.1.4]'
+  
+  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -m '{0=col1,1=col3}' -h '[10.200.1.3, 10.200.1.4]'`
 
 * Same as last example, but specify port 9876 for the contact points:
-    datastax-loader -c csv --connector.csv.url https://svr/data/export.csv -k ks1 -t table1 -m "{0=col1,1=col3}" --driver.contactPoints '[10.200.1.3, 10.200.1.4]' --driver.port 9876
+
+  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -m '{0=col1,1=col3}' -h '[10.200.1.3, 10.200.1.4]' -port 9876`
 
 * Same as last example, but with default port for contact points, and connector-name, keyspace, table, and mapping set in
   conf/application.conf:
-    datastax-loader --connector.csv.url https://svr/data/export.csv --driver.contactPoints '[10.200.1.3, 10.200.1.4]'
-```
+
+  `dsbulk load -url https://svr/data/export.csv -h '[10.200.1.3, 10.200.1.4]'`
+
+## Unload Examples
+Unloading is simply the inverse of loading and due to the symmetry, many settings are
+used in both load and unload.
+
+* Unload data to `stdout` from the `ks1.table1` table in a cluster with
+  a `localhost` contact point. Column names in the table map to field names 
+  in the data. Field names must be emitted in a *header row* in the output:
+
+  `dsbulk unload -c csv -url stdout:/ -k ks1 -t table1 -header=true`
+
+* Same as last example, but unload data to a local directory (which may
+  not yet exist):
+                                          
+  `dsbulk unload -c csv -url ~/-data-export -k ks1 -t table1 -header=true`

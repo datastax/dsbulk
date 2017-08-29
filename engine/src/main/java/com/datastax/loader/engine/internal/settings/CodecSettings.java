@@ -70,7 +70,7 @@ public class CodecSettings {
     DateTimeFormatter localTimeFormat = getDateFormat(config.getString("time"), timeZone, locale);
     DateTimeFormatter timestampFormat =
         getDateFormat(config.getString("timestamp"), timeZone, locale);
-    String delimiter = config.getString("delimiter");
+    String itemDelimiter = config.getString("itemDelimiter");
     String keyValueSeparator = config.getString("keyValueSeparator");
     CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
     return new ExtendedCodecRegistry(
@@ -81,7 +81,7 @@ public class CodecSettings {
         localDateFormat,
         localTimeFormat,
         timestampFormat,
-        delimiter,
+        itemDelimiter,
         keyValueSeparator);
   }
 

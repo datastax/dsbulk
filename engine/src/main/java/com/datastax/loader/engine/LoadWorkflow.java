@@ -32,11 +32,11 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 /** The main class for write workflows. */
-public class WriteWorkflow implements Workflow {
+public class LoadWorkflow implements Workflow {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WriteWorkflow.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadWorkflow.class);
 
-  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.WRITE);
+  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.LOAD);
   private final LoaderConfig config;
 
   private DriverSettings driverSettings;
@@ -48,7 +48,7 @@ public class WriteWorkflow implements Workflow {
   private CodecSettings codecSettings;
   private MonitoringSettings monitoringSettings;
 
-  public WriteWorkflow(LoaderConfig config) throws Exception {
+  LoadWorkflow(LoaderConfig config) throws Exception {
     this.config = config;
   }
 
@@ -75,8 +75,8 @@ public class WriteWorkflow implements Workflow {
 
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.connect();
-        Connector connector = connectorSettings.getConnector(WorkflowType.WRITE);
-        MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.WRITE);
+        Connector connector = connectorSettings.getConnector(WorkflowType.LOAD);
+        MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD);
         LogManager logManager = logSettings.newLogManager(cluster);
         ReactiveBulkWriter executor =
             executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener())) {

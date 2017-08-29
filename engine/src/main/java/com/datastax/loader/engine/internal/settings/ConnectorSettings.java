@@ -25,8 +25,8 @@ public class ConnectorSettings {
     String connectorName = config.getString("name");
     Connector connector = locateConnector(connectorName);
     if (config.hasPath(connectorName)) {
-      // the connector should be configured for reads when the workflow is WRITE
-      boolean read = workflowType == WorkflowType.WRITE;
+      // the connector should be configured for reads when the workflow is LOAD
+      boolean read = workflowType == WorkflowType.LOAD;
       connector.configure(config.getConfig(connectorName), read);
       return connector;
     } else {

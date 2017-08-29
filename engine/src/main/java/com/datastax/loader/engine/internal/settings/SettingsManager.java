@@ -49,7 +49,9 @@ public class SettingsManager {
   public void logEffectiveSettings() {
     LOGGER.info("Loader effective settings:");
     for (Map.Entry<String, ConfigValue> entry : config.entrySet()) {
-      LOGGER.info(String.format("%s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
+      LOGGER.info(
+          String.format(
+              "%s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
     }
   }
 

@@ -49,7 +49,7 @@ public class ExecutorSettingsTest {
   @Test
   public void should_create_non_continuous_executor_when_write_workflow() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkWriter executor = settings.newWriteExecutor(session, null);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
@@ -59,7 +59,7 @@ public class ExecutorSettingsTest {
   public void should_create_non_continuous_executor_when_read_workflow_and_session_not_dse()
       throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkReader executor = settings.newReadExecutor(session, null);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
@@ -69,7 +69,7 @@ public class ExecutorSettingsTest {
   public void should_create_continuous_executor_when_read_workflow_and_session_dse()
       throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.executor"));
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null);
     assertThat(executor).isNotNull().isInstanceOf(ContinuousReactorBulkExecutor.class);
