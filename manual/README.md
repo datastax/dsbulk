@@ -7,7 +7,7 @@ database. In this release, only csv file loading is supported.
 The tool consists of three main components:
 * [Connectors](./connectors)
 * [Executor](./executor)
-* [Engine](./engine).
+* [Engine](./engine)
 
 Launch the tool with the appropriate script in the bin directory of
 your distribution. The help text of the tool provides summaries of all 
@@ -39,22 +39,24 @@ options. For example, both `--connector.csv.url` and `--connector.json.url` have
 `-url` shortcut option, but in a given invocation of dsbulk, only the appropriate one
 will be active.  
 
+Run the tool with --help and specify the connector to see its short options:
+
+```
+dsbulk -c csv --help
+```
+
 ## Config Files, Settings, Search Order, and Overrides
 
 Available settings along with defaults are recorded in `conf/reference.conf`. This file
 also contains detailed descriptions of settings and is a great source of information.
-When the loader starts up, settings are first loaded from conf/reference.conf.
+When the loader starts up, settings are first loaded from `conf/reference.conf`.
 
-The conf directory also contains an application.conf file where a user may specify permanent
-overrides of settings. These may be in nested-structure form like this:
-
-dsbulk {
-  connector {
-    name="csv"
-  }
-}
-
-or dotted form: dsbulk.connector.name="csv"
+The conf directory also contains an `application.conf` file where a user may specify permanent
+overrides of settings. These are expressed in dotted form:
+```hocon
+dsbulk.connector.name="csv"
+dsbulk.schema.keyspace="myks"
+```
 
 Finally, a user may specify impromptu overrides via options on the command line.
 See examples for details.
@@ -66,29 +68,20 @@ See examples for details.
 
   `generate_data | dsbulk load -c csv -url stdin:/ -k ks1 -t table1 -header=true`
 
-* Same as last example, but load from a local file:
-
-  `dsbulk load -c csv -url ~/export.csv -k ks1 -t table1 -header=true`
-
-* Same as last example, but load data from a url:
-
-  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -header=true`
-
-* Same as last example, but there is no header row and we specify an explicit field mapping based
-  on field indices in the input:
-
-  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -m '{0=col1,1=col3}'`
-
-* Same as last example, but specify a few contact points at the default port:
+* Specify a few hosts (initial contact points) that belong to the desired cluster and load from a local file:
   
-  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -m '{0=col1,1=col3}' -h '[10.200.1.3, 10.200.1.4]'`
+  `dsbulk load -c csv -url  ~/export.csv -k ks1 -t table1 -h '[10.200.1.3, 10.200.1.4]'`
 
-* Same as last example, but specify port 9876 for the contact points:
+* Specify port 9876 for the cluster hosts and load from an external source url:
 
-  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -m '{0=col1,1=col3}' -h '[10.200.1.3, 10.200.1.4]' -port 9876`
+  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -h '[10.200.1.3, 10.200.1.4]' -port 9876`
 
-* Same as last example, but with default port for contact points, and connector-name, keyspace, table, and mapping set in
-  conf/application.conf:
+* Load all csv files from a directory. The files do not have a header row. Map field indices of the input to table columns:
+
+  `dsbulk load -c csv -url ~/export-dir -k ks1 -t table1 -m '{0=col1,1=col3}'`
+
+* With default port for cluster hosts, connector-name, keyspace, table, and mapping set in
+  `conf/application.conf`:
 
   `dsbulk load -url https://svr/data/export.csv -h '[10.200.1.3, 10.200.1.4]'`
 
@@ -102,7 +95,11 @@ used in both load and unload.
 
   `dsbulk unload -c csv -url stdout:/ -k ks1 -t table1 -header=true`
 
-* Same as last example, but unload data to a local directory (which may
+* Unload data to a local directory (which may
   not yet exist):
                                           
   `dsbulk unload -c csv -url ~/-data-export -k ks1 -t table1 -header=true`
+  
+* Unload data from a remote cluster to a remote destination url:
+
+  `dsbulk unload -c csv -url https://svr/data/table1 -k ks1 -t table1 -header=true -h '[10.200.1.3]'`
