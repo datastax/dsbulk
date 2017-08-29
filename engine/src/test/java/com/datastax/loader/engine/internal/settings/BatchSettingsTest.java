@@ -7,6 +7,8 @@
 package com.datastax.loader.engine.internal.settings;
 
 import static com.datastax.loader.engine.internal.Assertions.assertThat;
+import static com.datastax.loader.executor.api.batch.StatementBatcher.BatchMode.PARTITION_KEY;
+import static com.datastax.loader.executor.api.batch.StatementBatcher.BatchMode.REPLICA_SET;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -15,16 +17,13 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Statement;
 import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
-import com.datastax.loader.executor.api.batch.ReactorSortedStatementBatcher;
 import com.datastax.loader.executor.api.batch.ReactorUnsortedStatementBatcher;
 import com.typesafe.config.ConfigFactory;
-import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
-import reactor.core.publisher.Flux;
+import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
 public class BatchSettingsTest {
@@ -43,32 +42,52 @@ public class BatchSettingsTest {
   }
 
   @Test
-  public void should_create_unsorted_batcher_when_mode_is_default() throws Exception {
+  public void should_create_batcher_when_mode_is_default() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.batch"));
     BatchSettings settings = new BatchSettings(config);
-    Function<? super Flux<Statement>, ? extends Flux<Statement>> batcher =
-        settings.newStatementBatcher(cluster);
-    assertThat(batcher).isNotNull().isInstanceOf(ReactorUnsortedStatementBatcher.class);
+    ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
+    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(10000);
+    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(100);
   }
 
   @Test
-  public void should_create_sorted_batcher_when_sorted_mode_provided() throws Exception {
+  public void should_create_batcher_when_batch_mode_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.parseString("sorted = true, bufferSize = 100"));
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("mode = REPLICA_SET")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.batch")));
     BatchSettings settings = new BatchSettings(config);
-    Function<? super Flux<Statement>, ? extends Flux<Statement>> batcher =
-        settings.newStatementBatcher(cluster);
-    assertThat(batcher).isNotNull().isInstanceOf(ReactorSortedStatementBatcher.class);
+    ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
+    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(10000);
+    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(100);
   }
 
   @Test
-  public void should_create_unsorted_batcher_when_unsorted_mode_provided() throws Exception {
+  public void should_create_batcher_when_buffer_size_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.parseString("sorted = false, bufferSize = 100"));
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("bufferSize = 5000")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.batch")));
     BatchSettings settings = new BatchSettings(config);
-    Function<? super Flux<Statement>, ? extends Flux<Statement>> batcher =
-        settings.newStatementBatcher(cluster);
-    assertThat(batcher).isNotNull().isInstanceOf(ReactorUnsortedStatementBatcher.class);
+    ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
+    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(5000);
+    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(100);
+  }
+
+  @Test
+  public void should_create_batcher_when_max_batch_size_mode_provided() throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxBatchSize = 10")
+                .withFallback(ConfigFactory.load().getConfig("datastax-loader.batch")));
+    BatchSettings settings = new BatchSettings(config);
+    ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
+    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(10000);
+    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
   }
 }

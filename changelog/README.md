@@ -30,3 +30,4 @@
 - [improvement] DAT-42: Add LOADER_JAVA_OPTS env var support to allow users to set JVM options.
 - [improvement] DAT-74: executor.maxPerSecond and executor.maxInflight should account for batch size.
 - [improvement] DAT-76: Parallelize execution of workflow engine components.
+- [improvement] DAT-77: Separate batch.bufferSize into batch.bufferSize and batch.maxBatchSize
