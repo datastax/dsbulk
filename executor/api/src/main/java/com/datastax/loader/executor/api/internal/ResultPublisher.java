@@ -6,6 +6,7 @@
  */
 package com.datastax.loader.executor.api.internal;
 
+import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.loader.executor.api.exception.BulkExecutionException;
@@ -29,17 +30,18 @@ import org.reactivestreams.Subscription;
 public abstract class ResultPublisher<T extends Result, R> implements Publisher<T>, Subscription {
 
   protected final Statement statement;
-  protected final ExecutionContext context = new DefaultExecutionContext();
-  protected final RequestCounter requestCounter = new RequestCounter();
-  protected final Optional<ExecutionListener> listener;
-  protected final Optional<RateLimiter> rateLimiter;
   protected final Session session;
-  protected final Optional<Semaphore> requestPermits;
-  protected final boolean failFast;
-  protected final Executor executor;
-  protected volatile boolean canceled = false;
+  private final Optional<Semaphore> requestPermits;
+  private final Optional<ExecutionListener> listener;
+  private final Optional<RateLimiter> rateLimiter;
+  private final boolean failFast;
+  private final Executor executor;
+  volatile boolean canceled = false;
+  private final int size;
+  private final ExecutionContext context = new DefaultExecutionContext();
+  private final RequestCounter requestCounter = new RequestCounter();
 
-  protected ResultPublisher(
+  ResultPublisher(
       Statement statement,
       Session session,
       Executor executor,
@@ -54,6 +56,11 @@ public abstract class ResultPublisher<T extends Result, R> implements Publisher<
     this.rateLimiter = rateLimiter;
     this.requestPermits = requestPermits;
     this.failFast = failFast;
+    if (statement instanceof BatchStatement) {
+      size = ((BatchStatement) statement).size();
+    } else {
+      size = 1;
+    }
   }
 
   @Override
@@ -74,14 +81,14 @@ public abstract class ResultPublisher<T extends Result, R> implements Publisher<
 
   protected void fetchNextPage(
       Subscriber<? super T> subscriber, Callable<ListenableFuture<R>> query) {
-    rateLimiter.ifPresent(RateLimiter::acquire);
-    requestPermits.ifPresent(Semaphore::acquireUninterruptibly);
+    rateLimiter.ifPresent(limiter -> limiter.acquire(size));
+    requestPermits.ifPresent(permits -> permits.acquireUninterruptibly(size));
     ListenableFuture<R> page;
     try {
       page = query.call();
     } catch (Throwable ex) {
       // in rare cases, the driver throws instead of failing the future
-      requestPermits.ifPresent(Semaphore::release);
+      requestPermits.ifPresent(permits -> permits.release(size));
       onError(subscriber, ex);
       return;
     }
@@ -90,13 +97,13 @@ public abstract class ResultPublisher<T extends Result, R> implements Publisher<
         new FutureCallback<R>() {
           @Override
           public void onSuccess(R rs) {
-            requestPermits.ifPresent(Semaphore::release);
+            requestPermits.ifPresent(permits -> permits.release(size));
             consumePage(subscriber, rs);
           }
 
           @Override
           public void onFailure(Throwable t) {
-            requestPermits.ifPresent(Semaphore::release);
+            requestPermits.ifPresent(permits -> permits.release(size));
             onError(subscriber, t);
           }
         },
