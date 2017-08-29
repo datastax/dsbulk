@@ -34,39 +34,29 @@ import reactor.core.publisher.Flux;
 public class ReactorSortedStatementBatcher extends ReactorStatementBatcher
     implements Function<Flux<? extends Statement>, Flux<Statement>> {
 
-  /** The default maximum size for a batch. */
-  public static final int DEFAULT_MAX_BUFFER_SIZE = 1000;
-
-  private final int maxBufferSize;
-
   public ReactorSortedStatementBatcher() {
-    this(DEFAULT_MAX_BUFFER_SIZE);
+    this(DEFAULT_MAX_BATCH_SIZE);
   }
 
-  public ReactorSortedStatementBatcher(int maxBufferSize) {
-    this.maxBufferSize = maxBufferSize;
+  public ReactorSortedStatementBatcher(int maxBatchSize) {
+    super(maxBatchSize);
   }
 
   public ReactorSortedStatementBatcher(Cluster cluster) {
-    this(cluster, DEFAULT_MAX_BUFFER_SIZE);
+    this(cluster, DEFAULT_MAX_BATCH_SIZE);
   }
 
-  public ReactorSortedStatementBatcher(Cluster cluster, int maxBufferSize) {
-    this(cluster, StatementBatcher.BatchMode.PARTITION_KEY, maxBufferSize);
+  public ReactorSortedStatementBatcher(Cluster cluster, int maxBatchSize) {
+    this(cluster, BatchMode.PARTITION_KEY, maxBatchSize);
+  }
+
+  public ReactorSortedStatementBatcher(Cluster cluster, BatchMode batchMode, int maxBatchSize) {
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchSize);
   }
 
   public ReactorSortedStatementBatcher(
-      Cluster cluster, StatementBatcher.BatchMode batchMode, int maxBufferSize) {
-    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBufferSize);
-  }
-
-  public ReactorSortedStatementBatcher(
-      Cluster cluster,
-      StatementBatcher.BatchMode batchMode,
-      BatchStatement.Type batchType,
-      int maxBufferSize) {
-    super(cluster, batchMode, batchType);
-    this.maxBufferSize = maxBufferSize;
+      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBatchSize) {
+    super(cluster, batchMode, batchType, maxBatchSize);
   }
 
   @Override
@@ -74,7 +64,7 @@ public class ReactorSortedStatementBatcher extends ReactorStatementBatcher
     Flux<? extends Statement> connectableFlux = upstream.publish().autoConnect(2);
     Flux<? extends Statement> boundarySelector =
         connectableFlux.filter(new StatementBatcherPredicate());
-    return connectableFlux.buffer(boundarySelector).map(this::batchAll);
+    return connectableFlux.buffer(boundarySelector).flatMapIterable(this::batchAll);
   }
 
   private class StatementBatcherPredicate implements Predicate<Statement> {
@@ -85,7 +75,7 @@ public class ReactorSortedStatementBatcher extends ReactorStatementBatcher
 
     @Override
     public boolean test(Statement statement) {
-      boolean bufferFull = ++size > maxBufferSize;
+      boolean bufferFull = ++size > maxBatchSize;
       Object groupingKey = groupingKey(statement);
       boolean groupingKeyChanged =
           this.groupingKey != null && !this.groupingKey.equals(groupingKey);

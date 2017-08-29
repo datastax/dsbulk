@@ -53,10 +53,6 @@ public class ExecutorSettings {
     return newBulkExecutor(session, executionListener, WorkflowType.UNLOAD);
   }
 
-  public int getMaxConcurrentReads() {
-    return config.getInt("maxConcurrentReads");
-  }
-
   public ThreadPoolExecutor getExecutorThreadPool() {
     return executor;
   }
