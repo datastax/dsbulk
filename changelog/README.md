@@ -31,3 +31,4 @@
 - [improvement] DAT-74: executor.maxPerSecond and executor.maxInflight should account for batch size.
 - [improvement] DAT-76: Parallelize execution of workflow engine components.
 - [improvement] DAT-77: Separate batch.bufferSize into batch.bufferSize and batch.maxBatchSize
+- [improvement] DAT-62: Add end-to-end tests for CSV read workflow
