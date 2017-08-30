@@ -18,7 +18,7 @@ IF DEFINED JAVA_HOME (
 )
 
 REM Run the Java tool.
-"%JAVA%" %DSBULK_JAVA_OPTS% com.datastax.loader.engine.Main %*
+"%JAVA%" %DSBULK_JAVA_OPTS% com.datastax.dsbulk.engine.Main %*
 GOTO :eof
 
 REM Helper for adding a particular item to CLASSPATH.

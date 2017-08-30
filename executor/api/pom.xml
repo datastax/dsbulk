@@ -12,16 +12,16 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>datastax-loader-executor</artifactId>
+    <artifactId>dsbulk-executor</artifactId>
     <groupId>com.datastax.dse</groupId>
     <version>1.0.0-alpha2-SNAPSHOT</version>
   </parent>
 
-  <artifactId>datastax-loader-executor-api</artifactId>
+  <artifactId>dsbulk-executor-api</artifactId>
 
-  <name>DataStax Loader - Executor - API</name>
+  <name>DataStax Bulk Loader/Unloader - Executor - API</name>
   <description>
-    Bulk Executor API for the DataStax Loader.
+    Bulk Executor API for the DataStax Bulk Loader/Unloader.
   </description>
 
   <dependencies>

@@ -1,6 +1,6 @@
 # Workflow Engine Monitoring
 
-DataStax Loader uses the [Dropwizard Metrics] library to collect and report metrics.
+DataStax Bulk Loader/Unloader uses the [Dropwizard Metrics] library to collect and report metrics.
 
 See the [engine configuration] section for information about how to configure monitoring and
 metrics reporting.
@@ -58,7 +58,7 @@ Metrics are collected and reported to two channels:
     ```
 2. JMX: if enabled, all the available metrics are exposed under the following MBean hierarchy:
 
-* `com.datastax.loader`
+* `com.datastax.dsbulk`
     * `<operation ID>` 
         * records
             * successful: meter

@@ -35,4 +35,4 @@ done
 export CLASSPATH
 
 # Run the tool.
-$JAVA $DSBULK_JAVA_OPTS com.datastax.loader.engine.Main "$@"
+$JAVA $DSBULK_JAVA_OPTS com.datastax.dsbulk.engine.Main "$@"

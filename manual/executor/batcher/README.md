@@ -38,8 +38,8 @@ flows:
 - [`RxJavaStatementBatcher`]: RxJava implementation.
 - [`ReactorStatementBatcher`]: Reactor implementation.
 
-[`RxJavaStatementBatcher`]: ../../executor/rxjava/src/main/java/com/datastax/loader/executor/api/batch/RxJavaStatementBatcher.java
-[`ReactorStatementBatcher`]: ../../executor/reactor/src/main/java/com/datastax/loader/executor/api/batch/ReactorJavaStatementBatcher.java
+[`RxJavaStatementBatcher`]: ../../executor/rxjava/src/main/java/com/datastax/dsbulk/executor/api/batch/RxJavaStatementBatcher.java
+[`ReactorStatementBatcher`]: ../../executor/reactor/src/main/java/com/datastax/dsbulk/executor/api/batch/ReactorJavaStatementBatcher.java
 
 ### Using Statement Batcher as an RxJava operator
 
@@ -58,5 +58,5 @@ the resulting batch could lead to sub-optimal write performance.
 
 [`FlowableTransformer`]: http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/FlowableTransformer.html
 [`compose`]: http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#compose(io.reactivex.FlowableTransformer)
-[`RxJavaUnsortedStatementBatcher`]: ../../executor/rxjava/src/main/java/com/datastax/loader/executor/api/batch/RxJavaUnsortedStatementBatcher.java
-[`RxJavaSortedStatementBatcher`]: ../../executor/rxjava/src/main/java/com/datastax/loader/executor/api/batch/RxJavaSortedStatementBatcher.java
+[`RxJavaUnsortedStatementBatcher`]: ../../executor/rxjava/src/main/java/com/datastax/dsbulk/executor/api/batch/RxJavaUnsortedStatementBatcher.java
+[`RxJavaSortedStatementBatcher`]: ../../executor/rxjava/src/main/java/com/datastax/dsbulk/executor/api/batch/RxJavaSortedStatementBatcher.java

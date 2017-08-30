@@ -11,17 +11,17 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>datastax-loader-parent</artifactId>
+    <artifactId>dsbulk-parent</artifactId>
     <groupId>com.datastax.dse</groupId>
     <version>1.0.0-alpha2-SNAPSHOT</version>
   </parent>
 
-  <artifactId>datastax-loader-executor</artifactId>
+  <artifactId>dsbulk-executor</artifactId>
   <packaging>pom</packaging>
 
-  <name>DataStax Loader - Executor</name>
+  <name>DataStax Bulk Loader/Unloader - Executor</name>
   <description>
-    Bulk Executor for the DataStax Loader.
+    Bulk Executor for the DataStax Bulk Loader/Unloader.
   </description>
 
   <modules>

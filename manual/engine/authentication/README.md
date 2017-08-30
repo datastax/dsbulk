@@ -1,6 +1,6 @@
 # Workflow Engine Authentication
 
-DataStax Loader can connect to secured DSE clusters (and also to secured vanilla C* clusters).
+DataStax Bulk Loader/Unloader can connect to secured DSE clusters (and also to secured vanilla C* clusters).
 
 Three different authentication providers are available:
 

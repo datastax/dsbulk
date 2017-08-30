@@ -29,9 +29,9 @@ build:
     version: 3.2.5
     goals: verify -Plong -fae
     properties: |
-      com.datastax.loader.tests.ccm.JAVA_HOME=$CCM_JAVA_HOME
-      com.datastax.loader.tests.ccm.PATH=$CCM_JAVA_HOME/bin
-      com.datastax.loader.tests.ccm.MAX_POOLED_CCM_NODES=4
+      com.datastax.dsbulk.tests.ccm.JAVA_HOME=$CCM_JAVA_HOME
+      com.datastax.dsbulk.tests.ccm.PATH=$CCM_JAVA_HOME/bin
+      com.datastax.dsbulk.tests.ccm.MAX_POOLED_CCM_NODES=4
       failIfNoTests=false
       maven.test.failure.ignore=true
       maven.javadoc.skip=true
