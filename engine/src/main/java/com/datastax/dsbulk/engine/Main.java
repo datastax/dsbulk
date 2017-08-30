@@ -14,6 +14,8 @@ import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.URL;
 import java.util.Arrays;
@@ -39,6 +41,7 @@ public class Main {
   private static final Config DEFAULT = ConfigFactory.load().getConfig("dsbulk");
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
   private static final Config SHORTCUTS = ConfigFactory.parseResourcesAnySyntax("shortcuts.conf");
+  private final String version;
 
   public static void main(String[] args) {
     URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
@@ -50,6 +53,14 @@ public class Main {
     if (connectorName.isEmpty()) {
       connectorName = null;
     }
+
+    version =
+        new BufferedReader(
+                new InputStreamReader(
+                    Main.class.getClassLoader().getResourceAsStream("version.txt")))
+            .lines()
+            .collect(Collectors.joining("\n"));
+
     try {
       if (args.length == 0) {
         throw new ParseException("First argument must be subcommand \"load\" or \"unload\"");
@@ -70,6 +81,8 @@ public class Main {
       Workflow workflow = workflowType.newWorkflow(config);
       workflow.init();
       workflow.execute();
+    } catch (VersionRequestException e) {
+      System.out.println(getVersionMessage());
     } catch (Exception e) {
       HelpFormatter formatter = new HelpFormatter();
       formatter.setOptionComparator(Comparator.comparing(Option::getLongOpt));
@@ -80,11 +93,16 @@ public class Main {
           "NOTE: short options for some connectors may not be shown. "
               + "Run with \"--help -c <connector-name>\" to see the short options available for "
               + "those connectors.";
+      pw.println(getVersionMessage());
       formatter.printHelp(
           pw, 150, "dsbulk (load|unload) [options]", "options:", options, 0, 5, footer);
       pw.println(e.getMessage());
       pw.flush();
     }
+  }
+
+  private String getVersionMessage() {
+    return String.format("DataStax Bulk Loader/Unloader v%s", version);
   }
 
   private String getConnectorNameFromArgs(String[] args) throws ParseException {
@@ -93,16 +111,17 @@ public class Main {
     basicOptions.addOption(Option.builder("c").hasArg().longOpt("connector.name").build());
 
     String[] remainingArgs = args;
+    CommandLineParser parser = new DefaultParser();
     while (remainingArgs.length > 0) {
-      CommandLineParser parser = new DefaultParser();
-
       CommandLine cmd = parser.parse(basicOptions, remainingArgs, true);
 
       if (cmd.hasOption("connector.name")) {
         connectorName = cmd.getOptionValue("connector.name");
         break;
       }
-      // Not found.
+
+      // Not found. Could be that we're choking on one of the earlier args in the arg list.
+      // Skip it and try again.
       remainingArgs = Arrays.copyOfRange(cmd.getArgs(), 1, cmd.getArgs().length);
     }
     return connectorName;
@@ -159,13 +178,14 @@ public class Main {
       options.addOption(option);
     }
 
-    // Add the --help option
+    // Add the --help and --version options
     options.addOption(
         null,
         "help",
         false,
         "This help text. May be combined with -c <connectorName> to see short options for a "
             + "particular connector");
+    options.addOption(null, "version", false, "Print out the version of this tool.");
     return options;
   }
 
@@ -187,7 +207,7 @@ public class Main {
   }
 
   static Config parseCommandLine(String connectorName, String subcommand, String[] args)
-      throws ParseException {
+      throws ParseException, VersionRequestException {
     Options options = createOptions(connectorName);
     CommandLineParser parser = new DefaultParser();
     CommandLine cmd = parser.parse(options, args);
@@ -196,6 +216,10 @@ public class Main {
       // User is asking for help. No real error here, but raising an empty
       // exception gets the job done.
       throw new ParseException("");
+    }
+
+    if (cmd.hasOption("version")) {
+      throw new VersionRequestException();
     }
 
     if (!Arrays.asList("load", "unload").contains(subcommand)) {
@@ -243,4 +267,8 @@ public class Main {
     desc += "\nDefaults to " + value.render(ConfigRenderOptions.concise()) + ".";
     return desc;
   }
+
+  // Simple exception indicating that the user wants to know the
+  // version of the tool.
+  private static class VersionRequestException extends Exception {}
 }
