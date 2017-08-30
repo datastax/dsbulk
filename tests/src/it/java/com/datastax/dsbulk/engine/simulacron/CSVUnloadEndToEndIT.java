@@ -27,7 +27,7 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
-public class CVSUnloadEndToEndIT {
+public class CSVUnloadEndToEndIT {
   @Rule public SimulacronRule simulacron = new SimulacronRule(ClusterSpec.builder().withNodes(1));
 
   @Test
