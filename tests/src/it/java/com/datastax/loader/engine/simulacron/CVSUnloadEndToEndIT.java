@@ -6,7 +6,7 @@
  */
 package com.datastax.loader.engine.simulacron;
 
-import com.datastax.loader.engine.ReadWorkflow;
+import com.datastax.loader.engine.Main;
 import com.datastax.loader.tests.SimulacronRule;
 import com.datastax.loader.tests.utils.CsvUtils;
 import com.datastax.loader.tests.utils.EndToEndUtils;
@@ -39,18 +39,19 @@ public class CVSUnloadEndToEndIT {
     RequestPrime prime = EndToEndUtils.createQueryWithResultSet("SELECT * FROM ip_by_country", 24);
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + full_load_dir.toString() + "\"",
-      "connector.csv.maxThreads =1 ",
-      "driver.query.consistency=ONE",
-      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
-      "driver.protocol.compression=NONE",
-      "schema.statement=\"" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "unload",
+      "--log.outputDirectory=./target",
+      "--connector.name=csv",
+      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.maxThreads=1 ",
+      "--driver.query.consistency=ONE",
+      "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.protocol.compression=NONE",
+      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "",
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new ReadWorkflow(unloadArgs).execute();
+    new Main(unloadArgs);
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateOutputFile(full_load_output_file, 24);
@@ -67,21 +68,22 @@ public class CVSUnloadEndToEndIT {
     simulacron.cluster().prime(new Prime(prime));
     // This exercises logic which will replace the delimiter and make sure non-standard quoting is working.
     String[] unloadArgs = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + full_load_dir.toString() + "\"",
-      "connector.csv.maxThreads =1 ",
-      "connector.csv.delimiter =;",
-      "connector.csv.quote =<",
-      "connector.csv.linesToSkip =2",
-      "driver.query.consistency=ONE",
-      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
-      "driver.protocol.compression=NONE",
-      "schema.statement=\"" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "unload",
+      "--log.outputDirectory=./target",
+      "--connector.name=csv",
+      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.maxThreads=1 ",
+      "--connector.csv.delimiter=;",
+      "--connector.csv.quote=<",
+      "--connector.csv.skipLines=2",
+      "--driver.query.consistency=ONE",
+      "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.protocol.compression=NONE",
+      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new ReadWorkflow(unloadArgs).execute();
+    new Main(unloadArgs);
 
     verifyDelimiterCount(";", full_load_output_file, 120);
     verifyDelimiterCount("<", full_load_output_file, 48);
@@ -101,18 +103,19 @@ public class CVSUnloadEndToEndIT {
     RequestPrime prime = EndToEndUtils.createQueryWithResultSet("SELECT * FROM ip_by_country", 24);
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + full_load_dir.toString() + "\"",
-      "connector.csv.maxThreads =4 ",
-      "driver.query.consistency=LOCAL_ONE",
-      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
-      "driver.protocol.compression=NONE",
-      "schema.statement=\"" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "unload",
+      "--log.outputDirectory=./target",
+      "--connector.name=csv",
+      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.maxThreads=4 ",
+      "--driver.query.consistency=LOCAL_ONE",
+      "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.protocol.compression=NONE",
+      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new ReadWorkflow(unloadArgs).execute();
+    new Main(unloadArgs);
 
     validateQueryCount(1, ConsistencyLevel.LOCAL_ONE);
     EndToEndUtils.validateOutputFile(full_load_output_file1, 6);
@@ -132,21 +135,22 @@ public class CVSUnloadEndToEndIT {
             "SELECT * FROM ip_by_country", new SyntaxErrorResult("Invalid table", 0L, true));
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + full_load_dir.toString() + "\"",
-      "connector.csv.maxThreads =1 ",
-      "driver.query.consistency=ONE",
-      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
-      "driver.protocol.compression=NONE",
-      "schema.statement=\"" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "unload",
+      "--log.outputDirectory=./target",
+      "--connector.name=csv",
+      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.maxThreads=1 ",
+      "--driver.query.consistency=ONE",
+      "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.protocol.compression=NONE",
+      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new ReadWorkflow(unloadArgs).execute();
+    new Main(unloadArgs);
 
     validateQueryCount(1, ConsistencyLevel.ONE);
-    EndToEndUtils.validateExceptionsLog(1, "Statement:", "read-errors.log");
+    EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
     EndToEndUtils.validateOutputFile(full_load_output_file, 0);
   }
 
@@ -161,21 +165,22 @@ public class CVSUnloadEndToEndIT {
             "SELECT * FROM ip_by_country", new SyntaxErrorResult("Invalid table", 0L, true));
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + full_load_dir.toString() + "\"",
-      "connector.csv.maxThreads =4 ",
-      "driver.query.consistency=ONE",
-      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
-      "driver.protocol.compression=NONE",
-      "schema.statement=\"" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "unload",
+      "--log.outputDirectory=./target",
+      "--connector.name=csv",
+      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.maxThreads=4 ",
+      "--driver.query.consistency=ONE",
+      "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.protocol.compression=NONE",
+      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new ReadWorkflow(unloadArgs).execute();
+    new Main(unloadArgs);
 
     validateQueryCount(1, ConsistencyLevel.ONE);
-    EndToEndUtils.validateExceptionsLog(1, "Statement:", "read-errors.log");
+    EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
     EndToEndUtils.validateOutputFile(full_load_output_file, 0);
   }
 
@@ -191,24 +196,26 @@ public class CVSUnloadEndToEndIT {
             "SELECT * FROM ip_by_country", new SyntaxErrorResult("Invalid table", 0L, false));
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + full_load_dir.toString() + "\"",
-      "connector.csv.maxThreads =1 ",
-      "driver.query.consistency=ONE",
-      "driver.contactPoints=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
-      "driver.protocol.compression=NONE",
-      "schema.statement=\"" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "\"",
-      "schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+      "unload",
+      "--log.outputDirectory=./target",
+      "--connector.name=csv",
+      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.maxThreads=1 ",
+      "--driver.query.consistency=ONE",
+      "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.protocol.compression=NONE",
+      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new ReadWorkflow(unloadArgs).execute();
+    new Main(unloadArgs);
 
     validateQueryCount(1, ConsistencyLevel.ONE);
-    EndToEndUtils.validateExceptionsLog(1, "Statement:", "read-errors.log");
+    EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
     EndToEndUtils.validateOutputFile(full_load_output_file, 0);
   }
 
+  @SuppressWarnings("SameParameterValue")
   private void validateQueryCount(int numOfQueries, ConsistencyLevel level) {
     List<QueryLog> logs = simulacron.cluster().getLogs().getQueryLogs();
     List<QueryLog> ipLogs =
@@ -233,14 +240,16 @@ public class CVSUnloadEndToEndIT {
     Assertions.assertThat(i - 1).isEqualTo(expected);
   }
 
+  @SuppressWarnings("ResultOfMethodCallIgnored")
   private void deleteIfExists(Path filepath) {
 
     if (filepath != null) {
       File dir = filepath.toFile();
       if (dir.isDirectory()) {
         String[] children = dir.list();
-        for (int i = 0; i < children.length; i++) {
-          new File(dir, children[i]).delete();
+        assert children != null;
+        for (String child : children) {
+          new File(dir, child).delete();
         }
       }
       dir.delete();
