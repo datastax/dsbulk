@@ -39,7 +39,8 @@ public interface LoaderConfig extends Config {
     try {
       return ReflectionUtils.newInstance(setting);
     } catch (Exception e) {
-      throw new ConfigException.WrongType(origin(), path, "FQCN or short class name", setting, e);
+      throw new ConfigException.WrongType(
+          origin(), path, "FQCN or short class name", getValue(path).valueType().toString(), e);
     }
   }
 
@@ -59,7 +60,8 @@ public interface LoaderConfig extends Config {
     try {
       return ReflectionUtils.resolveClass(setting);
     } catch (Exception e) {
-      throw new ConfigException.WrongType(origin(), path, "FQCN or short class name", setting, e);
+      throw new ConfigException.WrongType(
+          origin(), path, "FQCN or short class name", getValue(path).valueType().toString(), e);
     }
   }
 
@@ -100,7 +102,8 @@ public interface LoaderConfig extends Config {
         return getPath(path).toUri().toURL();
       } catch (Exception e1) {
         e1.addSuppressed(e);
-        throw new ConfigException.WrongType(origin(), path, "path or URL", setting, e1);
+        throw new ConfigException.WrongType(
+            origin(), path, "path or URL", getValue(path).valueType().toString(), e1);
       }
     }
   }
@@ -129,7 +132,10 @@ public interface LoaderConfig extends Config {
         threads = Runtime.getRuntime().availableProcessors() * Integer.parseInt(matcher.group(1));
       } else {
         throw new ConfigException.WrongType(
-            origin(), path, "integer or string in 'nC' syntax", setting);
+            origin(),
+            path,
+            "integer or string in 'nC' syntax",
+            getValue(path).valueType().toString());
       }
     }
     return threads;
@@ -146,7 +152,8 @@ public interface LoaderConfig extends Config {
   default char getChar(String path) {
     String setting = getString(path);
     if (setting.length() != 1) {
-      throw new ConfigException.WrongType(origin(), path, "single character", setting);
+      throw new ConfigException.WrongType(
+          origin(), path, "single character", getValue(path).valueType().toString());
     }
     return setting.charAt(0);
   }
@@ -164,7 +171,8 @@ public interface LoaderConfig extends Config {
     try {
       return Charset.forName(setting);
     } catch (Exception e) {
-      throw new ConfigException.WrongType(origin(), path, "valid charset name", setting, e);
+      throw new ConfigException.WrongType(
+          origin(), path, "valid charset name", getValue(path).valueType().toString(), e);
     }
   }
 

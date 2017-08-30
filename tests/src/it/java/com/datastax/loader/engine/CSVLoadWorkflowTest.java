@@ -9,18 +9,16 @@ package com.datastax.loader.engine;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.datastax.loader.tests.utils.CsvUtils;
-import java.net.URL;
-import java.nio.file.Files;
 import org.junit.Ignore;
 import org.junit.Test;
 
 /** */
-public class CSVReadWorkflowTest {
+public class CSVLoadWorkflowTest {
 
   // TODO temporary, remove when end-to-end integration tests are available
   @Test
   @Ignore
-  public void should_read() throws Exception {
+  public void should_write() throws Exception {
 
     Cluster cluster = Cluster.builder().addContactPoint("127.0.0.1").build();
     Session session = cluster.connect();
@@ -29,15 +27,22 @@ public class CSVReadWorkflowTest {
     session.execute("USE test");
     CsvUtils.createIpByCountryTable(session);
 
-    URL output = Files.createTempDirectory("output").toUri().toURL();
     String[] args = {
-      "log.outputDirectory=./target",
-      "connector.name=csv",
-      "connector.csv.url=\"" + output + "\"",
-      "connector.csv.header=true",
-      "schema.keyspace=test",
-      "schema.table=ip_by_country",
-      "schema.mapping={"
+      "write",
+      "log.outputDirectory",
+      "./target",
+      "connector.name",
+      "csv",
+      "connector.csv.url",
+      CsvUtils.CSV_RECORDS.toExternalForm(),
+      "connector.csv.header",
+      "true",
+      "schema.keyspace",
+      "test",
+      "schema.table",
+      "ip_by_country",
+      "schema.mapping",
+      "{"
           + "\"beginning IP Address\"=beginning_ip_address,"
           + "\"ending IP Address\"=ending_ip_address,"
           + "\"beginning IP Number\"=beginning_ip_number,"
@@ -47,6 +52,6 @@ public class CSVReadWorkflowTest {
           + "}"
     };
 
-    new ReadWorkflow(args).execute();
+    new Main(args);
   }
 }

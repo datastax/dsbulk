@@ -18,8 +18,7 @@ public class EngineSettingsTest {
 
   @Test
   public void should_create_default_engine_settings() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.engine"));
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
     EngineSettings settings = new EngineSettings(config);
     assertThat(settings.getMaxMappingThreads())
         .isEqualTo(Runtime.getRuntime().availableProcessors());
@@ -31,7 +30,7 @@ public class EngineSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("maxMappingThreads = 8C, maxConcurrentReads = 4C")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.engine")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
     EngineSettings settings = new EngineSettings(config);
     assertThat(settings.getMaxMappingThreads())
         .isEqualTo(Runtime.getRuntime().availableProcessors() * 8);

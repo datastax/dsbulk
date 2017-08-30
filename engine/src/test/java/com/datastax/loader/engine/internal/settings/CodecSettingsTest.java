@@ -86,8 +86,7 @@ public class CodecSettingsTest {
   @Test
   public void should_return_string_converting_codecs() throws Exception {
 
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
@@ -138,8 +137,7 @@ public class CodecSettingsTest {
   @Test
   public void should_return_number_converting_codecs() throws Exception {
 
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
@@ -172,8 +170,7 @@ public class CodecSettingsTest {
   @Test
   public void should_return_temporal_converting_codecs() throws Exception {
 
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
@@ -212,8 +209,7 @@ public class CodecSettingsTest {
   @Test
   public void should_return_codecs_for_tokenizable_fields() throws Exception {
 
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.codec"));
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 

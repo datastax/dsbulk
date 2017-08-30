@@ -119,12 +119,12 @@
             <script><![CDATA[
             import com.typesafe.config.*
             import java.nio.file.*
-            Config config = ConfigFactory.defaultReference().withOnlyPath("datastax-loader")
+            Config config = ConfigFactory.defaultReference().withOnlyPath("dsbulk")
             def string = config.root().render(ConfigRenderOptions.defaults().setOriginComments(false))
             def conf = Paths.get("${project.build.directory}/conf")
             Files.createDirectories(conf)
             Files.write(conf.resolve("reference.conf"), string.getBytes("UTF-8"))
-            Files.write(conf.resolve("application.conf"), "# Set application-specific settings here.\n# Example:\n# datastax-loader.connector.name = \"csv\"".getBytes("UTF-8"))
+            Files.write(conf.resolve("application.conf"), "# Set application-specific settings here.\n# Example:\n# dsbulk.connector.name = \"csv\"".getBytes("UTF-8"))
           ]]></script>
           </scripts>
         </configuration>

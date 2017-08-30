@@ -43,6 +43,9 @@ import org.mockito.internal.util.reflection.Whitebox;
 /** */
 public class SchemaSettingsTest {
 
+  private static final String NULL_STRINGS = "nullStrings";
+  private static final String NULL_TO_UNSET = "nullToUnset";
+
   private Session session;
   private ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
   private RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
@@ -82,9 +85,9 @@ public class SchemaSettingsTest {
             ConfigFactory.parseString(
                     "mapping = { 0 = c2 , 2 = c1 }, "
                         + "nullToUnset = true, "
-                        + "nullWords = [], "
+                        + "nullStrings = [], "
                         + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -103,8 +106,8 @@ public class SchemaSettingsTest {
         .containsOnlyKeys("0", "2")
         .containsValue("c1")
         .containsValue("c2");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, "nullWords")).isEmpty();
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -114,9 +117,9 @@ public class SchemaSettingsTest {
             ConfigFactory.parseString(
                     "mapping = { 0 = c2 , 2 = c1 }, "
                         + "nullToUnset = true, "
-                        + "nullWords = [], "
+                        + "nullStrings = [], "
                         + "statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -135,16 +138,16 @@ public class SchemaSettingsTest {
         .containsOnlyKeys("0", "2")
         .containsValue("c1")
         .containsValue("c2");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, "nullWords")).isEmpty();
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
   public void should_create_record_mapper_when_keyspace_and_table_provided() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("nullToUnset = true, nullWords = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
+            ConfigFactory.parseString("nullToUnset = true, nullStrings = [], keyspace=ks, table=t1")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -162,16 +165,17 @@ public class SchemaSettingsTest {
         .containsOnlyKeys("c1", "c2")
         .containsValue("c1")
         .containsValue("c2");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, "nullWords")).isEmpty();
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
   public void should_create_record_mapper_when_null_to_unset_is_false() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("nullToUnset = false, nullWords = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
+            ConfigFactory.parseString(
+                    "nullToUnset = false, nullStrings = [], keyspace=ks, table=t1")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -189,8 +193,8 @@ public class SchemaSettingsTest {
         .containsOnlyKeys("c1", "c2")
         .containsValue("c1")
         .containsValue("c2");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isFalse();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, "nullWords")).isEmpty();
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -199,9 +203,9 @@ public class SchemaSettingsTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     "nullToUnset = false, "
-                        + "nullWords = [\"NIL\", \"NULL\"], "
+                        + "nullStrings = [\"NIL\", \"NULL\"], "
                         + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -219,9 +223,9 @@ public class SchemaSettingsTest {
         .containsOnlyKeys("c1", "c2")
         .containsValue("c1")
         .containsValue("c2");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isFalse();
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
     //noinspection unchecked
-    assertThat((Set<String>) Whitebox.getInternalState(recordMapper, "nullWords"))
+    assertThat((Set<String>) Whitebox.getInternalState(recordMapper, NULL_STRINGS))
         .containsOnly("NIL", "NULL");
   }
 
@@ -232,9 +236,9 @@ public class SchemaSettingsTest {
             ConfigFactory.parseString(
                     "mapping = { 0 = c2 , 2 = c1 }, "
                         + "nullToUnset = true, "
-                        + "nullWords = [], "
+                        + "nullStrings = [], "
                         + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -265,9 +269,9 @@ public class SchemaSettingsTest {
             ConfigFactory.parseString(
                     "mapping = { 0 = c2 , 2 = c1 }, "
                         + "nullToUnset = true, "
-                        + "nullWords = [], "
+                        + "nullStrings = [], "
                         + "statement=\"select c2,c1 from ks.t1\"")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -294,8 +298,8 @@ public class SchemaSettingsTest {
   public void should_create_row_mapper_when_keyspace_and_table_provided() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("nullToUnset = true, nullWords = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
+            ConfigFactory.parseString("nullToUnset = true, nullStrings = [], keyspace=ks, table=t1")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -322,8 +326,9 @@ public class SchemaSettingsTest {
   public void should_create_row_mapper_when_null_to_unset_is_false() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("nullToUnset = false, nullWords = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
+            ConfigFactory.parseString(
+                    "nullToUnset = false, nullStrings = [], keyspace=ks, table=t1")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -352,9 +357,9 @@ public class SchemaSettingsTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     "nullToUnset = false, "
-                        + "nullWords = [\"NIL\", \"NULL\"], "
+                        + "nullStrings = [\"NIL\", \"NULL\"], "
                         + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("datastax-loader.schema")));
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);

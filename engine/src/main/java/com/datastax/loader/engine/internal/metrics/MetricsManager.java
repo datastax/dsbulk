@@ -95,13 +95,13 @@ public class MetricsManager implements AutoCloseable {
       startJMXReporter();
     }
     switch (workflowType) {
-      case WRITE:
+      case LOAD:
         startRecordMappingsReporter();
         startBatchesReporter();
         startWritesReporter();
         break;
 
-      case READ:
+      case UNLOAD:
         startReadsReporter();
         startResultMappingsReporter();
         break;

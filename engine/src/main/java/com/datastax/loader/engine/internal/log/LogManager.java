@@ -240,12 +240,12 @@ public class LogManager implements AutoCloseable {
   }
 
   private void appendToDebugFile(WriteResult result) {
-    Path logFile = executionDirectory.resolve("write-errors.log");
+    Path logFile = executionDirectory.resolve("load-errors.log");
     appendToDebugFile(result, logFile);
   }
 
   private void appendToDebugFile(ReadResult result) {
-    Path logFile = executionDirectory.resolve("read-errors.log");
+    Path logFile = executionDirectory.resolve("unload-errors.log");
     appendToDebugFile(result, logFile);
   }
 

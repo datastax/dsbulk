@@ -10,7 +10,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
-import com.datastax.loader.commons.url.LoaderURLStreamHandlerFactory;
+import com.datastax.loader.commons.config.LoaderConfig;
 import com.datastax.loader.connectors.api.Connector;
 import com.datastax.loader.connectors.api.Record;
 import com.datastax.loader.connectors.api.RecordMetadata;
@@ -30,7 +30,6 @@ import com.datastax.loader.engine.internal.settings.SchemaSettings;
 import com.datastax.loader.engine.internal.settings.SettingsManager;
 import com.datastax.loader.executor.api.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
-import java.net.URL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -38,28 +37,29 @@ import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 /** The main class for read workflows. */
-public class ReadWorkflow {
+public class UnloadWorkflow implements Workflow {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ReadWorkflow.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(UnloadWorkflow.class);
 
-  public static void main(String[] args) throws Exception {
-    URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    ReadWorkflow workflow = new ReadWorkflow(args);
-    workflow.execute();
+  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.UNLOAD);
+  private final LoaderConfig config;
+
+  private DriverSettings driverSettings;
+  private ConnectorSettings connectorSettings;
+  private SchemaSettings schemaSettings;
+  private ExecutorSettings executorSettings;
+  private LogSettings logSettings;
+  private CodecSettings codecSettings;
+  private MonitoringSettings monitoringSettings;
+  private EngineSettings engineSettings;
+
+  UnloadWorkflow(LoaderConfig config) {
+    this.config = config;
   }
 
-  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.READ);
-  private final DriverSettings driverSettings;
-  private final ConnectorSettings connectorSettings;
-  private final SchemaSettings schemaSettings;
-  private final ExecutorSettings executorSettings;
-  private final LogSettings logSettings;
-  private final CodecSettings codecSettings;
-  private final MonitoringSettings monitoringSettings;
-  private final EngineSettings engineSettings;
-
-  public ReadWorkflow(String[] args) throws Exception {
-    SettingsManager settingsManager = new SettingsManager(args, executionId);
+  @Override
+  public void init() throws Exception {
+    SettingsManager settingsManager = new SettingsManager(config, executionId);
     settingsManager.loadConfiguration();
     settingsManager.logEffectiveSettings();
     logSettings = settingsManager.getLogSettings();
@@ -72,6 +72,7 @@ public class ReadWorkflow {
     engineSettings = settingsManager.getEngineSettings();
   }
 
+  @Override
   public void execute() {
 
     LOGGER.info("Starting read workflow engine execution " + executionId);
@@ -85,8 +86,8 @@ public class ReadWorkflow {
 
     try (DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.connect();
-        Connector connector = connectorSettings.getConnector(WorkflowType.READ);
-        MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.READ);
+        Connector connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
+        MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD);
         LogManager logManager = logSettings.newLogManager(cluster);
         ReactorBulkReader executor =
             executorSettings.newReadExecutor(session, metricsManager.getExecutionListener())) {

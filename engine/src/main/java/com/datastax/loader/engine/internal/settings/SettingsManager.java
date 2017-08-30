@@ -6,11 +6,10 @@
  */
 package com.datastax.loader.engine.internal.settings;
 
-import com.datastax.loader.commons.config.DefaultLoaderConfig;
 import com.datastax.loader.commons.config.LoaderConfig;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
+import com.typesafe.config.ConfigValue;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,15 +18,9 @@ public class SettingsManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SettingsManager.class);
 
-  private static final Config REFERENCE =
-      ConfigFactory.defaultReference().getConfig("datastax-loader");
-
-  private static final Config DEFAULT = ConfigFactory.load().getConfig("datastax-loader");
-
-  private final String[] args;
+  private final LoaderConfig config;
   private final String executionId;
 
-  private LoaderConfig config;
   private DriverSettings driverSettings;
   private ConnectorSettings connectorSettings;
   private SchemaSettings schemaSettings;
@@ -38,16 +31,12 @@ public class SettingsManager {
   private MonitoringSettings monitoringSettings;
   private EngineSettings engineSettings;
 
-  public SettingsManager(String[] args, String executionId) {
-    this.args = args;
+  public SettingsManager(LoaderConfig config, String executionId) {
+    this.config = config;
     this.executionId = executionId;
   }
 
   public void loadConfiguration() throws Exception {
-    Config delegate = parseUserSettings(args).withFallback(DEFAULT);
-    delegate.checkValid(REFERENCE);
-    // TODO check unrecognized config
-    config = new DefaultLoaderConfig(delegate);
     logSettings = new LogSettings(config.getConfig("log"), executionId);
     driverSettings = new DriverSettings(config.getConfig("driver"), executionId);
     connectorSettings = new ConnectorSettings(config.getConfig("connector"));
@@ -60,9 +49,12 @@ public class SettingsManager {
   }
 
   public void logEffectiveSettings() {
-    ConfigRenderOptions renderOptions =
-        ConfigRenderOptions.defaults().setJson(false).setOriginComments(false).setComments(false);
-    LOGGER.info("Loader effective settings:\n" + config.root().render(renderOptions));
+    LOGGER.info("Loader effective settings:");
+    for (Map.Entry<String, ConfigValue> entry : config.entrySet()) {
+      LOGGER.info(
+          String.format(
+              "%s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
+    }
   }
 
   public DriverSettings getDriverSettings() {
@@ -99,13 +91,5 @@ public class SettingsManager {
 
   public EngineSettings getEngineSettings() {
     return engineSettings;
-  }
-
-  private static Config parseUserSettings(String[] args) {
-    Config userSettings = ConfigFactory.empty();
-    for (String arg : args) {
-      userSettings = ConfigFactory.parseString(arg).withFallback(userSettings);
-    }
-    return userSettings;
   }
 }

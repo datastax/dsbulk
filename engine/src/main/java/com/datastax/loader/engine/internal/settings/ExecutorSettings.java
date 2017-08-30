@@ -45,12 +45,12 @@ public class ExecutorSettings {
   }
 
   public ReactiveBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
-    return newBulkExecutor(session, executionListener, WorkflowType.WRITE);
+    return newBulkExecutor(session, executionListener, WorkflowType.LOAD);
   }
 
   public ReactorBulkReader newReadExecutor(
       Session session, MetricsCollectingExecutionListener executionListener) {
-    return newBulkExecutor(session, executionListener, WorkflowType.READ);
+    return newBulkExecutor(session, executionListener, WorkflowType.UNLOAD);
   }
 
   public ThreadPoolExecutor getExecutorThreadPool() {
@@ -59,7 +59,7 @@ public class ExecutorSettings {
 
   private ReactorBulkExecutor newBulkExecutor(
       Session session, ExecutionListener executionListener, WorkflowType workflowType) {
-    if (workflowType == WorkflowType.READ) {
+    if (workflowType == WorkflowType.UNLOAD) {
       if (continuousPagingAvailable(session)) {
         ContinuousReactorBulkExecutorBuilder builder =
             ContinuousReactorBulkExecutor.builder(((ContinuousPagingSession) session));

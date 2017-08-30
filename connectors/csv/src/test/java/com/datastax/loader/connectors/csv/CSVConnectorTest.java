@@ -40,7 +40,7 @@ import reactor.core.publisher.Flux;
 /** */
 public class CSVConnectorTest {
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
-      ConfigFactory.defaultReference().getConfig("datastax-loader.connector.csv");
+      ConfigFactory.defaultReference().getConfig("dsbulk.connector.csv");
 
   @BeforeClass
   public static void setupURLStreamHandlerFactory() throws Exception {

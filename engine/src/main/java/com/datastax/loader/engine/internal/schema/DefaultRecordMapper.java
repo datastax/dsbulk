@@ -29,7 +29,7 @@ public class DefaultRecordMapper implements RecordMapper {
   private final RecordMetadata recordMetadata;
 
   /** Values in input that we treat as null in the loader. */
-  private final ImmutableSet<String> nullWords;
+  private final ImmutableSet<String> nullStrings;
 
   /** Whether to map null input to "unset" */
   private final boolean nullToUnset;
@@ -40,13 +40,13 @@ public class DefaultRecordMapper implements RecordMapper {
       PreparedStatement insertStatement,
       Mapping mapping,
       RecordMetadata recordMetadata,
-      ImmutableSet<String> nullWords,
+      ImmutableSet<String> nullStrings,
       boolean nullToUnset) {
     this(
         insertStatement,
         mapping,
         recordMetadata,
-        nullWords,
+        nullStrings,
         nullToUnset,
         (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
   }
@@ -55,13 +55,13 @@ public class DefaultRecordMapper implements RecordMapper {
       PreparedStatement insertStatement,
       Mapping mapping,
       RecordMetadata recordMetadata,
-      ImmutableSet<String> nullWords,
+      ImmutableSet<String> nullStrings,
       boolean nullToUnset,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
     this.nullToUnset = nullToUnset;
     this.boundStatementFactory = boundStatementFactory;
   }
@@ -89,9 +89,9 @@ public class DefaultRecordMapper implements RecordMapper {
 
   private void bindColumn(
       BoundStatement bs, String variable, Object raw, DataType cqlType, TypeToken<?> javaType) {
-    // If the raw value is one of the nullWords, the input represents null.
+    // If the raw value is one of the nullStrings, the input represents null.
     Object convertedValue = raw;
-    if (raw == null || (raw instanceof String && nullWords.contains(raw))) {
+    if (raw == null || (raw instanceof String && nullStrings.contains(raw))) {
       convertedValue = null;
     }
 

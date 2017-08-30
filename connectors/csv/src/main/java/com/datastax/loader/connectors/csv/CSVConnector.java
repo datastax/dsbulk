@@ -84,7 +84,7 @@ public class CSVConnector implements Connector {
   private char quote;
   private char escape;
   private char comment;
-  private long linesToSkip;
+  private long skipLines;
   private long maxLines;
   private int maxThreads;
   private boolean recursive;
@@ -105,7 +105,7 @@ public class CSVConnector implements Connector {
     quote = settings.getChar("quote");
     escape = settings.getChar("escape");
     comment = settings.getChar("comment");
-    linesToSkip = settings.getLong("linesToSkip");
+    skipLines = settings.getLong("skipLines");
     maxLines = settings.getLong("maxLines");
     maxThreads = settings.getThreads("maxThreads");
     recursive = settings.getBoolean("recursive");
@@ -128,7 +128,7 @@ public class CSVConnector implements Connector {
     if (read) {
       parserSettings = new CsvParserSettings();
       parserSettings.setFormat(format);
-      parserSettings.setNumberOfRowsToSkip(linesToSkip);
+      parserSettings.setNumberOfRowsToSkip(skipLines);
       parserSettings.setHeaderExtractionEnabled(header);
       parserSettings.setLineSeparatorDetectionEnabled(true);
     } else {

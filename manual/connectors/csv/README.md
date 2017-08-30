@@ -62,7 +62,7 @@ Adn the [Wikipedia article on CSV format].
   Whether the files to read begin with a header line or not.
   Defaults to `false` (no header line).
   When set to `true`, the first line in every file is discarded,
-  even if the "linesToSkip" setting is set to zero (see below).
+  even if the "skipLines" setting is set to zero (see below).
   However, that line will be used to assign field names to
   each record, thus allowing mappings by field name such
   as `{ myFieldName1 = myColumnName1, myFieldName2 = myColumnName2 }`.
@@ -100,7 +100,7 @@ Adn the [Wikipedia article on CSV format].
   Only one character can be specified.
   Note that this setting applies to all files to be read.
 
-* linesToSkip
+* skipLines
 
   Defines a number of lines to skip from each input file before the parser can begin to execute.
   Defaults to zero (i.e., do not skip any lines)

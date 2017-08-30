@@ -26,9 +26,9 @@ public class MonitoringSettingsTest {
   @Test
   public void should_create_metrics_manager_with_default_settings() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("datastax-loader.monitoring"));
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.monitoring"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
-    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.READ);
+    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD);
     assertThat(metricsManager).isNotNull();
     assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
     assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(MILLISECONDS);
@@ -46,12 +46,12 @@ public class MonitoringSettingsTest {
             ConfigFactory.parseString(
                 "rateUnit = MINUTES, "
                     + "durationUnit = SECONDS, "
-                    + "reportInterval = 30 minutes, "
+                    + "reportRate = 30 minutes, "
                     + "expectedWrites = 1000, "
                     + "expectedReads = 50,"
                     + "jmx = false"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
-    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.READ);
+    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD);
     assertThat(metricsManager).isNotNull();
     assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);
     assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(SECONDS);

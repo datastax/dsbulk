@@ -28,7 +28,7 @@ The following options can be configured:
 
     Driver-specific settings.
  
-    * `contactPoints` [string list]
+    * `hosts` [string list]
     
          The contact points to use for the initial connection to the cluster.
          This must be a list of strings with each contact point's host-name or ip address. If the host is
@@ -622,7 +622,7 @@ The following options can be configured:
         but this is not a strict requirement; it is however required that
         their names match those specified in the mapping. See "mapping" setting below.
 
-    * `nullWords` [string list]
+    * `nullStrings` [string list]
 
         Values (case-sensitive) to map to null in the database when loading data.
         Defaults to empty.
@@ -631,7 +631,7 @@ The following options can be configured:
 
         Whether or not to map `null` input values to "unset" in the database, meaning don't
         modify a potentially pre-existing value of this field for this row. `null`
-        input includes the values from the nullWords setting above.
+        input includes the values from the nullStrings setting above.
         Note that setting this to false leads to tombstones being created in the database 
         to represent null.
         Defaults to true.
@@ -661,7 +661,7 @@ The following options can be configured:
 
     Monitoring-specific settings.
 
-    * `reportInterval` [duration]
+    * `reportRate` [duration]
     
         The report interval for the console reporter.
         The console reporter will print useful metrics

@@ -212,7 +212,7 @@ public class LogManagerTest {
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("write-errors.log");
+    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
@@ -250,7 +250,7 @@ public class LogManagerTest {
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("write-errors.log");
+    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
@@ -290,7 +290,7 @@ public class LogManagerTest {
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path errors = logManager.getExecutionDirectory().resolve("read-errors.log");
+    Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
     assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
