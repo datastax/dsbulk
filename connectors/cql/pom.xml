@@ -12,23 +12,23 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>datastax-loader-connectors</artifactId>
+    <artifactId>dsbulk-connectors</artifactId>
     <groupId>com.datastax.dse</groupId>
     <version>1.0.0-alpha2-SNAPSHOT</version>
   </parent>
 
-  <artifactId>datastax-loader-connectors-cql</artifactId>
+  <artifactId>dsbulk-connectors-cql</artifactId>
 
-  <name>DataStax Loader - Connectors - CQL</name>
+  <name>DataStax Bulk Loader/Unloader - Connectors - CQL</name>
   <description>
-    CQL connector for the DataStax Loader.
+    CQL connector for the DataStax Bulk Loader/Unloader.
   </description>
 
   <dependencies>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-connectors-api</artifactId>
+      <artifactId>dsbulk-connectors-api</artifactId>
     </dependency>
 
     <dependency>

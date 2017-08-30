@@ -1,6 +1,6 @@
 # Workflow Engine Encryption
 
-DataStax Loader can connect to DSE clusters with SSL encryption enabled.
+DataStax Bulk Loader/Unloader can connect to DSE clusters with SSL encryption enabled.
 
 Two providers are available:
         
@@ -11,7 +11,7 @@ Using `OpenSSL` provides better performance and generates less garbage.
 A disadvantage of using the OpenSSL provider is that, unlike the `JDK` provider,
 it requires a platform-specific dependency, named "netty-tcnative",
 which must be added manually to the loader's classpath
-(typically by dropping its jar in the lib subdirectory of the Loader archive).
+(typically by dropping its jar in the lib subdirectory of the DSBulk archive).
 Follow [these instructions](http://netty.io/wiki/forked-tomcat-native.html) 
 to find out how to add this dependency.
 

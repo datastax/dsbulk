@@ -1,11 +1,11 @@
-# DataStax Loader CSV connector
+# DataStax Bulk Loader/Unloader CSV connector
 
 The [CSV Connector] is a highly-configurable connector that reads files in field-delimited format.
 
 For more information about the CSV file format, see [RFC 4180]
 Adn the [Wikipedia article on CSV format].
 
-[CSV Connector]: ../../connectors/csv/src/main/java/com/datastax/loader/connectors/csv/CSVConnector.java
+[CSV Connector]: ../../connectors/csv/src/main/java/com/datastax/dsbulk/connectors/csv/CSVConnector.java
 [RFC 4180]: https://tools.ietf.org/html/rfc4180
 [Wikipedia article on CSV format]: https://en.wikipedia.org/wiki/Comma-separated_values
 

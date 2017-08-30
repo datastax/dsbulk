@@ -12,16 +12,16 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>datastax-loader-parent</artifactId>
+    <artifactId>dsbulk-parent</artifactId>
     <groupId>com.datastax.dse</groupId>
     <version>1.0.0-alpha2-SNAPSHOT</version>
   </parent>
 
-  <artifactId>datastax-loader-commons</artifactId>
+  <artifactId>dsbulk-commons</artifactId>
 
-  <name>DataStax Loader - Commons</name>
+  <name>DataStax Bulk Loader/Unloader - Commons</name>
   <description>
-    Common utilities for the DataStax Loader.
+    Common utilities for the DataStax Bulk Loader/Unloader.
   </description>
 
   <dependencies>

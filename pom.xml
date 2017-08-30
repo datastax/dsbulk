@@ -11,16 +11,16 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.datastax.dse</groupId>
-  <artifactId>datastax-loader-parent</artifactId>
+  <artifactId>dsbulk-parent</artifactId>
   <version>1.0.0-alpha2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>DataStax Loader</name>
+  <name>DataStax Bulk Loader/Unloader</name>
   <description>
     A unified tool for loading into and unloading from DSE storage engines (i.e., Cassandra/Apollo and DataStax Enterprise).
   </description>
 
-  <url>https://github.com/riptano/datastax-loader</url>
+  <url>https://github.com/riptano/dsbulk</url>
   <inceptionYear>2017</inceptionYear>
 
   <modules>
@@ -64,62 +64,62 @@
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-commons</artifactId>
+        <artifactId>dsbulk-commons</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-executor-api</artifactId>
+        <artifactId>dsbulk-executor-api</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-executor-api</artifactId>
+        <artifactId>dsbulk-executor-api</artifactId>
         <version>${project.version}</version>
         <type>test-jar</type>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-executor-rxjava</artifactId>
+        <artifactId>dsbulk-executor-rxjava</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-executor-reactor</artifactId>
+        <artifactId>dsbulk-executor-reactor</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-connectors-api</artifactId>
+        <artifactId>dsbulk-connectors-api</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-connectors-csv</artifactId>
+        <artifactId>dsbulk-connectors-csv</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-connectors-json</artifactId>
+        <artifactId>dsbulk-connectors-json</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-connectors-cql</artifactId>
+        <artifactId>dsbulk-connectors-cql</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
-        <artifactId>datastax-loader-engine</artifactId>
+        <artifactId>dsbulk-engine</artifactId>
         <version>${project.version}</version>
       </dependency>
 
@@ -686,9 +686,9 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
   </licenses>
 
   <scm>
-    <connection>scm:git:git@github.com:riptano/datastax-loader.git</connection>
-    <developerConnection>scm:git:git@github.com:riptano/datastax-loader.git</developerConnection>
-    <url>https://github.com/riptano/datastax-loader</url>
+    <connection>scm:git:git@github.com:riptano/dsbulk.git</connection>
+    <developerConnection>scm:git:git@github.com:riptano/dsbulk.git</developerConnection>
+    <url>https://github.com/riptano/dsbulk</url>
     <tag>HEAD</tag>
   </scm>
 

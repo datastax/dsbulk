@@ -12,43 +12,43 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>datastax-loader-parent</artifactId>
+    <artifactId>dsbulk-parent</artifactId>
     <groupId>com.datastax.dse</groupId>
     <version>1.0.0-alpha2-SNAPSHOT</version>
   </parent>
 
-  <artifactId>datastax-loader-engine</artifactId>
+  <artifactId>dsbulk-engine</artifactId>
 
-  <name>DataStax Loader - Engine</name>
+  <name>DataStax Bulk Loader/Unloader - Engine</name>
   <description>
-    Workflow execution engine of the DataStax Loader.
+    Workflow execution engine of the DataStax Bulk Loader/Unloader.
   </description>
 
   <dependencies>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-commons</artifactId>
+      <artifactId>dsbulk-commons</artifactId>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-executor-reactor</artifactId>
+      <artifactId>dsbulk-executor-reactor</artifactId>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-connectors-csv</artifactId>
+      <artifactId>dsbulk-connectors-csv</artifactId>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-connectors-json</artifactId>
+      <artifactId>dsbulk-connectors-json</artifactId>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-connectors-cql</artifactId>
+      <artifactId>dsbulk-connectors-cql</artifactId>
     </dependency>
 
     <dependency>

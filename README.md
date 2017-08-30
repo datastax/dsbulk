@@ -1,4 +1,4 @@
-# DataStax Loader
+# DataStax Bulk Loader/Unloader
 
 A unified tool for loading into and unloading from DSE storage engines (i.e., Cassandra/Apollo and DataStax Enterprise).
 
@@ -8,7 +8,7 @@ Read the [manual].
 
 ## Issue Management
 
-DataStax Loader has its own [Jira project].
+DataStax Bulk Loader/Unloader has its own [Jira project].
 
 The original DSP ticket was [DSP-13637].
 

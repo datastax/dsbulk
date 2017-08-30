@@ -38,7 +38,7 @@ be around 200-300 lines.
 ### API vs Internal packages
 
 Packages are considered part of the API by default, _unless_ they contain the word `internal`: 
-`com.datastax.loader.foo` is API, but `com.datastax.loader.internal.foo` is internal.
+`com.datastax.dsbulk.foo` is API, but `com.datastax.dsbulk.internal.foo` is internal.
 
 API packages must offer a stable API and guarantee binary compatibility between 
 minor and bugfix releases. Binary compatibility breaks are only allowed between major releases.
@@ -69,7 +69,7 @@ String getName();
 On the other hand, there is often something useful to say about a method, so most should have at
 least a one-line comment. Use common sense.
 
-Users importing the DataStax Loader API should find the right documentation at the right time 
+Users importing the DataStax Bulk API should find the right documentation at the right time 
 using their IDE. Try to think of how they will come into contact with the class. 
 For example, if a type is constructed with
 a builder, each builder method should probably explain what the default is when you don't call it.

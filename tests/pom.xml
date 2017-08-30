@@ -12,65 +12,65 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>datastax-loader-parent</artifactId>
+    <artifactId>dsbulk-parent</artifactId>
     <groupId>com.datastax.dse</groupId>
     <version>1.0.0-alpha2-SNAPSHOT</version>
   </parent>
 
-  <artifactId>datastax-loader-integration-tests</artifactId>
+  <artifactId>dsbulk-integration-tests</artifactId>
 
-  <name>DataStax Loader - Integration Tests</name>
+  <name>DataStax Bulk Loader/Unloader - Integration Tests</name>
   <description>
-    Integration tests for the DataStax Loader.
+    Integration tests for the DataStax Bulk Loader/Unloader.
   </description>
 
   <dependencies>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-engine</artifactId>
+      <artifactId>dsbulk-engine</artifactId>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-executor-api</artifactId>
+      <artifactId>dsbulk-executor-api</artifactId>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-executor-rxjava</artifactId>
+      <artifactId>dsbulk-executor-rxjava</artifactId>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-executor-reactor</artifactId>
+      <artifactId>dsbulk-executor-reactor</artifactId>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-connectors-api</artifactId>
+      <artifactId>dsbulk-connectors-api</artifactId>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-connectors-csv</artifactId>
+      <artifactId>dsbulk-connectors-csv</artifactId>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-connectors-json</artifactId>
+      <artifactId>dsbulk-connectors-json</artifactId>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-connectors-cql</artifactId>
+      <artifactId>dsbulk-connectors-cql</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -207,7 +207,7 @@
             <configuration>
               <!-- skip long tests by default -->
               <excludedGroups>
-                com.datastax.loader.tests.categories.LongTests
+                com.datastax.dsbulk.tests.categories.LongTests
               </excludedGroups>
               <reportNameSuffix>short</reportNameSuffix>
               <!-- set so test can exit with rc 0 (ci will mark test failures accordingly) -->
@@ -280,7 +280,7 @@
                   <goal>verify</goal>
                 </goals>
                 <configuration>
-                  <groups>com.datastax.loader.tests.categories.LongTests</groups>
+                  <groups>com.datastax.dsbulk.tests.categories.LongTests</groups>
                   <reportNameSuffix>long</reportNameSuffix>
                 </configuration>
               </execution>

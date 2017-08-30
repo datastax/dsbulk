@@ -285,7 +285,7 @@ The following options can be configured:
                 A disadvantage of using the OpenSSL provider is that, unlike the JDK provider,
                 it requires a platform-specific dependency, named "netty-tcnative",
                 which must be added manually to the loader's classpath
-                (typically by dropping its jar in the lib subdirectory of the Loader archive).
+                (typically by dropping its jar in the lib subdirectory of the DSBulk archive).
                 Follow [these instructions](http://netty.io/wiki/forked-tomcat-native.html) 
                 to find out how to add this dependency.
         
@@ -370,7 +370,7 @@ The following options can be configured:
     These settings control how the workflow engine
     groups together statements before writing them.
     Only applicable for write operations, ignored otherwise.
-    See `com.datastax.loader.executor.api.batch.StatementBatcher` for more information.
+    See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more information.
 
     * `mode` [enum]
     

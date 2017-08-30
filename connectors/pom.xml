@@ -12,17 +12,17 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>datastax-loader-parent</artifactId>
+    <artifactId>dsbulk-parent</artifactId>
     <groupId>com.datastax.dse</groupId>
     <version>1.0.0-alpha2-SNAPSHOT</version>
   </parent>
 
-  <artifactId>datastax-loader-connectors</artifactId>
+  <artifactId>dsbulk-connectors</artifactId>
   <packaging>pom</packaging>
 
-  <name>DataStax Loader - Connectors</name>
+  <name>DataStax Bulk Loader/Unloader - Connectors</name>
   <description>
-    Connectors for the DataStax Loader.
+    Connectors for the DataStax Bulk Loader/Unloader.
   </description>
 
   <modules>

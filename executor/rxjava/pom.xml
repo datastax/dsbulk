@@ -11,23 +11,23 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>datastax-loader-executor</artifactId>
+    <artifactId>dsbulk-executor</artifactId>
     <groupId>com.datastax.dse</groupId>
     <version>1.0.0-alpha2-SNAPSHOT</version>
   </parent>
 
-  <artifactId>datastax-loader-executor-rxjava</artifactId>
+  <artifactId>dsbulk-executor-rxjava</artifactId>
 
-  <name>DataStax Loader - Executor - RxJava</name>
+  <name>DataStax Bulk Loader/Unloader - Executor - RxJava</name>
   <description>
-    RxJava implementation of the Bulk Executor API for the DataStax Loader.
+    RxJava implementation of the Bulk Executor API for the DataStax Bulk Loader/Unloader.
   </description>
 
   <dependencies>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-executor-api</artifactId>
+      <artifactId>dsbulk-executor-api</artifactId>
     </dependency>
 
     <dependency>
@@ -57,7 +57,7 @@
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>datastax-loader-executor-api</artifactId>
+      <artifactId>dsbulk-executor-api</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
