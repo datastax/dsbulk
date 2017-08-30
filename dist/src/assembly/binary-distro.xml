@@ -87,8 +87,8 @@
     <moduleSet>
       <useAllReactorProjects>true</useAllReactorProjects>
       <excludes>
-        <exclude>com.datastax.dse:datastax-loader-integration-tests</exclude>
-        <exclude>com.datastax.dse:datastax-loader-dist</exclude>
+        <exclude>com.datastax.dse:dsbulk-integration-tests</exclude>
+        <exclude>com.datastax.dse:dsbulk-dist</exclude>
       </excludes>
       <binaries>
         <unpack>false</unpack>
