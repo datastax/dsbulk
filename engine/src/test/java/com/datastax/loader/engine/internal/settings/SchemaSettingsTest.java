@@ -43,6 +43,9 @@ import org.mockito.internal.util.reflection.Whitebox;
 /** */
 public class SchemaSettingsTest {
 
+  private static final String NULL_STRINGS = "nullStrings";
+  private static final String NULL_TO_UNSET = "nullToUnset";
+
   private Session session;
   private ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
   private RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
@@ -103,8 +106,8 @@ public class SchemaSettingsTest {
         .containsOnlyKeys("0", "2")
         .containsValue("c1")
         .containsValue("c2");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, "nullStrings")).isEmpty();
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -135,8 +138,8 @@ public class SchemaSettingsTest {
         .containsOnlyKeys("0", "2")
         .containsValue("c1")
         .containsValue("c2");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, "nullStrings")).isEmpty();
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -162,8 +165,8 @@ public class SchemaSettingsTest {
         .containsOnlyKeys("c1", "c2")
         .containsValue("c1")
         .containsValue("c2");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, "nullStrings")).isEmpty();
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -190,8 +193,8 @@ public class SchemaSettingsTest {
         .containsOnlyKeys("c1", "c2")
         .containsValue("c1")
         .containsValue("c2");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isFalse();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, "nullStrings")).isEmpty();
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -220,9 +223,9 @@ public class SchemaSettingsTest {
         .containsOnlyKeys("c1", "c2")
         .containsValue("c1")
         .containsValue("c2");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, "nullToUnset")).isFalse();
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
     //noinspection unchecked
-    assertThat((Set<String>) Whitebox.getInternalState(recordMapper, "nullStrings"))
+    assertThat((Set<String>) Whitebox.getInternalState(recordMapper, NULL_STRINGS))
         .containsOnly("NIL", "NULL");
   }
 
