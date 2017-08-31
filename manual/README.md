@@ -70,11 +70,11 @@ See examples for details.
 
 * Specify a few hosts (initial contact points) that belong to the desired cluster and load from a local file:
   
-  `dsbulk load -c csv -url  ~/export.csv -k ks1 -t table1 -h '[10.200.1.3, 10.200.1.4]'`
+  `dsbulk load -c csv -url  ~/export.csv -k ks1 -t table1 -h '10.200.1.3, 10.200.1.4'`
 
 * Specify port 9876 for the cluster hosts and load from an external source url:
 
-  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -h '[10.200.1.3, 10.200.1.4]' -port 9876`
+  `dsbulk load -c csv -url https://svr/data/export.csv -k ks1 -t table1 -h '10.200.1.3, 10.200.1.4' -port 9876`
 
 * Load all csv files from a directory. The files do not have a header row. Map field indices of the input to table columns:
 
@@ -83,7 +83,7 @@ See examples for details.
 * With default port for cluster hosts, connector-name, keyspace, table, and mapping set in
   `conf/application.conf`:
 
-  `dsbulk load -url https://svr/data/export.csv -h '[10.200.1.3, 10.200.1.4]'`
+  `dsbulk load -url https://svr/data/export.csv -h '10.200.1.3,10.200.1.4'`
 
 ## Unload Examples
 Unloading is simply the inverse of loading and due to the symmetry, many settings are
@@ -102,4 +102,4 @@ used in both load and unload.
   
 * Unload data from a remote cluster to a remote destination url:
 
-  `dsbulk unload -c csv -url https://svr/data/table1 -k ks1 -t table1 -header=true -h '[10.200.1.3]'`
+  `dsbulk unload -c csv -url https://svr/data/table1 -k ks1 -t table1 -header=true -h 10.200.1.3`

@@ -38,6 +38,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.KeyStore;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import javax.net.ssl.KeyManagerFactory;
@@ -66,8 +67,7 @@ public class DriverSettings {
   public DseCluster newCluster() throws Exception {
     DseCluster.Builder builder = DseCluster.builder().withClusterName(executionId + "-driver");
     int defaultPort = config.getInt("port");
-    config
-        .getStringList("hosts")
+    Arrays.asList(config.getString("hosts").split(",\\s*"))
         .forEach(
             s -> {
               String[] tokens = s.split(":");

@@ -61,7 +61,7 @@ public class DriverSettingsTest {
   public void should_create_mapper_when_hosts_provided() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("port = 9876, hosts = [ \"1.2.3.4:9042\", \"2.3.4.5\" ]")
+            ConfigFactory.parseString("port = 9876, hosts = \"1.2.3.4:9042, 2.3.4.5,9.8.7.6\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     DseCluster cluster = driverSettings.newCluster();
@@ -73,7 +73,9 @@ public class DriverSettingsTest {
         (List<InetSocketAddress>) Whitebox.getInternalState(manager, "contactPoints");
     assertThat(contactPoints)
         .containsExactly(
-            new InetSocketAddress("1.2.3.4", 9042), new InetSocketAddress("2.3.4.5", 9876));
+            new InetSocketAddress("1.2.3.4", 9042),
+            new InetSocketAddress("2.3.4.5", 9876),
+            new InetSocketAddress("9.8.7.6", 9876));
     DseConfiguration configuration = cluster.getConfiguration();
     assertThat(
             Whitebox.getInternalState(configuration.getProtocolOptions(), "initialProtocolVersion"))

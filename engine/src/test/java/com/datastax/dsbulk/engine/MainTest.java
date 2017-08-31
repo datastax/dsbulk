@@ -111,7 +111,7 @@ public class MainTest {
               "-c", "conn",
               "-p", "pass",
               "-u", "user",
-              "-h", "[\"host\"]",
+              "-h", "host1, host2",
               "-lbp", "lbp",
               "-retry", "retry",
               "-port", "9876",
@@ -141,7 +141,7 @@ public class MainTest {
     assertThat(result.getString("connector.name")).isEqualTo("conn");
     assertThat(result.getString("driver.auth.password")).isEqualTo("pass");
     assertThat(result.getString("driver.auth.username")).isEqualTo("user");
-    assertThat(result.getStringList("driver.hosts")).isEqualTo(Collections.singletonList("host"));
+    assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
     assertThat(result.getString("driver.policy.lbp")).isEqualTo("lbp");
     assertThat(result.getString("driver.policy.retry")).isEqualTo("retry");
     assertThat(result.getInt("driver.port")).isEqualTo(9876);
@@ -178,7 +178,7 @@ public class MainTest {
             "csv",
             "load",
             new String[] {
-              "--driver.hosts", "[\"host\"]",
+              "--driver.hosts", "host1, host2",
               "--driver.port", "1",
               "--driver.protocol.version", "V3",
               "--driver.protocol.compression", "NONE",
@@ -258,7 +258,7 @@ public class MainTest {
               "--engine.maxMappingThreads", "26",
               "--engine.maxConcurrentReads", "27"
             });
-    assertThat(result.getStringList("driver.hosts")).isEqualTo(Collections.singletonList("host"));
+    assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
     assertThat(result.getInt("driver.port")).isEqualTo(1);
     assertThat(result.getString("driver.protocol.version")).isEqualTo("V3");
     assertThat(result.getString("driver.protocol.compression")).isEqualTo("NONE");
