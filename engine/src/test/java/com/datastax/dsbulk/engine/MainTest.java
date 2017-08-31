@@ -50,7 +50,8 @@ public class MainTest {
   public void should_show_help_with_error_when_no_args() throws Exception {
     Main main = new Main(new String[] {});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("First argument must be subcommand")
+    assertThat(err)
+        .contains("First argument must be subcommand")
         .contains("DataStax Bulk Loader/Unloader v" + Whitebox.getInternalState(main, "version"));
   }
 
@@ -200,10 +201,10 @@ public class MainTest {
               "--driver.auth.saslProtocol", "sasl",
               "--driver.ssl.provider", "myssl",
               "--driver.ssl.cipherSuites", "[TLS]",
-              "--driver.ssl.truststore.url", "trust-path",
+              "--driver.ssl.truststore.path", "trust-path",
               "--driver.ssl.truststore.password", "trust-pass",
               "--driver.ssl.truststore.algorithm", "trust-alg",
-              "--driver.ssl.keystore.url", "keystore-path",
+              "--driver.ssl.keystore.path", "keystore-path",
               "--driver.ssl.keystore.password", "keystore-pass",
               "--driver.ssl.keystore.algorithm", "keystore-alg",
               "--driver.ssl.openssl.keyCertChain", "key-cert-chain",
@@ -281,10 +282,10 @@ public class MainTest {
     assertThat(result.getString("driver.ssl.provider")).isEqualTo("myssl");
     assertThat(result.getStringList("driver.ssl.cipherSuites"))
         .isEqualTo(Collections.singletonList("TLS"));
-    assertThat(result.getString("driver.ssl.truststore.url")).isEqualTo("trust-path");
+    assertThat(result.getString("driver.ssl.truststore.path")).isEqualTo("trust-path");
     assertThat(result.getString("driver.ssl.truststore.password")).isEqualTo("trust-pass");
     assertThat(result.getString("driver.ssl.truststore.algorithm")).isEqualTo("trust-alg");
-    assertThat(result.getString("driver.ssl.keystore.url")).isEqualTo("keystore-path");
+    assertThat(result.getString("driver.ssl.keystore.path")).isEqualTo("keystore-path");
     assertThat(result.getString("driver.ssl.keystore.password")).isEqualTo("keystore-pass");
     assertThat(result.getString("driver.ssl.keystore.algorithm")).isEqualTo("keystore-alg");
     assertThat(result.getString("driver.ssl.openssl.keyCertChain")).isEqualTo("key-cert-chain");
@@ -381,7 +382,9 @@ public class MainTest {
   public void should_show_version_message_when_asked() throws Exception {
     Main main = new Main(new String[] {"--version"});
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(out).isEqualTo(
-        String.format("DataStax Bulk Loader/Unloader v%s%n", Whitebox.getInternalState(main, "version")));
+    assertThat(out)
+        .isEqualTo(
+            String.format(
+                "DataStax Bulk Loader/Unloader v%s%n", Whitebox.getInternalState(main, "version")));
   }
 }

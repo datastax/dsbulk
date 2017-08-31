@@ -82,7 +82,9 @@ public class Main {
       workflow.init();
       workflow.execute();
     } catch (VersionRequestException e) {
-      System.out.println(getVersionMessage());
+      PrintWriter pw = new PrintWriter(System.out);
+      pw.println(getVersionMessage());
+      pw.flush();
     } catch (Exception e) {
       HelpFormatter formatter = new HelpFormatter();
       formatter.setOptionComparator(Comparator.comparing(Option::getLongOpt));
