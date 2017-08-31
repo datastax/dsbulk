@@ -306,10 +306,9 @@ The following options can be configured:
             The truststore to use to validate remote peer certificates.
             This section is valid for both `JDK` and `OpenSSL` providers.
         
-            * `url` [string]
+            * `path` [string]
             
-                The URL of the truststore file, e.g.
-                "file:///path/to/my/truststore".
+                The path of the truststore file.
                 This setting is optional. If left unspecified,
                 server certificates will not be validated.
             
@@ -329,10 +328,9 @@ The following options can be configured:
             This section is only valid when using `JDK` provider;
             it is ignored otherwise.
         
-            * `url` [string]
+            * `path` [string]
             
-                The URL of the keystore file, e.g.
-                "file:///path/to/my/keystore".
+                The path of the keystore file.
                 This setting is optional. If left unspecified,
                 no client authentication will be used.
             
