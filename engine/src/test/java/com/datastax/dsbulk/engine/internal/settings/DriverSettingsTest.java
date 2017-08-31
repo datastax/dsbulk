@@ -212,11 +212,11 @@ public class DriverSettingsTest {
                             + "provider = JDK, "
                             + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
                             + "keystore { "
-                            + "   url = \"%s\","
+                            + "   path = \"%s\","
                             + "   password = cassandra1sfun "
                             + "}, "
                             + "truststore { "
-                            + "   url = \"%s\","
+                            + "   path = \"%s\","
                             + "   password = cassandra1sfun "
                             + "}"
                             + "}",
