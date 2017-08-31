@@ -14,7 +14,6 @@ import com.typesafe.config.Config;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
@@ -100,7 +99,7 @@ public class MainTest {
               "-c", "conn",
               "-p", "pass",
               "-u", "user",
-              "-h", "[\"host\"]",
+              "-h", "host1, host2",
               "-lbp", "lbp",
               "-retry", "retry",
               "-port", "9876",
@@ -130,7 +129,7 @@ public class MainTest {
     assertThat(result.getString("connector.name")).isEqualTo("conn");
     assertThat(result.getString("driver.auth.password")).isEqualTo("pass");
     assertThat(result.getString("driver.auth.username")).isEqualTo("user");
-    assertThat(result.getStringList("driver.hosts")).isEqualTo(Collections.singletonList("host"));
+    assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
     assertThat(result.getString("driver.policy.lbp")).isEqualTo("lbp");
     assertThat(result.getString("driver.policy.retry")).isEqualTo("retry");
     assertThat(result.getInt("driver.port")).isEqualTo(9876);

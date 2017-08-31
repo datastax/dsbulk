@@ -154,6 +154,6 @@ public class EndToEndUtils {
   }
 
   public static String fetchSimulacronContactPointsForArg(SimulacronRule simulacron) {
-    return "[\"" + simulacron.getContactPoints().iterator().next().toString().substring(1) + "\"]";
+    return simulacron.getContactPoints().iterator().next().toString().substring(1);
   }
 }
