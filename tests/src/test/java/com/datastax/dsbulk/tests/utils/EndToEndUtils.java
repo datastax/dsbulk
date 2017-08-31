@@ -6,13 +6,17 @@
  */
 package com.datastax.dsbulk.tests.utils;
 
+import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.tests.SimulacronRule;
+import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
+import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.ErrorResult;
 import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,7 +31,8 @@ import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 
 public class EndToEndUtils {
-  public static RequestPrime createSimpleParameterizedQuery(String query) {
+  @SuppressWarnings("SameParameterValue")
+  public static RequestPrime createSimpleParametrizedQuery(String query) {
     Map<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("country_code", "ascii");
     paramTypes.put("country_name", "ascii");
@@ -40,6 +45,7 @@ public class EndToEndUtils {
     return new RequestPrime(when, then);
   }
 
+  @SuppressWarnings("SameParameterValue")
   public static RequestPrime createQueryWithResultSet(String query, int numOfResults) {
     Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
 
@@ -65,6 +71,7 @@ public class EndToEndUtils {
     return new RequestPrime(when, then);
   }
 
+  @SuppressWarnings("SameParameterValue")
   public static RequestPrime createQueryWithResultSetWithQuotes(String query, int numOfResults) {
     Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
 
@@ -90,12 +97,13 @@ public class EndToEndUtils {
     return new RequestPrime(when, then);
   }
 
+  @SuppressWarnings("SameParameterValue")
   public static RequestPrime createQueryWithError(String query, ErrorResult result) {
     Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
 
     return new RequestPrime(when, result);
   }
-
+  @SuppressWarnings("SameParameterValue")
   public static RequestPrime createParametrizedQuery(
       String query, Map<String, Object> params, Result then) {
     Map<String, String> paramTypes = new LinkedHashMap<>();
@@ -153,7 +161,34 @@ public class EndToEndUtils {
     Assertions.assertThat(lines.size()).isEqualTo(numOfRecords);
   }
 
+  @SuppressWarnings("SameParameterValue")
+  public static void validateStringOutput(String output, int numOfRecords) {
+    String lines[] = output.split(System.lineSeparator());
+    Assertions.assertThat(lines.length).isEqualTo(numOfRecords);
+  }
+
   public static String fetchSimulacronContactPointsForArg(SimulacronRule simulacron) {
     return "[\"" + simulacron.getContactPoints().iterator().next().toString().substring(1) + "\"]";
+  }
+
+  @SuppressWarnings("SameParameterValue")
+  public static void validateQueryCount(
+      SimulacronRule simulacron, int numOfQueries, String query, ConsistencyLevel level) {
+    List<QueryLog> logs = simulacron.cluster().getLogs().getQueryLogs();
+    List<QueryLog> ipLogs =
+        logs.stream().filter(l -> l.getQuery().startsWith(query)).collect(Collectors.toList());
+    Assertions.assertThat(ipLogs.size()).isEqualTo(numOfQueries);
+    for (QueryLog log : ipLogs) {
+      Assertions.assertThat(log.getConsistency()).isEqualTo(level);
+    }
+  }
+
+  public static void setURLFactoryIfNeeded() {
+    try {
+      URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
+    } catch (Exception e) {
+      //URL.setURLStreamHandlerFactory throws an exception if it's been set more then once
+      //Ignore that and keep going.
+    }
   }
 }

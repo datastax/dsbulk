@@ -11,7 +11,6 @@ import com.datastax.dsbulk.tests.SimulacronRule;
 import com.datastax.dsbulk.tests.utils.CsvUtils;
 import com.datastax.dsbulk.tests.utils.EndToEndUtils;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
-import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.result.SyntaxErrorResult;
@@ -19,9 +18,7 @@ import com.datastax.oss.simulacron.common.stubbing.Prime;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -217,15 +214,8 @@ public class CSVUnloadEndToEndIT {
 
   @SuppressWarnings("SameParameterValue")
   private void validateQueryCount(int numOfQueries, ConsistencyLevel level) {
-    List<QueryLog> logs = simulacron.cluster().getLogs().getQueryLogs();
-    List<QueryLog> ipLogs =
-        logs.stream()
-            .filter(l -> l.getQuery().startsWith("SELECT * FROM ip_by_country"))
-            .collect(Collectors.toList());
-    Assertions.assertThat(ipLogs.size()).isEqualTo(numOfQueries);
-    for (QueryLog log : ipLogs) {
-      Assertions.assertThat(log.getConsistency()).isEqualTo(level);
-    }
+    EndToEndUtils.validateQueryCount(
+        simulacron, numOfQueries, "SELECT * FROM ip_by_country", level);
   }
 
   private void verifyDelimiterCount(String delimiter, Path output_path, int expected)
