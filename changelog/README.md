@@ -34,3 +34,4 @@
 - [improvement] DAT-62: Add end-to-end tests for CSV read workflow
 - [improvement] DAT-72: Improve command line options
 - [improvement] DAT-80: Rename ssl.keystore.url and ssl.truststore.url settings
+- [improvement] DAT-83: Add --version option to emit version

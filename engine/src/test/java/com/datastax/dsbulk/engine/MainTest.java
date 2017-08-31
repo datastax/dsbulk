@@ -20,70 +20,80 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.internal.util.reflection.Whitebox;
 
 public class MainTest {
   private PrintStream originalStderr;
-  private ByteArrayOutputStream baos;
+  private PrintStream originalStdout;
+  private ByteArrayOutputStream stderr;
+  private ByteArrayOutputStream stdout;
 
   @Before
   public void setUp() throws Exception {
+    originalStdout = System.out;
     originalStderr = System.err;
 
-    baos = new ByteArrayOutputStream();
-    System.setErr(new PrintStream(baos));
+    stdout = new ByteArrayOutputStream();
+    System.setOut(new PrintStream(stdout));
+
+    stderr = new ByteArrayOutputStream();
+    System.setErr(new PrintStream(stderr));
   }
 
   @After
   public void tearDown() throws Exception {
+    System.setOut(originalStdout);
     System.setErr(originalStderr);
   }
 
   @Test
   public void should_show_help_with_error_when_no_args() throws Exception {
-    new Main(new String[] {});
-    String err = new String(baos.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("First argument must be subcommand");
+    Main main = new Main(new String[] {});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .contains("First argument must be subcommand")
+        .contains("DataStax Bulk Loader/Unloader v" + Whitebox.getInternalState(main, "version"));
   }
 
   @Test
   public void should_show_help_without_error_when_help_arg() throws Exception {
     new Main(new String[] {"--help"});
-    String err = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
   }
 
   @Test
   public void should_show_help_with_error_when_junk_subcommand() throws Exception {
     new Main(new String[] {"junk"});
-    String err = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("First argument must be subcommand");
   }
 
   @Test
   public void should_show_help_without_error_when_junk_subcommand_and_help() throws Exception {
     new Main(new String[] {"junk", "--help"});
-    String err = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
   }
 
   @Test
   public void should_show_help_without_error_when_good_subcommand_and_help() throws Exception {
     new Main(new String[] {"load", "--help"});
-    String err = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
   }
 
   @Test
   public void should_show_help_without_error_when_no_subcommand_and_help() throws Exception {
     new Main(new String[] {"-k", "k1", "--help"});
-    String err = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
   }
 
   @Test
   public void should_show_help_with_short_opts_when_name_set() throws Exception {
     new Main(new String[] {"-c", "csv", "--help"});
-    String err = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .doesNotContain("First argument must be subcommand")
         .contains("-url,--connector.csv.url");
@@ -191,10 +201,10 @@ public class MainTest {
               "--driver.auth.saslProtocol", "sasl",
               "--driver.ssl.provider", "myssl",
               "--driver.ssl.cipherSuites", "[TLS]",
-              "--driver.ssl.truststore.url", "trust-path",
+              "--driver.ssl.truststore.path", "trust-path",
               "--driver.ssl.truststore.password", "trust-pass",
               "--driver.ssl.truststore.algorithm", "trust-alg",
-              "--driver.ssl.keystore.url", "keystore-path",
+              "--driver.ssl.keystore.path", "keystore-path",
               "--driver.ssl.keystore.password", "keystore-pass",
               "--driver.ssl.keystore.algorithm", "keystore-alg",
               "--driver.ssl.openssl.keyCertChain", "key-cert-chain",
@@ -272,10 +282,10 @@ public class MainTest {
     assertThat(result.getString("driver.ssl.provider")).isEqualTo("myssl");
     assertThat(result.getStringList("driver.ssl.cipherSuites"))
         .isEqualTo(Collections.singletonList("TLS"));
-    assertThat(result.getString("driver.ssl.truststore.url")).isEqualTo("trust-path");
+    assertThat(result.getString("driver.ssl.truststore.path")).isEqualTo("trust-path");
     assertThat(result.getString("driver.ssl.truststore.password")).isEqualTo("trust-pass");
     assertThat(result.getString("driver.ssl.truststore.algorithm")).isEqualTo("trust-alg");
-    assertThat(result.getString("driver.ssl.keystore.url")).isEqualTo("keystore-path");
+    assertThat(result.getString("driver.ssl.keystore.path")).isEqualTo("keystore-path");
     assertThat(result.getString("driver.ssl.keystore.password")).isEqualTo("keystore-pass");
     assertThat(result.getString("driver.ssl.keystore.algorithm")).isEqualTo("keystore-alg");
     assertThat(result.getString("driver.ssl.openssl.keyCertChain")).isEqualTo("key-cert-chain");
@@ -366,5 +376,15 @@ public class MainTest {
     assertThat(result.getString("connector.csv.comment")).isEqualTo("#");
     assertThat(result.getInt("connector.csv.skipLines")).isEqualTo(2);
     assertThat(result.getInt("connector.csv.maxLines")).isEqualTo(3);
+  }
+
+  @Test
+  public void should_show_version_message_when_asked() throws Exception {
+    Main main = new Main(new String[] {"--version"});
+    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(out)
+        .isEqualTo(
+            String.format(
+                "DataStax Bulk Loader/Unloader v%s%n", Whitebox.getInternalState(main, "version")));
   }
 }
