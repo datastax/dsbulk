@@ -191,10 +191,10 @@ public class DriverSettings {
   private RemoteEndpointAwareSSLOptions createSSLOptions() throws Exception {
 
     TrustManagerFactory tmf = null;
-    if (config.hasPath("ssl.truststore.url")) {
+    if (config.hasPath("ssl.truststore.path")) {
       KeyStore ks = KeyStore.getInstance("JKS");
       ks.load(
-          new URL(config.getString("ssl.truststore.url")).openStream(),
+          new URL(config.getString("ssl.truststore.path")).openStream(),
           config.getString("ssl.truststore.password").toCharArray());
 
       tmf = TrustManagerFactory.getInstance(config.getString("ssl.truststore.algorithm"));
@@ -209,10 +209,10 @@ public class DriverSettings {
       case JDK:
         {
           KeyManagerFactory kmf = null;
-          if (config.hasPath("ssl.keystore.url")) {
+          if (config.hasPath("ssl.keystore.path")) {
             KeyStore ks = KeyStore.getInstance("JKS");
             ks.load(
-                new URL(config.getString("ssl.keystore.url")).openStream(),
+                new URL(config.getString("ssl.keystore.path")).openStream(),
                 config.getString("ssl.keystore.password").toCharArray());
 
             kmf = KeyManagerFactory.getInstance(config.getString("ssl.truststore.algorithm"));
