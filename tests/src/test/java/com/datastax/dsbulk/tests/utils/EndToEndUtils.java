@@ -30,8 +30,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 
+@SuppressWarnings("SameParameterValue")
 public class EndToEndUtils {
-  @SuppressWarnings("SameParameterValue")
+
   public static RequestPrime createSimpleParametrizedQuery(String query) {
     Map<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("country_code", "ascii");
@@ -45,17 +46,16 @@ public class EndToEndUtils {
     return new RequestPrime(when, then);
   }
 
-  @SuppressWarnings("SameParameterValue")
   public static RequestPrime createQueryWithResultSet(String query, int numOfResults) {
     Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
 
-    Map<String, String> ColumnTypes = new LinkedHashMap<>();
+    Map<String, String> columnTypes = new LinkedHashMap<>();
 
-    ColumnTypes.put("country_name", "ascii");
-    ColumnTypes.put("beginning_ip_address", "inet");
-    ColumnTypes.put("ending_ip_address", "inet");
-    ColumnTypes.put("beginning_ip_number", "bigint");
-    ColumnTypes.put("ending_ip_number", "bigint");
+    columnTypes.put("country_name", "ascii");
+    columnTypes.put("beginning_ip_address", "inet");
+    columnTypes.put("ending_ip_address", "inet");
+    columnTypes.put("beginning_ip_number", "bigint");
+    columnTypes.put("ending_ip_number", "bigint");
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < numOfResults; i++) {
       HashMap<String, Object> row = new HashMap<>();
@@ -67,21 +67,20 @@ public class EndToEndUtils {
       rows.add(row);
     }
 
-    SuccessResult then = new SuccessResult(rows, ColumnTypes);
+    SuccessResult then = new SuccessResult(rows, columnTypes);
     return new RequestPrime(when, then);
   }
 
-  @SuppressWarnings("SameParameterValue")
   public static RequestPrime createQueryWithResultSetWithQuotes(String query, int numOfResults) {
     Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
 
-    Map<String, String> ColumnTypes = new LinkedHashMap<>();
+    Map<String, String> columnTypes = new LinkedHashMap<>();
 
-    ColumnTypes.put("country_name", "ascii");
-    ColumnTypes.put("beginning_ip_address", "inet");
-    ColumnTypes.put("ending_ip_address", "inet");
-    ColumnTypes.put("beginning_ip_number", "bigint");
-    ColumnTypes.put("ending_ip_number", "bigint");
+    columnTypes.put("country_name", "ascii");
+    columnTypes.put("beginning_ip_address", "inet");
+    columnTypes.put("ending_ip_address", "inet");
+    columnTypes.put("beginning_ip_number", "bigint");
+    columnTypes.put("ending_ip_number", "bigint");
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < numOfResults; i++) {
       HashMap<String, Object> row = new HashMap<>();
@@ -93,17 +92,16 @@ public class EndToEndUtils {
       rows.add(row);
     }
 
-    SuccessResult then = new SuccessResult(rows, ColumnTypes);
+    SuccessResult then = new SuccessResult(rows, columnTypes);
     return new RequestPrime(when, then);
   }
 
-  @SuppressWarnings("SameParameterValue")
   public static RequestPrime createQueryWithError(String query, ErrorResult result) {
     Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
 
     return new RequestPrime(when, result);
   }
-  @SuppressWarnings("SameParameterValue")
+
   public static RequestPrime createParametrizedQuery(
       String query, Map<String, Object> params, Result then) {
     Map<String, String> paramTypes = new LinkedHashMap<>();
@@ -161,7 +159,6 @@ public class EndToEndUtils {
     Assertions.assertThat(lines.size()).isEqualTo(numOfRecords);
   }
 
-  @SuppressWarnings("SameParameterValue")
   public static void validateStringOutput(String output, int numOfRecords) {
     String lines[] = output.split(System.lineSeparator());
     Assertions.assertThat(lines.length).isEqualTo(numOfRecords);
@@ -171,7 +168,6 @@ public class EndToEndUtils {
     return "[\"" + simulacron.getContactPoints().iterator().next().toString().substring(1) + "\"]";
   }
 
-  @SuppressWarnings("SameParameterValue")
   public static void validateQueryCount(
       SimulacronRule simulacron, int numOfQueries, String query, ConsistencyLevel level) {
     List<QueryLog> logs = simulacron.cluster().getLogs().getQueryLogs();
