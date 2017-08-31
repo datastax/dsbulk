@@ -6,13 +6,17 @@
  */
 package com.datastax.dsbulk.tests.utils;
 
+import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.tests.SimulacronRule;
+import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
+import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.ErrorResult;
 import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,8 +30,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 
+@SuppressWarnings("SameParameterValue")
 public class EndToEndUtils {
-  public static RequestPrime createSimpleParameterizedQuery(String query) {
+
+  public static RequestPrime createSimpleParametrizedQuery(String query) {
     Map<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("country_code", "ascii");
     paramTypes.put("country_name", "ascii");
@@ -43,13 +49,13 @@ public class EndToEndUtils {
   public static RequestPrime createQueryWithResultSet(String query, int numOfResults) {
     Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
 
-    Map<String, String> ColumnTypes = new LinkedHashMap<>();
+    Map<String, String> columnTypes = new LinkedHashMap<>();
 
-    ColumnTypes.put("country_name", "ascii");
-    ColumnTypes.put("beginning_ip_address", "inet");
-    ColumnTypes.put("ending_ip_address", "inet");
-    ColumnTypes.put("beginning_ip_number", "bigint");
-    ColumnTypes.put("ending_ip_number", "bigint");
+    columnTypes.put("country_name", "ascii");
+    columnTypes.put("beginning_ip_address", "inet");
+    columnTypes.put("ending_ip_address", "inet");
+    columnTypes.put("beginning_ip_number", "bigint");
+    columnTypes.put("ending_ip_number", "bigint");
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < numOfResults; i++) {
       HashMap<String, Object> row = new HashMap<>();
@@ -61,20 +67,20 @@ public class EndToEndUtils {
       rows.add(row);
     }
 
-    SuccessResult then = new SuccessResult(rows, ColumnTypes);
+    SuccessResult then = new SuccessResult(rows, columnTypes);
     return new RequestPrime(when, then);
   }
 
   public static RequestPrime createQueryWithResultSetWithQuotes(String query, int numOfResults) {
     Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
 
-    Map<String, String> ColumnTypes = new LinkedHashMap<>();
+    Map<String, String> columnTypes = new LinkedHashMap<>();
 
-    ColumnTypes.put("country_name", "ascii");
-    ColumnTypes.put("beginning_ip_address", "inet");
-    ColumnTypes.put("ending_ip_address", "inet");
-    ColumnTypes.put("beginning_ip_number", "bigint");
-    ColumnTypes.put("ending_ip_number", "bigint");
+    columnTypes.put("country_name", "ascii");
+    columnTypes.put("beginning_ip_address", "inet");
+    columnTypes.put("ending_ip_address", "inet");
+    columnTypes.put("beginning_ip_number", "bigint");
+    columnTypes.put("ending_ip_number", "bigint");
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < numOfResults; i++) {
       HashMap<String, Object> row = new HashMap<>();
@@ -86,7 +92,7 @@ public class EndToEndUtils {
       rows.add(row);
     }
 
-    SuccessResult then = new SuccessResult(rows, ColumnTypes);
+    SuccessResult then = new SuccessResult(rows, columnTypes);
     return new RequestPrime(when, then);
   }
 
@@ -153,7 +159,32 @@ public class EndToEndUtils {
     Assertions.assertThat(lines.size()).isEqualTo(numOfRecords);
   }
 
+  public static void validateStringOutput(String output, int numOfRecords) {
+    String lines[] = output.split(System.lineSeparator());
+    Assertions.assertThat(lines.length).isEqualTo(numOfRecords);
+  }
+
   public static String fetchSimulacronContactPointsForArg(SimulacronRule simulacron) {
     return simulacron.getContactPoints().iterator().next().toString().substring(1);
+  }
+
+  public static void validateQueryCount(
+      SimulacronRule simulacron, int numOfQueries, String query, ConsistencyLevel level) {
+    List<QueryLog> logs = simulacron.cluster().getLogs().getQueryLogs();
+    List<QueryLog> ipLogs =
+        logs.stream().filter(l -> l.getQuery().startsWith(query)).collect(Collectors.toList());
+    Assertions.assertThat(ipLogs.size()).isEqualTo(numOfQueries);
+    for (QueryLog log : ipLogs) {
+      Assertions.assertThat(log.getConsistency()).isEqualTo(level);
+    }
+  }
+
+  public static void setURLFactoryIfNeeded() {
+    try {
+      URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
+    } catch (Exception e) {
+      //URL.setURLStreamHandlerFactory throws an exception if it's been set more then once
+      //Ignore that and keep going.
+    }
   }
 }

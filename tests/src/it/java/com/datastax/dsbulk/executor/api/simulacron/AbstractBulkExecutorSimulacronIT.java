@@ -84,7 +84,7 @@ public abstract class AbstractBulkExecutorSimulacronIT {
   @BeforeClass
   public static void createTableAndPreparedStatement() {
     //cluster = new ClusterRule(simulacron, new ClusterConfigConcrete());
-    RequestPrime prime = EndToEndUtils.createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    RequestPrime prime = EndToEndUtils.createSimpleParametrizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.cluster().prime(new Prime(prime));
     simulacron.cluster().prime(when("should fail").then(syntaxError("Bad Syntax")));
     SuccessResult successResult = createLargeSuccessResult();

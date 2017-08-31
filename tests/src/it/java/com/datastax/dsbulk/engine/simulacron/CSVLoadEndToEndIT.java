@@ -13,7 +13,6 @@ import com.datastax.dsbulk.tests.SimulacronRule;
 import com.datastax.dsbulk.tests.utils.CsvUtils;
 import com.datastax.dsbulk.tests.utils.EndToEndUtils;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
-import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
@@ -24,9 +23,6 @@ import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -37,7 +33,7 @@ public class CSVLoadEndToEndIT {
 
   @Before
   public void primeStatements() {
-    RequestPrime prime = EndToEndUtils.createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    RequestPrime prime = EndToEndUtils.createSimpleParametrizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.cluster().prime(new Prime(prime));
   }
 
@@ -220,14 +216,6 @@ public class CSVLoadEndToEndIT {
   }
 
   private void validateQueryCount(int numOfQueries, ConsistencyLevel level) {
-    List<QueryLog> logs = simulacron.cluster().getLogs().getQueryLogs();
-    List<QueryLog> ipLogs =
-        logs.stream()
-            .filter(l -> l.getQuery().startsWith("INSERT INTO ip_by_country"))
-            .collect(Collectors.toList());
-    Assertions.assertThat(ipLogs.size()).isEqualTo(numOfQueries);
-    for (QueryLog log : ipLogs) {
-      Assertions.assertThat(log.getConsistency()).isEqualTo(level);
-    }
+    EndToEndUtils.validateQueryCount(simulacron, numOfQueries, "INSERT INTO ip_by_country", level);
   }
 }
