@@ -15,7 +15,7 @@ which must be added manually to the loader's classpath
 Follow [these instructions](http://netty.io/wiki/forked-tomcat-native.html) 
 to find out how to add this dependency.
 
-All the available configuration options are listed in the [engine configuration] section.
+All the available configuration options are listed in the [Settings page].
         
 For more information about how to configure SSL encryption, see:
 
@@ -24,5 +24,5 @@ For more information about how to configure SSL encryption, see:
 
 [JSSE]: http://docs.oracle.com/javase/6/docs/technotes/guides/security/jsse/JSSERefGuide.html
 [driver ssl]: http://docs.datastax.com/en/developer/java-driver-dse/latest/manual/ssl/
-[engine configuration]: ../configuration/
+[Settings page]: ../../settings.md
 

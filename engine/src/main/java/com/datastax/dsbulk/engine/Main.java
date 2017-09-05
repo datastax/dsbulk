@@ -7,10 +7,10 @@
 package com.datastax.dsbulk.engine;
 
 import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
@@ -158,6 +158,8 @@ public class Main {
 
     Options options = new Options();
 
+    LoaderConfig config = new DefaultLoaderConfig(DEFAULT);
+
     // special-case options of type OBJECT as these do not show up in entrySet()
     // FIXME maybe we should transform these in regular STRING values and parse the string in SchemaSettings
     // As a bonus, we could get rid of enclosing braces, e.g.
@@ -166,17 +168,21 @@ public class Main {
     // schema.mapping = "fieldA = col1, fieldB = col2"
     Option schemaMapping =
         createOption(
-            longToShortOptions, "schema.mapping", DEFAULT.getConfig("schema.mapping").root());
+            config,
+            longToShortOptions,
+            "schema.mapping",
+            DEFAULT.getConfig("schema.mapping").root());
     options.addOption(schemaMapping);
     Option recordMetadata =
         createOption(
+            config,
             longToShortOptions,
             "schema.recordMetadata",
             DEFAULT.getConfig("schema.recordMetadata").root());
     options.addOption(recordMetadata);
     for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
       String longName = entry.getKey();
-      Option option = createOption(longToShortOptions, longName, entry.getValue());
+      Option option = createOption(config, longToShortOptions, longName, entry.getValue());
       options.addOption(option);
     }
 
@@ -192,7 +198,10 @@ public class Main {
   }
 
   private static Option createOption(
-      Map<String, String> longToShortOptions, String longName, ConfigValue value) {
+      LoaderConfig config,
+      Map<String, String> longToShortOptions,
+      String longName,
+      ConfigValue value) {
     Option.Builder option;
     String shortName = longToShortOptions.get(longName);
     if (shortName == null) {
@@ -203,7 +212,7 @@ public class Main {
     option
         .hasArg()
         .longOpt(longName)
-        .argName(getArgName(longName, value.valueType()))
+        .argName(config.getTypeString(longName))
         .desc(getSanitizedDescription(longName, value));
     return option.build();
   }
@@ -243,29 +252,17 @@ public class Main {
     return userSettings;
   }
 
-  private static String getArgName(String longName, ConfigValueType type) {
-    switch (type) {
-      case STRING:
-        return "string";
-      case LIST:
-        ConfigList list = DEFAULT.getList(longName);
-        if (list.isEmpty()) {
-          return "list";
-        } else {
-          return "list<" + getArgName(null, list.get(0).valueType()) + ">";
-        }
-      case NUMBER:
-        return "number";
-      case BOOLEAN:
-        return "boolean";
-    }
-    return "arg";
-  }
-
   private static String getSanitizedDescription(String longName, ConfigValue value) {
     String desc =
         DEFAULT.getValue(longName).origin().comments().stream().collect(Collectors.joining("\n"));
-    desc = desc.replaceAll(" +", " ").trim();
+
+    // The description is a little dirty.
+    // * Replace consecutive spaces with a single space.
+    // * Remove **'s, which have meaning in markdown but not useful here. However,
+    //   we do have a legit case of ** when describing file patterns (e.g. **/*.csv).
+    //   Those sorts of instances are preceded by ", so don't replace those.
+
+    desc = desc.replaceAll(" +", " ").replaceAll("([^\"])\\*\\*", "$1").trim();
     desc += "\nDefaults to " + value.render(ConfigRenderOptions.concise()) + ".";
     return desc;
   }

@@ -2,11 +2,11 @@
 
 DataStax Bulk Loader/Unloader uses the [Dropwizard Metrics] library to collect and report metrics.
 
-See the [engine configuration] section for information about how to configure monitoring and
+See the [Settings page] for information about how to configure monitoring and
 metrics reporting.
 
 [Dropwizard Metrics]: http://metrics.dropwizard.io/
-[engine configuration]: ../configuration/
+[Settings page]: ../../settings.md
 
 ## Available metrics
 

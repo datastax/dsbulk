@@ -9,9 +9,11 @@ package com.datastax.dsbulk.commons.config;
 import com.datastax.dsbulk.commons.internal.reflection.ReflectionUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigMergeable;
 import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.ConfigValue;
+import com.typesafe.config.ConfigValueType;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -174,6 +176,48 @@ public interface LoaderConfig extends Config {
       throw new ConfigException.WrongType(
           origin(), path, "valid charset name", getValue(path).valueType().toString(), e);
     }
+  }
+
+  /**
+   * Return a string representation of the value type at this path.
+   *
+   * @param path path expression.
+   * @return the type string
+   * @throws ConfigException.Missing if value is absent or null.
+   */
+  default String getTypeString(String path) {
+
+    ConfigValueType type = getValue(path).valueType();
+    if (type == ConfigValueType.LIST) {
+      ConfigList list = getList(path);
+      if (list.isEmpty()) {
+        return "list";
+      } else {
+        return "list<" + getTypeString(list.get(0).valueType()) + ">";
+      }
+    } else {
+      return getTypeString(type);
+    }
+  }
+
+  /**
+   * Return a string representation of the given value type.
+   *
+   * @param type ConfigValueType to stringify.
+   * @return the type string
+   */
+  default String getTypeString(ConfigValueType type) {
+    switch (type) {
+      case STRING:
+        return "string";
+      case LIST:
+        return "list";
+      case NUMBER:
+        return "number";
+      case BOOLEAN:
+        return "boolean";
+    }
+    return "arg";
   }
 
   /**

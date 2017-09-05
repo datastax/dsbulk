@@ -29,6 +29,8 @@ required settings of their own and those must be set as well. For example, the c
 requires the `connector.csv.url` setting to specify the source path/url of the csv data to 
 load (or path/url where to send unloaded data).
 
+See the [Settings page](settings.md) for details.
+
 ### Shortcuts
 For convenience, many options (prefaced with `--`), have shortcut variants (prefaced with `-`).
 For example, `--connector.name` has an equivalent short option `-c`. 
@@ -39,7 +41,7 @@ options. For example, both `--connector.csv.url` and `--connector.json.url` have
 `-url` shortcut option, but in a given invocation of dsbulk, only the appropriate one
 will be active.  
 
-Run the tool with --help and specify the connector to see its short options:
+Run the tool with `--help` and specify the connector to see its short options:
 
 ```
 dsbulk -c csv --help
@@ -47,9 +49,7 @@ dsbulk -c csv --help
 
 ## Config Files, Settings, Search Order, and Overrides
 
-Available settings along with defaults are recorded in `conf/reference.conf`. This file
-also contains detailed descriptions of settings and is a great source of information.
-When the loader starts up, settings are first loaded from `conf/reference.conf`.
+Available settings along with defaults are documented [here](settings.md).
 
 The conf directory also contains an `application.conf` file where a user may specify permanent
 overrides of settings. These are expressed in dotted form:
