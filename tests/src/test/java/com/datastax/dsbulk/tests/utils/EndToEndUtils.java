@@ -159,6 +159,16 @@ public class EndToEndUtils {
     Assertions.assertThat(lines.size()).isEqualTo(numOfRecords);
   }
 
+  public static void validateOutputFilesTotal(List<Path> outputFilePaths, int numOfRecords)
+      throws Exception {
+    int totalLineNum = 0;
+    for (Path path : outputFilePaths) {
+      List<String> lines = Files.lines(path, Charset.defaultCharset()).collect(Collectors.toList());
+      totalLineNum = totalLineNum + lines.size();
+    }
+    Assertions.assertThat(totalLineNum).isEqualTo(numOfRecords);
+  }
+
   public static void validateStringOutput(String output, int numOfRecords) {
     String lines[] = output.split(System.lineSeparator());
     Assertions.assertThat(lines.length).isEqualTo(numOfRecords);
