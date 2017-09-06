@@ -118,14 +118,10 @@
           <scripts>
             <script><![CDATA[
             import java.nio.file.*
-            import com.datastax.dsbulk.dist.SettingsDocumentor
             def conf = Paths.get("${project.build.directory}/conf")
             Files.createDirectories(conf)
-            def manual = Paths.get("${project.build.directory}/manual")
-            Files.createDirectories(manual)
             Files.write(conf.resolve("application.conf"),
                 "# Set application-specific settings here.\n# Example:\n# dsbulk.connector.name = \"csv\"".getBytes("UTF-8"))
-            new SettingsDocumentor("DataStax Bulk Loader Options", manual.resolve("settings.md"))
           ]]></script>
           </scripts>
         </configuration>

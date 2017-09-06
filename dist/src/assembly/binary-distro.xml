@@ -35,7 +35,6 @@
 
     <fileSet>
       <directory>../manual</directory>
-      <excludes><exclude>settings.md</exclude></excludes>
     </fileSet>
 
     <fileSet>
@@ -50,11 +49,6 @@
     <fileSet>
       <directory>${project.build.directory}/conf</directory>
       <outputDirectory>conf</outputDirectory>
-    </fileSet>
-
-    <fileSet>
-      <directory>${project.build.directory}/manual</directory>
-      <outputDirectory>manual</outputDirectory>
     </fileSet>
 
   </fileSets>

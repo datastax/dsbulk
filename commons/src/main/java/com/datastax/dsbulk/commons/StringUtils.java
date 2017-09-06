@@ -33,7 +33,7 @@ public class StringUtils {
   /**
    * Replace tokens that are meaningful in html with their entity representations.
    *
-   * @param s
+   * @param s String to escape
    * @return escaped string.
    */
   public static String htmlEscape(String s) {

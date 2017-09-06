@@ -145,6 +145,33 @@
   </dependencies>
 
   <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.gmavenplus</groupId>
+        <artifactId>gmavenplus-plugin</artifactId>
+        <version>1.5</version>
+        <executions>
+          <execution>
+            <id>generate-settings-doc</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>execute</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <scripts>
+            <script><![CDATA[
+            import java.nio.file.*
+            import com.datastax.dsbulk.engine.SettingsDocumentor
+            def manual = Paths.get("${project.basedir}/../manual")
+            //Files.createDirectories(manual)
+            new SettingsDocumentor("DataStax Bulk Loader Options", manual.resolve("settings.md"))
+          ]]></script>
+          </scripts>
+        </configuration>
+      </plugin>
+    </plugins>
     <resources>
       <resource>
         <directory>src/main/resources</directory>
