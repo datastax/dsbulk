@@ -36,3 +36,4 @@
 - [improvement] DAT-80: Rename ssl.keystore.url and ssl.truststore.url settings
 - [improvement] DAT-83: Add --version option to emit version
 - [improvement] DAT-85: Make driver.hosts option a comma-delimited string for ease of use
+- [improvement] DAT-58: Generate settings.md documentation page from reference.conf

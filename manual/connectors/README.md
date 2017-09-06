@@ -6,11 +6,14 @@ that data in the form of [Records], for downstream consumption by the loader wor
 Connectors are created by implementing the `Connector` interface. They are then discovered through
 the Service Loader API.
 
+Available configuration settings for all connectors are documented [here](../settings.md).
+
 ## Available Connectors
 
 The DataStax Bulk Loader/Unloader ships with the following connectors:
 
-* [CSV Connector]: a connector that reads field-delimited files.
+* [CSV Connector]: a highly-configurable connector that reads field-delimited files. 
+  For more information about the CSV file format, see [RFC 4180] and the [Wikipedia article on CSV format].
 * [Json Connector]: a connector that read Json data.
 * [CQL Connector]: a connector that reads CQL files.
 
@@ -19,3 +22,5 @@ The DataStax Bulk Loader/Unloader ships with the following connectors:
 [CSV Connector]: ./csv
 [Json Connector]: ./json
 [CQL Connector]: ./cql
+[RFC 4180]: https://tools.ietf.org/html/rfc4180
+[Wikipedia article on CSV format]: https://en.wikipedia.org/wiki/Comma-separated_values
