@@ -5,7 +5,7 @@
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
 
-package com.datastax.dsbulk.dist;
+package com.datastax.dsbulk.engine;
 
 import com.datastax.dsbulk.commons.StringUtils;
 import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
@@ -167,7 +167,7 @@ public class SettingsDocumentor {
    * When emitting a link to a group in the toc section, emit it based on how nested the group
    * specification is (e.g. driver.auth will be indented more than driver).
    *
-   * @param groupName
+   * @param groupName Name of settings group
    * @return As many non-breaking-whitespaces as is needed for this group.
    */
   private static String tocIndent(String groupName) {
@@ -178,8 +178,8 @@ public class SettingsDocumentor {
    * When emitting a section title (just before the relevant settings), format its font size based
    * on its nesting (e.g. driver.auth may be an h3, while driver may be an h2).
    *
-   * @param groupName
-   * @return
+   * @param groupName Name of settings group
+   * @return format string (markdown headers)
    */
   private static String titleFormat(String groupName) {
     return StringUtils.nCopies("#", CharMatcher.is('.').countIn(groupName) + 2);
@@ -188,7 +188,7 @@ public class SettingsDocumentor {
   /**
    * Convert the group name to a prettier representation (e.g. driver.auth => Driver Auth).
    *
-   * @param groupName
+   * @param groupName Name of settings group
    * @return pretty representation of the group name.
    */
   private static String prettifyName(String groupName) {
