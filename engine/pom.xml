@@ -165,7 +165,6 @@
             import java.nio.file.*
             import com.datastax.dsbulk.engine.SettingsDocumentor
             def manual = Paths.get("${project.basedir}/../manual")
-            //Files.createDirectories(manual)
             new SettingsDocumentor("DataStax Bulk Loader Options", manual.resolve("settings.md"))
           ]]></script>
           </scripts>
