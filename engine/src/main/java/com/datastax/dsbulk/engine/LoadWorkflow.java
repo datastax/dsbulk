@@ -52,7 +52,7 @@ public class LoadWorkflow implements Workflow {
   private MonitoringSettings monitoringSettings;
   private EngineSettings engineSettings;
 
-  LoadWorkflow(LoaderConfig config) throws Exception {
+  LoadWorkflow(LoaderConfig config) {
     this.config = config;
   }
 
@@ -81,9 +81,9 @@ public class LoadWorkflow implements Workflow {
     int maxMappingThreads = engineSettings.getMaxMappingThreads();
     Scheduler mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
 
-    try (DseCluster cluster = driverSettings.newCluster();
+    try (Connector connector = connectorSettings.getConnector(WorkflowType.LOAD);
+        DseCluster cluster = driverSettings.newCluster();
         DseSession session = cluster.connect();
-        Connector connector = connectorSettings.getConnector(WorkflowType.LOAD);
         MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD);
         LogManager logManager = logSettings.newLogManager(cluster);
         ReactiveBulkWriter executor =
@@ -111,6 +111,9 @@ public class LoadWorkflow implements Workflow {
           .blockLast();
 
     } catch (Exception e) {
+      System.err.printf(
+          "Uncaught exception during write workflow engine execution %s: %s%n",
+          executionId, e.getMessage());
       LOGGER.error("Uncaught exception during write workflow engine execution " + executionId, e);
     } finally {
       mapperScheduler.dispose();

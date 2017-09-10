@@ -122,6 +122,9 @@ public class UnloadWorkflow implements Workflow {
       records.blockLast();
 
     } catch (Exception e) {
+      System.err.printf(
+          "Uncaught exception during read workflow engine execution %s: %s%n",
+          executionId, e.getMessage());
       LOGGER.error("Uncaught exception during read workflow engine execution " + executionId, e);
     } finally {
       readsScheduler.dispose();

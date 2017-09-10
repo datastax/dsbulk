@@ -34,11 +34,19 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import org.apache.commons.cli.Option;
 
 public class SettingsDocumentor {
   private static final LoaderConfig DEFAULT =
       new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
   private static final Map<String, String> LONG_TO_SHORT_OPTIONS;
+
+  static final Option CONFIG_FILE_OPTION =
+      Option.builder("f")
+          .hasArg()
+          .argName("string")
+          .desc("Load settings from the given file rather than `conf/application.conf`.")
+          .build();
 
   /**
    * Settings that should be displayed in a "common" section as well as the appropriate place in the
@@ -145,6 +153,11 @@ public class SettingsDocumentor {
         out.printf("%s %s Settings%n%n", titleFormat(groupName), prettifyName(groupName));
         if (!groupName.equals("Common")) {
           out.printf("%s%n%n", getSanitizedDescription(DEFAULT.getValue(groupName)));
+        } else {
+          // Emit the help for the "-f" option in the Common section.
+          out.printf(
+              "#### -f _&lt;%s&gt;_%n%n%s%n%n",
+              StringUtils.htmlEscape("string"), CONFIG_FILE_OPTION.getDescription());
         }
         for (String settingName : groupEntry.getValue().getSettings()) {
           ConfigValue settingValue = DEFAULT.getValue(settingName);
@@ -316,8 +329,8 @@ public class SettingsDocumentor {
 
     @Override
     public int compare(String left, String right) {
-      Integer leftInd = this.prioritizedValues.getOrDefault(left, 99999);
-      Integer rightInd = this.prioritizedValues.getOrDefault(right, 99999);
+      Integer leftInd = this.prioritizedValues.getOrDefault(left, Integer.MAX_VALUE);
+      Integer rightInd = this.prioritizedValues.getOrDefault(right, Integer.MAX_VALUE);
       int indCompare = leftInd.compareTo(rightInd);
       return indCompare != 0 ? indCompare : left.compareTo(right);
     }
