@@ -16,11 +16,15 @@ import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.ErrorResult;
 import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
+import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -196,5 +200,25 @@ public class EndToEndUtils {
       //URL.setURLStreamHandlerFactory throws an exception if it's been set more then once
       //Ignore that and keep going.
     }
+  }
+
+  @SuppressWarnings("ResultOfMethodCallIgnored")
+  public static void deleteIfExists(Path filepath) throws IOException {
+    Files.walkFileTree(
+        filepath,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws IOException {
+            Files.delete(file);
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            Files.delete(dir);
+            return FileVisitResult.CONTINUE;
+          }
+        });
   }
 }
