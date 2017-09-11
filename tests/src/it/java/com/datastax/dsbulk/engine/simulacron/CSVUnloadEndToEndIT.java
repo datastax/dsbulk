@@ -39,14 +39,15 @@ public class CSVUnloadEndToEndIT {
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
       "unload",
-      "--log.outputDirectory=./target",
-      "--connector.name=csv",
+      "--log.directory=./target",
+      "-header",
+      "false",
       "--connector.csv.url=" + full_load_dir.toString(),
       "--connector.csv.maxThreads=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
-      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "",
+      "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "",
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
@@ -68,8 +69,9 @@ public class CSVUnloadEndToEndIT {
     // This exercises logic which will replace the delimiter and make sure non-standard quoting is working.
     String[] unloadArgs = {
       "unload",
-      "--log.outputDirectory=./target",
-      "--connector.name=csv",
+      "--log.directory=./target",
+      "-header",
+      "false",
       "--connector.csv.url=" + full_load_dir.toString(),
       "--connector.csv.maxThreads=1 ",
       "--connector.csv.delimiter=;",
@@ -78,7 +80,7 @@ public class CSVUnloadEndToEndIT {
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
-      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
@@ -104,14 +106,15 @@ public class CSVUnloadEndToEndIT {
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
       "unload",
-      "--log.outputDirectory=./target",
-      "--connector.name=csv",
+      "--log.directory=./target",
+      "-header",
+      "false",
       "--connector.csv.url=" + full_load_dir.toString(),
       "--connector.csv.maxThreads=4 ",
       "--driver.query.consistency=LOCAL_ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
-      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
@@ -133,14 +136,15 @@ public class CSVUnloadEndToEndIT {
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
       "unload",
-      "--log.outputDirectory=./target",
-      "--connector.name=csv",
+      "--log.directory=./target",
+      "-header",
+      "false",
       "--connector.csv.url=" + full_load_dir.toString(),
       "--connector.csv.maxThreads=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
-      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
@@ -163,14 +167,15 @@ public class CSVUnloadEndToEndIT {
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
       "unload",
-      "--log.outputDirectory=./target",
-      "--connector.name=csv",
+      "--log.directory=./target",
+      "-header",
+      "false",
       "--connector.csv.url=" + full_load_dir.toString(),
       "--connector.csv.maxThreads=4 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
-      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
@@ -194,14 +199,15 @@ public class CSVUnloadEndToEndIT {
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
       "unload",
-      "--log.outputDirectory=./target",
-      "--connector.name=csv",
+      "--log.directory=./target",
+      "-header",
+      "false",
       "--connector.csv.url=" + full_load_dir.toString(),
       "--connector.csv.maxThreads=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
-      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 

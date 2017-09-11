@@ -116,7 +116,6 @@ public class MainTest {
               "-retry", "retry",
               "-port", "9876",
               "-cl", "cl",
-              "-sslKeystorePw", "sslpass",
               "-maxErrors", "123",
               "-logDir", "logdir",
               "-jmx", "false",
@@ -124,6 +123,7 @@ public class MainTest {
               "-k", "ks",
               "-m", "{0:\"f1\", 1:\"f2\"}",
               "-nullStrings", "[nil, nada]",
+              "-query", "INSERT INTO foo",
               "-t", "table",
               "-comment", "comment",
               "-delim", "|",
@@ -146,9 +146,8 @@ public class MainTest {
     assertThat(result.getString("driver.policy.retry")).isEqualTo("retry");
     assertThat(result.getInt("driver.port")).isEqualTo(9876);
     assertThat(result.getString("driver.query.consistency")).isEqualTo("cl");
-    assertThat(result.getString("driver.ssl.keystore.password")).isEqualTo("sslpass");
     assertThat(result.getInt("log.maxErrors")).isEqualTo(123);
-    assertThat(result.getString("log.outputDirectory")).isEqualTo("logdir");
+    assertThat(result.getString("log.directory")).isEqualTo("logdir");
     assertThat(result.getBoolean("monitoring.jmx")).isFalse();
     assertThat(result.getInt("monitoring.reportRate")).isEqualTo(456);
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
@@ -156,6 +155,7 @@ public class MainTest {
     Map<String, Object> mapping = result.getConfig("schema.mapping").root().unwrapped();
     assertThat(mapping).contains(entry("0", "f1"), entry("1", "f2"));
     assertThat(result.getStringList("schema.nullStrings")).containsOnly("nil", "nada");
+    assertThat(result.getString("schema.query")).isEqualTo("INSERT INTO foo");
     assertThat(result.getString("schema.table")).isEqualTo("table");
 
     // CSV short options
@@ -180,7 +180,6 @@ public class MainTest {
             new String[] {
               "--driver.hosts", "host1, host2",
               "--driver.port", "1",
-              "--driver.protocol.version", "V3",
               "--driver.protocol.compression", "NONE",
               "--driver.pooling.local.connections", "2",
               "--driver.pooling.local.requests", "3",
@@ -218,16 +217,16 @@ public class MainTest {
               "--batch.bufferSize", "9",
               "--batch.maxBatchSize", "10",
               "--executor.maxThreads", "11",
-              "--executor.maxInflight", "12",
+              "--executor.maxInFlight", "12",
               "--executor.maxPerSecond", "13",
               "--executor.continuousPaging.pageUnit", "BYTES",
               "--executor.continuousPaging.pageSize", "14",
               "--executor.continuousPaging.maxPages", "15",
               "--executor.continuousPaging.maxPagesPerSecond", "16",
-              "--log.outputDirectory", "log-out",
+              "--log.directory", "log-out",
               "--log.maxThreads", "17",
               "--log.maxErrors", "18",
-              "--log.stmt.verbosity", "NORMAL",
+              "--log.stmt.level", "NORMAL",
               "--log.stmt.maxQueryStringLength", "19",
               "--log.stmt.maxBoundValues", "20",
               "--log.stmt.maxBoundValueLength", "21",
@@ -249,7 +248,7 @@ public class MainTest {
               "--monitoring.jmx", "false",
               "--schema.keyspace", "ks",
               "--schema.table", "table",
-              "--schema.statement", "SELECT JUNK",
+              "--schema.query", "SELECT JUNK",
               "--schema.nullStrings", "[NIL, NADA]",
               "--schema.nullToUnset", "false",
               "--schema.mapping", "{0:\"f1\", 1:\"f2\"}",
@@ -260,7 +259,6 @@ public class MainTest {
             });
     assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
     assertThat(result.getInt("driver.port")).isEqualTo(1);
-    assertThat(result.getString("driver.protocol.version")).isEqualTo("V3");
     assertThat(result.getString("driver.protocol.compression")).isEqualTo("NONE");
     assertThat(result.getInt("driver.pooling.local.connections")).isEqualTo(2);
     assertThat(result.getInt("driver.pooling.local.requests")).isEqualTo(3);
@@ -299,16 +297,16 @@ public class MainTest {
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
     assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);
     assertThat(result.getInt("executor.maxThreads")).isEqualTo(11);
-    assertThat(result.getInt("executor.maxInflight")).isEqualTo(12);
+    assertThat(result.getInt("executor.maxInFlight")).isEqualTo(12);
     assertThat(result.getInt("executor.maxPerSecond")).isEqualTo(13);
     assertThat(result.getString("executor.continuousPaging.pageUnit")).isEqualTo("BYTES");
     assertThat(result.getInt("executor.continuousPaging.pageSize")).isEqualTo(14);
     assertThat(result.getInt("executor.continuousPaging.maxPages")).isEqualTo(15);
     assertThat(result.getInt("executor.continuousPaging.maxPagesPerSecond")).isEqualTo(16);
-    assertThat(result.getString("log.outputDirectory")).isEqualTo("log-out");
+    assertThat(result.getString("log.directory")).isEqualTo("log-out");
     assertThat(result.getInt("log.maxThreads")).isEqualTo(17);
     assertThat(result.getInt("log.maxErrors")).isEqualTo(18);
-    assertThat(result.getString("log.stmt.verbosity")).isEqualTo("NORMAL");
+    assertThat(result.getString("log.stmt.level")).isEqualTo("NORMAL");
     assertThat(result.getInt("log.stmt.maxQueryStringLength")).isEqualTo(19);
     assertThat(result.getInt("log.stmt.maxBoundValues")).isEqualTo(20);
     assertThat(result.getInt("log.stmt.maxBoundValueLength")).isEqualTo(21);
@@ -330,7 +328,7 @@ public class MainTest {
     assertThat(result.getBoolean("monitoring.jmx")).isFalse();
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
     assertThat(result.getString("schema.table")).isEqualTo("table");
-    assertThat(result.getString("schema.statement")).isEqualTo("SELECT JUNK");
+    assertThat(result.getString("schema.query")).isEqualTo("SELECT JUNK");
     assertThat(result.getStringList("schema.nullStrings")).isEqualTo(Arrays.asList("NIL", "NADA"));
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
     assertThat(result.getConfig("schema.mapping").root().unwrapped())
@@ -350,12 +348,12 @@ public class MainTest {
             "load",
             new String[] {
               "--connector.csv.url", "url",
-              "--connector.csv.pattern", "pat",
+              "--connector.csv.fileNamePattern", "pat",
               "--connector.csv.fileNameFormat", "fmt",
               "--connector.csv.recursive", "true",
               "--connector.csv.maxThreads", "1",
               "--connector.csv.encoding", "enc",
-              "--connector.csv.header", "true",
+              "--connector.csv.header", "false",
               "--connector.csv.delimiter", "|",
               "--connector.csv.quote", "'",
               "--connector.csv.escape", "*",
@@ -364,12 +362,12 @@ public class MainTest {
               "--connector.csv.maxLines", "3"
             });
     assertThat(result.getString("connector.csv.url")).isEqualTo("url");
-    assertThat(result.getString("connector.csv.pattern")).isEqualTo("pat");
+    assertThat(result.getString("connector.csv.fileNamePattern")).isEqualTo("pat");
     assertThat(result.getString("connector.csv.fileNameFormat")).isEqualTo("fmt");
     assertThat(result.getBoolean("connector.csv.recursive")).isTrue();
     assertThat(result.getInt("connector.csv.maxThreads")).isEqualTo(1);
     assertThat(result.getString("connector.csv.encoding")).isEqualTo("enc");
-    assertThat(result.getBoolean("connector.csv.header")).isTrue();
+    assertThat(result.getBoolean("connector.csv.header")).isFalse();
     assertThat(result.getString("connector.csv.delimiter")).isEqualTo("|");
     assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
     assertThat(result.getString("connector.csv.escape")).isEqualTo("*");

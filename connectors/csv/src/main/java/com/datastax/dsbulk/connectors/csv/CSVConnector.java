@@ -99,7 +99,7 @@ public class CSVConnector implements Connector {
   public void configure(LoaderConfig settings, boolean read) throws MalformedURLException {
     this.read = read;
     url = settings.getURL("url");
-    pattern = settings.getString("pattern");
+    pattern = settings.getString("fileNamePattern");
     encoding = settings.getCharset("encoding");
     delimiter = settings.getChar("delimiter");
     quote = settings.getChar("quote");

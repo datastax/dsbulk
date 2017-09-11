@@ -92,14 +92,10 @@ public class CSVConnectorBenchmark {
       readArgs =
           new String[] {
             "read",
-            "log.outputDirectory",
+            "log.directory",
             "./target",
-            "connector.name",
-            "csv",
             "connector.csv.url",
             output.toUri().toURL().toExternalForm(),
-            "connector.csv.header",
-            "true",
             "schema.keyspace",
             "csv_connector_benchmark",
             "schema.table",
@@ -117,14 +113,10 @@ public class CSVConnectorBenchmark {
       writeArgs =
           new String[] {
             "write",
-            "log.outputDirectory",
+            "log.directory",
             "./target",
-            "connector.name",
-            "csv",
             "connector.csv.url",
             csvFile.toExternalForm(),
-            "connector.csv.header",
-            "true",
             "schema.keyspace",
             "csv_connector_benchmark",
             "schema.table",

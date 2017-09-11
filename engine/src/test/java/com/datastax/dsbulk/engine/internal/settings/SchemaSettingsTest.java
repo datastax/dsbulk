@@ -118,7 +118,7 @@ public class SchemaSettingsTest {
                     "mapping = { 0 = c2 , 2 = c1 }, "
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
-                        + "statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"")
+                        + "query=\"insert into ks.table (c1,c2) values (:c1,:c2)\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
@@ -270,7 +270,7 @@ public class SchemaSettingsTest {
                     "mapping = { 0 = c2 , 2 = c1 }, "
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
-                        + "statement=\"select c2,c1 from ks.t1\"")
+                        + "query=\"select c2,c1 from ks.t1\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =

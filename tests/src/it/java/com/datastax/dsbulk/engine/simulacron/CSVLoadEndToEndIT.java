@@ -42,10 +42,10 @@ public class CSVLoadEndToEndIT {
 
     String[] args = {
       "load",
-      "--log.outputDirectory",
+      "--log.directory",
       "./target",
-      "--connector.name",
-      "csv",
+      "-header",
+      "false",
       "--connector.csv.url",
       CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm(),
       "--driver.query.consistency",
@@ -54,7 +54,7 @@ public class CSVLoadEndToEndIT {
       EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression",
       "NONE",
-      "--schema.statement",
+      "--schema.query",
       CsvUtils.INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
@@ -68,10 +68,10 @@ public class CSVLoadEndToEndIT {
 
     String[] args = {
       "load",
-      "--log.outputDirectory",
+      "--log.directory",
       "\"./target\"",
-      "--connector.name",
-      "csv",
+      "-header",
+      "false",
       "--connector.csv.url",
       CsvUtils.CSV_RECORDS_CRLF.toExternalForm(),
       "--driver.query.consistency",
@@ -80,7 +80,7 @@ public class CSVLoadEndToEndIT {
       EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression",
       "NONE",
-      "--schema.statement",
+      "--schema.query",
       CsvUtils.INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
@@ -94,10 +94,10 @@ public class CSVLoadEndToEndIT {
 
     String[] args = {
       "load",
-      "--log.outputDirectory",
+      "--log.directory",
       "./target",
-      "--connector.name",
-      "csv",
+      "-header",
+      "false",
       "--connector.csv.url",
       CsvUtils.CSV_RECORDS_PARTIAL_BAD.toExternalForm(),
       "--driver.query.consistency",
@@ -106,7 +106,7 @@ public class CSVLoadEndToEndIT {
       EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression",
       "NONE",
-      "--schema.statement",
+      "--schema.query",
       CsvUtils.INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
@@ -161,10 +161,10 @@ public class CSVLoadEndToEndIT {
 
     String[] args = {
       "load",
-      "--log.outputDirectory",
+      "--log.directory",
       "./target",
-      "--connector.name",
-      "csv",
+      "-header",
+      "false",
       "--connector.csv.url",
       CsvUtils.CSV_RECORDS_ERROR.toExternalForm(),
       "--driver.query.consistency",
@@ -173,7 +173,7 @@ public class CSVLoadEndToEndIT {
       "" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression",
       "NONE",
-      "--schema.statement",
+      "--schema.query",
       CsvUtils.INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
@@ -189,10 +189,10 @@ public class CSVLoadEndToEndIT {
 
     String[] args = {
       "load",
-      "--log.outputDirectory",
+      "--log.directory",
       "./target",
-      "--connector.name",
-      "csv",
+      "-header",
+      "false",
       "--connector.csv.url",
       CsvUtils.CSV_RECORDS_SKIP.toExternalForm(),
       "--driver.query.consistency",
@@ -204,7 +204,7 @@ public class CSVLoadEndToEndIT {
       "--connector.csv.skipLines=3",
       "--connector.csv.maxLines",
       "24",
-      "--schema.statement",
+      "--schema.query",
       CsvUtils.INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
       "{0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"

@@ -32,8 +32,8 @@ public class LogSettings {
   LogSettings(LoaderConfig config, String executionId)
       throws MalformedURLException, URISyntaxException {
     this.config = config;
-    Path outputDirectory = config.getPath("outputDirectory");
-    executionDirectory = outputDirectory.resolve(executionId);
+    Path directory = config.getPath("directory");
+    executionDirectory = directory.resolve(executionId);
     System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
     LOGGER.info("Operation output directory: {}", executionDirectory);
   }
@@ -47,7 +47,7 @@ public class LogSettings {
             .withMaxInnerStatements(config.getInt("stmt.maxInnerStatements"))
             .build();
     StatementFormatVerbosity verbosity =
-        config.getEnum(StatementFormatVerbosity.class, "stmt.verbosity");
+        config.getEnum(StatementFormatVerbosity.class, "stmt.level");
     int threads = config.getThreads("maxThreads");
     ExecutorService executor =
         Executors.newFixedThreadPool(

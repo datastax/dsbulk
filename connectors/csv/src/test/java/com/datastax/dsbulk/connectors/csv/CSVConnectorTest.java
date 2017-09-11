@@ -58,7 +58,7 @@ public class CSVConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "header = true, url = \"%s\", escape = \"\\\"\", comment = \"#\"",
+                        "url = \"%s\", escape = \"\\\"\", comment = \"#\"",
                         url("/sample.csv")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -89,7 +89,7 @@ public class CSVConnectorTest {
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("url = \"stdin:/\", encoding = ISO-8859-1")
+              ConfigFactory.parseString("header = false, url = \"stdin:/\", encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -116,7 +116,7 @@ public class CSVConnectorTest {
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("url = \"stdout:/\", encoding = ISO-8859-1")
+              ConfigFactory.parseString("header = false, url = \"stdout:/\", encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -140,7 +140,7 @@ public class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("header = true, url = \"%s\", recursive = false", url("/root")))
+                    String.format("url = \"%s\", recursive = false", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -160,7 +160,7 @@ public class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("header = true, url = \"%s\", recursive = false", rootPath))
+                    String.format("url = \"%s\", recursive = false", rootPath))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -174,7 +174,7 @@ public class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("header = true, url = \"%s\", recursive = true", url("/root")))
+                    String.format("url = \"%s\", recursive = true", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -191,7 +191,7 @@ public class CSVConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "header = true, url = \"%s\", escape = \"\\\"\", maxThreads = 1", out))
+                        "url = \"%s\", escape = \"\\\"\", maxThreads = 1", out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -220,7 +220,7 @@ public class CSVConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "header = true, url = \"%s\", escape = \"\\\"\", maxThreads = 4", out))
+                        "url = \"%s\", escape = \"\\\"\", maxThreads = 4", out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -248,7 +248,7 @@ public class CSVConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "header = true, url = \"%s\", escape = \"\\\"\", maxThreads = 1, maxLines = 4",
+                        "url = \"%s\", escape = \"\\\"\", maxThreads = 1, maxLines = 4",
                         out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);

@@ -46,16 +46,16 @@ public class CCMTotalEndToEndIT {
 
   @Inject
   @SessionConfig(useKeyspace = SessionConfig.UseKeyspaceMode.FIXED, loggedKeyspaceName = KS)
-  static Session session;
+  private static Session session;
 
-  public static final String INSERT_INTO_IP_BY_COUNTRY =
+  private static final String INSERT_INTO_IP_BY_COUNTRY =
       "INSERT INTO "
           + KS
           + ".ip_by_country "
           + "(country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
           + "VALUES (?,?,?,?,?,?)";
 
-  public static final String INSERT_INTO_IP_BY_COUNTRY_COMPLEX =
+  private static final String INSERT_INTO_IP_BY_COUNTRY_COMPLEX =
       "INSERT INTO "
           + KS
           + ".country_complex "
@@ -68,9 +68,12 @@ public class CCMTotalEndToEndIT {
   private static final SimpleStatement READ_SUCCESFUL_COMPLEX =
       new SimpleStatement("SELECT * FROM " + KS + ".country_complex");
 
-  @Inject static Cluster cluster;
-  String contact_point;
-  String port;
+  @SuppressWarnings("unused")
+  @Inject
+  private static Cluster cluster;
+
+  private String contact_point;
+  private String port;
 
   @Before
   public void setupCCM() {
@@ -92,7 +95,7 @@ public class CCMTotalEndToEndIT {
     customLoadArgs.add("load");
     customLoadArgs.add("--connector.csv.url");
     customLoadArgs.add(CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm());
-    customLoadArgs.add("--schema.statement");
+    customLoadArgs.add("--schema.query");
     customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
     customLoadArgs.add(
         "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}");
@@ -108,7 +111,7 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add(full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads");
     customUnloadArgs.add("1");
-    customUnloadArgs.add("--schema.statement");
+    customUnloadArgs.add("--schema.query");
     customUnloadArgs.add(READ_SUCCESFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add(
         "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}");
@@ -125,7 +128,7 @@ public class CCMTotalEndToEndIT {
     List<String> customLoadArgs = new LinkedList<>();
     customLoadArgs.add("load");
     customLoadArgs.add("--connector.csv.url=" + CsvUtils.CSV_RECORDS_COMPLEX.toExternalForm());
-    customLoadArgs.add("--schema.statement=" + INSERT_INTO_IP_BY_COUNTRY_COMPLEX);
+    customLoadArgs.add("--schema.query=" + INSERT_INTO_IP_BY_COUNTRY_COMPLEX);
     customLoadArgs.add(
         "--schema.mapping={0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts}");
 
@@ -140,7 +143,7 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add("unload");
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
-    customUnloadArgs.add("--schema.statement=" + READ_SUCCESFUL_COMPLEX.toString());
+    customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_COMPLEX.toString());
     customUnloadArgs.add(
         "--schema.mapping={0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts}");
 
@@ -157,7 +160,7 @@ public class CCMTotalEndToEndIT {
     customLoadArgs.add("load");
     customLoadArgs.add("--connector.csv.url");
     customLoadArgs.add(CsvUtils.CSV_RECORDS.toExternalForm());
-    customLoadArgs.add("--schema.statement");
+    customLoadArgs.add("--schema.query");
     customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
     customLoadArgs.add(
         "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}");
@@ -172,7 +175,7 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add("unload");
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
-    customUnloadArgs.add("--schema.statement=" + READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add(
         "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}");
 
@@ -188,7 +191,7 @@ public class CCMTotalEndToEndIT {
     List<String> customLoadArgs = new LinkedList<>();
     customLoadArgs.add("load");
     customLoadArgs.add("--connector.csv.url=" + CsvUtils.CSV_RECORDS_SKIP.toExternalForm());
-    customLoadArgs.add("--schema.statement=" + INSERT_INTO_IP_BY_COUNTRY);
+    customLoadArgs.add("--schema.query=" + INSERT_INTO_IP_BY_COUNTRY);
     customLoadArgs.add(
         "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}");
     customLoadArgs.add("--connector.csv.skipLines=3");
@@ -208,7 +211,7 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add("unload");
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
-    customUnloadArgs.add("--schema.statement=" + READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add(
         "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}");
     new Main(fetchCompleteArgs(customUnloadArgs));
@@ -223,10 +226,8 @@ public class CCMTotalEndToEndIT {
 
   private String[] fetchCompleteArgs(List<String> customArgs) {
     List<String> commonArgs = new LinkedList<>();
-    commonArgs.add("--log.outputDirectory");
+    commonArgs.add("--log.directory");
     commonArgs.add("./target");
-    commonArgs.add("--connector.name");
-    commonArgs.add("csv");
     commonArgs.add("--driver.query.consistency");
     commonArgs.add("ONE");
     commonArgs.add("--driver.hosts");
@@ -234,6 +235,6 @@ public class CCMTotalEndToEndIT {
     commonArgs.add("--driver.port");
     commonArgs.add(port);
     customArgs.addAll(commonArgs);
-    return customArgs.stream().toArray(String[]::new);
+    return customArgs.toArray(new String[0]);
   }
 }
