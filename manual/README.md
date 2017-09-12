@@ -78,7 +78,7 @@ See examples for details.
 
 * Load all csv files from a directory. The files do not have a header row. Map field indices of the input to table columns:
 
-  `dsbulk load -c csv -url ~/export-dir -k ks1 -t table1 -m '{0=col1,1=col3}'`
+  `dsbulk load -c csv -url ~/export-dir -k ks1 -t table1 -m '0=col1,1=col3'`
 
 * With default port for cluster hosts, connector-name, keyspace, table, and mapping set in
   `conf/application.conf`:

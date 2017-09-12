@@ -8,7 +8,6 @@
 package com.datastax.dsbulk.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 
 import com.typesafe.config.Config;
 import java.io.ByteArrayOutputStream;
@@ -16,7 +15,6 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -152,9 +150,7 @@ public class MainTest {
     assertThat(result.getBoolean("monitoring.jmx")).isFalse();
     assertThat(result.getInt("monitoring.reportRate")).isEqualTo(456);
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
-
-    Map<String, Object> mapping = result.getConfig("schema.mapping").root().unwrapped();
-    assertThat(mapping).contains(entry("0", "f1"), entry("1", "f2"));
+    assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
     assertThat(result.getStringList("schema.nullStrings")).containsOnly("nil", "nada");
     assertThat(result.getString("schema.table")).isEqualTo("table");
 
@@ -333,10 +329,8 @@ public class MainTest {
     assertThat(result.getString("schema.statement")).isEqualTo("SELECT JUNK");
     assertThat(result.getStringList("schema.nullStrings")).isEqualTo(Arrays.asList("NIL", "NADA"));
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
-    assertThat(result.getConfig("schema.mapping").root().unwrapped())
-        .contains(entry("0", "f1"), entry("1", "f2"));
-    assertThat(result.getConfig("schema.recordMetadata").root().unwrapped())
-        .contains(entry("0", "f3"), entry("1", "f4"));
+    assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
+    assertThat(result.getString("schema.recordMetadata")).isEqualTo("{0:f3, 1:f4}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");
     assertThat(result.getInt("engine.maxMappingThreads")).isEqualTo(26);
     assertThat(result.getInt("engine.maxConcurrentReads")).isEqualTo(27);

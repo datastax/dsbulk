@@ -55,6 +55,23 @@ If not specified, then the *schema.statement* setting must be specified.
 
 Defaults to **""**.
 
+#### -m,--schema.mapping _&lt;string&gt;_
+
+The field-to-column mapping to use.
+
+Applies to both load and unload workflows.
+
+If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping.
+
+Mappings should be specified as a HOCON map of the following form:
+
+- Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, etc. are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+- Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+
+The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
+
+Defaults to **""**.
+
 <a name="connector"></a>
 ## Connector Settings
 
@@ -247,6 +264,23 @@ If not specified, then the *schema.statement* setting must be specified.
 
 Defaults to **""**.
 
+#### -m,--schema.mapping _&lt;string&gt;_
+
+The field-to-column mapping to use.
+
+Applies to both load and unload workflows.
+
+If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping.
+
+Mappings should be specified as a HOCON map of the following form:
+
+- Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, etc. are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+- Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+
+The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
+
+Defaults to **""**.
+
 #### -nullStrings,--schema.nullStrings _&lt;list&lt;string&gt;&gt;_
 
 Case-sensitive strings that should be mapped to `null`.
@@ -274,6 +308,26 @@ Note that this setting is applied after the *schema.nullStrings* setting, and ma
 Note that setting this to false leads to tombstones being created in the database to represent `null`.
 
 Defaults to **true**.
+
+#### ---schema.recordMetadata _&lt;string&gt;_
+
+Record metadata.
+
+Applies within both load and unload workflows to records being respectively read from or written to the connector.
+
+This information is optional, and rarely needed.
+
+If not specified:
+
+- If the connector is capable of reporting the record metadata accurately (for example, some database connectors might be able to inspect the target table's metadata), then this section is only required if you want to override some field types as reported by the connector.
+- If the connector is not capable of reporting the record metadata accurately (for example, file connectors usually cannot report such information), then all fields are assumed to be of type `String`. If this is not correct, then you need to provide the correct type information here.
+
+Field metadata should be specified as a HOCON map of the following form:
+
+- Indexed data sources: `0 = java.lang.String, 1 = java.lang.Double`, where `0`, `1`, etc. are the zero-based indices of fields in the source data; and the values are the expected types for each field.
+- Mapped data sources: `fieldA = java.lang.String, fieldB = java.lang.Double`, where `fieldA`, `fieldB`, etc. are field names in the source data; and the values are the expected types for each field.
+
+Defaults to **""**.
 
 #### ---schema.statement _&lt;string&gt;_
 
