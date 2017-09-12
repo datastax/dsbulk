@@ -115,7 +115,7 @@ public class CCMTotalEndToEndIT {
 
     new Main(fetchCompleteArgs(customUnloadArgs));
 
-    EndToEndUtils.validateOutputFile(full_load_output_file, 24);
+    EndToEndUtils.validateOutputFiles(24, full_load_output_file);
   }
 
   @Test
@@ -146,7 +146,7 @@ public class CCMTotalEndToEndIT {
 
     new Main(fetchCompleteArgs(customUnloadArgs));
 
-    EndToEndUtils.validateOutputFile(full_load_output_file, 5);
+    EndToEndUtils.validateOutputFiles(5, full_load_output_file);
   }
 
   @Test
@@ -178,7 +178,7 @@ public class CCMTotalEndToEndIT {
 
     new Main(fetchCompleteArgs(customUnloadArgs));
 
-    EndToEndUtils.validateOutputFile(full_load_output_file, 500);
+    EndToEndUtils.validateOutputFiles(500, full_load_output_file);
   }
 
   @Test
@@ -212,7 +212,7 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add(
         "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}");
     new Main(fetchCompleteArgs(customUnloadArgs));
-    EndToEndUtils.validateOutputFile(full_load_output_file, 21);
+    EndToEndUtils.validateOutputFiles(21, full_load_output_file);
   }
 
   private void validateResultSetSize(int numOfQueries, SimpleStatement statement) {
