@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.PrintStream;
@@ -49,6 +50,8 @@ public class MainTest {
   public void tearDown() throws Exception {
     System.setOut(originalStdout);
     System.setErr(originalStderr);
+    System.clearProperty("config.file");
+    ConfigFactory.invalidateCaches();
   }
 
   @Test
