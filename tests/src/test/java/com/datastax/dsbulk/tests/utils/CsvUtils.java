@@ -49,6 +49,8 @@ public class CsvUtils {
   public static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
   public static final URL CSV_RECORDS_UNIQUE =
       ClassLoader.getSystemResource("ip-by-country-unique.csv");
+  public static final URL CSV_RECORDS_COMPLEX =
+      ClassLoader.getSystemResource("ip-by-country-sample-complex.csv");
   public static final URL CSV_RECORDS_CRLF =
       ClassLoader.getSystemResource("ip-by-country-crlf.csv");
   public static final URL CSV_RECORDS_PARTIAL_BAD =
@@ -77,6 +79,31 @@ public class CsvUtils {
   public static void createIpByCountryTable(Session session) {
     session.execute(
         "CREATE TABLE IF NOT EXISTS ip_by_country ("
+            + "country_code varchar,"
+            + "country_name varchar static,"
+            + "beginning_ip_address inet,"
+            + "ending_ip_address inet,"
+            + "beginning_ip_number bigint,"
+            + "ending_ip_number bigint,"
+            + "PRIMARY KEY(country_code, beginning_ip_address))");
+  }
+
+  public static void createComplexTable(Session session) {
+    session.execute("CREATE TYPE contacts (alias text, numbers  frozen<list<text>>)");
+    session.execute(
+        "CREATE TABLE country_complex (country_name text PRIMARY KEY, "
+            + "country_tuple frozen<tuple<int, text, float>>, "
+            + "country_map map<text, text>,"
+            + "country_list list<int>,"
+            + "country_set set<float>,"
+            + "country_contacts contacts)");
+  }
+
+  public static void createIpByCountryTable(Session session, String keyspace) {
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS "
+            + keyspace
+            + ".ip_by_country ("
             + "country_code varchar,"
             + "country_name varchar static,"
             + "beginning_ip_address inet,"
