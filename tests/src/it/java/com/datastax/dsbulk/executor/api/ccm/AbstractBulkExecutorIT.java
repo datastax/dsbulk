@@ -202,13 +202,15 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeSyncIterableFailFastTest() {
-    try {
-      Iterable<Statement> records = sampleStatementsWithLastBad().blockingIterable();
-      failFastExecutor.writeSync(records);
-      fail("Should have thrown an exception");
-    } catch (BulkExecutionException e) {
-      verifyException(e);
-      verifyWrites(499);
+    for (int i = 0; i < 25; ++i) {
+      try {
+        Iterable<Statement> records = sampleStatementsWithLastBad().blockingIterable();
+        failFastExecutor.writeSync(records);
+        fail("Should have thrown an exception");
+      } catch (BulkExecutionException e) {
+        verifyException(e);
+        verifyWrites(499);
+      }
     }
   }
 
@@ -514,12 +516,15 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeReactiveStringFailFastTest() throws Exception {
-    try {
-      sampleQueriesWithLastBad().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
-      fail("Should have thrown an exception");
-    } catch (BulkExecutionException e) {
-      verifyException(e);
-      verifyWrites(499);
+    for (int i = 0; i < 25; ++i) {
+      try {
+//      sampleQueriesWithLastBad().flatMap(failFastExecutor::writeReactive, false, 1).blockingSubscribe();
+        sampleQueriesWithLastBad().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
+        fail("Should have thrown an exception");
+      } catch (BulkExecutionException e) {
+        verifyException(e);
+        verifyWrites(499);
+      }
     }
   }
 
