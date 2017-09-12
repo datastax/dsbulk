@@ -81,11 +81,13 @@ public abstract class AbstractBulkExecutorIT {
   @Before
   public void resetMocks() throws Exception {
     MockitoAnnotations.initMocks(this);
+    System.setProperty("rx2.buffer-size", "1");
   }
 
   @After
   public void truncateTable() {
     CsvUtils.truncateIpByCountryTable(session);
+    System.clearProperty("rx2.buffer-size");
   }
 
   // Tests for synchronous write methods
@@ -202,15 +204,13 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeSyncIterableFailFastTest() {
-    for (int i = 0; i < 25; ++i) {
-      try {
-        Iterable<Statement> records = sampleStatementsWithLastBad().blockingIterable();
-        failFastExecutor.writeSync(records);
-        fail("Should have thrown an exception");
-      } catch (BulkExecutionException e) {
-        verifyException(e);
-        verifyWrites(499);
-      }
+    try {
+      Iterable<Statement> records = sampleStatementsWithLastBad().blockingIterable();
+      failFastExecutor.writeSync(records);
+      fail("Should have thrown an exception");
+    } catch (BulkExecutionException e) {
+      verifyException(e);
+      verifyWrites(499);
     }
   }
 
@@ -516,15 +516,12 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeReactiveStringFailFastTest() throws Exception {
-    for (int i = 0; i < 25; ++i) {
-      try {
-//      sampleQueriesWithLastBad().flatMap(failFastExecutor::writeReactive, false, 1).blockingSubscribe();
-        sampleQueriesWithLastBad().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
-        fail("Should have thrown an exception");
-      } catch (BulkExecutionException e) {
-        verifyException(e);
-        verifyWrites(499);
-      }
+    try {
+      sampleQueriesWithLastBad().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
+      fail("Should have thrown an exception");
+    } catch (BulkExecutionException e) {
+      verifyException(e);
+      verifyWrites(499);
     }
   }
 
