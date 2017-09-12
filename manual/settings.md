@@ -24,6 +24,10 @@
 <a name="Common"></a>
 ## Common Settings
 
+#### -f _&lt;string&gt;_
+
+Load settings from the given file rather than `conf/application.conf`.
+
 #### -c,--connector.name _&lt;string&gt;_
 
 The name of the connector to use.
