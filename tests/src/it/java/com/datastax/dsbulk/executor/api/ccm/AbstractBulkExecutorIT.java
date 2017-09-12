@@ -81,7 +81,6 @@ public abstract class AbstractBulkExecutorIT {
   @Before
   public void resetMocks() throws Exception {
     MockitoAnnotations.initMocks(this);
-    System.setProperty("rx2.buffer-size", "1");
   }
 
   @After
@@ -146,6 +145,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeSyncStreamFailFastTest() {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       Stream<Statement> records =
           stream(sampleStatementsWithLastBad().blockingIterable().spliterator(), false);
@@ -159,6 +162,11 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeSyncStreamFailSafeTest() {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
+
     Stream<Statement> records =
         stream(sampleStatementsWithLastBad().blockingIterable().spliterator(), false);
     failSafeExecutor.writeSync(records);
@@ -204,6 +212,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeSyncIterableFailFastTest() {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       Iterable<Statement> records = sampleStatementsWithLastBad().blockingIterable();
       failFastExecutor.writeSync(records);
@@ -257,6 +269,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeSyncPublisherFailFastTest() {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       failFastExecutor.writeSync(sampleStatementsWithLastBad());
       fail("Should have thrown an exception");
@@ -354,6 +370,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeAsyncStreamFailFastTest() throws Exception {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       Stream<Statement> records =
           stream(sampleStatementsWithLastBad().blockingIterable().spliterator(), false);
@@ -412,6 +432,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeAsyncIterableFailFastTest() throws Exception {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       Iterable<Statement> records = sampleStatementsWithLastBad().blockingIterable();
       failFastExecutor.writeAsync(records).get();
@@ -465,6 +489,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeAsyncPublisherFailFastTest() throws Exception {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       failFastExecutor.writeAsync(sampleStatementsWithLastBad()).get();
       fail("Should have thrown an exception");
@@ -516,6 +544,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeReactiveStringFailFastTest() throws Exception {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       sampleQueriesWithLastBad().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
       fail("Should have thrown an exception");
@@ -540,6 +572,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeReactiveStatementFailFastTest() throws Exception {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       sampleStatementsWithLastBad().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
       fail("Should have thrown an exception");
@@ -564,6 +600,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeReactiveStreamFailFastTest() throws Exception {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       Stream<Statement> statements =
           stream(sampleStatementsWithLastBad().blockingIterable().spliterator(), false);
@@ -592,6 +632,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeReactiveIterableFailFastTest() throws Exception {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       Iterable<Statement> statements = sampleStatementsWithLastBad().blockingIterable();
       Flowable.fromPublisher(failFastExecutor.writeReactive(statements)).blockingSubscribe();
@@ -618,6 +662,10 @@ public abstract class AbstractBulkExecutorIT {
 
   @Test
   public void writeReactivePublisherFailFastTest() throws Exception {
+    // The number of successful writes can vary if the failure occurs
+    // out of order, due to concurrent processing of rows. Turn of
+    // concurrency for this test to make results deterministic.
+    System.setProperty("rx2.buffer-size", "1");
     try {
       Flowable.fromPublisher(failFastExecutor.writeReactive(sampleStatementsWithLastBad()))
           .blockingSubscribe();
