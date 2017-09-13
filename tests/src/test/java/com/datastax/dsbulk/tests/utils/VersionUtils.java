@@ -69,8 +69,7 @@ public class VersionUtils {
     DSE_TO_OSS_VERSIONS = Collections.unmodifiableMap(map);
   }
 
-  private static final Pattern VERSION_RANGE_PATTERN =
-      Pattern.compile("\\[([0-9.]*),([0-9.]*)]");
+  private static final Pattern VERSION_RANGE_PATTERN = Pattern.compile("\\[([0-9.]*),([0-9.]*)]");
 
   /**
    * @return The cassandra version matching the given DSE version. If the DSE version can't be
