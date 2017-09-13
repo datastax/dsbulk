@@ -230,6 +230,8 @@ public class CCMTotalEndToEndIT {
     List<String> commonArgs = new LinkedList<>();
     commonArgs.add("--log.directory");
     commonArgs.add("./target");
+    commonArgs.add("-header");
+    commonArgs.add("false");
     commonArgs.add("--driver.query.consistency");
     commonArgs.add("ONE");
     commonArgs.add("--driver.hosts");
