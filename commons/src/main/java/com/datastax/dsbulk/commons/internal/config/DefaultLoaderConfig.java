@@ -4,8 +4,9 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.commons.config;
+package com.datastax.dsbulk.commons.internal.config;
 
+import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigMemorySize;

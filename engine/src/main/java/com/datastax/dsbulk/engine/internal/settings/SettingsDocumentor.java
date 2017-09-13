@@ -5,11 +5,10 @@
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
 
-package com.datastax.dsbulk.engine;
+package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.StringUtils;
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.google.common.base.CharMatcher;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;

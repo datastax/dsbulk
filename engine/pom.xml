@@ -163,7 +163,7 @@
           <scripts>
             <script><![CDATA[
             import java.nio.file.*
-            import com.datastax.dsbulk.engine.SettingsDocumentor
+            import com.datastax.dsbulk.engine.internal.settings.SettingsDocumentor
             def manual = Paths.get("${project.basedir}/../manual")
             new SettingsDocumentor("DataStax Bulk Loader Options", manual.resolve("settings.md"))
           ]]></script>

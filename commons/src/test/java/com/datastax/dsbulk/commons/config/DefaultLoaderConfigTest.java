@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.net.URL;
