@@ -247,7 +247,8 @@ public interface CCMCluster extends Closeable {
   /**
    * Returns the Cassandra or DSE version of this CCM cluster.
    *
-   * <p>By default the version is inferred from {@link VersionUtils#getDefaultVersion(boolean)}.
+   * <p>By default the version is inferred from {@link VersionUtils#getBestDSEVersion(String)} or
+   * {@link VersionUtils#getBestOSSVersion(String)}.
    *
    * @return The version of this CCM cluster.
    */
