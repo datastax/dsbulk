@@ -141,8 +141,8 @@ public class SchemaSettings {
       ImmutableBiMap<String, String> fieldsToVariables,
       WorkflowType workflowType) {
     String query;
-    if (config.hasPath("statement")) {
-      query = config.getString("statement");
+    if (config.hasPath("query")) {
+      query = config.getString("query");
     } else {
       Preconditions.checkState(
           keyspace != null && table != null, "Keyspace and table must be specified");

@@ -12,7 +12,6 @@ import com.datastax.driver.core.HostDistance;
 import com.datastax.driver.core.PlainTextAuthProvider;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.ProtocolOptions;
-import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.RemoteEndpointAwareJdkSSLOptions;
 import com.datastax.driver.core.RemoteEndpointAwareNettySSLOptions;
@@ -27,7 +26,6 @@ import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
@@ -75,15 +73,6 @@ public class DriverSettings {
               builder.addContactPointsWithPorts(new InetSocketAddress(tokens[0], port));
             });
 
-    ProtocolVersion protocolVersion;
-
-    if (!config.getString("protocol.version").isEmpty()) {
-      protocolVersion = config.getEnum(ProtocolVersion.class, "protocol.version");
-      Preconditions.checkArgument(
-          protocolVersion.compareTo(ProtocolVersion.V3) >= 0,
-          "This loader does not support protocol versions lower than 3");
-      builder.withProtocolVersion(protocolVersion);
-    }
     builder
         .withCompression(config.getEnum(ProtocolOptions.Compression.class, "protocol.compression"))
         .withPoolingOptions(

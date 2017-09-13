@@ -45,7 +45,25 @@ public class SettingsDocumentor {
    * hierarchy.
    */
   private static final List<String> COMMON_SETTINGS =
-      Arrays.asList("connector.name", "schema.keyspace", "schema.table", "schema.mapping");
+      Arrays.asList(
+          "connector.csv.url",
+          "connector.name",
+          "connector.csv.delimiter",
+          "connector.csv.header",
+          "connector.csv.skipLines",
+          "connector.csv.maxLines",
+          "schema.keyspace",
+          "schema.table",
+          "schema.mapping",
+          "driver.hosts",
+          "driver.port",
+          "driver.auth.password",
+          "driver.auth.username",
+          "driver.query.consistency",
+          "executor.maxPerSecond",
+          "log.maxErrors",
+          "log.directory",
+          "monitoring.reportRate");
 
   /**
    * Settings that should be placed near the top within their setting groups. It is a super-set of
@@ -54,7 +72,6 @@ public class SettingsDocumentor {
   private static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
 
   static {
-    PREFERRED_SETTINGS.add("connector.csv.url");
     PREFERRED_SETTINGS.add("driver.auth.provider");
 
     Config shortcutsConf =
