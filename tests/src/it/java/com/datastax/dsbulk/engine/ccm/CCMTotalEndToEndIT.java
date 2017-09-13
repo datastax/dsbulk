@@ -99,8 +99,9 @@ public class CCMTotalEndToEndIT {
     customLoadArgs.add(CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm());
     customLoadArgs.add("--schema.query");
     customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
+    customLoadArgs.add("--schema.mapping");
     customLoadArgs.add(
-        "--schema.mapping=\"0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name\"");
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
     new Main(fetchCompleteArgs(customLoadArgs));
     validateResultSetSize(24, READ_SUCCESFUL_IP_BY_COUNTRY);
@@ -115,8 +116,9 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add("1");
     customUnloadArgs.add("--schema.query");
     customUnloadArgs.add(READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
-        "--schema.mapping=\"0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name\"");
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
     new Main(fetchCompleteArgs(customUnloadArgs));
 
@@ -131,8 +133,9 @@ public class CCMTotalEndToEndIT {
     customLoadArgs.add("load");
     customLoadArgs.add("--connector.csv.url=" + CsvUtils.CSV_RECORDS_COMPLEX.toExternalForm());
     customLoadArgs.add("--schema.query=" + INSERT_INTO_IP_BY_COUNTRY_COMPLEX);
+    customLoadArgs.add("--schema.mapping");
     customLoadArgs.add(
-        "--schema.mapping=\"0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts\"");
+        "0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts");
 
     new Main(fetchCompleteArgs(customLoadArgs));
     validateResultSetSize(5, READ_SUCCESFUL_COMPLEX);
@@ -146,8 +149,9 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
     customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_COMPLEX.toString());
+    customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
-        "--schema.mapping=\"0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts\"");
+        "0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts");
 
     new Main(fetchCompleteArgs(customUnloadArgs));
 
@@ -164,8 +168,9 @@ public class CCMTotalEndToEndIT {
     customLoadArgs.add(CsvUtils.CSV_RECORDS.toExternalForm());
     customLoadArgs.add("--schema.query");
     customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
+    customLoadArgs.add("--schema.mapping");
     customLoadArgs.add(
-        "--schema.mapping=\"0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name\"");
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
     new Main(fetchCompleteArgs(customLoadArgs));
     validateResultSetSize(500, READ_SUCCESFUL_IP_BY_COUNTRY);
@@ -178,8 +183,9 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
     customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
-        "--schema.mapping=\"0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name\"");
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
     new Main(fetchCompleteArgs(customUnloadArgs));
 
@@ -194,8 +200,9 @@ public class CCMTotalEndToEndIT {
     customLoadArgs.add("load");
     customLoadArgs.add("--connector.csv.url=" + CsvUtils.CSV_RECORDS_SKIP.toExternalForm());
     customLoadArgs.add("--schema.query=" + INSERT_INTO_IP_BY_COUNTRY);
+    customLoadArgs.add("--schema.mapping");
     customLoadArgs.add(
-        "--schema.mapping=\"0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name\"");
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
     customLoadArgs.add("--connector.csv.skipLines=3");
     customLoadArgs.add("--connector.csv.maxLines=24");
     customLoadArgs.add("-driver.query.consistency=LOCAL_ONE");
@@ -214,8 +221,9 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
     customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
-        "--schema.mapping=\"0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name\"");
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
     new Main(fetchCompleteArgs(customUnloadArgs));
     EndToEndUtils.validateOutputFile(full_load_output_file, 21);
   }
