@@ -27,7 +27,7 @@ public @interface CCMConfig {
   int[] numberOfNodes() default {1};
 
   /** The C* or DSE version to use; defaults to {@link VersionUtils#DEFAULT_DSE_VERSION}. */
-  String version() default VersionUtils.DEFAULT_DSE_VERSION;
+  String version() default "";
 
   /** Whether to create a DSE cluster or not; defaults to {@code true}. */
   boolean dse() default true;

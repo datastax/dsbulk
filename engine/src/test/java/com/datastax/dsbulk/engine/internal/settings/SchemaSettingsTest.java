@@ -47,8 +47,8 @@ public class SchemaSettingsTest {
   private static final String NULL_TO_UNSET = "nullToUnset";
 
   private Session session;
-  private ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
-  private RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
+  private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
+  private final RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
 
   @Before
   public void setUp() throws Exception {
@@ -83,7 +83,7 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = { 0 = c2 , 2 = c1 }, "
+                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
                         + "keyspace=ks, table=t1")
@@ -115,10 +115,10 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = { 0 = c2 , 2 = c1 }, "
+                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
-                        + "statement=\"insert into ks.table (c1,c2) values (:c1,:c2)\"")
+                        + "query=\"insert into ks.table (c1,c2) values (:c1,:c2)\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
@@ -234,7 +234,7 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = { 0 = c2 , 2 = c1 }, "
+                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
                         + "keyspace=ks, table=t1")
@@ -267,10 +267,10 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = { 0 = c2 , 2 = c1 }, "
+                    "mapping = \"0 = c2 , 2 = c1\", "
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
-                        + "statement=\"select c2,c1 from ks.t1\"")
+                        + "query=\"select c2,c1 from ks.t1\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =

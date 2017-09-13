@@ -53,6 +53,7 @@ public class ExecutorSettings {
     return newBulkExecutor(session, executionListener, WorkflowType.UNLOAD);
   }
 
+  @SuppressWarnings("unused")
   public ThreadPoolExecutor getExecutorThreadPool() {
     return executor;
   }
@@ -113,7 +114,7 @@ public class ExecutorSettings {
     builder
         .withExecutor(executor)
         .withExecutionListener(executionListener)
-        .withMaxInFlightRequests(config.getInt("maxInflight"))
+        .withMaxInFlightRequests(config.getInt("maxInFlight"))
         .withMaxRequestsPerSecond(config.getInt("maxPerSecond"))
         .failSafe();
   }

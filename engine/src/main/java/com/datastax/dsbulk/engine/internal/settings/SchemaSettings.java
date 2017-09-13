@@ -16,6 +16,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TokenRange;
+import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -32,6 +33,8 @@ import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -96,9 +99,9 @@ public class SchemaSettings {
 
   private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session) {
     ImmutableBiMap.Builder<String, String> fieldsToVariablesBuilder = null;
-    if (config.hasPath("mapping") && !config.getConfig("mapping").isEmpty()) {
+    if (config.hasPath("mapping")) {
       fieldsToVariablesBuilder = new ImmutableBiMap.Builder<>();
-      LoaderConfig mapping = config.getConfig("mapping");
+      Config mapping = ConfigFactory.parseString(config.getString("mapping"));
       for (String path : mapping.root().keySet()) {
         fieldsToVariablesBuilder.put(path, mapping.getString(path));
       }
@@ -113,7 +116,7 @@ public class SchemaSettings {
       Preconditions.checkNotNull(
           table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
     }
-    if (!config.hasPath("mapping") || config.getConfig("mapping").isEmpty()) {
+    if (!config.hasPath("mapping")) {
       Preconditions.checkState(
           keyspace != null && table != null, "Keyspace and table must be specified");
       fieldsToVariablesBuilder = inferFieldsToVariablesMap();
@@ -125,9 +128,10 @@ public class SchemaSettings {
   }
 
   private RecordMetadata mergeRecordMetadata(RecordMetadata fallback) {
-    if (config.hasPath("recordMetadata") && !config.getConfig("recordMetadata").isEmpty()) {
+    if (config.hasPath("recordMetadata")) {
       ImmutableMap.Builder<String, TypeToken<?>> fieldsToTypes = new ImmutableMap.Builder<>();
-      LoaderConfig recordMetadata = config.getConfig("recordMetadata");
+      LoaderConfig recordMetadata =
+          new DefaultLoaderConfig(ConfigFactory.parseString(config.getString("recordMetadata")));
       for (String path : recordMetadata.root().keySet()) {
         fieldsToTypes.put(path, TypeToken.of(recordMetadata.getClass(path)));
       }
@@ -141,8 +145,8 @@ public class SchemaSettings {
       ImmutableBiMap<String, String> fieldsToVariables,
       WorkflowType workflowType) {
     String query;
-    if (config.hasPath("statement")) {
-      query = config.getString("statement");
+    if (config.hasPath("query")) {
+      query = config.getString("query");
     } else {
       Preconditions.checkState(
           keyspace != null && table != null, "Keyspace and table must be specified");

@@ -56,7 +56,7 @@ public class ConnectorSettingsTest {
     assertThat(config.getConfig(connectorName))
         .hasPaths(
             "url",
-            "pattern",
+            "fileNamePattern",
             "recursive",
             "maxThreads",
             "encoding",

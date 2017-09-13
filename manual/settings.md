@@ -28,6 +28,39 @@
 
 Load settings from the given file rather than `conf/application.conf`.
 
+#### -url,--connector.csv.url _&lt;string&gt;_
+
+The URL or path of the resource(s) to read from or write to.
+
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+
+- **stdin**:  the stdin protocol can be used to read from standard input; the only valid URL for this protocol is: `stdin:/`.
+
+  This protocol cannot be used for writing.
+
+- **stdout**: the stdout protocol can be used to write to standard output; the only valid URL for this protocol is: `stdout:/`.
+
+  This protocol cannot be used for reading.
+
+- **file**: the file protocol can be used with all supported file systems, local or not.
+    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+
+Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
+
+Examples:
+
+    url = /path/to/dir/or/file           # without protocol
+    url = "file:///path/to/dir/or/file"  # with protocol
+    url = "stdin:/"                      # to read csv data from stdin
+    url = "stdout:/"                     # to write csv data to stdout
+
+For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
+
+This setting has no default value and must be supplied by the user.
+
+Defaults to **""**.
+
 #### -c,--connector.name _&lt;string&gt;_
 
 The name of the connector to use.
@@ -39,15 +72,63 @@ It is used in two places:
 
 Example: `csv` for class `CSVConnector`, with settings located under `connector.csv`.
 
-This setting has no default value and must be supplied by the user.
+Defaults to **"csv"**.
 
-Defaults to **""**.
+#### -delim,--connector.csv.delimiter _&lt;string&gt;_
+
+The character to use as field delimiter.
+
+Only one character can be specified. Note that this setting applies to all files to be read or written.
+
+Defaults to **","**.
+
+#### -header,--connector.csv.header _&lt;boolean&gt;_
+
+Whether the files to read or write begin with a header line or not.
+
+When reading:
+
+ - if set to true, the first non-empty line in every file is discarded, even if the *skipLines* setting is set to zero (see below). However, that line will be used to assign field names to each record, thus allowing mappings by field name such as `{myFieldName1 = myColumnName1, myFieldName2 = myColumnName2}`.
+ - if set to false, records will not contain field names, only (zero-based) field indexes; in this case, the mapping should be index-based, such as in `{0 = myColumnName1, 1 = myColumnName2}`.
+
+When writing:
+
+ - if set to true: each file will begin with a header line;
+ - if set to false, files will not contain header lines.
+
+Note that this setting applies to all files to be read or written.
+
+Defaults to **true**.
+
+#### -skipLines,--connector.csv.skipLines _&lt;number&gt;_
+
+Defines a number of lines to skip from each input file before the parser can begin to execute.
+
+Ignored when writing.
+
+Defaults to **0**.
+
+#### -maxLines,--connector.csv.maxLines _&lt;number&gt;_
+
+Defines the maximum number of lines to read from or write to each file.
+
+When reading, all lines past this number will be discarded.
+
+When writing, a file will contain at most this number of lines; if more records remain to be written, a new file will be created using the *fileNameFormat* setting.
+
+Note that when writing to anything other than a directory, this setting is ignored.
+
+This setting takes into account the *header* setting: if a file begins with a header line, that line is counted.
+
+This feature is disabled by default (indicated by its `-1` value).
+
+Defaults to **-1**.
 
 #### -k,--schema.keyspace _&lt;string&gt;_
 
 The keyspace to connect to. Optional.
 
-If not specified, then the *schema.statement* setting must be specified.
+If not specified, then the *schema.query* setting must be specified.
 
 Defaults to **""**.
 
@@ -55,29 +136,115 @@ Defaults to **""**.
 
 The destination table. Optional.
 
-If not specified, then the *schema.statement* setting must be specified.
+If not specified, then the *schema.query* setting must be specified.
 
 Defaults to **""**.
+
+#### -m,--schema.mapping _&lt;string&gt;_
+
+The field-to-column mapping to use.
+
+Applies to both load and unload workflows.
+
+If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping.
+
+Mappings should be specified as a HOCON map of the following form:
+
+- Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, etc. are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+- Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+
+The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
+
+Defaults to **""**.
+
+#### -h,--driver.hosts _&lt;string&gt;_
+
+The contact points to use for the initial connection to the cluster.
+
+This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
+
+Note that each host entry may optionally be followed by `:port` to specify the port to connect to. When not specified, this value falls back to the *port* setting.
+
+Defaults to **"127.0.0.1"**.
+
+#### -port,--driver.port _&lt;number&gt;_
+
+The port to connect to at initial contact points.
+
+Note that all nodes in a cluster must accept connections on the same port number.
+
+Defaults to **9042**.
+
+#### -p,--driver.auth.password _&lt;string&gt;_
+
+The password to use. Required.
+
+Providers that accept this setting:
+ - `PlainTextAuthProvider`
+ - `DsePlainTextAuthProvider`
+
+Defaults to **"cassandra"**.
+
+#### -u,--driver.auth.username _&lt;string&gt;_
+
+The username to use. Required.
+
+Providers that accept this setting:
+ - `PlainTextAuthProvider`
+ - `DsePlainTextAuthProvider`
+
+Defaults to **"cassandra"**.
+
+#### -cl,--driver.query.consistency _&lt;string&gt;_
+
+The consistency level to use for both loads and unloads.
+
+Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
+
+Defaults to **"LOCAL_ONE"**.
+
+#### ---executor.maxPerSecond _&lt;number&gt;_
+
+The maximum number of concurrent requests per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many requests as their number of inner statements.
+
+Setting this option to any negative value will disable it.
+
+Defaults to **100000**.
+
+#### -maxErrors,--log.maxErrors _&lt;number&gt;_
+
+The maximum number of errors to tolerate before aborting the entire operation.
+
+Setting this value to `-1` disables this feature (not recommended).
+
+Defaults to **100**.
+
+#### -logDir,--log.directory _&lt;string&gt;_
+
+The directory where all log files will be stored.
+
+Note that this must be a path pointing to a writable directory.
+
+Log files for a specific run will be located in a sub-directory inside the directory specified here. Each run generates a sub-directory identified by an "operation ID', which is basically a timestamp in the format: `yyyy_MM_dd_HH_mm_ss_nnnnnnnnn`.
+
+Setting this value to `.` denotes the current working directory.
+
+Defaults to **"."**.
+
+#### -reportRate,--monitoring.reportRate _&lt;string&gt;_
+
+The report interval for the console reporter.
+
+The console reporter will print useful metrics about the ongoing operation at this rate.
+
+Durations lesser than one second will be rounded up to 1 second.
+
+Defaults to **"5 seconds"**.
 
 <a name="connector"></a>
 ## Connector Settings
 
 Connector-specific settings. This section contains settings for the connector to use; it also contains sub-sections, one for each available connector.
-
-#### -c,--connector.name _&lt;string&gt;_
-
-The name of the connector to use.
-
-It is used in two places:
-
-1. The path to the group of settings for the connector are located under `connector.<name>`.
-2. The connector class name must start with `name`, case-insensitively. It is permitted for `name` to be the fully-qualified class name of the connector. That simply implies that the settings root will be at that fully-qualified location.
-
-Example: `csv` for class `CSVConnector`, with settings located under `connector.csv`.
-
-This setting has no default value and must be supplied by the user.
-
-Defaults to **""**.
 
 #### -url,--connector.csv.url _&lt;string&gt;_
 
@@ -94,7 +261,7 @@ Which URL protocols are available depend on which URL stream handlers have been 
   This protocol cannot be used for reading.
 
 - **file**: the file protocol can be used with all supported file systems, local or not.
-    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *pattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
     - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
 Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
@@ -106,11 +273,74 @@ Examples:
     url = "stdin:/"                      # to read csv data from stdin
     url = "stdout:/"                     # to write csv data to stdout
 
-For other URLs: the URL will be read or written directly; settings like *pattern*, *recursive*, and *fileNameFormat* will have no effect.
+For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
 This setting has no default value and must be supplied by the user.
 
 Defaults to **""**.
+
+#### -c,--connector.name _&lt;string&gt;_
+
+The name of the connector to use.
+
+It is used in two places:
+
+1. The path to the group of settings for the connector are located under `connector.<name>`.
+2. The connector class name must start with `name`, case-insensitively. It is permitted for `name` to be the fully-qualified class name of the connector. That simply implies that the settings root will be at that fully-qualified location.
+
+Example: `csv` for class `CSVConnector`, with settings located under `connector.csv`.
+
+Defaults to **"csv"**.
+
+#### -delim,--connector.csv.delimiter _&lt;string&gt;_
+
+The character to use as field delimiter.
+
+Only one character can be specified. Note that this setting applies to all files to be read or written.
+
+Defaults to **","**.
+
+#### -header,--connector.csv.header _&lt;boolean&gt;_
+
+Whether the files to read or write begin with a header line or not.
+
+When reading:
+
+ - if set to true, the first non-empty line in every file is discarded, even if the *skipLines* setting is set to zero (see below). However, that line will be used to assign field names to each record, thus allowing mappings by field name such as `{myFieldName1 = myColumnName1, myFieldName2 = myColumnName2}`.
+ - if set to false, records will not contain field names, only (zero-based) field indexes; in this case, the mapping should be index-based, such as in `{0 = myColumnName1, 1 = myColumnName2}`.
+
+When writing:
+
+ - if set to true: each file will begin with a header line;
+ - if set to false, files will not contain header lines.
+
+Note that this setting applies to all files to be read or written.
+
+Defaults to **true**.
+
+#### -skipLines,--connector.csv.skipLines _&lt;number&gt;_
+
+Defines a number of lines to skip from each input file before the parser can begin to execute.
+
+Ignored when writing.
+
+Defaults to **0**.
+
+#### -maxLines,--connector.csv.maxLines _&lt;number&gt;_
+
+Defines the maximum number of lines to read from or write to each file.
+
+When reading, all lines past this number will be discarded.
+
+When writing, a file will contain at most this number of lines; if more records remain to be written, a new file will be created using the *fileNameFormat* setting.
+
+Note that when writing to anything other than a directory, this setting is ignored.
+
+This setting takes into account the *header* setting: if a file begins with a header line, that line is counted.
+
+This feature is disabled by default (indicated by its `-1` value).
+
+Defaults to **-1**.
 
 #### -comment,--connector.csv.comment _&lt;string&gt;_
 
@@ -121,14 +351,6 @@ Only one character can be specified. Note that this setting applies to all files
 This feature is disabled by default (indicated by its `null` character value).
 
 Defaults to **"\u0000"**.
-
-#### -delim,--connector.csv.delimiter _&lt;string&gt;_
-
-The character to use as field delimiter.
-
-Only one character can be specified. Note that this setting applies to all files to be read or written.
-
-Defaults to **","**.
 
 #### -encoding,--connector.csv.encoding _&lt;string&gt;_
 
@@ -156,47 +378,7 @@ The file name must comply with the formatting rules of `String.format()`, and mu
 
 Defaults to **"output-%0,6d.csv"**.
 
-#### -header,--connector.csv.header _&lt;boolean&gt;_
-
-Whether the files to read or write begin with a header line or not.
-
-When reading:
-
- - if set to true, the first non-empty line in every file is discarded, even if the *skipLines* setting is set to zero (see below). However, that line will be used to assign field names to each record, thus allowing mappings by field name such as `{myFieldName1 = myColumnName1, myFieldName2 = myColumnName2}`.
- - if set to false, records will not contain field names, only (zero-based) field indexes; in this case, the mapping should be index-based, such as in `{0 = myColumnName1, 1 = myColumnName2}`.
-
-When writing:
-
- - if set to true: each file will begin with a header line;
- - if set to false, files will not contain header lines.
-
-Note that this setting applies to all files to be read or written.
-
-Defaults to **false**.
-
-#### -maxLines,--connector.csv.maxLines _&lt;number&gt;_
-
-Defines the maximum number of lines to read from or write to each file.
-
-When reading, all lines past this number will be discarded.
-
-When writing, a file will contain at most this number of lines; if more records remain to be written, a new file will be created using the *fileNameFormat* setting.
-
-Note that when writing to anything other than a directory, this setting is ignored.
-
-This setting takes into account the *header* setting: if a file begins with a header line, that line is counted.
-
-This feature is disabled by default (indicated by its `-1` value).
-
-Defaults to **-1**.
-
-#### -maxThreads,--connector.csv.maxThreads _&lt;number&gt;_
-
-The maximum number of reading or writing threads. In other words, this setting controls how many files can be read or written simultaneously.
-
-Defaults to **4**.
-
-#### ---connector.csv.pattern _&lt;string&gt;_
+#### ---connector.csv.fileNamePattern _&lt;string&gt;_
 
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`.
 
@@ -205,6 +387,12 @@ Ignored when writing. Ignored for non-file URLs.
 Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
 
 Defaults to **"\*\*/\*.csv"**.
+
+#### -maxThreads,--connector.csv.maxThreads _&lt;number&gt;_
+
+The maximum number of reading or writing threads. In other words, this setting controls how many files can be read or written simultaneously.
+
+Defaults to **4**.
 
 #### -quote,--connector.csv.quote _&lt;string&gt;_
 
@@ -222,14 +410,6 @@ Only applicable when the *url* setting points to a directory on a known filesyst
 
 Defaults to **false**.
 
-#### -skipLines,--connector.csv.skipLines _&lt;number&gt;_
-
-Defines a number of lines to skip from each input file before the parser can begin to execute.
-
-Ignored when writing.
-
-Defaults to **0**.
-
 <a name="schema"></a>
 ## Schema Settings
 
@@ -239,7 +419,7 @@ Schema-specific settings.
 
 The keyspace to connect to. Optional.
 
-If not specified, then the *schema.statement* setting must be specified.
+If not specified, then the *schema.query* setting must be specified.
 
 Defaults to **""**.
 
@@ -247,7 +427,24 @@ Defaults to **""**.
 
 The destination table. Optional.
 
-If not specified, then the *schema.statement* setting must be specified.
+If not specified, then the *schema.query* setting must be specified.
+
+Defaults to **""**.
+
+#### -m,--schema.mapping _&lt;string&gt;_
+
+The field-to-column mapping to use.
+
+Applies to both load and unload workflows.
+
+If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping.
+
+Mappings should be specified as a HOCON map of the following form:
+
+- Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, etc. are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+- Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+
+The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 
 Defaults to **""**.
 
@@ -279,9 +476,9 @@ Note that setting this to false leads to tombstones being created in the databas
 
 Defaults to **true**.
 
-#### ---schema.statement _&lt;string&gt;_
+#### -query,--schema.query _&lt;string&gt;_
 
-The  statement to use. Optional.
+The query to use. Optional.
 
 If not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns.
 
@@ -296,6 +493,26 @@ In unload worflows, the statement can be any regular `SELECT` statement; it can 
 If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas.
 
 The column names in the SELECT clause will be used to match column names specified in the mapping. See "mapping" setting for more information.
+
+Defaults to **""**.
+
+#### ---schema.recordMetadata _&lt;string&gt;_
+
+Record metadata.
+
+Applies within both load and unload workflows to records being respectively read from or written to the connector.
+
+This information is optional, and rarely needed.
+
+If not specified:
+
+- If the connector is capable of reporting the record metadata accurately (for example, some database connectors might be able to inspect the target table's metadata), then this section is only required if you want to override some field types as reported by the connector.
+- If the connector is not capable of reporting the record metadata accurately (for example, file connectors usually cannot report such information), then all fields are assumed to be of type `String`. If this is not correct, then you need to provide the correct type information here.
+
+Field metadata should be specified as a HOCON map of the following form:
+
+- Indexed data sources: `0 = java.lang.String, 1 = java.lang.Double`, where `0`, `1`, etc. are the zero-based indices of fields in the source data; and the values are the expected types for each field.
+- Mapped data sources: `fieldA = java.lang.String, fieldB = java.lang.Double`, where `fieldA`, `fieldB`, etc. are field names in the source data; and the values are the expected types for each field.
 
 Defaults to **""**.
 
@@ -364,6 +581,8 @@ Defaults to **"ISO_LOCAL_DATE"**.
 
 The delimiter for tokenized fields. This setting will be used when mapping a `String` field to CQL columns that require special tokenization (collections, tuples, maps, and UDTs), to isolate elements in the string.
 
+For maps and udt's, this setting delimits entries, while *keyValueSeparator* separates the key from the value within an entry.
+
 Note that this is not the same as CSV parsing. This setting will be applied to record fields produced by any connector, as long as the target CQL type requires tokenization.
 
 Defaults to **","**.
@@ -424,19 +643,13 @@ Defaults to **"CQL_DATE_TIME"**.
 
 Driver-specific configuration.
 
-#### ---driver.addressTranslator _&lt;string&gt;_
-
-The simple or fully-qualified class name of the address translator to use.
-
-This is only needed if the nodes are not directly reachable from the driver (for example, the driver is in a different network region and needs to use a public IP, or it connects through a proxy).
-
-Defaults to **"IdentityTranslator"**.
-
 #### -h,--driver.hosts _&lt;string&gt;_
 
 The contact points to use for the initial connection to the cluster.
 
 This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
+
+Note that each host entry may optionally be followed by `:port` to specify the port to connect to. When not specified, this value falls back to the *port* setting.
 
 Defaults to **"127.0.0.1"**.
 
@@ -447,6 +660,14 @@ The port to connect to at initial contact points.
 Note that all nodes in a cluster must accept connections on the same port number.
 
 Defaults to **9042**.
+
+#### ---driver.addressTranslator _&lt;string&gt;_
+
+The simple or fully-qualified class name of the address translator to use.
+
+This is only needed if the nodes are not directly reachable from the driver (for example, the driver is in a different network region and needs to use a public IP, or it connects through a proxy).
+
+Defaults to **"IdentityTranslator"**.
 
 #### ---driver.timestampGenerator _&lt;string&gt;_
 
@@ -462,6 +683,26 @@ Defaults to **"AtomicMonotonicTimestampGenerator"**.
 ### Driver Auth Settings
 
 Authentication settings.
+
+#### -p,--driver.auth.password _&lt;string&gt;_
+
+The password to use. Required.
+
+Providers that accept this setting:
+ - `PlainTextAuthProvider`
+ - `DsePlainTextAuthProvider`
+
+Defaults to **"cassandra"**.
+
+#### -u,--driver.auth.username _&lt;string&gt;_
+
+The username to use. Required.
+
+Providers that accept this setting:
+ - `PlainTextAuthProvider`
+ - `DsePlainTextAuthProvider`
+
+Defaults to **"cassandra"**.
 
 #### ---driver.auth.provider _&lt;string&gt;_
 
@@ -499,16 +740,6 @@ Providers that accept this setting:
 
 Defaults to **""**.
 
-#### -p,--driver.auth.password _&lt;string&gt;_
-
-The password to use. Required.
-
-Providers that accept this setting:
- - `PlainTextAuthProvider`
- - `DsePlainTextAuthProvider`
-
-Defaults to **"cassandra"**.
-
 #### ---driver.auth.principal _&lt;string&gt;_
 
 The Kerberos principal to use. Required.
@@ -528,16 +759,6 @@ Providers that accept this setting:
  - `DseGSSAPIAuthProvider`
 
 Defaults to **"dse"**.
-
-#### -u,--driver.auth.username _&lt;string&gt;_
-
-The username to use. Required.
-
-Providers that accept this setting:
- - `PlainTextAuthProvider`
- - `DsePlainTextAuthProvider`
-
-Defaults to **"cassandra"**.
 
 <a name="driver.policy"></a>
 ### Driver Policy Settings
@@ -621,16 +842,6 @@ Valid values are: `NONE`, `LZ4`, `SNAPPY`.
 
 Defaults to **"LZ4"**.
 
-#### ---driver.protocol.version _&lt;string&gt;_
-
-The native protocol version to use.
-
-Valid values are: `V3`, `V4`, `V5`, `DSE_V1`.
-
-This option is not required. If it is absent, the driver will negotiate it.
-
-Defaults to **""**.
-
 <a name="driver.query"></a>
 ### Driver Query Settings
 
@@ -704,7 +915,7 @@ Valid values are: `SunX509`, `NewSunX509`.
 
 Defaults to **"SunX509"**.
 
-#### -sslKeystorePw,--driver.ssl.keystore.password _&lt;string&gt;_
+#### ---driver.ssl.keystore.password _&lt;string&gt;_
 
 The keystore password.
 
@@ -800,6 +1011,14 @@ Defaults to **"1C"**.
 
 Executor-specific settings.
 
+#### ---executor.maxPerSecond _&lt;number&gt;_
+
+The maximum number of concurrent requests per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many requests as their number of inner statements.
+
+Setting this option to any negative value will disable it.
+
+Defaults to **100000**.
+
 #### ---executor.continuousPaging.maxPages _&lt;number&gt;_
 
 The maximum number of pages to retrieve.
@@ -831,21 +1050,13 @@ Possible values are: `ROWS`, `BYTES`.
 
 Defaults to **"ROWS"**.
 
-#### ---executor.maxInflight _&lt;number&gt;_
+#### ---executor.maxInFlight _&lt;number&gt;_
 
 The maximum number of "in-flight" requests. In other words, sets the maximum number of concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard against workflows that generate more requests than they can handle. Batch statements count for as many requests as their number of inner statements.
 
 Setting this option to any negative value will disable it.
 
 Defaults to **1000**.
-
-#### ---executor.maxPerSecond _&lt;number&gt;_
-
-The maximum number of concurrent requests per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many requests as their number of inner statements.
-
-Setting this option to any negative value will disable it.
-
-Defaults to **100000**.
 
 #### ---executor.maxThreads _&lt;string&gt;_
 
@@ -868,17 +1079,9 @@ Setting this value to `-1` disables this feature (not recommended).
 
 Defaults to **100**.
 
-#### ---log.maxThreads _&lt;string&gt;_
+#### -logDir,--log.directory _&lt;string&gt;_
 
-The maximum number of threads to allocate to log files management.
-
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
-
-Defaults to **"4"**.
-
-#### -logDir,--log.outputDirectory _&lt;string&gt;_
-
-The output directory where all log files will be stored.
+The directory where all log files will be stored.
 
 Note that this must be a path pointing to a writable directory.
 
@@ -887,6 +1090,25 @@ Log files for a specific run will be located in a sub-directory inside the direc
 Setting this value to `.` denotes the current working directory.
 
 Defaults to **"."**.
+
+#### ---log.maxThreads _&lt;string&gt;_
+
+The maximum number of threads to allocate to log files management.
+
+The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
+
+Defaults to **"4"**.
+
+#### ---log.stmt.level _&lt;string&gt;_
+
+The desired log level.
+
+Possible values are:
+- **ABRIDGED**: only prints basic information in summarized form.
+- **NORMAL**: prints basic information in summarized form, and the statement's query string, if available. For batch statements, this verbosity level also prints information about the batch's inner statements.
+- **EXTENDED**: prints full information, including the statement's query string, if available, and the statement's bound values, if available. For batch statements, this verbosity level also prints all information available about the batch's inner statements.
+
+Defaults to **"EXTENDED"**.
 
 #### ---log.stmt.maxBoundValueLength _&lt;number&gt;_
 
@@ -924,21 +1146,20 @@ Setting this value to `-1` disables this feature (not recommended).
 
 Defaults to **500**.
 
-#### ---log.stmt.verbosity _&lt;string&gt;_
-
-The desired verbosity.
-
-Possible values are:
-- **ABRIDGED**: only prints basic information in summarized form.
-- **NORMAL**: prints basic information in summarized form, and the statement's query string, if available. For batch statements, this verbosity level also prints information about the batch's inner statements.
-- **EXTENDED**: prints full information, including the statement's query string, if available, and the statement's bound values, if available. For batch statements, this verbosity level also prints all information available about the batch's inner statements.
-
-Defaults to **"EXTENDED"**.
-
 <a name="monitoring"></a>
 ## Monitoring Settings
 
 Monitoring-specific settings.
+
+#### -reportRate,--monitoring.reportRate _&lt;string&gt;_
+
+The report interval for the console reporter.
+
+The console reporter will print useful metrics about the ongoing operation at this rate.
+
+Durations lesser than one second will be rounded up to 1 second.
+
+Defaults to **"5 seconds"**.
 
 #### ---monitoring.durationUnit _&lt;string&gt;_
 
@@ -983,14 +1204,4 @@ The time unit to use when printing throughput rates.
 Valid values: all `TimeUnit` enum constants.
 
 Defaults to **"SECONDS"**.
-
-#### -reportRate,--monitoring.reportRate _&lt;string&gt;_
-
-The report interval for the console reporter.
-
-The console reporter will print useful metrics about the ongoing operation at this rate.
-
-Durations lesser than one second will be rounded up to 1 second.
-
-Defaults to **"5 seconds"**.
 

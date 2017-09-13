@@ -29,14 +29,12 @@ public class CSVLoadWorkflowTest {
 
     String[] args = {
       "write",
-      "log.outputDirectory",
+      "log.directory",
       "./target",
       "connector.name",
       "csv",
       "connector.csv.url",
       CsvUtils.CSV_RECORDS.toExternalForm(),
-      "connector.csv.header",
-      "true",
       "schema.keyspace",
       "test",
       "schema.table",

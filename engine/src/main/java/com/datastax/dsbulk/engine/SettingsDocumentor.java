@@ -60,7 +60,25 @@ public class SettingsDocumentor {
    * hierarchy.
    */
   private static final List<String> COMMON_SETTINGS =
-      Arrays.asList("connector.name", "schema.keyspace", "schema.table", "schema.mapping");
+      Arrays.asList(
+          "connector.csv.url",
+          "connector.name",
+          "connector.csv.delimiter",
+          "connector.csv.header",
+          "connector.csv.skipLines",
+          "connector.csv.maxLines",
+          "schema.keyspace",
+          "schema.table",
+          "schema.mapping",
+          "driver.hosts",
+          "driver.port",
+          "driver.auth.password",
+          "driver.auth.username",
+          "driver.query.consistency",
+          "executor.maxPerSecond",
+          "log.maxErrors",
+          "log.directory",
+          "monitoring.reportRate");
 
   /**
    * Settings that should be placed near the top within their setting groups. It is a super-set of
@@ -69,7 +87,6 @@ public class SettingsDocumentor {
   private static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
 
   static {
-    PREFERRED_SETTINGS.add("connector.csv.url");
     PREFERRED_SETTINGS.add("driver.auth.provider");
 
     Config shortcutsConf =
@@ -101,7 +118,7 @@ public class SettingsDocumentor {
 
     // First add a group for the "commonly used settings". Want to show that first in our
     // doc.
-    groups.put("Common", new FixedGroup(COMMON_SETTINGS));
+    groups.put("Common", new FixedGroup());
 
     // Now add groups for every top-level setting section + driver.*.
     for (Map.Entry<String, ConfigValue> entry : DEFAULT.root().entrySet()) {
@@ -109,17 +126,17 @@ public class SettingsDocumentor {
       if (key.equals("driver")) {
         // "driver" group is special because it's really large;
         // We subdivide it one level further.
-        groups.put(key, new ContainerGroup(key, false, PREFERRED_SETTINGS));
+        groups.put(key, new ContainerGroup(key, false));
         for (Map.Entry<String, ConfigValue> driverEntry :
             ((ConfigObject) entry.getValue()).entrySet()) {
           if (driverEntry.getValue().valueType() == ConfigValueType.OBJECT) {
             groups.put(
                 "driver." + driverEntry.getKey(),
-                new ContainerGroup("driver." + driverEntry.getKey(), true, PREFERRED_SETTINGS));
+                new ContainerGroup("driver." + driverEntry.getKey(), true));
           }
         }
       } else {
-        groups.put(key, new ContainerGroup(key, true, PREFERRED_SETTINGS));
+        groups.put(key, new ContainerGroup(key, true));
       }
     }
 
@@ -266,10 +283,10 @@ public class SettingsDocumentor {
     // as opposed to just immediate children.
     private final boolean includeDescendants;
 
-    ContainerGroup(String path, boolean includeDescendants, List<String> highPrioritySettings) {
+    ContainerGroup(String path, boolean includeDescendants) {
       this.prefix = path + ".";
       this.includeDescendants = includeDescendants;
-      settings = new TreeSet<>(new PriorityComparator(highPrioritySettings));
+      settings = new TreeSet<>(new PriorityComparator(SettingsDocumentor.PREFERRED_SETTINGS));
     }
 
     @Override
@@ -292,9 +309,9 @@ public class SettingsDocumentor {
     private final Set<String> desiredSettings;
     private final Set<String> settings;
 
-    FixedGroup(List<String> interestingSettings) {
-      desiredSettings = new HashSet<>(interestingSettings);
-      settings = new TreeSet<>(new PriorityComparator(interestingSettings));
+    FixedGroup() {
+      desiredSettings = new HashSet<>(SettingsDocumentor.COMMON_SETTINGS);
+      settings = new TreeSet<>(new PriorityComparator(SettingsDocumentor.COMMON_SETTINGS));
     }
 
     @Override

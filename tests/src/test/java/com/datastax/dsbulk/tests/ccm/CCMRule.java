@@ -9,11 +9,14 @@ package com.datastax.dsbulk.tests.ccm;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMTest;
+import com.datastax.dsbulk.tests.ccm.annotations.DSERequirement;
 import com.datastax.dsbulk.tests.ccm.factory.CCMClusterFactory;
 import com.datastax.dsbulk.tests.ccm.factory.ClusterFactory;
 import com.datastax.dsbulk.tests.ccm.factory.SessionFactory;
 import com.datastax.dsbulk.tests.utils.ReflectionUtils;
+import com.datastax.dsbulk.tests.utils.VersionUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -25,6 +28,7 @@ import java.lang.reflect.Field;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import javax.inject.Inject;
+import org.junit.AssumptionViolatedException;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
@@ -106,7 +110,56 @@ public class CCMRule implements TestRule {
 
   @Override
   public Statement apply(final Statement base, final Description description) {
+
     testClass = description.getTestClass();
+    DSERequirement dseRequirement = description.getAnnotation(DSERequirement.class);
+    CCMConfig config = ReflectionUtils.locateClassAnnotation(testClass, CCMConfig.class);
+    CassandraVersion currentVersion =
+        CassandraVersion.parse(VersionUtils.computeVersion(config, true));
+    if (dseRequirement != null) {
+      // if the configured DSE DSERequirement exceeds the one being used skip this test.
+      if (!dseRequirement.min().isEmpty()) {
+        CassandraVersion minVersion = CassandraVersion.parse(dseRequirement.min());
+        if (minVersion.compareTo(currentVersion) > 0) {
+          // Create a statement which simply indicates that the configured DSE DSERequirement is too old for this test.
+          return new Statement() {
+
+            @Override
+            public void evaluate() throws Throwable {
+              throw new AssumptionViolatedException(
+                  "Test requires C* "
+                      + minVersion
+                      + " but "
+                      + currentVersion
+                      + " is configured.  Description: "
+                      + dseRequirement.description());
+            }
+          };
+        }
+      }
+
+      if (!dseRequirement.max().isEmpty()) {
+        // if the test version exceeds the maximum configured one, fail out.
+        CassandraVersion maxVersion = CassandraVersion.parse(dseRequirement.max());
+
+        if (maxVersion.compareTo(currentVersion) <= 0) {
+          return new Statement() {
+
+            @Override
+            public void evaluate() throws Throwable {
+              throw new AssumptionViolatedException(
+                  "Test requires C* less than "
+                      + maxVersion
+                      + " but "
+                      + currentVersion
+                      + " is configured.  Description: "
+                      + dseRequirement.description());
+            }
+          };
+        }
+      }
+    }
+
     return new Statement() {
       @Override
       public void evaluate() throws Throwable {
