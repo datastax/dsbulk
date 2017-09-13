@@ -136,6 +136,107 @@ If not specified, then the *schema.query* setting must be specified.
 
 Defaults to **""**.
 
+#### -m,--schema.mapping _&lt;string&gt;_
+
+The field-to-column mapping to use.
+
+Applies to both load and unload workflows.
+
+If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping.
+
+Mappings should be specified as a HOCON map of the following form:
+
+- Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, etc. are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+- Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+
+The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
+
+Defaults to **""**.
+
+#### -h,--driver.hosts _&lt;string&gt;_
+
+The contact points to use for the initial connection to the cluster.
+
+This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
+
+Note that each host entry may optionally be followed by `:port` to specify the port to connect to. When not specified, this value falls back to the *port* setting.
+
+Defaults to **"127.0.0.1"**.
+
+#### -port,--driver.port _&lt;number&gt;_
+
+The port to connect to at initial contact points.
+
+Note that all nodes in a cluster must accept connections on the same port number.
+
+Defaults to **9042**.
+
+#### -p,--driver.auth.password _&lt;string&gt;_
+
+The password to use. Required.
+
+Providers that accept this setting:
+ - `PlainTextAuthProvider`
+ - `DsePlainTextAuthProvider`
+
+Defaults to **"cassandra"**.
+
+#### -u,--driver.auth.username _&lt;string&gt;_
+
+The username to use. Required.
+
+Providers that accept this setting:
+ - `PlainTextAuthProvider`
+ - `DsePlainTextAuthProvider`
+
+Defaults to **"cassandra"**.
+
+#### -cl,--driver.query.consistency _&lt;string&gt;_
+
+The consistency level to use for both loads and unloads.
+
+Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
+
+Defaults to **"LOCAL_ONE"**.
+
+#### ---executor.maxPerSecond _&lt;number&gt;_
+
+The maximum number of concurrent requests per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many requests as their number of inner statements.
+
+Setting this option to any negative value will disable it.
+
+Defaults to **100000**.
+
+#### -maxErrors,--log.maxErrors _&lt;number&gt;_
+
+The maximum number of errors to tolerate before aborting the entire operation.
+
+Setting this value to `-1` disables this feature (not recommended).
+
+Defaults to **100**.
+
+#### -logDir,--log.directory _&lt;string&gt;_
+
+The directory where all log files will be stored.
+
+Note that this must be a path pointing to a writable directory.
+
+Log files for a specific run will be located in a sub-directory inside the directory specified here. Each run generates a sub-directory identified by an "operation ID', which is basically a timestamp in the format: `yyyy_MM_dd_HH_mm_ss_nnnnnnnnn`.
+
+Setting this value to `.` denotes the current working directory.
+
+Defaults to **"."**.
+
+#### -reportRate,--monitoring.reportRate _&lt;string&gt;_
+
+The report interval for the console reporter.
+
+The console reporter will print useful metrics about the ongoing operation at this rate.
+
+Durations lesser than one second will be rounded up to 1 second.
+
+Defaults to **"5 seconds"**.
+
 <a name="connector"></a>
 ## Connector Settings
 
@@ -371,27 +472,7 @@ Note that setting this to false leads to tombstones being created in the databas
 
 Defaults to **true**.
 
-#### -query,--schema.recordMetadata _&lt;string&gt;_
-
-Record metadata.
-
-Applies within both load and unload workflows to records being respectively read from or written to the connector.
-
-This information is optional, and rarely needed.
-
-If not specified:
-
-- If the connector is capable of reporting the record metadata accurately (for example, some database connectors might be able to inspect the target table's metadata), then this section is only required if you want to override some field types as reported by the connector.
-- If the connector is not capable of reporting the record metadata accurately (for example, file connectors usually cannot report such information), then all fields are assumed to be of type `String`. If this is not correct, then you need to provide the correct type information here.
-
-Field metadata should be specified as a HOCON map of the following form:
-
-- Indexed data sources: `0 = java.lang.String, 1 = java.lang.Double`, where `0`, `1`, etc. are the zero-based indices of fields in the source data; and the values are the expected types for each field.
-- Mapped data sources: `fieldA = java.lang.String, fieldB = java.lang.Double`, where `fieldA`, `fieldB`, etc. are field names in the source data; and the values are the expected types for each field.
-
-Defaults to **""**.
-
-#### ---schema.query _&lt;string&gt;_
+#### -query,--schema.query _&lt;string&gt;_
 
 The query to use. Optional.
 
@@ -408,6 +489,26 @@ In unload worflows, the statement can be any regular `SELECT` statement; it can 
 If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas.
 
 The column names in the SELECT clause will be used to match column names specified in the mapping. See "mapping" setting for more information.
+
+Defaults to **""**.
+
+#### ---schema.recordMetadata _&lt;string&gt;_
+
+Record metadata.
+
+Applies within both load and unload workflows to records being respectively read from or written to the connector.
+
+This information is optional, and rarely needed.
+
+If not specified:
+
+- If the connector is capable of reporting the record metadata accurately (for example, some database connectors might be able to inspect the target table's metadata), then this section is only required if you want to override some field types as reported by the connector.
+- If the connector is not capable of reporting the record metadata accurately (for example, file connectors usually cannot report such information), then all fields are assumed to be of type `String`. If this is not correct, then you need to provide the correct type information here.
+
+Field metadata should be specified as a HOCON map of the following form:
+
+- Indexed data sources: `0 = java.lang.String, 1 = java.lang.Double`, where `0`, `1`, etc. are the zero-based indices of fields in the source data; and the values are the expected types for each field.
+- Mapped data sources: `fieldA = java.lang.String, fieldB = java.lang.Double`, where `fieldA`, `fieldB`, etc. are field names in the source data; and the values are the expected types for each field.
 
 Defaults to **""**.
 
