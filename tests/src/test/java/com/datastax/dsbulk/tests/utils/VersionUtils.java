@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.tests.utils;
 
+import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +17,7 @@ import java.util.regex.Pattern;
 public class VersionUtils {
 
   public static final String DEFAULT_OSS_VERSION = "3.12";
-  public static final String DEFAULT_DSE_VERSION = "5.1.0";
+  public static final String DEFAULT_DSE_VERSION = "5.1.2";
 
   /**
    * A mapping of full DSE versions to their C* counterpart. This is not meant to be comprehensive.
@@ -149,6 +150,18 @@ public class VersionUtils {
 
   public static int compare(String v1, String v2) {
     return Version.parse(v1).compareTo(Version.parse(v2));
+  }
+
+  public static String computeVersion(CCMConfig config, boolean dse) {
+    if (config != null && !config.version().equals("")) {
+      return VersionUtils.getBestVersion(config.version(), dse);
+    }
+    String systemDSE = System.getProperty("com.datastax.dsbulk.tests.ccm.DSE_VERSION");
+    if (systemDSE != null) {
+      return VersionUtils.getBestVersion(systemDSE, dse);
+    }
+
+    return VersionUtils.getBestVersion(VersionUtils.DEFAULT_DSE_VERSION, dse);
   }
 
   /**

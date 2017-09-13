@@ -20,6 +20,7 @@ import com.datastax.dsbulk.tests.categories.LongTests;
 import com.datastax.dsbulk.tests.ccm.CCMRule;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMTest;
+import com.datastax.dsbulk.tests.ccm.annotations.DSERequirement;
 import com.datastax.dsbulk.tests.ccm.annotations.SessionConfig;
 import com.datastax.dsbulk.tests.utils.CsvUtils;
 import com.datastax.dsbulk.tests.utils.EndToEndUtils;
@@ -38,6 +39,7 @@ import org.junit.experimental.categories.Category;
 
 @CCMTest
 @CCMConfig(numberOfNodes = 1)
+@DSERequirement(min = "5.1")
 @Category(LongTests.class)
 public class CCMTotalEndToEndIT {
   @Rule @ClassRule public static CCMRule ccm = new CCMRule();
