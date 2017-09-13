@@ -113,7 +113,7 @@ public class ExecutorSettings {
     builder
         .withExecutor(executor)
         .withExecutionListener(executionListener)
-        .withMaxInFlightRequests(config.getInt("maxInflight"))
+        .withMaxInFlightRequests(config.getInt("maxInFlight"))
         .withMaxRequestsPerSecond(config.getInt("maxPerSecond"))
         .failSafe();
   }

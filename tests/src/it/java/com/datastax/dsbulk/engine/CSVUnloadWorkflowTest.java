@@ -32,14 +32,10 @@ public class CSVUnloadWorkflowTest {
     URL output = Files.createTempDirectory("output").toUri().toURL();
     String[] args = {
       "read",
-      "log.outputDirectory",
+      "log.directory",
       "./target",
-      "connector.name",
-      "csv",
       "connector.csv.url",
       output.toExternalForm(),
-      "connector.csv.header",
-      "true",
       "schema.keyspace",
       "test",
       "schema.table",
