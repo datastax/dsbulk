@@ -83,7 +83,7 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = { 0 = c2 , 2 = c1 }, "
+                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
                         + "keyspace=ks, table=t1")
@@ -115,7 +115,7 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = { 0 = c2 , 2 = c1 }, "
+                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
                         + "query=\"insert into ks.table (c1,c2) values (:c1,:c2)\"")
@@ -234,7 +234,7 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = { 0 = c2 , 2 = c1 }, "
+                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
                         + "keyspace=ks, table=t1")
@@ -267,7 +267,7 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = { 0 = c2 , 2 = c1 }, "
+                    "mapping = \"0 = c2 , 2 = c1\", "
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
                         + "query=\"select c2,c1 from ks.t1\"")

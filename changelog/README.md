@@ -38,3 +38,4 @@
 - [improvement] DAT-85: Make driver.hosts option a comma-delimited string for ease of use
 - [improvement] DAT-58: Generate settings.md documentation page from reference.conf
 - [improvement] DAT-79: Rename and remove various settings
+- [improvement] DAT-95: Change schema.mapping and schema.recordMetadata to string values that should be parsed in SchemaSettings
