@@ -7,8 +7,8 @@
 
 package com.datastax.dsbulk.engine.internal;
 
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.Main;
 import java.io.BufferedReader;
 import java.io.InputStream;
