@@ -14,12 +14,11 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -38,10 +37,9 @@ import org.slf4j.LoggerFactory;
 public class Main {
 
   private static final Config REFERENCE = ConfigFactory.defaultReference().getConfig("dsbulk");
-  private static final Config DEFAULT = ConfigFactory.load().getConfig("dsbulk");
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
   private static final Config SHORTCUTS = ConfigFactory.parseResourcesAnySyntax("shortcuts.conf");
-  private final String version;
+  private static Config DEFAULT = ConfigFactory.load().getConfig("dsbulk");
 
   public static void main(String[] args) {
     URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
@@ -49,18 +47,7 @@ public class Main {
   }
 
   public Main(String[] args) {
-    String connectorName = DEFAULT.getString("connector.name");
-    if (connectorName.isEmpty()) {
-      connectorName = null;
-    }
-
-    version =
-        new BufferedReader(
-                new InputStreamReader(
-                    Main.class.getClassLoader().getResourceAsStream("version.txt")))
-            .lines()
-            .collect(Collectors.joining("\n"));
-
+    String connectorName = null;
     try {
       if (args.length == 0) {
         throw new ParseException("First argument must be subcommand \"load\" or \"unload\"");
@@ -68,12 +55,12 @@ public class Main {
 
       String[] optionArgs =
           (args[0].startsWith("-")) ? args : Arrays.copyOfRange(args, 1, args.length);
+      initDefaultConfig(optionArgs);
 
-      String connectorNameFromArgs = getConnectorNameFromArgs(optionArgs);
-      if (connectorNameFromArgs != null && !connectorNameFromArgs.isEmpty()) {
-        connectorName = connectorNameFromArgs;
-      }
+      // Figure out connector-name from config + command line.
+      connectorName = resolveConnectorName(optionArgs);
 
+      // Parse command line args fully, integrate with default config, and run.
       Config cmdLineConfig = parseCommandLine(connectorName, args[0], optionArgs);
       DefaultLoaderConfig config = new DefaultLoaderConfig(cmdLineConfig.withFallback(DEFAULT));
       config.checkValid(REFERENCE);
@@ -87,7 +74,24 @@ public class Main {
       pw.flush();
     } catch (Exception e) {
       HelpFormatter formatter = new HelpFormatter();
-      formatter.setOptionComparator(Comparator.comparing(Option::getLongOpt));
+
+      // Sort help options by long name, but "-f" doesn't have a long name,
+      // so account for that.
+      formatter.setOptionComparator(
+          (o1, o2) -> {
+            String leftLong = o1.getLongOpt();
+            String rightLong = o2.getLongOpt();
+            if (leftLong == null) {
+              if (rightLong == null) {
+                return 0;
+              } else {
+                return -1;
+              }
+            } else if (rightLong == null) {
+              return 1;
+            }
+            return leftLong.compareTo(rightLong);
+          });
 
       PrintWriter pw = new PrintWriter(System.err);
       Options options = createOptions(connectorName);
@@ -103,11 +107,102 @@ public class Main {
     }
   }
 
-  private String getVersionMessage() {
+  private static String resolveConnectorName(String[] optionArgs) throws ParseException {
+    String connectorName = DEFAULT.getString("connector.name");
+    if (connectorName.isEmpty()) {
+      connectorName = null;
+    }
+
+    String connectorNameFromArgs = getConnectorNameFromArgs(optionArgs);
+    if (connectorNameFromArgs != null && !connectorNameFromArgs.isEmpty()) {
+      connectorName = connectorNameFromArgs;
+    }
+    return connectorName;
+  }
+
+  static String getVersionMessage() {
+    // Get the version of dsbulk from version.txt.
+    String version = "UNKNOWN";
+    URL resource = Main.class.getClassLoader().getResource("version.txt");
+    if (resource != null) {
+      try {
+        version = Files.lines(Paths.get(resource.toURI())).findFirst().orElse("UNKNOWN");
+      } catch (Exception e) {
+        // swallow
+      }
+    }
+
     return String.format("DataStax Bulk Loader/Unloader v%s", version);
   }
 
-  private String getConnectorNameFromArgs(String[] args) throws ParseException {
+  static Config parseCommandLine(String connectorName, String subcommand, String[] args)
+      throws ParseException, VersionRequestException {
+    Options options = createOptions(connectorName);
+    CommandLineParser parser = new DefaultParser();
+    CommandLine cmd = parser.parse(options, args);
+
+    if (cmd.hasOption("help")) {
+      // User is asking for help. No real error here, but raising an empty
+      // exception gets the job done.
+      throw new ParseException("");
+    }
+
+    if (cmd.hasOption("version")) {
+      throw new VersionRequestException();
+    }
+
+    if (!Arrays.asList("load", "unload").contains(subcommand)) {
+      throw new ParseException("First argument must be subcommand \"load\" or \"unload\"");
+    }
+
+    Iterator<Option> it = cmd.iterator();
+    Config userSettings = ConfigFactory.empty();
+    while (it.hasNext()) {
+      Option option = it.next();
+      if (option.getOpt() != null && option.getOpt().equals("f")) {
+        // Skip -f; it doesn't play into this.
+        continue;
+      }
+      String path = option.getLongOpt();
+      String value = option.getValue();
+      ConfigValueType type = DEFAULT.getValue(path).valueType();
+      if (type == ConfigValueType.STRING) {
+        value = "\"" + value + "\"";
+      }
+      userSettings = ConfigFactory.parseString(path + "=" + value).withFallback(userSettings);
+    }
+    return userSettings;
+  }
+
+  private static void initDefaultConfig(String[] optionArgs) {
+    // If the user specified the -f option (giving us an app config path),
+    // set the config.file property to tell TypeSafeConfig.
+
+    String appConfigPath = getAppConfigPath(optionArgs);
+    if (appConfigPath != null) {
+      System.setProperty("config.file", appConfigPath);
+      ConfigFactory.invalidateCaches();
+      DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+    }
+  }
+
+  private static String getAppConfigPath(String[] optionArgs) {
+    // Walk through args, looking for a -f option + value.
+    boolean foundDashF = false;
+    String appConfigPath = null;
+    for (String arg : optionArgs) {
+      if (arg.equals("-f")) {
+        foundDashF = true;
+      } else if (foundDashF) {
+        appConfigPath = arg;
+        break;
+      }
+    }
+
+    return appConfigPath;
+  }
+
+  private static String getConnectorNameFromArgs(String[] args) throws ParseException {
     String connectorName = null;
     Options basicOptions = new Options();
     basicOptions.addOption(Option.builder("c").hasArg().longOpt("connector.name").build());
@@ -139,7 +234,7 @@ public class Main {
     }
 
     // Add connector-specific entries next. If there's overlap of shortcuts, log a warning.
-    if (connectorName != null) {
+    if (connectorName != null && SHORTCUTS.hasPath("dsbulk." + connectorName + "-shortcuts")) {
       for (Map.Entry<String, ConfigValue> entry :
           SHORTCUTS.getConfig("dsbulk." + connectorName + "-shortcuts").entrySet()) {
         String longOption = entry.getValue().unwrapped().toString();
@@ -166,7 +261,7 @@ public class Main {
       options.addOption(option);
     }
 
-    // Add the --help and --version options
+    // Add the --help, --version, -f options
     options.addOption(
         null,
         "help",
@@ -174,6 +269,7 @@ public class Main {
         "This help text. May be combined with -c <connectorName> to see short options for a "
             + "particular connector");
     options.addOption(null, "version", false, "Print out the version of this tool.");
+    options.addOption(SettingsDocumentor.CONFIG_FILE_OPTION);
     return options;
   }
 
@@ -195,41 +291,6 @@ public class Main {
         .argName(config.getTypeString(longName))
         .desc(getSanitizedDescription(longName, value));
     return option.build();
-  }
-
-  static Config parseCommandLine(String connectorName, String subcommand, String[] args)
-      throws ParseException, VersionRequestException {
-    Options options = createOptions(connectorName);
-    CommandLineParser parser = new DefaultParser();
-    CommandLine cmd = parser.parse(options, args);
-
-    if (cmd.hasOption("help")) {
-      // User is asking for help. No real error here, but raising an empty
-      // exception gets the job done.
-      throw new ParseException("");
-    }
-
-    if (cmd.hasOption("version")) {
-      throw new VersionRequestException();
-    }
-
-    if (!Arrays.asList("load", "unload").contains(subcommand)) {
-      throw new ParseException("First argument must be subcommand \"load\" or \"unload\"");
-    }
-
-    Iterator<Option> it = cmd.iterator();
-    Config userSettings = ConfigFactory.empty();
-    while (it.hasNext()) {
-      Option option = it.next();
-      String path = option.getLongOpt();
-      String value = option.getValue();
-      ConfigValueType type = DEFAULT.getValue(path).valueType();
-      if (type == ConfigValueType.STRING) {
-        value = "\"" + value + "\"";
-      }
-      userSettings = ConfigFactory.parseString(path + "=" + value).withFallback(userSettings);
-    }
-    return userSettings;
   }
 
   private static String getSanitizedDescription(String longName, ConfigValue value) {

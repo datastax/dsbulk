@@ -47,8 +47,8 @@ public class SchemaSettingsTest {
   private static final String NULL_TO_UNSET = "nullToUnset";
 
   private Session session;
-  private ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
-  private RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
+  private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
+  private final RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
 
   @Before
   public void setUp() throws Exception {

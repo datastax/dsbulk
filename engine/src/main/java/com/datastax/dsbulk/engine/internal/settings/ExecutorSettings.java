@@ -53,6 +53,7 @@ public class ExecutorSettings {
     return newBulkExecutor(session, executionListener, WorkflowType.UNLOAD);
   }
 
+  @SuppressWarnings("unused")
   public ThreadPoolExecutor getExecutorThreadPool() {
     return executor;
   }

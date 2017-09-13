@@ -12,8 +12,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jetbrains.annotations.NotNull;
 
 /** */
+@SuppressWarnings("WeakerAccess")
 public class VersionUtils {
 
   public static final String DEFAULT_OSS_VERSION = "3.12";
@@ -67,8 +69,7 @@ public class VersionUtils {
     DSE_TO_OSS_VERSIONS = Collections.unmodifiableMap(map);
   }
 
-  private static final Pattern VERSION_RANGE_PATTERN =
-      Pattern.compile("\\[([0-9\\.]*),([0-9\\.]*)\\]");
+  private static final Pattern VERSION_RANGE_PATTERN = Pattern.compile("\\[([0-9.]*),([0-9.]*)]");
 
   /**
    * @return The cassandra version matching the given DSE version. If the DSE version can't be
@@ -140,12 +141,12 @@ public class VersionUtils {
   }
 
   public static boolean isWithinRange(
-      String versionStr, String lowerBoundInclusiveStr, String upperBoundeInclusiveStr) {
+      String versionStr, String lowerBoundInclusiveStr, String upperBoundInclusiveStr) {
     Version version = Version.parse(versionStr);
     Version lowerBoundInclusive = Version.parse(lowerBoundInclusiveStr);
-    Version upperBoundeInclusive = Version.parse(upperBoundeInclusiveStr);
+    Version upperBoundInclusive = Version.parse(upperBoundInclusiveStr);
     return (lowerBoundInclusive == null || version.compareTo(lowerBoundInclusive) >= 0)
-        && (upperBoundeInclusive == null || version.compareTo(upperBoundeInclusive) <= 0);
+        && (upperBoundInclusive == null || version.compareTo(upperBoundInclusive) <= 0);
   }
 
   public static int compare(String v1, String v2) {
@@ -201,16 +202,14 @@ public class VersionUtils {
     }
 
     @Override
-    public int compareTo(Version other) {
+    public int compareTo(@NotNull Version other) {
       if (major < other.major) return -1;
       if (major > other.major) return 1;
       if (minor < other.minor) return -1;
       if (minor > other.minor) return 1;
       if (patch < other.patch) return -1;
       if (patch > other.patch) return 1;
-      if (hotfix < other.hotfix) return -1;
-      if (hotfix > other.hotfix) return 1;
-      return 0;
+      return Integer.compare(hotfix, other.hotfix);
     }
   }
 }

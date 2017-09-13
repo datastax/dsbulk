@@ -24,6 +24,10 @@
 <a name="Common"></a>
 ## Common Settings
 
+#### -f _&lt;string&gt;_
+
+Load settings from the given file rather than `conf/application.conf`.
+
 #### -url,--connector.csv.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.

@@ -10,21 +10,27 @@ package com.datastax.dsbulk.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-import org.mockito.internal.util.reflection.Whitebox;
+import org.junit.rules.TemporaryFolder;
 
 public class MainTest {
   private PrintStream originalStderr;
   private PrintStream originalStdout;
   private ByteArrayOutputStream stderr;
   private ByteArrayOutputStream stdout;
+
+  @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Before
   public void setUp() throws Exception {
@@ -42,15 +48,17 @@ public class MainTest {
   public void tearDown() throws Exception {
     System.setOut(originalStdout);
     System.setErr(originalStderr);
+    System.clearProperty("config.file");
+    ConfigFactory.invalidateCaches();
   }
 
   @Test
   public void should_show_help_with_error_when_no_args() throws Exception {
-    Main main = new Main(new String[] {});
+    new Main(new String[] {});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .contains("First argument must be subcommand")
-        .contains("DataStax Bulk Loader/Unloader v" + Whitebox.getInternalState(main, "version"));
+        .contains(Main.getVersionMessage());
   }
 
   @Test
@@ -58,6 +66,13 @@ public class MainTest {
     new Main(new String[] {"--help"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
+  }
+
+  @Test
+  public void should_show_dash_f_help() throws Exception {
+    new Main(new String[] {"--help"});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).containsPattern("-f <string>\\s+Load settings from the given file");
   }
 
   @Test
@@ -95,6 +110,37 @@ public class MainTest {
     assertThat(err)
         .doesNotContain("First argument must be subcommand")
         .contains("-url,--connector.csv.url");
+  }
+
+  @Test
+  public void should_respect_custom_config_file() throws Exception {
+    File f = tempFolder.newFile("myapp.conf");
+    Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
+    new Main(new String[] {"load", "-f", f.getPath()});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .doesNotContain("First argument must be subcommand")
+        .contains("Cannot find connector 'junk'");
+  }
+
+  @Test
+  public void should_error_out_for_bad_config_file() throws Exception {
+    new Main(new String[] {"load", "-f", "noexist"});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .doesNotContain("First argument must be subcommand")
+        .contains("noexist (No such file or directory)");
+  }
+
+  @Test
+  public void should_accept_connector_name_in_args_over_config_file() throws Exception {
+    File f = tempFolder.newFile("myapp.conf");
+    Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
+    new Main(new String[] {"load", "-c", "fromargs", "-f", f.getPath()});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .doesNotContain("First argument must be subcommand")
+        .contains("Cannot find connector 'fromargs'");
   }
 
   @Test
@@ -372,11 +418,8 @@ public class MainTest {
 
   @Test
   public void should_show_version_message_when_asked() throws Exception {
-    Main main = new Main(new String[] {"--version"});
+    new Main(new String[] {"--version"});
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(out)
-        .isEqualTo(
-            String.format(
-                "DataStax Bulk Loader/Unloader v%s%n", Whitebox.getInternalState(main, "version")));
+    assertThat(out).isEqualTo(String.format("%s%n", Main.getVersionMessage()));
   }
 }

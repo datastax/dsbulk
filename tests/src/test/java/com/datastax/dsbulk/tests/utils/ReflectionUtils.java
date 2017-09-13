@@ -57,7 +57,11 @@ public class ReflectionUtils {
     try {
       if (method == null) return null;
       method.setAccessible(true);
-      assert returnType.isAssignableFrom(method.getReturnType());
+
+      // Void.isAssignableFrom always returns false it seems.
+      if (returnType != Void.class) {
+        assert returnType.isAssignableFrom(method.getReturnType());
+      }
       return returnType.cast(method.invoke(receiver, parameters));
     } catch (Exception e) {
       throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e);

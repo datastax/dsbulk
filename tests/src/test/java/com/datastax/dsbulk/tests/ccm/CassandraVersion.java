@@ -12,7 +12,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jetbrains.annotations.NotNull;
 
+@SuppressWarnings("unused")
 public class CassandraVersion implements Comparable<CassandraVersion> {
 
   private static final String VERSION_REGEXP =
@@ -49,7 +51,7 @@ public class CassandraVersion implements Comparable<CassandraVersion> {
    * @return the parsed version number.
    * @throws IllegalArgumentException if the provided string does not represent a valid version.
    */
-  public static CassandraVersion parse(String version) {
+  static CassandraVersion parse(String version) {
     if (version == null) {
       return null;
     }
@@ -168,7 +170,7 @@ public class CassandraVersion implements Comparable<CassandraVersion> {
   }
 
   @Override
-  public int compareTo(CassandraVersion other) {
+  public int compareTo(@NotNull CassandraVersion other) {
     if (major < other.major) {
       return -1;
     }
@@ -222,9 +224,7 @@ public class CassandraVersion implements Comparable<CassandraVersion> {
       }
     }
 
-    return preReleases.length == other.preReleases.length
-        ? 0
-        : (preReleases.length < other.preReleases.length ? -1 : 1);
+    return Integer.compare(preReleases.length, other.preReleases.length);
   }
 
   @Override
