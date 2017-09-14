@@ -25,6 +25,7 @@ import com.google.common.io.Closer;
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import javax.inject.Inject;
@@ -39,27 +40,13 @@ import org.slf4j.MDC;
 /**
  * A manager for {@link CCMCluster CCM} clusters that helps testing with JUnit 4 and Cassandra.
  *
- * <p>
- *
- * <p>
- *
- * <p>
- *
  * <p>This manager is a JUnit {@link org.junit.rules.TestRule rule} that must be declared in each
  * test class requiring CCM, like in the example below:
- *
- * <p>
- *
- * <p>
- *
- * <p>
  *
  * <pre>
  * &#64;Rule &#64;ClassRule
  * public static CCMRule ccmRule = new CCMRule();
  * </pre>
- *
- * <p>
  *
  * <p>Note that the field MUST be public, static, and annotated with {@link
  * org.junit.ClassRule @ClassRule}. Each test class must also be annotated with {@link
@@ -190,26 +177,30 @@ public class CCMRule implements TestRule {
   private void createAndInjectCloseables() throws IllegalAccessException {
     Set<Field> fields = ReflectionUtils.locateFieldsAnnotatedWith(testClass, Inject.class);
     for (Field field : fields) {
+      field.setAccessible(true);
+      assert Modifier.isStatic(field.getModifiers())
+          : String.format("Field %s is not static", field);
+      Class<?> type = field.getType();
+      assert Closeable.class.isAssignableFrom(type)
+          : String.format("Field %s is not Closeable", field);
+      Closeable value;
+      if (CCMCluster.class.isAssignableFrom(type)) {
+        value = ccm;
+      } else if (Session.class.isAssignableFrom(type)) {
+        Session session = getSession(field, testClass);
+        closer.register(session.getCluster());
+        value = session;
+      } else if (Cluster.class.isAssignableFrom(type)) {
+        value = getCluster(field, testClass);
+        closer.register(value);
+      } else {
+        throw new IllegalStateException("Cannot inject field " + field);
+      }
+      LOGGER.debug(String.format("Injecting %s into field %s", value, field));
       try {
-        Closeable value = null;
-        Class<?> type = field.getType();
-        if (CCMCluster.class.isAssignableFrom(type)) {
-          value = ccm;
-        } else if (Session.class.isAssignableFrom(type)) {
-          Session session = getSession(field, testClass);
-          closer.register(session.getCluster());
-          value = session;
-        } else if (Cluster.class.isAssignableFrom(type)) {
-          value = getCluster(field, testClass);
-          closer.register(value);
-        }
-        if (value != null) {
-          field.setAccessible(true);
-          field.set(null, value);
-        }
+        field.set(null, value);
       } catch (IllegalAccessException e) {
-        LOGGER.error(
-            String.format("Error while injecting field %s in instance %s", field, null), e);
+        LOGGER.error("Error while injecting field %s" + field, e);
         throw e;
       }
     }
