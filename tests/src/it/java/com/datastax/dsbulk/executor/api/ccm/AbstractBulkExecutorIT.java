@@ -81,11 +81,13 @@ public abstract class AbstractBulkExecutorIT {
   @Before
   public void resetMocks() throws Exception {
     MockitoAnnotations.initMocks(this);
+    System.setProperty("rx2.buffer-size", "1");
   }
 
   @After
   public void truncateTable() {
     CsvUtils.truncateIpByCountryTable(session);
+    System.clearProperty("rx2.buffer-size");
   }
 
   // Tests for synchronous write methods
