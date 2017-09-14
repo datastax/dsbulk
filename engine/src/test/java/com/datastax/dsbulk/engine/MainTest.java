@@ -9,6 +9,7 @@ package com.datastax.dsbulk.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.dsbulk.engine.internal.HelpUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.io.ByteArrayOutputStream;
@@ -154,6 +155,24 @@ public class MainTest {
     File f = tempFolder.newFile("myapp.conf");
     Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
     new Main(new String[] {"load", "-c", "fromargs", "-f", f.getPath()});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .doesNotContain("First argument must be subcommand")
+        .contains("Cannot find connector 'fromargs'");
+  }
+
+  @Test
+  public void should_handle_connector_name_long_option() throws Exception {
+    new Main(new String[] {"load", "--connector.name", "fromargs"});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .doesNotContain("First argument must be subcommand")
+        .contains("Cannot find connector 'fromargs'");
+  }
+
+  @Test
+  public void should_handle_connector_name_long_option_with_equal() throws Exception {
+    new Main(new String[] {"load", "--connector.name=fromargs"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .doesNotContain("First argument must be subcommand")
@@ -437,12 +456,12 @@ public class MainTest {
   public void should_show_version_message_when_asked() throws Exception {
     new Main(new String[] {"--version"});
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(out).isEqualTo(String.format("%s%n", Main.getVersionMessage()));
+    assertThat(out).isEqualTo(String.format("%s%n", HelpUtils.getVersionMessage()));
   }
 
   private void assertGlobalHelp() {
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(out).contains(Main.getVersionMessage());
+    assertThat(out).contains(HelpUtils.getVersionMessage());
     assertThat(out).doesNotContain("First argument must be subcommand");
     assertThat(out).containsPattern("-f <string>\\s+Load settings from the given file");
   }
