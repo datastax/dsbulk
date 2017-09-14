@@ -13,11 +13,11 @@ import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-public class ConnectorSettings {
+public class ConnectorSettings implements SettingsValidator {
 
   private final LoaderConfig config;
 
-  ConnectorSettings(LoaderConfig config) throws Exception {
+  ConnectorSettings(LoaderConfig config, WorkflowType type) throws Exception {
     this.config = config;
   }
 
@@ -33,6 +33,13 @@ public class ConnectorSettings {
       throw new IllegalArgumentException(
           String.format("Cannot find configuration entry for connector '%s'", connectorName));
     }
+  }
+
+  public void validateConfig(WorkflowType type) {
+    String connectorName = config.getString("name");
+    boolean read = type == WorkflowType.LOAD;
+    Connector connector = locateConnector(connectorName);
+    connector.validate(config.getConfig(connectorName), read);
   }
 
   private static Connector locateConnector(String name) {

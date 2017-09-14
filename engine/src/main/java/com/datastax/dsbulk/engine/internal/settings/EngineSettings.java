@@ -6,7 +6,10 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import com.datastax.dsbulk.commons.config.ConfigUtils;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.engine.WorkflowType;
+import com.typesafe.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,5 +30,14 @@ public class EngineSettings {
 
   public int getMaxConcurrentReads() {
     return config.getThreads("maxConcurrentReads");
+  }
+
+  public void validateConfig(WorkflowType type) throws IllegalArgumentException {
+    try {
+      config.getThreads("maxMappingThreads");
+      config.getThreads("maxConcurrentReads");
+    } catch (ConfigException e) {
+      ConfigUtils.badConfigToIllegalArgument(e, "engine");
+    }
   }
 }

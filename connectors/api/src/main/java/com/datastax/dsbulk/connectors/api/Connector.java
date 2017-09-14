@@ -64,4 +64,6 @@ public interface Connector extends AutoCloseable {
   default RecordMetadata getRecordMetadata() {
     return RecordMetadata.DEFAULT;
   }
+
+  default void validate(LoaderConfig settings, boolean read) throws IllegalArgumentException {}
 }

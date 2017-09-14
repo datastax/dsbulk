@@ -58,7 +58,7 @@ public class LoadWorkflow implements Workflow {
 
   @Override
   public void init() throws Exception {
-    SettingsManager settingsManager = new SettingsManager(config, executionId);
+    SettingsManager settingsManager = new SettingsManager(config, executionId, WorkflowType.LOAD);
     settingsManager.loadConfiguration();
     settingsManager.logEffectiveSettings();
     logSettings = settingsManager.getLogSettings();

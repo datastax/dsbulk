@@ -10,12 +10,14 @@ import static java.nio.file.FileVisitResult.CONTINUE;
 import static java.nio.file.FileVisitResult.TERMINATE;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
+import com.datastax.dsbulk.commons.config.ConfigUtils;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.google.common.base.Suppliers;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.csv.CsvFormat;
 import com.univocity.parsers.csv.CsvParser;
@@ -97,6 +99,7 @@ public class CSVConnector implements Connector {
 
   @Override
   public void configure(LoaderConfig settings, boolean read) throws MalformedURLException {
+
     this.read = read;
     url = settings.getURL("url");
     pattern = settings.getString("fileNamePattern");
@@ -141,6 +144,27 @@ public class CSVConnector implements Connector {
       threadPool =
           Executors.newFixedThreadPool(
               maxThreads, new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
+    }
+  }
+
+  @Override
+  public void validate(LoaderConfig settings, boolean read) throws IllegalArgumentException {
+    try {
+      settings.getURL("url");
+      settings.getString("fileNamePattern");
+      settings.getCharset("encoding");
+      settings.getChar("delimiter");
+      settings.getChar("quote");
+      settings.getChar("escape");
+      settings.getChar("comment");
+      settings.getLong("skipLines");
+      settings.getLong("maxLines");
+      settings.getThreads("maxThreads");
+      settings.getBoolean("recursive");
+      settings.getBoolean("header");
+      settings.getString("fileNameFormat");
+    } catch (ConfigException e) {
+      ConfigUtils.badConfigToIllegalArgument(e, "connector.csv");
     }
   }
 

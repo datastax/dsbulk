@@ -6,17 +6,19 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import com.datastax.dsbulk.commons.config.ConfigUtils;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.typesafe.config.ConfigException;
 import java.time.Duration;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /** */
-public class MonitoringSettings {
+public class MonitoringSettings implements SettingsValidator {
 
   private final LoaderConfig config;
   private final String executionId;
@@ -50,5 +52,18 @@ public class MonitoringSettings {
         expectedReads,
         jmx,
         reportInterval);
+  }
+
+  public void validateConfig(WorkflowType type) throws IllegalArgumentException {
+    try {
+      config.getEnum(TimeUnit.class, "rateUnit");
+      config.getEnum(TimeUnit.class, "durationUnit");
+      config.getDuration("reportRate");
+      config.getLong("expectedWrites");
+      config.getLong("expectedReads");
+      config.getBoolean("jmx");
+    } catch (ConfigException e) {
+      ConfigUtils.badConfigToIllegalArgument(e, "monitoring");
+    }
   }
 }
