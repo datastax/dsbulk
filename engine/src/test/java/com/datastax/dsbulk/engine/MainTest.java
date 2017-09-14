@@ -53,33 +53,28 @@ public class MainTest {
   }
 
   @Test
-  public void should_show_help_with_error_when_no_args() throws Exception {
+  public void should_show_help_when_no_args() throws Exception {
     new Main(new String[] {});
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err)
-        .contains("First argument must be subcommand")
-        .contains(Main.getVersionMessage());
+    assertGlobalHelp();
   }
 
   @Test
-  public void should_show_help_without_error_when_help_arg() throws Exception {
+  public void should_show_help_when_help_opt_arg() throws Exception {
     new Main(new String[] {"--help"});
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).doesNotContain("First argument must be subcommand");
+    assertGlobalHelp();
   }
 
   @Test
-  public void should_show_dash_f_help() throws Exception {
-    new Main(new String[] {"--help"});
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).containsPattern("-f <string>\\s+Load settings from the given file");
+  public void should_show_help_when_help_subcommand() throws Exception {
+    new Main(new String[] {"help"});
+    assertGlobalHelp();
   }
 
   @Test
-  public void should_show_help_with_error_when_junk_subcommand() throws Exception {
+  public void should_show_error_when_junk_subcommand() throws Exception {
     new Main(new String[] {"junk"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("First argument must be subcommand");
+    assertThat(err).contains("First argument must be subcommand \"load\", \"unload\", or \"help\"");
   }
 
   @Test
@@ -87,6 +82,7 @@ public class MainTest {
     new Main(new String[] {"junk", "--help"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
+    assertGlobalHelp();
   }
 
   @Test
@@ -94,6 +90,35 @@ public class MainTest {
     new Main(new String[] {"load", "--help"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
+    assertGlobalHelp();
+  }
+
+  @Test
+  public void should_show_error_for_help_bad_section() throws Exception {
+    new Main(new String[] {"help", "noexist"});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .contains("noexist is not a valid section. Available sections include")
+        .contains("driver.auth");
+  }
+
+  @Test
+  public void should_show_section_help() throws Exception {
+    new Main(new String[] {"help", "batch"});
+    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(out)
+        .contains("--batch.mode")
+        .doesNotContain("This section has the following subsections");
+  }
+
+  @Test
+  public void should_show_section_help_with_subsection_pointers() throws Exception {
+    new Main(new String[] {"help", "driver"});
+    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(out)
+        .contains("--driver.hosts")
+        .contains("This section has the following subsections")
+        .contains("driver.auth");
   }
 
   @Test
@@ -101,15 +126,7 @@ public class MainTest {
     new Main(new String[] {"-k", "k1", "--help"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
-  }
-
-  @Test
-  public void should_show_help_with_short_opts_when_name_set() throws Exception {
-    new Main(new String[] {"-c", "csv", "--help"});
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err)
-        .doesNotContain("First argument must be subcommand")
-        .contains("-url,--connector.csv.url");
+    assertGlobalHelp();
   }
 
   @Test
@@ -421,5 +438,12 @@ public class MainTest {
     new Main(new String[] {"--version"});
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
     assertThat(out).isEqualTo(String.format("%s%n", Main.getVersionMessage()));
+  }
+
+  private void assertGlobalHelp() {
+    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(out).contains(Main.getVersionMessage());
+    assertThat(out).doesNotContain("First argument must be subcommand");
+    assertThat(out).containsPattern("-f <string>\\s+Load settings from the given file");
   }
 }
