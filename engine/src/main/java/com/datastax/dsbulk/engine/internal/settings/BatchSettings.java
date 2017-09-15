@@ -7,8 +7,9 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
-import com.datastax.dsbulk.commons.config.ConfigUtils;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
@@ -31,13 +32,13 @@ public class BatchSettings implements SettingsValidator {
         config.getInt("bufferSize"));
   }
 
-  public void validateConfig(WorkflowType type) throws IllegalArgumentException {
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getEnum(StatementBatcher.BatchMode.class, "mode");
       config.getInt("maxBatchSize");
       config.getInt("bufferSize");
     } catch (ConfigException e) {
-      ConfigUtils.badConfigToIllegalArgument(e, "batch");
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
     }
   }
 }

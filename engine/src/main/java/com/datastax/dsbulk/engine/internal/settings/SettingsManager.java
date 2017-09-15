@@ -44,7 +44,7 @@ public class SettingsManager {
     logSettings.validateConfig(workflowType);
     driverSettings = new DriverSettings(config.getConfig("driver"), executionId);
     driverSettings.validateConfig(workflowType);
-    connectorSettings = new ConnectorSettings(config.getConfig("connector"), workflowType);
+    connectorSettings = new ConnectorSettings(config.getConfig("connector"));
     connectorSettings.validateConfig(workflowType);
     schemaSettings = new SchemaSettings(config.getConfig("schema"));
     schemaSettings.validateConfig(workflowType);

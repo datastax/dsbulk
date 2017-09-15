@@ -12,8 +12,9 @@ import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
-import com.datastax.dsbulk.commons.config.ConfigUtils;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.ContinuousReactorBulkExecutor;
@@ -88,13 +89,13 @@ public class ExecutorSettings implements SettingsValidator {
     return builder.build();
   }
 
-  public void validateConfig(WorkflowType type) throws IllegalArgumentException {
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getThreads("maxThreads");
       config.getInt("maxPerSecond");
       config.getInt("maxInFlight");
     } catch (ConfigException e) {
-      ConfigUtils.badConfigToIllegalArgument(e, "executor");
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor");
     }
   }
 

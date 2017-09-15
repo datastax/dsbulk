@@ -24,8 +24,9 @@ import com.datastax.driver.core.policies.SpeculativeExecutionPolicy;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
-import com.datastax.dsbulk.commons.config.ConfigUtils;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -141,7 +142,7 @@ public class DriverSettings implements SettingsValidator {
     return builder.build();
   }
 
-  public void validateConfig(WorkflowType type) throws IllegalArgumentException {
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getInt("port");
       config.getEnum(ProtocolOptions.Compression.class, "protocol.compression");
@@ -164,23 +165,23 @@ public class DriverSettings implements SettingsValidator {
         if (authProviderName.equals("PlainTextAuthProvider")
             || authProviderName.equals("DsePlainTextAuthProvider")) {
           if (!config.hasPath("auth.username") || !config.hasPath("auth.password")) {
-            throw new IllegalArgumentException(
+            throw new BulkConfigurationException(
                 authProviderName + " must be provided with both auth.username and auth.password");
           }
         } else if (authProviderName.equals("DseGSSAPIAuthProvider")) {
           if (!config.hasPath("auth.principal") || !config.hasPath("auth.saslProtocol")) {
-            throw new IllegalArgumentException(
+            throw new BulkConfigurationException(
                 authProviderName
-                    + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional ");
+                    + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional.");
           }
         } else {
-          throw new IllegalArgumentException(
+          throw new BulkConfigurationException(
               authProviderName
                   + " is not a valid auth provider. Valid auth providers are PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider");
         }
       }
     } catch (ConfigException e) {
-      ConfigUtils.badConfigToIllegalArgument(e, "driver");
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "driver");
     }
   }
 

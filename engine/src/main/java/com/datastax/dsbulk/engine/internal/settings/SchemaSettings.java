@@ -16,9 +16,10 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TokenRange;
-import com.datastax.dsbulk.commons.config.ConfigUtils;
 import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
@@ -98,26 +99,35 @@ public class SchemaSettings implements SettingsValidator {
                 .setToken("end", range.getEnd()));
   }
 
-  public void validateConfig(WorkflowType type) throws IllegalArgumentException {
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
+      config.getBoolean("nullToUnset");
+      config.getStringList("nullStrings");
       boolean keyspaceTablePresent = false;
-      config.getFirstString("nullStrings");
-      //If the keyspace or table is present. Both must be present.
-      if (config.hasPath("keyspace") || config.hasPath("table")) {
-        if (!(config.hasPath("table") && config.hasPath("keyspace"))) {
-          throw new IllegalArgumentException(
-              "schema.keyspace and schema.table must accompany one another in the configuration");
-        }
+      if (config.hasPath("keyspace") && config.hasPath("table")) {
         keyspaceTablePresent = true;
       }
+
+      //If the keyspace or table is present. Both must be present.
+      if (config.hasPath("keyspace") != config.hasPath("table")) {
+        throw new BulkConfigurationException(
+            "schema.keyspace and schema.table must accompany one another in the configuration");
+      }
+
       // Either the keyspace, and table must be present or the mapping must be present.
       if (!config.hasPath("mapping") && !keyspaceTablePresent) {
-        throw new IllegalArgumentException(
+        throw new BulkConfigurationException(
             "schema.mapping, or schema.keyspace and schema.table must be defined");
       }
 
+      // Either the keyspace, and table must be present or the mapping must be present.
+      if (!config.hasPath("query") && !keyspaceTablePresent) {
+        throw new BulkConfigurationException(
+            "schema.query, or schema.keyspace and schema.table must be defined");
+      }
+
     } catch (ConfigException e) {
-      ConfigUtils.badConfigToIllegalArgument(e, "schema");
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
     }
   }
 

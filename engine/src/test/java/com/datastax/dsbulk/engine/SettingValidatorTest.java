@@ -44,14 +44,14 @@ public class SettingValidatorTest {
 
   @Test
   public void should_error_bad_connector() throws Exception {
-    new Main(new String[] {"load", "-c", "herp"});
+    new Main(new String[] {"load", "-c", "BadConnector"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Cannot find connector");
   }
 
   @Test
   public void should_error_bad_type_connector_option() throws Exception {
-    new Main(new String[] {"load", "--connector.csv.recursive", "herp"});
+    new Main(new String[] {"load", "--connector.csv.recursive", "tralse"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Configuration entry of");
     assertThat(err).contains("recursive has type STRING rather than BOOLEAN");

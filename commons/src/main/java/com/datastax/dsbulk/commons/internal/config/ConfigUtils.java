@@ -4,27 +4,31 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.commons.config;
+package com.datastax.dsbulk.commons.internal.config;
 
 import com.typesafe.config.ConfigException;
 
 public class ConfigUtils {
-  public static void badConfigToIllegalArgument(ConfigException e, String path) {
+  public static BulkConfigurationException configExceptionToBulkConfigurationException(
+      ConfigException e, String path) {
     //This will happen if a user provides the wrong type
+    //Error generated will look like this
+    //Configuration entry of connector.csv.recursive has type STRING rather than BOOLEAN. See settings.md or help for more info.
     if (e instanceof ConfigException.WrongType) {
       String em = e.getMessage();
       int starting_index = em.indexOf(":", em.indexOf(":") + 1) + 2;
       String errorMsg = em.substring(starting_index);
-      throw new IllegalArgumentException(
+      return new BulkConfigurationException(
           "Configuration entry of "
               + path
               + "."
               + errorMsg
-              + ". See reference.conf or help for more info");
+              + ". See settings.md or help for more info.",
+          path);
     }
     // This will catch any parse or missing exception edge cases.
     else {
-      throw new IllegalArgumentException(e.getMessage());
+      return new BulkConfigurationException(e.getMessage());
     }
   }
 }

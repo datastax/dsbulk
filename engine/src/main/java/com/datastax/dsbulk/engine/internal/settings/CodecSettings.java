@@ -8,8 +8,9 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
-import com.datastax.dsbulk.commons.config.ConfigUtils;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.google.common.collect.ImmutableMap;
@@ -88,7 +89,7 @@ public class CodecSettings implements SettingsValidator {
         keyValueSeparator);
   }
 
-  public void validateConfig(WorkflowType type) throws IllegalArgumentException {
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getString("locale");
       config.getStringList("booleanWords");
@@ -100,7 +101,7 @@ public class CodecSettings implements SettingsValidator {
       config.getString("itemDelimiter");
       config.getString("keyValueSeparator");
     } catch (ConfigException e) {
-      ConfigUtils.badConfigToIllegalArgument(e, "codec");
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "codec");
     }
   }
 
