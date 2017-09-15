@@ -18,9 +18,9 @@
 
   <artifactId>dsbulk-executor-rxjava</artifactId>
 
-  <name>DataStax Bulk Loader/Unloader - Executor - RxJava</name>
+  <name>DataStax Bulk Loader - Executor - RxJava</name>
   <description>
-    RxJava implementation of the Bulk Executor API for the DataStax Bulk Loader/Unloader.
+    RxJava implementation of the Bulk Executor API for the DataStax Bulk Loader.
   </description>
 
   <dependencies>

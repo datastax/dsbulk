@@ -19,9 +19,9 @@
 
   <artifactId>dsbulk-executor-reactor</artifactId>
 
-  <name>DataStax Bulk Loader/Unloader - Executor - Reactor</name>
+  <name>DataStax Bulk Loader - Executor - Reactor</name>
   <description>
-    Reactor implementation of the Bulk Executor API for the DataStax Bulk Loader/Unloader.
+    Reactor implementation of the Bulk Executor API for the DataStax Bulk Loader.
   </description>
 
   <dependencies>

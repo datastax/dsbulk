@@ -15,7 +15,7 @@
   <version>1.0.0-alpha2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>DataStax Bulk Loader/Unloader</name>
+  <name>DataStax Bulk Loader</name>
   <description>
     A unified tool for loading into and unloading from DSE storage engines (i.e., Cassandra/Apollo and DataStax Enterprise).
   </description>

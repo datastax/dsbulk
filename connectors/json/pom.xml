@@ -19,9 +19,9 @@
 
   <artifactId>dsbulk-connectors-json</artifactId>
 
-  <name>DataStax Bulk Loader/Unloader - Connectors - JSON</name>
+  <name>DataStax Bulk Loader - Connectors - JSON</name>
   <description>
-    JSON connector for the DataStax Bulk Loader/Unloader.
+    JSON connector for the DataStax Bulk Loader.
   </description>
 
   <dependencies>

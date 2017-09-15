@@ -19,9 +19,9 @@
   <artifactId>dsbulk-executor</artifactId>
   <packaging>pom</packaging>
 
-  <name>DataStax Bulk Loader/Unloader - Executor</name>
+  <name>DataStax Bulk Loader - Executor</name>
   <description>
-    Bulk Executor for the DataStax Bulk Loader/Unloader.
+    Bulk Executor for the DataStax Bulk Loader.
   </description>
 
   <modules>

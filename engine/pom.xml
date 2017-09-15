@@ -19,9 +19,9 @@
 
   <artifactId>dsbulk-engine</artifactId>
 
-  <name>DataStax Bulk Loader/Unloader - Engine</name>
+  <name>DataStax Bulk Loader - Engine</name>
   <description>
-    Workflow execution engine of the DataStax Bulk Loader/Unloader.
+    Workflow execution engine of the DataStax Bulk Loader.
   </description>
 
   <dependencies>

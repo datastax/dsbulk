@@ -1,6 +1,6 @@
-# DataStax Bulk Loader/Unloader Overview
+# DataStax Bulk Loader Overview
 
-The Datastax Bulk Loader/Unloader tool provides the ability to load large amounts of data 
+The Datastax Bulk Loader tool provides the ability to load large amounts of data 
 into the database efficiently and reliably as well as conversely unload data from the
 database. In this release, only csv file loading/unloading is supported.  
 

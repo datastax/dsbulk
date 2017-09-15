@@ -1,4 +1,4 @@
-# DataStax Bulk Loader/Unloader Executor
+# DataStax Bulk Loader Executor
 
 This library is composed of 3 modules:
 

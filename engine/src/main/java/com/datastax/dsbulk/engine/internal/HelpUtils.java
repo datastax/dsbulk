@@ -99,7 +99,7 @@ public class HelpUtils {
     } catch (Exception e) {
       // swallow
     }
-    return String.format("DataStax Bulk Loader/Unloader v%s", version);
+    return String.format("DataStax Bulk Loader v%s", version);
   }
 
   @NotNull

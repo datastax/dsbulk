@@ -20,9 +20,9 @@
   <artifactId>dsbulk-connectors</artifactId>
   <packaging>pom</packaging>
 
-  <name>DataStax Bulk Loader/Unloader - Connectors</name>
+  <name>DataStax Bulk Loader - Connectors</name>
   <description>
-    Connectors for the DataStax Bulk Loader/Unloader.
+    Connectors for the DataStax Bulk Loader.
   </description>
 
   <modules>
