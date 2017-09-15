@@ -55,14 +55,7 @@ public class SchemaSettings {
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
-    String rawNullStrings = config.getString("nullStrings");
-    if (!rawNullStrings.startsWith("[")) {
-      rawNullStrings = "[" + rawNullStrings + "]";
-    }
-    nullStrings =
-        ImmutableSet.copyOf(
-            ConfigFactory.parseString("nullStrings = " + rawNullStrings)
-                .getStringList("nullStrings"));
+    nullStrings = ImmutableSet.copyOf(config.getStringList("nullStrings"));
   }
 
   public RecordMapper createRecordMapper(

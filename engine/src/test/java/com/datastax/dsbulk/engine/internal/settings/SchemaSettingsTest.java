@@ -42,6 +42,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
+@SuppressWarnings("unchecked")
 public class SchemaSettingsTest {
 
   private static final String NULL_STRINGS = "nullStrings";
@@ -97,7 +98,6 @@ public class SchemaSettingsTest {
     assertThat(mapping.fieldToVariable("0")).isEqualTo("c2");
     assertThat(mapping.fieldToVariable("1")).isNull();
     assertThat(mapping.fieldToVariable("2")).isEqualTo("c1");
-    //noinspection unchecked
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables)
@@ -126,7 +126,6 @@ public class SchemaSettingsTest {
     assertThat(mapping.fieldToVariable("0")).isEqualTo("c2");
     assertThat(mapping.fieldToVariable("1")).isNull();
     assertThat(mapping.fieldToVariable("2")).isEqualTo("c1");
-    //noinspection unchecked
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables)
@@ -150,7 +149,6 @@ public class SchemaSettingsTest {
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
     assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
     assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables)
@@ -174,7 +172,6 @@ public class SchemaSettingsTest {
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
     assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
     assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables)
@@ -200,7 +197,6 @@ public class SchemaSettingsTest {
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
     assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
     assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables)
@@ -208,7 +204,6 @@ public class SchemaSettingsTest {
         .containsValue("c1")
         .containsValue("c2");
     assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
-    //noinspection unchecked
     assertThat((Set<String>) Whitebox.getInternalState(recordMapper, NULL_STRINGS))
         .containsOnly("NIL", "NULL");
   }
@@ -220,7 +215,6 @@ public class SchemaSettingsTest {
           makeLoaderConfig("nullStrings = \"[NIL, NULL]\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config);
 
-      //noinspection unchecked
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NIL", "NULL");
     }
@@ -230,7 +224,6 @@ public class SchemaSettingsTest {
           makeLoaderConfig("nullStrings = \"\\\"NIL\\\", \\\"NULL\\\"\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config);
 
-      //noinspection unchecked
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NIL", "NULL");
     }
@@ -239,7 +232,6 @@ public class SchemaSettingsTest {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"NIL, NULL\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config);
 
-      //noinspection unchecked
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NIL", "NULL");
     }
@@ -248,7 +240,6 @@ public class SchemaSettingsTest {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"NULL\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config);
 
-      //noinspection unchecked
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
     }
@@ -256,7 +247,6 @@ public class SchemaSettingsTest {
       LoaderConfig config = makeLoaderConfig("nullStrings = NULL, keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config);
 
-      //noinspection unchecked
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
     }
@@ -264,7 +254,6 @@ public class SchemaSettingsTest {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"[NULL]\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config);
 
-      //noinspection unchecked
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
     }
@@ -273,7 +262,6 @@ public class SchemaSettingsTest {
           makeLoaderConfig("nullStrings = \"[\\\"NULL\\\"]\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config);
 
-      //noinspection unchecked
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
     }
@@ -303,7 +291,6 @@ public class SchemaSettingsTest {
         .isEqualTo("SELECT c2,c1 FROM ks.t1 WHERE token() > :start AND token() <= :end");
     DefaultMapping mapping =
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
-    //noinspection unchecked
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(mapping.fieldToVariable("0")).isEqualTo("c2");
@@ -335,7 +322,6 @@ public class SchemaSettingsTest {
     assertThat(mapping.fieldToVariable("0")).isEqualTo("c2");
     assertThat(mapping.fieldToVariable("1")).isNull();
     assertThat(mapping.fieldToVariable("2")).isEqualTo("c1");
-    //noinspection unchecked
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables)
@@ -360,7 +346,6 @@ public class SchemaSettingsTest {
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
     assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
     assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables)
@@ -385,7 +370,6 @@ public class SchemaSettingsTest {
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
     assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
     assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables)
@@ -412,7 +396,6 @@ public class SchemaSettingsTest {
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
     assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
     assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables)
