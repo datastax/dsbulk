@@ -15,8 +15,4 @@ import com.datastax.dsbulk.executor.api.writer.BulkWriter;
  * AsyncBulkExecutor asynchronous} (non-blocking), and {@link ReactiveBulkExecutor reactive}.
  */
 public interface BulkExecutor
-    extends BulkWriter, BulkReader, SyncBulkExecutor, AsyncBulkExecutor, ReactiveBulkExecutor {
-
-  @Override
-  void close();
-}
+    extends BulkWriter, BulkReader, SyncBulkExecutor, AsyncBulkExecutor, ReactiveBulkExecutor {}
