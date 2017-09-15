@@ -20,7 +20,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -51,6 +50,7 @@ public class MainTest {
     System.setErr(originalStderr);
     System.clearProperty("config.file");
     ConfigFactory.invalidateCaches();
+    Main.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
   }
 
   @Test
@@ -114,7 +114,6 @@ public class MainTest {
   }
 
   @Test
-  @Ignore
   public void should_respect_custom_config_file() throws Exception {
     File f = tempFolder.newFile("myapp.conf");
     Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
@@ -135,7 +134,6 @@ public class MainTest {
   }
 
   @Test
-  @Ignore
   public void should_accept_connector_name_in_args_over_config_file() throws Exception {
     File f = tempFolder.newFile("myapp.conf");
     Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));

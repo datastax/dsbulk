@@ -39,7 +39,7 @@ public class Main {
   private static final Config REFERENCE = ConfigFactory.defaultReference().getConfig("dsbulk");
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
   private static final Config SHORTCUTS = ConfigFactory.parseResourcesAnySyntax("shortcuts.conf");
-  private static Config DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+  public static Config DEFAULT = ConfigFactory.load().getConfig("dsbulk");
 
   public static void main(String[] args) {
     URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
