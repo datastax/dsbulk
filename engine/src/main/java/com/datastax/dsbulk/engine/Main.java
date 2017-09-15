@@ -83,7 +83,7 @@ public class Main {
       if (arg.equals("-c") || arg.equals("--connector.name")) {
         foundOpt = true;
       } else if (arg.startsWith("--connector.name=")) {
-        connectorName = arg.substring(17);
+        connectorName = arg.substring("--connector.name=".length());
         break;
       } else if (foundOpt) {
         connectorName = arg;

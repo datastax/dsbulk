@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.dsbulk.engine.internal.HelpUtils;
+import com.datastax.dsbulk.engine.internal.OptionUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.io.ByteArrayOutputStream;
@@ -51,6 +52,7 @@ public class MainTest {
     System.setErr(originalStderr);
     System.clearProperty("config.file");
     ConfigFactory.invalidateCaches();
+    OptionUtils.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
   }
 
   @Test
@@ -120,6 +122,13 @@ public class MainTest {
         .contains("--driver.hosts")
         .contains("This section has the following subsections")
         .contains("driver.auth");
+  }
+
+  @Test
+  public void should_show_section_help_with_connector_shortcuts() throws Exception {
+    new Main(new String[] {"help", "connector.csv"});
+    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(out).contains("-url,--connector.csv.url");
   }
 
   @Test

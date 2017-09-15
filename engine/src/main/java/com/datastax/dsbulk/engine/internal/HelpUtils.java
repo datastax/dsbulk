@@ -38,7 +38,7 @@ public class HelpUtils {
 
     String connectorName = null;
     if (sectionName.startsWith("connector.")) {
-      connectorName = sectionName.substring(10);
+      connectorName = sectionName.substring("connector.".length());
     }
     Options options =
         createOptions(
