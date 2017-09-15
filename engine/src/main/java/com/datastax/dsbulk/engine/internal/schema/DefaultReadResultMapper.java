@@ -7,7 +7,6 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -41,7 +40,8 @@ public class DefaultReadResultMapper implements ReadResultMapper {
     try {
       DefaultRecord record = new DefaultRecord(result, location);
       for (ColumnDefinitions.Definition col : row.getColumnDefinitions()) {
-        String variable = Metadata.quoteIfNecessary(col.getName());
+        // do not quote variable names here as the mapping expects them unquoted
+        String variable = col.getName();
         String field = mapping.variableToField(variable);
         if (field != null) {
           TypeToken<?> fieldType = recordMetadata.getFieldType(field, col.getType());

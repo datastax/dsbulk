@@ -44,3 +44,4 @@
 - [improvement] DAT-98: Update "Loader/Unloader" refs to "Loader".
 - [improvement] DAT-84: Add help subcommand to get help for groups of settings.
 - [improvement] DAT-93: nullStrings setting should be more flexible.
+- [bug] DAT-73: Make mappings work with quoted CQL identifiers.

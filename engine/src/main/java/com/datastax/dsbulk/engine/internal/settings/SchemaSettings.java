@@ -166,8 +166,8 @@ public class SchemaSettings {
     ImmutableBiMap.Builder<String, String> fieldsToVariables = new ImmutableBiMap.Builder<>();
     for (int i = 0; i < table.getColumns().size(); i++) {
       ColumnMetadata col = table.getColumns().get(i);
-      String name = Metadata.quoteIfNecessary(col.getName());
-      fieldsToVariables.put(col.getName(), name);
+      // don't quote column names here, it will be done later on if required
+      fieldsToVariables.put(col.getName(), col.getName());
     }
     return fieldsToVariables;
   }
@@ -182,8 +182,10 @@ public class SchemaSettings {
     while (it.hasNext()) {
       String col = it.next();
       sb.append(':');
-      sb.append(col);
-      if (it.hasNext()) sb.append(',');
+      sb.append(Metadata.quoteIfNecessary(col));
+      if (it.hasNext()) {
+        sb.append(',');
+      }
     }
     sb.append(')');
     return sb.toString();
@@ -193,14 +195,14 @@ public class SchemaSettings {
     StringBuilder sb = new StringBuilder("SELECT ");
     appendColumnNames(fieldsToVariables, sb);
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
-    appendTokenFunction(sb);
+    appendTokenFunction(sb, table.getPartitionKey());
     sb.append(" > :start AND ");
-    appendTokenFunction(sb);
+    appendTokenFunction(sb, table.getPartitionKey());
     sb.append(" <= :end");
     return sb.toString();
   }
 
-  private void appendColumnNames(
+  private static void appendColumnNames(
       ImmutableBiMap<String, String> fieldsToVariables, StringBuilder sb) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
@@ -217,9 +219,9 @@ public class SchemaSettings {
     }
   }
 
-  private void appendTokenFunction(StringBuilder sb) {
+  private static void appendTokenFunction(StringBuilder sb, Iterable<ColumnMetadata> partitionKey) {
     sb.append("token(");
-    Iterator<ColumnMetadata> pks = table.getPartitionKey().iterator();
+    Iterator<ColumnMetadata> pks = partitionKey.iterator();
     while (pks.hasNext()) {
       ColumnMetadata pk = pks.next();
       sb.append(Metadata.quoteIfNecessary(pk.getName()));
@@ -227,6 +229,6 @@ public class SchemaSettings {
         sb.append(',');
       }
     }
-    sb.append(")");
+    sb.append(')');
   }
 }

@@ -107,12 +107,12 @@ public class ExtendedCodecRegistry {
       return createStringConvertingCodec(cqlType);
     }
     if (Number.class.isAssignableFrom(javaType.getRawType()) && isNumeric(cqlType)) {
-      //noinspection unchecked
+      @SuppressWarnings("unchecked")
       Class<Number> numberType = (Class<Number>) javaType.getRawType();
       return new NumberToNumberCodec<>(numberType, codecRegistry.codecFor(cqlType));
     }
     if (Temporal.class.isAssignableFrom(javaType.getRawType()) && isTemporal(cqlType)) {
-      //noinspection unchecked
+      @SuppressWarnings("unchecked")
       Class<Temporal> temporalType = (Class<Temporal>) javaType.getRawType();
       return new TemporalToTemporalCodec<>(temporalType, codecRegistry.codecFor(cqlType));
     }
