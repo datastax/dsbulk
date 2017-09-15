@@ -41,19 +41,12 @@ public class SettingsDocumentor {
       new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
   private static final Map<String, String> LONG_TO_SHORT_OPTIONS;
 
-  // NB: We can't use the Option Builder because Groovy locks us into
-  // commons-cli v1.2, which has a different / incompatible option builder than
-  // v1.4.
-  static final Option CONFIG_FILE_OPTION =
-      new Option(
-          "f",
-          null,
-          true,
-          "Load settings from the given file rather than `conf/application.conf`.");
-
-  static {
-    CONFIG_FILE_OPTION.setArgName("string");
-  }
+  public static final Option CONFIG_FILE_OPTION =
+      Option.builder("f")
+          .hasArg()
+          .argName("string")
+          .desc("Load settings from the given file rather than `conf/application.conf`.")
+          .build();
 
   /**
    * Settings that should be displayed in a "common" section as well as the appropriate place in the
