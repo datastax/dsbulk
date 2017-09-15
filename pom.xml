@@ -70,6 +70,13 @@
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
+        <artifactId>dsbulk-commons</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+      </dependency>
+
+      <dependency>
+        <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-executor-api</artifactId>
         <version>${project.version}</version>
       </dependency>
