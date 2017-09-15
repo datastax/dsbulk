@@ -24,7 +24,7 @@ import com.datastax.driver.core.policies.SpeculativeExecutionPolicy;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -53,11 +53,11 @@ public class DriverSettings {
     OpenSSL
   }
 
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
 
   private final String executionId;
 
-  DriverSettings(LoaderConfig config, String executionId) {
+  DriverSettings(DSBulkConfig config, String executionId) {
     this.config = config;
     this.executionId = executionId;
   }

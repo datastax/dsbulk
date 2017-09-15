@@ -16,8 +16,8 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TokenRange;
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
@@ -44,7 +44,7 @@ import java.util.Set;
 /** */
 public class SchemaSettings {
 
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
 
   private KeyspaceMetadata keyspace;
   private TableMetadata table;
@@ -52,7 +52,7 @@ public class SchemaSettings {
   private String tableName;
   private PreparedStatement preparedStatement;
 
-  SchemaSettings(LoaderConfig config) {
+  SchemaSettings(DSBulkConfig config) {
     this.config = config;
   }
 
@@ -130,8 +130,8 @@ public class SchemaSettings {
   private RecordMetadata mergeRecordMetadata(RecordMetadata fallback) {
     if (config.hasPath("recordMetadata")) {
       ImmutableMap.Builder<String, TypeToken<?>> fieldsToTypes = new ImmutableMap.Builder<>();
-      LoaderConfig recordMetadata =
-          new DefaultLoaderConfig(ConfigFactory.parseString(config.getString("recordMetadata")));
+      DSBulkConfig recordMetadata =
+          new DefaultDSBulkConfig(ConfigFactory.parseString(config.getString("recordMetadata")));
       for (String path : recordMetadata.root().keySet()) {
         fieldsToTypes.put(path, TypeToken.of(recordMetadata.getClass(path)));
       }

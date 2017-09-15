@@ -8,7 +8,7 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.google.common.collect.ImmutableMap;
 import java.lang.reflect.Field;
@@ -54,9 +54,9 @@ public class CodecSettings {
 
   private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
 
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
 
-  CodecSettings(LoaderConfig config) {
+  CodecSettings(DSBulkConfig config) {
     this.config = config;
   }
 

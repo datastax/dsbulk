@@ -10,7 +10,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.internal.WorkflowUtils;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
@@ -40,7 +40,7 @@ public class LoadWorkflow implements Workflow {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadWorkflow.class);
 
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.LOAD);
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
 
   private DriverSettings driverSettings;
   private ConnectorSettings connectorSettings;
@@ -52,7 +52,7 @@ public class LoadWorkflow implements Workflow {
   private MonitoringSettings monitoringSettings;
   private EngineSettings engineSettings;
 
-  LoadWorkflow(LoaderConfig config) {
+  LoadWorkflow(DSBulkConfig config) {
     this.config = config;
   }
 

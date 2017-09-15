@@ -17,8 +17,8 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Before;
@@ -43,7 +43,7 @@ public class BatchSettingsTest {
 
   @Test
   public void should_create_batcher_when_mode_is_default() throws Exception {
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch"));
+    DSBulkConfig config = new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.batch"));
     BatchSettings settings = new BatchSettings(config);
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
@@ -53,8 +53,8 @@ public class BatchSettingsTest {
 
   @Test
   public void should_create_batcher_when_batch_mode_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString("mode = REPLICA_SET")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
@@ -66,8 +66,8 @@ public class BatchSettingsTest {
 
   @Test
   public void should_create_batcher_when_buffer_size_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString("bufferSize = 5000")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
@@ -79,8 +79,8 @@ public class BatchSettingsTest {
 
   @Test
   public void should_create_batcher_when_max_batch_size_mode_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString("maxBatchSize = 10")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);

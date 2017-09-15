@@ -12,7 +12,7 @@ import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.ContinuousReactorBulkExecutor;
@@ -37,10 +37,10 @@ public class ExecutorSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
   private ThreadPoolExecutor executor;
 
-  ExecutorSettings(LoaderConfig config) {
+  ExecutorSettings(DSBulkConfig config) {
     this.config = config;
   }
 

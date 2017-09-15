@@ -7,7 +7,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
@@ -26,10 +26,10 @@ public class LogSettings {
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
 
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
   private final Path executionDirectory;
 
-  LogSettings(LoaderConfig config, String executionId)
+  LogSettings(DSBulkConfig config, String executionId)
       throws MalformedURLException, URISyntaxException {
     this.config = config;
     Path directory = config.getPath("directory");

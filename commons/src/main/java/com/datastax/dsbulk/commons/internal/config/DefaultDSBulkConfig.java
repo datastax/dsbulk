@@ -4,8 +4,9 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.commons.config;
+package com.datastax.dsbulk.commons.internal.config;
 
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigMemorySize;
@@ -22,11 +23,11 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class DefaultLoaderConfig implements LoaderConfig {
+public class DefaultDSBulkConfig implements DSBulkConfig {
 
   private final Config delegate;
 
-  public DefaultLoaderConfig(Config delegate) {
+  public DefaultDSBulkConfig(Config delegate) {
     this.delegate = delegate;
   }
 
@@ -41,22 +42,22 @@ public class DefaultLoaderConfig implements LoaderConfig {
   }
 
   @Override
-  public LoaderConfig withFallback(ConfigMergeable other) {
-    if (other instanceof DefaultLoaderConfig) {
-      // DefaultLoaderConfig does not implement ConfigMergeable
-      other = ((DefaultLoaderConfig) other).delegate;
+  public DSBulkConfig withFallback(ConfigMergeable other) {
+    if (other instanceof DefaultDSBulkConfig) {
+      // DefaultDSBulkConfig does not implement ConfigMergeable
+      other = ((DefaultDSBulkConfig) other).delegate;
     }
-    return new DefaultLoaderConfig(delegate.withFallback(other));
+    return new DefaultDSBulkConfig(delegate.withFallback(other));
   }
 
   @Override
-  public LoaderConfig resolve() {
-    return new DefaultLoaderConfig(delegate.resolve());
+  public DSBulkConfig resolve() {
+    return new DefaultDSBulkConfig(delegate.resolve());
   }
 
   @Override
-  public LoaderConfig resolve(ConfigResolveOptions options) {
-    return new DefaultLoaderConfig(delegate.resolve(options));
+  public DSBulkConfig resolve(ConfigResolveOptions options) {
+    return new DefaultDSBulkConfig(delegate.resolve(options));
   }
 
   @Override
@@ -65,13 +66,13 @@ public class DefaultLoaderConfig implements LoaderConfig {
   }
 
   @Override
-  public LoaderConfig resolveWith(Config source) {
-    return new DefaultLoaderConfig(delegate.resolveWith(source));
+  public DSBulkConfig resolveWith(Config source) {
+    return new DefaultDSBulkConfig(delegate.resolveWith(source));
   }
 
   @Override
-  public LoaderConfig resolveWith(Config source, ConfigResolveOptions options) {
-    return new DefaultLoaderConfig(delegate.resolveWith(source, options));
+  public DSBulkConfig resolveWith(Config source, ConfigResolveOptions options) {
+    return new DefaultDSBulkConfig(delegate.resolveWith(source, options));
   }
 
   @Override
@@ -148,8 +149,8 @@ public class DefaultLoaderConfig implements LoaderConfig {
   }
 
   @Override
-  public LoaderConfig getConfig(String path) {
-    return new DefaultLoaderConfig(delegate.getConfig(path));
+  public DSBulkConfig getConfig(String path) {
+    return new DefaultDSBulkConfig(delegate.getConfig(path));
   }
 
   @Override
@@ -240,11 +241,11 @@ public class DefaultLoaderConfig implements LoaderConfig {
   }
 
   @Override
-  public List<? extends LoaderConfig> getConfigList(String path) {
+  public List<? extends DSBulkConfig> getConfigList(String path) {
     return delegate
         .getConfigList(path)
         .stream()
-        .map(DefaultLoaderConfig::new)
+        .map(DefaultDSBulkConfig::new)
         .collect(Collectors.toList());
   }
 
@@ -286,27 +287,27 @@ public class DefaultLoaderConfig implements LoaderConfig {
   }
 
   @Override
-  public LoaderConfig withOnlyPath(String path) {
-    return new DefaultLoaderConfig(delegate.withOnlyPath(path));
+  public DSBulkConfig withOnlyPath(String path) {
+    return new DefaultDSBulkConfig(delegate.withOnlyPath(path));
   }
 
   @Override
-  public LoaderConfig withoutPath(String path) {
-    return new DefaultLoaderConfig(delegate.withoutPath(path));
+  public DSBulkConfig withoutPath(String path) {
+    return new DefaultDSBulkConfig(delegate.withoutPath(path));
   }
 
   @Override
-  public LoaderConfig atPath(String path) {
-    return new DefaultLoaderConfig(delegate.atPath(path));
+  public DSBulkConfig atPath(String path) {
+    return new DefaultDSBulkConfig(delegate.atPath(path));
   }
 
   @Override
-  public LoaderConfig atKey(String key) {
-    return new DefaultLoaderConfig(delegate.atKey(key));
+  public DSBulkConfig atKey(String key) {
+    return new DefaultDSBulkConfig(delegate.atKey(key));
   }
 
   @Override
-  public LoaderConfig withValue(String path, ConfigValue value) {
-    return new DefaultLoaderConfig(delegate.withValue(path, value));
+  public DSBulkConfig withValue(String path, ConfigValue value) {
+    return new DefaultDSBulkConfig(delegate.withValue(path, value));
   }
 }

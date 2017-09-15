@@ -214,7 +214,7 @@ public class ReactorBulkExecutorBenchmark {
     }
 
     @TearDown(Level.Trial)
-    public void shutdown() {
+    public void shutdown() throws InterruptedException {
       executor.close();
       continuousExecutor.close();
       session.close();

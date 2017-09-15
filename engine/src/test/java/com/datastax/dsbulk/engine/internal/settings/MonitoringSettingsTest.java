@@ -11,8 +11,8 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.typesafe.config.ConfigFactory;
@@ -25,8 +25,8 @@ public class MonitoringSettingsTest {
 
   @Test
   public void should_create_metrics_manager_with_default_settings() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.monitoring"));
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.monitoring"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD);
     assertThat(metricsManager).isNotNull();
@@ -41,8 +41,8 @@ public class MonitoringSettingsTest {
 
   @Test
   public void should_create_metrics_manager_with_user_supplied_settings() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                 "rateUnit = MINUTES, "
                     + "durationUnit = SECONDS, "

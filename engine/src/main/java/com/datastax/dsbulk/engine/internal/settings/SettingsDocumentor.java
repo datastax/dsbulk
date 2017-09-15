@@ -5,11 +5,10 @@
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
 
-package com.datastax.dsbulk.engine;
+package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.StringUtils;
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.google.common.base.CharMatcher;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -37,23 +36,16 @@ import java.util.stream.Collectors;
 import org.apache.commons.cli.Option;
 
 public class SettingsDocumentor {
-  private static final LoaderConfig DEFAULT =
-      new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
+  private static final DSBulkConfig DEFAULT =
+      new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk"));
   private static final Map<String, String> LONG_TO_SHORT_OPTIONS;
 
-  // NB: We can't use the Option Builder because Groovy locks us into
-  // commons-cli v1.2, which has a different / incompatible option builder than
-  // v1.4.
-  static final Option CONFIG_FILE_OPTION =
-      new Option(
-          "f",
-          null,
-          true,
-          "Load settings from the given file rather than `conf/application.conf`.");
-
-  static {
-    CONFIG_FILE_OPTION.setArgName("string");
-  }
+  public static final Option CONFIG_FILE_OPTION =
+      Option.builder("f")
+          .hasArg()
+          .argName("string")
+          .desc("Load settings from the given file rather than `conf/application.conf`.")
+          .build();
 
   /**
    * Settings that should be displayed in a "common" section as well as the appropriate place in the

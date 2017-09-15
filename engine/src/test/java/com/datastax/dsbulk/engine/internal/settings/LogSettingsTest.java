@@ -15,8 +15,8 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.typesafe.config.ConfigFactory;
 import java.io.File;
@@ -45,7 +45,7 @@ public class LogSettingsTest {
 
   @Test
   public void should_create_log_manager_with_default_output_directory() throws Exception {
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.log"));
+    DSBulkConfig config = new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.log"));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(cluster);
     try {
@@ -65,8 +65,8 @@ public class LogSettingsTest {
   @Test
   public void should_create_log_manager_when_output_directory_url_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString("directory = \"" + dir + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
@@ -79,8 +79,8 @@ public class LogSettingsTest {
   @Test
   public void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString("directory = \"" + dir.toString() + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");

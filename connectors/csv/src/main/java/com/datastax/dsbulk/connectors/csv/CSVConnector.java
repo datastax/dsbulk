@@ -10,7 +10,7 @@ import static java.nio.file.FileVisitResult.CONTINUE;
 import static java.nio.file.FileVisitResult.TERMINATE;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -96,7 +96,7 @@ public class CSVConnector implements Connector {
   private ExecutorService threadPool;
 
   @Override
-  public void configure(LoaderConfig settings, boolean read) throws MalformedURLException {
+  public void configure(DSBulkConfig settings, boolean read) throws MalformedURLException {
     this.read = read;
     url = settings.getURL("url");
     pattern = settings.getString("fileNamePattern");

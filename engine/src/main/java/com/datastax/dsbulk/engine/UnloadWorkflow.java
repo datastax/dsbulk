@@ -10,7 +10,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
@@ -42,7 +42,7 @@ public class UnloadWorkflow implements Workflow {
   private static final Logger LOGGER = LoggerFactory.getLogger(UnloadWorkflow.class);
 
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.UNLOAD);
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
 
   private DriverSettings driverSettings;
   private ConnectorSettings connectorSettings;
@@ -53,7 +53,7 @@ public class UnloadWorkflow implements Workflow {
   private MonitoringSettings monitoringSettings;
   private EngineSettings engineSettings;
 
-  UnloadWorkflow(LoaderConfig config) {
+  UnloadWorkflow(DSBulkConfig config) {
     this.config = config;
   }
 

@@ -227,7 +227,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   }
 
   @Override
-  public void close() {
+  public void close() throws InterruptedException {
     super.close();
     scheduler.dispose();
   }
