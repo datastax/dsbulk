@@ -19,9 +19,9 @@
 
   <artifactId>dsbulk-connectors-api</artifactId>
 
-  <name>DataStax Bulk Loader/Unloader - Connectors - API</name>
+  <name>DataStax Bulk Loader - Connectors - API</name>
   <description>
-    Connectors API for the DataStax Bulk Loader/Unloader.
+    Connectors API for the DataStax Bulk Loader.
   </description>
 
   <dependencies>

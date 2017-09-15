@@ -1,4 +1,4 @@
-# DataStax Bulk Loader/Unloader CQL connector
+# DataStax Bulk Loader CQL connector
 
 This library provides a [`CqlScriptReader`](api/src/main/java/com/datastax/oss/driver/bulk/api/cql/CqlScriptReader.java) 
 class, i.e. a `Reader` for CQL script files.

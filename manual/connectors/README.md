@@ -1,4 +1,4 @@
-# DataStax Bulk Loader/Unloader Connectors
+# DataStax Bulk Loader Connectors
 
 [Connectors] are responsible for connecting to an external source of data and extracting 
 that data in the form of [Records], for downstream consumption by the loader workflow engine.
@@ -10,7 +10,7 @@ Available configuration settings for all connectors are documented [here](../set
 
 ## Available Connectors
 
-The DataStax Bulk Loader/Unloader ships with the following connectors:
+The DataStax Bulk Loader ships with the following connectors:
 
 * [CSV Connector]: a highly-configurable connector that reads field-delimited files. 
   For more information about the CSV file format, see [RFC 4180] and the [Wikipedia article on CSV format].

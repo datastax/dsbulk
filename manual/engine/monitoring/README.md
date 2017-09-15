@@ -1,6 +1,6 @@
 # Workflow Engine Monitoring
 
-DataStax Bulk Loader/Unloader uses the [Dropwizard Metrics] library to collect and report metrics.
+DataStax Bulk Loader uses the [Dropwizard Metrics] library to collect and report metrics.
 
 See the [Settings page] for information about how to configure monitoring and
 metrics reporting.

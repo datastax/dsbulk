@@ -19,9 +19,9 @@
 
   <artifactId>dsbulk-dist</artifactId>
 
-  <name>DataStax Bulk Loader/Unloader - Binary Distribution</name>
+  <name>DataStax Bulk Loader - Binary Distribution</name>
   <description>
-    Binary distribution of the DataStax Bulk Loader/Unloader.
+    Binary distribution of the DataStax Bulk Loader.
   </description>
 
   <properties>

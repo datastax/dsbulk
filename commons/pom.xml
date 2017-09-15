@@ -19,9 +19,9 @@
 
   <artifactId>dsbulk-commons</artifactId>
 
-  <name>DataStax Bulk Loader/Unloader - Commons</name>
+  <name>DataStax Bulk Loader - Commons</name>
   <description>
-    Common utilities for the DataStax Bulk Loader/Unloader.
+    Common utilities for the DataStax Bulk Loader.
   </description>
 
   <dependencies>

@@ -19,9 +19,9 @@
 
   <artifactId>dsbulk-integration-tests</artifactId>
 
-  <name>DataStax Bulk Loader/Unloader - Integration Tests</name>
+  <name>DataStax Bulk Loader - Integration Tests</name>
   <description>
-    Integration tests for the DataStax Bulk Loader/Unloader.
+    Integration tests for the DataStax Bulk Loader.
   </description>
 
   <dependencies>
