@@ -7,6 +7,8 @@
 package com.datastax.dsbulk.commons.config;
 
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigMemorySize;
 import com.typesafe.config.ConfigMergeable;
@@ -226,7 +228,15 @@ public class DefaultLoaderConfig implements LoaderConfig {
 
   @Override
   public List<String> getStringList(String path) {
-    return delegate.getStringList(path);
+    try {
+      return delegate.getStringList(path);
+    } catch (ConfigException.WrongType e) {
+      String rawValue = getString(path);
+      if (!rawValue.startsWith("[")) {
+        rawValue = "[" + rawValue + "]";
+      }
+      return ConfigFactory.parseString("dummyKey = " + rawValue).getStringList("dummyKey");
+    }
   }
 
   @Override

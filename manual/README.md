@@ -106,3 +106,15 @@ used in both load and unload.
 * Unload data from a remote cluster to a remote destination url:
 
   `dsbulk unload -url https://svr/data/table1 -k ks1 -t table1 -h 10.200.1.3`
+
+## Command-line Help
+Available settings along with defaults are documented [here](settings.md). 
+This information is also available on the command-line via the `help` subcommand.
+
+* Get help for common options and a list of sections from which more help is available:
+
+  `dsbulk help`
+  
+* Get help for all `connector.csv` options:
+
+  `dsbulk help connector.csv`

@@ -6,6 +6,7 @@
 
 <a href="#Common">Common Settings</a><br>
 <a href="#connector">Connector Settings</a><br>
+&nbsp;&nbsp;&nbsp;<a href="#connector.csv">Connector Csv Settings</a><br>
 <a href="#schema">Schema Settings</a><br>
 <a href="#batch">Batch Settings</a><br>
 <a href="#codec">Codec Settings</a><br>
@@ -246,6 +247,28 @@ Defaults to **"5 seconds"**.
 
 Connector-specific settings. This section contains settings for the connector to use; it also contains sub-sections, one for each available connector.
 
+#### -c,--connector.name _&lt;string&gt;_
+
+The name of the connector to use.
+
+It is used in two places:
+
+1. The path to the group of settings for the connector are located under `connector.<name>`.
+2. The connector class name must start with `name`, case-insensitively. It is permitted for `name` to be the fully-qualified class name of the connector. That simply implies that the settings root will be at that fully-qualified location.
+
+Example: `csv` for class `CSVConnector`, with settings located under `connector.csv`.
+
+Defaults to **"csv"**.
+
+<a name="connector.csv"></a>
+### Connector Csv Settings
+
+Reference configuration for the CSV Connector.
+
+Note that a paragraph is written in one line, and paragraphs are separated by a blank line.
+This has the benefit of rendering well in markdown as well as plain-text help output (since
+the help text formatter wraps lines appropriately).
+
 #### -url,--connector.csv.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
@@ -278,19 +301,6 @@ For other URLs: the URL will be read or written directly; settings like *fileNam
 This setting has no default value and must be supplied by the user.
 
 Defaults to **""**.
-
-#### -c,--connector.name _&lt;string&gt;_
-
-The name of the connector to use.
-
-It is used in two places:
-
-1. The path to the group of settings for the connector are located under `connector.<name>`.
-2. The connector class name must start with `name`, case-insensitively. It is permitted for `name` to be the fully-qualified class name of the connector. That simply implies that the settings root will be at that fully-qualified location.
-
-Example: `csv` for class `CSVConnector`, with settings located under `connector.csv`.
-
-Defaults to **"csv"**.
 
 #### -delim,--connector.csv.delimiter _&lt;string&gt;_
 
@@ -448,9 +458,9 @@ The exact type of mapping to use depends on the connector being used. Some conne
 
 Defaults to **""**.
 
-#### -nullStrings,--schema.nullStrings _&lt;list&lt;string&gt;&gt;_
+#### -nullStrings,--schema.nullStrings _&lt;string&gt;_
 
-Case-sensitive strings that should be mapped to `null`.
+Case-sensitive strings (in the form of a comma-delimited list) that should be mapped to `null`.
 
 In load workflows, when a record field value matches one of these words, then that value is replaced with a `null` and forwarded to DSE as such.
 
@@ -460,9 +470,9 @@ Note that this setting is applied before the *schema.nullToUnset* setting, hence
 
 In unload workflows, only the first string specified here will be used: when a row cell contains a `null` value, then it will be replaced with that word and forwarded as such to the connector.
 
-The default value – `[""]` – means that in load workflows, empty strings are converted to `null`s, and in unload workflows, `null`s are converted to empty strings.
+The default value – `""` – means that in load workflows, empty strings are converted to `null`s, and in unload workflows, `null`s are converted to empty strings.
 
-Defaults to **[""]**.
+Defaults to **""**.
 
 #### ---schema.nullToUnset _&lt;boolean&gt;_
 

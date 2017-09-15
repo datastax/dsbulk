@@ -35,12 +35,14 @@ import com.typesafe.config.ConfigFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
+@SuppressWarnings("unchecked")
 public class SchemaSettingsTest {
 
   private static final String NULL_STRINGS = "nullStrings";
@@ -83,13 +85,10 @@ public class SchemaSettingsTest {
   public void should_create_record_mapper_when_mapping_keyspace_and_table_provided()
       throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
-                        + "nullToUnset = true, "
-                        + "nullStrings = [], "
-                        + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+                + "nullToUnset = true, "
+                + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -103,7 +102,6 @@ public class SchemaSettingsTest {
     assertThat(mapping.fieldToVariable("0")).isEqualTo(C2);
     assertThat(mapping.fieldToVariable("1")).isNull();
     assertThat(mapping.fieldToVariable("2")).isEqualTo(C1);
-    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).containsOnlyKeys("0", "2").containsValue(C1).containsValue(C2);
@@ -114,15 +112,12 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_record_mapper_when_mapping_and_statement_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
-                        + "nullToUnset = true, "
-                        + "nullStrings = [], "
-                        + String.format(
-                            "query=\"insert into ks.table (%1$s,\\\"%2$s\\\") values (:%1$s,:\\\"%2$s\\\")\"",
-                            C1, C2))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+                + "nullToUnset = true, "
+                + String.format(
+                    "query=\"insert into ks.table (%1$s,\\\"%2$s\\\") values (:%1$s,:\\\"%2$s\\\")\"",
+                    C1, C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -136,7 +131,6 @@ public class SchemaSettingsTest {
     assertThat(mapping.fieldToVariable("0")).isEqualTo(C2);
     assertThat(mapping.fieldToVariable("1")).isNull();
     assertThat(mapping.fieldToVariable("2")).isEqualTo(C1);
-    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).containsOnlyKeys("0", "2").containsValue(C1).containsValue(C2);
@@ -146,10 +140,7 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_record_mapper_when_keyspace_and_table_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("nullToUnset = true, nullStrings = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+    LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -162,7 +153,6 @@ public class SchemaSettingsTest {
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
     assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
     assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
-    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
@@ -172,11 +162,7 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_record_mapper_when_null_to_unset_is_false() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "nullToUnset = false, nullStrings = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+    LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -189,7 +175,6 @@ public class SchemaSettingsTest {
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
     assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
     assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
-    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
@@ -200,12 +185,8 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_record_mapper_when_null_words_are_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "nullToUnset = false, "
-                        + "nullStrings = [\"NIL\", \"NULL\"], "
-                        + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            "nullToUnset = false, " + "nullStrings = \"NIL, NULL\", " + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -218,26 +199,80 @@ public class SchemaSettingsTest {
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
     assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
     assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
-    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
     assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
-    @SuppressWarnings("unchecked")
     Set<String> nullStrings = (Set<String>) Whitebox.getInternalState(recordMapper, NULL_STRINGS);
     assertThat(nullStrings).containsOnly("NIL", "NULL");
   }
 
   @Test
+  public void should_create_settings_when_null_strings_are_specified() throws Exception {
+    {
+      LoaderConfig config =
+          makeLoaderConfig("nullStrings = \"[NIL, NULL]\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NIL", "NULL");
+    }
+
+    {
+      LoaderConfig config =
+          makeLoaderConfig("nullStrings = \"\\\"NIL\\\", \\\"NULL\\\"\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NIL", "NULL");
+    }
+
+    {
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"NIL, NULL\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NIL", "NULL");
+    }
+
+    {
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"NULL\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullStrings = NULL, keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"[NULL]\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NULL");
+    }
+    {
+      LoaderConfig config =
+          makeLoaderConfig("nullStrings = \"[\\\"NULL\\\"]\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NULL");
+    }
+  }
+
+  @Test
   public void should_create_row_mapper_when_mapping_keyspace_and_table_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
-                        + "nullToUnset = true, "
-                        + "nullStrings = [], "
-                        + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+                + "nullToUnset = true, "
+                + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -251,7 +286,6 @@ public class SchemaSettingsTest {
                 C1, C2));
     DefaultMapping mapping =
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
-    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(mapping.fieldToVariable("0")).isEqualTo(C2);
@@ -264,13 +298,10 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_row_mapper_when_mapping_and_statement_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
-                        + "nullToUnset = true, "
-                        + "nullStrings = [], "
-                        + String.format("query=\"select \\\"%2$s\\\",%1$s from ks.t1\"", C1, C2))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+                + "nullToUnset = true, "
+                + String.format("query=\"select \\\"%2$s\\\",%1$s from ks.t1\"", C1, C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -284,7 +315,6 @@ public class SchemaSettingsTest {
     assertThat(mapping.fieldToVariable("0")).isEqualTo(C2);
     assertThat(mapping.fieldToVariable("1")).isNull();
     assertThat(mapping.fieldToVariable("2")).isEqualTo(C1);
-    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).containsOnlyKeys("0", "2").containsValue(C1).containsValue(C2);
@@ -293,10 +323,7 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_row_mapper_when_keyspace_and_table_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("nullToUnset = true, nullStrings = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+    LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -312,7 +339,6 @@ public class SchemaSettingsTest {
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
     assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
     assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
-    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
@@ -321,11 +347,7 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_row_mapper_when_null_to_unset_is_false() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "nullToUnset = false, nullStrings = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+    LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -341,7 +363,6 @@ public class SchemaSettingsTest {
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
     assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
     assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
-    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
@@ -351,12 +372,8 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_row_mapper_when_null_words_are_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "nullToUnset = false, "
-                        + "nullStrings = [\"NIL\", \"NULL\"], "
-                        + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            "nullToUnset = false, " + "nullStrings = \"NIL, NULL\", " + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -372,10 +389,16 @@ public class SchemaSettingsTest {
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
     assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
     assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
-    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
     assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isEqualTo("NIL");
+  }
+
+  @NotNull
+  private static LoaderConfig makeLoaderConfig(String configString) {
+    return new DefaultLoaderConfig(
+        ConfigFactory.parseString(configString)
+            .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
   }
 }

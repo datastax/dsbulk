@@ -5,7 +5,7 @@
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
 
-package com.datastax.dsbulk.engine;
+package com.datastax.dsbulk.engine.internal;
 
 import com.datastax.dsbulk.commons.StringUtils;
 import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
@@ -59,7 +59,7 @@ public class SettingsDocumentor {
    * Settings that should be displayed in a "common" section as well as the appropriate place in the
    * hierarchy.
    */
-  private static final List<String> COMMON_SETTINGS =
+  static final List<String> COMMON_SETTINGS =
       Arrays.asList(
           "connector.csv.url",
           "connector.name",
@@ -84,7 +84,10 @@ public class SettingsDocumentor {
    * Settings that should be placed near the top within their setting groups. It is a super-set of
    * COMMON_SETTINGS.
    */
-  private static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
+  static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
+
+  static final Map<String, Group> GROUPS =
+      new TreeMap<>(new PriorityComparator("Common", "connector", "connector.csv", "schema"));
 
   static {
     PREFERRED_SETTINGS.add("driver.auth.provider");
@@ -101,6 +104,8 @@ public class SettingsDocumentor {
             shortcutEntry.getValue().unwrapped().toString(), shortcutEntry.getKey());
       }
     }
+
+    initGroups();
   }
 
   public static void main(String[] args) {
@@ -113,44 +118,6 @@ public class SettingsDocumentor {
 
   @SuppressWarnings("WeakerAccess")
   SettingsDocumentor(String title, Path filePath) throws FileNotFoundException {
-    Map<String, Group> groups =
-        new TreeMap<>(new PriorityComparator("Common", "connector", "schema"));
-
-    // First add a group for the "commonly used settings". Want to show that first in our
-    // doc.
-    groups.put("Common", new FixedGroup());
-
-    // Now add groups for every top-level setting section + driver.*.
-    for (Map.Entry<String, ConfigValue> entry : DEFAULT.root().entrySet()) {
-      String key = entry.getKey();
-      if (key.equals("driver")) {
-        // "driver" group is special because it's really large;
-        // We subdivide it one level further.
-        groups.put(key, new ContainerGroup(key, false));
-        for (Map.Entry<String, ConfigValue> driverEntry :
-            ((ConfigObject) entry.getValue()).entrySet()) {
-          if (driverEntry.getValue().valueType() == ConfigValueType.OBJECT) {
-            groups.put(
-                "driver." + driverEntry.getKey(),
-                new ContainerGroup("driver." + driverEntry.getKey(), true));
-          }
-        }
-      } else {
-        groups.put(key, new ContainerGroup(key, true));
-      }
-    }
-
-    for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
-      // Add the setting name to each group (and which groups want the setting will
-      // take it).
-      for (Group group : groups.values()) {
-        if (group.addSetting(entry.getKey())) {
-          // The setting was added to a group. Don't try adding to other groups.
-          break;
-        }
-      }
-    }
-
     try (PrintWriter out =
         new PrintWriter(new BufferedOutputStream(new FileOutputStream(filePath.toFile())))) {
       // Print page title
@@ -163,7 +130,7 @@ public class SettingsDocumentor {
           title);
 
       // Print links to relevant sections.
-      for (String groupName : groups.keySet()) {
+      for (String groupName : GROUPS.keySet()) {
         out.printf(
             "%s<a href=\"#%s\">%s Settings</a><br>%n",
             tocIndent(groupName), groupName, prettifyName(groupName));
@@ -171,7 +138,7 @@ public class SettingsDocumentor {
 
       // Walk through groups, emitting a group title followed by settings
       // for each group.
-      for (Map.Entry<String, Group> groupEntry : groups.entrySet()) {
+      for (Map.Entry<String, Group> groupEntry : GROUPS.entrySet()) {
         String groupName = groupEntry.getKey();
         out.printf("<a name=\"%s\"></a>%n", groupName);
         out.printf("%s %s Settings%n%n", titleFormat(groupName), prettifyName(groupName));
@@ -195,6 +162,45 @@ public class SettingsDocumentor {
               settingName,
               StringUtils.htmlEscape(DEFAULT.getTypeString(settingName)),
               getSanitizedDescription(settingValue));
+        }
+      }
+    }
+  }
+
+  private static void initGroups() {
+    // First add a group for the "commonly used settings". Want to show that first in our
+    // doc.
+    GROUPS.put("Common", new FixedGroup());
+
+    // Now add groups for every top-level setting section + driver.*.
+    for (Map.Entry<String, ConfigValue> entry : DEFAULT.root().entrySet()) {
+      String key = entry.getKey();
+      if (key.equals("driver") || key.equals("connector")) {
+        // "driver" group is special because it's really large;
+        // "connector" group is special because we want a sub-section for each
+        // particular connector.
+        // We subdivide each one level further.
+        GROUPS.put(key, new ContainerGroup(key, false));
+        for (Map.Entry<String, ConfigValue> nonLeafEntry :
+            ((ConfigObject) entry.getValue()).entrySet()) {
+          if (nonLeafEntry.getValue().valueType() == ConfigValueType.OBJECT) {
+            GROUPS.put(
+                key + "." + nonLeafEntry.getKey(),
+                new ContainerGroup(key + "." + nonLeafEntry.getKey(), true));
+          }
+        }
+      } else {
+        GROUPS.put(key, new ContainerGroup(key, true));
+      }
+    }
+
+    for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
+      // Add the setting name to each group (and which groups want the setting will
+      // take it).
+      for (Group group : GROUPS.values()) {
+        if (group.addSetting(entry.getKey())) {
+          // The setting was added to a group. Don't try adding to other groups.
+          break;
         }
       }
     }
@@ -265,7 +271,7 @@ public class SettingsDocumentor {
    * that belong to the group. This allows groups to act as listeners for settings and accept only
    * those that they are interested in.
    */
-  private interface Group {
+  interface Group {
     boolean addSetting(String settingName);
 
     Set<String> getSettings();
