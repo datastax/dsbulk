@@ -30,15 +30,17 @@
 - [improvement] DAT-42: Add LOADER_JAVA_OPTS env var support to allow users to set JVM options.
 - [improvement] DAT-74: executor.maxPerSecond and executor.maxInflight should account for batch size.
 - [improvement] DAT-76: Parallelize execution of workflow engine components.
-- [improvement] DAT-77: Separate batch.bufferSize into batch.bufferSize and batch.maxBatchSize
-- [improvement] DAT-62: Add end-to-end tests for CSV read workflow
-- [improvement] DAT-72: Improve command line options
-- [improvement] DAT-80: Rename ssl.keystore.url and ssl.truststore.url settings
-- [improvement] DAT-83: Add --version option to emit version
-- [improvement] DAT-85: Make driver.hosts option a comma-delimited string for ease of use
-- [improvement] DAT-58: Generate settings.md documentation page from reference.conf
-- [improvement] DAT-79: Rename and remove various settings
-- [improvement] DAT-95: Change schema.mapping and schema.recordMetadata to string values that should be parsed in SchemaSettings
-- [improvement] DAT-97: Add -f option to choose config file
-- [improvement] DAT-98: Update "Loader/Unloader" refs to "Loader"
-- [improvement] DAT-84: Add help subcommand to get help for groups of settings
+- [improvement] DAT-77: Separate batch.bufferSize into batch.bufferSize and batch.maxBatchSize.
+- [improvement] DAT-62: Add end-to-end tests for CSV read workflow.
+- [improvement] DAT-72: Improve command line options.
+- [improvement] DAT-88: Rename modules and packages to dsbulk.
+- [improvement] DAT-80: Rename ssl.keystore.url and ssl.truststore.url settings.
+- [improvement] DAT-83: Add --version option to emit version.
+- [improvement] DAT-85: Make driver.hosts option a comma-delimited string for ease of use.
+- [improvement] DAT-58: Generate settings.md documentation page from reference.conf.
+- [improvement] DAT-79: Rename and remove various settings.
+- [improvement] DAT-95: Change schema.mapping and schema.recordMetadata to string values that should be parsed in SchemaSettings.
+- [improvement] DAT-97: Add -f option to choose config file.
+- [improvement] DAT-98: Update "Loader/Unloader" refs to "Loader".
+- [improvement] DAT-84: Add help subcommand to get help for groups of settings.
+- [improvement] DAT-93: nullStrings setting should be more flexible.

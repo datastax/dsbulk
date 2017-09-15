@@ -75,7 +75,7 @@ public class Main {
     }
   }
 
-  static String getConnectorNameFromArgs(String[] optionArgs) {
+  private static String getConnectorNameFromArgs(String[] optionArgs) {
     // Walk through args, looking for a -c / --connector.name option + value.
     boolean foundOpt = false;
     String connectorName = null;

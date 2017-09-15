@@ -458,9 +458,9 @@ The exact type of mapping to use depends on the connector being used. Some conne
 
 Defaults to **""**.
 
-#### -nullStrings,--schema.nullStrings _&lt;list&lt;string&gt;&gt;_
+#### -nullStrings,--schema.nullStrings _&lt;string&gt;_
 
-Case-sensitive strings that should be mapped to `null`.
+Case-sensitive strings (in the form of a comma-delimited list) that should be mapped to `null`.
 
 In load workflows, when a record field value matches one of these words, then that value is replaced with a `null` and forwarded to DSE as such.
 
@@ -470,9 +470,9 @@ Note that this setting is applied before the *schema.nullToUnset* setting, hence
 
 In unload workflows, only the first string specified here will be used: when a row cell contains a `null` value, then it will be replaced with that word and forwarded as such to the connector.
 
-The default value – `[""]` – means that in load workflows, empty strings are converted to `null`s, and in unload workflows, `null`s are converted to empty strings.
+The default value – `""` – means that in load workflows, empty strings are converted to `null`s, and in unload workflows, `null`s are converted to empty strings.
 
-Defaults to **[""]**.
+Defaults to **""**.
 
 #### ---schema.nullToUnset _&lt;boolean&gt;_
 
