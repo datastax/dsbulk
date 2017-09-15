@@ -8,6 +8,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
@@ -100,11 +101,13 @@ public class DefaultRecordMapper implements RecordMapper {
       return;
     }
 
+    // the mapping provides unquoted variable names,
+    // so we need to quote them now
     if (convertedValue == null) {
-      bs.setToNull(variable);
+      bs.setToNull(Metadata.quoteIfNecessary(variable));
     } else {
       TypeCodec<Object> codec = mapping.codec(variable, cqlType, javaType);
-      bs.set(variable, convertedValue, codec);
+      bs.set(Metadata.quoteIfNecessary(variable), convertedValue, codec);
     }
   }
 }

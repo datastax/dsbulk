@@ -45,6 +45,8 @@ public class SchemaSettingsTest {
 
   private static final String NULL_STRINGS = "nullStrings";
   private static final String NULL_TO_UNSET = "nullToUnset";
+  private static final String C1 = "c1";
+  private static final String C2 = "This is column 2, and its name desperately needs quoting";
 
   private Session session;
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
@@ -67,8 +69,8 @@ public class SchemaSettingsTest {
     when(keyspace.getTable(anyString())).thenReturn(table);
     when(session.prepare(anyString())).thenReturn(ps);
     when(table.getColumns()).thenReturn(columns);
-    when(col1.getName()).thenReturn("c1");
-    when(col2.getName()).thenReturn("c2");
+    when(col1.getName()).thenReturn(C1);
+    when(col2.getName()).thenReturn(C2);
     ColumnDefinitions definitions = mock(ColumnDefinitions.class);
     when(ps.getVariables()).thenReturn(definitions);
     when(definitions.size()).thenReturn(2);
@@ -83,7 +85,7 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
+                    String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
                         + "keyspace=ks, table=t1")
@@ -94,18 +96,17 @@ public class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c2,c1) VALUES (:c2,:c1)");
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s)", C1, C2));
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
-    assertThat(mapping.fieldToVariable("0")).isEqualTo("c2");
+    assertThat(mapping.fieldToVariable("0")).isEqualTo(C2);
     assertThat(mapping.fieldToVariable("1")).isNull();
-    assertThat(mapping.fieldToVariable("2")).isEqualTo("c1");
-    //noinspection unchecked
+    assertThat(mapping.fieldToVariable("2")).isEqualTo(C1);
+    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
-    assertThat(fieldsToVariables)
-        .containsOnlyKeys("0", "2")
-        .containsValue("c1")
-        .containsValue("c2");
+    assertThat(fieldsToVariables).containsOnlyKeys("0", "2").containsValue(C1).containsValue(C2);
     assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
     assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
@@ -115,10 +116,12 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
+                    String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
-                        + "query=\"insert into ks.table (c1,c2) values (:c1,:c2)\"")
+                        + String.format(
+                            "query=\"insert into ks.table (%1$s,\\\"%2$s\\\") values (:%1$s,:\\\"%2$s\\\")\"",
+                            C1, C2))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
@@ -126,18 +129,17 @@ public class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("insert into ks.table (c1,c2) values (:c1,:c2)");
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format("insert into ks.table (%1$s,\"%2$s\") values (:%1$s,:\"%2$s\")", C1, C2));
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
-    assertThat(mapping.fieldToVariable("0")).isEqualTo("c2");
+    assertThat(mapping.fieldToVariable("0")).isEqualTo(C2);
     assertThat(mapping.fieldToVariable("1")).isNull();
-    assertThat(mapping.fieldToVariable("2")).isEqualTo("c1");
-    //noinspection unchecked
+    assertThat(mapping.fieldToVariable("2")).isEqualTo(C1);
+    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
-    assertThat(fieldsToVariables)
-        .containsOnlyKeys("0", "2")
-        .containsValue("c1")
-        .containsValue("c2");
+    assertThat(fieldsToVariables).containsOnlyKeys("0", "2").containsValue(C1).containsValue(C2);
     assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
     assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
@@ -154,17 +156,16 @@ public class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c1,c2) VALUES (:c1,:c2)");
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format("INSERT INTO ks.t1(%1$s,\"%2$s\") VALUES (:%1$s,:\"%2$s\")", C1, C2));
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
-    assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
-    assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
+    assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
+    assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
+    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
-    assertThat(fieldsToVariables)
-        .containsOnlyKeys("c1", "c2")
-        .containsValue("c1")
-        .containsValue("c2");
+    assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
     assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
     assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
@@ -182,17 +183,16 @@ public class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c1,c2) VALUES (:c1,:c2)");
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format("INSERT INTO ks.t1(%1$s,\"%2$s\") VALUES (:%1$s,:\"%2$s\")", C1, C2));
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
-    assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
-    assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
+    assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
+    assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
+    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
-    assertThat(fieldsToVariables)
-        .containsOnlyKeys("c1", "c2")
-        .containsValue("c1")
-        .containsValue("c2");
+    assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
     assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
     assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
@@ -212,21 +212,20 @@ public class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c1,c2) VALUES (:c1,:c2)");
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format("INSERT INTO ks.t1(%1$s,\"%2$s\") VALUES (:%1$s,:\"%2$s\")", C1, C2));
     DefaultMapping mapping = (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping");
-    assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
-    assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
+    assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
+    assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
+    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
-    assertThat(fieldsToVariables)
-        .containsOnlyKeys("c1", "c2")
-        .containsValue("c1")
-        .containsValue("c2");
+    assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
     assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
-    //noinspection unchecked
-    assertThat((Set<String>) Whitebox.getInternalState(recordMapper, NULL_STRINGS))
-        .containsOnly("NIL", "NULL");
+    @SuppressWarnings("unchecked")
+    Set<String> nullStrings = (Set<String>) Whitebox.getInternalState(recordMapper, NULL_STRINGS);
+    assertThat(nullStrings).containsOnly("NIL", "NULL");
   }
 
   @Test
@@ -234,7 +233,7 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
+                    String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
                         + "keyspace=ks, table=t1")
@@ -246,19 +245,19 @@ public class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT c2,c1 FROM ks.t1 WHERE token() > :start AND token() <= :end");
+        .isEqualTo(
+            String.format(
+                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                C1, C2));
     DefaultMapping mapping =
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
-    //noinspection unchecked
+    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
-    assertThat(mapping.fieldToVariable("0")).isEqualTo("c2");
+    assertThat(mapping.fieldToVariable("0")).isEqualTo(C2);
     assertThat(mapping.fieldToVariable("1")).isNull();
-    assertThat(mapping.fieldToVariable("2")).isEqualTo("c1");
-    assertThat(fieldsToVariables)
-        .containsOnlyKeys("0", "2")
-        .containsValue("c1")
-        .containsValue("c2");
+    assertThat(mapping.fieldToVariable("2")).isEqualTo(C1);
+    assertThat(fieldsToVariables).containsOnlyKeys("0", "2").containsValue(C1).containsValue(C2);
     assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
@@ -267,10 +266,10 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "mapping = \"0 = c2 , 2 = c1\", "
+                    String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                         + "nullToUnset = true, "
                         + "nullStrings = [], "
-                        + "query=\"select c2,c1 from ks.t1\"")
+                        + String.format("query=\"select \\\"%2$s\\\",%1$s from ks.t1\"", C1, C2))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
@@ -278,19 +277,17 @@ public class SchemaSettingsTest {
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("select c2,c1 from ks.t1");
+    assertThat(argument.getValue())
+        .isEqualTo(String.format("select \"%2$s\",%1$s from ks.t1", C1, C2));
     DefaultMapping mapping =
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
-    assertThat(mapping.fieldToVariable("0")).isEqualTo("c2");
+    assertThat(mapping.fieldToVariable("0")).isEqualTo(C2);
     assertThat(mapping.fieldToVariable("1")).isNull();
-    assertThat(mapping.fieldToVariable("2")).isEqualTo("c1");
-    //noinspection unchecked
+    assertThat(mapping.fieldToVariable("2")).isEqualTo(C1);
+    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
-    assertThat(fieldsToVariables)
-        .containsOnlyKeys("0", "2")
-        .containsValue("c1")
-        .containsValue("c2");
+    assertThat(fieldsToVariables).containsOnlyKeys("0", "2").containsValue(C1).containsValue(C2);
     assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
@@ -307,18 +304,18 @@ public class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT c1,c2 FROM ks.t1 WHERE token() > :start AND token() <= :end");
+        .isEqualTo(
+            String.format(
+                "SELECT %1$s,\"%2$s\" FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                C1, C2));
     DefaultMapping mapping =
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
-    assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
-    assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
+    assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
+    assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
+    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
-    assertThat(fieldsToVariables)
-        .containsOnlyKeys("c1", "c2")
-        .containsValue("c1")
-        .containsValue("c2");
+    assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
     assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
@@ -336,18 +333,18 @@ public class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT c1,c2 FROM ks.t1 WHERE token() > :start AND token() <= :end");
+        .isEqualTo(
+            String.format(
+                "SELECT %1$s,\"%2$s\" FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                C1, C2));
     DefaultMapping mapping =
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
-    assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
-    assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
+    assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
+    assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
+    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
-    assertThat(fieldsToVariables)
-        .containsOnlyKeys("c1", "c2")
-        .containsValue("c1")
-        .containsValue("c2");
+    assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
     assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
@@ -367,18 +364,18 @@ public class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT c1,c2 FROM ks.t1 WHERE token() > :start AND token() <= :end");
+        .isEqualTo(
+            String.format(
+                "SELECT %1$s,\"%2$s\" FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                C1, C2));
     DefaultMapping mapping =
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping");
-    assertThat(mapping.fieldToVariable("c1")).isEqualTo("c1");
-    assertThat(mapping.fieldToVariable("c2")).isEqualTo("c2");
-    //noinspection unchecked
+    assertThat(mapping.fieldToVariable(C1)).isEqualTo(C1);
+    assertThat(mapping.fieldToVariable(C2)).isEqualTo(C2);
+    @SuppressWarnings("unchecked")
     Map<Object, String> fieldsToVariables =
         (Map<Object, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
-    assertThat(fieldsToVariables)
-        .containsOnlyKeys("c1", "c2")
-        .containsValue("c1")
-        .containsValue("c2");
+    assertThat(fieldsToVariables).containsOnlyKeys(C1, C2).containsValue(C1).containsValue(C2);
     assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isEqualTo("NIL");
   }
 }

@@ -41,3 +41,4 @@
 - [improvement] DAT-95: Change schema.mapping and schema.recordMetadata to string values that should be parsed in SchemaSettings
 - [improvement] DAT-97: Add -f option to choose config file
 - [improvement] DAT-98: Update "Loader/Unloader" refs to "Loader"
+- [bug] DAT-73: Make mappings work with quoted CQL identifiers.

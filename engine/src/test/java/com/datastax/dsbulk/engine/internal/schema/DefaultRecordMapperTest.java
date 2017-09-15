@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
@@ -33,6 +34,10 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 public class DefaultRecordMapperTest {
+
+  private static final String C1 = "col1";
+  private static final String C2 = "col2";
+  private static final String C3 = "My Fancy Column Name";
 
   private Mapping mapping;
   private Record record;
@@ -68,9 +73,9 @@ public class DefaultRecordMapperTest {
 
     when(boundStatement.preparedStatement()).thenReturn(insertStatement);
     when(insertStatement.getVariables()).thenReturn(variables);
-    when(variables.getType("f0")).thenReturn(DataType.cint());
-    when(variables.getType("f1")).thenReturn(DataType.varchar());
-    when(variables.getType("f2")).thenReturn(DataType.varchar());
+    when(variables.getType(C1)).thenReturn(DataType.cint());
+    when(variables.getType(C2)).thenReturn(DataType.varchar());
+    when(variables.getType(C3)).thenReturn(DataType.varchar());
 
     when(record.fields()).thenReturn(Sets.newHashSet("0", "1", "2"));
     when(record.getFieldValue("0")).thenReturn(42);
@@ -78,19 +83,19 @@ public class DefaultRecordMapperTest {
     when(record.getSource()).thenReturn("source");
     when(record.getLocation()).thenReturn(location);
 
-    when(mapping.fieldToVariable("0")).thenReturn("f0");
-    when(mapping.fieldToVariable("1")).thenReturn("f1");
-    when(mapping.fieldToVariable("2")).thenReturn("f2");
+    when(mapping.fieldToVariable("0")).thenReturn(C1);
+    when(mapping.fieldToVariable("1")).thenReturn(C2);
+    when(mapping.fieldToVariable("2")).thenReturn(C3);
 
     TypeCodec codec1 = TypeCodec.cint();
     TypeCodec codec2 = TypeCodec.varchar();
 
     //noinspection unchecked
-    when(mapping.codec("f0", DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
+    when(mapping.codec(C1, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
     //noinspection unchecked
-    when(mapping.codec("f1", DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
+    when(mapping.codec(C2, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
     //noinspection unchecked
-    when(mapping.codec("f2", DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
+    when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
   }
 
   @Test
@@ -111,9 +116,9 @@ public class DefaultRecordMapperTest {
     verify(boundStatement, times(3))
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42, TypeCodec.cint());
-    assertParameter(1, "f1", "NIL", TypeCodec.varchar());
-    assertParameter(2, "f2", "NULL", TypeCodec.varchar());
+    assertParameter(0, C1, 42, TypeCodec.cint());
+    assertParameter(1, C2, "NIL", TypeCodec.varchar());
+    assertParameter(2, C3, "NULL", TypeCodec.varchar());
   }
 
   @Test
@@ -134,8 +139,8 @@ public class DefaultRecordMapperTest {
     verify(boundStatement, times(2))
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42, TypeCodec.cint());
-    assertParameter(1, "f2", "NULL", TypeCodec.varchar());
+    assertParameter(0, C1, 42, TypeCodec.cint());
+    assertParameter(1, C3, "NULL", TypeCodec.varchar());
   }
 
   @Test
@@ -156,7 +161,7 @@ public class DefaultRecordMapperTest {
     verify(boundStatement)
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42, TypeCodec.cint());
+    assertParameter(0, C1, 42, TypeCodec.cint());
   }
 
   @Test
@@ -177,11 +182,11 @@ public class DefaultRecordMapperTest {
     verify(boundStatement, times(2))
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42, TypeCodec.cint());
-    assertParameter(1, "f2", "NULL", TypeCodec.varchar());
+    assertParameter(0, C1, 42, TypeCodec.cint());
+    assertParameter(1, C3, "NULL", TypeCodec.varchar());
 
     verify(boundStatement).setToNull(variableCaptor.capture());
-    assertThat(variableCaptor.getValue()).isEqualTo("f1");
+    assertThat(variableCaptor.getValue()).isEqualTo(C2);
   }
 
   @Test
@@ -202,17 +207,17 @@ public class DefaultRecordMapperTest {
     verify(boundStatement, times(2))
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42, TypeCodec.cint());
-    assertParameter(1, "f2", "NULL", TypeCodec.varchar());
+    assertParameter(0, C1, 42, TypeCodec.cint());
+    assertParameter(1, C3, "NULL", TypeCodec.varchar());
 
     verify(boundStatement).setToNull(variableCaptor.capture());
-    assertThat(variableCaptor.getValue()).isEqualTo("f1");
+    assertThat(variableCaptor.getValue()).isEqualTo(C2);
   }
 
   @Test
   public void should_return_unmappable_statement_when_mapping_fails() throws Exception {
     //noinspection unchecked
-    when(mapping.codec("f2", DataType.varchar(), TypeToken.of(String.class)))
+    when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class)))
         .thenThrow(CodecNotFoundException.class);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -231,15 +236,16 @@ public class DefaultRecordMapperTest {
     verify(boundStatement, times(1))
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
-    assertParameter(0, "f0", 42, TypeCodec.cint());
+    assertParameter(0, C1, 42, TypeCodec.cint());
 
     verify(boundStatement).setToNull(variableCaptor.capture());
-    assertThat(variableCaptor.getValue()).isEqualTo("f1");
+    assertThat(variableCaptor.getValue()).isEqualTo(C2);
   }
 
   private void assertParameter(
       int index, String expectedVariable, Object expectedValue, TypeCodec<?> expectedCodec) {
-    assertThat(variableCaptor.getAllValues().get(index)).isEqualTo(expectedVariable);
+    assertThat(variableCaptor.getAllValues().get(index))
+        .isEqualTo(Metadata.quoteIfNecessary(expectedVariable));
     assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
     assertThat(codecCaptor.getAllValues().get(index)).isSameAs(expectedCodec);
   }
