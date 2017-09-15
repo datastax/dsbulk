@@ -6,6 +6,7 @@
 
 <a href="#Common">Common Settings</a><br>
 <a href="#connector">Connector Settings</a><br>
+&nbsp;&nbsp;&nbsp;<a href="#connector.csv">Connector Csv Settings</a><br>
 <a href="#schema">Schema Settings</a><br>
 <a href="#batch">Batch Settings</a><br>
 <a href="#codec">Codec Settings</a><br>
@@ -246,6 +247,28 @@ Defaults to **"5 seconds"**.
 
 Connector-specific settings. This section contains settings for the connector to use; it also contains sub-sections, one for each available connector.
 
+#### -c,--connector.name _&lt;string&gt;_
+
+The name of the connector to use.
+
+It is used in two places:
+
+1. The path to the group of settings for the connector are located under `connector.<name>`.
+2. The connector class name must start with `name`, case-insensitively. It is permitted for `name` to be the fully-qualified class name of the connector. That simply implies that the settings root will be at that fully-qualified location.
+
+Example: `csv` for class `CSVConnector`, with settings located under `connector.csv`.
+
+Defaults to **"csv"**.
+
+<a name="connector.csv"></a>
+### Connector Csv Settings
+
+Reference configuration for the CSV Connector.
+
+Note that a paragraph is written in one line, and paragraphs are separated by a blank line.
+This has the benefit of rendering well in markdown as well as plain-text help output (since
+the help text formatter wraps lines appropriately).
+
 #### -url,--connector.csv.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
@@ -278,19 +301,6 @@ For other URLs: the URL will be read or written directly; settings like *fileNam
 This setting has no default value and must be supplied by the user.
 
 Defaults to **""**.
-
-#### -c,--connector.name _&lt;string&gt;_
-
-The name of the connector to use.
-
-It is used in two places:
-
-1. The path to the group of settings for the connector are located under `connector.<name>`.
-2. The connector class name must start with `name`, case-insensitively. It is permitted for `name` to be the fully-qualified class name of the connector. That simply implies that the settings root will be at that fully-qualified location.
-
-Example: `csv` for class `CSVConnector`, with settings located under `connector.csv`.
-
-Defaults to **"csv"**.
 
 #### -delim,--connector.csv.delimiter _&lt;string&gt;_
 
