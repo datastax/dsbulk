@@ -8,8 +8,8 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.dsbulk.connectors.json.JsonConnector;
@@ -29,8 +29,8 @@ public class ConnectorSettingsTest {
 
   @Test
   public void should_find_csv_connector_simple_name() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
                 ConfigFactory.parseString(
                     "name: csvConnector,  csvConnector: { url:\"file:///a/b.csv\"}"))
             .withFallback(replaceDefaultConnectorPathWithName("csvConnector"));
@@ -40,8 +40,8 @@ public class ConnectorSettingsTest {
 
   @Test
   public void should_find_csv_connector_short_name() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
                 ConfigFactory.parseString("name: csv, csv{url:\"file:///a/b.csv\"}"))
             .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     ConnectorSettings connectorSettings = new ConnectorSettings(config);
@@ -49,7 +49,7 @@ public class ConnectorSettingsTest {
   }
 
   private static void assertCSVConnectorSettings(
-      ConnectorSettings connectorSettings, LoaderConfig config, String connectorName)
+      ConnectorSettings connectorSettings, DSBulkConfig config, String connectorName)
       throws Exception {
     Connector connector = connectorSettings.getConnector(WorkflowType.LOAD);
     assertThat(connector).isNotNull().isInstanceOf(CSVConnector.class);
@@ -72,8 +72,8 @@ public class ConnectorSettingsTest {
 
   @Test
   public void should_find_json_connector_full_path() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                 "name: com.datastax.dsbulk.connectors.json.JsonConnector,  com.datastax.dsbulk.connectors.json.JsonConnector{ url:\"file:///a/b.json\"}"));
     Connector connector = new ConnectorSettings(config).getConnector(WorkflowType.LOAD);
@@ -82,8 +82,8 @@ public class ConnectorSettingsTest {
 
   @Test
   public void should_find_json_connector_simple_name() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                 "name: jsonConnector, jsonConnector{ url:\"file:///a/b.json\"}"));
     Connector connector = new ConnectorSettings(config).getConnector(WorkflowType.LOAD);
@@ -92,8 +92,8 @@ public class ConnectorSettingsTest {
 
   @Test
   public void should_find_json_connector_short_name() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString("name: json, json{ url:\"file:///a/b.json\"}"));
     Connector connector = new ConnectorSettings(config).getConnector(WorkflowType.LOAD);
     assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
@@ -101,8 +101,8 @@ public class ConnectorSettingsTest {
 
   @Test
   public void should_fail_for_nonexistent_connector() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString("name: foo, foo {url:\"file:///a/b.txt\"}"));
     exception.expect(IllegalArgumentException.class);
     exception.expectMessage("Cannot find connector 'foo'; available connectors are");

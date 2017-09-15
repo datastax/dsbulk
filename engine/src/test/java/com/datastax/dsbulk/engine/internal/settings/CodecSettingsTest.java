@@ -36,8 +36,8 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.TupleType;
 import com.datastax.driver.core.UserType;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.NumberToNumberCodec;
 import com.datastax.dsbulk.engine.internal.codecs.StringToBigDecimalCodec;
@@ -86,7 +86,7 @@ public class CodecSettingsTest {
   @Test
   public void should_return_string_converting_codecs() throws Exception {
 
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
+    DSBulkConfig config = new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
@@ -137,7 +137,7 @@ public class CodecSettingsTest {
   @Test
   public void should_return_number_converting_codecs() throws Exception {
 
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
+    DSBulkConfig config = new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
@@ -170,7 +170,7 @@ public class CodecSettingsTest {
   @Test
   public void should_return_temporal_converting_codecs() throws Exception {
 
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
+    DSBulkConfig config = new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
@@ -209,7 +209,7 @@ public class CodecSettingsTest {
   @Test
   public void should_return_codecs_for_tokenizable_fields() throws Exception {
 
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
+    DSBulkConfig config = new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 

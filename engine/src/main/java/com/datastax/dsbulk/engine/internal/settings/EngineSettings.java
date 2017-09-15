@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,9 +15,9 @@ public class EngineSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EngineSettings.class);
 
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
 
-  EngineSettings(LoaderConfig config) {
+  EngineSettings(DSBulkConfig config) {
     this.config = config;
   }
 

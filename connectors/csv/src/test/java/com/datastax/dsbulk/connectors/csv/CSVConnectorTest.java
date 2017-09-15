@@ -12,8 +12,8 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.commons.PlatformUtils;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -54,8 +54,8 @@ public class CSVConnectorTest {
   @Test
   public void should_read_single_file() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
+    DSBulkConfig settings =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", escape = \"\\\"\", comment = \"#\"", url("/sample.csv")))
@@ -86,8 +86,8 @@ public class CSVConnectorTest {
       InputStream is = new ByteArrayInputStream(line.getBytes("ISO-8859-1"));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
-      LoaderConfig settings =
-          new DefaultLoaderConfig(
+      DSBulkConfig settings =
+          new DefaultDSBulkConfig(
               ConfigFactory.parseString("header = false, url = \"stdin:/\", encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
@@ -113,8 +113,8 @@ public class CSVConnectorTest {
       PrintStream out = new PrintStream(baos);
       System.setOut(out);
       CSVConnector connector = new CSVConnector();
-      LoaderConfig settings =
-          new DefaultLoaderConfig(
+      DSBulkConfig settings =
+          new DefaultDSBulkConfig(
               ConfigFactory.parseString("header = false, url = \"stdout:/\", encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
@@ -136,8 +136,8 @@ public class CSVConnectorTest {
   @Test
   public void should_scan_directory() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
+    DSBulkConfig settings =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     String.format("url = \"%s\", recursive = false", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
@@ -156,8 +156,8 @@ public class CSVConnectorTest {
       // slashes, but we don't want the leading slash.
       rootPath = rootPath.substring(1);
     }
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
+    DSBulkConfig settings =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(String.format("url = \"%s\", recursive = false", rootPath))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -169,8 +169,8 @@ public class CSVConnectorTest {
   @Test
   public void should_scan_directory_recursively() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
+    DSBulkConfig settings =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(String.format("url = \"%s\", recursive = true", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -184,8 +184,8 @@ public class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     // test directory creation
     Path out = Files.createTempDirectory("test").resolve("nonexistent");
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
+    DSBulkConfig settings =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     String.format("url = \"%s\", escape = \"\\\"\", maxThreads = 1", out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
@@ -212,8 +212,8 @@ public class CSVConnectorTest {
   public void should_write_multiple_files() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
+    DSBulkConfig settings =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     String.format("url = \"%s\", escape = \"\\\"\", maxThreads = 4", out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
@@ -239,8 +239,8 @@ public class CSVConnectorTest {
   public void should_roll_file_when_max_lines_reached() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
+    DSBulkConfig settings =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", escape = \"\\\"\", maxThreads = 1, maxLines = 4", out))

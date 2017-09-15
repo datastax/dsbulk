@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.connectors.api;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
@@ -48,12 +48,12 @@ public interface Connector extends AutoCloseable {
    * @param read whether the connector should be configured for reading or writing.
    * @throws Exception if the connector fails to configure properly.
    */
-  default void configure(LoaderConfig settings, boolean read) throws Exception {}
+  default void configure(DSBulkConfig settings, boolean read) throws Exception {}
 
   /**
    * Returns metadata about the records that this connector can read or write.
    *
-   * <p>This method should only be called after {@link #configure(LoaderConfig, boolean)} and {@link
+   * <p>This method should only be called after {@link #configure(DSBulkConfig, boolean)} and {@link
    * #init()}, i.e., when the connector is fully initialized and ready to read or write.
    *
    * <p>If this connector cannot gather metadata, or if the metadata is inaccurate, then it should

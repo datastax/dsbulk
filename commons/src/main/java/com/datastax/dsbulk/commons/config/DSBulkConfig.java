@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public interface LoaderConfig extends Config {
+public interface DSBulkConfig extends Config {
 
   /**
    * Returns a new instance of the class name at the given path.
@@ -186,7 +186,6 @@ public interface LoaderConfig extends Config {
    * @throws ConfigException.Missing if value is absent or null.
    */
   default String getTypeString(String path) {
-
     ConfigValueType type = getValue(path).valueType();
     if (type == ConfigValueType.LIST) {
       ConfigList list = getList(path);
@@ -238,32 +237,32 @@ public interface LoaderConfig extends Config {
   }
 
   @Override
-  LoaderConfig withFallback(ConfigMergeable other);
+  DSBulkConfig withFallback(ConfigMergeable other);
 
   @Override
-  LoaderConfig resolve(ConfigResolveOptions options);
+  DSBulkConfig resolve(ConfigResolveOptions options);
 
   @Override
-  LoaderConfig resolveWith(Config source);
+  DSBulkConfig resolveWith(Config source);
 
   @Override
-  LoaderConfig resolveWith(Config source, ConfigResolveOptions options);
+  DSBulkConfig resolveWith(Config source, ConfigResolveOptions options);
 
   @Override
-  LoaderConfig getConfig(String path);
+  DSBulkConfig getConfig(String path);
 
   @Override
-  LoaderConfig withOnlyPath(String path);
+  DSBulkConfig withOnlyPath(String path);
 
   @Override
-  LoaderConfig withoutPath(String path);
+  DSBulkConfig withoutPath(String path);
 
   @Override
-  LoaderConfig atPath(String path);
+  DSBulkConfig atPath(String path);
 
   @Override
-  LoaderConfig atKey(String key);
+  DSBulkConfig atKey(String key);
 
   @Override
-  LoaderConfig withValue(String path, ConfigValue value);
+  DSBulkConfig withValue(String path, ConfigValue value);
 }

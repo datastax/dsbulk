@@ -7,8 +7,8 @@
 
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.google.common.base.CharMatcher;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -36,8 +36,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.cli.Option;
 
 public class SettingsDocumentor {
-  private static final LoaderConfig DEFAULT =
-      new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
+  private static final DSBulkConfig DEFAULT =
+      new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk"));
   private static final Map<String, String> LONG_TO_SHORT_OPTIONS;
 
   public static final Option CONFIG_FILE_OPTION =

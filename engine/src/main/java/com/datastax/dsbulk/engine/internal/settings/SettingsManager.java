@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import java.util.Map;
@@ -18,7 +18,7 @@ public class SettingsManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SettingsManager.class);
 
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
   private final String executionId;
 
   private DriverSettings driverSettings;
@@ -31,7 +31,7 @@ public class SettingsManager {
   private MonitoringSettings monitoringSettings;
   private EngineSettings engineSettings;
 
-  public SettingsManager(LoaderConfig config, String executionId) {
+  public SettingsManager(DSBulkConfig config, String executionId) {
     this.config = config;
     this.executionId = executionId;
   }

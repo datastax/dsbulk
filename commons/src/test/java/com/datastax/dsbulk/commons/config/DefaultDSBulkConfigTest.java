@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.net.URL;
@@ -19,19 +19,19 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import org.junit.Test;
 
-public class DefaultLoaderConfigTest {
+public class DefaultDSBulkConfigTest {
 
   @Test
   public void should_resolve_absolute_path() throws Exception {
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.parseString("path = /var/lib"));
+    DSBulkConfig config = new DefaultDSBulkConfig(ConfigFactory.parseString("path = /var/lib"));
     Path path = config.getPath("path");
     assertThat(path).isNormalized().isAbsolute();
   }
 
   @Test
   public void should_resolve_relative_path() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.parseString("path1 = target, path2 = ./target"));
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(ConfigFactory.parseString("path1 = target, path2 = ./target"));
     Path path1 = config.getPath("path1");
     assertThat(path1).isNormalized().isAbsolute();
     Path path2 = config.getPath("path2");
@@ -41,8 +41,8 @@ public class DefaultLoaderConfigTest {
 
   @Test
   public void should_resolve_absolute_URL() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString("url1 = \"file:///var/lib\", url2 = \"http://foo.com/bar\""));
     URL url1 = config.getURL("url1");
     assertThat(url1.toExternalForm()).isEqualTo("file:/var/lib");
@@ -65,8 +65,8 @@ public class DefaultLoaderConfigTest {
 
   @Test
   public void should_resolve_threads() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.parseString("threads1 = 4, threads2 = 2C"));
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(ConfigFactory.parseString("threads1 = 4, threads2 = 2C"));
     int threads1 = config.getThreads("threads1");
     assertThat(threads1).isEqualTo(4);
     int threads2 = config.getThreads("threads2");
@@ -75,15 +75,15 @@ public class DefaultLoaderConfigTest {
 
   @Test
   public void should_resolve_char() throws Exception {
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.parseString("char = a"));
+    DSBulkConfig config = new DefaultDSBulkConfig(ConfigFactory.parseString("char = a"));
     char c = config.getChar("char");
     assertThat(c).isEqualTo('a');
   }
 
   @Test
   public void should_resolve_charset() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.parseString("charset1 = UTF-8, charset2 = utf8"));
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(ConfigFactory.parseString("charset1 = UTF-8, charset2 = utf8"));
     Charset charset1 = config.getCharset("charset1");
     assertThat(charset1).isEqualTo(Charset.forName("UTF-8"));
     Charset charset2 = config.getCharset("charset2");
@@ -92,8 +92,8 @@ public class DefaultLoaderConfigTest {
 
   @Test
   public void should_get_type_string() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                 "intField = 7, "
                     + "stringField = mystring, "
@@ -114,8 +114,8 @@ public class DefaultLoaderConfigTest {
 
   @Test
   public void should_resolve_class() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString("class1 = java.lang.String, class2 = DefaultRetryPolicy"));
     Class<String> class1 = config.getClass("class1");
     assertThat(class1).isEqualTo(String.class);
@@ -125,8 +125,8 @@ public class DefaultLoaderConfigTest {
 
   @Test
   public void should_resolve_instance() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                 "class1 = java.lang.String, class2 = AtomicMonotonicTimestampGenerator"));
     Object o1 = config.getInstance("class1");

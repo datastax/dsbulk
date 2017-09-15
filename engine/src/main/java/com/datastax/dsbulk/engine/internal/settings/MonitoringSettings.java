@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -18,10 +18,10 @@ import java.util.concurrent.TimeUnit;
 /** */
 public class MonitoringSettings {
 
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
   private final String executionId;
 
-  MonitoringSettings(LoaderConfig config, String executionId) {
+  MonitoringSettings(DSBulkConfig config, String executionId) {
     this.config = config;
     this.executionId = executionId;
   }

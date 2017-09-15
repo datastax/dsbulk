@@ -7,16 +7,16 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 
 /** */
 public class BatchSettings {
 
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
 
-  BatchSettings(LoaderConfig config) {
+  BatchSettings(DSBulkConfig config) {
     this.config = config;
   }
 

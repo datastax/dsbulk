@@ -16,8 +16,8 @@ import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.datastax.dsbulk.executor.api.ContinuousReactorBulkExecutor;
 import com.datastax.dsbulk.executor.api.DefaultReactorBulkExecutor;
 import com.datastax.dsbulk.executor.api.reader.ReactiveBulkReader;
@@ -48,8 +48,8 @@ public class ExecutorSettingsTest {
 
   @Test
   public void should_create_non_continuous_executor_when_write_workflow() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkWriter executor = settings.newWriteExecutor(session, null);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
@@ -58,8 +58,8 @@ public class ExecutorSettingsTest {
   @Test
   public void should_create_non_continuous_executor_when_read_workflow_and_session_not_dse()
       throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkReader executor = settings.newReadExecutor(session, null);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
@@ -68,8 +68,8 @@ public class ExecutorSettingsTest {
   @Test
   public void should_create_continuous_executor_when_read_workflow_and_session_dse()
       throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null);
     assertThat(executor).isNotNull().isInstanceOf(ContinuousReactorBulkExecutor.class);

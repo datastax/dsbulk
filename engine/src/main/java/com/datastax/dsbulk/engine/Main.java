@@ -6,8 +6,8 @@
  */
 package com.datastax.dsbulk.engine;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.settings.SettingsDocumentor;
 import com.typesafe.config.Config;
@@ -63,7 +63,7 @@ public class Main {
 
       // Parse command line args fully, integrate with default config, and run.
       Config cmdLineConfig = parseCommandLine(connectorName, args[0], optionArgs);
-      DefaultLoaderConfig config = new DefaultLoaderConfig(cmdLineConfig.withFallback(DEFAULT));
+      DefaultDSBulkConfig config = new DefaultDSBulkConfig(cmdLineConfig.withFallback(DEFAULT));
       config.checkValid(REFERENCE);
       WorkflowType workflowType = WorkflowType.valueOf(args[0].toUpperCase());
       Workflow workflow = workflowType.newWorkflow(config);
@@ -254,7 +254,7 @@ public class Main {
 
     Options options = new Options();
 
-    LoaderConfig config = new DefaultLoaderConfig(DEFAULT);
+    DSBulkConfig config = new DefaultDSBulkConfig(DEFAULT);
 
     for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
       String longName = entry.getKey();
@@ -275,7 +275,7 @@ public class Main {
   }
 
   private static Option createOption(
-      LoaderConfig config,
+      DSBulkConfig config,
       Map<String, String> longToShortOptions,
       String longName,
       ConfigValue value) {

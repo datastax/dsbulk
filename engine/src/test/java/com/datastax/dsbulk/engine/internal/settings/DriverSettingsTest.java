@@ -33,8 +33,8 @@ import com.datastax.driver.dse.DseLoadBalancingPolicy;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.PlatformUtils;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultDSBulkConfig;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import io.netty.handler.ssl.SslContext;
@@ -50,17 +50,17 @@ public class DriverSettingsTest {
 
   @Test(expected = ConfigException.Missing.class)
   public void should_not_create_mapper_when_contact_points_not_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch")));
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
+            new DefaultDSBulkConfig(ConfigFactory.load().getConfig("dsbulk.batch")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.newCluster();
   }
 
   @Test
   public void should_create_mapper_when_hosts_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString("port = 9876, hosts = \"1.2.3.4:9042, 2.3.4.5,9.8.7.6\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
@@ -110,8 +110,8 @@ public class DriverSettingsTest {
 
   @Test
   public void should_configure_authentication_with_PlainTextAuthProvider() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     " auth { provider = PlainTextAuthProvider, username = alice, password = s3cr3t }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
@@ -127,8 +127,8 @@ public class DriverSettingsTest {
 
   @Test
   public void should_configure_authentication_with_DsePlainTextAuthProvider() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     " auth { provider = DsePlainTextAuthProvider, username = alice, password = s3cr3t, authorizationId = bob }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
@@ -146,8 +146,8 @@ public class DriverSettingsTest {
   @Test
   public void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab()
       throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     " auth { "
                         + "provider = DseGSSAPIAuthProvider, "
@@ -177,8 +177,8 @@ public class DriverSettingsTest {
   @Test
   public void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache()
       throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     " auth { "
                         + "provider = DseGSSAPIAuthProvider, "
@@ -206,8 +206,8 @@ public class DriverSettingsTest {
   public void should_configure_encryption_with_SSLContext() throws Exception {
     URL keystore = getClass().getResource("/client.keystore");
     URL truststore = getClass().getResource("/client.truststore");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     String.format(
                         " ssl { "
@@ -239,8 +239,8 @@ public class DriverSettingsTest {
     URL keyCertChain = getClass().getResource("/client.crt");
     URL privateKey = getClass().getResource("/client.key");
     URL truststore = getClass().getResource("/client.truststore");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
+    DSBulkConfig config =
+        new DefaultDSBulkConfig(
             ConfigFactory.parseString(
                     String.format(
                         " ssl { "

@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.DSBulkConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.WorkflowType;
 import java.util.ServiceLoader;
@@ -15,9 +15,9 @@ import java.util.stream.StreamSupport;
 
 public class ConnectorSettings {
 
-  private final LoaderConfig config;
+  private final DSBulkConfig config;
 
-  ConnectorSettings(LoaderConfig config) throws Exception {
+  ConnectorSettings(DSBulkConfig config) throws Exception {
     this.config = config;
   }
 
