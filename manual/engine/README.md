@@ -1,4 +1,4 @@
-# DataStax Bulk Loader/Unloader Workflow Engine
+# DataStax Bulk Loader Workflow Engine
 
 The DataStax Workflow Engine is the component responsible for the orchestration of loading 
 and unloading operations.

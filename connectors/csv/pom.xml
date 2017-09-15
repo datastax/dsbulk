@@ -19,9 +19,9 @@
 
   <artifactId>dsbulk-connectors-csv</artifactId>
 
-  <name>DataStax Bulk Loader/Unloader - Connectors - CSV</name>
+  <name>DataStax Bulk Loader - Connectors - CSV</name>
   <description>
-    CSV connector for the DataStax Bulk Loader/Unloader.
+    CSV connector for the DataStax Bulk Loader.
   </description>
 
   <dependencies>

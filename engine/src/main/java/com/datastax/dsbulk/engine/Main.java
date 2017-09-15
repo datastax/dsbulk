@@ -132,7 +132,7 @@ public class Main {
       }
     }
 
-    return String.format("DataStax Bulk Loader/Unloader v%s", version);
+    return String.format("DataStax Bulk Loader v%s", version);
   }
 
   static Config parseCommandLine(String connectorName, String subcommand, String[] args)

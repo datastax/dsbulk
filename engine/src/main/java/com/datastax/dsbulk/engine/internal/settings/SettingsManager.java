@@ -49,7 +49,7 @@ public class SettingsManager {
   }
 
   public void logEffectiveSettings() {
-    LOGGER.info("Bulk Loader/Unloader effective settings:");
+    LOGGER.info("Bulk Loader effective settings:");
     for (Map.Entry<String, ConfigValue> entry : config.entrySet()) {
       LOGGER.info(
           String.format(

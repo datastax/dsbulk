@@ -19,9 +19,9 @@
 
   <artifactId>dsbulk-executor-api</artifactId>
 
-  <name>DataStax Bulk Loader/Unloader - Executor - API</name>
+  <name>DataStax Bulk Loader - Executor - API</name>
   <description>
-    Bulk Executor API for the DataStax Bulk Loader/Unloader.
+    Bulk Executor API for the DataStax Bulk Loader.
   </description>
 
   <dependencies>
