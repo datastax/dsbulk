@@ -51,9 +51,18 @@ public class SchemaSettings {
   private String keyspaceName;
   private String tableName;
   private PreparedStatement preparedStatement;
+  private ImmutableSet<String> nullStrings;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
+    String rawNullStrings = config.getString("nullStrings");
+    if (!rawNullStrings.startsWith("[")) {
+      rawNullStrings = "[" + rawNullStrings + "]";
+    }
+    nullStrings =
+        ImmutableSet.copyOf(
+            ConfigFactory.parseString("nullStrings = " + rawNullStrings)
+                .getStringList("nullStrings"));
   }
 
   public RecordMapper createRecordMapper(
@@ -65,7 +74,7 @@ public class SchemaSettings {
         statement,
         mapping,
         mergeRecordMetadata(recordMetadata),
-        ImmutableSet.copyOf(config.getStringList("nullStrings")),
+        nullStrings,
         config.getBoolean("nullToUnset"));
   }
 
@@ -75,7 +84,9 @@ public class SchemaSettings {
     preparedStatement = prepareStatement(session, fieldsToVariables, WorkflowType.UNLOAD);
     DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
     return new DefaultReadResultMapper(
-        mapping, mergeRecordMetadata(recordMetadata), config.getFirstString("nullStrings"));
+        mapping,
+        mergeRecordMetadata(recordMetadata),
+        nullStrings.isEmpty() ? null : nullStrings.iterator().next());
   }
 
   public List<Statement> createReadStatements(Cluster cluster) {

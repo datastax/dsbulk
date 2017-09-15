@@ -196,7 +196,7 @@ public class MainTest {
     assertThat(result.getInt("monitoring.reportRate")).isEqualTo(456);
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
-    assertThat(result.getStringList("schema.nullStrings")).containsOnly("nil", "nada");
+    assertThat(result.getString("schema.nullStrings")).isEqualTo("[nil, nada]");
     assertThat(result.getString("schema.query")).isEqualTo("INSERT INTO foo");
     assertThat(result.getString("schema.table")).isEqualTo("table");
 
@@ -291,7 +291,7 @@ public class MainTest {
               "--schema.keyspace", "ks",
               "--schema.table", "table",
               "--schema.query", "SELECT JUNK",
-              "--schema.nullStrings", "[NIL, NADA]",
+              "--schema.nullStrings", "NIL, NADA",
               "--schema.nullToUnset", "false",
               "--schema.mapping", "{0:\"f1\", 1:\"f2\"}",
               "--schema.recordMetadata", "{0:\"f3\", 1:\"f4\"}",
@@ -371,7 +371,7 @@ public class MainTest {
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
     assertThat(result.getString("schema.table")).isEqualTo("table");
     assertThat(result.getString("schema.query")).isEqualTo("SELECT JUNK");
-    assertThat(result.getStringList("schema.nullStrings")).isEqualTo(Arrays.asList("NIL", "NADA"));
+    assertThat(result.getString("schema.nullStrings")).isEqualTo("NIL, NADA");
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
     assertThat(result.getString("schema.recordMetadata")).isEqualTo("{0:f3, 1:f4}");

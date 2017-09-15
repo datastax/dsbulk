@@ -35,6 +35,7 @@ import com.typesafe.config.ConfigFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -81,13 +82,10 @@ public class SchemaSettingsTest {
   public void should_create_record_mapper_when_mapping_keyspace_and_table_provided()
       throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
-                        + "nullToUnset = true, "
-                        + "nullStrings = [], "
-                        + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            "mapping = \"{ 0 = c2 , 2 = c1 }\", "
+                + "nullToUnset = true, "
+                + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -113,13 +111,10 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_record_mapper_when_mapping_and_statement_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
-                        + "nullToUnset = true, "
-                        + "nullStrings = [], "
-                        + "query=\"insert into ks.table (c1,c2) values (:c1,:c2)\"")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            "mapping = \"{ 0 = c2 , 2 = c1 }\", "
+                + "nullToUnset = true, "
+                + "query=\"insert into ks.table (c1,c2) values (:c1,:c2)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -144,10 +139,7 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_record_mapper_when_keyspace_and_table_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("nullToUnset = true, nullStrings = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+    LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -171,11 +163,7 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_record_mapper_when_null_to_unset_is_false() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "nullToUnset = false, nullStrings = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+    LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -200,12 +188,8 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_record_mapper_when_null_words_are_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "nullToUnset = false, "
-                        + "nullStrings = [\"NIL\", \"NULL\"], "
-                        + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            "nullToUnset = false, " + "nullStrings = \"NIL, NULL\", " + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -230,15 +214,85 @@ public class SchemaSettingsTest {
   }
 
   @Test
+  public void should_create_settings_when_null_strings_are_specified() throws Exception {
+    {
+      LoaderConfig config =
+          makeLoaderConfig("nullStrings = \"[NIL, NULL]\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      //noinspection unchecked
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NIL", "NULL");
+    }
+
+    {
+      LoaderConfig config =
+          makeLoaderConfig("nullStrings = \"\\\"NIL\\\", \\\"NULL\\\"\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      //noinspection unchecked
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NIL", "NULL");
+    }
+
+    {
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"NIL, NULL\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      //noinspection unchecked
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NIL", "NULL");
+    }
+
+    {
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"NULL\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      //noinspection unchecked
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullStrings = NULL, keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      //noinspection unchecked
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"[NULL]\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      //noinspection unchecked
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NULL");
+    }
+    {
+      LoaderConfig config =
+          makeLoaderConfig("nullStrings = \"[\\\"NULL\\\"]\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      //noinspection unchecked
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("NULL");
+    }
+  }
+
+  @NotNull
+  private static LoaderConfig makeLoaderConfig(String configString) {
+    return new DefaultLoaderConfig(
+        ConfigFactory.parseString(configString)
+            .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+  }
+
+  @Test
   public void should_create_row_mapper_when_mapping_keyspace_and_table_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "mapping = \"{ 0 = c2 , 2 = c1 }\", "
-                        + "nullToUnset = true, "
-                        + "nullStrings = [], "
-                        + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            "mapping = \"{ 0 = c2 , 2 = c1 }\", "
+                + "nullToUnset = true, "
+                + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -265,13 +319,10 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_row_mapper_when_mapping_and_statement_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "mapping = \"0 = c2 , 2 = c1\", "
-                        + "nullToUnset = true, "
-                        + "nullStrings = [], "
-                        + "query=\"select c2,c1 from ks.t1\"")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            "mapping = \"0 = c2 , 2 = c1\", "
+                + "nullToUnset = true, "
+                + "query=\"select c2,c1 from ks.t1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -296,10 +347,7 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_row_mapper_when_keyspace_and_table_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("nullToUnset = true, nullStrings = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+    LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -324,11 +372,7 @@ public class SchemaSettingsTest {
 
   @Test
   public void should_create_row_mapper_when_null_to_unset_is_false() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "nullToUnset = false, nullStrings = [], keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+    LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -354,12 +398,8 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_row_mapper_when_null_words_are_provided() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "nullToUnset = false, "
-                        + "nullStrings = [\"NIL\", \"NULL\"], "
-                        + "keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
+        makeLoaderConfig(
+            "nullToUnset = false, " + "nullStrings = \"NIL, NULL\", " + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
