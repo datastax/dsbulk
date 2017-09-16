@@ -24,6 +24,10 @@ public interface Mapping {
   /**
    * Maps the given field to a bound statement variable. Used in write workflows.
    *
+   * <p>Note that the returned name is never quoted, even if it requires quoting to conform with the
+   * syntax of CQL identifiers; it is the caller's responsibility to check if quoting is required or
+   * not.
+   *
    * @param field the field name.
    * @return the bound statement variable name the given field maps to, or {@code null} if the field
    *     does not map to any known bound statement variable.
@@ -34,8 +38,10 @@ public interface Mapping {
   /**
    * Maps the given row variable to a field. Used in read workflows.
    *
-   * @param variable the row variable name. The name must be {@link
-   *     com.datastax.driver.core.Metadata#quoteIfNecessary(String) quoted if necessary}.
+   * <p>Note that the given variable name must be supplied unquoted, even if it requires quoting to
+   * comply with the syntax of CQL identifiers.
+   *
+   * @param variable the row variable name; never {@code null}.
    * @return the field name the given variable maps to, or {@code null} if the variable does not map
    *     to any known field.
    */
@@ -44,6 +50,9 @@ public interface Mapping {
 
   /**
    * Returns the codec to use for the given bound statement or row variable.
+   *
+   * <p>Note that the given variable name must be supplied unquoted, even if it requires quoting to
+   * comply with the syntax of CQL identifiers.
    *
    * @param variable the bound statement or row variable name; never {@code null}.
    * @param cqlType the CQL type; never {@code null}.

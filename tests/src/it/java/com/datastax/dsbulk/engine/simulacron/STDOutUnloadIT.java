@@ -21,7 +21,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-public class STDOutUnloadTest {
+public class STDOutUnloadIT {
   @Rule public SimulacronRule simulacron = new SimulacronRule(ClusterSpec.builder().withNodes(1));
   private PrintStream originalStdout;
   private ByteArrayOutputStream baos;

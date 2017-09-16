@@ -19,7 +19,6 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -218,23 +217,6 @@ public interface LoaderConfig extends Config {
         return "boolean";
     }
     return "arg";
-  }
-
-  /**
-   * Returns the first string in the string list at the given path, if it exists, or null otherwise.
-   *
-   * @param path path expression.
-   * @return the the first string in the string list at the given path, if it exists, or null
-   *     otherwise.
-   * @throws ConfigException.Missing if value is absent or null.
-   * @throws ConfigException.WrongType if value is not convertible to a String list.
-   */
-  default String getFirstString(String path) {
-    List<String> list = getStringList(path);
-    if (list.isEmpty()) {
-      return null;
-    }
-    return list.get(0);
   }
 
   @Override

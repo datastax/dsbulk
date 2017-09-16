@@ -35,6 +35,10 @@ import org.junit.Test;
 
 public class DefaultReadResultMapperTest {
 
+  private static final String C1 = "col1";
+  private static final String C2 = "col2";
+  private static final String C3 = "My Fancy Column Name";
+
   private Mapping mapping;
   private RecordMetadata recordMetadata;
   private ReadResult result;
@@ -54,28 +58,28 @@ public class DefaultReadResultMapperTest {
     Row row = mock(Row.class);
     result = mock(ReadResult.class);
     when(result.getRow()).thenReturn(Optional.ofNullable(row));
-    ColumnDefinitions.Definition c1 = newDefinition("c1", DataType.cint());
-    ColumnDefinitions.Definition c2 = newDefinition("c2", DataType.varchar());
-    ColumnDefinitions.Definition c3 = newDefinition("c3", DataType.varchar());
+    ColumnDefinitions.Definition c1 = newDefinition(C1, DataType.cint());
+    ColumnDefinitions.Definition c2 = newDefinition(C2, DataType.varchar());
+    ColumnDefinitions.Definition c3 = newDefinition(C3, DataType.varchar());
     ColumnDefinitions variables = newColumnDefinitions(c1, c2, c3);
     when(row.getColumnDefinitions()).thenReturn(variables);
-    when(mapping.variableToField("c1")).thenReturn("f0");
-    when(mapping.variableToField("c2")).thenReturn("f1");
-    when(mapping.variableToField("c3")).thenReturn("f2");
+    when(mapping.variableToField(C1)).thenReturn("f0");
+    when(mapping.variableToField(C2)).thenReturn("f1");
+    when(mapping.variableToField(C3)).thenReturn("f2");
     TypeCodec codec1 = TypeCodec.cint();
     TypeCodec codec2 = TypeCodec.varchar();
     //noinspection unchecked
-    when(mapping.codec("c1", DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
+    when(mapping.codec(C1, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
     //noinspection unchecked
-    when(mapping.codec("c2", DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
+    when(mapping.codec(C2, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
     //noinspection unchecked
-    when(mapping.codec("c3", DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
+    when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
     //noinspection unchecked
-    when(row.get("c1", codec1)).thenReturn(42);
+    when(row.get(C1, codec1)).thenReturn(42);
     //noinspection unchecked
-    when(row.get("c2", codec2)).thenReturn("foo");
+    when(row.get(C2, codec2)).thenReturn("foo");
     //noinspection unchecked
-    when(row.get("c3", codec2)).thenReturn("bar");
+    when(row.get(C3, codec2)).thenReturn("bar");
 
     // to generate locations
     BoundStatement boundStatement = mock(BoundStatement.class);
@@ -92,9 +96,9 @@ public class DefaultReadResultMapperTest {
     ColumnDefinitions.Definition end = newDefinition("end", DataType.bigint());
     ColumnDefinitions boundVariables = newColumnDefinitions(start, end);
     when(ps.getVariables()).thenReturn(boundVariables);
-    when(row.getObject("c1")).thenReturn(42);
-    when(row.getObject("c2")).thenReturn("foo");
-    when(row.getObject("c3")).thenReturn("bar");
+    when(row.getObject(C1)).thenReturn(42);
+    when(row.getObject(C2)).thenReturn("foo");
+    when(row.getObject(C3)).thenReturn("bar");
     when(boundStatement.getObject("start")).thenReturn(1234L);
     when(boundStatement.getObject("end")).thenReturn(5678L);
   }
@@ -113,7 +117,7 @@ public class DefaultReadResultMapperTest {
   public void should_map_result_to_error_record_when_mapping_fails() throws Exception {
     CodecNotFoundException exception =
         new CodecNotFoundException("not really", DataType.varchar(), TypeToken.of(String.class));
-    when(mapping.codec("c3", DataType.varchar(), TypeToken.of(String.class))).thenThrow(exception);
+    when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenThrow(exception);
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata, null);
     UnmappableRecord record = (UnmappableRecord) mapper.map(result);
     assertThat(record.getError()).isSameAs(exception);
@@ -125,8 +129,8 @@ public class DefaultReadResultMapperTest {
         .hasPath("/ks/t")
         .hasParameter("start", "1234")
         .hasParameter("end", "5678")
-        .hasParameter("c1", "42")
-        .hasParameter("c2", "\'foo\'")
-        .hasParameter("c3", "\'bar\'");
+        .hasParameter(C1, "42")
+        .hasParameter(C2, "\'foo\'")
+        .hasParameter(C3, "\'bar\'");
   }
 }

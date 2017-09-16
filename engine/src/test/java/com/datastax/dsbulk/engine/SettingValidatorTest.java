@@ -8,6 +8,7 @@ package com.datastax.dsbulk.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.dsbulk.engine.internal.OptionUtils;
 import com.typesafe.config.ConfigFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -40,6 +41,7 @@ public class SettingValidatorTest {
     System.setErr(originalStderr);
     System.clearProperty("config.file");
     ConfigFactory.invalidateCaches();
+    OptionUtils.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
   }
 
   @Test
