@@ -141,13 +141,34 @@ public class MainTest {
 
   @Test
   public void should_respect_custom_config_file() throws Exception {
-    File f = tempFolder.newFile("myapp.conf");
-    Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
-    new Main(new String[] {"load", "-f", f.getPath()});
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err)
-        .doesNotContain("First argument must be subcommand")
-        .contains("Cannot find connector 'junk'");
+    {
+      File f = tempFolder.newFile("myapp.conf");
+      Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
+      new Main(new String[] {"load", "-f", f.getPath()});
+      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      assertThat(err)
+          .doesNotContain("First argument must be subcommand")
+          .contains("Cannot find connector 'junk'");
+    }
+    {
+      File f = tempFolder.newFile("myapp2.conf");
+      Files.write(f.toPath(), "dsbulk.connector.csv.recursive=tralse".getBytes("UTF-8"));
+      new Main(new String[] {"load", "-f", f.getPath()});
+      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      assertThat(err)
+          .doesNotContain("First argument must be subcommand")
+          .contains("recursive has type STRING rather than BOOLEAN");
+    }
+
+    {
+      File f = tempFolder.newFile("myapp3.conf");
+      Files.write(f.toPath(), "dsbulk.driver.socket.readTimeout=wonky".getBytes("UTF-8"));
+      new Main(new String[] {"load", "-f", f.getPath()});
+      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      assertThat(err)
+          .doesNotContain("First argument must be subcommand")
+          .contains("Invalid value at 'socket.readTimeout'");
+    }
   }
 
   @Test
