@@ -112,19 +112,19 @@ public class SchemaSettings implements SettingsValidator {
         keyspaceTablePresent = true;
       }
 
-      //If the keyspace or table is present. Both must be present.
+      // If the keyspace or table is present. Both must be present.
       if (config.hasPath("keyspace") != config.hasPath("table")) {
         throw new BulkConfigurationException(
             "schema.keyspace and schema.table must accompany one another in the configuration");
       }
 
-      // Either the keyspace, and table must be present or the mapping must be present.
+      // Either the keyspace and table must be present, or the mapping must be present.
       if (!config.hasPath("mapping") && !keyspaceTablePresent) {
         throw new BulkConfigurationException(
             "schema.mapping, or schema.keyspace and schema.table must be defined");
       }
 
-      // Either the keyspace, and table must be present or the mapping must be present.
+      // Either the keyspace and table must be present, or the mapping must be present.
       if (!config.hasPath("query") && !keyspaceTablePresent) {
         throw new BulkConfigurationException(
             "schema.query, or schema.keyspace and schema.table must be defined");

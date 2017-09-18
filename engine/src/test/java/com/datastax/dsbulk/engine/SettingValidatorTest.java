@@ -8,11 +8,10 @@ package com.datastax.dsbulk.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.dsbulk.engine.internal.OptionUtils;
-import com.typesafe.config.ConfigFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,6 +21,61 @@ public class SettingValidatorTest {
   private PrintStream originalStdout;
   private ByteArrayOutputStream stderr;
   private ByteArrayOutputStream stdout;
+
+  private final String[] BADPARAMSWRONGTYPE = {
+    "--connector.csv.recursive=tralse",
+    "--log.stmt.maxQueryStringLength=NotANumber",
+    "--log.stmt.maxBoundValueLength=NotANumber",
+    "--log.stmt.maxBoundValues=NotANumber",
+    "--log.stmt.maxInnerStatements=NotANumber",
+    "--log.maxThreads=badValue",
+    "--driver.port=notANumber",
+    "--driver.pooling.local.connections=NotANumber",
+    "--driver.pooling.remote.connections=notANumber",
+    "--driver.pooling.local.requests=NotANumber",
+    "--driver.pooling.remote.requests=notANumber",
+    "--driver.query.fetchSize=NotANumber",
+    "--driver.query.idempotence=notAboolean",
+    "--driver.timestampGenerator=badInstance",
+    "--driver.addressTranslator=badINstance",
+    "--connector.csv.skipLines=notANumber",
+    "--connector.csv.maxLines=notANumber",
+    "--connector.csv.recursive=tralse",
+    "--connector.csv.header=tralse",
+    "--connector.csv.encoding=1",
+    "--connector.csv.delimiter=",
+    "--connector.csv.quote=",
+    "--connector.csv.escape=",
+    "--connector.csv.comment=",
+    "--connector.csv.maxThreads=notANumber",
+    "--schema.nullToUnset=tralse",
+    "--batch.maxBatchSize=NotANumber",
+    "--batch.bufferSize=NotANumber",
+    "--executor.maxPerSecond=NotANumber",
+    "--executor.maxInFlight=NotANumber",
+    "--executor.maxThreads=NotANumber",
+    "--monitoring.expectedWrites=NotANumber",
+    "--monitoring.expectedWrites=expectedReads",
+    "--monitoring.jmx=tralse",
+    "--engine.maxMappingThreads=NotANumber",
+    "--engine.maxConcurrentReads=NotANumber"
+  };
+
+  private final String[] BADENUM = {
+    "--log.stmt.level=badValue",
+    "--driver.protocol.compression=badValue",
+    "--driver.query.consistency=badValue",
+    "--driver.query.serialConsistency=badValue",
+    "--batch.mode=badEnum",
+    "--monitoring.rateUnit=badValue",
+    "--monitoring.durationUnit=badValue",
+  };
+
+  private final String[] BADDURATION = {
+    "--driver.socket.readTimeout=badValue",
+    "--driver.pooling.heartbeat=badValue",
+    "--monitoring.reportRate=NotANumber",
+  };
 
   @Before
   public void setUp() throws Exception {
@@ -39,9 +93,65 @@ public class SettingValidatorTest {
   public void tearDown() throws Exception {
     System.setOut(originalStdout);
     System.setErr(originalStderr);
-    System.clearProperty("config.file");
-    ConfigFactory.invalidateCaches();
-    OptionUtils.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+  }
+
+  @Test
+  public void should_error_on_bad_arguments() {
+    for (String arugment : Arrays.asList(BADPARAMSWRONGTYPE)) {
+      int starting_index = arugment.indexOf("-", arugment.indexOf("-arugment") + 1) + 2;
+      int ending_index = arugment.indexOf("=");
+      String argPrefix = arugment.substring(starting_index, ending_index);
+      new Main(
+          new String[] {
+            "load",
+            "--schema.keyspace=keyspace",
+            "--schema.table=table",
+            "--connector.csv.url=127.0.1.1",
+            arugment
+          });
+      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      assertThat(err).contains(argPrefix + " has type");
+      assertThat(err).contains(" rather than");
+      stderr = new ByteArrayOutputStream();
+      System.setErr(new PrintStream(stderr));
+    }
+    // These errors will look like this; String: 1: Invalid value at 'protocol.compression':
+    // The enum class Compression has no constant of the name 'badValue' (should be one of [NONE, SNAPPY, LZ4].
+    for (String arugment : Arrays.asList(BADENUM)) {
+      new Main(
+          new String[] {
+            "load",
+            "--schema.keyspace=keyspace",
+            "--schema.table=table",
+            "--connector.csv.url=127.0.1.1",
+            arugment
+          });
+      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      assertThat(err).contains("Invalid value at");
+      assertThat(err).contains("The enum class");
+      stderr = new ByteArrayOutputStream();
+      System.setErr(new PrintStream(stderr));
+    }
+    // These Errors will look like this; String: 1: Invalid value at 'socket.readTimeout': No number in duration value
+    // 'badValue
+    for (String arugment : Arrays.asList(BADDURATION)) {
+      int starting_index = arugment.indexOf("-", arugment.indexOf("-arugment") + 1) + 2;
+      int ending_index = arugment.indexOf("=");
+      String argPrefix = arugment.substring(starting_index, ending_index);
+      new Main(
+          new String[] {
+            "load",
+            "--schema.keyspace=keyspace",
+            "--schema.table=table",
+            "--connector.csv.url=127.0.1.1",
+            arugment
+          });
+      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      assertThat(err).contains("Invalid value at");
+      assertThat(err).contains(" No number in duration value");
+      stderr = new ByteArrayOutputStream();
+      System.setErr(new PrintStream(stderr));
+    }
   }
 
   @Test
@@ -52,11 +162,21 @@ public class SettingValidatorTest {
   }
 
   @Test
-  public void should_error_bad_type_connector_option() throws Exception {
-    new Main(new String[] {"load", "--connector.csv.recursive", "tralse"});
+  public void should_error_on_empty_hosts() throws Exception {
+    new Main(new String[] {"load", "--driver.hosts", ""});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("Configuration entry of");
-    assertThat(err).contains("recursive has type STRING rather than BOOLEAN");
+    assertThat(err)
+        .contains(
+            "driver.hosts is mandatory. Please set driver.hosts and try again. See settings.md or help for more information");
+  }
+
+  @Test
+  public void should_error_on_empty_url() throws Exception {
+    new Main(new String[] {"load", "--driver.hosts=hostshere", "--connector.csv.url", ""});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .contains(
+            "url is mandatory when using the csv connector. Please set connector.csv.url and try again. See settings.md or help for more information.");
   }
 
   @Test
@@ -68,7 +188,7 @@ public class SettingValidatorTest {
 
   @Test
   public void should_error_invalid_auth_provider() throws Exception {
-    new Main(new String[] {"load", "--driver.auth.provide", "InvalidAuthProvider"});
+    new Main(new String[] {"load", "--driver.auth.provider", "InvalidAuthProvider"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("InvalidAuthProvider is not a valid auth provider");
   }
@@ -105,54 +225,21 @@ public class SettingValidatorTest {
 
   @Test
   public void should_error_invalid_schema_settings() throws Exception {
-    new Main(new String[] {"load"});
+    new Main(new String[] {"load", "--connector.csv.url=127.0.0.1"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("schema.mapping, or schema.keyspace and schema.table must be defined");
   }
 
   @Test
   public void should_connect_error_with_schema_defined() throws Exception {
-    new Main(new String[] {"load", "--schema.keyspace=keyspace", "--schema.table=table"});
+    new Main(
+        new String[] {
+          "load",
+          "--connector.csv.url=255.255.255.23",
+          "--schema.keyspace=keyspace",
+          "--schema.table=table"
+        });
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains(" All host(s) tried for query");
-  }
-
-  @Test
-  public void should_error_bad_type_batch_option() throws Exception {
-    new Main(
-        new String[] {
-          "load",
-          "--schema.keyspace=keyspace",
-          "--schema.table=table",
-          "--batch.bufferSize=notanumber"
-        });
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("batch.bufferSize has type STRING rather than NUMBER");
-  }
-
-  @Test
-  public void should_error_bad_type_executor_option() throws Exception {
-    new Main(
-        new String[] {
-          "load",
-          "--schema.keyspace=keyspace",
-          "--schema.table=table",
-          "--executor.maxInFlight=notanumber"
-        });
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("executor.maxInFlight has type STRING rather than NUMBER");
-  }
-
-  @Test
-  public void should_error_bad_type_monitor_option() throws Exception {
-    new Main(
-        new String[] {
-          "load",
-          "--schema.keyspace=keyspace",
-          "--schema.table=table",
-          "--monitoring.jmx=notaboolean"
-        });
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("monitoring.jmx has type STRING rather than BOOLEAN");
   }
 }

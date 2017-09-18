@@ -150,6 +150,11 @@ public class CSVConnector implements Connector {
   @Override
   public void validate(LoaderConfig settings, boolean read) throws BulkConfigurationException {
     try {
+      if (!settings.hasPath("url")) {
+        throw new BulkConfigurationException(
+            "url is mandatory when using the csv connector. Please set connector.csv.url "
+                + "and try again. See settings.md or help for more information.");
+      }
       settings.getURL("url");
       settings.getString("fileNamePattern");
       settings.getCharset("encoding");

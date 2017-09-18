@@ -11,12 +11,13 @@ import com.typesafe.config.ConfigException;
 public class ConfigUtils {
   public static BulkConfigurationException configExceptionToBulkConfigurationException(
       ConfigException e, String path) {
-    //This will happen if a user provides the wrong type
-    //Error generated will look like this
-    //Configuration entry of connector.csv.recursive has type STRING rather than BOOLEAN. See settings.md or help for more info.
+    // This will happen if a user provides the wrong type
+    // Error generated will look like this
+    // Configuration entry of connector.csv.recursive has type STRING rather than BOOLEAN. See settings.md or help for
+    // more info.
     if (e instanceof ConfigException.WrongType) {
       String em = e.getMessage();
-      int starting_index = em.indexOf(":", em.indexOf(":") + 1) + 2;
+      int starting_index = em.lastIndexOf(":") + 2;
       String errorMsg = em.substring(starting_index);
       return new BulkConfigurationException(
           "Configuration entry of "
@@ -28,7 +29,7 @@ public class ConfigUtils {
     }
     // This will catch any parse or missing exception edge cases.
     else {
-      return new BulkConfigurationException(e.getMessage());
+      return new BulkConfigurationException(e.getMessage(), path);
     }
   }
 }

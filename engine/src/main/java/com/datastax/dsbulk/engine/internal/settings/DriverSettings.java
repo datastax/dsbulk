@@ -146,6 +146,12 @@ public class DriverSettings implements SettingsValidator {
     try {
       config.getInt("port");
       config.getEnum(ProtocolOptions.Compression.class, "protocol.compression");
+
+      if (!config.hasPath("hosts")) {
+        throw new BulkConfigurationException(
+            "driver.hosts is mandatory. Please set driver.hosts "
+                + "and try again. See settings.md or help for more information.");
+      }
       config.getString("hosts");
       config.getInt("pooling.local.connections");
       config.getInt("pooling.remote.connections");
