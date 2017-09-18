@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.executor.api.internal;
+package com.datastax.dsbulk.executor.api.internal.emitter;
 
 import com.datastax.driver.core.AsyncContinuousPagingResult;
 import com.datastax.driver.core.ContinuousPagingOptions;
@@ -19,16 +19,15 @@ import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
-import org.reactivestreams.Subscriber;
 
-public class ContinuousReadResultPublisher
-    extends ResultPublisher<ReadResult, AsyncContinuousPagingResult> {
+public abstract class ContinuousReadResultEmitter
+    extends ResultEmitter<ReadResult, AsyncContinuousPagingResult> {
 
   private final ContinuousPagingSession session;
   private final ContinuousPagingOptions options;
 
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-  public ContinuousReadResultPublisher(
+  public ContinuousReadResultEmitter(
       Statement statement,
       ContinuousPagingSession session,
       ContinuousPagingOptions options,
@@ -43,27 +42,26 @@ public class ContinuousReadResultPublisher
   }
 
   @Override
-  public void subscribe(Subscriber<? super ReadResult> subscriber) {
-    super.subscribe(subscriber);
-    fetchNextPage(subscriber, () -> session.executeContinuouslyAsync(statement, options));
+  public void start() {
+    super.start();
+    fetchNextPage(() -> session.executeContinuouslyAsync(statement, options));
   }
 
   @Override
-  protected void consumePage(
-      Subscriber<? super ReadResult> subscriber, AsyncContinuousPagingResult pagingResult) {
+  protected void consumePage(AsyncContinuousPagingResult pagingResult) {
     for (Row row : pagingResult.currentPage()) {
-      if (canceled) {
+      if (isCancelled()) {
         pagingResult.cancel();
         return;
       }
       DefaultReadResult result =
           new DefaultReadResult(statement, pagingResult.getExecutionInfo(), row);
-      onNext(subscriber, result);
+      onNext(result);
     }
     if (pagingResult.isLast()) {
-      onComplete(subscriber);
-    } else if (!canceled) {
-      fetchNextPage(subscriber, pagingResult::nextPage);
+      onComplete();
+    } else if (!isCancelled()) {
+      fetchNextPage(pagingResult::nextPage);
     }
   }
 

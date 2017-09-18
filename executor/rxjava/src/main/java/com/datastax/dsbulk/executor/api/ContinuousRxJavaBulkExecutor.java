@@ -6,13 +6,17 @@
  */
 package com.datastax.dsbulk.executor.api;
 
+import static io.reactivex.BackpressureStrategy.BUFFER;
+
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Statement;
-import com.datastax.dsbulk.executor.api.internal.ContinuousReadResultPublisher;
+import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.dsbulk.executor.api.internal.emitter.ContinuousReadResultEmitter;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import io.reactivex.Flowable;
+import io.reactivex.FlowableEmitter;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 
@@ -85,15 +89,51 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
   @Override
   public Flowable<ReadResult> readReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Flowable.fromPublisher(
-        new ContinuousReadResultPublisher(
-            statement,
-            session,
-            options,
-            executor,
-            listener,
-            rateLimiter,
-            requestPermits,
-            failFast));
+    return Flowable.create(
+        e -> {
+          RxJavaContinuousReadResultEmitter emitter =
+              new RxJavaContinuousReadResultEmitter(statement, e);
+          emitter.start();
+        },
+        BUFFER);
+  }
+
+  private class RxJavaContinuousReadResultEmitter extends ContinuousReadResultEmitter {
+
+    private final FlowableEmitter<ReadResult> emitter;
+
+    private RxJavaContinuousReadResultEmitter(
+        Statement statement, FlowableEmitter<ReadResult> emitter) {
+      super(
+          statement,
+          ContinuousRxJavaBulkExecutor.this.session,
+          options,
+          executor,
+          listener,
+          rateLimiter,
+          requestPermits,
+          failFast);
+      this.emitter = emitter;
+    }
+
+    @Override
+    protected void notifyOnNext(ReadResult result) {
+      emitter.onNext(result);
+    }
+
+    @Override
+    protected void notifyOnComplete() {
+      emitter.onComplete();
+    }
+
+    @Override
+    protected void notifyOnError(BulkExecutionException error) {
+      emitter.onError(error);
+    }
+
+    @Override
+    protected boolean isCancelled() {
+      return emitter.isCancelled();
+    }
   }
 }

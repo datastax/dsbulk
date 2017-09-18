@@ -6,15 +6,22 @@
  */
 package com.datastax.dsbulk.executor.api;
 
+import static reactor.core.publisher.FluxSink.OverflowStrategy.BUFFER;
+
+import com.datastax.driver.core.AsyncContinuousPagingResult;
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Statement;
-import com.datastax.dsbulk.executor.api.internal.ContinuousReadResultPublisher;
+import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.dsbulk.executor.api.internal.emitter.BackpressureController;
+import com.datastax.dsbulk.executor.api.internal.emitter.ContinuousReadResultEmitter;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import java.util.Objects;
 import java.util.concurrent.Executor;
+import java.util.function.LongConsumer;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 
 /**
  * An implementation of {@link BulkExecutor} using <a href="https://projectreactor.io">Reactor</a>,
@@ -85,15 +92,64 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
   @Override
   public Flux<ReadResult> readReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Flux.from(
-        new ContinuousReadResultPublisher(
-            statement,
-            session,
-            options,
-            executor,
-            listener,
-            rateLimiter,
-            requestPermits,
-            failFast));
+    return Flux.create(
+        e -> {
+          ReactorContinuousReadResultEmitter emitter =
+              new ReactorContinuousReadResultEmitter(statement, e);
+          emitter.start();
+        },
+        BUFFER);
+  }
+
+  private class ReactorContinuousReadResultEmitter extends ContinuousReadResultEmitter
+      implements LongConsumer {
+
+    private final FluxSink<ReadResult> sink;
+    private final BackpressureController demand = new BackpressureController();
+
+    private ReactorContinuousReadResultEmitter(Statement statement, FluxSink<ReadResult> sink) {
+      super(
+          statement,
+          ContinuousReactorBulkExecutor.this.session,
+          options,
+          executor,
+          listener,
+          rateLimiter,
+          requestPermits,
+          failFast);
+      this.sink = sink;
+      sink.onRequest(this);
+    }
+
+    @Override
+    public void accept(long requested) {
+      demand.signalRequested(requested);
+    }
+
+    @Override
+    protected void consumePage(AsyncContinuousPagingResult pagingResult) {
+      demand.awaitRequested(1);
+      super.consumePage(pagingResult);
+    }
+
+    @Override
+    protected void notifyOnNext(ReadResult result) {
+      sink.next(result);
+    }
+
+    @Override
+    protected void notifyOnComplete() {
+      sink.complete();
+    }
+
+    @Override
+    protected void notifyOnError(BulkExecutionException error) {
+      sink.error(error);
+    }
+
+    @Override
+    protected boolean isCancelled() {
+      return sink.isCancelled();
+    }
   }
 }

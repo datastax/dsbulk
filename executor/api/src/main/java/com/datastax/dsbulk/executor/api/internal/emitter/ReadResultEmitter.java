@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.executor.api.internal;
+package com.datastax.dsbulk.executor.api.internal.emitter;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
@@ -18,12 +18,11 @@ import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
-import org.reactivestreams.Subscriber;
 
-public class ReadResultPublisher extends ResultSetPublisher<ReadResult> {
+public abstract class ReadResultEmitter extends ResultSetEmitter<ReadResult> {
 
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-  public ReadResultPublisher(
+  public ReadResultEmitter(
       Statement statement,
       Session session,
       Executor executor,
@@ -35,19 +34,19 @@ public class ReadResultPublisher extends ResultSetPublisher<ReadResult> {
   }
 
   @Override
-  protected void consumePage(Subscriber<? super ReadResult> subscriber, ResultSet rs) {
+  protected void consumePage(ResultSet rs) {
     for (Row row : rs) {
       DefaultReadResult result = new DefaultReadResult(statement, rs.getExecutionInfo(), row);
-      if (canceled) {
+      if (isCancelled()) {
         break;
       }
-      onNext(subscriber, result);
+      onNext(result);
     }
     boolean lastPage = rs.getExecutionInfo().getPagingState() == null;
     if (lastPage) {
-      onComplete(subscriber);
-    } else if (!canceled) {
-      fetchNextPage(subscriber, rs::fetchMoreResults);
+      onComplete();
+    } else if (!isCancelled()) {
+      fetchNextPage(rs::fetchMoreResults);
     }
   }
 

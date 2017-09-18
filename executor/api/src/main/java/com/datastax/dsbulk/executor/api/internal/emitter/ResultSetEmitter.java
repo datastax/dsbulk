@@ -4,25 +4,22 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.executor.api.internal;
+package com.datastax.dsbulk.executor.api.internal.emitter;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
-import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
-import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.dsbulk.executor.api.result.Result;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
-import org.reactivestreams.Subscriber;
 
-public class WriteResultPublisher extends ResultSetPublisher<WriteResult> {
+public abstract class ResultSetEmitter<T extends Result> extends ResultEmitter<T, ResultSet> {
 
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-  public WriteResultPublisher(
+  ResultSetEmitter(
       Statement statement,
       Session session,
       Executor executor,
@@ -34,14 +31,8 @@ public class WriteResultPublisher extends ResultSetPublisher<WriteResult> {
   }
 
   @Override
-  protected void consumePage(Subscriber<? super WriteResult> subscriber, ResultSet rs) {
-    assert rs.isFullyFetched();
-    onNext(subscriber, new DefaultWriteResult(statement, rs.getExecutionInfo()));
-    onComplete(subscriber);
-  }
-
-  @Override
-  protected WriteResult toErrorResult(BulkExecutionException error) {
-    return new DefaultWriteResult(error);
+  public void start() {
+    super.start();
+    fetchNextPage(() -> session.executeAsync(statement));
   }
 }
