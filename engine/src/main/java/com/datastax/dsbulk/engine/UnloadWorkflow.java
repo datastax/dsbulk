@@ -59,7 +59,7 @@ public class UnloadWorkflow implements Workflow {
 
   @Override
   public void init() throws Exception {
-    SettingsManager settingsManager = new SettingsManager(config, executionId);
+    SettingsManager settingsManager = new SettingsManager(config, executionId, WorkflowType.UNLOAD);
     settingsManager.loadConfiguration();
     settingsManager.logEffectiveSettings();
     logSettings = settingsManager.getLogSettings();

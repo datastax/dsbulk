@@ -18,6 +18,8 @@ import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
@@ -34,6 +36,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.util.Collections;
 import java.util.Iterator;
@@ -41,8 +44,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/** */
-public class SchemaSettings {
+public class SchemaSettings implements SettingsValidator {
 
   private final LoaderConfig config;
 
@@ -101,8 +103,41 @@ public class SchemaSettings {
                 .setToken("end", range.getEnd()));
   }
 
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
+    try {
+      config.getBoolean("nullToUnset");
+      config.getStringList("nullStrings");
+      boolean keyspaceTablePresent = false;
+      if (config.hasPath("keyspace") && config.hasPath("table")) {
+        keyspaceTablePresent = true;
+      }
+
+      // If the keyspace or table is present. Both must be present.
+      if (config.hasPath("keyspace") != config.hasPath("table")) {
+        throw new BulkConfigurationException(
+            "schema.keyspace and schema.table must accompany one another in the configuration");
+      }
+
+      // Either the keyspace and table must be present, or the mapping must be present.
+      if (!config.hasPath("mapping") && !keyspaceTablePresent) {
+        throw new BulkConfigurationException(
+            "schema.mapping, or schema.keyspace and schema.table must be defined");
+      }
+
+      // Either the keyspace and table must be present, or the mapping must be present.
+      if (!config.hasPath("query") && !keyspaceTablePresent) {
+        throw new BulkConfigurationException(
+            "schema.query, or schema.keyspace and schema.table must be defined");
+      }
+
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
+    }
+  }
+
   private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session) {
     ImmutableBiMap.Builder<String, String> fieldsToVariablesBuilder = null;
+
     if (config.hasPath("mapping")) {
       fieldsToVariablesBuilder = new ImmutableBiMap.Builder<>();
       Config mapping = ConfigFactory.parseString(config.getString("mapping"));

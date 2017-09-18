@@ -7,6 +7,7 @@
 package com.datastax.dsbulk.connectors.api;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
@@ -64,4 +65,6 @@ public interface Connector extends AutoCloseable {
   default RecordMetadata getRecordMetadata() {
     return RecordMetadata.DEFAULT;
   }
+
+  void validate(LoaderConfig settings, boolean read) throws BulkConfigurationException;
 }

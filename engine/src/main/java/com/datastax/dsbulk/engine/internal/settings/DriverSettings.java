@@ -25,8 +25,12 @@ import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.engine.WorkflowType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+import com.typesafe.config.ConfigException;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
 import java.io.File;
@@ -46,7 +50,7 @@ import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
 
 /** */
-public class DriverSettings {
+public class DriverSettings implements SettingsValidator {
 
   enum SSLProvider {
     JDK,
@@ -136,6 +140,55 @@ public class DriverSettings {
     }
 
     return builder.build();
+  }
+
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
+    try {
+      config.getInt("port");
+      config.getEnum(ProtocolOptions.Compression.class, "protocol.compression");
+
+      if (!config.hasPath("hosts")) {
+        throw new BulkConfigurationException(
+            "driver.hosts is mandatory. Please set driver.hosts "
+                + "and try again. See settings.md or help for more information.");
+      }
+      config.getString("hosts");
+      config.getInt("pooling.local.connections");
+      config.getInt("pooling.remote.connections");
+      config.getInt("pooling.local.requests");
+      config.getInt("pooling.remote.requests");
+      config.getDuration("pooling.heartbeat");
+      config.getEnum(ConsistencyLevel.class, "query.consistency");
+      config.getEnum(ConsistencyLevel.class, "query.serialConsistency");
+      config.getInt("query.fetchSize");
+      config.getBoolean("query.idempotence");
+      config.getDuration("socket.readTimeout");
+      config.getInstance("timestampGenerator");
+      config.getInstance("addressTranslator");
+      config.getString("auth.provider");
+      if (!config.getString("auth.provider").equals("None")) {
+        String authProviderName = config.getString("auth.provider");
+        if (authProviderName.equals("PlainTextAuthProvider")
+            || authProviderName.equals("DsePlainTextAuthProvider")) {
+          if (!config.hasPath("auth.username") || !config.hasPath("auth.password")) {
+            throw new BulkConfigurationException(
+                authProviderName + " must be provided with both auth.username and auth.password");
+          }
+        } else if (authProviderName.equals("DseGSSAPIAuthProvider")) {
+          if (!config.hasPath("auth.principal") || !config.hasPath("auth.saslProtocol")) {
+            throw new BulkConfigurationException(
+                authProviderName
+                    + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional.");
+          }
+        } else {
+          throw new BulkConfigurationException(
+              authProviderName
+                  + " is not a valid auth provider. Valid auth providers are PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider");
+        }
+      }
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "driver");
+    }
   }
 
   private AuthProvider createAuthProvider() throws URISyntaxException, MalformedURLException {
