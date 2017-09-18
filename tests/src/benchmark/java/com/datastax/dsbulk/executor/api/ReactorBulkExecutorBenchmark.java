@@ -51,7 +51,7 @@ public class ReactorBulkExecutorBenchmark {
   private static final int TOTAL_RECORDS = 70865;
   private static final int WARMUP_ITERATIONS = 10;
   private static final int MEASUREMENT_ITERATIONS = 1;
-  private static final int MEASUREMENT_TIME_IN_MINUTES = 5;
+  private static final int MEASUREMENT_TIME_IN_MINUTES = 1;
 
   @Benchmark
   @OperationsPerInvocation(TOTAL_RECORDS)
