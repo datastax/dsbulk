@@ -26,7 +26,8 @@ import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
-import com.datastax.dsbulk.executor.api.writer.ReactiveBulkWriter;
+import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
+import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,7 +79,10 @@ public class LoadWorkflow implements Workflow {
     LOGGER.info("Starting write workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
 
+    int maxConcurrentWrites = executorSettings.getMaxConcurrentOps();
     int maxMappingThreads = engineSettings.getMaxMappingThreads();
+
+    Scheduler writesScheduler = Schedulers.newParallel("batch-writes", maxConcurrentWrites);
     Scheduler mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
 
     try (Connector connector = connectorSettings.getConnector(WorkflowType.LOAD);
@@ -86,7 +90,7 @@ public class LoadWorkflow implements Workflow {
         DseSession session = cluster.connect();
         MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD);
         LogManager logManager = logSettings.newLogManager(cluster);
-        ReactiveBulkWriter executor =
+        ReactorBulkWriter executor =
             executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener())) {
 
       connector.init();
@@ -96,18 +100,21 @@ public class LoadWorkflow implements Workflow {
       RecordMapper recordMapper =
           schemaSettings.createRecordMapper(
               session, connector.getRecordMetadata(), codecSettings.createCodecRegistry(cluster));
+      ReactorUnsortedStatementBatcher batcher = batchSettings.newStatementBatcher(cluster);
 
       Flux.from(connector.read())
           .parallel(maxMappingThreads)
           .runOn(mapperScheduler)
           .map(recordMapper::map)
-          .composeGroup(metricsManager.newRecordMapperMonitor())
-          .composeGroup(logManager.newRecordMapperErrorHandler())
-          .composeGroup(batchSettings.newStatementBatcher(cluster))
-          .composeGroup(metricsManager.newBatcherMonitor())
-          .flatMap(executor::writeReactive)
-          .composeGroup(logManager.newWriteErrorHandler())
           .sequential()
+          .compose(metricsManager.newRecordMapperMonitor())
+          .compose(logManager.newRecordMapperErrorHandler())
+          .compose(batcher)
+          .compose(metricsManager.newBatcherMonitor())
+          .flatMap(
+              statement -> executor.writeReactive(statement).subscribeOn(writesScheduler),
+              maxConcurrentWrites)
+          .compose(logManager.newWriteErrorHandler())
           .blockLast();
 
     } catch (Exception e) {
@@ -116,6 +123,7 @@ public class LoadWorkflow implements Workflow {
           executionId, e.getMessage());
       LOGGER.error("Uncaught exception during write workflow engine execution " + executionId, e);
     } finally {
+      writesScheduler.dispose();
       mapperScheduler.dispose();
     }
 

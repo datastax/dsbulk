@@ -29,14 +29,9 @@ public class EngineSettings implements SettingsValidator {
     return config.getThreads("maxMappingThreads");
   }
 
-  public int getMaxConcurrentReads() {
-    return config.getThreads("maxConcurrentReads");
-  }
-
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getThreads("maxMappingThreads");
-      config.getThreads("maxConcurrentReads");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
     }

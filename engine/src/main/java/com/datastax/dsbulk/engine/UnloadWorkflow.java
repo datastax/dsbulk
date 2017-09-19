@@ -78,7 +78,7 @@ public class UnloadWorkflow implements Workflow {
     LOGGER.info("Starting read workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
 
-    int maxConcurrentReads = engineSettings.getMaxConcurrentReads();
+    int maxConcurrentReads = executorSettings.getMaxConcurrentOps();
     int maxMappingThreads = engineSettings.getMaxMappingThreads();
 
     Scheduler readsScheduler = Schedulers.newParallel("range-reads", maxConcurrentReads);
@@ -106,13 +106,13 @@ public class UnloadWorkflow implements Workflow {
               .flatMap(
                   statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
                   maxConcurrentReads)
+              .compose(logManager.newReadErrorHandler())
               .parallel(maxMappingThreads)
               .runOn(mapperScheduler)
-              .composeGroup(logManager.newReadErrorHandler())
               .map(readResultMapper::map)
-              .composeGroup(metricsManager.newResultMapperMonitor())
-              .composeGroup(logManager.newResultMapperErrorHandler())
               .sequential()
+              .compose(metricsManager.newResultMapperMonitor())
+              .compose(logManager.newResultMapperErrorHandler())
               .publish()
               .autoConnect(2);
 

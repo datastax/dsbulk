@@ -22,7 +22,6 @@ public class EngineSettingsTest {
     EngineSettings settings = new EngineSettings(config);
     assertThat(settings.getMaxMappingThreads())
         .isEqualTo(Runtime.getRuntime().availableProcessors());
-    assertThat(settings.getMaxConcurrentReads()).isEqualTo(4);
   }
 
   @Test
@@ -34,7 +33,5 @@ public class EngineSettingsTest {
     EngineSettings settings = new EngineSettings(config);
     assertThat(settings.getMaxMappingThreads())
         .isEqualTo(Runtime.getRuntime().availableProcessors() * 8);
-    assertThat(settings.getMaxConcurrentReads())
-        .isEqualTo(Runtime.getRuntime().availableProcessors() * 4);
   }
 }

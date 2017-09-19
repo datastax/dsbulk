@@ -17,12 +17,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class SettingValidatorTest {
-  private PrintStream originalStderr;
-  private PrintStream originalStdout;
-  private ByteArrayOutputStream stderr;
-  private ByteArrayOutputStream stdout;
 
-  private final String[] BADPARAMSWRONGTYPE = {
+  private PrintStream originalStderr;
+  private ByteArrayOutputStream stderr;
+
+  private static final String[] BAD_PARAMS_WRONG_TYPE = {
     "--connector.csv.recursive=tralse",
     "--log.stmt.maxQueryStringLength=NotANumber",
     "--log.stmt.maxBoundValueLength=NotANumber",
@@ -54,14 +53,14 @@ public class SettingValidatorTest {
     "--executor.maxPerSecond=NotANumber",
     "--executor.maxInFlight=NotANumber",
     "--executor.maxThreads=NotANumber",
+    "--executor.maxConcurrentOps=NotANumber",
     "--monitoring.expectedWrites=NotANumber",
     "--monitoring.expectedWrites=expectedReads",
     "--monitoring.jmx=tralse",
-    "--engine.maxMappingThreads=NotANumber",
-    "--engine.maxConcurrentReads=NotANumber"
+    "--engine.maxMappingThreads=NotANumber"
   };
 
-  private final String[] BADENUM = {
+  private static final String[] BAD_ENUM = {
     "--log.stmt.level=badValue",
     "--driver.protocol.compression=badValue",
     "--driver.query.consistency=badValue",
@@ -71,7 +70,7 @@ public class SettingValidatorTest {
     "--monitoring.durationUnit=badValue",
   };
 
-  private final String[] BADDURATION = {
+  private static final String[] BAD_DURATION = {
     "--driver.socket.readTimeout=badValue",
     "--driver.pooling.heartbeat=badValue",
     "--monitoring.reportRate=NotANumber",
@@ -79,35 +78,29 @@ public class SettingValidatorTest {
 
   @Before
   public void setUp() throws Exception {
-    originalStdout = System.out;
     originalStderr = System.err;
-
-    stdout = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(stdout));
-
     stderr = new ByteArrayOutputStream();
     System.setErr(new PrintStream(stderr));
   }
 
   @After
   public void tearDown() throws Exception {
-    System.setOut(originalStdout);
     System.setErr(originalStderr);
   }
 
   @Test
   public void should_error_on_bad_arguments() {
-    for (String arugment : Arrays.asList(BADPARAMSWRONGTYPE)) {
-      int starting_index = arugment.indexOf("-", arugment.indexOf("-arugment") + 1) + 2;
-      int ending_index = arugment.indexOf("=");
-      String argPrefix = arugment.substring(starting_index, ending_index);
+    for (String argument : Arrays.asList(BAD_PARAMS_WRONG_TYPE)) {
+      int starting_index = argument.indexOf("-", argument.indexOf("-argument") + 1) + 2;
+      int ending_index = argument.indexOf("=");
+      String argPrefix = argument.substring(starting_index, ending_index);
       new Main(
           new String[] {
             "load",
             "--schema.keyspace=keyspace",
             "--schema.table=table",
             "--connector.csv.url=127.0.1.1",
-            arugment
+            argument
           });
       String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
       assertThat(err).contains(argPrefix + " has type");
@@ -117,14 +110,14 @@ public class SettingValidatorTest {
     }
     // These errors will look like this; String: 1: Invalid value at 'protocol.compression':
     // The enum class Compression has no constant of the name 'badValue' (should be one of [NONE, SNAPPY, LZ4].
-    for (String arugment : Arrays.asList(BADENUM)) {
+    for (String argument : Arrays.asList(BAD_ENUM)) {
       new Main(
           new String[] {
             "load",
             "--schema.keyspace=keyspace",
             "--schema.table=table",
             "--connector.csv.url=127.0.1.1",
-            arugment
+            argument
           });
       String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
       assertThat(err).contains("Invalid value at");
@@ -134,17 +127,14 @@ public class SettingValidatorTest {
     }
     // These Errors will look like this; String: 1: Invalid value at 'socket.readTimeout': No number in duration value
     // 'badValue
-    for (String arugment : Arrays.asList(BADDURATION)) {
-      int starting_index = arugment.indexOf("-", arugment.indexOf("-arugment") + 1) + 2;
-      int ending_index = arugment.indexOf("=");
-      String argPrefix = arugment.substring(starting_index, ending_index);
+    for (String argument : Arrays.asList(BAD_DURATION)) {
       new Main(
           new String[] {
             "load",
             "--schema.keyspace=keyspace",
             "--schema.table=table",
             "--connector.csv.url=127.0.1.1",
-            arugment
+            argument
           });
       String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
       assertThat(err).contains("Invalid value at");

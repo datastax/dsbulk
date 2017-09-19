@@ -996,16 +996,6 @@ Default: **&lt;unspecified&gt;**.
 
 Workflow Engine-specific settings.
 
-#### ---engine.maxConcurrentReads _&lt;number&gt;_
-
-The maximum number of range reads that can be issued concurrently for the same table.
-
-Applies only to read workflows; ignored otherwise.
-
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
-
-Default: **4**.
-
 #### ---engine.maxMappingThreads _&lt;string&gt;_
 
 The maximum number of threads to allocate for serializing and deserializing, as well as for mapping records or results.
@@ -1059,6 +1049,17 @@ The unit to use for the *executor.continuousPaging.pageSize* setting.
 Possible values are: `ROWS`, `BYTES`.
 
 Default: **"ROWS"**.
+
+#### ---executor.maxConcurrentOps _&lt;string&gt;_
+
+The maximum number operations (reads or writes) that can be issued concurrently for the same table,
+for a given workflow.
+
+Applies to both load and unload workflows.
+
+The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
+
+Default: **"1C"**.
 
 #### ---executor.maxInFlight _&lt;number&gt;_
 
