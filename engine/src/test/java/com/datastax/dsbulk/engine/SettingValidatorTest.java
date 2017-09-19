@@ -225,7 +225,7 @@ public class SettingValidatorTest {
 
   @Test
   public void should_error_invalid_schema_settings() throws Exception {
-    new Main(new String[] {"load", "--connector.csv.url=127.0.0.1"});
+    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("schema.mapping, or schema.keyspace and schema.table must be defined");
   }
@@ -235,7 +235,8 @@ public class SettingValidatorTest {
     new Main(
         new String[] {
           "load",
-          "--connector.csv.url=255.255.255.23",
+          "--driver.hosts=255.255.255.23",
+          "--connector.csv.url=/path/to/my/file",
           "--schema.keyspace=keyspace",
           "--schema.table=table"
         });
