@@ -257,10 +257,11 @@ public class SettingsDocumentor {
             .map(s -> s.length() > 0 ? s.substring(1) : s)
             .collect(Collectors.joining("\n"));
     if (value.valueType() != ConfigValueType.OBJECT) {
-      desc +=
-          String.format(
-              "%n%nDefaults to **%s**.",
-              value.render(ConfigRenderOptions.concise()).replace("*", "\\*"));
+      String defaultValue = value.render(ConfigRenderOptions.concise()).replace("*", "\\*");
+      if (defaultValue.equals("\"\"")) {
+        defaultValue = "&lt;unspecified&gt;";
+      }
+      desc += String.format("%n%nDefault: **%s**.", defaultValue);
     }
     return desc;
   }
