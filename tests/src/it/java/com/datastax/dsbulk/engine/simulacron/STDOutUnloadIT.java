@@ -6,6 +6,9 @@
  */
 package com.datastax.dsbulk.engine.simulacron;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.tests.SimulacronRule;
 import com.datastax.dsbulk.tests.utils.CsvUtils;
@@ -20,11 +23,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 public class STDOutUnloadIT {
   @Rule public SimulacronRule simulacron = new SimulacronRule(ClusterSpec.builder().withNodes(1));
+
   private PrintStream originalStdout;
   private ByteArrayOutputStream baos;
+  private Logger root;
+  private Appender<ILoggingEvent> stdoutAppender;
 
   @Before
   public void hijackStandardOut() {
@@ -32,11 +39,15 @@ public class STDOutUnloadIT {
     originalStdout = System.out;
     baos = new ByteArrayOutputStream();
     System.setOut(new PrintStream(baos));
+    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    stdoutAppender = root.getAppender("STDOUT");
+    root.detachAppender(stdoutAppender);
   }
 
   @After
   public void releaseStandardOut() {
     System.setOut(originalStdout);
+    root.addAppender(stdoutAppender);
   }
 
   @Test
