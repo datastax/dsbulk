@@ -24,22 +24,24 @@ public class CSVUnloadWorkflowIT {
     Cluster cluster = Cluster.builder().addContactPoint("127.0.0.1").build();
     Session session = cluster.connect();
     session.execute(
-        "create keyspace if not exists test with replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 }");
+        "create keyspace if not exists test with replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 }");
     session.execute("USE test");
     CsvUtils.createIpByCountryTable(session);
 
     URL output = Files.createTempDirectory("output").toUri().toURL();
     String[] args = {
-      "read",
-      "log.directory",
+      "unload",
+      "--log.directory",
       "./target",
-      "connector.csv.url",
+      "--connector.csv.header",
+      "true",
+      "--connector.csv.url",
       output.toExternalForm(),
-      "schema.keyspace",
+      "--schema.keyspace",
       "test",
-      "schema.table",
+      "--schema.table",
       "ip_by_country",
-      "schema.mapping",
+      "--schema.mapping",
       "{"
           + "\"beginning IP Address\"=beginning_ip_address,"
           + "\"ending IP Address\"=ending_ip_address,"
