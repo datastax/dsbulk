@@ -115,7 +115,11 @@ public class OptionUtils {
     //   Those sorts of instances are preceded by ", so don't replace those.
 
     desc = desc.replaceAll(" +", " ").replaceAll("([^\"])\\*\\*", "$1").trim();
-    desc += "\nDefaults to " + value.render(ConfigRenderOptions.concise()) + ".";
+    String defaultValue = value.render(ConfigRenderOptions.concise());
+    if (defaultValue.equals("\"\"")) {
+      defaultValue = "<unspecified>";
+    }
+    desc += "\nDefault: " + defaultValue;
     return desc;
   }
 }

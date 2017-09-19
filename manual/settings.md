@@ -60,7 +60,7 @@ For other URLs: the URL will be read or written directly; settings like *fileNam
 
 This setting has no default value and must be supplied by the user.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### -c,--connector.name _&lt;string&gt;_
 
@@ -73,7 +73,7 @@ It is used in two places:
 
 Example: `csv` for class `CSVConnector`, with settings located under `connector.csv`.
 
-Defaults to **"csv"**.
+Default: **"csv"**.
 
 #### -delim,--connector.csv.delimiter _&lt;string&gt;_
 
@@ -81,7 +81,7 @@ The character to use as field delimiter.
 
 Only one character can be specified. Note that this setting applies to all files to be read or written.
 
-Defaults to **","**.
+Default: **","**.
 
 #### -header,--connector.csv.header _&lt;boolean&gt;_
 
@@ -99,7 +99,7 @@ When writing:
 
 Note that this setting applies to all files to be read or written.
 
-Defaults to **true**.
+Default: **true**.
 
 #### -skipLines,--connector.csv.skipLines _&lt;number&gt;_
 
@@ -107,7 +107,7 @@ Defines a number of lines to skip from each input file before the parser can beg
 
 Ignored when writing.
 
-Defaults to **0**.
+Default: **0**.
 
 #### -maxLines,--connector.csv.maxLines _&lt;number&gt;_
 
@@ -123,7 +123,7 @@ This setting takes into account the *header* setting: if a file begins with a he
 
 This feature is disabled by default (indicated by its `-1` value).
 
-Defaults to **-1**.
+Default: **-1**.
 
 #### -k,--schema.keyspace _&lt;string&gt;_
 
@@ -131,7 +131,7 @@ The keyspace to connect to. Optional.
 
 If not specified, then the *schema.query* setting must be specified.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
@@ -139,7 +139,7 @@ The destination table. Optional.
 
 If not specified, then the *schema.query* setting must be specified.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### -m,--schema.mapping _&lt;string&gt;_
 
@@ -149,14 +149,14 @@ Applies to both load and unload workflows.
 
 If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping.
 
-Mappings should be specified as a HOCON map of the following form:
+Mappings should be specified as a HOCON map (https://github.com/typesafehub/config/blob/master/HOCON.md) of the following form:
 
 - Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, etc. are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 
 The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### -h,--driver.hosts _&lt;string&gt;_
 
@@ -166,7 +166,7 @@ This must be a comma-separated list of hosts, each specified by a host-name or i
 
 Note that each host entry may optionally be followed by `:port` to specify the port to connect to. When not specified, this value falls back to the *port* setting.
 
-Defaults to **"127.0.0.1"**.
+Default: **"127.0.0.1"**.
 
 #### -port,--driver.port _&lt;number&gt;_
 
@@ -174,7 +174,7 @@ The port to connect to at initial contact points.
 
 Note that all nodes in a cluster must accept connections on the same port number.
 
-Defaults to **9042**.
+Default: **9042**.
 
 #### -p,--driver.auth.password _&lt;string&gt;_
 
@@ -184,7 +184,7 @@ Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Defaults to **"cassandra"**.
+Default: **"cassandra"**.
 
 #### -u,--driver.auth.username _&lt;string&gt;_
 
@@ -194,7 +194,7 @@ Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Defaults to **"cassandra"**.
+Default: **"cassandra"**.
 
 #### -cl,--driver.query.consistency _&lt;string&gt;_
 
@@ -202,7 +202,7 @@ The consistency level to use for both loads and unloads.
 
 Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
 
-Defaults to **"LOCAL_ONE"**.
+Default: **"LOCAL_ONE"**.
 
 #### ---executor.maxPerSecond _&lt;number&gt;_
 
@@ -210,7 +210,7 @@ The maximum number of concurrent requests per second. This acts as a safeguard a
 
 Setting this option to any negative value will disable it.
 
-Defaults to **100000**.
+Default: **100000**.
 
 #### -maxErrors,--log.maxErrors _&lt;number&gt;_
 
@@ -218,7 +218,7 @@ The maximum number of errors to tolerate before aborting the entire operation.
 
 Setting this value to `-1` disables this feature (not recommended).
 
-Defaults to **100**.
+Default: **100**.
 
 #### -logDir,--log.directory _&lt;string&gt;_
 
@@ -230,7 +230,7 @@ Log files for a specific run will be located in a sub-directory inside the direc
 
 Setting this value to `.` denotes the current working directory.
 
-Defaults to **"."**.
+Default: **"."**.
 
 #### -reportRate,--monitoring.reportRate _&lt;string&gt;_
 
@@ -240,7 +240,7 @@ The console reporter will print useful metrics about the ongoing operation at th
 
 Durations lesser than one second will be rounded up to 1 second.
 
-Defaults to **"5 seconds"**.
+Default: **"5 seconds"**.
 
 <a name="connector"></a>
 ## Connector Settings
@@ -258,7 +258,7 @@ It is used in two places:
 
 Example: `csv` for class `CSVConnector`, with settings located under `connector.csv`.
 
-Defaults to **"csv"**.
+Default: **"csv"**.
 
 <a name="connector.csv"></a>
 ### Connector Csv Settings
@@ -300,7 +300,7 @@ For other URLs: the URL will be read or written directly; settings like *fileNam
 
 This setting has no default value and must be supplied by the user.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### -delim,--connector.csv.delimiter _&lt;string&gt;_
 
@@ -308,7 +308,7 @@ The character to use as field delimiter.
 
 Only one character can be specified. Note that this setting applies to all files to be read or written.
 
-Defaults to **","**.
+Default: **","**.
 
 #### -header,--connector.csv.header _&lt;boolean&gt;_
 
@@ -326,7 +326,7 @@ When writing:
 
 Note that this setting applies to all files to be read or written.
 
-Defaults to **true**.
+Default: **true**.
 
 #### -skipLines,--connector.csv.skipLines _&lt;number&gt;_
 
@@ -334,7 +334,7 @@ Defines a number of lines to skip from each input file before the parser can beg
 
 Ignored when writing.
 
-Defaults to **0**.
+Default: **0**.
 
 #### -maxLines,--connector.csv.maxLines _&lt;number&gt;_
 
@@ -350,7 +350,7 @@ This setting takes into account the *header* setting: if a file begins with a he
 
 This feature is disabled by default (indicated by its `-1` value).
 
-Defaults to **-1**.
+Default: **-1**.
 
 #### -comment,--connector.csv.comment _&lt;string&gt;_
 
@@ -360,7 +360,7 @@ Only one character can be specified. Note that this setting applies to all files
 
 This feature is disabled by default (indicated by its `null` character value).
 
-Defaults to **"\u0000"**.
+Default: **"\u0000"**.
 
 #### -encoding,--connector.csv.encoding _&lt;string&gt;_
 
@@ -368,7 +368,7 @@ The file encoding to use.
 
 Note that this setting applies to all files to be read or written.
 
-Defaults to **"UTF-8"**.
+Default: **"UTF-8"**.
 
 #### -escape,--connector.csv.escape _&lt;string&gt;_
 
@@ -376,7 +376,7 @@ The character used for escaping quotes inside an already quoted value.
 
 Only one character can be specified. Note that this setting applies to all files to be read or written.
 
-Defaults to **"\\"**.
+Default: **"\\"**.
 
 #### ---connector.csv.fileNameFormat _&lt;string&gt;_
 
@@ -386,7 +386,7 @@ Ignored when reading. Ignored for non-file URLs.
 
 The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
-Defaults to **"output-%0,6d.csv"**.
+Default: **"output-%0,6d.csv"**.
 
 #### ---connector.csv.fileNamePattern _&lt;string&gt;_
 
@@ -396,13 +396,13 @@ Ignored when writing. Ignored for non-file URLs.
 
 Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
 
-Defaults to **"\*\*/\*.csv"**.
+Default: **"\*\*/\*.csv"**.
 
 #### -maxThreads,--connector.csv.maxThreads _&lt;number&gt;_
 
 The maximum number of reading or writing threads. In other words, this setting controls how many files can be read or written simultaneously.
 
-Defaults to **4**.
+Default: **4**.
 
 #### -quote,--connector.csv.quote _&lt;string&gt;_
 
@@ -410,7 +410,7 @@ The character used for quoting fields when the field delimiter is part of the fi
 
 Only one character can be specified. Note that this setting applies to all files to be read or written.
 
-Defaults to **"\""**.
+Default: **"\""**.
 
 #### ---connector.csv.recursive _&lt;boolean&gt;_
 
@@ -418,7 +418,7 @@ Whether to scan for files in subdirectories of the root directory.
 
 Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise. Ignored when writing.
 
-Defaults to **false**.
+Default: **false**.
 
 <a name="schema"></a>
 ## Schema Settings
@@ -431,7 +431,7 @@ The keyspace to connect to. Optional.
 
 If not specified, then the *schema.query* setting must be specified.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
@@ -439,7 +439,7 @@ The destination table. Optional.
 
 If not specified, then the *schema.query* setting must be specified.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### -m,--schema.mapping _&lt;string&gt;_
 
@@ -449,14 +449,14 @@ Applies to both load and unload workflows.
 
 If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping.
 
-Mappings should be specified as a HOCON map of the following form:
+Mappings should be specified as a HOCON map (https://github.com/typesafehub/config/blob/master/HOCON.md) of the following form:
 
 - Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, etc. are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 
 The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### -nullStrings,--schema.nullStrings _&lt;string&gt;_
 
@@ -470,9 +470,9 @@ Note that this setting is applied before the *schema.nullToUnset* setting, hence
 
 In unload workflows, only the first string specified here will be used: when a row cell contains a `null` value, then it will be replaced with that word and forwarded as such to the connector.
 
-The default value – `""` – means that in load workflows, empty strings are converted to `null`s, and in unload workflows, `null`s are converted to empty strings.
+By default, empty strings are converted to `null`s in load workflows, and conversely `null`s are converted to empty strings in unload workflows.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### ---schema.nullToUnset _&lt;boolean&gt;_
 
@@ -484,7 +484,7 @@ Note that this setting is applied after the *schema.nullStrings* setting, and ma
 
 Note that setting this to false leads to tombstones being created in the database to represent `null`.
 
-Defaults to **true**.
+Default: **true**.
 
 #### -query,--schema.query _&lt;string&gt;_
 
@@ -504,7 +504,7 @@ If such a clause is present, the engine will generate as many statements as ther
 
 The column names in the SELECT clause will be used to match column names specified in the mapping. See "mapping" setting for more information.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### ---schema.recordMetadata _&lt;string&gt;_
 
@@ -519,12 +519,12 @@ If not specified:
 - If the connector is capable of reporting the record metadata accurately (for example, some database connectors might be able to inspect the target table's metadata), then this section is only required if you want to override some field types as reported by the connector.
 - If the connector is not capable of reporting the record metadata accurately (for example, file connectors usually cannot report such information), then all fields are assumed to be of type `String`. If this is not correct, then you need to provide the correct type information here.
 
-Field metadata should be specified as a HOCON map of the following form:
+Field metadata should be specified as a HOCON map (https://github.com/typesafehub/config/blob/master/HOCON.md) of the following form:
 
 - Indexed data sources: `0 = java.lang.String, 1 = java.lang.Double`, where `0`, `1`, etc. are the zero-based indices of fields in the source data; and the values are the expected types for each field.
 - Mapped data sources: `fieldA = java.lang.String, fieldB = java.lang.Double`, where `fieldA`, `fieldB`, etc. are field names in the source data; and the values are the expected types for each field.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 <a name="batch"></a>
 ## Batch Settings
@@ -541,13 +541,13 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 The buffer size to use when batching.
 
-Defaults to **10000**.
+Default: **10000**.
 
 #### ---batch.maxBatchSize _&lt;number&gt;_
 
 The maximum batch size.
 
-Defaults to **100**.
+Default: **100**.
 
 #### ---batch.mode _&lt;string&gt;_
 
@@ -555,7 +555,7 @@ The grouping mode. Valid values are:
 - **PARTITION_KEY**: Groups together statements that share the same partition key. This is the default mode, and the preferred one.
 - **REPLICA_SET**: Groups together statements that share the same replica set. This mode might yield better results for small clusters and lower replication factors, but tends to perform equally well or worse than `PARTITION_KEY` for larger clusters or high replication factors.
 
-Defaults to **"PARTITION_KEY"**.
+Default: **"PARTITION_KEY"**.
 
 <a name="codec"></a>
 ## Codec Settings
@@ -574,7 +574,7 @@ In load workflows, all representations are taken into account.
 
 In unload workflows, the first true-false pair will be used to format booleans; all other pairs will be ignored.
 
-Defaults to **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
+Default: **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
 
 #### ---codec.date _&lt;string&gt;_
 
@@ -585,7 +585,7 @@ The temporal pattern to use for `String` to CQL date conversions. This can be ei
 
 For more information on patterns and pre-defined formatters, see https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html.
 
-Defaults to **"ISO_LOCAL_DATE"**.
+Default: **"ISO_LOCAL_DATE"**.
 
 #### ---codec.itemDelimiter _&lt;string&gt;_
 
@@ -595,7 +595,7 @@ For maps and udt's, this setting delimits entries, while *keyValueSeparator* sep
 
 Note that this is not the same as CSV parsing. This setting will be applied to record fields produced by any connector, as long as the target CQL type requires tokenization.
 
-Defaults to **","**.
+Default: **","**.
 
 #### ---codec.keyValueSeparator _&lt;string&gt;_
 
@@ -605,19 +605,19 @@ This setting will be used when mapping a `String` field to CQL columns of type m
 
 This setting will be applied to record fields produced by any connector, as long as the the target CQL type requires key-value tokenization.
 
-Defaults to **":"**.
+Default: **":"**.
 
 #### -locale,--codec.locale _&lt;string&gt;_
 
 The locale to use for locale-sensitive conversions.
 
-Defaults to **"en_US"**.
+Default: **"en_US"**.
 
 #### ---codec.number _&lt;string&gt;_
 
 The `DecimalFormat` pattern to use for `String` to `Number` conversions. See `java.text.DecimalFormat` for details about the pattern syntax to use.
 
-Defaults to **"#,###.##"**.
+Default: **"#,###.##"**.
 
 #### ---codec.time _&lt;string&gt;_
 
@@ -628,13 +628,13 @@ The temporal pattern to use for `String` to CQL time conversions. This can be ei
 
 For more information on patterns and pre-defined formatters, see https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html.
 
-Defaults to **"ISO_LOCAL_TIME"**.
+Default: **"ISO_LOCAL_TIME"**.
 
 #### -timeZone,--codec.timeZone _&lt;string&gt;_
 
 The time zone to use for temporal conversions that do not convey any explicit time zone information.
 
-Defaults to **"UTC"**.
+Default: **"UTC"**.
 
 #### ---codec.timestamp _&lt;string&gt;_
 
@@ -646,7 +646,7 @@ The temporal pattern to use for `String` to CQL timestamp conversions. This can 
 
 For more information on patterns and pre-defined formatters, see https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html.
 
-Defaults to **"CQL_DATE_TIME"**.
+Default: **"CQL_DATE_TIME"**.
 
 <a name="driver"></a>
 ## Driver Settings
@@ -661,7 +661,7 @@ This must be a comma-separated list of hosts, each specified by a host-name or i
 
 Note that each host entry may optionally be followed by `:port` to specify the port to connect to. When not specified, this value falls back to the *port* setting.
 
-Defaults to **"127.0.0.1"**.
+Default: **"127.0.0.1"**.
 
 #### -port,--driver.port _&lt;number&gt;_
 
@@ -669,7 +669,7 @@ The port to connect to at initial contact points.
 
 Note that all nodes in a cluster must accept connections on the same port number.
 
-Defaults to **9042**.
+Default: **9042**.
 
 #### ---driver.addressTranslator _&lt;string&gt;_
 
@@ -677,7 +677,7 @@ The simple or fully-qualified class name of the address translator to use.
 
 This is only needed if the nodes are not directly reachable from the driver (for example, the driver is in a different network region and needs to use a public IP, or it connects through a proxy).
 
-Defaults to **"IdentityTranslator"**.
+Default: **"IdentityTranslator"**.
 
 #### ---driver.timestampGenerator _&lt;string&gt;_
 
@@ -687,7 +687,7 @@ The simple or fully-qualified class name of the timestamp generator to use. Buil
 - **ThreadLocalTimestampGenerator**: timestamps are guaranteed to be unique within each thread only.
 - **ServerSideTimestampGenerator**: do not generate timestamps, let the server assign them.
 
-Defaults to **"AtomicMonotonicTimestampGenerator"**.
+Default: **"AtomicMonotonicTimestampGenerator"**.
 
 <a name="driver.auth"></a>
 ### Driver Auth Settings
@@ -702,7 +702,7 @@ Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Defaults to **"cassandra"**.
+Default: **"cassandra"**.
 
 #### -u,--driver.auth.username _&lt;string&gt;_
 
@@ -712,7 +712,7 @@ Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Defaults to **"cassandra"**.
+Default: **"cassandra"**.
 
 #### ---driver.auth.provider _&lt;string&gt;_
 
@@ -725,7 +725,7 @@ The name of the AuthProvider to use.
  - **DseGSSAPIAuthProvider**:
    Uses `com.datastax.driver.dse.auth.DseGSSAPIAuthProvider` for authentication. Supports SASL authentication to DSE clusters using the `GSSAPI` mechanism (Kerberos authentication), and also supports optional proxy authentication.
 
-Defaults to **"None"**.
+Default: **"None"**.
 
 #### ---driver.auth.authorizationId _&lt;string&gt;_
 
@@ -737,7 +737,7 @@ Providers that accept this setting:
  - `DsePlainTextAuthProvider`
  - `DseGSSAPIAuthProvider`
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### ---driver.auth.keyTab _&lt;string&gt;_
 
@@ -748,7 +748,7 @@ If left unspecified, it is assumed that authentication will be done with a ticke
 Providers that accept this setting:
  - `DseGSSAPIAuthProvider`
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### ---driver.auth.principal _&lt;string&gt;_
 
@@ -757,7 +757,7 @@ The Kerberos principal to use. Required.
 Providers that accept this setting:
  - `DseGSSAPIAuthProvider`
 
-Defaults to **"user@DATASTAX.COM"**.
+Default: **"user@DATASTAX.COM"**.
 
 #### ---driver.auth.saslProtocol _&lt;string&gt;_
 
@@ -768,7 +768,7 @@ This value should match the username of the Kerberos service principal used by t
 Providers that accept this setting:
  - `DseGSSAPIAuthProvider`
 
-Defaults to **"dse"**.
+Default: **"dse"**.
 
 <a name="driver.policy"></a>
 ### Driver Policy Settings
@@ -781,7 +781,7 @@ The simple or fully-qualified class name of the `LoadBalancingPolicy` implementa
 
 If not specified, defaults to the driver's default load balancing policy (`com.datastax.driver.dse.DseLoadBalancingPolicy`).
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### -retry,--driver.policy.retry _&lt;string&gt;_
 
@@ -789,7 +789,7 @@ The simple or fully-qualified class name of the `RetryPolicy` implementation to 
 
 If not specified, defaults to the driver's default retry policy (`com.datastax.driver.core.policies.DefaultRetryPolicy`).
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### ---driver.policy.specexec _&lt;string&gt;_
 
@@ -797,7 +797,7 @@ The simple or fully-qualified class name of the `SpeculativeExecutionPolicy` imp
 
 If not specified, defaults to the driver's default speculative execution policy (`com.datastax.driver.core.policies.NoSpeculativeExecutionPolicy`).
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 <a name="driver.pooling"></a>
 ### Driver Pooling Settings
@@ -810,13 +810,13 @@ The driver maintains a connection pool to each node, according to the distance a
 
 The heartbeat interval. If a connection stays idle for that duration (no reads), the driver sends a dummy message on it to make sure it's still alive. If not, the connection is trashed and replaced.
 
-Defaults to **"30 seconds"**.
+Default: **"30 seconds"**.
 
 #### ---driver.pooling.local.connections _&lt;number&gt;_
 
 The number of connections in the pool for nodes at "local" distance.
 
-Defaults to **1**.
+Default: **1**.
 
 #### ---driver.pooling.local.requests _&lt;number&gt;_
 
@@ -824,13 +824,13 @@ The maximum number of requests that can be executed concurrently on a connection
 
 This must be between 1 and 32768.
 
-Defaults to **32768**.
+Default: **32768**.
 
 #### ---driver.pooling.remote.connections _&lt;number&gt;_
 
 The number of connections in the pool for nodes at "remote" distance.
 
-Defaults to **1**.
+Default: **1**.
 
 #### ---driver.pooling.remote.requests _&lt;number&gt;_
 
@@ -838,7 +838,7 @@ The maximum number of requests that can be executed concurrently on a connection
 
 This must be between 1 and 32768.
 
-Defaults to **1024**.
+Default: **1024**.
 
 <a name="driver.protocol"></a>
 ### Driver Protocol Settings
@@ -850,7 +850,7 @@ Native Protocol-specific settings.
 The compression algorithm to use.
 Valid values are: `NONE`, `LZ4`, `SNAPPY`.
 
-Defaults to **"LZ4"**.
+Default: **"LZ4"**.
 
 <a name="driver.query"></a>
 ### Driver Query Settings
@@ -863,7 +863,7 @@ The consistency level to use for both loads and unloads.
 
 Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
 
-Defaults to **"LOCAL_ONE"**.
+Default: **"LOCAL_ONE"**.
 
 #### ---driver.query.fetchSize _&lt;number&gt;_
 
@@ -871,13 +871,13 @@ The page size. This controls how many rows will be retrieved simultaneously in a
 
 Only applicable in unload scenarios, ignored otherwise.
 
-Defaults to **5000**.
+Default: **5000**.
 
 #### ---driver.query.idempotence _&lt;boolean&gt;_
 
 The default idempotence of statements generated by the loader.
 
-Defaults to **true**.
+Default: **true**.
 
 #### ---driver.query.serialConsistency _&lt;string&gt;_
 
@@ -887,7 +887,7 @@ Valid values are: `SERIAL` and `LOCAL_SERIAL`.
 
 Only applicable if the data is inserted using lightweight transactions, ignored otherwise.
 
-Defaults to **"LOCAL_SERIAL"**.
+Default: **"LOCAL_SERIAL"**.
 
 <a name="driver.socket"></a>
 ### Driver Socket Settings
@@ -898,7 +898,7 @@ Socket-related settings.
 
 How long the driver waits for a request to complete. This is a global limit on the duration of a `session.execute()` call, including any internal retries the driver might do.
 
-Defaults to **"12 seconds"**.
+Default: **"12 seconds"**.
 
 <a name="driver.ssl"></a>
 ### Driver Ssl Settings
@@ -915,7 +915,7 @@ Example: `cipherSuites = ["TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_
 
 This property is optional. If it is not present, the driver won't explicitly enable cipher suites, which according to the JDK documentation results in "a minimum quality of service".
 
-Defaults to **[]**.
+Default: **[]**.
 
 #### ---driver.ssl.keystore.algorithm _&lt;string&gt;_
 
@@ -923,13 +923,13 @@ The algorithm to use.
 
 Valid values are: `SunX509`, `NewSunX509`.
 
-Defaults to **"SunX509"**.
+Default: **"SunX509"**.
 
 #### ---driver.ssl.keystore.password _&lt;string&gt;_
 
 The keystore password.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### ---driver.ssl.keystore.path _&lt;string&gt;_
 
@@ -937,7 +937,7 @@ The path of the keystore file.
 
 This setting is optional. If left unspecified, no client authentication will be used.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### ---driver.ssl.openssl.keyCertChain _&lt;string&gt;_
 
@@ -945,13 +945,13 @@ The path of the certificate chain file.
 
 This setting is optional. If left unspecified, no client authentication will be used.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### ---driver.ssl.openssl.privateKey _&lt;string&gt;_
 
 The path of the private key file.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### ---driver.ssl.provider _&lt;string&gt;_
 
@@ -967,7 +967,7 @@ Using OpenSSL provides better performance and generates less garbage. A disadvan
 
 Follow these instructions to find out how to add this dependency: http://netty.io/wiki/forked-tomcat-native.html
 
-Defaults to **"None"**.
+Default: **"None"**.
 
 #### ---driver.ssl.truststore.algorithm _&lt;string&gt;_
 
@@ -975,13 +975,13 @@ The algorithm to use.
 
 Valid values are: `PKIX`, `SunX509`.
 
-Defaults to **"SunX509"**.
+Default: **"SunX509"**.
 
 #### ---driver.ssl.truststore.password _&lt;string&gt;_
 
 The truststore password.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 #### ---driver.ssl.truststore.path _&lt;string&gt;_
 
@@ -989,7 +989,7 @@ The path of the truststore file.
 
 This setting is optional. If left unspecified, server certificates will not be validated.
 
-Defaults to **""**.
+Default: **&lt;unspecified&gt;**.
 
 <a name="engine"></a>
 ## Engine Settings
@@ -1004,7 +1004,7 @@ Applies only to read workflows; ignored otherwise.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
 
-Defaults to **4**.
+Default: **4**.
 
 #### ---engine.maxMappingThreads _&lt;string&gt;_
 
@@ -1014,7 +1014,7 @@ Applies to both read and write workflows.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
 
-Defaults to **"1C"**.
+Default: **"1C"**.
 
 <a name="executor"></a>
 ## Executor Settings
@@ -1027,7 +1027,7 @@ The maximum number of concurrent requests per second. This acts as a safeguard a
 
 Setting this option to any negative value will disable it.
 
-Defaults to **100000**.
+Default: **100000**.
 
 #### ---executor.continuousPaging.maxPages _&lt;number&gt;_
 
@@ -1035,7 +1035,7 @@ The maximum number of pages to retrieve.
 
 Setting this value to zero retrieves all pages available.
 
-Defaults to **0**.
+Default: **0**.
 
 #### ---executor.continuousPaging.maxPagesPerSecond _&lt;number&gt;_
 
@@ -1043,14 +1043,14 @@ The maximum number of pages per second.
 
 Setting this value to zero indicates no limit.
 
-Defaults to **0**.
+Default: **0**.
 
 #### ---executor.continuousPaging.pageSize _&lt;number&gt;_
 
 The size of the page. The unit to use is determined by the *executor.continuousPaging.pageUnit* setting.
 
 
-Defaults to **5000**.
+Default: **5000**.
 
 #### ---executor.continuousPaging.pageUnit _&lt;string&gt;_
 
@@ -1058,7 +1058,7 @@ The unit to use for the *executor.continuousPaging.pageSize* setting.
 
 Possible values are: `ROWS`, `BYTES`.
 
-Defaults to **"ROWS"**.
+Default: **"ROWS"**.
 
 #### ---executor.maxInFlight _&lt;number&gt;_
 
@@ -1066,7 +1066,7 @@ The maximum number of "in-flight" requests. In other words, sets the maximum num
 
 Setting this option to any negative value will disable it.
 
-Defaults to **1000**.
+Default: **1000**.
 
 #### ---executor.maxThreads _&lt;string&gt;_
 
@@ -1074,7 +1074,7 @@ The maximum number of threads to allocate for the executor. These threads are us
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
 
-Defaults to **"4C"**.
+Default: **"4C"**.
 
 <a name="log"></a>
 ## Log Settings
@@ -1087,7 +1087,7 @@ The maximum number of errors to tolerate before aborting the entire operation.
 
 Setting this value to `-1` disables this feature (not recommended).
 
-Defaults to **100**.
+Default: **100**.
 
 #### -logDir,--log.directory _&lt;string&gt;_
 
@@ -1099,7 +1099,7 @@ Log files for a specific run will be located in a sub-directory inside the direc
 
 Setting this value to `.` denotes the current working directory.
 
-Defaults to **"."**.
+Default: **"."**.
 
 #### ---log.maxThreads _&lt;string&gt;_
 
@@ -1107,7 +1107,7 @@ The maximum number of threads to allocate to log files management.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
 
-Defaults to **"4"**.
+Default: **"4"**.
 
 #### ---log.stmt.level _&lt;string&gt;_
 
@@ -1118,7 +1118,7 @@ Possible values are:
 - **NORMAL**: prints basic information in summarized form, and the statement's query string, if available. For batch statements, this verbosity level also prints information about the batch's inner statements.
 - **EXTENDED**: prints full information, including the statement's query string, if available, and the statement's bound values, if available. For batch statements, this verbosity level also prints all information available about the batch's inner statements.
 
-Defaults to **"EXTENDED"**.
+Default: **"EXTENDED"**.
 
 #### ---log.stmt.maxBoundValueLength _&lt;number&gt;_
 
@@ -1126,7 +1126,7 @@ The maximum length for a bound value. Bound values longer than this value will b
 
 Setting this value to `-1` disables this feature (not recommended).
 
-Defaults to **50**.
+Default: **50**.
 
 #### ---log.stmt.maxBoundValues _&lt;number&gt;_
 
@@ -1134,7 +1134,7 @@ The maximum number of bound values to print. If the statement has more bound val
 
 Setting this value to `-1` disables this feature (not recommended).
 
-Defaults to **50**.
+Default: **50**.
 
 #### ---log.stmt.maxInnerStatements _&lt;number&gt;_
 
@@ -1146,7 +1146,7 @@ If the batch statement has more children than this value, the exceeding child st
 
 Setting this value to `-1` disables this feature (not recommended).
 
-Defaults to **10**.
+Default: **10**.
 
 #### ---log.stmt.maxQueryStringLength _&lt;number&gt;_
 
@@ -1154,7 +1154,7 @@ The maximum length for a query string. Query strings longer than this value will
 
 Setting this value to `-1` disables this feature (not recommended).
 
-Defaults to **500**.
+Default: **500**.
 
 <a name="monitoring"></a>
 ## Monitoring Settings
@@ -1169,7 +1169,7 @@ The console reporter will print useful metrics about the ongoing operation at th
 
 Durations lesser than one second will be rounded up to 1 second.
 
-Defaults to **"5 seconds"**.
+Default: **"5 seconds"**.
 
 #### ---monitoring.durationUnit _&lt;string&gt;_
 
@@ -1177,7 +1177,7 @@ The time unit to use when printing latency durations.
 
 Valid values: all `TimeUnit` enum constants.
 
-Defaults to **"MILLISECONDS"**.
+Default: **"MILLISECONDS"**.
 
 #### ---monitoring.expectedReads _&lt;number&gt;_
 
@@ -1187,7 +1187,7 @@ This information is optional; if present, the console reporter will also print t
 
 Setting this value to `-1` disables this feature.
 
-Defaults to **-1**.
+Default: **-1**.
 
 #### ---monitoring.expectedWrites _&lt;number&gt;_
 
@@ -1197,7 +1197,7 @@ This information is optional; if present, the console reporter will also print t
 
 Setting this value to `-1` disables this feature.
 
-Defaults to **-1**.
+Default: **-1**.
 
 #### -jmx,--monitoring.jmx _&lt;boolean&gt;_
 
@@ -1205,7 +1205,7 @@ Whether or not to enable JMX reporting.
 
 Note that to enable *remote* JMX reporting, several properties must also be set in the JVM during launch. This is accomplished via the `DSBULK_JAVA_OPTS` environment variable.
 
-Defaults to **true**.
+Default: **true**.
 
 #### ---monitoring.rateUnit _&lt;string&gt;_
 
@@ -1213,5 +1213,5 @@ The time unit to use when printing throughput rates.
 
 Valid values: all `TimeUnit` enum constants.
 
-Defaults to **"SECONDS"**.
+Default: **"SECONDS"**.
 
