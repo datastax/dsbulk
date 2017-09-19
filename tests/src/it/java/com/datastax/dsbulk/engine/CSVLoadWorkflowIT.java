@@ -9,18 +9,16 @@ package com.datastax.dsbulk.engine;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.tests.utils.CsvUtils;
-import java.net.URL;
-import java.nio.file.Files;
 import org.junit.Ignore;
 import org.junit.Test;
 
 /** */
-public class CSVUnloadWorkflowTest {
+public class CSVLoadWorkflowIT {
 
   // TODO temporary, remove when end-to-end integration tests are available
   @Test
   @Ignore
-  public void should_read() throws Exception {
+  public void should_write() throws Exception {
 
     Cluster cluster = Cluster.builder().addContactPoint("127.0.0.1").build();
     Session session = cluster.connect();
@@ -29,13 +27,14 @@ public class CSVUnloadWorkflowTest {
     session.execute("USE test");
     CsvUtils.createIpByCountryTable(session);
 
-    URL output = Files.createTempDirectory("output").toUri().toURL();
     String[] args = {
-      "read",
+      "write",
       "log.directory",
       "./target",
+      "connector.name",
+      "csv",
       "connector.csv.url",
-      output.toExternalForm(),
+      CsvUtils.CSV_RECORDS.toExternalForm(),
       "schema.keyspace",
       "test",
       "schema.table",
