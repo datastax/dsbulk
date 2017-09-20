@@ -36,7 +36,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-/** The main class for read workflows. */
+/**
+ * The main class for unload workflows.
+ */
 public class UnloadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UnloadWorkflow.class);
@@ -75,7 +77,7 @@ public class UnloadWorkflow implements Workflow {
   @Override
   public void execute() {
 
-    LOGGER.info("Starting read workflow engine execution " + executionId);
+    LOGGER.info("Starting unload workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
 
     int maxConcurrentReads = executorSettings.getMaxConcurrentOps();
@@ -123,9 +125,9 @@ public class UnloadWorkflow implements Workflow {
 
     } catch (Exception e) {
       System.err.printf(
-          "Uncaught exception during read workflow engine execution %s: %s%n",
+          "Uncaught exception during unload workflow engine execution %s: %s%n",
           executionId, e.getMessage());
-      LOGGER.error("Uncaught exception during read workflow engine execution " + executionId, e);
+      LOGGER.error("Uncaught exception during unload workflow engine execution " + executionId, e);
     } finally {
       readsScheduler.dispose();
       mapperScheduler.dispose();
@@ -134,7 +136,7 @@ public class UnloadWorkflow implements Workflow {
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info(
-        "Read workflow engine execution {} finished in {}.",
+        "Unload workflow engine execution {} finished in {}.",
         executionId,
         WorkflowUtils.formatElapsed(seconds));
   }

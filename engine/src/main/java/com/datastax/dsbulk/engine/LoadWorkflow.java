@@ -35,7 +35,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-/** The main class for write workflows. */
+/**
+ * The main class for load workflows.
+ */
 public class LoadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadWorkflow.class);
@@ -76,7 +78,7 @@ public class LoadWorkflow implements Workflow {
   @Override
   public void execute() {
 
-    LOGGER.info("Starting write workflow engine execution " + executionId);
+    LOGGER.info("Starting load workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
 
     int maxConcurrentWrites = executorSettings.getMaxConcurrentOps();
@@ -119,9 +121,9 @@ public class LoadWorkflow implements Workflow {
 
     } catch (Exception e) {
       System.err.printf(
-          "Uncaught exception during write workflow engine execution %s: %s%n",
+          "Uncaught exception during load workflow engine execution %s: %s%n",
           executionId, e.getMessage());
-      LOGGER.error("Uncaught exception during write workflow engine execution " + executionId, e);
+      LOGGER.error("Uncaught exception during load workflow engine execution " + executionId, e);
     } finally {
       writesScheduler.dispose();
       mapperScheduler.dispose();
@@ -130,7 +132,7 @@ public class LoadWorkflow implements Workflow {
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info(
-        "Write workflow engine execution {} finished in {}.",
+        "Load workflow engine execution {} finished in {}.",
         executionId,
         WorkflowUtils.formatElapsed(seconds));
   }
