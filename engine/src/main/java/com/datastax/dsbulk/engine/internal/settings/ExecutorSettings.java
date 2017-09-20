@@ -26,7 +26,7 @@ import com.datastax.dsbulk.executor.api.ReactorBulkExecutor;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.dsbulk.executor.api.reader.ReactorBulkReader;
-import com.datastax.dsbulk.executor.api.writer.ReactiveBulkWriter;
+import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -47,7 +47,7 @@ public class ExecutorSettings implements SettingsValidator {
     this.config = config;
   }
 
-  public ReactiveBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
+  public ReactorBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
     return newBulkExecutor(session, executionListener, WorkflowType.LOAD);
   }
 
@@ -59,6 +59,10 @@ public class ExecutorSettings implements SettingsValidator {
   @SuppressWarnings("unused")
   public ThreadPoolExecutor getExecutorThreadPool() {
     return executor;
+  }
+
+  public int getMaxConcurrentOps() {
+    return config.getThreads("maxConcurrentOps");
   }
 
   private ReactorBulkExecutor newBulkExecutor(
@@ -92,6 +96,7 @@ public class ExecutorSettings implements SettingsValidator {
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getThreads("maxThreads");
+      config.getThreads("maxConcurrentOps");
       config.getInt("maxPerSecond");
       config.getInt("maxInFlight");
     } catch (ConfigException e) {
