@@ -13,7 +13,7 @@ public class PlatformUtils {
    * Checks if the operating system is a Windows one
    *
    * @return <code>true</code> if the operating system is a Windows one, <code>false</code>
-   * otherwise.
+   *     otherwise.
    */
   public static boolean isWindows() {
     String osName = System.getProperty("os.name");

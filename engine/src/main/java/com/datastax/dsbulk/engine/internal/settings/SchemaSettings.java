@@ -112,10 +112,10 @@ public class SchemaSettings implements SettingsValidator {
         keyspaceTablePresent = true;
       }
 
-      // If the keyspace or table is present. Both must be present.
-      if (config.hasPath("keyspace") != config.hasPath("table")) {
+      // If table is present, keyspace must be, but not necessarily the other way around.
+      if (config.hasPath("table") && !config.hasPath("keyspace")) {
         throw new BulkConfigurationException(
-            "schema.keyspace and schema.table must accompany one another in the configuration");
+            "schema.keyspace must accompany schema.table in the configuration");
       }
 
       // Either the keyspace and table must be present, or the mapping must be present.
@@ -145,8 +145,7 @@ public class SchemaSettings implements SettingsValidator {
         fieldsToVariablesBuilder.put(path, mapping.getString(path));
       }
     }
-    if (config.hasPath("keyspace")) {
-      Preconditions.checkState(config.hasPath("table"), "Keyspace and table must be specified");
+    if (config.hasPath("keyspace") && config.hasPath("table")) {
       keyspaceName = Metadata.quoteIfNecessary(config.getString("keyspace"));
       tableName = Metadata.quoteIfNecessary(config.getString("table"));
       keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
@@ -156,8 +155,6 @@ public class SchemaSettings implements SettingsValidator {
           table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
     }
     if (!config.hasPath("mapping")) {
-      Preconditions.checkState(
-          keyspace != null && table != null, "Keyspace and table must be specified");
       fieldsToVariablesBuilder = inferFieldsToVariablesMap();
     }
     Preconditions.checkNotNull(
@@ -187,8 +184,6 @@ public class SchemaSettings implements SettingsValidator {
     if (config.hasPath("query")) {
       query = config.getString("query");
     } else {
-      Preconditions.checkState(
-          keyspace != null && table != null, "Keyspace and table must be specified");
       query =
           workflowType == WorkflowType.LOAD
               ? inferWriteQuery(fieldsToVariables)

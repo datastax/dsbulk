@@ -36,9 +36,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-/**
- * The main class for unload workflows.
- */
+/** The main class for unload workflows. */
 public class UnloadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UnloadWorkflow.class);
@@ -86,8 +84,13 @@ public class UnloadWorkflow implements Workflow {
     Scheduler readsScheduler = Schedulers.newParallel("range-reads", maxConcurrentReads);
     Scheduler mapperScheduler = Schedulers.newParallel("result-mapper", maxMappingThreads);
 
+    String keyspace = config.getString("schema.keyspace");
+    if (keyspace != null && keyspace.isEmpty()) {
+      keyspace = null;
+    }
+
     try (DseCluster cluster = driverSettings.newCluster();
-        DseSession session = cluster.connect();
+        DseSession session = cluster.connect(keyspace);
         Connector connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
         MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD);
         LogManager logManager = logSettings.newLogManager(cluster);

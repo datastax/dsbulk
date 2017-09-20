@@ -62,15 +62,14 @@ public class CCMTotalEndToEndIT {
 
   private static final String INSERT_INTO_IP_BY_COUNTRY_COMPLEX =
       "INSERT INTO "
-          + KS
-          + ".country_complex "
+          + "country_complex "
           + "(country_name, country_tuple, country_map, country_list, country_set, country_contacts) "
           + "VALUES (?,?,?,?,?,?)";
 
   private static final SimpleStatement READ_SUCCESFUL_IP_BY_COUNTRY =
       new SimpleStatement("SELECT * FROM " + KS + ".ip_by_country");
 
-  private static final SimpleStatement READ_SUCCESFUL_COMPLEX =
+  private static final SimpleStatement READ_SUCCESSFUL_COMPLEX =
       new SimpleStatement("SELECT * FROM " + KS + ".country_complex");
 
   private static final SimpleStatement READ_SUCCESFUL_WITH_SPACES =
@@ -147,12 +146,13 @@ public class CCMTotalEndToEndIT {
     List<String> customLoadArgs = new LinkedList<>();
     customLoadArgs.add("--connector.csv.url=" + CsvUtils.CSV_RECORDS_COMPLEX.toExternalForm());
     customLoadArgs.add("--schema.query=" + INSERT_INTO_IP_BY_COUNTRY_COMPLEX);
+    customLoadArgs.add("--schema.keyspace=" + KS);
     customLoadArgs.add("--schema.mapping");
     customLoadArgs.add(
         "0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts");
 
     new Main(fetchCompleteArgs("load", customLoadArgs));
-    validateResultSetSize(5, READ_SUCCESFUL_COMPLEX);
+    validateResultSetSize(5, READ_SUCCESSFUL_COMPLEX);
 
     Path full_load_dir = Paths.get("./full_load_dir");
     Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
@@ -161,7 +161,9 @@ public class CCMTotalEndToEndIT {
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
-    customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_COMPLEX.toString());
+    customUnloadArgs.add("--schema.keyspace=" + KS);
+    customUnloadArgs.add("--schema.query");
+    customUnloadArgs.add("SELECT * FROM country_complex");
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
         "0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts");
