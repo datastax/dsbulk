@@ -398,10 +398,6 @@ public class MainTest {
               "codec-date",
               "--codec.time",
               "codec-time",
-              "--codec.itemDelimiter",
-              "codec-itemDelim",
-              "--codec.keyValueSeparator",
-              "codec-kvsep",
               "--monitoring.reportRate",
               "23 sec",
               "--monitoring.rateUnit",
@@ -495,8 +491,6 @@ public class MainTest {
     assertThat(result.getString("codec.timestamp")).isEqualTo("codec-ts");
     assertThat(result.getString("codec.date")).isEqualTo("codec-date");
     assertThat(result.getString("codec.time")).isEqualTo("codec-time");
-    assertThat(result.getString("codec.itemDelimiter")).isEqualTo("codec-itemDelim");
-    assertThat(result.getString("codec.keyValueSeparator")).isEqualTo("codec-kvsep");
     assertThat(result.getString("monitoring.reportRate")).isEqualTo("23 sec");
     assertThat(result.getString("monitoring.rateUnit")).isEqualTo("rate-unit");
     assertThat(result.getString("monitoring.durationUnit")).isEqualTo("duration-unit");

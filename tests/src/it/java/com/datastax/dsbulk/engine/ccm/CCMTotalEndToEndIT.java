@@ -66,13 +66,13 @@ public class CCMTotalEndToEndIT {
           + "(country_name, country_tuple, country_map, country_list, country_set, country_contacts) "
           + "VALUES (?,?,?,?,?,?)";
 
-  private static final SimpleStatement READ_SUCCESFUL_IP_BY_COUNTRY =
+  private static final SimpleStatement READ_SUCCESSFUL_IP_BY_COUNTRY =
       new SimpleStatement("SELECT * FROM " + KS + ".ip_by_country");
 
   private static final SimpleStatement READ_SUCCESSFUL_COMPLEX =
       new SimpleStatement("SELECT * FROM " + KS + ".country_complex");
 
-  private static final SimpleStatement READ_SUCCESFUL_WITH_SPACES =
+  private static final SimpleStatement READ_SUCCESSFUL_WITH_SPACES =
       new SimpleStatement(SELECT_FROM_WITH_SPACES);
 
   @SuppressWarnings("unused")
@@ -119,7 +119,7 @@ public class CCMTotalEndToEndIT {
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
     new Main(fetchCompleteArgs("load", customLoadArgs));
-    validateResultSetSize(24, READ_SUCCESFUL_IP_BY_COUNTRY);
+    validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
     Path full_load_dir = Paths.get("./full_load_dir");
     Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
     EndToEndUtils.deleteIfExists(full_load_dir);
@@ -129,7 +129,7 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add("--connector.csv.maxThreads");
     customUnloadArgs.add("1");
     customUnloadArgs.add("--schema.query");
-    customUnloadArgs.add(READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
@@ -162,8 +162,7 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
     customUnloadArgs.add("--schema.keyspace=" + KS);
-    customUnloadArgs.add("--schema.query");
-    customUnloadArgs.add("SELECT * FROM country_complex");
+    customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_COMPLEX.toString());
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
         "0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts");
@@ -187,7 +186,7 @@ public class CCMTotalEndToEndIT {
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
     new Main(fetchCompleteArgs("load", customLoadArgs));
-    validateResultSetSize(500, READ_SUCCESFUL_IP_BY_COUNTRY);
+    validateResultSetSize(500, READ_SUCCESSFUL_IP_BY_COUNTRY);
 
     Path full_load_dir = Paths.get("./full_load_dir");
     Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
@@ -195,7 +194,7 @@ public class CCMTotalEndToEndIT {
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
-    customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
@@ -227,7 +226,7 @@ public class CCMTotalEndToEndIT {
 
     String[] args = fetchCompleteArgs("load", customLoadArgs);
     new Main(args);
-    validateResultSetSize(1, READ_SUCCESFUL_WITH_SPACES);
+    validateResultSetSize(1, READ_SUCCESSFUL_WITH_SPACES);
 
     // Test unload
     Path full_load_dir = Paths.get("./full_load_dir");
@@ -267,7 +266,7 @@ public class CCMTotalEndToEndIT {
     customLoadArgs.add("-driver.query.consistency=LOCAL_ONE");
 
     new Main(fetchCompleteArgs("load", customLoadArgs));
-    validateResultSetSize(21, READ_SUCCESFUL_IP_BY_COUNTRY);
+    validateResultSetSize(21, READ_SUCCESSFUL_IP_BY_COUNTRY);
     EndToEndUtils.validateBadOps(3);
     EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");
 
@@ -278,7 +277,7 @@ public class CCMTotalEndToEndIT {
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
-    customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");

@@ -74,10 +74,10 @@ public class DefaultRecordMapper implements RecordMapper {
       for (String field : record.fields()) {
         String variable = mapping.fieldToVariable(field);
         if (variable != null) {
-          Object raw = record.getFieldValue(field);
           DataType cqlType = insertStatement.getVariables().getType(variable);
           TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
           if (fieldType != null) {
+            Object raw = record.getFieldValue(field);
             bindColumn(bs, variable, raw, cqlType, fieldType);
           }
         }

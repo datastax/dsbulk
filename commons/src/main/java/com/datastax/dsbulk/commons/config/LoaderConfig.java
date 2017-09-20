@@ -185,7 +185,6 @@ public interface LoaderConfig extends Config {
    * @throws ConfigException.Missing if value is absent or null.
    */
   default String getTypeString(String path) {
-
     ConfigValueType type = getValue(path).valueType();
     if (type == ConfigValueType.LIST) {
       ConfigList list = getList(path);

@@ -8,10 +8,11 @@ package com.datastax.dsbulk.engine.internal.codecs;
 
 import org.jetbrains.annotations.Nullable;
 
-class CodecUtils {
+@SuppressWarnings("Duplicates")
+public final class CodecUtils {
 
   @Nullable
-  static String trimToNull(String s) {
+  public static String trimToNull(String s) {
     if (s == null) {
       return null;
     }

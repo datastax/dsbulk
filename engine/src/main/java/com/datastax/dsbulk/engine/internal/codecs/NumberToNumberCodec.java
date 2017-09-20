@@ -21,13 +21,13 @@ public class NumberToNumberCodec<FROM extends Number, TO extends Number>
 
   @SuppressWarnings("unchecked")
   @Override
-  protected FROM convertTo(TO value) {
+  public FROM convertTo(TO value) {
     return (FROM) convert(value, getJavaType());
   }
 
   @SuppressWarnings("unchecked")
   @Override
-  protected TO convertFrom(FROM value) {
+  public TO convertFrom(FROM value) {
     return (TO) convert(value, targetCodec.getJavaType());
   }
 
