@@ -11,9 +11,11 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
+import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.util.Optional;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.SynchronousQueue;
@@ -41,8 +43,17 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
 
   final Executor executor;
 
+  final QueueFactory<ReadResult> queueFactory;
+
   AbstractBulkExecutor(Session session) {
-    this(session, true, DEFAULT_MAX_INFLIGHT_REQUESTS, DEFAULT_MAX_REQUESTS_PER_SECOND, null, null);
+    this(
+        session,
+        true,
+        DEFAULT_MAX_INFLIGHT_REQUESTS,
+        DEFAULT_MAX_REQUESTS_PER_SECOND,
+        null,
+        null,
+        null);
   }
 
   AbstractBulkExecutor(
@@ -51,7 +62,8 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
       int maxInFlightRequests,
       int maxRequestsPerSecond,
       ExecutionListener listener,
-      Executor executor) {
+      Executor executor,
+      QueueFactory<ReadResult> queueFactory) {
     this.session = session;
     this.failFast = failFast;
     this.requestPermits =
@@ -75,6 +87,10 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
               new ThreadPoolExecutor.CallerRunsPolicy());
     }
     this.executor = executor;
+    if (queueFactory == null) {
+      queueFactory = statement -> new ArrayBlockingQueue<>(statement.getFetchSize() * 4);
+    }
+    this.queueFactory = queueFactory;
   }
 
   @Override

@@ -6,15 +6,12 @@
  */
 package com.datastax.dsbulk.executor.api;
 
-import static reactor.core.publisher.FluxSink.OverflowStrategy.BUFFER;
-
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.internal.emitter.BackpressureController;
-import com.datastax.dsbulk.executor.api.internal.emitter.ReadResultEmitter;
-import com.datastax.dsbulk.executor.api.internal.emitter.WriteResultEmitter;
+import com.datastax.dsbulk.executor.api.internal.subscription.ReadResultSubscription;
+import com.datastax.dsbulk.executor.api.internal.subscription.WriteResultSubscription;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
@@ -22,13 +19,11 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
-import java.util.function.LongConsumer;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoSink;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
@@ -69,8 +64,16 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
       int maxInFlightRequests,
       int maxRequestsPerSecond,
       ExecutionListener listener,
-      Executor executor) {
-    super(session, failFast, maxInFlightRequests, maxRequestsPerSecond, listener, executor);
+      Executor executor,
+      QueueFactory<ReadResult> queueFactory) {
+    super(
+        session,
+        failFast,
+        maxInFlightRequests,
+        maxRequestsPerSecond,
+        listener,
+        executor,
+        queueFactory);
     this.scheduler = Schedulers.fromExecutor(this.executor);
   }
 
@@ -130,11 +133,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   @Override
   public Mono<WriteResult> writeReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Mono.create(
-        e -> {
-          ReactorWriteResultEmitter emitter = new ReactorWriteResultEmitter(statement, e);
-          emitter.start();
-        });
+    return Mono.from(new WriteResultPublisher(statement));
   }
 
   @Override
@@ -211,12 +210,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   @Override
   public Flux<ReadResult> readReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Flux.create(
-        e -> {
-          ReactorReadResultEmitter emitter = new ReactorReadResultEmitter(statement, e);
-          emitter.start();
-        },
-        BUFFER);
+    return Flux.from(new ReadResultPublisher(statement));
   }
 
   @Override
@@ -243,86 +237,54 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     scheduler.dispose();
   }
 
-  private class ReactorReadResultEmitter extends ReadResultEmitter implements LongConsumer {
+  private class ReadResultPublisher implements Publisher<ReadResult> {
 
-    private final FluxSink<ReadResult> sink;
-    private final BackpressureController demand = new BackpressureController();
+    private final Statement statement;
 
-    private ReactorReadResultEmitter(Statement statement, FluxSink<ReadResult> sink) {
-      super(
-          statement,
-          DefaultReactorBulkExecutor.this.session,
-          executor,
-          listener,
-          rateLimiter,
-          requestPermits,
-          failFast);
-      this.sink = sink;
-      sink.onRequest(this);
+    private ReadResultPublisher(Statement statement) {
+      this.statement = statement;
     }
 
     @Override
-    public void accept(long requested) {
-      demand.signalRequested(requested);
-    }
-
-    @Override
-    protected void notifyOnNext(ReadResult result) {
-      demand.awaitRequested(1);
-      sink.next(result);
-    }
-
-    @Override
-    protected void notifyOnComplete() {
-      sink.complete();
-    }
-
-    @Override
-    protected void notifyOnError(BulkExecutionException error) {
-      sink.error(error);
-    }
-
-    @Override
-    protected boolean isCancelled() {
-      return sink.isCancelled();
+    public void subscribe(Subscriber<? super ReadResult> subscriber) {
+      ReadResultSubscription subscription =
+          new ReadResultSubscription(
+              subscriber,
+              queueFactory.newQueue(statement),
+              statement,
+              session,
+              executor,
+              listener,
+              rateLimiter,
+              requestPermits,
+              failFast);
+      subscription.start();
+      subscriber.onSubscribe(subscription);
     }
   }
 
-  private class ReactorWriteResultEmitter extends WriteResultEmitter {
+  private class WriteResultPublisher implements Publisher<WriteResult> {
 
-    private final MonoSink<WriteResult> sink;
-    private volatile WriteResult result;
+    private final Statement statement;
 
-    private ReactorWriteResultEmitter(Statement statement, MonoSink<WriteResult> sink) {
-      super(
-          statement,
-          DefaultReactorBulkExecutor.this.session,
-          executor,
-          listener,
-          rateLimiter,
-          requestPermits,
-          failFast);
-      this.sink = sink;
+    private WriteResultPublisher(Statement statement) {
+      this.statement = statement;
     }
 
     @Override
-    protected void notifyOnNext(WriteResult result) {
-      this.result = result;
-    }
-
-    @Override
-    protected void notifyOnComplete() {
-      sink.success(result);
-    }
-
-    @Override
-    protected void notifyOnError(BulkExecutionException error) {
-      sink.error(error);
-    }
-
-    @Override
-    protected boolean isCancelled() {
-      return false;
+    public void subscribe(Subscriber<? super WriteResult> subscriber) {
+      WriteResultSubscription subscription =
+          new WriteResultSubscription(
+              subscriber,
+              statement,
+              session,
+              executor,
+              listener,
+              rateLimiter,
+              requestPermits,
+              failFast);
+      subscription.start();
+      subscriber.onSubscribe(subscription);
     }
   }
 }

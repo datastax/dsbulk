@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.executor.api.internal.emitter;
+package com.datastax.dsbulk.executor.api.internal.subscription;
 
 import com.datastax.driver.core.AsyncContinuousPagingResult;
 import com.datastax.driver.core.ContinuousPagingOptions;
@@ -17,17 +17,21 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
+import org.reactivestreams.Subscriber;
 
-public abstract class ContinuousReadResultEmitter
-    extends ResultEmitter<ReadResult, AsyncContinuousPagingResult> {
+public class ContinuousReadResultSubscription
+    extends ResultSubscription<ReadResult, AsyncContinuousPagingResult> {
 
   private final ContinuousPagingSession session;
   private final ContinuousPagingOptions options;
 
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-  public ContinuousReadResultEmitter(
+  public ContinuousReadResultSubscription(
+      Subscriber<? super ReadResult> subscriber,
+      Queue<ReadResult> queue,
       Statement statement,
       ContinuousPagingSession session,
       ContinuousPagingOptions options,
@@ -36,12 +40,20 @@ public abstract class ContinuousReadResultEmitter
       Optional<RateLimiter> rateLimiter,
       Optional<Semaphore> requestPermits,
       boolean failFast) {
-    super(statement, session, executor, listener, rateLimiter, requestPermits, failFast);
+    super(
+        subscriber,
+        queue,
+        statement,
+        session,
+        executor,
+        listener,
+        rateLimiter,
+        requestPermits,
+        failFast);
     this.session = session;
     this.options = options;
   }
 
-  @Override
   public void start() {
     super.start();
     fetchNextPage(() -> session.executeContinuouslyAsync(statement, options));

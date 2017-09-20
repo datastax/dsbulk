@@ -6,19 +6,16 @@
  */
 package com.datastax.dsbulk.executor.api;
 
-import static io.reactivex.BackpressureStrategy.BUFFER;
-
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.internal.emitter.ReadResultEmitter;
-import com.datastax.dsbulk.executor.api.internal.emitter.WriteResultEmitter;
+import com.datastax.dsbulk.executor.api.internal.subscription.ReadResultSubscription;
+import com.datastax.dsbulk.executor.api.internal.subscription.WriteResultSubscription;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import io.reactivex.Flowable;
-import io.reactivex.FlowableEmitter;
 import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
@@ -28,6 +25,7 @@ import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 
 /**
  * Animplementation of {@link BulkExecutor} using <a
@@ -66,8 +64,16 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
       int maxInFlightRequests,
       int maxRequestsPerSecond,
       ExecutionListener listener,
-      Executor executor) {
-    super(session, failFast, maxInFlightRequests, maxRequestsPerSecond, listener, executor);
+      Executor executor,
+      QueueFactory<ReadResult> queueFactory) {
+    super(
+        session,
+        failFast,
+        maxInFlightRequests,
+        maxRequestsPerSecond,
+        listener,
+        executor,
+        queueFactory);
     this.scheduler = Schedulers.from(this.executor);
   }
 
@@ -127,12 +133,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
   @Override
   public Flowable<WriteResult> writeReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Flowable.create(
-        e -> {
-          RxJavaWriteResultEmitter emitter = new RxJavaWriteResultEmitter(statement, e);
-          emitter.start();
-        },
-        BUFFER);
+    return Flowable.fromPublisher(new WriteResultPublisher(statement));
   }
 
   @Override
@@ -209,12 +210,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
   @Override
   public Flowable<ReadResult> readReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Flowable.create(
-        e -> {
-          RxJavaReadResultEmitter emitter = new RxJavaReadResultEmitter(statement, e);
-          emitter.start();
-        },
-        BUFFER);
+    return Flowable.fromPublisher(new ReadResultPublisher(statement));
   }
 
   @Override
@@ -241,77 +237,54 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
     scheduler.shutdown();
   }
 
-  private class RxJavaReadResultEmitter extends ReadResultEmitter {
+  private class ReadResultPublisher implements Publisher<ReadResult> {
 
-    private final FlowableEmitter<ReadResult> emitter;
+    private final Statement statement;
 
-    private RxJavaReadResultEmitter(Statement statement, FlowableEmitter<ReadResult> emitter) {
-      super(
-          statement,
-          DefaultRxJavaBulkExecutor.this.session,
-          executor,
-          listener,
-          rateLimiter,
-          requestPermits,
-          failFast);
-      this.emitter = emitter;
+    private ReadResultPublisher(Statement statement) {
+      this.statement = statement;
     }
 
     @Override
-    protected void notifyOnNext(ReadResult result) {
-      emitter.onNext(result);
-    }
-
-    @Override
-    protected void notifyOnComplete() {
-      emitter.onComplete();
-    }
-
-    @Override
-    protected void notifyOnError(BulkExecutionException error) {
-      emitter.onError(error);
-    }
-
-    @Override
-    protected boolean isCancelled() {
-      return emitter.isCancelled();
+    public void subscribe(Subscriber<? super ReadResult> subscriber) {
+      ReadResultSubscription subscription =
+          new ReadResultSubscription(
+              subscriber,
+              queueFactory.newQueue(statement),
+              statement,
+              session,
+              executor,
+              listener,
+              rateLimiter,
+              requestPermits,
+              failFast);
+      subscription.start();
+      subscriber.onSubscribe(subscription);
     }
   }
 
-  private class RxJavaWriteResultEmitter extends WriteResultEmitter {
+  private class WriteResultPublisher implements Publisher<WriteResult> {
 
-    private final FlowableEmitter<WriteResult> emitter;
+    private final Statement statement;
 
-    private RxJavaWriteResultEmitter(Statement statement, FlowableEmitter<WriteResult> emitter) {
-      super(
-          statement,
-          DefaultRxJavaBulkExecutor.this.session,
-          executor,
-          listener,
-          rateLimiter,
-          requestPermits,
-          failFast);
-      this.emitter = emitter;
+    private WriteResultPublisher(Statement statement) {
+      this.statement = statement;
     }
 
     @Override
-    protected void notifyOnNext(WriteResult result) {
-      emitter.onNext(result);
-    }
-
-    @Override
-    protected void notifyOnComplete() {
-      emitter.onComplete();
-    }
-
-    @Override
-    protected void notifyOnError(BulkExecutionException error) {
-      emitter.onError(error);
-    }
-
-    @Override
-    protected boolean isCancelled() {
-      return emitter.isCancelled();
+    public void subscribe(Subscriber<? super WriteResult> subscriber) {
+      WriteResultSubscription subscription =
+          new WriteResultSubscription(
+              subscriber,
+              statement,
+              session,
+              executor,
+              listener,
+              rateLimiter,
+              requestPermits,
+              failFast);
+      subscription.start();
+      subscriber.onSubscribe(subscription);
     }
   }
 }

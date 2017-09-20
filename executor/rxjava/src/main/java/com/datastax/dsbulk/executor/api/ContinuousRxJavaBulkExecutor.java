@@ -6,19 +6,17 @@
  */
 package com.datastax.dsbulk.executor.api;
 
-import static io.reactivex.BackpressureStrategy.BUFFER;
-
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Statement;
-import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.internal.emitter.ContinuousReadResultEmitter;
+import com.datastax.dsbulk.executor.api.internal.subscription.ContinuousReadResultSubscription;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import io.reactivex.Flowable;
-import io.reactivex.FlowableEmitter;
 import java.util.Objects;
 import java.util.concurrent.Executor;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 
 /**
  * An implementation of {@link BulkExecutor} using <a
@@ -80,8 +78,16 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
       int maxInFlightRequests,
       int maxRequestsPerSecond,
       ExecutionListener listener,
-      Executor executor) {
-    super(session, failFast, maxInFlightRequests, maxRequestsPerSecond, listener, executor);
+      Executor executor,
+      QueueFactory<ReadResult> queueFactory) {
+    super(
+        session,
+        failFast,
+        maxInFlightRequests,
+        maxRequestsPerSecond,
+        listener,
+        executor,
+        queueFactory);
     this.session = session;
     this.options = options;
   }
@@ -89,51 +95,33 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
   @Override
   public Flowable<ReadResult> readReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Flowable.create(
-        e -> {
-          RxJavaContinuousReadResultEmitter emitter =
-              new RxJavaContinuousReadResultEmitter(statement, e);
-          emitter.start();
-        },
-        BUFFER);
+    return Flowable.fromPublisher(new ContinuousReadResultPublisher(statement));
   }
 
-  private class RxJavaContinuousReadResultEmitter extends ContinuousReadResultEmitter {
+  private class ContinuousReadResultPublisher implements Publisher<ReadResult> {
 
-    private final FlowableEmitter<ReadResult> emitter;
+    private final Statement statement;
 
-    private RxJavaContinuousReadResultEmitter(
-        Statement statement, FlowableEmitter<ReadResult> emitter) {
-      super(
-          statement,
-          ContinuousRxJavaBulkExecutor.this.session,
-          options,
-          executor,
-          listener,
-          rateLimiter,
-          requestPermits,
-          failFast);
-      this.emitter = emitter;
+    private ContinuousReadResultPublisher(Statement statement) {
+      this.statement = statement;
     }
 
     @Override
-    protected void notifyOnNext(ReadResult result) {
-      emitter.onNext(result);
-    }
-
-    @Override
-    protected void notifyOnComplete() {
-      emitter.onComplete();
-    }
-
-    @Override
-    protected void notifyOnError(BulkExecutionException error) {
-      emitter.onError(error);
-    }
-
-    @Override
-    protected boolean isCancelled() {
-      return emitter.isCancelled();
+    public void subscribe(Subscriber<? super ReadResult> subscriber) {
+      ContinuousReadResultSubscription subscription =
+          new ContinuousReadResultSubscription(
+              subscriber,
+              queueFactory.newQueue(statement),
+              statement,
+              session,
+              options,
+              executor,
+              listener,
+              rateLimiter,
+              requestPermits,
+              failFast);
+      subscription.start();
+      subscriber.onSubscribe(subscription);
     }
   }
 }
