@@ -10,7 +10,10 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
+import java.util.Comparator;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +65,12 @@ public class SettingsManager {
 
   public void logEffectiveSettings() {
     LOGGER.info("Bulk Loader effective settings:");
-    for (Map.Entry<String, ConfigValue> entry : config.entrySet()) {
+
+    Set<Map.Entry<String, ConfigValue>> entries =
+        new TreeSet<>(Comparator.comparing(Map.Entry::getKey));
+    entries.addAll(config.entrySet());
+
+    for (Map.Entry<String, ConfigValue> entry : entries) {
       LOGGER.info(
           String.format(
               "%s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
