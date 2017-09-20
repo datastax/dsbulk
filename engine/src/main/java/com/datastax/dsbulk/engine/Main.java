@@ -8,7 +8,7 @@ package com.datastax.dsbulk.engine;
 
 import static com.datastax.dsbulk.engine.internal.OptionUtils.DEFAULT;
 
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.HelpUtils;
 import com.datastax.dsbulk.engine.internal.OptionUtils;

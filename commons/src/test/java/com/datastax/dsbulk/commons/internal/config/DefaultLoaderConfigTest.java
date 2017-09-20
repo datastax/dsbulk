@@ -4,13 +4,14 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.commons.config;
+package com.datastax.dsbulk.commons.internal.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
+import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.net.URL;
@@ -104,10 +105,7 @@ public class DefaultLoaderConfigTest {
     assertThat(config.getTypeString("stringListField")).isEqualTo("list<string>");
     assertThat(config.getTypeString("numberListField")).isEqualTo("list<number>");
     assertThat(config.getTypeString("booleanField")).isEqualTo("boolean");
-    assertThatThrownBy(
-            () -> {
-              config.getTypeString("noexist");
-            })
+    assertThatThrownBy(() -> config.getTypeString("noexist"))
         .isInstanceOf(ConfigException.Missing.class);
   }
 

@@ -8,8 +8,8 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Test;
 

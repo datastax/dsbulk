@@ -10,7 +10,7 @@ import static com.datastax.dsbulk.tests.utils.NetworkUtils.findAvailablePort;
 import static com.datastax.dsbulk.tests.utils.VersionUtils.DEFAULT_DSE_VERSION;
 import static com.datastax.dsbulk.tests.utils.VersionUtils.getOSSVersionForDSEVersion;
 
-import com.datastax.dsbulk.commons.PlatformUtils;
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.tests.utils.MemoryUtils;
 import com.datastax.dsbulk.tests.utils.NetworkUtils;
 import com.datastax.dsbulk.tests.utils.StringUtils;
