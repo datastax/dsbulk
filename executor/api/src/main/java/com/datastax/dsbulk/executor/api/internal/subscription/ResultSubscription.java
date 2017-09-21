@@ -120,18 +120,24 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
     return cancelled;
   }
 
-  void fetchNextPage(Callable<ListenableFuture<R>> query) {
+  long getRequested() {
+    return requested;
+  }
+
+  ListenableFuture<R> fetchNextPage(Callable<ListenableFuture<R>> query) {
     rateLimiter.ifPresent(limiter -> limiter.acquire(size));
     requestPermits.ifPresent(permits -> permits.acquireUninterruptibly(size));
-    ListenableFuture<R> page;
     try {
-      page = query.call();
+      return query.call();
     } catch (Throwable ex) {
       // in rare cases, the driver throws instead of failing the future
       requestPermits.ifPresent(permits -> permits.release(size));
       onError(ex);
-      return;
+      return null;
     }
+  }
+
+  void addCallback(ListenableFuture<R> page) {
     Futures.addCallback(
         page,
         new FutureCallback<R>() {

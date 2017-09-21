@@ -14,6 +14,7 @@ import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
 import java.util.Queue;
@@ -48,18 +49,31 @@ public class ReadResultSubscription extends ResultSetSubscription<ReadResult> {
 
   @Override
   protected void consumePage(ResultSet rs) {
+    boolean lastPage = rs.getExecutionInfo().getPagingState() == null;
+    ListenableFuture<ResultSet> nextPage = null;
     for (Row row : rs) {
-      DefaultReadResult result = new DefaultReadResult(statement, rs.getExecutionInfo(), row);
       if (isCancelled()) {
-        break;
+        return;
       }
+      if (!lastPage && nextPage == null && getRequested() > rs.getAvailableWithoutFetching()) {
+        nextPage = fetchNextPage(rs::fetchMoreResults);
+        if (nextPage == null) {
+          return;
+        }
+      }
+      DefaultReadResult result = new DefaultReadResult(statement, rs.getExecutionInfo(), row);
       onNext(result);
     }
-    boolean lastPage = rs.getExecutionInfo().getPagingState() == null;
     if (lastPage) {
       onComplete();
-    } else if (!isCancelled()) {
-      fetchNextPage(rs::fetchMoreResults);
+    } else {
+      if (nextPage == null) {
+        nextPage = fetchNextPage(rs::fetchMoreResults);
+        if (nextPage == null) {
+          return;
+        }
+      }
+      addCallback(nextPage);
     }
   }
 
@@ -67,4 +81,5 @@ public class ReadResultSubscription extends ResultSetSubscription<ReadResult> {
   protected ReadResult toErrorResult(BulkExecutionException error) {
     return new DefaultReadResult(error);
   }
+
 }

@@ -11,6 +11,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.Result;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
 import java.util.Queue;
@@ -47,6 +48,9 @@ public abstract class ResultSetSubscription<T extends Result>
   @Override
   public void start() {
     super.start();
-    fetchNextPage(() -> session.executeAsync(statement));
+    ListenableFuture<ResultSet> firstPage = fetchNextPage(() -> session.executeAsync(statement));
+    if (firstPage != null) {
+      addCallback(firstPage);
+    }
   }
 }
