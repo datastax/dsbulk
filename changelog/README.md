@@ -48,5 +48,5 @@
 - [improvement] DAT-87: Validate configuration more deeply.
 - [improvement] DAT-47: Refactor ReadResultEmitter.
 - [improvement] DAT-110: Improve performance of read result mappers.
-- [improvement] DAT-111: Move internal classes to internal packages.
+- [improvement] DAT-112: Sort 'Bulk Loader effective settings' output.
 - [improvement] DAT-99: schema.keyspace should scope underlying session to the provided keyspace.
