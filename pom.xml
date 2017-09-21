@@ -528,7 +528,7 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
         <plugin>
           <artifactId>maven-assembly-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.1.0</version>
         </plugin>
 
         <plugin>
