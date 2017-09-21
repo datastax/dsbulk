@@ -46,6 +46,8 @@
 - [improvement] DAT-93: nullStrings setting should be more flexible.
 - [bug] DAT-73: Make mappings work with quoted CQL identifiers.
 - [improvement] DAT-87: Validate configuration more deeply.
+- [improvement] DAT-47: Refactor ReadResultEmitter.
 - [improvement] DAT-110: Improve performance of read result mappers.
 - [improvement] DAT-112: Sort 'Bulk Loader effective settings' output.
+- [improvement] DAT-99: schema.keyspace should scope underlying session to the provided keyspace.
 - [improvement] DAT-115: Make continuous paging optional.

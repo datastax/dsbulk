@@ -35,9 +35,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-/**
- * The main class for load workflows.
- */
+/** The main class for load workflows. */
 public class LoadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadWorkflow.class);
@@ -86,10 +84,13 @@ public class LoadWorkflow implements Workflow {
 
     Scheduler writesScheduler = Schedulers.newParallel("batch-writes", maxConcurrentWrites);
     Scheduler mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
-
+    String keyspace = config.getString("schema.keyspace");
+    if (keyspace != null && keyspace.isEmpty()) {
+      keyspace = null;
+    }
     try (Connector connector = connectorSettings.getConnector(WorkflowType.LOAD);
         DseCluster cluster = driverSettings.newCluster();
-        DseSession session = cluster.connect();
+        DseSession session = cluster.connect(keyspace);
         MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD);
         LogManager logManager = logSettings.newLogManager(cluster);
         ReactorBulkWriter executor =
