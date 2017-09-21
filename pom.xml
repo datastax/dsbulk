@@ -528,7 +528,7 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
         <plugin>
           <artifactId>maven-assembly-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.1.0</version>
         </plugin>
 
         <plugin>
@@ -554,16 +554,7 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
             <autoVersionSubmodules>true</autoVersionSubmodules>
             <useReleaseProfile>false</useReleaseProfile>
             <releaseProfiles>release</releaseProfiles>
-            <!-- deployment is not configured yet -->
-            <goals>install</goals>
           </configuration>
-        </plugin>
-
-        <plugin>
-          <groupId>org.sonatype.plugins</groupId>
-          <artifactId>nexus-staging-maven-plugin</artifactId>
-          <version>1.6.8</version>
-          <extensions>true</extensions>
         </plugin>
 
         <plugin>
@@ -653,17 +644,6 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
               </execution>
             </executions>
           </plugin>
-          <plugin>
-            <groupId>org.sonatype.plugins</groupId>
-            <artifactId>nexus-staging-maven-plugin</artifactId>
-            <extensions>true</extensions>
-            <configuration>
-              <serverId>ossrh</serverId>
-              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-              <autoReleaseAfterClose>false</autoReleaseAfterClose>
-              <skipLocalStaging>true</skipLocalStaging>
-            </configuration>
-          </plugin>
         </plugins>
       </build>
     </profile>
@@ -672,9 +652,15 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
   <distributionManagement>
     <repository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+      <id>datastax-releases-local</id>
+      <name>DataStax Local Releases</name>
+      <url>https://datastax.jfrog.io/datastax/datastax-releases-local/</url>
     </repository>
+    <snapshotRepository>
+      <id>datastax-snapshots-local</id>
+      <name>DataStax Local Snapshots</name>
+      <url>https://datastax.jfrog.io/datastax/datastax-snapshots-local/</url>
+    </snapshotRepository>
   </distributionManagement>
 
   <licenses>

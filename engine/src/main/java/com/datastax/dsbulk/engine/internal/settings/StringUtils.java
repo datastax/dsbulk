@@ -12,29 +12,31 @@ import java.util.Collections;
 public class StringUtils {
 
   /**
-   * Upper-case the first letter of the given string
+   * Upper-cases the first letter of the given string
    *
    * @param s String to convert.
+   * @return The string with its first letter in upper case.
    */
   public static String ucfirst(String s) {
     return Character.toUpperCase(s.charAt(0)) + s.substring(1);
   }
 
   /**
-   * Return a new string consisting of n copies of the given string.
+   * Returns a new string consisting of n copies of the given string.
    *
    * @param s String to copy.
    * @param count Number of times to copy it.
+   * @return a new string consisting of n copies of the given string.
    */
   public static String nCopies(String s, int count) {
     return String.join("", Collections.nCopies(count, s));
   }
 
   /**
-   * Replace tokens that are meaningful in html with their entity representations.
+   * Replaces tokens that are meaningful in html with their entity representations.
    *
-   * @param s String to escape
-   * @return escaped string.
+   * @param s String to escape.
+   * @return the escaped string.
    */
   public static String htmlEscape(String s) {
     return s.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
