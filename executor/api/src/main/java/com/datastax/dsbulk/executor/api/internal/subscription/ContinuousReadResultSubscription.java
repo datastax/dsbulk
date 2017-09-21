@@ -15,11 +15,9 @@ import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.RateLimiter;
-import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.Executor;
@@ -70,33 +68,22 @@ public class ContinuousReadResultSubscription
   @Override
   protected void consumePage(AsyncContinuousPagingResult pagingResult) {
     boolean lastPage = pagingResult.isLast();
-    ListenableFuture<AsyncContinuousPagingResult> nextPage = null;
-    ArrayList<Row> rows = Lists.newArrayList(pagingResult.currentPage());
-    int remaining = rows.size();
-    for (Row row : rows) {
+    for (Row row : pagingResult.currentPage()) {
       if (isCancelled()) {
         pagingResult.cancel();
         return;
       }
-      if (!lastPage && nextPage == null && getRequested() > remaining) {
-        nextPage = fetchNextPage(pagingResult::nextPage);
-        if (nextPage == null) {
-          return;
-        }
-      }
       DefaultReadResult result =
           new DefaultReadResult(statement, pagingResult.getExecutionInfo(), row);
       onNext(result);
-      remaining--;
     }
     if (lastPage) {
       onComplete();
     } else {
+      ListenableFuture<AsyncContinuousPagingResult> nextPage =
+          fetchNextPage(pagingResult::nextPage);
       if (nextPage == null) {
-        nextPage = fetchNextPage(pagingResult::nextPage);
-        if (nextPage == null) {
-          return;
-        }
+        return;
       }
       Futures.addCallback(nextPage, this, executor);
     }
