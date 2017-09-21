@@ -120,8 +120,8 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
               rateLimiter,
               requestPermits,
               failFast);
-      subscription.start();
       subscriber.onSubscribe(subscription);
+      subscription.start();
     }
   }
 }

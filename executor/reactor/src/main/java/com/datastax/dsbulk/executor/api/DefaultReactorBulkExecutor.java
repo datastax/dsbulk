@@ -258,8 +258,8 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
               rateLimiter,
               requestPermits,
               failFast);
-      subscription.start();
       subscriber.onSubscribe(subscription);
+      subscription.start();
     }
   }
 
@@ -283,8 +283,8 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
               rateLimiter,
               requestPermits,
               failFast);
-      subscription.start();
       subscriber.onSubscribe(subscription);
+      subscription.start();
     }
   }
 }

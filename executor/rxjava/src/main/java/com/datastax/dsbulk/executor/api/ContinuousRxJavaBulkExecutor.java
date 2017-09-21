@@ -120,8 +120,8 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
               rateLimiter,
               requestPermits,
               failFast);
-      subscription.start();
       subscriber.onSubscribe(subscription);
+      subscription.start();
     }
   }
 }
