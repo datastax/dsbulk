@@ -76,6 +76,18 @@ public class ExecutorSettingsTest {
   }
 
   @Test
+  public void should_create_non_continuous_executor_when_read_workflow_and_not_enabled()
+      throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("continuousPagingOptions.enabled = false")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    ReactiveBulkReader executor = settings.newReadExecutor(session, null);
+    assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
+  }
+
+  @Test
   public void should_report_default_max_concurrent_ops() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));

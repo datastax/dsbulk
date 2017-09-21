@@ -48,3 +48,4 @@
 - [improvement] DAT-87: Validate configuration more deeply.
 - [improvement] DAT-110: Improve performance of read result mappers.
 - [improvement] DAT-112: Sort 'Bulk Loader effective settings' output.
+- [improvement] DAT-115: Make continuous paging optional.
