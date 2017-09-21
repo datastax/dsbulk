@@ -108,6 +108,7 @@ public class SettingValidatorTest {
       stderr = new ByteArrayOutputStream();
       System.setErr(new PrintStream(stderr));
     }
+
     // These errors will look like this; String: 1: Invalid value at 'protocol.compression':
     // The enum class Compression has no constant of the name 'badValue' (should be one of [NONE, SNAPPY, LZ4].
     for (String argument : Arrays.asList(BAD_ENUM)) {
@@ -125,6 +126,7 @@ public class SettingValidatorTest {
       stderr = new ByteArrayOutputStream();
       System.setErr(new PrintStream(stderr));
     }
+
     // These Errors will look like this; String: 1: Invalid value at 'socket.readTimeout': No number in duration value
     // 'badValue
     for (String argument : Arrays.asList(BAD_DURATION)) {
@@ -232,5 +234,18 @@ public class SettingValidatorTest {
         });
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains(" All host(s) tried for query");
+  }
+
+  @Test
+  public void should_error_invalid_schema_missing_keyspace() throws Exception {
+    new Main(
+        new String[] {
+          "load",
+          "--driver.hosts=255.255.255.23",
+          "--connector.csv.url=/path/to/my/file",
+          "--schema.table=table"
+        });
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).contains("schema.keyspace must accompany schema.table in the configuration");
   }
 }
