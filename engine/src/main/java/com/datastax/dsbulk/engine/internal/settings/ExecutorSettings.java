@@ -68,24 +68,27 @@ public class ExecutorSettings implements SettingsValidator {
   private ReactorBulkExecutor newBulkExecutor(
       Session session, ExecutionListener executionListener, WorkflowType workflowType) {
     if (workflowType == WorkflowType.UNLOAD) {
-      if (continuousPagingAvailable(session)) {
-        ContinuousReactorBulkExecutorBuilder builder =
-            ContinuousReactorBulkExecutor.builder(((ContinuousPagingSession) session));
-        configure(builder, executionListener);
-        Config continuousPagingConfig = config.getConfig("continuousPaging");
-        ContinuousPagingOptions options =
-            ContinuousPagingOptions.builder()
-                .withPageSize(
-                    continuousPagingConfig.getInt("pageSize"),
-                    continuousPagingConfig.getEnum(
-                        ContinuousPagingOptions.PageUnit.class, "pageUnit"))
-                .withMaxPages(continuousPagingConfig.getInt("maxPages"))
-                .withMaxPagesPerSecond(continuousPagingConfig.getInt("maxPagesPerSecond"))
-                .build();
-        builder.withContinuousPagingOptions(options);
-        return builder.build();
-      } else {
-        LOGGER.warn("Continuous paging is not available, read performance will not be optimal");
+      Config continuousPagingConfig = config.getConfig("continuousPaging");
+      if (continuousPagingConfig.getBoolean("enabled")) {
+        if (continuousPagingAvailable(session)) {
+          continuousPagingAvailable(session);
+          ContinuousReactorBulkExecutorBuilder builder =
+              ContinuousReactorBulkExecutor.builder(((ContinuousPagingSession) session));
+          configure(builder, executionListener);
+          ContinuousPagingOptions options =
+              ContinuousPagingOptions.builder()
+                  .withPageSize(
+                      continuousPagingConfig.getInt("pageSize"),
+                      continuousPagingConfig.getEnum(
+                          ContinuousPagingOptions.PageUnit.class, "pageUnit"))
+                  .withMaxPages(continuousPagingConfig.getInt("maxPages"))
+                  .withMaxPagesPerSecond(continuousPagingConfig.getInt("maxPagesPerSecond"))
+                  .build();
+          builder.withContinuousPagingOptions(options);
+          return builder.build();
+        } else {
+          LOGGER.warn("Continuous paging is not available, read performance will not be optimal");
+        }
       }
     }
     DefaultReactorBulkExecutorBuilder builder = DefaultReactorBulkExecutor.builder(session);

@@ -1019,6 +1019,15 @@ Setting this option to any negative value will disable it.
 
 Default: **100000**.
 
+#### ---executor.continuousPaging.enabled _&lt;boolean&gt;_
+
+Whether or not continuous paging is enabled.
+
+If the target cluster does not support continuous paging, traditional paging will be used regardless
+of this setting.
+
+Default: **true**.
+
 #### ---executor.continuousPaging.maxPages _&lt;number&gt;_
 
 The maximum number of pages to retrieve.

@@ -50,3 +50,4 @@
 - [improvement] DAT-110: Improve performance of read result mappers.
 - [improvement] DAT-112: Sort 'Bulk Loader effective settings' output.
 - [improvement] DAT-99: schema.keyspace should scope underlying session to the provided keyspace.
+- [improvement] DAT-115: Make continuous paging optional.
