@@ -14,6 +14,7 @@ import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
@@ -73,7 +74,7 @@ public class ReadResultSubscription extends ResultSetSubscription<ReadResult> {
           return;
         }
       }
-      addCallback(nextPage);
+      Futures.addCallback(nextPage, this, executor);
     }
   }
 
@@ -81,5 +82,4 @@ public class ReadResultSubscription extends ResultSetSubscription<ReadResult> {
   protected ReadResult toErrorResult(BulkExecutionException error) {
     return new DefaultReadResult(error);
   }
-
 }

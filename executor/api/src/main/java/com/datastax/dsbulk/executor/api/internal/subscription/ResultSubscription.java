@@ -15,7 +15,6 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.Result;
 import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
@@ -33,10 +32,12 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-public abstract class ResultSubscription<T extends Result, R> implements Subscription {
+public abstract class ResultSubscription<T extends Result, R>
+    implements Subscription, FutureCallback<R> {
 
   protected final Statement statement;
   protected final Session session;
+  protected final Executor executor;
 
   private final Subscriber<? super T> subscriber;
   private final Queue<T> queue;
@@ -46,7 +47,6 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
   private final Optional<RateLimiter> rateLimiter;
 
   private final boolean failFast;
-  private final Executor executor;
   private final int size;
   private final ExecutionContext context = new DefaultExecutionContext();
 
@@ -137,23 +137,16 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
     }
   }
 
-  void addCallback(ListenableFuture<R> page) {
-    Futures.addCallback(
-        page,
-        new FutureCallback<R>() {
-          @Override
-          public void onSuccess(R rs) {
-            requestPermits.ifPresent(permits -> permits.release(size));
-            consumePage(rs);
-          }
+  @Override
+  public void onSuccess(R rs) {
+    requestPermits.ifPresent(permits -> permits.release(size));
+    consumePage(rs);
+  }
 
-          @Override
-          public void onFailure(Throwable t) {
-            requestPermits.ifPresent(permits -> permits.release(size));
-            onError(t);
-          }
-        },
-        executor);
+  @Override
+  public void onFailure(Throwable t) {
+    requestPermits.ifPresent(permits -> permits.release(size));
+    onError(t);
   }
 
   void onNext(T result) {
