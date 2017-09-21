@@ -11,30 +11,29 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 final class Operators {
 
   /**
-   * Evaluate if a request is strictly positive otherwise throw an exception.
+   * Evaluates if a request is strictly positive otherwise throws an exception.
    *
-   * @param n the request value
-   * @return true if valid
+   * @param n the request value.
+   * @return true if > 0, false if == 0.
+   * @throws IllegalArgumentException if the request is invalid (i.e., < 0).
    */
   static boolean validate(long n) {
     if (n == 0) {
       return false;
     }
     if (n < 0) {
-      throw new IllegalArgumentException(
-          "Spec. Rule 3.9 - Cannot request a non strictly positive number: " + n);
+      throw new IllegalArgumentException("Spec. Rule 3.9 - Cannot request a negative number: " + n);
     }
     return true;
   }
 
   /**
-   * Concurrent addition bound to Long.MAX_VALUE. Any concurrent write will "happen" before this
-   * operation.
+   * Atomically adds the given value to the given field, bound to Long.MAX_VALUE.
    *
-   * @param <T> the parent instance type
-   * @param updater current field updater
-   * @param instance current instance to update
-   * @param toAdd delta to add
+   * @param <T> the field's declaring class.
+   * @param updater the field updater instance.
+   * @param instance the owning instance to update.
+   * @param toAdd the delta to add.
    */
   static <T> void addCap(AtomicLongFieldUpdater<T> updater, T instance, long toAdd) {
     long r, u;
@@ -48,14 +47,14 @@ final class Operators {
   }
 
   /**
-   * Concurrent subtraction bound to 0. Any concurrent write will "happen" before this operation.
+   * Atomically subtracts the given value from the given field, bound to 0.
    *
-   * @param <T> the parent instance type
-   * @param updater current field updater
-   * @param instance current instance to update
-   * @param toSub delta to sub
+   * @param <T> the field's declaring class.
+   * @param updater the field updater instance.
+   * @param instance the owning instance to update.
+   * @param toSub the delta to subtract.
    */
-  static <T> void produced(AtomicLongFieldUpdater<T> updater, T instance, long toSub) {
+  static <T> void subCap(AtomicLongFieldUpdater<T> updater, T instance, long toSub) {
     long r, u;
     do {
       r = updater.get(instance);
@@ -67,11 +66,11 @@ final class Operators {
   }
 
   /**
-   * Cap an addition to Long.MAX_VALUE
+   * Caps an addition to Long.MAX_VALUE.
    *
-   * @param a left operand
-   * @param b right operand
-   * @return Addition result or Long.MAX_VALUE if overflow
+   * @param a left operand.
+   * @param b right operand.
+   * @return Addition result or Long.MAX_VALUE if overflow.
    */
   private static long addCap(long a, long b) {
     long res = a + b;
@@ -82,11 +81,11 @@ final class Operators {
   }
 
   /**
-   * Cap a subtraction to 0
+   * Caps a subtraction to 0.
    *
-   * @param a left operand
-   * @param b right operand
-   * @return Subscription result or 0 if overflow
+   * @param a left operand.
+   * @param b right operand.
+   * @return Subscription result or 0 if overflow.
    */
   private static long subCap(long a, long b) {
     long res = a - b;

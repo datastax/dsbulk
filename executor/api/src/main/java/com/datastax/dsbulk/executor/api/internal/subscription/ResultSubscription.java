@@ -241,7 +241,7 @@ public abstract class ResultSubscription<T extends Result, R>
       }
 
       if (e != 0) {
-        Operators.produced(REQUESTED, this, e);
+        Operators.subCap(REQUESTED, this, e);
       }
 
       missed = WIP.addAndGet(this, -missed);
