@@ -8,25 +8,31 @@
 package com.datastax.dsbulk.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 
+import com.datastax.dsbulk.engine.internal.HelpUtils;
+import com.datastax.dsbulk.engine.internal.OptionUtils;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-import org.mockito.internal.util.reflection.Whitebox;
+import org.junit.rules.TemporaryFolder;
 
 public class MainTest {
   private PrintStream originalStderr;
   private PrintStream originalStdout;
   private ByteArrayOutputStream stderr;
   private ByteArrayOutputStream stdout;
+
+  @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Before
   public void setUp() throws Exception {
@@ -44,29 +50,34 @@ public class MainTest {
   public void tearDown() throws Exception {
     System.setOut(originalStdout);
     System.setErr(originalStderr);
+    System.clearProperty("config.file");
+    ConfigFactory.invalidateCaches();
+    OptionUtils.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
   }
 
   @Test
-  public void should_show_help_with_error_when_no_args() throws Exception {
-    Main main = new Main(new String[] {});
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err)
-        .contains("First argument must be subcommand")
-        .contains("DataStax Bulk Loader/Unloader v" + Whitebox.getInternalState(main, "version"));
+  public void should_show_help_when_no_args() throws Exception {
+    new Main(new String[] {});
+    assertGlobalHelp();
   }
 
   @Test
-  public void should_show_help_without_error_when_help_arg() throws Exception {
+  public void should_show_help_when_help_opt_arg() throws Exception {
     new Main(new String[] {"--help"});
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).doesNotContain("First argument must be subcommand");
+    assertGlobalHelp();
   }
 
   @Test
-  public void should_show_help_with_error_when_junk_subcommand() throws Exception {
+  public void should_show_help_when_help_subcommand() throws Exception {
+    new Main(new String[] {"help"});
+    assertGlobalHelp();
+  }
+
+  @Test
+  public void should_show_error_when_junk_subcommand() throws Exception {
     new Main(new String[] {"junk"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("First argument must be subcommand");
+    assertThat(err).contains("First argument must be subcommand \"load\", \"unload\", or \"help\"");
   }
 
   @Test
@@ -74,6 +85,7 @@ public class MainTest {
     new Main(new String[] {"junk", "--help"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
+    assertGlobalHelp();
   }
 
   @Test
@@ -81,6 +93,42 @@ public class MainTest {
     new Main(new String[] {"load", "--help"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
+    assertGlobalHelp();
+  }
+
+  @Test
+  public void should_show_error_for_help_bad_section() throws Exception {
+    new Main(new String[] {"help", "noexist"});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .contains("noexist is not a valid section. Available sections include")
+        .contains("driver.auth");
+  }
+
+  @Test
+  public void should_show_section_help() throws Exception {
+    new Main(new String[] {"help", "batch"});
+    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(out)
+        .contains("--batch.mode")
+        .doesNotContain("This section has the following subsections");
+  }
+
+  @Test
+  public void should_show_section_help_with_subsection_pointers() throws Exception {
+    new Main(new String[] {"help", "driver"});
+    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(out)
+        .contains("--driver.hosts")
+        .contains("This section has the following subsections")
+        .contains("driver.auth");
+  }
+
+  @Test
+  public void should_show_section_help_with_connector_shortcuts() throws Exception {
+    new Main(new String[] {"help", "connector.csv"});
+    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(out).contains("-url,--connector.csv.url");
   }
 
   @Test
@@ -88,15 +136,67 @@ public class MainTest {
     new Main(new String[] {"-k", "k1", "--help"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
+    assertGlobalHelp();
   }
 
   @Test
-  public void should_show_help_with_short_opts_when_name_set() throws Exception {
-    new Main(new String[] {"-c", "csv", "--help"});
+  public void should_respect_custom_config_file() throws Exception {
+    {
+      File f = tempFolder.newFile("myapp.conf");
+      Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
+      new Main(new String[] {"load", "-f", f.getPath()});
+      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      assertThat(err)
+          .doesNotContain("First argument must be subcommand")
+          .contains("Cannot find connector 'junk'");
+    }
+    {
+      File f = tempFolder.newFile("myapp3.conf");
+      Files.write(f.toPath(), "dsbulk.driver.socket.readTimeout=wonky".getBytes("UTF-8"));
+      new Main(new String[] {"load", "-f", f.getPath()});
+      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      assertThat(err)
+          .doesNotContain("First argument must be subcommand")
+          .contains("Invalid value at 'socket.readTimeout'");
+    }
+  }
+
+  @Test
+  public void should_error_out_for_bad_config_file() throws Exception {
+    new Main(new String[] {"load", "-f", "noexist"});
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .doesNotContain("First argument must be subcommand")
-        .contains("-url,--connector.csv.url");
+        .contains("noexist (No such file or directory)");
+  }
+
+  @Test
+  public void should_accept_connector_name_in_args_over_config_file() throws Exception {
+    File f = tempFolder.newFile("myapp.conf");
+    Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
+    new Main(new String[] {"load", "-c", "fromargs", "-f", f.getPath()});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .doesNotContain("First argument must be subcommand")
+        .contains("Cannot find connector 'fromargs'");
+  }
+
+  @Test
+  public void should_handle_connector_name_long_option() throws Exception {
+    new Main(new String[] {"load", "--connector.name", "fromargs"});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .doesNotContain("First argument must be subcommand")
+        .contains("Cannot find connector 'fromargs'");
+  }
+
+  @Test
+  public void should_handle_connector_name_long_option_with_equal() throws Exception {
+    new Main(new String[] {"load", "--connector.name=fromargs"});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .doesNotContain("First argument must be subcommand")
+        .contains("Cannot find connector 'fromargs'");
   }
 
   @Test
@@ -116,7 +216,6 @@ public class MainTest {
               "-retry", "retry",
               "-port", "9876",
               "-cl", "cl",
-              "-sslKeystorePw", "sslpass",
               "-maxErrors", "123",
               "-logDir", "logdir",
               "-jmx", "false",
@@ -124,6 +223,7 @@ public class MainTest {
               "-k", "ks",
               "-m", "{0:\"f1\", 1:\"f2\"}",
               "-nullStrings", "[nil, nada]",
+              "-query", "INSERT INTO foo",
               "-t", "table",
               "-comment", "comment",
               "-delim", "|",
@@ -146,16 +246,14 @@ public class MainTest {
     assertThat(result.getString("driver.policy.retry")).isEqualTo("retry");
     assertThat(result.getInt("driver.port")).isEqualTo(9876);
     assertThat(result.getString("driver.query.consistency")).isEqualTo("cl");
-    assertThat(result.getString("driver.ssl.keystore.password")).isEqualTo("sslpass");
     assertThat(result.getInt("log.maxErrors")).isEqualTo(123);
-    assertThat(result.getString("log.outputDirectory")).isEqualTo("logdir");
+    assertThat(result.getString("log.directory")).isEqualTo("logdir");
     assertThat(result.getBoolean("monitoring.jmx")).isFalse();
     assertThat(result.getInt("monitoring.reportRate")).isEqualTo(456);
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
-
-    Map<String, Object> mapping = result.getConfig("schema.mapping").root().unwrapped();
-    assertThat(mapping).contains(entry("0", "f1"), entry("1", "f2"));
-    assertThat(result.getStringList("schema.nullStrings")).containsOnly("nil", "nada");
+    assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
+    assertThat(result.getString("schema.nullStrings")).isEqualTo("[nil, nada]");
+    assertThat(result.getString("schema.query")).isEqualTo("INSERT INTO foo");
     assertThat(result.getString("schema.table")).isEqualTo("table");
 
     // CSV short options
@@ -178,89 +276,165 @@ public class MainTest {
             "csv",
             "load",
             new String[] {
-              "--driver.hosts", "host1, host2",
-              "--driver.port", "1",
-              "--driver.protocol.version", "V3",
-              "--driver.protocol.compression", "NONE",
-              "--driver.pooling.local.connections", "2",
-              "--driver.pooling.local.requests", "3",
-              "--driver.pooling.remote.connections", "4",
-              "--driver.pooling.remote.requests", "5",
-              "--driver.pooling.heartbeat", "6 seconds",
-              "--driver.query.consistency", "cl",
-              "--driver.query.serialConsistency", "serial-cl",
-              "--driver.query.fetchSize", "7",
-              "--driver.query.idempotence", "false",
-              "--driver.socket.readTimeout", "8 seconds",
-              "--driver.auth.provider", "myauth",
-              "--driver.auth.username", "user",
-              "--driver.auth.password", "pass",
-              "--driver.auth.authorizationId", "authid",
-              "--driver.auth.principal", "user@foo.com",
-              "--driver.auth.keyTab", "mykeytab",
-              "--driver.auth.saslProtocol", "sasl",
-              "--driver.ssl.provider", "myssl",
-              "--driver.ssl.cipherSuites", "[TLS]",
-              "--driver.ssl.truststore.path", "trust-path",
-              "--driver.ssl.truststore.password", "trust-pass",
-              "--driver.ssl.truststore.algorithm", "trust-alg",
-              "--driver.ssl.keystore.path", "keystore-path",
-              "--driver.ssl.keystore.password", "keystore-pass",
-              "--driver.ssl.keystore.algorithm", "keystore-alg",
-              "--driver.ssl.openssl.keyCertChain", "key-cert-chain",
-              "--driver.ssl.openssl.privateKey", "key",
-              "--driver.timestampGenerator", "ts-gen",
-              "--driver.addressTranslator", "address-translator",
-              "--driver.policy.retry", "retry-policy",
-              "--driver.policy.lbp", "lbp",
-              "--driver.policy.specexec", "specexec",
-              "--batch.mode", "batch-mode",
-              "--batch.bufferSize", "9",
-              "--batch.maxBatchSize", "10",
-              "--executor.maxThreads", "11",
-              "--executor.maxInflight", "12",
-              "--executor.maxPerSecond", "13",
-              "--executor.continuousPaging.pageUnit", "BYTES",
-              "--executor.continuousPaging.pageSize", "14",
-              "--executor.continuousPaging.maxPages", "15",
-              "--executor.continuousPaging.maxPagesPerSecond", "16",
-              "--log.outputDirectory", "log-out",
-              "--log.maxThreads", "17",
-              "--log.maxErrors", "18",
-              "--log.stmt.verbosity", "NORMAL",
-              "--log.stmt.maxQueryStringLength", "19",
-              "--log.stmt.maxBoundValues", "20",
-              "--log.stmt.maxBoundValueLength", "21",
-              "--log.stmt.maxInnerStatements", "22",
-              "--codec.locale", "locale",
-              "--codec.timeZone", "tz",
-              "--codec.booleanWords", "[\"Si\", \"No\"]",
-              "--codec.number", "codec-number",
-              "--codec.timestamp", "codec-ts",
-              "--codec.date", "codec-date",
-              "--codec.time", "codec-time",
-              "--codec.itemDelimiter", "codec-itemDelim",
-              "--codec.keyValueSeparator", "codec-kvsep",
-              "--monitoring.reportRate", "23 sec",
-              "--monitoring.rateUnit", "rate-unit",
-              "--monitoring.durationUnit", "duration-unit",
-              "--monitoring.expectedWrites", "24",
-              "--monitoring.expectedReads", "25",
-              "--monitoring.jmx", "false",
-              "--schema.keyspace", "ks",
-              "--schema.table", "table",
-              "--schema.statement", "SELECT JUNK",
-              "--schema.nullStrings", "[NIL, NADA]",
-              "--schema.nullToUnset", "false",
-              "--schema.mapping", "{0:\"f1\", 1:\"f2\"}",
-              "--schema.recordMetadata", "{0:\"f3\", 1:\"f4\"}",
-              "--connector.name", "conn",
-              "--engine.maxMappingThreads", "26",
-              "--engine.maxConcurrentReads", "27"
+              "--driver.hosts",
+              "host1, host2",
+              "--driver.port",
+              "1",
+              "--driver.protocol.compression",
+              "NONE",
+              "--driver.pooling.local.connections",
+              "2",
+              "--driver.pooling.local.requests",
+              "3",
+              "--driver.pooling.remote.connections",
+              "4",
+              "--driver.pooling.remote.requests",
+              "5",
+              "--driver.pooling.heartbeat",
+              "6 seconds",
+              "--driver.query.consistency",
+              "cl",
+              "--driver.query.serialConsistency",
+              "serial-cl",
+              "--driver.query.fetchSize",
+              "7",
+              "--driver.query.idempotence",
+              "false",
+              "--driver.socket.readTimeout",
+              "8 seconds",
+              "--driver.auth.provider",
+              "myauth",
+              "--driver.auth.username",
+              "user",
+              "--driver.auth.password",
+              "pass",
+              "--driver.auth.authorizationId",
+              "authid",
+              "--driver.auth.principal",
+              "user@foo.com",
+              "--driver.auth.keyTab",
+              "mykeytab",
+              "--driver.auth.saslProtocol",
+              "sasl",
+              "--driver.ssl.provider",
+              "myssl",
+              "--driver.ssl.cipherSuites",
+              "[TLS]",
+              "--driver.ssl.truststore.path",
+              "trust-path",
+              "--driver.ssl.truststore.password",
+              "trust-pass",
+              "--driver.ssl.truststore.algorithm",
+              "trust-alg",
+              "--driver.ssl.keystore.path",
+              "keystore-path",
+              "--driver.ssl.keystore.password",
+              "keystore-pass",
+              "--driver.ssl.keystore.algorithm",
+              "keystore-alg",
+              "--driver.ssl.openssl.keyCertChain",
+              "key-cert-chain",
+              "--driver.ssl.openssl.privateKey",
+              "key",
+              "--driver.timestampGenerator",
+              "ts-gen",
+              "--driver.addressTranslator",
+              "address-translator",
+              "--driver.policy.retry",
+              "retry-policy",
+              "--driver.policy.lbp",
+              "lbp",
+              "--driver.policy.specexec",
+              "specexec",
+              "--batch.mode",
+              "batch-mode",
+              "--batch.bufferSize",
+              "9",
+              "--batch.maxBatchSize",
+              "10",
+              "--executor.maxThreads",
+              "11",
+              "--executor.maxConcurrentOps",
+              "27",
+              "--executor.maxInFlight",
+              "12",
+              "--executor.maxPerSecond",
+              "13",
+              "--executor.continuousPaging.pageUnit",
+              "BYTES",
+              "--executor.continuousPaging.pageSize",
+              "14",
+              "--executor.continuousPaging.maxPages",
+              "15",
+              "--executor.continuousPaging.maxPagesPerSecond",
+              "16",
+              "--log.directory",
+              "log-out",
+              "--log.maxThreads",
+              "17",
+              "--log.maxErrors",
+              "18",
+              "--log.stmt.level",
+              "NORMAL",
+              "--log.stmt.maxQueryStringLength",
+              "19",
+              "--log.stmt.maxBoundValues",
+              "20",
+              "--log.stmt.maxBoundValueLength",
+              "21",
+              "--log.stmt.maxInnerStatements",
+              "22",
+              "--codec.locale",
+              "locale",
+              "--codec.timeZone",
+              "tz",
+              "--codec.booleanWords",
+              "[\"Si\", \"No\"]",
+              "--codec.number",
+              "codec-number",
+              "--codec.timestamp",
+              "codec-ts",
+              "--codec.date",
+              "codec-date",
+              "--codec.time",
+              "codec-time",
+              "--codec.itemDelimiter",
+              "codec-itemDelim",
+              "--codec.keyValueSeparator",
+              "codec-kvsep",
+              "--monitoring.reportRate",
+              "23 sec",
+              "--monitoring.rateUnit",
+              "rate-unit",
+              "--monitoring.durationUnit",
+              "duration-unit",
+              "--monitoring.expectedWrites",
+              "24",
+              "--monitoring.expectedReads",
+              "25",
+              "--monitoring.jmx",
+              "false",
+              "--schema.keyspace",
+              "ks",
+              "--schema.table",
+              "table",
+              "--schema.query",
+              "SELECT JUNK",
+              "--schema.nullStrings",
+              "NIL, NADA",
+              "--schema.nullToUnset",
+              "false",
+              "--schema.mapping",
+              "{0:\"f1\", 1:\"f2\"}",
+              "--schema.recordMetadata",
+              "{0:\"f3\", 1:\"f4\"}",
+              "--connector.name",
+              "conn",
+              "--engine.maxMappingThreads",
+              "26"
             });
     assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
     assertThat(result.getInt("driver.port")).isEqualTo(1);
-    assertThat(result.getString("driver.protocol.version")).isEqualTo("V3");
     assertThat(result.getString("driver.protocol.compression")).isEqualTo("NONE");
     assertThat(result.getInt("driver.pooling.local.connections")).isEqualTo(2);
     assertThat(result.getInt("driver.pooling.local.requests")).isEqualTo(3);
@@ -299,16 +473,17 @@ public class MainTest {
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
     assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);
     assertThat(result.getInt("executor.maxThreads")).isEqualTo(11);
-    assertThat(result.getInt("executor.maxInflight")).isEqualTo(12);
+    assertThat(result.getInt("executor.maxConcurrentOps")).isEqualTo(27);
+    assertThat(result.getInt("executor.maxInFlight")).isEqualTo(12);
     assertThat(result.getInt("executor.maxPerSecond")).isEqualTo(13);
     assertThat(result.getString("executor.continuousPaging.pageUnit")).isEqualTo("BYTES");
     assertThat(result.getInt("executor.continuousPaging.pageSize")).isEqualTo(14);
     assertThat(result.getInt("executor.continuousPaging.maxPages")).isEqualTo(15);
     assertThat(result.getInt("executor.continuousPaging.maxPagesPerSecond")).isEqualTo(16);
-    assertThat(result.getString("log.outputDirectory")).isEqualTo("log-out");
+    assertThat(result.getString("log.directory")).isEqualTo("log-out");
     assertThat(result.getInt("log.maxThreads")).isEqualTo(17);
     assertThat(result.getInt("log.maxErrors")).isEqualTo(18);
-    assertThat(result.getString("log.stmt.verbosity")).isEqualTo("NORMAL");
+    assertThat(result.getString("log.stmt.level")).isEqualTo("NORMAL");
     assertThat(result.getInt("log.stmt.maxQueryStringLength")).isEqualTo(19);
     assertThat(result.getInt("log.stmt.maxBoundValues")).isEqualTo(20);
     assertThat(result.getInt("log.stmt.maxBoundValueLength")).isEqualTo(21);
@@ -330,16 +505,13 @@ public class MainTest {
     assertThat(result.getBoolean("monitoring.jmx")).isFalse();
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
     assertThat(result.getString("schema.table")).isEqualTo("table");
-    assertThat(result.getString("schema.statement")).isEqualTo("SELECT JUNK");
-    assertThat(result.getStringList("schema.nullStrings")).isEqualTo(Arrays.asList("NIL", "NADA"));
+    assertThat(result.getString("schema.query")).isEqualTo("SELECT JUNK");
+    assertThat(result.getString("schema.nullStrings")).isEqualTo("NIL, NADA");
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
-    assertThat(result.getConfig("schema.mapping").root().unwrapped())
-        .contains(entry("0", "f1"), entry("1", "f2"));
-    assertThat(result.getConfig("schema.recordMetadata").root().unwrapped())
-        .contains(entry("0", "f3"), entry("1", "f4"));
+    assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
+    assertThat(result.getString("schema.recordMetadata")).isEqualTo("{0:f3, 1:f4}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");
     assertThat(result.getInt("engine.maxMappingThreads")).isEqualTo(26);
-    assertThat(result.getInt("engine.maxConcurrentReads")).isEqualTo(27);
   }
 
   @Test
@@ -350,12 +522,12 @@ public class MainTest {
             "load",
             new String[] {
               "--connector.csv.url", "url",
-              "--connector.csv.pattern", "pat",
+              "--connector.csv.fileNamePattern", "pat",
               "--connector.csv.fileNameFormat", "fmt",
               "--connector.csv.recursive", "true",
               "--connector.csv.maxThreads", "1",
               "--connector.csv.encoding", "enc",
-              "--connector.csv.header", "true",
+              "--connector.csv.header", "false",
               "--connector.csv.delimiter", "|",
               "--connector.csv.quote", "'",
               "--connector.csv.escape", "*",
@@ -364,12 +536,12 @@ public class MainTest {
               "--connector.csv.maxLines", "3"
             });
     assertThat(result.getString("connector.csv.url")).isEqualTo("url");
-    assertThat(result.getString("connector.csv.pattern")).isEqualTo("pat");
+    assertThat(result.getString("connector.csv.fileNamePattern")).isEqualTo("pat");
     assertThat(result.getString("connector.csv.fileNameFormat")).isEqualTo("fmt");
     assertThat(result.getBoolean("connector.csv.recursive")).isTrue();
     assertThat(result.getInt("connector.csv.maxThreads")).isEqualTo(1);
     assertThat(result.getString("connector.csv.encoding")).isEqualTo("enc");
-    assertThat(result.getBoolean("connector.csv.header")).isTrue();
+    assertThat(result.getBoolean("connector.csv.header")).isFalse();
     assertThat(result.getString("connector.csv.delimiter")).isEqualTo("|");
     assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
     assertThat(result.getString("connector.csv.escape")).isEqualTo("*");
@@ -380,11 +552,15 @@ public class MainTest {
 
   @Test
   public void should_show_version_message_when_asked() throws Exception {
-    Main main = new Main(new String[] {"--version"});
+    new Main(new String[] {"--version"});
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(out)
-        .isEqualTo(
-            String.format(
-                "DataStax Bulk Loader/Unloader v%s%n", Whitebox.getInternalState(main, "version")));
+    assertThat(out).isEqualTo(String.format("%s%n", HelpUtils.getVersionMessage()));
+  }
+
+  private void assertGlobalHelp() {
+    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(out).contains(HelpUtils.getVersionMessage());
+    assertThat(out).doesNotContain("First argument must be subcommand");
+    assertThat(out).containsPattern("-f <string>\\s+Load settings from the given file");
   }
 }

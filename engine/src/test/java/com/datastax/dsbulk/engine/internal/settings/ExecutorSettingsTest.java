@@ -16,8 +16,8 @@ import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.executor.api.ContinuousReactorBulkExecutor;
 import com.datastax.dsbulk.executor.api.DefaultReactorBulkExecutor;
 import com.datastax.dsbulk.executor.api.reader.ReactiveBulkReader;
@@ -73,5 +73,37 @@ public class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null);
     assertThat(executor).isNotNull().isInstanceOf(ContinuousReactorBulkExecutor.class);
+  }
+
+  @Test
+  public void should_create_non_continuous_executor_when_read_workflow_and_not_enabled()
+      throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("continuousPagingOptions.enabled = false")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    ReactiveBulkReader executor = settings.newReadExecutor(session, null);
+    assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
+  }
+
+  @Test
+  public void should_report_default_max_concurrent_ops() throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    assertThat(settings.getMaxConcurrentOps())
+        .isEqualTo(Runtime.getRuntime().availableProcessors());
+  }
+
+  @Test
+  public void should_create_custom_max_concurrent_ops() throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxConcurrentOps = 4C")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    assertThat(settings.getMaxConcurrentOps())
+        .isEqualTo(Runtime.getRuntime().availableProcessors() * 4);
   }
 }

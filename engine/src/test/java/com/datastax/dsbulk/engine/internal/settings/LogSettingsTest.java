@@ -15,8 +15,8 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.typesafe.config.ConfigFactory;
 import java.io.File;
@@ -67,7 +67,7 @@ public class LogSettingsTest {
     Path dir = Files.createTempDirectory("test");
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("outputDirectory = \"" + dir + "\"")
+            ConfigFactory.parseString("directory = \"" + dir + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(cluster);
@@ -81,7 +81,7 @@ public class LogSettingsTest {
     Path dir = Files.createTempDirectory("test");
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("outputDirectory = \"" + dir.toString() + "\"")
+            ConfigFactory.parseString("directory = \"" + dir.toString() + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(cluster);

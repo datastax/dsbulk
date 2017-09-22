@@ -59,6 +59,8 @@ public class CsvUtils {
       ClassLoader.getSystemResource("ip-by-country-skip-bad.csv");
   public static final URL CSV_RECORDS_ERROR =
       ClassLoader.getSystemResource("ip-by-country-error.csv");
+  public static final URL CSV_RECORDS_WITH_SPACES =
+      ClassLoader.getSystemResource("with-spaces.csv");
 
   private static final Map<String, Record> RECORD_MAP =
       ImmutableMap.copyOf(
@@ -75,6 +77,8 @@ public class CsvUtils {
           + "VALUES (?,?,?,?,?,?)";
 
   public static final String SELECT_FROM_IP_BY_COUNTRY = "SELECT * FROM ip_by_country";
+
+  public static final String SELECT_FROM_WITH_SPACES = "SELECT * FROM \"MYKS\".\"WITH_SPACES\"";
 
   public static void createIpByCountryTable(Session session) {
     session.execute(
@@ -111,6 +115,15 @@ public class CsvUtils {
             + "beginning_ip_number bigint,"
             + "ending_ip_number bigint,"
             + "PRIMARY KEY(country_code, beginning_ip_address))");
+  }
+
+  public static void createWithSpacesTable(Session session) {
+    session.execute(
+        "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "
+            + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS \"MYKS\".\"WITH_SPACES\" ("
+            + "key int PRIMARY KEY, \"my destination\" text)");
   }
 
   public static PreparedStatement prepareInsertStatement(Session session) {

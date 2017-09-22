@@ -91,7 +91,7 @@ public abstract class CCMClusterFactory {
     private CCMClusterAnnotationFactory(CCMConfig config) {
       this.numberOfNodes = config.numberOfNodes();
       this.dse = config.dse();
-      this.version = computeVersion(config, dse);
+      this.version = VersionUtils.computeVersion(config, dse);
       this.ssl = config.ssl();
       this.auth = config.auth();
       this.cassandraConfig = toConfigMap(version, config.config());
@@ -99,10 +99,6 @@ public abstract class CCMClusterFactory {
       this.jvmArgs = toConfigSet(config.jvmArgs());
       this.createOptions = toConfigSet(config.createOptions());
       this.workloads = computeWorkloads(config);
-    }
-
-    private static String computeVersion(CCMConfig config, boolean dse) {
-      return VersionUtils.getBestVersion(config.version(), dse);
     }
 
     private static Map<String, Object> toConfigMap(String version, String[] conf) {

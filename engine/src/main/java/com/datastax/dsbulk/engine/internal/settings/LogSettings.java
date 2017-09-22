@@ -8,10 +8,14 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.typesafe.config.ConfigException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
@@ -21,7 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** */
-public class LogSettings {
+public class LogSettings implements SettingsValidator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
@@ -32,10 +36,24 @@ public class LogSettings {
   LogSettings(LoaderConfig config, String executionId)
       throws MalformedURLException, URISyntaxException {
     this.config = config;
-    Path outputDirectory = config.getPath("outputDirectory");
-    executionDirectory = outputDirectory.resolve(executionId);
+    Path directory = config.getPath("directory");
+    executionDirectory = directory.resolve(executionId);
     System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
     LOGGER.info("Operation output directory: {}", executionDirectory);
+  }
+
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
+    try {
+      config.getInt("stmt.maxQueryStringLength");
+      config.getInt("stmt.maxBoundValueLength");
+      config.getInt("stmt.maxBoundValues");
+      config.getInt("stmt.maxInnerStatements");
+      config.getEnum(StatementFormatVerbosity.class, "stmt.level");
+      config.getInt("maxErrors");
+      config.getThreads("maxThreads");
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "log");
+    }
   }
 
   public LogManager newLogManager(Cluster cluster) {
@@ -47,7 +65,7 @@ public class LogSettings {
             .withMaxInnerStatements(config.getInt("stmt.maxInnerStatements"))
             .build();
     StatementFormatVerbosity verbosity =
-        config.getEnum(StatementFormatVerbosity.class, "stmt.verbosity");
+        config.getEnum(StatementFormatVerbosity.class, "stmt.level");
     int threads = config.getThreads("maxThreads");
     ExecutorService executor =
         Executors.newFixedThreadPool(

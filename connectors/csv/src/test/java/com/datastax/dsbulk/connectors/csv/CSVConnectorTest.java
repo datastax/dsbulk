@@ -11,9 +11,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
-import com.datastax.dsbulk.commons.PlatformUtils;
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -58,8 +58,7 @@ public class CSVConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "header = true, url = \"%s\", escape = \"\\\"\", comment = \"#\"",
-                        url("/sample.csv")))
+                        "url = \"%s\", escape = \"\\\"\", comment = \"#\"", url("/sample.csv")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -89,7 +88,7 @@ public class CSVConnectorTest {
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("url = \"stdin:/\", encoding = ISO-8859-1")
+              ConfigFactory.parseString("header = false, url = \"stdin:/\", encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -116,7 +115,7 @@ public class CSVConnectorTest {
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("url = \"stdout:/\", encoding = ISO-8859-1")
+              ConfigFactory.parseString("header = false, url = \"stdout:/\", encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -140,7 +139,7 @@ public class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("header = true, url = \"%s\", recursive = false", url("/root")))
+                    String.format("url = \"%s\", recursive = false", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -159,8 +158,7 @@ public class CSVConnectorTest {
     }
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("header = true, url = \"%s\", recursive = false", rootPath))
+            ConfigFactory.parseString(String.format("url = \"%s\", recursive = false", rootPath))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -173,8 +171,7 @@ public class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("header = true, url = \"%s\", recursive = true", url("/root")))
+            ConfigFactory.parseString(String.format("url = \"%s\", recursive = true", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -190,8 +187,7 @@ public class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "header = true, url = \"%s\", escape = \"\\\"\", maxThreads = 1", out))
+                    String.format("url = \"%s\", escape = \"\\\"\", maxThreads = 1", out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -219,8 +215,7 @@ public class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "header = true, url = \"%s\", escape = \"\\\"\", maxThreads = 4", out))
+                    String.format("url = \"%s\", escape = \"\\\"\", maxThreads = 4", out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -248,8 +243,7 @@ public class CSVConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "header = true, url = \"%s\", escape = \"\\\"\", maxThreads = 1, maxLines = 4",
-                        out))
+                        "url = \"%s\", escape = \"\\\"\", maxThreads = 1, maxLines = 4", out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();

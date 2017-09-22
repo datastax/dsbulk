@@ -8,8 +8,8 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.dsbulk.connectors.json.JsonConnector;
@@ -56,7 +56,7 @@ public class ConnectorSettingsTest {
     assertThat(config.getConfig(connectorName))
         .hasPaths(
             "url",
-            "pattern",
+            "fileNamePattern",
             "recursive",
             "maxThreads",
             "encoding",

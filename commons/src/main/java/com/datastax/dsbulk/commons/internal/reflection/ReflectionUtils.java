@@ -21,6 +21,7 @@ public final class ReflectionUtils {
     return newInstance(cl);
   }
 
+  @SuppressWarnings("WeakerAccess")
   public static <T> T newInstance(Class<T> cl)
       throws IllegalAccessException, InstantiationException {
     return cl.newInstance();

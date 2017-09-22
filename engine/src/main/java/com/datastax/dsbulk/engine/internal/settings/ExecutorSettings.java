@@ -13,6 +13,8 @@ import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.ContinuousReactorBulkExecutor;
@@ -24,16 +26,17 @@ import com.datastax.dsbulk.executor.api.ReactorBulkExecutor;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.dsbulk.executor.api.reader.ReactorBulkReader;
-import com.datastax.dsbulk.executor.api.writer.ReactiveBulkWriter;
+import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** */
-public class ExecutorSettings {
+public class ExecutorSettings implements SettingsValidator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
@@ -44,7 +47,7 @@ public class ExecutorSettings {
     this.config = config;
   }
 
-  public ReactiveBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
+  public ReactorBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
     return newBulkExecutor(session, executionListener, WorkflowType.LOAD);
   }
 
@@ -53,36 +56,55 @@ public class ExecutorSettings {
     return newBulkExecutor(session, executionListener, WorkflowType.UNLOAD);
   }
 
+  @SuppressWarnings("unused")
   public ThreadPoolExecutor getExecutorThreadPool() {
     return executor;
+  }
+
+  public int getMaxConcurrentOps() {
+    return config.getThreads("maxConcurrentOps");
   }
 
   private ReactorBulkExecutor newBulkExecutor(
       Session session, ExecutionListener executionListener, WorkflowType workflowType) {
     if (workflowType == WorkflowType.UNLOAD) {
-      if (continuousPagingAvailable(session)) {
-        ContinuousReactorBulkExecutorBuilder builder =
-            ContinuousReactorBulkExecutor.builder(((ContinuousPagingSession) session));
-        configure(builder, executionListener);
-        Config continuousPagingConfig = config.getConfig("continuousPaging");
-        ContinuousPagingOptions options =
-            ContinuousPagingOptions.builder()
-                .withPageSize(
-                    continuousPagingConfig.getInt("pageSize"),
-                    continuousPagingConfig.getEnum(
-                        ContinuousPagingOptions.PageUnit.class, "pageUnit"))
-                .withMaxPages(continuousPagingConfig.getInt("maxPages"))
-                .withMaxPagesPerSecond(continuousPagingConfig.getInt("maxPagesPerSecond"))
-                .build();
-        builder.withContinuousPagingOptions(options);
-        return builder.build();
-      } else {
-        LOGGER.warn("Continuous paging is not available, read performance will not be optimal");
+      Config continuousPagingConfig = config.getConfig("continuousPaging");
+      if (continuousPagingConfig.getBoolean("enabled")) {
+        if (continuousPagingAvailable(session)) {
+          continuousPagingAvailable(session);
+          ContinuousReactorBulkExecutorBuilder builder =
+              ContinuousReactorBulkExecutor.builder(((ContinuousPagingSession) session));
+          configure(builder, executionListener);
+          ContinuousPagingOptions options =
+              ContinuousPagingOptions.builder()
+                  .withPageSize(
+                      continuousPagingConfig.getInt("pageSize"),
+                      continuousPagingConfig.getEnum(
+                          ContinuousPagingOptions.PageUnit.class, "pageUnit"))
+                  .withMaxPages(continuousPagingConfig.getInt("maxPages"))
+                  .withMaxPagesPerSecond(continuousPagingConfig.getInt("maxPagesPerSecond"))
+                  .build();
+          builder.withContinuousPagingOptions(options);
+          return builder.build();
+        } else {
+          LOGGER.warn("Continuous paging is not available, read performance will not be optimal");
+        }
       }
     }
     DefaultReactorBulkExecutorBuilder builder = DefaultReactorBulkExecutor.builder(session);
     configure(builder, executionListener);
     return builder.build();
+  }
+
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
+    try {
+      config.getThreads("maxThreads");
+      config.getThreads("maxConcurrentOps");
+      config.getInt("maxPerSecond");
+      config.getInt("maxInFlight");
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor");
+    }
   }
 
   private boolean continuousPagingAvailable(Session session) {
@@ -113,7 +135,7 @@ public class ExecutorSettings {
     builder
         .withExecutor(executor)
         .withExecutionListener(executionListener)
-        .withMaxInFlightRequests(config.getInt("maxInflight"))
+        .withMaxInFlightRequests(config.getInt("maxInFlight"))
         .withMaxRequestsPerSecond(config.getInt("maxPerSecond"))
         .failSafe();
   }

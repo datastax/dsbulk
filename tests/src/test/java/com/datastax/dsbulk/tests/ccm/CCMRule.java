@@ -9,11 +9,14 @@ package com.datastax.dsbulk.tests.ccm;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMTest;
+import com.datastax.dsbulk.tests.ccm.annotations.DSERequirement;
 import com.datastax.dsbulk.tests.ccm.factory.CCMClusterFactory;
 import com.datastax.dsbulk.tests.ccm.factory.ClusterFactory;
 import com.datastax.dsbulk.tests.ccm.factory.SessionFactory;
 import com.datastax.dsbulk.tests.utils.ReflectionUtils;
+import com.datastax.dsbulk.tests.utils.VersionUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -22,9 +25,11 @@ import com.google.common.io.Closer;
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import javax.inject.Inject;
+import org.junit.AssumptionViolatedException;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
@@ -35,27 +40,13 @@ import org.slf4j.MDC;
 /**
  * A manager for {@link CCMCluster CCM} clusters that helps testing with JUnit 4 and Cassandra.
  *
- * <p>
- *
- * <p>
- *
- * <p>
- *
  * <p>This manager is a JUnit {@link org.junit.rules.TestRule rule} that must be declared in each
  * test class requiring CCM, like in the example below:
- *
- * <p>
- *
- * <p>
- *
- * <p>
  *
  * <pre>
  * &#64;Rule &#64;ClassRule
  * public static CCMRule ccmRule = new CCMRule();
  * </pre>
- *
- * <p>
  *
  * <p>Note that the field MUST be public, static, and annotated with {@link
  * org.junit.ClassRule @ClassRule}. Each test class must also be annotated with {@link
@@ -106,7 +97,56 @@ public class CCMRule implements TestRule {
 
   @Override
   public Statement apply(final Statement base, final Description description) {
+
     testClass = description.getTestClass();
+    DSERequirement dseRequirement = description.getAnnotation(DSERequirement.class);
+    CCMConfig config = ReflectionUtils.locateClassAnnotation(testClass, CCMConfig.class);
+    CassandraVersion currentVersion =
+        CassandraVersion.parse(VersionUtils.computeVersion(config, true));
+    if (dseRequirement != null) {
+      // if the configured DSE DSERequirement exceeds the one being used skip this test.
+      if (!dseRequirement.min().isEmpty()) {
+        CassandraVersion minVersion = CassandraVersion.parse(dseRequirement.min());
+        if (minVersion.compareTo(currentVersion) > 0) {
+          // Create a statement which simply indicates that the configured DSE DSERequirement is too old for this test.
+          return new Statement() {
+
+            @Override
+            public void evaluate() throws Throwable {
+              throw new AssumptionViolatedException(
+                  "Test requires C* "
+                      + minVersion
+                      + " but "
+                      + currentVersion
+                      + " is configured.  Description: "
+                      + dseRequirement.description());
+            }
+          };
+        }
+      }
+
+      if (!dseRequirement.max().isEmpty()) {
+        // if the test version exceeds the maximum configured one, fail out.
+        CassandraVersion maxVersion = CassandraVersion.parse(dseRequirement.max());
+
+        if (maxVersion.compareTo(currentVersion) <= 0) {
+          return new Statement() {
+
+            @Override
+            public void evaluate() throws Throwable {
+              throw new AssumptionViolatedException(
+                  "Test requires C* less than "
+                      + maxVersion
+                      + " but "
+                      + currentVersion
+                      + " is configured.  Description: "
+                      + dseRequirement.description());
+            }
+          };
+        }
+      }
+    }
+
     return new Statement() {
       @Override
       public void evaluate() throws Throwable {
@@ -137,26 +177,30 @@ public class CCMRule implements TestRule {
   private void createAndInjectCloseables() throws IllegalAccessException {
     Set<Field> fields = ReflectionUtils.locateFieldsAnnotatedWith(testClass, Inject.class);
     for (Field field : fields) {
+      field.setAccessible(true);
+      assert Modifier.isStatic(field.getModifiers())
+          : String.format("Field %s is not static", field);
+      Class<?> type = field.getType();
+      assert Closeable.class.isAssignableFrom(type)
+          : String.format("Field %s is not Closeable", field);
+      Closeable value;
+      if (CCMCluster.class.isAssignableFrom(type)) {
+        value = ccm;
+      } else if (Session.class.isAssignableFrom(type)) {
+        Session session = getSession(field, testClass);
+        closer.register(session.getCluster());
+        value = session;
+      } else if (Cluster.class.isAssignableFrom(type)) {
+        value = getCluster(field, testClass);
+        closer.register(value);
+      } else {
+        throw new IllegalStateException("Cannot inject field " + field);
+      }
+      LOGGER.debug(String.format("Injecting %s into field %s", value, field));
       try {
-        Closeable value = null;
-        Class<?> type = field.getType();
-        if (CCMCluster.class.isAssignableFrom(type)) {
-          value = ccm;
-        } else if (Session.class.isAssignableFrom(type)) {
-          Session session = getSession(field, testClass);
-          closer.register(session.getCluster());
-          value = session;
-        } else if (Cluster.class.isAssignableFrom(type)) {
-          value = getCluster(field, testClass);
-          closer.register(value);
-        }
-        if (value != null) {
-          field.setAccessible(true);
-          field.set(null, value);
-        }
+        field.set(null, value);
       } catch (IllegalAccessException e) {
-        LOGGER.error(
-            String.format("Error while injecting field %s in instance %s", field, null), e);
+        LOGGER.error("Error while injecting field %s" + field, e);
         throw e;
       }
     }

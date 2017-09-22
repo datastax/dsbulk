@@ -36,7 +36,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-/** The main class for read workflows. */
+/** The main class for unload workflows. */
 public class UnloadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UnloadWorkflow.class);
@@ -59,7 +59,7 @@ public class UnloadWorkflow implements Workflow {
 
   @Override
   public void init() throws Exception {
-    SettingsManager settingsManager = new SettingsManager(config, executionId);
+    SettingsManager settingsManager = new SettingsManager(config, executionId, WorkflowType.UNLOAD);
     settingsManager.loadConfiguration();
     settingsManager.logEffectiveSettings();
     logSettings = settingsManager.getLogSettings();
@@ -75,17 +75,22 @@ public class UnloadWorkflow implements Workflow {
   @Override
   public void execute() {
 
-    LOGGER.info("Starting read workflow engine execution " + executionId);
+    LOGGER.info("Starting unload workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
 
-    int maxConcurrentReads = engineSettings.getMaxConcurrentReads();
+    int maxConcurrentReads = executorSettings.getMaxConcurrentOps();
     int maxMappingThreads = engineSettings.getMaxMappingThreads();
 
     Scheduler readsScheduler = Schedulers.newParallel("range-reads", maxConcurrentReads);
     Scheduler mapperScheduler = Schedulers.newParallel("result-mapper", maxMappingThreads);
 
+    String keyspace = config.getString("schema.keyspace");
+    if (keyspace != null && keyspace.isEmpty()) {
+      keyspace = null;
+    }
+
     try (DseCluster cluster = driverSettings.newCluster();
-        DseSession session = cluster.connect();
+        DseSession session = cluster.connect(keyspace);
         Connector connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
         MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD);
         LogManager logManager = logSettings.newLogManager(cluster);
@@ -106,13 +111,13 @@ public class UnloadWorkflow implements Workflow {
               .flatMap(
                   statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
                   maxConcurrentReads)
+              .compose(logManager.newReadErrorHandler())
               .parallel(maxMappingThreads)
               .runOn(mapperScheduler)
-              .composeGroup(logManager.newReadErrorHandler())
               .map(readResultMapper::map)
-              .composeGroup(metricsManager.newResultMapperMonitor())
-              .composeGroup(logManager.newResultMapperErrorHandler())
               .sequential()
+              .compose(metricsManager.newResultMapperMonitor())
+              .compose(logManager.newResultMapperErrorHandler())
               .publish()
               .autoConnect(2);
 
@@ -122,7 +127,10 @@ public class UnloadWorkflow implements Workflow {
       records.blockLast();
 
     } catch (Exception e) {
-      LOGGER.error("Uncaught exception during read workflow engine execution " + executionId, e);
+      System.err.printf(
+          "Uncaught exception during unload workflow engine execution %s: %s%n",
+          executionId, e.getMessage());
+      LOGGER.error("Uncaught exception during unload workflow engine execution " + executionId, e);
     } finally {
       readsScheduler.dispose();
       mapperScheduler.dispose();
@@ -131,7 +139,7 @@ public class UnloadWorkflow implements Workflow {
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info(
-        "Read workflow engine execution {} finished in {}.",
+        "Unload workflow engine execution {} finished in {}.",
         executionId,
         WorkflowUtils.formatElapsed(seconds));
   }

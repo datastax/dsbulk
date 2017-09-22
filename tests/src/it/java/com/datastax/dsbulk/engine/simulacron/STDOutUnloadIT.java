@@ -6,6 +6,9 @@
  */
 package com.datastax.dsbulk.engine.simulacron;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.tests.SimulacronRule;
 import com.datastax.dsbulk.tests.utils.CsvUtils;
@@ -20,11 +23,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
-public class STDOutUnloadTest {
+public class STDOutUnloadIT {
   @Rule public SimulacronRule simulacron = new SimulacronRule(ClusterSpec.builder().withNodes(1));
+
   private PrintStream originalStdout;
   private ByteArrayOutputStream baos;
+  private Logger root;
+  private Appender<ILoggingEvent> stdoutAppender;
 
   @Before
   public void hijackStandardOut() {
@@ -32,11 +39,15 @@ public class STDOutUnloadTest {
     originalStdout = System.out;
     baos = new ByteArrayOutputStream();
     System.setOut(new PrintStream(baos));
+    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    stdoutAppender = root.getAppender("STDOUT");
+    root.detachAppender(stdoutAppender);
   }
 
   @After
   public void releaseStandardOut() {
     System.setOut(originalStdout);
+    root.addAppender(stdoutAppender);
   }
 
   @Test
@@ -45,14 +56,15 @@ public class STDOutUnloadTest {
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
       "unload",
-      "--log.outputDirectory=./target",
-      "--connector.name=csv",
+      "--log.directory=./target",
       "--connector.csv.url=stdout:/",
       "--connector.csv.maxThreads=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
-      "--schema.statement=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "",
+      "-header",
+      "false",
+      "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "",
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 

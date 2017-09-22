@@ -5,11 +5,11 @@
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
 
-package com.datastax.dsbulk.engine;
+package com.datastax.dsbulk.engine.internal;
 
-import com.datastax.dsbulk.commons.StringUtils;
-import com.datastax.dsbulk.commons.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.engine.internal.settings.StringUtils;
 import com.google.common.base.CharMatcher;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -34,27 +34,55 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import org.apache.commons.cli.Option;
 
 public class SettingsDocumentor {
   private static final LoaderConfig DEFAULT =
       new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
   private static final Map<String, String> LONG_TO_SHORT_OPTIONS;
 
+  public static final Option CONFIG_FILE_OPTION =
+      Option.builder("f")
+          .hasArg()
+          .argName("string")
+          .desc("Load settings from the given file rather than `conf/application.conf`.")
+          .build();
+
   /**
    * Settings that should be displayed in a "common" section as well as the appropriate place in the
    * hierarchy.
    */
-  private static final List<String> COMMON_SETTINGS =
-      Arrays.asList("connector.name", "schema.keyspace", "schema.table", "schema.mapping");
+  static final List<String> COMMON_SETTINGS =
+      Arrays.asList(
+          "connector.csv.url",
+          "connector.name",
+          "connector.csv.delimiter",
+          "connector.csv.header",
+          "connector.csv.skipLines",
+          "connector.csv.maxLines",
+          "schema.keyspace",
+          "schema.table",
+          "schema.mapping",
+          "driver.hosts",
+          "driver.port",
+          "driver.auth.password",
+          "driver.auth.username",
+          "driver.query.consistency",
+          "executor.maxPerSecond",
+          "log.maxErrors",
+          "log.directory",
+          "monitoring.reportRate");
 
   /**
    * Settings that should be placed near the top within their setting groups. It is a super-set of
    * COMMON_SETTINGS.
    */
-  private static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
+  static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
+
+  static final Map<String, Group> GROUPS =
+      new TreeMap<>(new PriorityComparator("Common", "connector", "connector.csv", "schema"));
 
   static {
-    PREFERRED_SETTINGS.add("connector.csv.url");
     PREFERRED_SETTINGS.add("driver.auth.provider");
 
     Config shortcutsConf =
@@ -69,6 +97,8 @@ public class SettingsDocumentor {
             shortcutEntry.getValue().unwrapped().toString(), shortcutEntry.getKey());
       }
     }
+
+    initGroups();
   }
 
   public static void main(String[] args) {
@@ -81,44 +111,6 @@ public class SettingsDocumentor {
 
   @SuppressWarnings("WeakerAccess")
   SettingsDocumentor(String title, Path filePath) throws FileNotFoundException {
-    Map<String, Group> groups =
-        new TreeMap<>(new PriorityComparator("Common", "connector", "schema"));
-
-    // First add a group for the "commonly used settings". Want to show that first in our
-    // doc.
-    groups.put("Common", new FixedGroup(COMMON_SETTINGS));
-
-    // Now add groups for every top-level setting section + driver.*.
-    for (Map.Entry<String, ConfigValue> entry : DEFAULT.root().entrySet()) {
-      String key = entry.getKey();
-      if (key.equals("driver")) {
-        // "driver" group is special because it's really large;
-        // We subdivide it one level further.
-        groups.put(key, new ContainerGroup(key, false, PREFERRED_SETTINGS));
-        for (Map.Entry<String, ConfigValue> driverEntry :
-            ((ConfigObject) entry.getValue()).entrySet()) {
-          if (driverEntry.getValue().valueType() == ConfigValueType.OBJECT) {
-            groups.put(
-                "driver." + driverEntry.getKey(),
-                new ContainerGroup("driver." + driverEntry.getKey(), true, PREFERRED_SETTINGS));
-          }
-        }
-      } else {
-        groups.put(key, new ContainerGroup(key, true, PREFERRED_SETTINGS));
-      }
-    }
-
-    for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
-      // Add the setting name to each group (and which groups want the setting will
-      // take it).
-      for (Group group : groups.values()) {
-        if (group.addSetting(entry.getKey())) {
-          // The setting was added to a group. Don't try adding to other groups.
-          break;
-        }
-      }
-    }
-
     try (PrintWriter out =
         new PrintWriter(new BufferedOutputStream(new FileOutputStream(filePath.toFile())))) {
       // Print page title
@@ -131,7 +123,7 @@ public class SettingsDocumentor {
           title);
 
       // Print links to relevant sections.
-      for (String groupName : groups.keySet()) {
+      for (String groupName : GROUPS.keySet()) {
         out.printf(
             "%s<a href=\"#%s\">%s Settings</a><br>%n",
             tocIndent(groupName), groupName, prettifyName(groupName));
@@ -139,12 +131,17 @@ public class SettingsDocumentor {
 
       // Walk through groups, emitting a group title followed by settings
       // for each group.
-      for (Map.Entry<String, Group> groupEntry : groups.entrySet()) {
+      for (Map.Entry<String, Group> groupEntry : GROUPS.entrySet()) {
         String groupName = groupEntry.getKey();
         out.printf("<a name=\"%s\"></a>%n", groupName);
         out.printf("%s %s Settings%n%n", titleFormat(groupName), prettifyName(groupName));
         if (!groupName.equals("Common")) {
           out.printf("%s%n%n", getSanitizedDescription(DEFAULT.getValue(groupName)));
+        } else {
+          // Emit the help for the "-f" option in the Common section.
+          out.printf(
+              "#### -f _&lt;%s&gt;_%n%n%s%n%n",
+              StringUtils.htmlEscape("string"), CONFIG_FILE_OPTION.getDescription());
         }
         for (String settingName : groupEntry.getValue().getSettings()) {
           ConfigValue settingValue = DEFAULT.getValue(settingName);
@@ -158,6 +155,45 @@ public class SettingsDocumentor {
               settingName,
               StringUtils.htmlEscape(DEFAULT.getTypeString(settingName)),
               getSanitizedDescription(settingValue));
+        }
+      }
+    }
+  }
+
+  private static void initGroups() {
+    // First add a group for the "commonly used settings". Want to show that first in our
+    // doc.
+    GROUPS.put("Common", new FixedGroup());
+
+    // Now add groups for every top-level setting section + driver.*.
+    for (Map.Entry<String, ConfigValue> entry : DEFAULT.root().entrySet()) {
+      String key = entry.getKey();
+      if (key.equals("driver") || key.equals("connector")) {
+        // "driver" group is special because it's really large;
+        // "connector" group is special because we want a sub-section for each
+        // particular connector.
+        // We subdivide each one level further.
+        GROUPS.put(key, new ContainerGroup(key, false));
+        for (Map.Entry<String, ConfigValue> nonLeafEntry :
+            ((ConfigObject) entry.getValue()).entrySet()) {
+          if (nonLeafEntry.getValue().valueType() == ConfigValueType.OBJECT) {
+            GROUPS.put(
+                key + "." + nonLeafEntry.getKey(),
+                new ContainerGroup(key + "." + nonLeafEntry.getKey(), true));
+          }
+        }
+      } else {
+        GROUPS.put(key, new ContainerGroup(key, true));
+      }
+    }
+
+    for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
+      // Add the setting name to each group (and which groups want the setting will
+      // take it).
+      for (Group group : GROUPS.values()) {
+        if (group.addSetting(entry.getKey())) {
+          // The setting was added to a group. Don't try adding to other groups.
+          break;
         }
       }
     }
@@ -214,10 +250,11 @@ public class SettingsDocumentor {
             .map(s -> s.length() > 0 ? s.substring(1) : s)
             .collect(Collectors.joining("\n"));
     if (value.valueType() != ConfigValueType.OBJECT) {
-      desc +=
-          String.format(
-              "%n%nDefaults to **%s**.",
-              value.render(ConfigRenderOptions.concise()).replace("*", "\\*"));
+      String defaultValue = value.render(ConfigRenderOptions.concise()).replace("*", "\\*");
+      if (defaultValue.equals("\"\"")) {
+        defaultValue = "&lt;unspecified&gt;";
+      }
+      desc += String.format("%n%nDefault: **%s**.", defaultValue);
     }
     return desc;
   }
@@ -228,7 +265,7 @@ public class SettingsDocumentor {
    * that belong to the group. This allows groups to act as listeners for settings and accept only
    * those that they are interested in.
    */
-  private interface Group {
+  interface Group {
     boolean addSetting(String settingName);
 
     Set<String> getSettings();
@@ -246,10 +283,10 @@ public class SettingsDocumentor {
     // as opposed to just immediate children.
     private final boolean includeDescendants;
 
-    ContainerGroup(String path, boolean includeDescendants, List<String> highPrioritySettings) {
+    ContainerGroup(String path, boolean includeDescendants) {
       this.prefix = path + ".";
       this.includeDescendants = includeDescendants;
-      settings = new TreeSet<>(new PriorityComparator(highPrioritySettings));
+      settings = new TreeSet<>(new PriorityComparator(SettingsDocumentor.PREFERRED_SETTINGS));
     }
 
     @Override
@@ -272,9 +309,9 @@ public class SettingsDocumentor {
     private final Set<String> desiredSettings;
     private final Set<String> settings;
 
-    FixedGroup(List<String> interestingSettings) {
-      desiredSettings = new HashSet<>(interestingSettings);
-      settings = new TreeSet<>(new PriorityComparator(interestingSettings));
+    FixedGroup() {
+      desiredSettings = new HashSet<>(SettingsDocumentor.COMMON_SETTINGS);
+      settings = new TreeSet<>(new PriorityComparator(SettingsDocumentor.COMMON_SETTINGS));
     }
 
     @Override
@@ -316,8 +353,8 @@ public class SettingsDocumentor {
 
     @Override
     public int compare(String left, String right) {
-      Integer leftInd = this.prioritizedValues.getOrDefault(left, 99999);
-      Integer rightInd = this.prioritizedValues.getOrDefault(right, 99999);
+      Integer leftInd = this.prioritizedValues.getOrDefault(left, Integer.MAX_VALUE);
+      Integer rightInd = this.prioritizedValues.getOrDefault(right, Integer.MAX_VALUE);
       int indCompare = leftInd.compareTo(rightInd);
       return indCompare != 0 ? indCompare : left.compareTo(right);
     }

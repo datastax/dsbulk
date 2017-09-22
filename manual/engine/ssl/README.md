@@ -1,6 +1,6 @@
 # Workflow Engine Encryption
 
-DataStax Bulk Loader/Unloader can connect to DSE clusters with SSL encryption enabled.
+DataStax Bulk Loader can connect to DSE clusters with SSL encryption enabled.
 
 Two providers are available:
         

@@ -17,6 +17,9 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
@@ -32,14 +35,16 @@ import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigFactory;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/** */
-public class SchemaSettings {
+public class SchemaSettings implements SettingsValidator {
 
   private final LoaderConfig config;
 
@@ -48,9 +53,11 @@ public class SchemaSettings {
   private String keyspaceName;
   private String tableName;
   private PreparedStatement preparedStatement;
+  private ImmutableSet<String> nullStrings;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
+    nullStrings = ImmutableSet.copyOf(config.getStringList("nullStrings"));
   }
 
   public RecordMapper createRecordMapper(
@@ -62,7 +69,7 @@ public class SchemaSettings {
         statement,
         mapping,
         mergeRecordMetadata(recordMetadata),
-        ImmutableSet.copyOf(config.getStringList("nullStrings")),
+        nullStrings,
         config.getBoolean("nullToUnset"));
   }
 
@@ -72,7 +79,9 @@ public class SchemaSettings {
     preparedStatement = prepareStatement(session, fieldsToVariables, WorkflowType.UNLOAD);
     DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
     return new DefaultReadResultMapper(
-        mapping, mergeRecordMetadata(recordMetadata), config.getFirstString("nullStrings"));
+        mapping,
+        mergeRecordMetadata(recordMetadata),
+        nullStrings.isEmpty() ? null : nullStrings.iterator().next());
   }
 
   public List<Statement> createReadStatements(Cluster cluster) {
@@ -94,17 +103,49 @@ public class SchemaSettings {
                 .setToken("end", range.getEnd()));
   }
 
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
+    try {
+      config.getBoolean("nullToUnset");
+      config.getStringList("nullStrings");
+      boolean keyspaceTablePresent = false;
+      if (config.hasPath("keyspace") && config.hasPath("table")) {
+        keyspaceTablePresent = true;
+      }
+
+      // If table is present, keyspace must be, but not necessarily the other way around.
+      if (config.hasPath("table") && !config.hasPath("keyspace")) {
+        throw new BulkConfigurationException(
+            "schema.keyspace must accompany schema.table in the configuration");
+      }
+
+      // Either the keyspace and table must be present, or the mapping must be present.
+      if (!config.hasPath("mapping") && !keyspaceTablePresent) {
+        throw new BulkConfigurationException(
+            "schema.mapping, or schema.keyspace and schema.table must be defined");
+      }
+
+      // Either the keyspace and table must be present, or the mapping must be present.
+      if (!config.hasPath("query") && !keyspaceTablePresent) {
+        throw new BulkConfigurationException(
+            "schema.query, or schema.keyspace and schema.table must be defined");
+      }
+
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
+    }
+  }
+
   private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session) {
     ImmutableBiMap.Builder<String, String> fieldsToVariablesBuilder = null;
-    if (config.hasPath("mapping") && !config.getConfig("mapping").isEmpty()) {
+
+    if (config.hasPath("mapping")) {
       fieldsToVariablesBuilder = new ImmutableBiMap.Builder<>();
-      LoaderConfig mapping = config.getConfig("mapping");
+      Config mapping = ConfigFactory.parseString(config.getString("mapping"));
       for (String path : mapping.root().keySet()) {
         fieldsToVariablesBuilder.put(path, mapping.getString(path));
       }
     }
-    if (config.hasPath("keyspace")) {
-      Preconditions.checkState(config.hasPath("table"), "Keyspace and table must be specified");
+    if (config.hasPath("keyspace") && config.hasPath("table")) {
       keyspaceName = Metadata.quoteIfNecessary(config.getString("keyspace"));
       tableName = Metadata.quoteIfNecessary(config.getString("table"));
       keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
@@ -113,9 +154,7 @@ public class SchemaSettings {
       Preconditions.checkNotNull(
           table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
     }
-    if (!config.hasPath("mapping") || config.getConfig("mapping").isEmpty()) {
-      Preconditions.checkState(
-          keyspace != null && table != null, "Keyspace and table must be specified");
+    if (!config.hasPath("mapping")) {
       fieldsToVariablesBuilder = inferFieldsToVariablesMap();
     }
     Preconditions.checkNotNull(
@@ -125,9 +164,10 @@ public class SchemaSettings {
   }
 
   private RecordMetadata mergeRecordMetadata(RecordMetadata fallback) {
-    if (config.hasPath("recordMetadata") && !config.getConfig("recordMetadata").isEmpty()) {
+    if (config.hasPath("recordMetadata")) {
       ImmutableMap.Builder<String, TypeToken<?>> fieldsToTypes = new ImmutableMap.Builder<>();
-      LoaderConfig recordMetadata = config.getConfig("recordMetadata");
+      LoaderConfig recordMetadata =
+          new DefaultLoaderConfig(ConfigFactory.parseString(config.getString("recordMetadata")));
       for (String path : recordMetadata.root().keySet()) {
         fieldsToTypes.put(path, TypeToken.of(recordMetadata.getClass(path)));
       }
@@ -141,11 +181,9 @@ public class SchemaSettings {
       ImmutableBiMap<String, String> fieldsToVariables,
       WorkflowType workflowType) {
     String query;
-    if (config.hasPath("statement")) {
-      query = config.getString("statement");
+    if (config.hasPath("query")) {
+      query = config.getString("query");
     } else {
-      Preconditions.checkState(
-          keyspace != null && table != null, "Keyspace and table must be specified");
       query =
           workflowType == WorkflowType.LOAD
               ? inferWriteQuery(fieldsToVariables)
@@ -158,8 +196,8 @@ public class SchemaSettings {
     ImmutableBiMap.Builder<String, String> fieldsToVariables = new ImmutableBiMap.Builder<>();
     for (int i = 0; i < table.getColumns().size(); i++) {
       ColumnMetadata col = table.getColumns().get(i);
-      String name = Metadata.quoteIfNecessary(col.getName());
-      fieldsToVariables.put(col.getName(), name);
+      // don't quote column names here, it will be done later on if required
+      fieldsToVariables.put(col.getName(), col.getName());
     }
     return fieldsToVariables;
   }
@@ -174,8 +212,10 @@ public class SchemaSettings {
     while (it.hasNext()) {
       String col = it.next();
       sb.append(':');
-      sb.append(col);
-      if (it.hasNext()) sb.append(',');
+      sb.append(Metadata.quoteIfNecessary(col));
+      if (it.hasNext()) {
+        sb.append(',');
+      }
     }
     sb.append(')');
     return sb.toString();
@@ -185,14 +225,14 @@ public class SchemaSettings {
     StringBuilder sb = new StringBuilder("SELECT ");
     appendColumnNames(fieldsToVariables, sb);
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
-    appendTokenFunction(sb);
+    appendTokenFunction(sb, table.getPartitionKey());
     sb.append(" > :start AND ");
-    appendTokenFunction(sb);
+    appendTokenFunction(sb, table.getPartitionKey());
     sb.append(" <= :end");
     return sb.toString();
   }
 
-  private void appendColumnNames(
+  private static void appendColumnNames(
       ImmutableBiMap<String, String> fieldsToVariables, StringBuilder sb) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
@@ -209,9 +249,9 @@ public class SchemaSettings {
     }
   }
 
-  private void appendTokenFunction(StringBuilder sb) {
+  private static void appendTokenFunction(StringBuilder sb, Iterable<ColumnMetadata> partitionKey) {
     sb.append("token(");
-    Iterator<ColumnMetadata> pks = table.getPartitionKey().iterator();
+    Iterator<ColumnMetadata> pks = partitionKey.iterator();
     while (pks.hasNext()) {
       ColumnMetadata pk = pks.next();
       sb.append(Metadata.quoteIfNecessary(pk.getName()));
@@ -219,6 +259,6 @@ public class SchemaSettings {
         sb.append(',');
       }
     }
-    sb.append(")");
+    sb.append(')');
   }
 }

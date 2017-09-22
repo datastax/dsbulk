@@ -91,20 +91,18 @@ public class CSVConnectorBenchmark {
       Path output = Files.createTempDirectory("output");
       readArgs =
           new String[] {
-            "read",
-            "log.outputDirectory",
+            "unload",
+            "--log.directory",
             "./target",
-            "connector.name",
-            "csv",
-            "connector.csv.url",
-            output.toUri().toURL().toExternalForm(),
-            "connector.csv.header",
+            "--connector.csv.header",
             "true",
-            "schema.keyspace",
+            "--connector.csv.url",
+            output.toUri().toURL().toExternalForm(),
+            "--schema.keyspace",
             "csv_connector_benchmark",
-            "schema.table",
+            "--schema.table",
             "ip_by_country",
-            "schema.mapping",
+            "--schema.mapping",
             "{"
                 + "\"beginning IP Address\"=beginning_ip_address,"
                 + "\"ending IP Address\"=ending_ip_address,"
@@ -116,20 +114,18 @@ public class CSVConnectorBenchmark {
           };
       writeArgs =
           new String[] {
-            "write",
-            "log.outputDirectory",
+            "load",
+            "--log.directory",
             "./target",
-            "connector.name",
-            "csv",
-            "connector.csv.url",
-            csvFile.toExternalForm(),
-            "connector.csv.header",
+            "--connector.csv.header",
             "true",
-            "schema.keyspace",
+            "--connector.csv.url",
+            csvFile.toExternalForm(),
+            "--schema.keyspace",
             "csv_connector_benchmark",
-            "schema.table",
+            "--schema.table",
             "ip_by_country",
-            "schema.mapping",
+            "--schema.mapping",
             "{"
                 + "\"beginning IP Address\"=beginning_ip_address,"
                 + "\"ending IP Address\"=ending_ip_address,"

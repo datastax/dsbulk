@@ -9,8 +9,12 @@ package com.datastax.dsbulk.engine.internal.settings;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.google.common.collect.ImmutableMap;
+import com.typesafe.config.ConfigException;
 import java.lang.reflect.Field;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -25,7 +29,7 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 /** */
-public class CodecSettings {
+public class CodecSettings implements SettingsValidator {
 
   /** A {@link DateTimeFormatter} that formats and parses all accepted CQL timestamp formats. */
   public static final DateTimeFormatter CQL_DATE_TIME_FORMAT =
@@ -83,6 +87,22 @@ public class CodecSettings {
         timestampFormat,
         itemDelimiter,
         keyValueSeparator);
+  }
+
+  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
+    try {
+      config.getString("locale");
+      config.getStringList("booleanWords");
+      config.getString("number");
+      config.getString("timeZone");
+      config.getString("date");
+      config.getString("time");
+      config.getString("timestamp");
+      config.getString("itemDelimiter");
+      config.getString("keyValueSeparator");
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "codec");
+    }
   }
 
   private static Locale parseLocale(String s) {

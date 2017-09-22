@@ -15,7 +15,7 @@
   <version>1.0.0-alpha2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>DataStax Bulk Loader/Unloader</name>
+  <name>DataStax Bulk Loader</name>
   <description>
     A unified tool for loading into and unloading from DSE storage engines (i.e., Cassandra/Apollo and DataStax Enterprise).
   </description>
@@ -56,6 +56,7 @@
     <assertj.version>3.8.0</assertj.version>
     <mockito.version>1.10.19</mockito.version>
     <commons-exec.version>1.3</commons-exec.version>
+    <commons-cli.version>1.4</commons-cli.version>
   </properties>
 
   <dependencyManagement>
@@ -331,7 +332,7 @@
       <dependency>
         <groupId>commons-cli</groupId>
         <artifactId>commons-cli</artifactId>
-        <version>1.4</version>
+        <version>${commons-cli.version}</version>
       </dependency>
 
     </dependencies>
@@ -527,7 +528,7 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
         <plugin>
           <artifactId>maven-assembly-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.1.0</version>
         </plugin>
 
         <plugin>
@@ -553,16 +554,7 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
             <autoVersionSubmodules>true</autoVersionSubmodules>
             <useReleaseProfile>false</useReleaseProfile>
             <releaseProfiles>release</releaseProfiles>
-            <!-- deployment is not configured yet -->
-            <goals>install</goals>
           </configuration>
-        </plugin>
-
-        <plugin>
-          <groupId>org.sonatype.plugins</groupId>
-          <artifactId>nexus-staging-maven-plugin</artifactId>
-          <version>1.6.8</version>
-          <extensions>true</extensions>
         </plugin>
 
         <plugin>
@@ -652,17 +644,6 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
               </execution>
             </executions>
           </plugin>
-          <plugin>
-            <groupId>org.sonatype.plugins</groupId>
-            <artifactId>nexus-staging-maven-plugin</artifactId>
-            <extensions>true</extensions>
-            <configuration>
-              <serverId>ossrh</serverId>
-              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-              <autoReleaseAfterClose>false</autoReleaseAfterClose>
-              <skipLocalStaging>true</skipLocalStaging>
-            </configuration>
-          </plugin>
         </plugins>
       </build>
     </profile>
@@ -671,9 +652,15 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
   <distributionManagement>
     <repository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+      <id>datastax-releases-local</id>
+      <name>DataStax Local Releases</name>
+      <url>https://datastax.jfrog.io/datastax/datastax-releases-local/</url>
     </repository>
+    <snapshotRepository>
+      <id>datastax-snapshots-local</id>
+      <name>DataStax Local Snapshots</name>
+      <url>https://datastax.jfrog.io/datastax/datastax-snapshots-local/</url>
+    </snapshotRepository>
   </distributionManagement>
 
   <licenses>

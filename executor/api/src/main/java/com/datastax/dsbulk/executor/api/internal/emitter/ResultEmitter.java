@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.executor.api.internal;
+package com.datastax.dsbulk.executor.api.internal.emitter;
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Session;
@@ -22,26 +22,22 @@ import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-public abstract class ResultPublisher<T extends Result, R> implements Publisher<T>, Subscription {
+public abstract class ResultEmitter<T extends Result, R> {
 
-  protected final Statement statement;
-  protected final Session session;
+  final Statement statement;
+  final Session session;
+
   private final Optional<Semaphore> requestPermits;
   private final Optional<ExecutionListener> listener;
   private final Optional<RateLimiter> rateLimiter;
   private final boolean failFast;
   private final Executor executor;
-  volatile boolean canceled = false;
-  private final int size;
+  private final int batchSize;
   private final ExecutionContext context = new DefaultExecutionContext();
-  private final RequestCounter requestCounter = new RequestCounter();
 
-  ResultPublisher(
+  ResultEmitter(
       Statement statement,
       Session session,
       Executor executor,
@@ -57,39 +53,26 @@ public abstract class ResultPublisher<T extends Result, R> implements Publisher<
     this.requestPermits = requestPermits;
     this.failFast = failFast;
     if (statement instanceof BatchStatement) {
-      size = ((BatchStatement) statement).size();
+      batchSize = ((BatchStatement) statement).size();
     } else {
-      size = 1;
+      batchSize = 1;
     }
   }
 
-  @Override
-  public void request(long n) {
-    requestCounter.signalRequested(n);
-  }
-
-  @Override
-  public void cancel() {
-    canceled = true;
-  }
-
-  @Override
-  public void subscribe(Subscriber<? super T> subscriber) {
-    subscriber.onSubscribe(this);
+  public void start() {
     listener.ifPresent(l -> l.onExecutionStarted(statement, context));
   }
 
-  protected void fetchNextPage(
-      Subscriber<? super T> subscriber, Callable<ListenableFuture<R>> query) {
-    rateLimiter.ifPresent(limiter -> limiter.acquire(size));
-    requestPermits.ifPresent(permits -> permits.acquireUninterruptibly(size));
+  void fetchNextPage(Callable<ListenableFuture<R>> query) {
+    rateLimiter.ifPresent(limiter -> limiter.acquire(batchSize));
+    requestPermits.ifPresent(permits -> permits.acquireUninterruptibly(batchSize));
     ListenableFuture<R> page;
     try {
       page = query.call();
     } catch (Throwable ex) {
       // in rare cases, the driver throws instead of failing the future
-      requestPermits.ifPresent(permits -> permits.release(size));
-      onError(subscriber, ex);
+      requestPermits.ifPresent(permits -> permits.release(batchSize));
+      onError(ex);
       return;
     }
     Futures.addCallback(
@@ -97,44 +80,50 @@ public abstract class ResultPublisher<T extends Result, R> implements Publisher<
         new FutureCallback<R>() {
           @Override
           public void onSuccess(R rs) {
-            requestPermits.ifPresent(permits -> permits.release(size));
-            consumePage(subscriber, rs);
+            requestPermits.ifPresent(permits -> permits.release(batchSize));
+            consumePage(rs);
           }
 
           @Override
           public void onFailure(Throwable t) {
-            requestPermits.ifPresent(permits -> permits.release(size));
-            onError(subscriber, t);
+            requestPermits.ifPresent(permits -> permits.release(batchSize));
+            onError(t);
           }
         },
         executor);
   }
 
-  protected void onNext(Subscriber<? super T> subscriber, T result) {
-    if (canceled) return;
-    requestCounter.awaitRequested();
+  void onNext(T result) {
     listener.ifPresent(l -> l.onResultReceived(result, context));
-    subscriber.onNext(result);
+    notifyOnNext(result);
   }
 
-  protected void onComplete(Subscriber<? super T> subscriber) {
+  void onComplete() {
     listener.ifPresent(l -> l.onExecutionCompleted(statement, context));
-    subscriber.onComplete();
+    notifyOnComplete();
   }
 
-  protected void onError(Subscriber<? super T> subscriber, Throwable t) {
+  private void onError(Throwable t) {
     BulkExecutionException error = new BulkExecutionException(t, statement);
     if (failFast) {
       listener.ifPresent(l -> l.onExecutionFailed(error, context));
-      subscriber.onError(error);
+      notifyOnError(error);
     } else {
-      onNext(subscriber, toErrorResult(error));
+      onNext(toErrorResult(error));
       listener.ifPresent(l -> l.onExecutionFailed(error, context));
-      subscriber.onComplete();
+      notifyOnComplete();
     }
   }
 
-  protected abstract void consumePage(Subscriber<? super T> subscriber, R result);
+  protected abstract void notifyOnNext(T result);
 
-  protected abstract T toErrorResult(BulkExecutionException error);
+  protected abstract void notifyOnComplete();
+
+  protected abstract void notifyOnError(BulkExecutionException error);
+
+  protected abstract boolean isCancelled();
+
+  abstract void consumePage(R result);
+
+  abstract T toErrorResult(BulkExecutionException error);
 }

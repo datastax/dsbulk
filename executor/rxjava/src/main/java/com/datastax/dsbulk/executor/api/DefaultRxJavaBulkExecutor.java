@@ -6,16 +6,19 @@
  */
 package com.datastax.dsbulk.executor.api;
 
+import static io.reactivex.BackpressureStrategy.BUFFER;
+
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.internal.ReadResultPublisher;
-import com.datastax.dsbulk.executor.api.internal.WriteResultPublisher;
+import com.datastax.dsbulk.executor.api.internal.emitter.ReadResultEmitter;
+import com.datastax.dsbulk.executor.api.internal.emitter.WriteResultEmitter;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import io.reactivex.Flowable;
+import io.reactivex.FlowableEmitter;
 import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
@@ -124,9 +127,12 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
   @Override
   public Flowable<WriteResult> writeReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Flowable.fromPublisher(
-        new WriteResultPublisher(
-            statement, session, executor, listener, rateLimiter, requestPermits, failFast));
+    return Flowable.create(
+        e -> {
+          RxJavaWriteResultEmitter emitter = new RxJavaWriteResultEmitter(statement, e);
+          emitter.start();
+        },
+        BUFFER);
   }
 
   @Override
@@ -203,9 +209,12 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
   @Override
   public Flowable<ReadResult> readReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Flowable.fromPublisher(
-        new ReadResultPublisher(
-            statement, session, executor, listener, rateLimiter, requestPermits, failFast));
+    return Flowable.create(
+        e -> {
+          RxJavaReadResultEmitter emitter = new RxJavaReadResultEmitter(statement, e);
+          emitter.start();
+        },
+        BUFFER);
   }
 
   @Override
@@ -227,8 +236,82 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
   }
 
   @Override
-  public void close() {
+  public void close() throws InterruptedException {
     super.close();
     scheduler.shutdown();
+  }
+
+  private class RxJavaReadResultEmitter extends ReadResultEmitter {
+
+    private final FlowableEmitter<ReadResult> emitter;
+
+    private RxJavaReadResultEmitter(Statement statement, FlowableEmitter<ReadResult> emitter) {
+      super(
+          statement,
+          DefaultRxJavaBulkExecutor.this.session,
+          executor,
+          listener,
+          rateLimiter,
+          requestPermits,
+          failFast);
+      this.emitter = emitter;
+    }
+
+    @Override
+    protected void notifyOnNext(ReadResult result) {
+      emitter.onNext(result);
+    }
+
+    @Override
+    protected void notifyOnComplete() {
+      emitter.onComplete();
+    }
+
+    @Override
+    protected void notifyOnError(BulkExecutionException error) {
+      emitter.onError(error);
+    }
+
+    @Override
+    protected boolean isCancelled() {
+      return emitter.isCancelled();
+    }
+  }
+
+  private class RxJavaWriteResultEmitter extends WriteResultEmitter {
+
+    private final FlowableEmitter<WriteResult> emitter;
+
+    private RxJavaWriteResultEmitter(Statement statement, FlowableEmitter<WriteResult> emitter) {
+      super(
+          statement,
+          DefaultRxJavaBulkExecutor.this.session,
+          executor,
+          listener,
+          rateLimiter,
+          requestPermits,
+          failFast);
+      this.emitter = emitter;
+    }
+
+    @Override
+    protected void notifyOnNext(WriteResult result) {
+      emitter.onNext(result);
+    }
+
+    @Override
+    protected void notifyOnComplete() {
+      emitter.onComplete();
+    }
+
+    @Override
+    protected void notifyOnError(BulkExecutionException error) {
+      emitter.onError(error);
+    }
+
+    @Override
+    protected boolean isCancelled() {
+      return emitter.isCancelled();
+    }
   }
 }

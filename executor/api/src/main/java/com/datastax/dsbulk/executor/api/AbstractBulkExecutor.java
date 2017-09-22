@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.executor.api;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Session;
@@ -17,7 +18,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 /** Base class for implementations of {@link BulkExecutor}. */
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
@@ -78,15 +78,11 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
   }
 
   @Override
-  public void close() {
+  public void close() throws InterruptedException {
     if (executor instanceof ThreadPoolExecutor) {
       ThreadPoolExecutor tpe = (ThreadPoolExecutor) executor;
       tpe.shutdown();
-      try {
-        tpe.awaitTermination(10, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        // swallow; best effort
-      }
+      tpe.awaitTermination(1, MINUTES);
       tpe.shutdownNow();
     }
   }
