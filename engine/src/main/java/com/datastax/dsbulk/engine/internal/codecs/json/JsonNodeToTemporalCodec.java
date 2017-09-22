@@ -32,8 +32,9 @@ public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
     if (node == null || node.isNull()) {
       return null;
     }
-    if (node.canConvertToLong()) {
-      return Instant.ofEpochMilli(node.asLong());
+    if (node.canConvertToLong() && parser.getZone() != null) {
+      // interpret long integers as milliseconds since the Epoch
+      return Instant.ofEpochMilli(node.asLong()).atZone(parser.getZone());
     }
     String s = node.asText();
     if (s == null || s.isEmpty()) {
@@ -55,7 +56,7 @@ public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
   @Override
   public JsonNode convertTo(T value) {
     if (value == null) {
-      return null;
+      return JsonNodeFactory.instance.nullNode();
     }
     return JsonNodeFactory.instance.textNode(parser.format(value));
   }

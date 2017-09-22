@@ -49,7 +49,7 @@ public class JsonNodeToMapCodec<K, V> extends ConvertingCodec<JsonNode, Map<K, V
   @Override
   public JsonNode convertTo(Map<K, V> map) {
     if (map == null) {
-      return null;
+      return objectMapper.getNodeFactory().nullNode();
     }
     ObjectNode root = objectMapper.createObjectNode();
     for (Map.Entry<K, V> entry : map.entrySet()) {

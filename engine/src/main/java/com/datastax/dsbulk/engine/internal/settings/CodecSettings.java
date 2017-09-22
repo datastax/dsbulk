@@ -152,10 +152,7 @@ public class CodecSettings implements SettingsValidator {
     objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
     objectMapper.configure(JsonParser.Feature.ALLOW_MISSING_VALUES, true);
     objectMapper.configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true);
-    //    objectMapper.configure(JsonParser.Feature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER, true);
     objectMapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
-    //    objectMapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
-    //    objectMapper.configure(SerializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
     return objectMapper;
   }
 

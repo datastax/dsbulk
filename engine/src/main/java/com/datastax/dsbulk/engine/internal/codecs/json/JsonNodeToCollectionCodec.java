@@ -50,7 +50,7 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
   @Override
   public JsonNode convertTo(C value) {
     if (value == null) {
-      return null;
+      return objectMapper.getNodeFactory().nullNode();
     }
     ArrayNode root = objectMapper.createArrayNode();
     for (E element : value) {

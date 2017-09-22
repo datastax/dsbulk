@@ -22,8 +22,13 @@ public class JsonNodeToByteCodec extends JsonNodeToNumberCodec<Byte> {
     if (node == null || node.isNull()) {
       return null;
     }
-    if (node.isNumber()) {
-      return (byte) node.intValue();
+    if (node.isInt()) {
+      int i = node.intValue();
+      byte b = (byte) i;
+      if (i != b) {
+        throw new java.lang.ArithmeticException("Overflow");
+      }
+      return b;
     }
     BigDecimal number = parseAsBigDecimal(node.asText());
     if (number == null) {

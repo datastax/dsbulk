@@ -26,6 +26,9 @@ public class JsonNodeToInetAddressCodec extends ConvertingCodec<JsonNode, InetAd
       return null;
     }
     String s = node.asText();
+    if (s == null || s.isEmpty()) {
+      return null;
+    }
     try {
       return InetAddress.getByName(s);
     } catch (Exception e) {
@@ -36,7 +39,7 @@ public class JsonNodeToInetAddressCodec extends ConvertingCodec<JsonNode, InetAd
   @Override
   public JsonNode convertTo(InetAddress value) {
     if (value == null) {
-      return null;
+      return JsonNodeFactory.instance.nullNode();
     }
     return JsonNodeFactory.instance.textNode(value.getHostAddress());
   }

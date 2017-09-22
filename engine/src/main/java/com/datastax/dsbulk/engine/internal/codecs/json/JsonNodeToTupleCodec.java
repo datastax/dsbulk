@@ -48,7 +48,7 @@ public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> 
   @Override
   public JsonNode convertTo(TupleValue tuple) {
     if (tuple == null) {
-      return null;
+      return objectMapper.getNodeFactory().nullNode();
     }
     ArrayNode root = objectMapper.createArrayNode();
     int size = definition.getComponentTypes().size();

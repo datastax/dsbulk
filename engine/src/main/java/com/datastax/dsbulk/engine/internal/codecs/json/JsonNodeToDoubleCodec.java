@@ -22,7 +22,7 @@ public class JsonNodeToDoubleCodec extends JsonNodeToNumberCodec<Double> {
     if (node == null || node.isNull()) {
       return null;
     }
-    if (node.isNumber()) {
+    if (node.isDouble()) {
       return node.doubleValue();
     }
     BigDecimal number = parseAsBigDecimal(node.asText());

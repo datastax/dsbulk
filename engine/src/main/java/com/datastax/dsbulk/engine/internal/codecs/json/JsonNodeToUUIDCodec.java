@@ -25,6 +25,9 @@ public class JsonNodeToUUIDCodec extends ConvertingCodec<JsonNode, UUID> {
       return null;
     }
     String s = node.asText();
+    if (s == null || s.isEmpty()) {
+      return null;
+    }
     try {
       return UUID.fromString(s);
     } catch (IllegalArgumentException e) {
@@ -35,7 +38,7 @@ public class JsonNodeToUUIDCodec extends ConvertingCodec<JsonNode, UUID> {
   @Override
   public JsonNode convertTo(UUID value) {
     if (value == null) {
-      return null;
+      return JsonNodeFactory.instance.nullNode();
     }
     return JsonNodeFactory.instance.textNode(value.toString());
   }

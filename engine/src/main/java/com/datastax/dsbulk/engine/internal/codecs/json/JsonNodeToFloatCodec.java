@@ -22,7 +22,7 @@ public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
     if (node == null || node.isNull()) {
       return null;
     }
-    if (node.isNumber()) {
+    if (node.isFloat()) {
       return node.floatValue();
     }
     BigDecimal number = parseAsBigDecimal(node.asText());

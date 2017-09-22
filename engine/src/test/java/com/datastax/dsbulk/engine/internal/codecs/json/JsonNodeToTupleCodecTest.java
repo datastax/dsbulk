@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.engine.internal.codecs.string;
+package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.driver.core.DataType.timestamp;
 import static com.datastax.driver.core.DataType.varchar;
@@ -18,9 +18,6 @@ import com.datastax.driver.core.TupleType;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
-import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToInstantCodec;
-import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToStringCodec;
-import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToTupleCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +26,7 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.Test;
 
-public class StringToTupleCodecTest {
+public class JsonNodeToTupleCodecTest {
 
   private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
@@ -43,31 +40,29 @@ public class StringToTupleCodecTest {
   private List<ConvertingCodec<JsonNode, Object>> eltCodecs =
       Lists.newArrayList(eltCodec1, eltCodec2);
 
-  private StringToTupleCodec codec =
-      new StringToTupleCodec(
-          new JsonNodeToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, objectMapper),
-          objectMapper);
+  private JsonNodeToTupleCodec codec =
+      new JsonNodeToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, objectMapper);
 
   @Test
   public void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
-        .convertsFrom("[\"2016-07-24T20:34:12.999\",\"+01:00\"]")
+        .convertsFrom(objectMapper.readTree("[\"2016-07-24T20:34:12.999\",\"+01:00\"]"))
         .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .convertsFrom("['2016-07-24T20:34:12.999','+01:00']")
+        .convertsFrom(objectMapper.readTree("['2016-07-24T20:34:12.999','+01:00']"))
         .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .convertsFrom("[ \"2016-07-24T20:34:12.999\" , \"+01:00\" ]")
+        .convertsFrom(objectMapper.readTree("[ \"2016-07-24T20:34:12.999\" , \"+01:00\" ]"))
         .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .convertsFrom("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]")
+        .convertsFrom(objectMapper.readTree("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]"))
         .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .convertsFrom("[\"\",\"\"]")
+        .convertsFrom(objectMapper.readTree("[\"\",\"\"]"))
         .to(tupleType.newValue(null, ""))
-        .convertsFrom("[null,null]")
+        .convertsFrom(objectMapper.readTree("[null,null]"))
         .to(tupleType.newValue(null, null))
-        .convertsFrom("[,]")
+        .convertsFrom(objectMapper.readTree("[,]"))
         .to(tupleType.newValue(null, null))
         .convertsFrom(null)
         .to(null)
-        .convertsFrom("")
+        .convertsFrom(objectMapper.readTree(""))
         .to(null);
   }
 
@@ -75,15 +70,15 @@ public class StringToTupleCodecTest {
   public void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .from("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]")
+        .from(objectMapper.readTree("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]"))
         .convertsTo(tupleType.newValue(null, null))
-        .from("[null,null]")
+        .from(objectMapper.readTree("[null,null]"))
         .convertsTo(null)
-        .from(null);
+        .from(objectMapper.getNodeFactory().nullNode());
   }
 
   @Test
   public void should_not_convert_from_invalid_input() throws Exception {
-    assertThat(codec).cannotConvertFrom("not a valid input").cannotConvertFrom("not a,valid input");
+    assertThat(codec).cannotConvertFrom(objectMapper.readTree("[\"not a valid tuple\"]"));
   }
 }

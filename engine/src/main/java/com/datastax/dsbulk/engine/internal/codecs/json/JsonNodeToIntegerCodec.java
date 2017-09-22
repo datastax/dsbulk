@@ -22,7 +22,7 @@ public class JsonNodeToIntegerCodec extends JsonNodeToNumberCodec<Integer> {
     if (node == null || node.isNull()) {
       return null;
     }
-    if (node.isNumber()) {
+    if (node.isInt()) {
       return node.intValue();
     }
     BigDecimal number = parseAsBigDecimal(node.asText());

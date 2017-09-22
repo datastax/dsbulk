@@ -30,6 +30,9 @@ public class JsonNodeToBooleanCodec extends ConvertingCodec<JsonNode, Boolean> {
       return node.asBoolean();
     }
     String s = node.asText();
+    if (s == null || s.isEmpty()) {
+      return null;
+    }
     Boolean b = inputs.get(s.toLowerCase());
     if (b == null) {
       throw new InvalidTypeException("Invalid boolean value: " + s);
@@ -39,6 +42,9 @@ public class JsonNodeToBooleanCodec extends ConvertingCodec<JsonNode, Boolean> {
 
   @Override
   public JsonNode convertTo(Boolean value) {
+    if (value == null) {
+      return JsonNodeFactory.instance.nullNode();
+    }
     return JsonNodeFactory.instance.booleanNode(value);
   }
 }

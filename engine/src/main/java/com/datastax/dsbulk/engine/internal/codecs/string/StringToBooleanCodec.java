@@ -35,6 +35,13 @@ public class StringToBooleanCodec extends ConvertingCodec<String, Boolean> {
 
   @Override
   public String convertTo(Boolean value) {
-    return outputs.get(value);
+    if (value == null) {
+      return null;
+    }
+    String s = outputs.get(value);
+    if (s == null) {
+      return Boolean.toString(value);
+    }
+    return s;
   }
 }
