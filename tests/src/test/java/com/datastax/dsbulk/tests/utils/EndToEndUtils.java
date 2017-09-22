@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -139,9 +140,8 @@ public class EndToEndUtils {
     Path exceptionFile = logPath.resolve(file_name);
     List<String> exceptionLines =
         Files.lines(exceptionFile, Charset.defaultCharset()).collect(Collectors.toList());
-    List<String> sourceErrors =
-        exceptionLines.stream().filter(l -> l.startsWith(keyword)).collect(Collectors.toList());
-    Assertions.assertThat(sourceErrors.size()).isEqualTo(size);
+    long numErrors = exceptionLines.stream().filter(l -> l.startsWith(keyword)).count();
+    Assertions.assertThat(numErrors).isEqualTo(size);
   }
 
   private static Path getLogDirectory() {
@@ -152,25 +152,28 @@ public class EndToEndUtils {
   public static void validateBadOps(int size) throws Exception {
     Path logPath = getLogDirectory();
     Path badOps = logPath.resolve("operation.bad");
-    List<String> lines = Files.lines(badOps, Charset.defaultCharset()).collect(Collectors.toList());
-    Assertions.assertThat(lines.size()).isEqualTo(size);
+    long numBadOps = Files.lines(badOps, Charset.defaultCharset()).count();
+    Assertions.assertThat(numBadOps).isEqualTo(size);
   }
 
-  public static void validateOutputFile(Path outputFilePath, int numOfRecords) throws Exception {
-
-    List<String> lines =
-        Files.lines(outputFilePath, Charset.defaultCharset()).collect(Collectors.toList());
-    Assertions.assertThat(lines.size()).isEqualTo(numOfRecords);
-  }
-
-  public static void validateOutputFilesTotal(List<Path> outputFilePaths, int numOfRecords)
-      throws Exception {
-    int totalLineNum = 0;
-    for (Path path : outputFilePaths) {
-      List<String> lines = Files.lines(path, Charset.defaultCharset()).collect(Collectors.toList());
-      totalLineNum = totalLineNum + lines.size();
-    }
-    Assertions.assertThat(totalLineNum).isEqualTo(numOfRecords);
+  public static void validateOutputFiles(int numOfRecords, Path... outputFilePaths) {
+    // Sum the number of lines in each file and assert that the total matches the expected value.
+    long totalLines =
+        Arrays.stream(outputFilePaths)
+            .mapToLong(
+                path -> {
+                  try {
+                    return Files.lines(path, Charset.defaultCharset()).count();
+                  } catch (IOException e) {
+                    // This should never happen. Emit the stack trace, but in case
+                    // it's not visible in the test output, make the test fail
+                    // in an extremely blatant way -- make the total line count negative.
+                    e.printStackTrace();
+                    return -100000;
+                  }
+                })
+            .sum();
+    Assertions.assertThat(totalLines).isEqualTo(numOfRecords);
   }
 
   public static void validateStringOutput(String output, int numOfRecords) {
