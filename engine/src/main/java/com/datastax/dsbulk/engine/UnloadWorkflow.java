@@ -8,6 +8,7 @@ package com.datastax.dsbulk.engine;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.driver.core.Metadata;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -87,6 +88,9 @@ public class UnloadWorkflow implements Workflow {
     String keyspace = config.getString("schema.keyspace");
     if (keyspace != null && keyspace.isEmpty()) {
       keyspace = null;
+    }
+    if (keyspace != null) {
+      keyspace = Metadata.quoteIfNecessary(keyspace);
     }
 
     try (DseCluster cluster = driverSettings.newCluster();
