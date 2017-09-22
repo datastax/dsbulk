@@ -236,7 +236,7 @@ public class DriverSettings implements SettingsValidator {
     if (config.hasPath("ssl.truststore.path")) {
       KeyStore ks = KeyStore.getInstance("JKS");
       ks.load(
-          new URL(config.getString("ssl.truststore.path")).openStream(),
+          config.getURL("ssl.truststore.path").openStream(),
           config.getString("ssl.truststore.password").toCharArray());
 
       tmf = TrustManagerFactory.getInstance(config.getString("ssl.truststore.algorithm"));
@@ -254,7 +254,7 @@ public class DriverSettings implements SettingsValidator {
           if (config.hasPath("ssl.keystore.path")) {
             KeyStore ks = KeyStore.getInstance("JKS");
             ks.load(
-                new URL(config.getString("ssl.keystore.path")).openStream(),
+                config.getURL("ssl.keystore.path").openStream(),
                 config.getString("ssl.keystore.password").toCharArray());
 
             kmf = KeyManagerFactory.getInstance(config.getString("ssl.truststore.algorithm"));
@@ -282,8 +282,8 @@ public class DriverSettings implements SettingsValidator {
               SslContextBuilder.forClient().sslProvider(SslProvider.OPENSSL).trustManager(tmf);
 
           if (config.hasPath("ssl.openssl.keyCertChain")) {
-            URL keyCertChain = new URL(config.getString("ssl.openssl.keyCertChain"));
-            URL privateKey = new URL(config.getString("ssl.openssl.privateKey"));
+            URL keyCertChain = config.getURL("ssl.openssl.keyCertChain");
+            URL privateKey = config.getURL("ssl.openssl.privateKey");
             builder.keyManager(keyCertChain.openStream(), privateKey.openStream());
           }
 

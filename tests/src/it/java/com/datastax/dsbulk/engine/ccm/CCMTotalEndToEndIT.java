@@ -19,7 +19,6 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.tests.categories.LongTests;
-import com.datastax.dsbulk.tests.ccm.CCMRule;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMTest;
 import com.datastax.dsbulk.tests.ccm.annotations.DSERequirement;
@@ -28,15 +27,10 @@ import com.datastax.dsbulk.tests.utils.CsvUtils;
 import com.datastax.dsbulk.tests.utils.EndToEndUtils;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import javax.inject.Inject;
 import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -44,21 +38,13 @@ import org.junit.experimental.categories.Category;
 @CCMConfig(numberOfNodes = 1)
 @DSERequirement(min = "5.1")
 @Category(LongTests.class)
-public class CCMTotalEndToEndIT {
-  @Rule @ClassRule public static CCMRule ccm = new CCMRule();
+public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
 
-  private static final String KS = "test12";
+  private static final String KS = "ccmtotal";
 
   @Inject
   @SessionConfig(useKeyspace = SessionConfig.UseKeyspaceMode.FIXED, loggedKeyspaceName = KS)
   private static Session session;
-
-  private static final String INSERT_INTO_IP_BY_COUNTRY =
-      "INSERT INTO "
-          + KS
-          + ".ip_by_country "
-          + "(country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
-          + "VALUES (?,?,?,?,?,?)";
 
   private static final String INSERT_INTO_IP_BY_COUNTRY_COMPLEX =
       "INSERT INTO "
@@ -66,43 +52,19 @@ public class CCMTotalEndToEndIT {
           + "(country_name, country_tuple, country_map, country_list, country_set, country_contacts) "
           + "VALUES (?,?,?,?,?,?)";
 
-  private static final SimpleStatement READ_SUCCESFUL_IP_BY_COUNTRY =
-      new SimpleStatement("SELECT * FROM " + KS + ".ip_by_country");
-
   private static final SimpleStatement READ_SUCCESSFUL_COMPLEX =
       new SimpleStatement("SELECT * FROM " + KS + ".country_complex");
 
-  private static final SimpleStatement READ_SUCCESFUL_WITH_SPACES =
+  private static final SimpleStatement READ_SUCCESSFUL_WITH_SPACES =
       new SimpleStatement(SELECT_FROM_WITH_SPACES);
 
   @SuppressWarnings("unused")
   @Inject
   private static Cluster cluster;
 
-  private List<String> commonArgs;
-
-  @Before
-  public void setupCCM() {
-    Host host = cluster.getMetadata().getAllHosts().iterator().next();
-    String contact_point = host.getAddress().toString().replaceFirst("^/", "");
-    String port = Integer.toString(host.getSocketAddress().getPort());
-
-    commonArgs = new LinkedList<>();
-    commonArgs.add("--log.directory");
-    commonArgs.add("./target");
-    commonArgs.add("-header");
-    commonArgs.add("false");
-    commonArgs.add("--driver.query.consistency");
-    commonArgs.add("ONE");
-    commonArgs.add("--driver.hosts");
-    commonArgs.add(contact_point);
-    commonArgs.add("--driver.port");
-    commonArgs.add(port);
-  }
-
-  @After
-  public void clearKeyspace() {
-    session.execute("DROP KEYSPACE IF EXISTS " + KS);
+  @Override
+  public String getKeyspace() {
+    return KS;
   }
 
   @Test
@@ -119,7 +81,7 @@ public class CCMTotalEndToEndIT {
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
     new Main(fetchCompleteArgs("load", customLoadArgs));
-    validateResultSetSize(24, READ_SUCCESFUL_IP_BY_COUNTRY);
+    validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
     Path full_load_dir = Paths.get("./full_load_dir");
     Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
     EndToEndUtils.deleteIfExists(full_load_dir);
@@ -129,7 +91,7 @@ public class CCMTotalEndToEndIT {
     customUnloadArgs.add("--connector.csv.maxThreads");
     customUnloadArgs.add("1");
     customUnloadArgs.add("--schema.query");
-    customUnloadArgs.add(READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
@@ -187,7 +149,7 @@ public class CCMTotalEndToEndIT {
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
     new Main(fetchCompleteArgs("load", customLoadArgs));
-    validateResultSetSize(500, READ_SUCCESFUL_IP_BY_COUNTRY);
+    validateResultSetSize(500, READ_SUCCESSFUL_IP_BY_COUNTRY);
 
     Path full_load_dir = Paths.get("./full_load_dir");
     Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
@@ -195,7 +157,7 @@ public class CCMTotalEndToEndIT {
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
-    customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
@@ -227,7 +189,7 @@ public class CCMTotalEndToEndIT {
 
     String[] args = fetchCompleteArgs("load", customLoadArgs);
     new Main(args);
-    validateResultSetSize(1, READ_SUCCESFUL_WITH_SPACES);
+    validateResultSetSize(1, READ_SUCCESSFUL_WITH_SPACES);
 
     // Test unload
     Path full_load_dir = Paths.get("./full_load_dir");
@@ -267,7 +229,7 @@ public class CCMTotalEndToEndIT {
     customLoadArgs.add("-driver.query.consistency=LOCAL_ONE");
 
     new Main(fetchCompleteArgs("load", customLoadArgs));
-    validateResultSetSize(21, READ_SUCCESFUL_IP_BY_COUNTRY);
+    validateResultSetSize(21, READ_SUCCESSFUL_IP_BY_COUNTRY);
     EndToEndUtils.validateBadOps(3);
     EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");
 
@@ -278,7 +240,7 @@ public class CCMTotalEndToEndIT {
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
-    customUnloadArgs.add("--schema.query=" + READ_SUCCESFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
@@ -293,10 +255,9 @@ public class CCMTotalEndToEndIT {
   }
 
   private String[] fetchCompleteArgs(String op, List<String> customArgs) {
-    List<String> completeArgs = new ArrayList<>(1 + commonArgs.size() + customArgs.size());
-    completeArgs.add(op);
-    completeArgs.addAll(commonArgs);
-    completeArgs.addAll(customArgs);
-    return completeArgs.toArray(new String[0]);
+    Host host = cluster.getMetadata().getAllHosts().iterator().next();
+    String contact_point = host.getAddress().toString().replaceFirst("^/", "");
+    String port = Integer.toString(host.getSocketAddress().getPort());
+    return EndToEndUtils.fetchCompleteArgs(op, contact_point, port, customArgs);
   }
 }

@@ -176,6 +176,27 @@ public class EndToEndUtils {
     Assertions.assertThat(totalLines).isEqualTo(numOfRecords);
   }
 
+  public static String[] fetchCompleteArgs(
+      String op, String contactPoint, String port, List<String> customArgs) {
+    ArrayList<String> completeArgs = new ArrayList<>();
+    completeArgs.add(op);
+    completeArgs.add("--log.directory");
+    completeArgs.add("./target");
+    completeArgs.add("-header");
+    completeArgs.add("false");
+    completeArgs.add("--driver.query.consistency");
+    completeArgs.add("ONE");
+    completeArgs.add("--driver.hosts");
+    completeArgs.add(contactPoint);
+    completeArgs.add("--driver.port");
+    completeArgs.add(port);
+    completeArgs.add("--schema.mapping");
+    completeArgs.add(
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
+    completeArgs.addAll(customArgs);
+    return completeArgs.toArray(new String[0]);
+  }
+
   public static void validateStringOutput(String output, int numOfRecords) {
     String lines[] = output.split(System.lineSeparator());
     Assertions.assertThat(lines.length).isEqualTo(numOfRecords);
