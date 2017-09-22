@@ -155,7 +155,7 @@ public abstract class ResultSubscription<T extends Result, R>
       drain();
       lock.lock();
       try {
-        notFull.await(100, TimeUnit.MILLISECONDS);
+        notFull.await(1, TimeUnit.MILLISECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       } finally {
