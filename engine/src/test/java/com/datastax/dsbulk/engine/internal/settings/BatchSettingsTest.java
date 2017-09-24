@@ -21,6 +21,7 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
 import com.typesafe.config.ConfigFactory;
+import java.time.Duration;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.internal.util.reflection.Whitebox;
@@ -49,6 +50,8 @@ public class BatchSettingsTest {
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(10000);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(100);
+    assertThat(Whitebox.getInternalState(batcher, "bufferTimeout"))
+        .isEqualTo(Duration.ofSeconds(1));
   }
 
   @Test
@@ -62,6 +65,8 @@ public class BatchSettingsTest {
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
     assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(10000);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(100);
+    assertThat(Whitebox.getInternalState(batcher, "bufferTimeout"))
+        .isEqualTo(Duration.ofSeconds(1));
   }
 
   @Test
@@ -75,6 +80,8 @@ public class BatchSettingsTest {
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(5000);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(100);
+    assertThat(Whitebox.getInternalState(batcher, "bufferTimeout"))
+        .isEqualTo(Duration.ofSeconds(1));
   }
 
   @Test
@@ -88,5 +95,7 @@ public class BatchSettingsTest {
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(10000);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
+    assertThat(Whitebox.getInternalState(batcher, "bufferTimeout"))
+        .isEqualTo(Duration.ofSeconds(1));
   }
 }

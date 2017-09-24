@@ -13,6 +13,8 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.io.FileSplitter;
+import com.datastax.dsbulk.commons.url.URLUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -25,18 +27,13 @@ import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileVisitResult;
@@ -92,11 +89,14 @@ public class CSVConnector implements Connector {
   private int maxThreads;
   private boolean recursive;
   private boolean header;
+  private boolean mappedFilesEnabled;
+  private long mappedFileChunkSize;
   private String fileNameFormat;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
   private AtomicInteger counter;
   private ExecutorService threadPool;
+  private Scheduler scheduler;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) throws MalformedURLException {
@@ -114,6 +114,8 @@ public class CSVConnector implements Connector {
     recursive = settings.getBoolean("recursive");
     header = settings.getBoolean("header");
     fileNameFormat = settings.getString("fileNameFormat");
+    mappedFilesEnabled = settings.getBoolean("mappedFilesEnabled");
+    mappedFileChunkSize = settings.getMemorySize("mappedFileChunkSize").toBytes();
   }
 
   @Override
@@ -144,6 +146,9 @@ public class CSVConnector implements Connector {
       threadPool =
           Executors.newFixedThreadPool(
               maxThreads, new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
+      scheduler = Schedulers.fromExecutor(threadPool);
+    } else {
+      scheduler = Schedulers.immediate();
     }
   }
 
@@ -168,6 +173,8 @@ public class CSVConnector implements Connector {
       settings.getBoolean("recursive");
       settings.getBoolean("header");
       settings.getString("fileNameFormat");
+      settings.getBoolean("mappedFilesEnabled");
+      settings.getMemorySize("mappedFileChunkSize");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
     }
@@ -175,6 +182,9 @@ public class CSVConnector implements Connector {
 
   @Override
   public void close() throws Exception {
+    if (scheduler != null) {
+      scheduler.dispose();
+    }
     if (threadPool != null) {
       threadPool.shutdown();
       threadPool.awaitTermination(1, MINUTES);
@@ -183,7 +193,7 @@ public class CSVConnector implements Connector {
   }
 
   @Override
-  public Publisher<Record> read() {
+  public Publisher<Record> read() throws URISyntaxException, IOException {
     assert read;
     if (root != null) {
       return readMultipleFiles();
@@ -233,72 +243,89 @@ public class CSVConnector implements Connector {
     }
   }
 
-  private Flux<Record> readSingleFile(URL url) {
-    Flux<Record> records =
-        Flux.create(
-            e -> {
-              CsvParser parser = new CsvParser(parserSettings);
-              LOGGER.debug("Reading {}", url);
-              try (InputStream is = openInputStream(url)) {
-                parser.beginParsing(is, encoding);
-                while (true) {
-                  com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
-                  ParsingContext context = parser.getContext();
-                  String source = context.currentParsedContent();
-                  if (row == null) {
-                    break;
-                  }
-                  if (e.isCancelled()) {
-                    break;
-                  }
-                  Record record;
-                  if (header) {
-                    record =
-                        new DefaultRecord(
-                            source,
-                            Suppliers.memoize(() -> getCurrentLocation(url, context)),
-                            context.parsedHeaders(),
-                            (Object[]) row.getValues());
-                  } else {
-                    record =
-                        new DefaultRecord(
-                            source,
-                            Suppliers.memoize(() -> getCurrentLocation(url, context)),
-                            (Object[]) row.getValues());
-                  }
-                  LOGGER.trace("Emitting record {}", record);
-                  e.next(record);
-                }
-                LOGGER.debug("Done reading {}", url);
-                e.complete();
-                parser.stopParsing();
-              } catch (IOException e1) {
-                LOGGER.error("Error writing to " + url, e1);
-                e.error(e1);
-                parser.stopParsing();
-              }
-            },
-            FluxSink.OverflowStrategy.BUFFER);
+  private Flux<Record> readSingleFile(URL url) throws URISyntaxException, IOException {
+    Flux<Record> records = null;
+    if (mappedFilesEnabled && maxThreads > 1 && url.getProtocol().equals("file")) {
+      File file = new File(url.toURI());
+      long fileLength = file.length();
+      if (fileLength > mappedFileChunkSize) {
+        records =
+            splitInChunks(file).flatMap(u -> readURL(u).subscribeOn(scheduler), maxThreads, 1024);
+      }
+    }
+    if (records == null) {
+      records = readURL(url);
+    }
     if (maxLines != -1) {
       records = records.take(maxLines);
     }
     return records;
   }
 
+  private Flux<URL> splitInChunks(File file) throws IOException, URISyntaxException {
+    FileSplitter splitter =
+        new FileSplitter(file, encoding, header, skipLines, mappedFileChunkSize);
+    return Flux.fromIterable(splitter.split());
+  }
+
+  private Flux<Record> readURL(URL url) {
+    return Flux.create(
+        e -> {
+          CsvParser parser = new CsvParser(parserSettings);
+          LOGGER.debug("Reading {}", url);
+          try (InputStream is = URLUtils.openInputStream(url)) {
+            parser.beginParsing(is, encoding);
+            while (true) {
+              com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
+              ParsingContext context = parser.getContext();
+              String source = context.currentParsedContent();
+              if (row == null) {
+                break;
+              }
+              if (e.isCancelled()) {
+                break;
+              }
+              Record record;
+              if (header) {
+                record =
+                    new DefaultRecord(
+                        source,
+                        Suppliers.memoize(() -> getCurrentLocation(url, context)),
+                        context.headers(),
+                        (Object[]) row.getValues());
+              } else {
+                record =
+                    new DefaultRecord(
+                        source,
+                        Suppliers.memoize(() -> getCurrentLocation(url, context)),
+                        (Object[]) row.getValues());
+              }
+              LOGGER.trace("Emitting record {}", record);
+              e.next(record);
+            }
+            LOGGER.debug("Done reading {}", url);
+            e.complete();
+            parser.stopParsing();
+          } catch (IOException e1) {
+            LOGGER.error("Error writing to " + url, e1);
+            e.error(e1);
+            parser.stopParsing();
+          }
+        },
+        FluxSink.OverflowStrategy.BUFFER);
+  }
+
   private Publisher<Record> readMultipleFiles() {
-    Scheduler scheduler =
-        maxThreads > 1 ? Schedulers.fromExecutor(threadPool) : Schedulers.immediate();
-    return Flux.merge(
-        scanRootDirectory()
-            .map(
-                p -> {
-                  try {
-                    return readSingleFile(p.toUri().toURL()).subscribeOn(scheduler);
-                  } catch (MalformedURLException e) {
-                    throw new RuntimeException(e);
-                  }
-                }),
-        maxThreads);
+    return scanRootDirectory()
+        .flatMap(
+            p -> {
+              try {
+                return readSingleFile(p.toUri().toURL()).subscribeOn(scheduler);
+              } catch (IOException | URISyntaxException e) {
+                throw new RuntimeException(e);
+              }
+            },
+            maxThreads);
   }
 
   private Flux<Path> scanRootDirectory() {
@@ -407,7 +434,7 @@ public class CSVConnector implements Connector {
 
   private CsvWriter createCSVWriter(URL url) {
     try {
-      return new CsvWriter(openOutputStream(url), writerSettings);
+      return new CsvWriter(URLUtils.openOutputStream(url), writerSettings);
     } catch (Exception e) {
       LOGGER.error("Could not create CSV writer for " + url, e);
       throw new RuntimeException(e);
@@ -438,24 +465,5 @@ public class CSVConnector implements Connector {
             + line
             + "&column="
             + column);
-  }
-
-  private static InputStream openInputStream(URL url) throws IOException {
-    InputStream in = url.openStream();
-    return in instanceof BufferedInputStream ? in : new BufferedInputStream(in);
-  }
-
-  private static OutputStream openOutputStream(URL url) throws IOException, URISyntaxException {
-    OutputStream out;
-    // file URLs do not support writing, only reading,
-    // so we need to special-case them here
-    if (url.getProtocol().equals("file")) {
-      out = new FileOutputStream(new File(url.toURI()));
-    } else {
-      URLConnection connection = url.openConnection();
-      connection.setDoOutput(true);
-      out = connection.getOutputStream();
-    }
-    return out instanceof BufferedOutputStream ? out : new BufferedOutputStream(out);
   }
 }

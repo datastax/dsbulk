@@ -29,7 +29,6 @@ public class CSVUnloadEndToEndIT {
 
   @Test
   public void full_unload() throws Exception {
-
     Path full_load_dir = Paths.get("./full_load_dir");
     Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
     deleteIfExists(full_load_dir);
@@ -41,7 +40,7 @@ public class CSVUnloadEndToEndIT {
       "-header",
       "false",
       "--connector.csv.url=" + full_load_dir.toString(),
-      "--connector.csv.maxThreads=1 ",
+      "--connector.csv.maxThreads=1",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
@@ -71,7 +70,7 @@ public class CSVUnloadEndToEndIT {
       "-header",
       "false",
       "--connector.csv.url=" + full_load_dir.toString(),
-      "--connector.csv.maxThreads=1 ",
+      "--connector.csv.maxThreads=1",
       "--connector.csv.delimiter=;",
       "--connector.csv.quote=<",
       "--connector.csv.skipLines=2",
@@ -102,7 +101,7 @@ public class CSVUnloadEndToEndIT {
       "-header",
       "false",
       "--connector.csv.url=" + full_load_dir.toString(),
-      "--connector.csv.maxThreads=4 ",
+      "--connector.csv.maxThreads=4",
       "--driver.query.consistency=LOCAL_ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
@@ -137,7 +136,7 @@ public class CSVUnloadEndToEndIT {
       "-header",
       "false",
       "--connector.csv.url=" + full_load_dir.toString(),
-      "--connector.csv.maxThreads=1 ",
+      "--connector.csv.maxThreads=1",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
@@ -168,7 +167,7 @@ public class CSVUnloadEndToEndIT {
       "-header",
       "false",
       "--connector.csv.url=" + full_load_dir.toString(),
-      "--connector.csv.maxThreads=4 ",
+      "--connector.csv.maxThreads=4",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",
@@ -200,7 +199,7 @@ public class CSVUnloadEndToEndIT {
       "-header",
       "false",
       "--connector.csv.url=" + full_load_dir.toString(),
-      "--connector.csv.maxThreads=1 ",
+      "--connector.csv.maxThreads=1",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",

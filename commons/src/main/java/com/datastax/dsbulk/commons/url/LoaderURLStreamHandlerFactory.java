@@ -21,10 +21,13 @@ import java.net.URLStreamHandlerFactory;
 public class LoaderURLStreamHandlerFactory implements URLStreamHandlerFactory {
 
   /** The scheme for standard input URLs. The only supported URL with such scheme is "stdin:/". */
-  private static final String STDIN = "stdin";
+  public static final String STDIN = "stdin";
 
   /** The scheme for standard output URLs. The only supported URL with such scheme is "stdout:/". */
-  private static final String STDOUT = "stdout";
+  public static final String STDOUT = "stdout";
+
+  /** The scheme for mapped files. */
+  public static final String MAPPED_FILE = "mapped-file";
 
   @Override
   public URLStreamHandler createURLStreamHandler(String protocol) {
@@ -33,6 +36,9 @@ public class LoaderURLStreamHandlerFactory implements URLStreamHandlerFactory {
     }
     if (STDOUT.equalsIgnoreCase(protocol)) {
       return new StandardOutputURLStreamHandler();
+    }
+    if (MAPPED_FILE.equalsIgnoreCase(protocol)) {
+      return new MappedFileURLStreamHandler();
     }
     // TODO other schemes: NFS, DSEFS...
     return null;

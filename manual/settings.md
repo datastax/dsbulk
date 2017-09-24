@@ -398,6 +398,38 @@ Only applicable when the *url* setting points to a directory on a known filesyst
 
 Default: **"\*\*/\*.csv"**.
 
+#### ---connector.csv.mappedFileChunkSize _&lt;string&gt;_
+
+The maximum file length threshold beyond which the file will be memory-mapped and
+read by multiple threads.
+
+Only applicable to load workflows, if *mappedFilesEnabled* is true and if *maxThreads* > 1.
+
+Default: **"4M"**.
+
+#### ---connector.csv.mappedFileLengthThreshold _&lt;string&gt;_
+
+The maximum file length threshold beyond which the file will be memory-mapped and
+read by multiple threads.
+
+Only applicable to load workflows, if *mappedFilesEnabled* is true and if *maxThreads* > 1.
+
+Default: **"16M"**.
+
+#### ---connector.csv.mappedFilesEnabled _&lt;boolean&gt;_
+
+Whether or not to use mapped files to read large files.
+
+If this feature is enabled, and if *maxThreads* > 1, then *mappedFileLengthThreshold* can be used to specify the
+file length beyond which files to read will be memory-mapped; and *maxMappedFileMemory* can be
+used to specify the maximum (approximative) amount of off-heap memory to allocate for
+mapped files.
+
+Note that this feature might not work properly with ill-formatted CSV files,
+or CSV files containing advanced features, such as comments, or line breaks inside fields.
+
+Default: **true**.
+
 #### -maxThreads,--connector.csv.maxThreads _&lt;number&gt;_
 
 The maximum number of reading or writing threads. In other words, this setting controls how many files can be read or written simultaneously.
@@ -539,9 +571,18 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 #### ---batch.bufferSize _&lt;number&gt;_
 
-The buffer size to use when batching.
+The buffer size to use when batching. The buffer will be flushed when this size is reached or
+when *bufferTimeout* is elapsed, whichever happens first.
 
 Default: **10000**.
+
+#### ---batch.bufferTimeout _&lt;string&gt;_
+
+The maximum amount of time to wait for incoming items to batch before flushing.
+The buffer will be flushed when this duration is elapsed
+or when *bufferSize* is reached, whichever happens first.
+
+Default: **"1 seconds"**.
 
 #### ---batch.maxBatchSize _&lt;number&gt;_
 
