@@ -31,6 +31,8 @@ import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dsbulk.executor.api.statement.TableScanner;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -38,7 +40,10 @@ import com.google.common.reflect.TypeToken;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigValue;
+import com.typesafe.config.ConfigValueType;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -47,8 +52,8 @@ import java.util.Set;
 public class SchemaSettings implements SettingsValidator {
 
   private final LoaderConfig config;
+  private final String INFERRED_MAPPING_TOKEN = "__INFERRED_MAPPING";
 
-  private KeyspaceMetadata keyspace;
   private TableMetadata table;
   private String keyspaceName;
   private String tableName;
@@ -61,7 +66,8 @@ public class SchemaSettings implements SettingsValidator {
   }
 
   public RecordMapper createRecordMapper(
-      Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry) {
+      Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
+      throws BulkConfigurationException {
     ImmutableBiMap<String, String> fieldsToVariables = createFieldsToVariablesMap(session);
     PreparedStatement statement = prepareStatement(session, fieldsToVariables, WorkflowType.LOAD);
     DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
@@ -74,7 +80,8 @@ public class SchemaSettings implements SettingsValidator {
   }
 
   public ReadResultMapper createReadResultMapper(
-      Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry) {
+      Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
+      throws BulkConfigurationException {
     ImmutableBiMap<String, String> fieldsToVariables = createFieldsToVariablesMap(session);
     preparedStatement = prepareStatement(session, fieldsToVariables, WorkflowType.UNLOAD);
     DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
@@ -118,6 +125,15 @@ public class SchemaSettings implements SettingsValidator {
             "schema.keyspace must accompany schema.table in the configuration");
       }
 
+      // If mapping is present, make sure it is parseable as a map.
+      if (config.hasPath("mapping")) {
+        Config mapping = getMapping();
+        if (mapping.hasPath(INFERRED_MAPPING_TOKEN) && !keyspaceTablePresent) {
+          throw new BulkConfigurationException(
+              "schema.keyspace and schema.table must be defined when using inferred mapping");
+        }
+      }
+
       // Either the keyspace and table must be present, or the mapping must be present.
       if (!config.hasPath("mapping") && !keyspaceTablePresent) {
         throw new BulkConfigurationException(
@@ -135,32 +151,50 @@ public class SchemaSettings implements SettingsValidator {
     }
   }
 
-  private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session) {
-    ImmutableBiMap.Builder<String, String> fieldsToVariablesBuilder = null;
+  private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session)
+      throws BulkConfigurationException {
+    BiMap<String, String> fieldsToVariables = null;
 
-    if (config.hasPath("mapping")) {
-      fieldsToVariablesBuilder = new ImmutableBiMap.Builder<>();
-      Config mapping = ConfigFactory.parseString(config.getString("mapping"));
-      for (String path : mapping.root().keySet()) {
-        fieldsToVariablesBuilder.put(path, mapping.getString(path));
-      }
-    }
     if (config.hasPath("keyspace") && config.hasPath("table")) {
       keyspaceName = Metadata.quoteIfNecessary(config.getString("keyspace"));
       tableName = Metadata.quoteIfNecessary(config.getString("table"));
-      keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
+      KeyspaceMetadata keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
       Preconditions.checkNotNull(keyspace, "Keyspace does not exist: " + keyspaceName);
       table = keyspace.getTable(tableName);
       Preconditions.checkNotNull(
           table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
     }
+
     if (!config.hasPath("mapping")) {
-      fieldsToVariablesBuilder = inferFieldsToVariablesMap();
+      fieldsToVariables = inferFieldsToVariablesMap();
+    } else {
+      Config mapping = getMapping();
+      if (mapping.hasPath(INFERRED_MAPPING_TOKEN)) {
+        fieldsToVariables =
+            inferFieldsToVariablesMap(
+                new InferredMappingSpec(mapping.getValue(INFERRED_MAPPING_TOKEN)));
+      }
+      if (fieldsToVariables == null) {
+        fieldsToVariables = HashBiMap.create();
+      }
+      for (String path : mapping.withoutPath(INFERRED_MAPPING_TOKEN).root().keySet()) {
+        // Use forcePut to override previously defined mappings.
+        fieldsToVariables.forcePut(path, mapping.getString(path));
+      }
     }
     Preconditions.checkNotNull(
-        fieldsToVariablesBuilder,
+        fieldsToVariables,
         "Mapping was absent and could not be inferred, please provide an explicit mapping");
-    return fieldsToVariablesBuilder.build();
+    return ImmutableBiMap.copyOf(fieldsToVariables);
+  }
+
+  private Config getMapping() throws BulkConfigurationException {
+    String mappingString = config.getString("mapping").replaceAll("\\*", INFERRED_MAPPING_TOKEN);
+    try {
+      return ConfigFactory.parseString(mappingString);
+    } catch (ConfigException.Parse e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema.mapping");
+    }
   }
 
   private RecordMetadata mergeRecordMetadata(RecordMetadata fallback) {
@@ -192,12 +226,18 @@ public class SchemaSettings implements SettingsValidator {
     return session.prepare(query);
   }
 
-  private ImmutableBiMap.Builder<String, String> inferFieldsToVariablesMap() {
-    ImmutableBiMap.Builder<String, String> fieldsToVariables = new ImmutableBiMap.Builder<>();
+  private BiMap<String, String> inferFieldsToVariablesMap() {
+    return inferFieldsToVariablesMap(null);
+  }
+
+  private BiMap<String, String> inferFieldsToVariablesMap(InferredMappingSpec spec) {
+    HashBiMap<String, String> fieldsToVariables = HashBiMap.create();
     for (int i = 0; i < table.getColumns().size(); i++) {
       ColumnMetadata col = table.getColumns().get(i);
-      // don't quote column names here, it will be done later on if required
-      fieldsToVariables.put(col.getName(), col.getName());
+      if (spec == null || spec.allow(col.getName())) {
+        // don't quote column names here, it will be done later on if required
+        fieldsToVariables.put(col.getName(), col.getName());
+      }
     }
     return fieldsToVariables;
   }
@@ -260,5 +300,39 @@ public class SchemaSettings implements SettingsValidator {
       }
     }
     sb.append(')');
+  }
+
+  private class InferredMappingSpec {
+    private Set<String> includes = new HashSet<>();
+    private Set<String> excludes = new HashSet<>();
+    private boolean includeAll = false;
+
+    InferredMappingSpec(ConfigValue spec) {
+      if (spec.valueType() == ConfigValueType.STRING) {
+        processSpec((String) spec.unwrapped());
+      } else if (spec.valueType() == ConfigValueType.LIST) {
+        @SuppressWarnings("unchecked")
+        List<Object> specList = (List<Object>) spec.unwrapped();
+        specList.forEach(x -> processSpec((String) x));
+      }
+    }
+
+    private void processSpec(String specString) {
+      if (specString.equals(INFERRED_MAPPING_TOKEN)) {
+        includeAll = true;
+      } else if (specString.startsWith("-")) {
+        // We're excluding a particular column. This implies that
+        // we include all others.
+        excludes.add(specString.substring(1));
+        includeAll = true;
+      } else {
+        includes.add(specString);
+      }
+    }
+
+    boolean allow(String name) {
+      // Excludes take precedence over includes.
+      return !excludes.contains(name) && (includeAll || includes.contains(name));
+    }
   }
 }

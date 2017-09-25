@@ -238,14 +238,62 @@ public class SettingValidatorTest {
 
   @Test
   public void should_error_invalid_schema_missing_keyspace() throws Exception {
+    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "--schema.table=table"});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).contains("schema.keyspace must accompany schema.table in the configuration");
+  }
+
+  @Test
+  public void should_error_invalid_schema_mapping_missing_keyspace_and_table() throws Exception {
+    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "c1=c2"});
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).contains("schema.query, or schema.keyspace and schema.table must be defined");
+  }
+
+  @Test
+  public void should_error_invalid_schema_invalid_mapping() throws Exception {
+    new Main(
+        new String[] {
+          "load",
+          "--connector.csv.url=/path/to/my/file",
+          "-m",
+          "c1",
+          "--schema.keyspace=keyspace",
+          "--schema.table=table"
+        });
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).contains("Configuration entry of schema.mapping");
+  }
+
+  @Test
+  public void should_connect_error_with_schema_mapping_query_defined() throws Exception {
     new Main(
         new String[] {
           "load",
           "--driver.hosts=255.255.255.23",
           "--connector.csv.url=/path/to/my/file",
-          "--schema.table=table"
+          "-m",
+          "c1=c2",
+          "--schema.query",
+          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
         });
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("schema.keyspace must accompany schema.table in the configuration");
+    assertThat(err).contains(" All host(s) tried for query");
+  }
+
+  @Test
+  public void should_error_invalid_schema_inferred_mapping_query_defined() throws Exception {
+    new Main(
+        new String[] {
+          "load",
+          "--connector.csv.url=/path/to/my/file",
+          "-m",
+          "*=*, c1=c2",
+          "--schema.query",
+          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+        });
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .contains("schema.keyspace and schema.table must be defined when using inferred mapping");
   }
 }
