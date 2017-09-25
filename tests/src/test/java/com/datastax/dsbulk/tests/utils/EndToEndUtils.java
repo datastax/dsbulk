@@ -199,7 +199,7 @@ public class EndToEndUtils {
   public static void setURLFactoryIfNeeded() {
     try {
       URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    } catch (Exception e) {
+    } catch (Throwable e) {
       //URL.setURLStreamHandlerFactory throws an exception if it's been set more then once
       //Ignore that and keep going.
     }

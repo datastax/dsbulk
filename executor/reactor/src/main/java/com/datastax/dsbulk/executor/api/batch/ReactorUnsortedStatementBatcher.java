@@ -9,6 +9,7 @@ package com.datastax.dsbulk.executor.api.batch;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Statement;
+import java.time.Duration;
 import java.util.function.Function;
 import reactor.core.publisher.Flux;
 
@@ -30,27 +31,35 @@ public class ReactorUnsortedStatementBatcher extends ReactorStatementBatcher
   /** The default size for the internal buffer. */
   public static final int DEFAULT_BUFFER_SIZE = 1000;
 
+  public static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(5);
+
   private final int bufferSize;
+  private final Duration bufferTimeout;
 
   public ReactorUnsortedStatementBatcher() {
-    this(DEFAULT_BUFFER_SIZE);
+    this(DEFAULT_BUFFER_SIZE, DEFAULT_BUFFER_TIMEOUT);
   }
 
-  public ReactorUnsortedStatementBatcher(int bufferSize) {
+  public ReactorUnsortedStatementBatcher(int bufferSize, Duration bufferTimeout) {
     this.bufferSize = bufferSize;
+    this.bufferTimeout = bufferTimeout;
   }
 
   public ReactorUnsortedStatementBatcher(Cluster cluster) {
-    this(cluster, DEFAULT_BUFFER_SIZE);
+    this(cluster, DEFAULT_BUFFER_SIZE, DEFAULT_BUFFER_TIMEOUT);
   }
 
-  public ReactorUnsortedStatementBatcher(Cluster cluster, int bufferSize) {
-    this(cluster, BatchMode.PARTITION_KEY, DEFAULT_MAX_BATCH_SIZE, bufferSize);
+  public ReactorUnsortedStatementBatcher(Cluster cluster, int bufferSize, Duration bufferTimeout) {
+    this(cluster, BatchMode.PARTITION_KEY, DEFAULT_MAX_BATCH_SIZE, bufferSize, bufferTimeout);
   }
 
   public ReactorUnsortedStatementBatcher(
-      Cluster cluster, BatchMode batchMode, int maxBatchSize, int bufferSize) {
-    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchSize, bufferSize);
+      Cluster cluster,
+      BatchMode batchMode,
+      int maxBatchSize,
+      int bufferSize,
+      Duration bufferTimeout) {
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchSize, bufferSize, bufferTimeout);
   }
 
   public ReactorUnsortedStatementBatcher(
@@ -58,13 +67,18 @@ public class ReactorUnsortedStatementBatcher extends ReactorStatementBatcher
       BatchMode batchMode,
       BatchStatement.Type batchType,
       int maxBatchSize,
-      int bufferSize) {
+      int bufferSize,
+      Duration bufferTimeout) {
     super(cluster, batchMode, batchType, maxBatchSize);
     this.bufferSize = bufferSize;
+    this.bufferTimeout = bufferTimeout;
   }
 
   @Override
   public Flux<Statement> apply(Flux<? extends Statement> upstream) {
-    return upstream.buffer(bufferSize).map(this::batchByGroupingKey).flatMap(Flux::fromIterable);
+    return upstream
+        .bufferTimeout(bufferSize, bufferTimeout)
+        .map(this::batchByGroupingKey)
+        .flatMap(Flux::fromIterable);
   }
 }

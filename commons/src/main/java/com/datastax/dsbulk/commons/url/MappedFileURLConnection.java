@@ -6,18 +6,15 @@
  */
 package com.datastax.dsbulk.commons.url;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
-/**
- * URLConnection implementation whose {@link #getInputStream()} method always returns the {@link
- * System#in System standard input stream}.
- */
-public class StandardInputURLConnection extends URLConnection {
+public class MappedFileURLConnection extends URLConnection {
 
-  public StandardInputURLConnection(URL url) {
+  public MappedFileURLConnection(URL url) {
     super(url);
   }
 
@@ -26,6 +23,6 @@ public class StandardInputURLConnection extends URLConnection {
 
   @Override
   public InputStream getInputStream() throws IOException {
-    return new UncloseableInputStream(System.in);
+    return new BufferedInputStream(new MappedFileInputStream(url));
   }
 }

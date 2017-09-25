@@ -33,4 +33,15 @@ public class LoaderURLStreamHandlerFactoryTest {
         .isNotNull()
         .isInstanceOf(StandardOutputURLStreamHandler.class);
   }
+
+  @Test
+  public void should_handle_mapped_file_protocol() throws Exception {
+    LoaderURLStreamHandlerFactory factory = new LoaderURLStreamHandlerFactory();
+    assertThat(factory.createURLStreamHandler("mapped-file"))
+        .isNotNull()
+        .isInstanceOf(MappedFileURLStreamHandler.class);
+    assertThat(factory.createURLStreamHandler("MAPPED-FILE"))
+        .isNotNull()
+        .isInstanceOf(MappedFileURLStreamHandler.class);
+  }
 }

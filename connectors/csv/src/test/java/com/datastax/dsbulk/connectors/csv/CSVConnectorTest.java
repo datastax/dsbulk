@@ -46,7 +46,7 @@ public class CSVConnectorTest {
   public static void setupURLStreamHandlerFactory() throws Exception {
     try {
       URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    } catch (Exception ignored) {
+    } catch (Throwable ignored) {
       // if this happens, that's because another test already installed the factory
     }
   }
@@ -267,6 +267,38 @@ public class CSVConnectorTest {
             "Year,Make,Model,Description,Price",
             "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
             ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    connector.close();
+  }
+
+  @Test
+  public void should_read_single_file_with_mapped_files() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", escape = \"\\\"\", comment = \"#\", mappedFileChunkSize = 1K ",
+                        url("/root/ip-by-country-sample1.csv")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assertThat(actual).hasSize(100);
+    connector.close();
+  }
+
+  @Test
+  public void should_scan_directory_recursively_with_mapped_files() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", recursive = true, mappedFileChunkSize = 1K", url("/root")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 

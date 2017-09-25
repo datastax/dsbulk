@@ -6,7 +6,6 @@
  */
 package com.datastax.dsbulk.commons.url;
 
-import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URL;
@@ -29,6 +28,6 @@ public class StandardOutputURLConnection extends URLConnection {
 
   @Override
   public OutputStream getOutputStream() throws IOException {
-    return new BufferedOutputStream(new UncloseableOutputStream(System.out));
+    return new UncloseableOutputStream(System.out);
   }
 }

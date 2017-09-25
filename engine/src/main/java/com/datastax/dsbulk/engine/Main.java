@@ -32,11 +32,15 @@ public class Main {
   private static final Config REFERENCE = ConfigFactory.defaultReference().getConfig("dsbulk");
 
   public static void main(String[] args) {
-    URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
     new Main(args);
   }
 
   public Main(String[] args) {
+    try {
+      URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
+    } catch (Error ignored) {
+      // URL factory already set
+    }
     String connectorName;
     try {
       if (args.length == 0 || (args[0].equals("help") && args.length == 1)) {

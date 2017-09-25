@@ -28,6 +28,11 @@
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-commons</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-executor-api</artifactId>
     </dependency>
 

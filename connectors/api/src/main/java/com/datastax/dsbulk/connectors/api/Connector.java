@@ -18,15 +18,17 @@ public interface Connector extends AutoCloseable {
    * Reads records from the datasource.
    *
    * @return a {@link Publisher} of records read from the datasource.
+   * @throws Exception if the connector fails to read.
    */
-  Publisher<Record> read();
+  Publisher<Record> read() throws Exception;
 
   /**
    * Writes records to the datasource.
    *
    * @return A {@link Subscriber} of records to write to the datasource.
+   * @throws Exception if the connector fails to write.
    */
-  Subscriber<Record> write();
+  Subscriber<Record> write() throws Exception;
 
   /**
    * Initializes the connector.
