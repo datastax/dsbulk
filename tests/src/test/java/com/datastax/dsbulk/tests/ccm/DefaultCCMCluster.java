@@ -68,10 +68,14 @@ public class DefaultCCMCluster implements CCMCluster {
   public static final String DEFAULT_SERVER_TRUSTSTORE_PASSWORD = "cassandra1sfun";
   public static final String DEFAULT_SERVER_KEYSTORE_PASSWORD = "cassandra1sfun";
 
+  public static final String DEFAULT_CLIENT_KEYSTORE_PATH = "/client.keystore";
+  public static final String DEFAULT_CLIENT_TRUSTSTORE_PATH = "/client.truststore";
   public static final File DEFAULT_CLIENT_TRUSTSTORE_FILE = createTempStore("/client.truststore");
   public static final File DEFAULT_CLIENT_KEYSTORE_FILE = createTempStore("/client.keystore");
 
   // Contain the same keypair as the client keystore, but in format usable by OpenSSL
+  public static final String DEFAULT_CLIENT_CERT_CHAIN_PATH = "/client.crt";
+  public static final String DEFAULT_CLIENT_PRIVATE_KEY_PATH = "/client.key";
   public static final File DEFAULT_CLIENT_PRIVATE_KEY_FILE = createTempStore("/client.key");
   public static final File DEFAULT_CLIENT_CERT_CHAIN_FILE = createTempStore("/client.crt");
   public static final File DEFAULT_SERVER_TRUSTSTORE_FILE = createTempStore("/server.truststore");
