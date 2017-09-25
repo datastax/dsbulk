@@ -7,6 +7,8 @@
 package com.datastax.dsbulk.executor.api;
 
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.executor.api.result.ReadResult;
+import reactor.util.concurrent.QueueSupplier;
 
 /** A builder for {@link DefaultReactorBulkExecutor} instances. */
 public class DefaultReactorBulkExecutorBuilder
@@ -18,7 +20,16 @@ public class DefaultReactorBulkExecutorBuilder
 
   @Override
   public DefaultReactorBulkExecutor build() {
+    if (queueFactory == null) {
+      queueFactory = statement -> QueueSupplier.<ReadResult>get(statement.getFetchSize() * 4).get();
+    }
     return new DefaultReactorBulkExecutor(
-        session, failFast, maxInFlightRequests, maxRequestsPerSecond, listener, executor);
+        session,
+        failFast,
+        maxInFlightRequests,
+        maxRequestsPerSecond,
+        listener,
+        executor,
+        queueFactory);
   }
 }

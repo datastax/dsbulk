@@ -31,6 +31,8 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
 
   Executor executor;
 
+  QueueFactory<ReadResult> queueFactory;
+
   AbstractBulkExecutorBuilder(Session session) {
     this.session = session;
   }
@@ -126,6 +128,18 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
   @SuppressWarnings("UnusedReturnValue")
   public AbstractBulkExecutorBuilder<T> withExecutor(Executor executor) {
     this.executor = executor;
+    return this;
+  }
+
+  /**
+   * Sets the {@link QueueFactory} to use when executing read requests.
+   *
+   * @param queueFactory the {@link QueueFactory} to use.
+   * @return this builder (for method chaining).
+   */
+  @SuppressWarnings("UnusedReturnValue")
+  public AbstractBulkExecutorBuilder<T> withQueueFactory(QueueFactory<ReadResult> queueFactory) {
+    this.queueFactory = queueFactory;
     return this;
   }
 

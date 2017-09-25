@@ -8,6 +8,8 @@ package com.datastax.dsbulk.executor.api;
 
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
+import com.datastax.dsbulk.executor.api.result.ReadResult;
+import reactor.util.concurrent.QueueSupplier;
 
 /** A builder for {@link ContinuousReactorBulkExecutor} instances. */
 public class ContinuousReactorBulkExecutorBuilder
@@ -28,6 +30,9 @@ public class ContinuousReactorBulkExecutorBuilder
 
   @Override
   public ContinuousReactorBulkExecutor build() {
+    if (queueFactory == null) {
+      queueFactory = statement -> QueueSupplier.<ReadResult>get(options.getPageSize() * 4).get();
+    }
     return new ContinuousReactorBulkExecutor(
         (ContinuousPagingSession) session,
         options,
@@ -35,6 +40,7 @@ public class ContinuousReactorBulkExecutorBuilder
         maxInFlightRequests,
         maxRequestsPerSecond,
         listener,
-        executor);
+        executor,
+        queueFactory);
   }
 }
