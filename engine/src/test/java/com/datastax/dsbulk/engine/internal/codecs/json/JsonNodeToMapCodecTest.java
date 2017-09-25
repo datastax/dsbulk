@@ -54,8 +54,6 @@ public class JsonNodeToMapCodecTest {
         .to(map(1234.56d, list("foo"), 0.12d, list("bar")))
         .convertsFrom(objectMapper.readTree("{1: , '' :['foo']}"))
         .to(map(1d, null, null, list("foo")))
-        .convertsFrom(objectMapper.readTree("{ 1 : null, 2 : '' }"))
-        .to(map(1d, null, 2d, null))
         .convertsFrom(null)
         .to(null)
         .convertsFrom(objectMapper.readTree("{}"))
@@ -80,6 +78,8 @@ public class JsonNodeToMapCodecTest {
   @Test
   public void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec).cannotConvertFrom(objectMapper.readTree("{\"not a valid input\":\"foo\"}"));
+    assertThat(codec).cannotConvertFrom(objectMapper.readTree("[1,\"not a valid object\"]"));
+    assertThat(codec).cannotConvertFrom(objectMapper.readTree("42"));
   }
 
   private static Map<Double, List<String>> map(

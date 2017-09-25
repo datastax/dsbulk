@@ -14,6 +14,7 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -35,15 +36,26 @@ public class JsonNodeToUDTCodec extends ConvertingCodec<JsonNode, UDTValue> {
 
   @Override
   public UDTValue convertFrom(JsonNode node) {
-    if (node == null || node.isNull() || node.size() == 0) {
+    if (node == null || node.isNull()) {
       return null;
+    }
+    if (!node.isObject()) {
+      throw new InvalidTypeException("Expecting OBJECT node, got " + node.getNodeType());
+    }
+    if (node.size() == 0) {
+      return null;
+    }
+    if (node.size() != definition.size()) {
+      throw new InvalidTypeException(
+          String.format("Expecting %d fields, got %d", definition.size(), node.size()));
     }
     UDTValue value = definition.newValue();
     Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+    Collection<String> fieldNames = definition.getFieldNames();
     while (fields.hasNext()) {
       Map.Entry<String, JsonNode> entry = fields.next();
       String name = entry.getKey();
-      if (definition.getFieldType(name) == null) {
+      if (!fieldNames.contains(name)) {
         throw new InvalidTypeException(
             String.format("Unknown field %s in UDT %s", name, definition.getName()));
       }

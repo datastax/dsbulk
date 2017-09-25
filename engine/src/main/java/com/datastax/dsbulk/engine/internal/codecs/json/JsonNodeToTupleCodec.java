@@ -9,6 +9,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import com.datastax.driver.core.TupleType;
 import com.datastax.driver.core.TupleValue;
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,11 +34,22 @@ public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> 
 
   @Override
   public TupleValue convertFrom(JsonNode node) {
-    if (node == null || node.isNull() || node.size() == 0) {
+    if (node == null || node.isNull()) {
       return null;
     }
+    if (!node.isArray()) {
+      throw new InvalidTypeException("Expecting ARRAY node, got " + node.getNodeType());
+    }
+    if (node.size() == 0) {
+      return null;
+    }
+    int size = definition.getComponentTypes().size();
+    if (node.size() != size) {
+      throw new InvalidTypeException(
+          String.format("Expecting %d elements, got %d", size, node.size()));
+    }
     TupleValue tuple = definition.newValue();
-    for (int i = 0; i < definition.getComponentTypes().size(); i++) {
+    for (int i = 0; i < size; i++) {
       ConvertingCodec<JsonNode, Object> eltCodec = eltCodecs.get(i);
       Object o = eltCodec.convertFrom(node.get(i));
       tuple.set(i, o, eltCodec.getTargetJavaType());

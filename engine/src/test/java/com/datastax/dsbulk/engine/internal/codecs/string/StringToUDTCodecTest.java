@@ -117,11 +117,7 @@ public class StringToUDTCodecTest {
         .convertsFrom(
             "{ \"f1b\" :  { \"foo\" : \"1,234.56\" , \"bar\" : \"0000.12000\" } , \"f1a\" : \"42.00\" }")
         .to(udt1Value)
-        .convertsFrom("{ \"f1b\" :  { } , \"f1a\" :  ''}")
-        .to(udt1Empty)
         .convertsFrom("{ \"f1b\" :  null , \"f1a\" :  null }")
-        .to(udt1Empty)
-        .convertsFrom("{ \"f1b\" :  null }")
         .to(udt1Empty)
         .convertsFrom(null)
         .to(null)
@@ -138,11 +134,7 @@ public class StringToUDTCodecTest {
         .convertsFrom(
             "{ \"f2b\" :  [ \"2017-09-22\" ] , \"f2a\" : { \"f1b\" :  { \"foo\" : \"1,234.56\" , \"bar\" : \"0000.12000\" } , \"f1a\" : \"42.00\" } }")
         .to(udt2Value)
-        .convertsFrom("{ \"f2b\" :  [ ] , \"f2a\" :  ''}")
-        .to(udt2Empty)
         .convertsFrom("{ \"f2b\" :  null , \"f2a\" :  null }")
-        .to(udt2Empty)
-        .convertsFrom("{ \"f2b\" :  null }")
         .to(udt2Empty)
         .convertsFrom(null)
         .to(null)

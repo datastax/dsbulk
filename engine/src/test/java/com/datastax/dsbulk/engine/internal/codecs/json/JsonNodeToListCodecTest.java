@@ -118,5 +118,7 @@ public class JsonNodeToListCodecTest {
   @Test
   public void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec1).cannotConvertFrom(objectMapper.readTree("[1,\"not a valid double\"]"));
+    assertThat(codec1).cannotConvertFrom(objectMapper.readTree("{ \"not a valid array\" : 42 }"));
+    assertThat(codec1).cannotConvertFrom(objectMapper.readTree("42"));
   }
 }

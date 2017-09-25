@@ -58,8 +58,6 @@ public class StringToMapCodecTest {
         .to(map(1234.56d, list("foo"), 0.12d, list("bar")))
         .convertsFrom("{1: , '' :['foo']}")
         .to(map(1d, null, null, list("foo")))
-        .convertsFrom("{ 1 : null, 2 : '' }")
-        .to(map(1d, null, 2d, null))
         .convertsFrom(null)
         .to(null)
         .convertsFrom("{}")

@@ -7,6 +7,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,7 +36,13 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
 
   @Override
   public C convertFrom(JsonNode node) {
-    if (node == null || node.isNull() || node.size() == 0) {
+    if (node == null || node.isNull()) {
+      return null;
+    }
+    if (!node.isArray()) {
+      throw new InvalidTypeException("Expecting ARRAY node, got " + node.getNodeType());
+    }
+    if (node.size() == 0) {
       return null;
     }
     Iterator<JsonNode> elements = node.elements();
