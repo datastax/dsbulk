@@ -31,6 +31,7 @@ import java.util.LinkedList;
 import java.util.List;
 import javax.inject.Inject;
 import org.assertj.core.api.Assertions;
+import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -259,5 +260,10 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     String contact_point = host.getAddress().toString().replaceFirst("^/", "");
     String port = Integer.toString(host.getSocketAddress().getPort());
     return EndToEndUtils.fetchCompleteArgs(op, contact_point, port, customArgs);
+  }
+
+  @After
+  public void clearKeyspace() {
+    session.execute("DROP KEYSPACE IF EXISTS " + KS);
   }
 }
