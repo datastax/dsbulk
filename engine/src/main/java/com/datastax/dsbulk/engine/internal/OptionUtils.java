@@ -113,8 +113,9 @@ public class OptionUtils {
     // * Remove **'s, which have meaning in markdown but not useful here. However,
     //   we do have a legit case of ** when describing file patterns (e.g. **/*.csv).
     //   Those sorts of instances are preceded by ", so don't replace those.
+    // * Replace ` with '
 
-    desc = desc.replaceAll(" +", " ").replaceAll("([^\"])\\*\\*", "$1").trim();
+    desc = desc.replaceAll(" +", " ").replaceAll("([^\"])\\*\\*", "$1").replaceAll("`", "'").trim();
     String defaultValue = value.render(ConfigRenderOptions.concise());
     if (defaultValue.equals("\"\"")) {
       defaultValue = "<unspecified>";

@@ -55,7 +55,7 @@ public class HelpUtils {
     String footer = null;
     if (!subSections.isEmpty()) {
       footer =
-          "\nThis section has the following subsections you may be interested in:\n    "
+          "This section has the following subsections you may be interested in:\n    "
               + String.join("\n    ", subSections);
     }
     emitHelp(options, footer);
@@ -160,7 +160,7 @@ public class HelpUtils {
         writer.println("");
       }
       if (footer != null) {
-        writer.println(footer);
+        renderWrappedTextPreformatted(writer, footer);
       }
     }
 
@@ -221,6 +221,32 @@ public class HelpUtils {
 
         if (text.length() > LINE_LENGTH && pos == indent - 1) {
           pos = LINE_LENGTH;
+        }
+
+        writer.println(CharMatcher.whitespace().trimTrailingFrom(text.substring(0, pos)));
+      }
+    }
+
+    private void renderWrappedTextPreformatted(PrintWriter writer, String text) {
+      // NB: Adapted from commons-cli HelpFormatter.renderWrappedText
+      int pos = 0;
+
+      while (true) {
+        text = text.substring(pos);
+        if (text.charAt(0) == ' ' && text.charAt(1) != ' ') {
+          // The last line is long, and the wrap-around occurred at the end of a word,
+          // and we have a space as our first character in the new line. Remove it.
+          // This doesn't universally trim spaces because pre-formatted text may have
+          // leading spaces intentionally. We assume there are more than one of space
+          // in those cases, and don't trim then.
+
+          text = text.trim();
+        }
+        pos = findWrapPos(text, LINE_LENGTH);
+
+        if (pos == -1) {
+          writer.println(text);
+          return;
         }
 
         writer.println(CharMatcher.whitespace().trimTrailingFrom(text.substring(0, pos)));
