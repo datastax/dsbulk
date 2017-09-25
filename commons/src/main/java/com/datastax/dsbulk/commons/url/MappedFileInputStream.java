@@ -22,7 +22,7 @@ import java.util.List;
  *
  * <pre>
  * mapped-file:/path/to/my/file
- * mapped-file:/path/to/my/file?range=s1-e1&range=s2-e2
+ * mapped-file:/path/to/my/file?range=s1-e1&amp;range=s2-e2
  * </pre>
  */
 public class MappedFileInputStream extends InputStream {

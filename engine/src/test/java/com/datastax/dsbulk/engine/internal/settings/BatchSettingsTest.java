@@ -49,7 +49,7 @@ public class BatchSettingsTest {
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(10000);
-    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(100);
+    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
     assertThat(Whitebox.getInternalState(batcher, "bufferTimeout"))
         .isEqualTo(Duration.ofSeconds(1));
   }
@@ -64,7 +64,7 @@ public class BatchSettingsTest {
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
     assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(10000);
-    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(100);
+    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
     assertThat(Whitebox.getInternalState(batcher, "bufferTimeout"))
         .isEqualTo(Duration.ofSeconds(1));
   }
@@ -79,7 +79,7 @@ public class BatchSettingsTest {
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(5000);
-    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(100);
+    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
     assertThat(Whitebox.getInternalState(batcher, "bufferTimeout"))
         .isEqualTo(Duration.ofSeconds(1));
   }
