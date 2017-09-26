@@ -192,7 +192,7 @@
         <configuration>
           <mainClass>com.datastax.dsbulk.engine.internal.settings.PropertiesCreator</mainClass>
           <arguments>
-            <argument>${project.basedir}/../manual/reference.conf</argument>
+            <argument>${project.basedir}/../manual/dsbulk.properties</argument>
           </arguments>
         </configuration>
       </plugin>
