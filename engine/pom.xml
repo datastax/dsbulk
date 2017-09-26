@@ -143,7 +143,6 @@
     </dependency>
 
   </dependencies>
-
   <build>
     <plugins>
       <plugin>
@@ -176,6 +175,26 @@
             <version>${commons-cli.version}</version>
           </dependency>
         </dependencies>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.2.1</version>
+        <executions>
+          <execution>
+            <id>generate-example-conf</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <mainClass>com.datastax.dsbulk.engine.internal.settings.PropertiesCreator</mainClass>
+          <arguments>
+            <argument>${project.basedir}/../manual/reference.conf</argument>
+          </arguments>
+        </configuration>
       </plugin>
     </plugins>
     <resources>
