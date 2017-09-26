@@ -157,6 +157,8 @@ public class JsonNodeToUDTCodecTest {
   @Test
   public void should_not_convert_from_invalid_input() throws Exception {
     assertThat(udtCodec1)
+        .cannotConvertFrom(objectMapper.readTree("{\"f1a\":42}"))
+        .cannotConvertFrom(objectMapper.readTree("[42]"))
         .cannotConvertFrom(objectMapper.readTree("{\"not a valid input\":\"foo\"}"));
   }
 

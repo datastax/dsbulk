@@ -79,6 +79,9 @@ public class JsonNodeToTupleCodecTest {
 
   @Test
   public void should_not_convert_from_invalid_input() throws Exception {
-    assertThat(codec).cannotConvertFrom(objectMapper.readTree("[\"not a valid tuple\"]"));
+    assertThat(codec)
+        .cannotConvertFrom(objectMapper.readTree("[\"not a valid tuple\"]"))
+        .cannotConvertFrom(objectMapper.readTree("{\"not a valid tuple\":42}"))
+        .cannotConvertFrom(objectMapper.readTree("[\"2016-07-24T20:34:12.999\"]"));
   }
 }

@@ -84,6 +84,9 @@ public class StringToTupleCodecTest {
 
   @Test
   public void should_not_convert_from_invalid_input() throws Exception {
-    assertThat(codec).cannotConvertFrom("not a valid input").cannotConvertFrom("not a,valid input");
+    assertThat(codec)
+        .cannotConvertFrom("[\"not a valid tuple\"]")
+        .cannotConvertFrom("{\"not a valid tuple\":42}")
+        .cannotConvertFrom("[\"2016-07-24T20:34:12.999\"]");
   }
 }

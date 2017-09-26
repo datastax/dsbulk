@@ -159,12 +159,12 @@ public class StringToUDTCodecTest {
   @Test
   public void should_not_convert_from_invalid_input() throws Exception {
     assertThat(udtCodec1)
-        .cannotConvertFrom("f1a:not a valid input , f1b:not a valid input")
-        .cannotConvertFrom(":42") // null field name
-        .cannotConvertFrom("not a valid input")
-        .cannotConvertFrom("not a,valid input");
+        .cannotConvertFrom("{\"f1a\":42}")
+        .cannotConvertFrom("[42]")
+        .cannotConvertFrom("{\"not a valid input\":\"foo\"}");
   }
 
+  @SuppressWarnings("SameParameterValue")
   private static Map<String, Double> newMap(String k1, Double v1, String k2, Double v2) {
     Map<String, Double> map = new LinkedHashMap<>();
     map.put(k1, v1);
