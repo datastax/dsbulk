@@ -6,32 +6,33 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.typesafe.config.Config;
+import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.engine.internal.SettingsDocumentor;
 import com.typesafe.config.ConfigFactory;
-import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
-import com.typesafe.config.ConfigValueType;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import org.apache.commons.text.WordUtils;
 
 public class PropertiesCreator {
   public static void main(String[] args) {
     try {
       assert args.length == 2;
-      String directory = args[0];
+      String outFile = args[0];
       boolean template = Boolean.parseBoolean(args[1]);
-      File file = new File(directory);
+      File file = new File(outFile);
       PrintWriter pw = new PrintWriter(file);
-      Config config = ConfigFactory.load().getConfig("dsbulk");
-      TreeSet<String> sections = new TreeSet<>(config.root().keySet());
-      for (String section : sections) {
-
+      LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
+      for (Map.Entry<String, SettingsDocumentor.Group> groupEntry :
+          SettingsDocumentor.GROUPS.entrySet()) {
+        String section = groupEntry.getKey();
+        if (section.equals("Common")) {
+          // In this context, we don't care about the "Common" pseudo-section.
+          continue;
+        }
         pw.println(
             "###################################################################################################");
         config
@@ -47,14 +48,8 @@ public class PropertiesCreator {
         pw.println(
             "###################################################################################################");
 
-        Set<Map.Entry<String, ConfigValue>> entries = config.withOnlyPath(section).entrySet();
-        TreeMap<String, ConfigValue> sorted = new TreeMap<>();
-        for (Map.Entry<String, ConfigValue> entry : entries) {
-          sorted.put(entry.getKey(), entry.getValue());
-        }
-        for (Map.Entry<String, ConfigValue> entry : sorted.entrySet()) {
-          String key = entry.getKey();
-          ConfigValue value = entry.getValue();
+        for (String settingName : groupEntry.getValue().getSettings()) {
+          ConfigValue value = config.getValue(settingName);
 
           pw.println();
           value
@@ -66,13 +61,13 @@ public class PropertiesCreator {
                     pw.println(WordUtils.wrap(l, 100, String.format("%n# "), false));
                   });
           pw.print("# Type: ");
-          pw.println(getType(value));
+          pw.println(config.getTypeString(settingName));
           pw.print("# Default value: ");
           pw.println(value.render(ConfigRenderOptions.concise()));
           if (template) {
             pw.print("#");
           }
-          pw.print(key);
+          pw.print(settingName);
           pw.print(" = ");
           pw.println(value.render(ConfigRenderOptions.concise()));
         }
@@ -84,16 +79,5 @@ public class PropertiesCreator {
       System.out.println("Error encountered generating reference.conf");
       e.printStackTrace();
     }
-  }
-
-  private static String getType(ConfigValue value) {
-    ConfigValueType type = value.valueType();
-    if (type == ConfigValueType.LIST) {
-      ConfigList list = ((ConfigList) value);
-      if (!list.isEmpty()) {
-        return getType(list.get(0)) + " LIST";
-      }
-    }
-    return type.toString();
   }
 }
