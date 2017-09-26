@@ -79,7 +79,7 @@ public class SettingsDocumentor {
    */
   static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
 
-  static final Map<String, Group> GROUPS =
+  public static final Map<String, Group> GROUPS =
       new TreeMap<>(new PriorityComparator("Common", "connector", "connector.csv", "schema"));
 
   static {
@@ -265,7 +265,7 @@ public class SettingsDocumentor {
    * that belong to the group. This allows groups to act as listeners for settings and accept only
    * those that they are interested in.
    */
-  interface Group {
+  public interface Group {
     boolean addSetting(String settingName);
 
     Set<String> getSettings();
