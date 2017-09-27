@@ -86,12 +86,12 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
 
     new Main(fetchCompleteArgs("load", customLoadArgs));
     validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    EndToEndUtils.deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    EndToEndUtils.deleteIfExists(full_unload_dir);
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url");
-    customUnloadArgs.add(full_load_dir.toString());
+    customUnloadArgs.add(full_unload_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads");
     customUnloadArgs.add("1");
     customUnloadArgs.add("--schema.query");
@@ -102,7 +102,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
 
     new Main(fetchCompleteArgs("unload", customUnloadArgs));
 
-    EndToEndUtils.validateOutputFiles(24, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
   }
 
   @Test
@@ -120,12 +120,12 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     new Main(fetchCompleteArgs("load", customLoadArgs));
     validateResultSetSize(5, READ_SUCCESSFUL_COMPLEX);
 
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    EndToEndUtils.deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    EndToEndUtils.deleteIfExists(full_unload_dir);
 
     List<String> customUnloadArgs = new LinkedList<>();
-    customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
+    customUnloadArgs.add("--connector.csv.url=" + full_unload_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
     customUnloadArgs.add("--schema.keyspace=" + KS);
     customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_COMPLEX.toString());
@@ -135,7 +135,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
 
     new Main(fetchCompleteArgs("unload", customUnloadArgs));
 
-    EndToEndUtils.validateOutputFiles(5, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(5, full_unload_output_file);
   }
 
   @Test
@@ -154,11 +154,11 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     new Main(fetchCompleteArgs("load", customLoadArgs));
     validateResultSetSize(500, READ_SUCCESSFUL_IP_BY_COUNTRY);
 
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    EndToEndUtils.deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    EndToEndUtils.deleteIfExists(full_unload_dir);
     List<String> customUnloadArgs = new LinkedList<>();
-    customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
+    customUnloadArgs.add("--connector.csv.url=" + full_unload_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
     customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
@@ -167,7 +167,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
 
     new Main(fetchCompleteArgs("unload", customUnloadArgs));
 
-    EndToEndUtils.validateOutputFiles(500, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(500, full_unload_output_file);
   }
 
   @Test
@@ -195,12 +195,12 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     validateResultSetSize(1, READ_SUCCESSFUL_WITH_SPACES);
 
     // Test unload
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    EndToEndUtils.deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    EndToEndUtils.deleteIfExists(full_unload_dir);
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("-url");
-    customUnloadArgs.add(full_load_dir.toString());
+    customUnloadArgs.add(full_unload_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads");
     customUnloadArgs.add("1");
     customUnloadArgs.add("--schema.mapping");
@@ -214,7 +214,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
 
     new Main(fetchCompleteArgs("unload", customUnloadArgs));
 
-    EndToEndUtils.validateOutputFiles(3, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(3, full_unload_output_file);
   }
 
   @Test
@@ -236,19 +236,19 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     EndToEndUtils.validateBadOps(3);
     EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");
 
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    EndToEndUtils.deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    EndToEndUtils.deleteIfExists(full_unload_dir);
 
     List<String> customUnloadArgs = new LinkedList<>();
-    customUnloadArgs.add("--connector.csv.url=" + full_load_dir.toString());
+    customUnloadArgs.add("--connector.csv.url=" + full_unload_dir.toString());
     customUnloadArgs.add("--connector.csv.maxThreads=1");
     customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
     new Main(fetchCompleteArgs("unload", customUnloadArgs));
-    EndToEndUtils.validateOutputFiles(21, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(21, full_unload_output_file);
   }
 
   private void validateResultSetSize(int numOfQueries, SimpleStatement statement) {

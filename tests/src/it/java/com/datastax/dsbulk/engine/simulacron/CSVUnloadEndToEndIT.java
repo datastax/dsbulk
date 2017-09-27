@@ -30,9 +30,9 @@ public class CSVUnloadEndToEndIT {
   @Test
   public void full_unload() throws Exception {
 
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    deleteIfExists(full_unload_dir);
     RequestPrime prime = EndToEndUtils.createQueryWithResultSet("SELECT * FROM ip_by_country", 24);
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
@@ -40,7 +40,7 @@ public class CSVUnloadEndToEndIT {
       "--log.directory=./target",
       "-header",
       "false",
-      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.url=" + full_unload_dir.toString(),
       "--connector.csv.maxThreads=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
@@ -52,15 +52,15 @@ public class CSVUnloadEndToEndIT {
     new Main(unloadArgs);
 
     validateQueryCount(1, ConsistencyLevel.ONE);
-    EndToEndUtils.validateOutputFiles(24, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
   }
 
   @Test
   public void full_unload_csv_default_modification() throws Exception {
 
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    deleteIfExists(full_unload_dir);
     RequestPrime prime =
         EndToEndUtils.createQueryWithResultSetWithQuotes("SELECT * FROM ip_by_country", 24);
     simulacron.cluster().prime(new Prime(prime));
@@ -70,7 +70,7 @@ public class CSVUnloadEndToEndIT {
       "--log.directory=./target",
       "-header",
       "false",
-      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.url=" + full_unload_dir.toString(),
       "--connector.csv.maxThreads=1 ",
       "--connector.csv.delimiter=;",
       "--connector.csv.quote=<",
@@ -84,16 +84,16 @@ public class CSVUnloadEndToEndIT {
 
     new Main(unloadArgs);
 
-    verifyDelimiterCount(";", full_load_output_file, 120);
-    verifyDelimiterCount("<", full_load_output_file, 48);
+    verifyDelimiterCount(";", full_unload_output_file, 120);
+    verifyDelimiterCount("<", full_unload_output_file, 48);
     validateQueryCount(1, ConsistencyLevel.ONE);
-    EndToEndUtils.validateOutputFiles(24, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
   }
 
   @Test
   public void full_unload_multi_thread() throws Exception {
-    Path full_load_dir = Paths.get("./full_load_dir");
-    deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    deleteIfExists(full_unload_dir);
     RequestPrime prime = EndToEndUtils.createQueryWithResultSet("SELECT * FROM ip_by_country", 24);
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
@@ -101,7 +101,7 @@ public class CSVUnloadEndToEndIT {
       "--log.directory=./target",
       "-header",
       "false",
-      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.url=" + full_unload_dir.toString(),
       "--connector.csv.maxThreads=4 ",
       "--driver.query.consistency=LOCAL_ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
@@ -115,18 +115,18 @@ public class CSVUnloadEndToEndIT {
     validateQueryCount(1, ConsistencyLevel.LOCAL_ONE);
     EndToEndUtils.validateOutputFiles(
         24,
-        Paths.get("./full_load_dir/output-000001.csv"),
-        Paths.get("./full_load_dir/output-000002.csv"),
-        Paths.get("./full_load_dir/output-000003.csv"),
-        Paths.get("./full_load_dir/output-000004.csv"));
+        Paths.get("./target/full_unload_dir/output-000001.csv"),
+        Paths.get("./target/full_unload_dir/output-000002.csv"),
+        Paths.get("./target/full_unload_dir/output-000003.csv"),
+        Paths.get("./target/full_unload_dir/output-000004.csv"));
   }
 
   @Test
   public void unload_failure_during_read_single_thread() throws Exception {
 
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    deleteIfExists(full_unload_dir);
     RequestPrime prime =
         EndToEndUtils.createQueryWithError(
             "SELECT * FROM ip_by_country", new SyntaxErrorResult("Invalid table", 0L, true));
@@ -136,7 +136,7 @@ public class CSVUnloadEndToEndIT {
       "--log.directory=./target",
       "-header",
       "false",
-      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.url=" + full_unload_dir.toString(),
       "--connector.csv.maxThreads=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
@@ -149,15 +149,15 @@ public class CSVUnloadEndToEndIT {
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
-    EndToEndUtils.validateOutputFiles(0, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(0, full_unload_output_file);
   }
 
   @Test
   public void unload_failure_during_read_multi_thread() throws Exception {
 
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    deleteIfExists(full_unload_dir);
     RequestPrime prime =
         EndToEndUtils.createQueryWithError(
             "SELECT * FROM ip_by_country", new SyntaxErrorResult("Invalid table", 0L, true));
@@ -167,7 +167,7 @@ public class CSVUnloadEndToEndIT {
       "--log.directory=./target",
       "-header",
       "false",
-      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.url=" + full_unload_dir.toString(),
       "--connector.csv.maxThreads=4 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
@@ -180,16 +180,16 @@ public class CSVUnloadEndToEndIT {
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
-    EndToEndUtils.validateOutputFiles(0, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(0, full_unload_output_file);
   }
 
   @Test
   @Ignore
   public void unload_failure_during_prepare() throws Exception {
 
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    deleteIfExists(full_unload_dir);
     RequestPrime prime =
         EndToEndUtils.createQueryWithError(
             "SELECT * FROM ip_by_country", new SyntaxErrorResult("Invalid table", 0L, false));
@@ -199,7 +199,7 @@ public class CSVUnloadEndToEndIT {
       "--log.directory=./target",
       "-header",
       "false",
-      "--connector.csv.url=" + full_load_dir.toString(),
+      "--connector.csv.url=" + full_unload_dir.toString(),
       "--connector.csv.maxThreads=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
@@ -212,7 +212,7 @@ public class CSVUnloadEndToEndIT {
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
-    EndToEndUtils.validateOutputFiles(0, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(0, full_unload_output_file);
   }
 
   @SuppressWarnings("SameParameterValue")

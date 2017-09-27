@@ -56,4 +56,5 @@
 - [improvement] DAT-107: Improve formatting of help section on the command line.
 - [bug] DAT-100: Fully support CQL complex types.
 - [improvement] DAT-117: Support blob and duration types.
-- [improvement] DAT-78: Add template file.
+- [improvement] DAT-78: Generate template file for users.
+- [bug] DAT-122: Operation.log file is not created inside operation directory.

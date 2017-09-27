@@ -8,31 +8,16 @@
 -->
 <configuration>
 
+  <property scope="context" name="com.datastax.dsbulk.PRODUCTION" value="true"/>
+
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>%date{ISO8601,UTC} %-5level %msg%n</pattern>
     </encoder>
   </appender>
 
-  <appender name="FILE" class="ch.qos.logback.classic.sift.SiftingAppender">
-    <discriminator>
-      <key>com.datastax.dsbulk.OPERATION_DIRECTORY</key>
-      <defaultValue>.</defaultValue>
-    </discriminator>
-    <sift>
-      <appender name="FILE-${com.datastax.dsbulk.OPERATION_DIRECTORY}" class="ch.qos.logback.core.FileAppender">
-        <file>${com.datastax.dsbulk.OPERATION_DIRECTORY}/operation.log</file>
-        <append>false</append>
-        <layout class="ch.qos.logback.classic.PatternLayout">
-          <pattern>%date{ISO8601,UTC} %-5level %-40logger{40} - %msg%n</pattern>
-        </layout>
-      </appender>
-    </sift>
-  </appender>
-
   <root level="INFO">
     <appender-ref ref="STDOUT"/>
-    <appender-ref ref="FILE"/>
   </root>
 
 </configuration>

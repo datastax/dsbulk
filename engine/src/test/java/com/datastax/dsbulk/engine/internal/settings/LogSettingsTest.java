@@ -52,10 +52,10 @@ public class LogSettingsTest {
       logManager.init();
       assertThat(logManager).isNotNull();
       assertThat(logManager.getExecutionDirectory().toFile().getAbsolutePath())
-          .isEqualTo(Paths.get("./test").normalize().toFile().getAbsolutePath());
+          .isEqualTo(Paths.get("./logs/test").normalize().toFile().getAbsolutePath());
     } finally {
       //noinspection ResultOfMethodCallIgnored
-      Files.walk(logManager.getExecutionDirectory())
+      Files.walk(logManager.getExecutionDirectory().getParent())
           .sorted(Comparator.reverseOrder())
           .map(Path::toFile)
           .forEach(File::delete);

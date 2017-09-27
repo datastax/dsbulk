@@ -6,6 +6,11 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.FileAppender;
 import com.datastax.driver.core.Cluster;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
@@ -27,8 +32,10 @@ import org.slf4j.LoggerFactory;
 /** */
 public class LogSettings implements SettingsValidator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
+  public static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
 
   private final LoaderConfig config;
   private final Path executionDirectory;
@@ -36,10 +43,10 @@ public class LogSettings implements SettingsValidator {
   LogSettings(LoaderConfig config, String executionId)
       throws MalformedURLException, URISyntaxException {
     this.config = config;
-    Path directory = config.getPath("directory");
-    executionDirectory = directory.resolve(executionId);
-    System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
+    executionDirectory = config.getPath("directory").resolve(executionId);
     LOGGER.info("Operation output directory: {}", executionDirectory);
+    System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
+    maybeStartExecutionLogFileAppender();
   }
 
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
@@ -72,5 +79,26 @@ public class LogSettings implements SettingsValidator {
             threads, new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
     return new LogManager(
         cluster, executionDirectory, executor, config.getInt("maxErrors"), formatter, verbosity);
+  }
+
+  private void maybeStartExecutionLogFileAppender() {
+    LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
+    String production = lc.getProperty(PRODUCTION_KEY);
+    if (production != null && production.equalsIgnoreCase("true")) {
+      PatternLayoutEncoder ple = new PatternLayoutEncoder();
+      ple.setPattern("%date{ISO8601,UTC} %-5level %msg%n");
+      ple.setContext(lc);
+      ple.start();
+      FileAppender<ILoggingEvent> fileAppender = new FileAppender<>();
+      fileAppender.setFile(executionDirectory.resolve("operation.log").toFile().getAbsolutePath());
+      fileAppender.setEncoder(ple);
+      fileAppender.setContext(lc);
+      fileAppender.setAppend(false);
+      fileAppender.start();
+      ch.qos.logback.classic.Logger logger =
+          (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+      logger.addAppender(fileAppender);
+      logger.setLevel(Level.INFO);
+    }
   }
 }

@@ -85,12 +85,12 @@ public class SSLEndToEndIT extends AbstractEndToEndTestIT {
 
     new Main(fetchCompleteArgs("load", customLoadArgs));
     validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    EndToEndUtils.deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    EndToEndUtils.deleteIfExists(full_unload_dir);
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url");
-    customUnloadArgs.add(full_load_dir.toString());
+    customUnloadArgs.add(full_unload_dir.toString());
     customUnloadArgs.add("--schema.query");
     customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--driver.ssl.provider");
@@ -104,7 +104,7 @@ public class SSLEndToEndIT extends AbstractEndToEndTestIT {
     customUnloadArgs.add("--driver.ssl.truststore.password");
     customUnloadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
     new Main(fetchCompleteArgs("unload", customUnloadArgs));
-    EndToEndUtils.validateOutputFiles(24, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
   }
 
   @Test
@@ -145,12 +145,12 @@ public class SSLEndToEndIT extends AbstractEndToEndTestIT {
 
     new Main(fetchCompleteArgs("load", customLoadArgs));
     validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
-    Path full_load_dir = Paths.get("./full_load_dir");
-    Path full_load_output_file = Paths.get("./full_load_dir/output-000001.csv");
-    EndToEndUtils.deleteIfExists(full_load_dir);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    EndToEndUtils.deleteIfExists(full_unload_dir);
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url");
-    customUnloadArgs.add(full_load_dir.toString());
+    customUnloadArgs.add(full_unload_dir.toString());
     customUnloadArgs.add("--schema.query");
     customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--driver.ssl.provider");
@@ -165,7 +165,7 @@ public class SSLEndToEndIT extends AbstractEndToEndTestIT {
     customUnloadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
     new Main(fetchCompleteArgs("unload", customUnloadArgs));
 
-    EndToEndUtils.validateOutputFiles(24, full_load_output_file);
+    EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
   }
 
   private void validateResultSetSize(int numOfQueries, SimpleStatement statement) {
