@@ -18,8 +18,6 @@ import com.datastax.oss.simulacron.common.stubbing.Prime;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Scanner;
 import org.assertj.core.api.Assertions;
 import org.junit.Ignore;
@@ -54,7 +52,7 @@ public class CSVUnloadEndToEndIT {
     new Main(unloadArgs);
 
     validateQueryCount(1, ConsistencyLevel.ONE);
-    EndToEndUtils.validateOutputFile(full_load_output_file, 24);
+    EndToEndUtils.validateOutputFiles(24, full_load_output_file);
   }
 
   @Test
@@ -89,18 +87,12 @@ public class CSVUnloadEndToEndIT {
     verifyDelimiterCount(";", full_load_output_file, 120);
     verifyDelimiterCount("<", full_load_output_file, 48);
     validateQueryCount(1, ConsistencyLevel.ONE);
-    EndToEndUtils.validateOutputFile(full_load_output_file, 24);
+    EndToEndUtils.validateOutputFiles(24, full_load_output_file);
   }
 
   @Test
   public void full_unload_multi_thread() throws Exception {
     Path full_load_dir = Paths.get("./full_load_dir");
-    List<Path> outputFiles =
-        Arrays.asList(
-            Paths.get("./full_load_dir/output-000001.csv"),
-            Paths.get("./full_load_dir/output-000002.csv"),
-            Paths.get("./full_load_dir/output-000003.csv"),
-            Paths.get("./full_load_dir/output-000004.csv"));
     deleteIfExists(full_load_dir);
     RequestPrime prime = EndToEndUtils.createQueryWithResultSet("SELECT * FROM ip_by_country", 24);
     simulacron.cluster().prime(new Prime(prime));
@@ -121,7 +113,12 @@ public class CSVUnloadEndToEndIT {
     new Main(unloadArgs);
 
     validateQueryCount(1, ConsistencyLevel.LOCAL_ONE);
-    EndToEndUtils.validateOutputFilesTotal(outputFiles, 24);
+    EndToEndUtils.validateOutputFiles(
+        24,
+        Paths.get("./full_load_dir/output-000001.csv"),
+        Paths.get("./full_load_dir/output-000002.csv"),
+        Paths.get("./full_load_dir/output-000003.csv"),
+        Paths.get("./full_load_dir/output-000004.csv"));
   }
 
   @Test
@@ -152,7 +149,7 @@ public class CSVUnloadEndToEndIT {
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
-    EndToEndUtils.validateOutputFile(full_load_output_file, 0);
+    EndToEndUtils.validateOutputFiles(0, full_load_output_file);
   }
 
   @Test
@@ -183,7 +180,7 @@ public class CSVUnloadEndToEndIT {
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
-    EndToEndUtils.validateOutputFile(full_load_output_file, 0);
+    EndToEndUtils.validateOutputFiles(0, full_load_output_file);
   }
 
   @Test
@@ -215,7 +212,7 @@ public class CSVUnloadEndToEndIT {
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
-    EndToEndUtils.validateOutputFile(full_load_output_file, 0);
+    EndToEndUtils.validateOutputFiles(0, full_load_output_file);
   }
 
   @SuppressWarnings("SameParameterValue")

@@ -166,9 +166,9 @@ public class CCMRule implements TestRule {
     };
   }
 
-  private void getOrCreateCCMCluster() throws ExecutionException, IllegalAccessException {
+  private void getOrCreateCCMCluster() throws ExecutionException {
     CCMClusterFactory config = CCMClusterFactory.createInstanceForClass(testClass);
-    DefaultCCMCluster.Builder ccmBuilder = config.createCCMClusterBuilder();
+    DefaultCCMCluster.Builder ccmBuilder = config.createCCMClusterBuilder().notStarted();
     ccm = CACHE.get(ccmBuilder);
     ccm.start();
     LOGGER.debug("Using {}", ccm);

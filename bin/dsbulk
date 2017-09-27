@@ -34,5 +34,13 @@ done
 
 export CLASSPATH
 
+# Attempt to find the window width, to make help output look nicer. This
+# expression should work on Linux and Mac at least. If the result isn't a number,
+# it means we can't parse the stty output, so don't save off COLUMNS.
+COLUMNS=$(stty -a | head -1 | awk -F "; " '{print $3}' | sed -e 's/ *columns *[^0-9]*//')
+if /bin/expr  "$COLUMNS" + 0 > /dev/null 2>&1 ; then
+  export COLUMNS
+fi
+
 # Run the tool.
 $JAVA $DSBULK_JAVA_OPTS com.datastax.dsbulk.engine.Main "$@"

@@ -51,4 +51,7 @@
 - [improvement] DAT-112: Sort 'Bulk Loader effective settings' output.
 - [improvement] DAT-99: schema.keyspace should scope underlying session to the provided keyspace.
 - [improvement] DAT-115: Make continuous paging optional.
+- [improvement] DAT-49: Allow mappings to be inferred even when some are provided.
+- [improvement] DAT-91: Add SSL/Auth Tests. Fix issue with ssl config and file paths.
+- [improvement] DAT-107: Improve formatting of help section on the command line.
 - [bug] DAT-100: Fully support CQL complex types.

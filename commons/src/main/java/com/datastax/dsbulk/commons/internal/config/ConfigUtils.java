@@ -26,9 +26,16 @@ public class ConfigUtils {
               + errorMsg
               + ". See settings.md or help for more info.",
           path);
-    }
-    // This will catch any parse or missing exception edge cases.
-    else {
+    } else if (e instanceof ConfigException.Parse) {
+      return new BulkConfigurationException(
+          "Configuration entry of "
+              + path
+              + ". "
+              + e.getMessage()
+              + ". See settings.md or help for more info.",
+          path);
+    } else {
+      // Catch-all for other types of exceptions.
       return new BulkConfigurationException(e.getMessage(), path);
     }
   }

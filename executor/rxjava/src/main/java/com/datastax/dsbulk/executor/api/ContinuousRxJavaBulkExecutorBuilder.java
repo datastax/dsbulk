@@ -6,6 +6,8 @@
  */
 package com.datastax.dsbulk.executor.api;
 
+import static com.datastax.dsbulk.executor.api.DefaultRxJavaBulkExecutorBuilder.createQueue;
+
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 
@@ -28,6 +30,9 @@ public class ContinuousRxJavaBulkExecutorBuilder
 
   @Override
   public ContinuousRxJavaBulkExecutor build() {
+    if (queueFactory == null) {
+      queueFactory = statement -> createQueue(options.getPageSize() * 4);
+    }
     return new ContinuousRxJavaBulkExecutor(
         (ContinuousPagingSession) session,
         options,
@@ -35,6 +40,7 @@ public class ContinuousRxJavaBulkExecutorBuilder
         maxInFlightRequests,
         maxRequestsPerSecond,
         listener,
-        executor);
+        executor,
+        queueFactory);
   }
 }

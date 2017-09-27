@@ -128,7 +128,7 @@ public class MainTest {
   public void should_show_section_help_with_connector_shortcuts() throws Exception {
     new Main(new String[] {"help", "connector.csv"});
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(out).contains("-url,--connector.csv.url");
+    assertThat(out).contains("-url, --connector.csv.url");
   }
 
   @Test

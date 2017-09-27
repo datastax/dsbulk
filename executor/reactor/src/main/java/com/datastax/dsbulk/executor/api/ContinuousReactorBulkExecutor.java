@@ -6,22 +6,17 @@
  */
 package com.datastax.dsbulk.executor.api;
 
-import static reactor.core.publisher.FluxSink.OverflowStrategy.BUFFER;
-
-import com.datastax.driver.core.AsyncContinuousPagingResult;
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Statement;
-import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.internal.emitter.BackpressureController;
-import com.datastax.dsbulk.executor.api.internal.emitter.ContinuousReadResultEmitter;
+import com.datastax.dsbulk.executor.api.internal.subscription.ContinuousReadResultSubscription;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import java.util.Objects;
 import java.util.concurrent.Executor;
-import java.util.function.LongConsumer;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 
 /**
  * An implementation of {@link BulkExecutor} using <a href="https://projectreactor.io">Reactor</a>,
@@ -83,8 +78,16 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
       int maxInFlightRequests,
       int maxRequestsPerSecond,
       ExecutionListener listener,
-      Executor executor) {
-    super(session, failFast, maxInFlightRequests, maxRequestsPerSecond, listener, executor);
+      Executor executor,
+      QueueFactory<ReadResult> queueFactory) {
+    super(
+        session,
+        failFast,
+        maxInFlightRequests,
+        maxRequestsPerSecond,
+        listener,
+        executor,
+        queueFactory);
     this.session = session;
     this.options = options;
   }
@@ -92,64 +95,33 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
   @Override
   public Flux<ReadResult> readReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Flux.create(
-        e -> {
-          ReactorContinuousReadResultEmitter emitter =
-              new ReactorContinuousReadResultEmitter(statement, e);
-          emitter.start();
-        },
-        BUFFER);
+    return Flux.from(new ContinuousReadResultPublisher(statement));
   }
 
-  private class ReactorContinuousReadResultEmitter extends ContinuousReadResultEmitter
-      implements LongConsumer {
+  private class ContinuousReadResultPublisher implements Publisher<ReadResult> {
 
-    private final FluxSink<ReadResult> sink;
-    private final BackpressureController demand = new BackpressureController();
+    private final Statement statement;
 
-    private ReactorContinuousReadResultEmitter(Statement statement, FluxSink<ReadResult> sink) {
-      super(
-          statement,
-          ContinuousReactorBulkExecutor.this.session,
-          options,
-          executor,
-          listener,
-          rateLimiter,
-          requestPermits,
-          failFast);
-      this.sink = sink;
-      sink.onRequest(this);
+    private ContinuousReadResultPublisher(Statement statement) {
+      this.statement = statement;
     }
 
     @Override
-    public void accept(long requested) {
-      demand.signalRequested(requested);
-    }
-
-    @Override
-    protected void consumePage(AsyncContinuousPagingResult pagingResult) {
-      demand.awaitRequested(1);
-      super.consumePage(pagingResult);
-    }
-
-    @Override
-    protected void notifyOnNext(ReadResult result) {
-      sink.next(result);
-    }
-
-    @Override
-    protected void notifyOnComplete() {
-      sink.complete();
-    }
-
-    @Override
-    protected void notifyOnError(BulkExecutionException error) {
-      sink.error(error);
-    }
-
-    @Override
-    protected boolean isCancelled() {
-      return sink.isCancelled();
+    public void subscribe(Subscriber<? super ReadResult> subscriber) {
+      ContinuousReadResultSubscription subscription =
+          new ContinuousReadResultSubscription(
+              subscriber,
+              queueFactory.newQueue(statement),
+              statement,
+              session,
+              options,
+              executor,
+              listener,
+              rateLimiter,
+              requestPermits,
+              failFast);
+      subscriber.onSubscribe(subscription);
+      subscription.start();
     }
   }
 }
