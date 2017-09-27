@@ -398,7 +398,8 @@ public class CSVConnector implements Connector {
   }
 
   private Subscriber<Record> writeMultipleThreads() {
-    WorkQueueProcessor<Record> dispatcher = WorkQueueProcessor.create(threadPool, 1024);
+    WorkQueueProcessor<Record> dispatcher =
+        WorkQueueProcessor.<Record>builder().executor(threadPool).bufferSize(1024).build();
     for (int i = 0; i < maxThreads; i++) {
       dispatcher.subscribe(writeSingleThread());
     }
