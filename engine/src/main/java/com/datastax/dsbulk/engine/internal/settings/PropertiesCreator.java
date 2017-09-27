@@ -18,19 +18,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import org.apache.commons.text.WordUtils;
 
 public class PropertiesCreator {
   public static void main(String[] args) {
     try {
-      assert args.length == 1;
+      assert args.length == 2;
       String directory = args[0];
+      boolean template = Boolean.parseBoolean(args[1]);
       File file = new File(directory);
       PrintWriter pw = new PrintWriter(file);
       Config config = ConfigFactory.load().getConfig("dsbulk");
       TreeSet<String> sections = new TreeSet<>(config.root().keySet());
       for (String section : sections) {
 
-        pw.println("#########################################");
+        pw.println(
+            "###################################################################################################");
         config
             .getConfig(section)
             .root()
@@ -38,10 +41,11 @@ public class PropertiesCreator {
             .comments()
             .forEach(
                 l -> {
-                  pw.print("#");
-                  pw.println(l);
+                  pw.print("# ");
+                  pw.println(WordUtils.wrap(l, 100, String.format("%n# "), false));
                 });
-        pw.println("#########################################");
+        pw.println(
+            "###################################################################################################");
 
         Set<Map.Entry<String, ConfigValue>> entries = config.withOnlyPath(section).entrySet();
         TreeMap<String, ConfigValue> sorted = new TreeMap<>();
@@ -58,13 +62,16 @@ public class PropertiesCreator {
               .comments()
               .forEach(
                   l -> {
-                    pw.print("#");
-                    pw.println(l);
+                    pw.print("# ");
+                    pw.println(WordUtils.wrap(l, 100, String.format("%n# "), false));
                   });
           pw.print("# Type: ");
           pw.println(getType(value));
           pw.print("# Default value: ");
           pw.println(value.render(ConfigRenderOptions.concise()));
+          if (template) {
+            pw.print("#");
+          }
           pw.print(key);
           pw.print(" = ");
           pw.println(value.render(ConfigRenderOptions.concise()));
