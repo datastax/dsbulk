@@ -19,9 +19,11 @@ import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToBigDecimalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToBigIntegerCodec;
+import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToBlobCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToBooleanCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToByteCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToDoubleCodec;
+import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToDurationCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToFloatCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToInetAddressCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToInstantCodec;
@@ -39,9 +41,11 @@ import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUDTCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigDecimalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigIntegerCodec;
+import com.datastax.dsbulk.engine.internal.codecs.string.StringToBlobCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBooleanCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToByteCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToDoubleCodec;
+import com.datastax.dsbulk.engine.internal.codecs.string.StringToDurationCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToFloatCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInetAddressCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
@@ -194,6 +198,10 @@ public class ExtendedCodecRegistry {
         return new StringToUUIDCodec(TypeCodec.uuid());
       case TIMEUUID:
         return new StringToUUIDCodec(TypeCodec.timeUUID());
+      case BLOB:
+        return StringToBlobCodec.INSTANCE;
+      case DURATION:
+        return StringToDurationCodec.INSTANCE;
       case LIST:
         {
           @SuppressWarnings("unchecked")
@@ -227,15 +235,13 @@ public class ExtendedCodecRegistry {
               (JsonNodeToUDTCodec) createJsonNodeConvertingCodec(cqlType);
           return new StringToUDTCodec(jsonCodec, objectMapper);
         }
-      case BLOB:
-      case DURATION:
       case COUNTER:
       case CUSTOM:
       default:
         String msg =
             String.format(
-                "Codec not found for requested operation: [%s <-> %s]", cqlType, JsonNode.class);
-        throw new CodecNotFoundException(msg, cqlType, JSON_NODE_TYPE_TOKEN);
+                "Codec not found for requested operation: [%s <-> %s]", cqlType, String.class);
+        throw new CodecNotFoundException(msg, cqlType, STRING_TYPE_TOKEN);
     }
   }
 
@@ -276,6 +282,10 @@ public class ExtendedCodecRegistry {
         return new JsonNodeToUUIDCodec(TypeCodec.uuid());
       case TIMEUUID:
         return new JsonNodeToUUIDCodec(TypeCodec.timeUUID());
+      case BLOB:
+        return JsonNodeToBlobCodec.INSTANCE;
+      case DURATION:
+        return JsonNodeToDurationCodec.INSTANCE;
       case LIST:
         {
           DataType elementType = cqlType.getTypeArguments().get(0);
@@ -328,8 +338,6 @@ public class ExtendedCodecRegistry {
           }
           return new JsonNodeToUDTCodec(udtCodec, fieldCodecs.build(), objectMapper);
         }
-      case BLOB:
-      case DURATION:
       case COUNTER:
       case CUSTOM:
       default:

@@ -55,3 +55,4 @@
 - [improvement] DAT-91: Add SSL/Auth Tests. Fix issue with ssl config and file paths.
 - [improvement] DAT-107: Improve formatting of help section on the command line.
 - [bug] DAT-100: Fully support CQL complex types.
+- [improvement] DAT-117: Support blob and duration types.
