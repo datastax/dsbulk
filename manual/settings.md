@@ -603,26 +603,6 @@ For more information on patterns and pre-defined formatters, see https://docs.or
 
 Default: **"ISO_LOCAL_DATE"**.
 
-#### ---codec.itemDelimiter _&lt;string&gt;_
-
-The delimiter for tokenized fields. This setting will be used when mapping a `String` field to CQL columns that require special tokenization (collections, tuples, maps, and UDTs), to isolate elements in the string.
-
-For maps and udt's, this setting delimits entries, while *keyValueSeparator* separates the key from the value within an entry.
-
-Note that this is not the same as CSV parsing. This setting will be applied to record fields produced by any connector, as long as the target CQL type requires tokenization.
-
-Default: **","**.
-
-#### ---codec.keyValueSeparator _&lt;string&gt;_
-
-The key-value separator to use to split keys and values in a tokenized field.
-
-This setting will be used when mapping a `String` field to CQL columns of type map or UDT, to isolate keys/fields from values, after key-value pairs have been tokenized using the *codec.itemDelimiter* setting.
-
-This setting will be applied to record fields produced by any connector, as long as the the target CQL type requires key-value tokenization.
-
-Default: **":"**.
-
 #### -locale,--codec.locale _&lt;string&gt;_
 
 The locale to use for locale-sensitive conversions.

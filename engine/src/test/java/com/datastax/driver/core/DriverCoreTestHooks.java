@@ -29,6 +29,10 @@ public class DriverCoreTestHooks {
         "ks", "udt", ProtocolVersion.NEWEST_SUPPORTED, CodecRegistry.DEFAULT_INSTANCE, fields);
   }
 
+  public static UserType newUserType(CodecRegistry codecRegistry, UserType.Field... fields) {
+    return newUserType("ks", "udt", ProtocolVersion.NEWEST_SUPPORTED, codecRegistry, fields);
+  }
+
   public static UserType newUserType(
       String keyspace,
       String typeName,

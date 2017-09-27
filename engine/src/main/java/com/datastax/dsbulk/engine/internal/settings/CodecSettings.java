@@ -13,6 +13,9 @@ import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import java.lang.reflect.Field;
@@ -74,8 +77,7 @@ public class CodecSettings implements SettingsValidator {
     DateTimeFormatter localTimeFormat = getDateFormat(config.getString("time"), timeZone, locale);
     DateTimeFormatter timestampFormat =
         getDateFormat(config.getString("timestamp"), timeZone, locale);
-    String itemDelimiter = config.getString("itemDelimiter");
-    String keyValueSeparator = config.getString("keyValueSeparator");
+    ObjectMapper objectMapper = getObjectMapper();
     CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
     return new ExtendedCodecRegistry(
         codecRegistry,
@@ -85,8 +87,7 @@ public class CodecSettings implements SettingsValidator {
         localDateFormat,
         localTimeFormat,
         timestampFormat,
-        itemDelimiter,
-        keyValueSeparator);
+        objectMapper);
   }
 
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
@@ -98,8 +99,6 @@ public class CodecSettings implements SettingsValidator {
       config.getString("date");
       config.getString("time");
       config.getString("timestamp");
-      config.getString("itemDelimiter");
-      config.getString("keyValueSeparator");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "codec");
     }
@@ -144,6 +143,17 @@ public class CodecSettings implements SettingsValidator {
         .parseStrict()
         .toFormatter(locale)
         .withZone(ZoneId.of(timeZone));
+  }
+
+  @VisibleForTesting
+  public static ObjectMapper getObjectMapper() {
+    ObjectMapper objectMapper = new ObjectMapper();
+    // create a somewhat lenient mapper that recognizes a slightly relaxed Json syntax when parsing
+    objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
+    objectMapper.configure(JsonParser.Feature.ALLOW_MISSING_VALUES, true);
+    objectMapper.configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true);
+    objectMapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
+    return objectMapper;
   }
 
   private static Map<String, Boolean> getBooleanInputs(List<String> list) {

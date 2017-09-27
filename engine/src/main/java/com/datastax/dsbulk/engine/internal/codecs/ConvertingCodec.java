@@ -21,7 +21,11 @@ public abstract class ConvertingCodec<FROM, TO> extends TypeCodec<FROM> {
     this.targetCodec = targetCodec;
   }
 
-  TypeToken<TO> getTargetJavaType() {
+  public TypeCodec<TO> getTargetCodec() {
+    return targetCodec;
+  }
+
+  public TypeToken<TO> getTargetJavaType() {
     return targetCodec.getJavaType();
   }
 
@@ -50,7 +54,7 @@ public abstract class ConvertingCodec<FROM, TO> extends TypeCodec<FROM> {
     return targetCodec.format(value);
   }
 
-  protected abstract TO convertFrom(FROM s);
+  public abstract TO convertFrom(FROM s);
 
-  protected abstract FROM convertTo(TO value);
+  public abstract FROM convertTo(TO value);
 }
