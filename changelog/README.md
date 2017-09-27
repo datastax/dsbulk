@@ -56,3 +56,4 @@
 - [improvement] DAT-107: Improve formatting of help section on the command line.
 - [bug] DAT-100: Fully support CQL complex types.
 - [improvement] DAT-117: Support blob and duration types.
+- [improvement] DAT-78: Add template file.
