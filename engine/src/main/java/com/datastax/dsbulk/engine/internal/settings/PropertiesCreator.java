@@ -24,8 +24,17 @@ public class PropertiesCreator {
       String outFile = args[0];
       boolean template = Boolean.parseBoolean(args[1]);
       File file = new File(outFile);
+      file.getParentFile().mkdirs();
       PrintWriter pw = new PrintWriter(file);
       LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
+      pw.println(
+          "###################################################################################################");
+      pw.println("This is a template file. Uncomment settings as needed to configure dsBulk.");
+      pw.println(
+          "When this file is named application.properties and placed in the /conf directory, it will be");
+      pw.println(
+          "automatically picked up and used by default. To use other properties files see the -f option.\"");
+
       for (Map.Entry<String, SettingsDocumentor.Group> groupEntry :
           SettingsDocumentor.GROUPS.entrySet()) {
         String section = groupEntry.getKey();

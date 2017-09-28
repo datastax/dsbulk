@@ -119,7 +119,7 @@
             import java.nio.file.*
             def conf = Paths.get("${project.build.directory}/conf")
             Files.createDirectories(conf)
-            Files.write(conf.resolve("application.conf"),
+            Files.write(conf.resolve("application.properties"),
                 "# Set application-specific settings here.\n# Example:\n# dsbulk.connector.name = \"csv\"".getBytes("UTF-8"))
           ]]></script>
           </scripts>
