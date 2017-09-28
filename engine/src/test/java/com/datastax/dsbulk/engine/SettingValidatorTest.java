@@ -8,6 +8,8 @@ package com.datastax.dsbulk.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -15,11 +17,16 @@ import java.util.Arrays;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 public class SettingValidatorTest {
 
   private PrintStream originalStderr;
+  private PrintStream originalStdout;
   private ByteArrayOutputStream stderr;
+  private ByteArrayOutputStream stdout;
+  private Logger root;
+  private Level oldLevel;
 
   private static final String[] BAD_PARAMS_WRONG_TYPE = {
     "--connector.csv.recursive=tralse",
@@ -78,14 +85,22 @@ public class SettingValidatorTest {
 
   @Before
   public void setUp() throws Exception {
+    originalStdout = System.out;
     originalStderr = System.err;
+    stdout = new ByteArrayOutputStream();
+    System.setOut(new PrintStream(stdout));
     stderr = new ByteArrayOutputStream();
     System.setErr(new PrintStream(stderr));
+    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    oldLevel = root.getLevel();
+    root.setLevel(Level.INFO);
   }
 
   @After
   public void tearDown() throws Exception {
+    System.setOut(originalStdout);
     System.setErr(originalStderr);
+    root.setLevel(oldLevel);
   }
 
   @Test
