@@ -83,7 +83,7 @@ public class SSLEndToEndIT extends AbstractEndToEndTestIT {
     customLoadArgs.add("--driver.ssl.truststore.password");
     customLoadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    new Main(fetchCompleteArgs("load", customLoadArgs));
+    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
     validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
     Path full_unload_dir = Paths.get("./target/full_unload_dir");
     Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
@@ -103,7 +103,7 @@ public class SSLEndToEndIT extends AbstractEndToEndTestIT {
     customUnloadArgs.add(getAbsoluteTrustStorePath());
     customUnloadArgs.add("--driver.ssl.truststore.password");
     customUnloadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
-    new Main(fetchCompleteArgs("unload", customUnloadArgs));
+    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
     EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
   }
 
@@ -143,7 +143,7 @@ public class SSLEndToEndIT extends AbstractEndToEndTestIT {
     customLoadArgs.add("--driver.ssl.truststore.password");
     customLoadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    new Main(fetchCompleteArgs("load", customLoadArgs));
+    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
     validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
     Path full_unload_dir = Paths.get("./target/full_unload_dir");
     Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
@@ -163,7 +163,7 @@ public class SSLEndToEndIT extends AbstractEndToEndTestIT {
     customUnloadArgs.add(getAbsoluteTrustStorePath());
     customUnloadArgs.add("--driver.ssl.truststore.password");
     customUnloadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
-    new Main(fetchCompleteArgs("unload", customUnloadArgs));
+    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
 
     EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
   }

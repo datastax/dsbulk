@@ -49,7 +49,7 @@ public class CSVConnectorBenchmark {
   )
   @Fork(1)
   public void benchmarkCsvConnectorWrite(CSVConnectorBenchmarkState state) throws Exception {
-    new Main(state.writeArgs);
+    new Main(state.writeArgs).run();
   }
 
   @Benchmark
@@ -64,7 +64,7 @@ public class CSVConnectorBenchmark {
   )
   @Fork(1)
   public void benchmarkCsvConnectorRead(CSVConnectorBenchmarkState state) throws Exception {
-    new Main(state.readArgs);
+    new Main(state.readArgs).run();
   }
 
   @State(Scope.Benchmark)
@@ -135,7 +135,7 @@ public class CSVConnectorBenchmark {
                 + "\"Country Name\"=country_name"
                 + "}"
           };
-      new Main(writeArgs);
+      new Main(writeArgs).run();
     }
   }
 }

@@ -84,7 +84,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     customLoadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
-    new Main(fetchCompleteArgs("load", customLoadArgs));
+    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
     validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
     Path full_unload_dir = Paths.get("./target/full_unload_dir");
     Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
@@ -100,7 +100,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     customUnloadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
-    new Main(fetchCompleteArgs("unload", customUnloadArgs));
+    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
 
     EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
   }
@@ -117,7 +117,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     customLoadArgs.add(
         "0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts");
 
-    new Main(fetchCompleteArgs("load", customLoadArgs));
+    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
     validateResultSetSize(5, READ_SUCCESSFUL_COMPLEX);
 
     Path full_unload_dir = Paths.get("./target/full_unload_dir");
@@ -133,7 +133,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     customUnloadArgs.add(
         "0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts");
 
-    new Main(fetchCompleteArgs("unload", customUnloadArgs));
+    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
 
     EndToEndUtils.validateOutputFiles(5, full_unload_output_file);
   }
@@ -151,7 +151,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     customLoadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
-    new Main(fetchCompleteArgs("load", customLoadArgs));
+    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
     validateResultSetSize(500, READ_SUCCESSFUL_IP_BY_COUNTRY);
 
     Path full_unload_dir = Paths.get("./target/full_unload_dir");
@@ -165,7 +165,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     customUnloadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
 
-    new Main(fetchCompleteArgs("unload", customUnloadArgs));
+    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
 
     EndToEndUtils.validateOutputFiles(500, full_unload_output_file);
   }
@@ -191,7 +191,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     customLoadArgs.add("WITH_SPACES");
 
     String[] args = fetchCompleteArgs("load", customLoadArgs);
-    new Main(args);
+    new Main(args).run();
     validateResultSetSize(1, READ_SUCCESSFUL_WITH_SPACES);
 
     // Test unload
@@ -212,7 +212,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     customUnloadArgs.add("-t");
     customUnloadArgs.add("WITH_SPACES");
 
-    new Main(fetchCompleteArgs("unload", customUnloadArgs));
+    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
 
     EndToEndUtils.validateOutputFiles(3, full_unload_output_file);
   }
@@ -231,7 +231,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     customLoadArgs.add("--connector.csv.maxLines=24");
     customLoadArgs.add("-driver.query.consistency=LOCAL_ONE");
 
-    new Main(fetchCompleteArgs("load", customLoadArgs));
+    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
     validateResultSetSize(21, READ_SUCCESSFUL_IP_BY_COUNTRY);
     EndToEndUtils.validateBadOps(3);
     EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");
@@ -247,7 +247,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
-    new Main(fetchCompleteArgs("unload", customUnloadArgs));
+    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
     EndToEndUtils.validateOutputFiles(21, full_unload_output_file);
   }
 

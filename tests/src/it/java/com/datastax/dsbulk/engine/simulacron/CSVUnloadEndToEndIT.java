@@ -49,7 +49,7 @@ public class CSVUnloadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new Main(unloadArgs);
+    new Main(unloadArgs).run();
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
@@ -82,7 +82,7 @@ public class CSVUnloadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new Main(unloadArgs);
+    new Main(unloadArgs).run();
 
     verifyDelimiterCount(";", full_unload_output_file, 120);
     verifyDelimiterCount("<", full_unload_output_file, 48);
@@ -110,7 +110,7 @@ public class CSVUnloadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new Main(unloadArgs);
+    new Main(unloadArgs).run();
 
     validateQueryCount(1, ConsistencyLevel.LOCAL_ONE);
     EndToEndUtils.validateOutputFiles(
@@ -145,7 +145,7 @@ public class CSVUnloadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new Main(unloadArgs);
+    new Main(unloadArgs).run();
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
@@ -176,7 +176,7 @@ public class CSVUnloadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new Main(unloadArgs);
+    new Main(unloadArgs).run();
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
@@ -208,7 +208,7 @@ public class CSVUnloadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new Main(unloadArgs);
+    new Main(unloadArgs).run();
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateExceptionsLog(1, "Statement:", "unload-errors.log");
