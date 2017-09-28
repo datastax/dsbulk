@@ -95,67 +95,64 @@ public class SettingValidatorTest {
       int ending_index = argument.indexOf("=");
       String argPrefix = argument.substring(starting_index, ending_index);
       new Main(
-          new String[] {
-            "load",
-            "--schema.keyspace=keyspace",
-            "--schema.table=table",
-            "--connector.csv.url=127.0.1.1",
-            argument
-          });
+              new String[] {
+                "load",
+                "--schema.keyspace=keyspace",
+                "--schema.table=table",
+                "--connector.csv.url=127.0.1.1",
+                argument
+              })
+          .run();
       String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
       assertThat(err).contains(argPrefix + " has type");
       assertThat(err).contains(" rather than");
-      stderr = new ByteArrayOutputStream();
-      System.setErr(new PrintStream(stderr));
     }
 
     // These errors will look like this; String: 1: Invalid value at 'protocol.compression':
     // The enum class Compression has no constant of the name 'badValue' (should be one of [NONE, SNAPPY, LZ4].
     for (String argument : Arrays.asList(BAD_ENUM)) {
       new Main(
-          new String[] {
-            "load",
-            "--schema.keyspace=keyspace",
-            "--schema.table=table",
-            "--connector.csv.url=127.0.1.1",
-            argument
-          });
+              new String[] {
+                "load",
+                "--schema.keyspace=keyspace",
+                "--schema.table=table",
+                "--connector.csv.url=127.0.1.1",
+                argument
+              })
+          .run();
       String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
       assertThat(err).contains("Invalid value at");
       assertThat(err).contains("The enum class");
-      stderr = new ByteArrayOutputStream();
-      System.setErr(new PrintStream(stderr));
     }
 
-    // These Errors will look like this; String: 1: Invalid value at 'socket.readTimeout': No number in duration value
+    // These errors will look like this; String: 1: Invalid value at 'socket.readTimeout': No number in duration value
     // 'badValue
     for (String argument : Arrays.asList(BAD_DURATION)) {
       new Main(
-          new String[] {
-            "load",
-            "--schema.keyspace=keyspace",
-            "--schema.table=table",
-            "--connector.csv.url=127.0.1.1",
-            argument
-          });
+              new String[] {
+                "load",
+                "--schema.keyspace=keyspace",
+                "--schema.table=table",
+                "--connector.csv.url=127.0.1.1",
+                argument
+              })
+          .run();
       String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
       assertThat(err).contains("Invalid value at");
       assertThat(err).contains(" No number in duration value");
-      stderr = new ByteArrayOutputStream();
-      System.setErr(new PrintStream(stderr));
     }
   }
 
   @Test
   public void should_error_bad_connector() throws Exception {
-    new Main(new String[] {"load", "-c", "BadConnector"});
+    new Main(new String[] {"load", "-c", "BadConnector"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Cannot find connector");
   }
 
   @Test
   public void should_error_on_empty_hosts() throws Exception {
-    new Main(new String[] {"load", "--driver.hosts", ""});
+    new Main(new String[] {"load", "--driver.hosts", ""}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .contains(
@@ -164,7 +161,7 @@ public class SettingValidatorTest {
 
   @Test
   public void should_error_on_empty_url() throws Exception {
-    new Main(new String[] {"load", "--driver.hosts=hostshere", "--connector.csv.url", ""});
+    new Main(new String[] {"load", "--driver.hosts=hostshere", "--connector.csv.url", ""}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .contains(
@@ -173,14 +170,14 @@ public class SettingValidatorTest {
 
   @Test
   public void should_error_bad_parse_driver_option() throws Exception {
-    new Main(new String[] {"load", "--driver.socket.readTimeout", "I am not a duration"});
+    new Main(new String[] {"load", "--driver.socket.readTimeout", "I am not a duration"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Invalid value at 'socket.readTimeout'");
   }
 
   @Test
   public void should_error_invalid_auth_provider() throws Exception {
-    new Main(new String[] {"load", "--driver.auth.provider", "InvalidAuthProvider"});
+    new Main(new String[] {"load", "--driver.auth.provider", "InvalidAuthProvider"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("InvalidAuthProvider is not a valid auth provider");
   }
@@ -188,9 +185,10 @@ public class SettingValidatorTest {
   @Test
   public void should_error_invalid_auth_combinations_missing_principal() throws Exception {
     new Main(
-        new String[] {
-          "load", "--driver.auth.provider=DseGSSAPIAuthProvider", "--driver.auth.principal", ""
-        });
+            new String[] {
+              "load", "--driver.auth.provider=DseGSSAPIAuthProvider", "--driver.auth.principal", ""
+            })
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("must be provided with auth.principal");
   }
@@ -198,9 +196,10 @@ public class SettingValidatorTest {
   @Test
   public void should_error_invalid_auth_combinations_missing_username() throws Exception {
     new Main(
-        new String[] {
-          "load", "--driver.auth.provider=PlainTextAuthProvider", "--driver.auth.username", ""
-        });
+            new String[] {
+              "load", "--driver.auth.provider=PlainTextAuthProvider", "--driver.auth.username", ""
+            })
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("must be provided with both auth.username and auth.password");
   }
@@ -208,16 +207,20 @@ public class SettingValidatorTest {
   @Test
   public void should_error_invalid_auth_combinations_missing_password() throws Exception {
     new Main(
-        new String[] {
-          "load", "--driver.auth.provider=DsePlainTextAuthProvider", "--driver.auth.password", ""
-        });
+            new String[] {
+              "load",
+              "--driver.auth.provider=DsePlainTextAuthProvider",
+              "--driver.auth.password",
+              ""
+            })
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("must be provided with both auth.username and auth.password");
   }
 
   @Test
   public void should_error_invalid_schema_settings() throws Exception {
-    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file"});
+    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("schema.mapping, or schema.keyspace and schema.table must be defined");
   }
@@ -225,27 +228,29 @@ public class SettingValidatorTest {
   @Test
   public void should_connect_error_with_schema_defined() throws Exception {
     new Main(
-        new String[] {
-          "load",
-          "--driver.hosts=255.255.255.23",
-          "--connector.csv.url=/path/to/my/file",
-          "--schema.keyspace=keyspace",
-          "--schema.table=table"
-        });
+            new String[] {
+              "load",
+              "--driver.hosts=255.255.255.23",
+              "--connector.csv.url=/path/to/my/file",
+              "--schema.keyspace=keyspace",
+              "--schema.table=table"
+            })
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains(" All host(s) tried for query");
   }
 
   @Test
   public void should_error_invalid_schema_missing_keyspace() throws Exception {
-    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "--schema.table=table"});
+    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "--schema.table=table"})
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("schema.keyspace must accompany schema.table in the configuration");
   }
 
   @Test
   public void should_error_invalid_schema_mapping_missing_keyspace_and_table() throws Exception {
-    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "c1=c2"});
+    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "c1=c2"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("schema.query, or schema.keyspace and schema.table must be defined");
   }
@@ -253,14 +258,15 @@ public class SettingValidatorTest {
   @Test
   public void should_error_invalid_schema_invalid_mapping() throws Exception {
     new Main(
-        new String[] {
-          "load",
-          "--connector.csv.url=/path/to/my/file",
-          "-m",
-          "c1",
-          "--schema.keyspace=keyspace",
-          "--schema.table=table"
-        });
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "c1",
+              "--schema.keyspace=keyspace",
+              "--schema.table=table"
+            })
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Configuration entry of schema.mapping");
   }
@@ -268,15 +274,16 @@ public class SettingValidatorTest {
   @Test
   public void should_connect_error_with_schema_mapping_query_defined() throws Exception {
     new Main(
-        new String[] {
-          "load",
-          "--driver.hosts=255.255.255.23",
-          "--connector.csv.url=/path/to/my/file",
-          "-m",
-          "c1=c2",
-          "--schema.query",
-          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
-        });
+            new String[] {
+              "load",
+              "--driver.hosts=255.255.255.23",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "c1=c2",
+              "--schema.query",
+              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+            })
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains(" All host(s) tried for query");
   }
@@ -284,14 +291,15 @@ public class SettingValidatorTest {
   @Test
   public void should_error_invalid_schema_inferred_mapping_query_defined() throws Exception {
     new Main(
-        new String[] {
-          "load",
-          "--connector.csv.url=/path/to/my/file",
-          "-m",
-          "*=*, c1=c2",
-          "--schema.query",
-          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
-        });
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "*=*, c1=c2",
+              "--schema.query",
+              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+            })
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .contains("schema.keyspace and schema.table must be defined when using inferred mapping");

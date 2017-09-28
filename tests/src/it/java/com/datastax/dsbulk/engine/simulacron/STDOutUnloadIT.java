@@ -68,7 +68,7 @@ public class STDOutUnloadIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new Main(unloadArgs);
+    new Main(unloadArgs).run();
     String out = baos.toString();
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateStringOutput(out, 24);
