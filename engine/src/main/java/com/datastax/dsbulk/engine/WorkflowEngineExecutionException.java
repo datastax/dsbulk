@@ -6,9 +6,9 @@
  */
 package com.datastax.dsbulk.engine;
 
-public interface Workflow {
+public class WorkflowEngineExecutionException extends Exception {
 
-  void init() throws Exception;
-
-  void execute() throws WorkflowEngineExecutionException;
+  public WorkflowEngineExecutionException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

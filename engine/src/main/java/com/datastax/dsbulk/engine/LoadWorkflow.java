@@ -75,7 +75,7 @@ public class LoadWorkflow implements Workflow {
   }
 
   @Override
-  public void execute() {
+  public void execute() throws WorkflowEngineExecutionException {
 
     LOGGER.info("Starting load workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
@@ -126,10 +126,8 @@ public class LoadWorkflow implements Workflow {
           .blockLast();
 
     } catch (Exception e) {
-      System.err.printf(
-          "Uncaught exception during load workflow engine execution %s: %s%n",
-          executionId, e.getMessage());
-      LOGGER.error("Uncaught exception during load workflow engine execution " + executionId, e);
+      throw new WorkflowEngineExecutionException(
+          "Uncaught exception during load workflow engine execution " + executionId, e);
     } finally {
       writesScheduler.dispose();
       mapperScheduler.dispose();

@@ -9,6 +9,8 @@ package com.datastax.dsbulk.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import com.datastax.dsbulk.engine.internal.HelpUtils;
 import com.datastax.dsbulk.engine.internal.OptionUtils;
 import com.typesafe.config.Config;
@@ -25,12 +27,16 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.LoggerFactory;
 
 public class MainTest {
+
   private PrintStream originalStderr;
   private PrintStream originalStdout;
   private ByteArrayOutputStream stderr;
   private ByteArrayOutputStream stdout;
+  private Logger root;
+  private Level oldLevel;
 
   @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -38,18 +44,20 @@ public class MainTest {
   public void setUp() throws Exception {
     originalStdout = System.out;
     originalStderr = System.err;
-
     stdout = new ByteArrayOutputStream();
     System.setOut(new PrintStream(stdout));
-
     stderr = new ByteArrayOutputStream();
     System.setErr(new PrintStream(stderr));
+    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    oldLevel = root.getLevel();
+    root.setLevel(Level.INFO);
   }
 
   @After
   public void tearDown() throws Exception {
     System.setOut(originalStdout);
     System.setErr(originalStderr);
+    root.setLevel(oldLevel);
     System.clearProperty("config.file");
     ConfigFactory.invalidateCaches();
     OptionUtils.DEFAULT = ConfigFactory.load().getConfig("dsbulk");

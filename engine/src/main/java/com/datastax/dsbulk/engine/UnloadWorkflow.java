@@ -74,7 +74,7 @@ public class UnloadWorkflow implements Workflow {
   }
 
   @Override
-  public void execute() {
+  public void execute() throws WorkflowEngineExecutionException {
 
     LOGGER.info("Starting unload workflow engine execution " + executionId);
     Stopwatch timer = Stopwatch.createStarted();
@@ -131,10 +131,8 @@ public class UnloadWorkflow implements Workflow {
       records.blockLast();
 
     } catch (Exception e) {
-      System.err.printf(
-          "Uncaught exception during unload workflow engine execution %s: %s%n",
-          executionId, e.getMessage());
-      LOGGER.error("Uncaught exception during unload workflow engine execution " + executionId, e);
+      throw new WorkflowEngineExecutionException(
+          "Uncaught exception during unload workflow engine execution " + executionId, e);
     } finally {
       readsScheduler.dispose();
       mapperScheduler.dispose();
