@@ -29,7 +29,7 @@ public class PropertiesCreator {
       LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
       pw.println(
           "###################################################################################################");
-      pw.println("This is a template file. Uncomment settings as needed to configure dsBulk.");
+      pw.println("This is a template file. Uncomment settings as needed to configure DSBulk.");
       pw.println(
           "When this file is named application.properties and placed in the /conf directory, it will be");
       pw.println(
