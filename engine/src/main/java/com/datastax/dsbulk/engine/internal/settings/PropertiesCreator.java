@@ -33,7 +33,8 @@ public class PropertiesCreator {
       LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
       String rowOfHashes = StringUtils.nCopies("#", LINE_LENGTH);
       pw.println(rowOfHashes);
-      pw.println(wrapLines(
+      pw.println(
+          wrapLines(
               "# This is a template configuration file. Uncomment settings as needed to configure "
                   + "DSBulk. When this file is named application.properties and placed in the "
                   + "/conf directory, it will be automatically picked up and used by default. "
@@ -95,10 +96,6 @@ public class PropertiesCreator {
   }
 
   private static String wrapLines(String text) {
-    return WordUtils.wrap(
-        text,
-        LINE_LENGTH,
-        String.format("%n# "),
-        false);
+    return WordUtils.wrap(text, LINE_LENGTH, String.format("%n# "), false);
   }
 }
