@@ -28,7 +28,6 @@
     <joda.version>2.9.9</joda.version>
     <jsr353-api.version>1.0</jsr353-api.version>
     <esri.version>1.2.1</esri.version>
-    <reactor-core.version>3.0.7.RELEASE</reactor-core.version>
     <osgi-core.version>4.3.0</osgi-core.version>
   </properties>
 
