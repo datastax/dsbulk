@@ -18,22 +18,28 @@ import java.util.Map;
 import org.apache.commons.text.WordUtils;
 
 public class PropertiesCreator {
+
+  private static final int LINE_LENGTH = 100;
+
   public static void main(String[] args) {
     try {
       assert args.length == 2;
       String outFile = args[0];
       boolean template = Boolean.parseBoolean(args[1]);
       File file = new File(outFile);
+      //noinspection ResultOfMethodCallIgnored
       file.getParentFile().mkdirs();
       PrintWriter pw = new PrintWriter(file);
       LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
-      pw.println(
-          "###################################################################################################");
-      pw.println("This is a template file. Uncomment settings as needed to configure DSBulk.");
-      pw.println(
-          "When this file is named application.properties and placed in the /conf directory, it will be");
-      pw.println(
-          "automatically picked up and used by default. To use other properties files see the -f option.\"");
+      String rowOfHashes = StringUtils.nCopies("#", LINE_LENGTH);
+      pw.println(rowOfHashes);
+      pw.println(wrapLines(
+              "# This is a template configuration file. Uncomment settings as needed to configure "
+                  + "DSBulk. When this file is named application.properties and placed in the "
+                  + "/conf directory, it will be automatically picked up and used by default. "
+                  + "To use other properties files see the -f command-line option."));
+      pw.println(rowOfHashes);
+      pw.println("");
 
       for (Map.Entry<String, SettingsDocumentor.Group> groupEntry :
           SettingsDocumentor.GROUPS.entrySet()) {
@@ -42,8 +48,7 @@ public class PropertiesCreator {
           // In this context, we don't care about the "Common" pseudo-section.
           continue;
         }
-        pw.println(
-            "###################################################################################################");
+        pw.println(rowOfHashes);
         config
             .getConfig(section)
             .root()
@@ -52,10 +57,9 @@ public class PropertiesCreator {
             .forEach(
                 l -> {
                   pw.print("# ");
-                  pw.println(WordUtils.wrap(l, 100, String.format("%n# "), false));
+                  pw.println(wrapLines(l));
                 });
-        pw.println(
-            "###################################################################################################");
+        pw.println(rowOfHashes);
 
         for (String settingName : groupEntry.getValue().getSettings()) {
           ConfigValue value = config.getValue(settingName);
@@ -67,7 +71,7 @@ public class PropertiesCreator {
               .forEach(
                   l -> {
                     pw.print("# ");
-                    pw.println(WordUtils.wrap(l, 100, String.format("%n# "), false));
+                    pw.println(wrapLines(l));
                   });
           pw.print("# Type: ");
           pw.println(config.getTypeString(settingName));
@@ -88,5 +92,13 @@ public class PropertiesCreator {
       System.out.println("Error encountered generating reference.conf");
       e.printStackTrace();
     }
+  }
+
+  private static String wrapLines(String text) {
+    return WordUtils.wrap(
+        text,
+        LINE_LENGTH,
+        String.format("%n# "),
+        false);
   }
 }
