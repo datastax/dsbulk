@@ -290,6 +290,7 @@ public class ExtendedCodecRegistry {
         {
           DataType elementType = cqlType.getTypeArguments().get(0);
           TypeCodec<List<Object>> collectionCodec = codecRegistry.codecFor(cqlType);
+          @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> eltCodec =
               (ConvertingCodec<JsonNode, Object>) codecFor(elementType, JSON_NODE_TYPE_TOKEN);
           return new JsonNodeToListCodec<>(collectionCodec, eltCodec, objectMapper);
@@ -298,6 +299,7 @@ public class ExtendedCodecRegistry {
         {
           DataType elementType = cqlType.getTypeArguments().get(0);
           TypeCodec<Set<Object>> collectionCodec = codecRegistry.codecFor(cqlType);
+          @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> eltCodec =
               (ConvertingCodec<JsonNode, Object>) codecFor(elementType, JSON_NODE_TYPE_TOKEN);
           return new JsonNodeToSetCodec<>(collectionCodec, eltCodec, objectMapper);
@@ -310,6 +312,7 @@ public class ExtendedCodecRegistry {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Object> keyCodec =
               (ConvertingCodec<String, Object>) createStringConvertingCodec(keyType);
+          @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> valueCodec =
               (ConvertingCodec<JsonNode, Object>) codecFor(valueType, JSON_NODE_TYPE_TOKEN);
           return new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper);
@@ -320,8 +323,10 @@ public class ExtendedCodecRegistry {
           ImmutableList.Builder<ConvertingCodec<JsonNode, Object>> eltCodecs =
               new ImmutableList.Builder<>();
           for (DataType eltType : ((TupleType) cqlType).getComponentTypes()) {
-            eltCodecs.add(
-                (ConvertingCodec<JsonNode, Object>) codecFor(eltType, JSON_NODE_TYPE_TOKEN));
+            @SuppressWarnings("unchecked")
+            ConvertingCodec<JsonNode, Object> eltCodec =
+                (ConvertingCodec<JsonNode, Object>) codecFor(eltType, JSON_NODE_TYPE_TOKEN);
+            eltCodecs.add(eltCodec);
           }
           return new JsonNodeToTupleCodec(tupleCodec, eltCodecs.build(), objectMapper);
         }
@@ -331,10 +336,10 @@ public class ExtendedCodecRegistry {
           ImmutableMap.Builder<String, ConvertingCodec<JsonNode, Object>> fieldCodecs =
               new ImmutableMap.Builder<>();
           for (UserType.Field field : ((UserType) cqlType)) {
-            fieldCodecs.put(
-                field.getName(),
-                (ConvertingCodec<JsonNode, Object>)
-                    codecFor(field.getType(), JSON_NODE_TYPE_TOKEN));
+            @SuppressWarnings("unchecked")
+            ConvertingCodec<JsonNode, Object> fieldCodec =
+                (ConvertingCodec<JsonNode, Object>) codecFor(field.getType(), JSON_NODE_TYPE_TOKEN);
+            fieldCodecs.put(field.getName(), fieldCodec);
           }
           return new JsonNodeToUDTCodec(udtCodec, fieldCodecs.build(), objectMapper);
         }

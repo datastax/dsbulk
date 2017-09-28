@@ -44,6 +44,7 @@ public class DefaultReadResultMapperTest {
   private ReadResult result;
 
   @Before
+  @SuppressWarnings("unchecked")
   public void setUp() throws Exception {
     recordMetadata =
         new DefaultRecordMetadata(
@@ -68,17 +69,11 @@ public class DefaultReadResultMapperTest {
     when(mapping.variableToField(C3)).thenReturn("f2");
     TypeCodec codec1 = TypeCodec.cint();
     TypeCodec codec2 = TypeCodec.varchar();
-    //noinspection unchecked
     when(mapping.codec(C1, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
-    //noinspection unchecked
     when(mapping.codec(C2, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
-    //noinspection unchecked
     when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
-    //noinspection unchecked
     when(row.get(C1, codec1)).thenReturn(42);
-    //noinspection unchecked
     when(row.get(C2, codec2)).thenReturn("foo");
-    //noinspection unchecked
     when(row.get(C3, codec2)).thenReturn("bar");
 
     // to generate locations

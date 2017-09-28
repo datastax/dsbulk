@@ -49,6 +49,7 @@ public class DefaultRecordMapperTest {
   private RecordMetadata recordMetadata;
   private URI location = URI.create("file://file1?line=1");
 
+  @SuppressWarnings("unchecked")
   @Before
   public void setUp() throws Exception {
     variableCaptor = ArgumentCaptor.forClass(String.class);
@@ -90,11 +91,8 @@ public class DefaultRecordMapperTest {
     TypeCodec codec1 = TypeCodec.cint();
     TypeCodec codec2 = TypeCodec.varchar();
 
-    //noinspection unchecked
     when(mapping.codec(C1, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
-    //noinspection unchecked
     when(mapping.codec(C2, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
-    //noinspection unchecked
     when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
   }
 
