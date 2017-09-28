@@ -19,7 +19,6 @@ import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.result.Result;
 import com.google.common.base.Preconditions;
 import java.util.Objects;
 import java.util.SortedMap;
@@ -195,9 +194,9 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
   private final MetricsCollectingExecutionListener delegate;
   private final long expectedTotal;
   private final String msg;
-  private final Timer failedTimer;
-  private final Timer totalTimer;
-  private final Timer successfulTimer;
+  private final Timer timer;
+  private final Counter failed;
+  private final Counter successful;
 
   /**
    * Creates a default instance of {@link MetricsReportingExecutionListener}.
@@ -242,9 +241,9 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
     this.delegate = delegate;
     this.expectedTotal = expectedTotal;
     this.msg = createMessageTemplate(expectedTotal, metricType);
-    this.totalTimer = metricType.totalTimer(delegate);
-    this.successfulTimer = metricType.successfulTimer(delegate);
-    this.failedTimer = metricType.failedTimer(delegate);
+    this.timer = metricType.timer(delegate);
+    this.successful = metricType.successful(delegate);
+    this.failed = metricType.failed(delegate);
   }
 
   private MetricsReportingExecutionListener(
@@ -264,9 +263,9 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
     this.delegate = delegate;
     this.expectedTotal = expectedTotal;
     this.msg = createMessageTemplate(expectedTotal, metricType);
-    this.totalTimer = metricType.totalTimer(delegate);
-    this.successfulTimer = metricType.successfulTimer(delegate);
-    this.failedTimer = metricType.failedTimer(delegate);
+    this.timer = metricType.timer(delegate);
+    this.successful = metricType.successful(delegate);
+    this.failed = metricType.failed(delegate);
   }
 
   @Override
@@ -275,13 +274,39 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
   }
 
   @Override
-  public void onResultReceived(Result result, ExecutionContext context) {
-    delegate.onResultReceived(result, context);
+  public void onWriteRequestStarted(Statement statement, ExecutionContext context) {
+    delegate.onWriteRequestStarted(statement, context);
   }
 
   @Override
-  public void onExecutionCompleted(Statement statement, ExecutionContext context) {
-    delegate.onExecutionCompleted(statement, context);
+  public void onReadRequestStarted(Statement statement, ExecutionContext context) {
+    delegate.onReadRequestStarted(statement, context);
+  }
+
+  @Override
+  public void onWriteRequestSuccessful(Statement statement, ExecutionContext context) {
+    delegate.onWriteRequestSuccessful(statement, context);
+  }
+
+  @Override
+  public void onWriteRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+    delegate.onWriteRequestFailed(statement, error, context);
+  }
+
+  @Override
+  public void onReadRequestSuccessful(
+      Statement statement, int numberOfRows, ExecutionContext context) {
+    delegate.onReadRequestSuccessful(statement, numberOfRows, context);
+  }
+
+  @Override
+  public void onReadRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+    delegate.onReadRequestFailed(statement, error, context);
+  }
+
+  @Override
+  public void onExecutionSuccessful(Statement statement, ExecutionContext context) {
+    delegate.onExecutionSuccessful(statement, context);
   }
 
   @Override
@@ -296,21 +321,19 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
       SortedMap<String, Histogram> histograms,
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
-    report(totalTimer, successfulTimer, failedTimer);
+    report(timer, successful, failed);
   }
 
   /**
    * Performs a report.
    *
-   * @param totalTimer the timer recording all events, both successful and failed.
-   * @param successfulTimer the timer recording successful events only.
-   * @param failedTimer the timer recording failed events only.
+   * @param timer the timer recording events.
+   * @param successful the counter recording successful events.
+   * @param failed the counter recording failed events.
    */
-  protected void report(Timer totalTimer, Timer successfulTimer, Timer failedTimer) {
-    Snapshot snapshot = totalTimer.getSnapshot();
-    long total = totalTimer.getCount();
-    long successful = successfulTimer.getCount();
-    long failed = failedTimer.getCount();
+  protected void report(Timer timer, Counter successful, Counter failed) {
+    Snapshot snapshot = timer.getSnapshot();
+    long total = timer.getCount();
     String durationUnit = getDurationUnit();
     String rateUnit = getRateUnit();
     if (expectedTotal < 0) {
@@ -318,9 +341,9 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
           String.format(
               msg,
               total,
-              successful,
-              failed,
-              convertRate(totalTimer.getMeanRate()),
+              successful.getCount(),
+              failed.getCount(),
+              convertRate(timer.getMeanRate()),
               rateUnit,
               convertDuration(snapshot.getMean()),
               convertDuration(snapshot.get75thPercentile()),
@@ -332,9 +355,9 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
           String.format(
               msg,
               total,
-              successful,
-              failed,
-              convertRate(totalTimer.getMeanRate()),
+              successful.getCount(),
+              failed.getCount(),
+              convertRate(timer.getMeanRate()),
               rateUnit,
               achieved,
               convertDuration(snapshot.getMean()),
@@ -373,18 +396,18 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
       }
 
       @Override
-      protected Timer totalTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getTotalOperationsTimer();
+      protected Timer timer(MetricsCollectingExecutionListener delegate) {
+        return delegate.getReadsWritesTimer();
       }
 
       @Override
-      protected Timer successfulTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getSuccessfulOperationsTimer();
+      protected Counter successful(MetricsCollectingExecutionListener delegate) {
+        return delegate.getSuccessfulReadsWritesCounter();
       }
 
       @Override
-      protected Timer failedTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getFailedOperationsTimer();
+      protected Counter failed(MetricsCollectingExecutionListener delegate) {
+        return delegate.getFailedReadsWritesCounter();
       }
 
       @Override
@@ -406,18 +429,18 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
       }
 
       @Override
-      protected Timer totalTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getTotalReadsTimer();
+      protected Timer timer(MetricsCollectingExecutionListener delegate) {
+        return delegate.getReadsTimer();
       }
 
       @Override
-      protected Timer successfulTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getSuccessfulReadsTimer();
+      protected Counter successful(MetricsCollectingExecutionListener delegate) {
+        return delegate.getSuccessfulReadsCounter();
       }
 
       @Override
-      protected Timer failedTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getFailedReadsTimer();
+      protected Counter failed(MetricsCollectingExecutionListener delegate) {
+        return delegate.getFailedReadsCounter();
       }
 
       @Override
@@ -439,18 +462,18 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
       }
 
       @Override
-      protected Timer totalTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getTotalWritesTimer();
+      protected Timer timer(MetricsCollectingExecutionListener delegate) {
+        return delegate.getWritesTimer();
       }
 
       @Override
-      protected Timer successfulTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getSuccessfulWritesTimer();
+      protected Counter successful(MetricsCollectingExecutionListener delegate) {
+        return delegate.getSuccessfulWritesCounter();
       }
 
       @Override
-      protected Timer failedTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getFailedWritesTimer();
+      protected Counter failed(MetricsCollectingExecutionListener delegate) {
+        return delegate.getFailedWritesCounter();
       }
 
       @Override
@@ -472,18 +495,18 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
       }
 
       @Override
-      protected Timer totalTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getTotalStatementsTimer();
+      protected Timer timer(MetricsCollectingExecutionListener delegate) {
+        return delegate.getStatementsTimer();
       }
 
       @Override
-      protected Timer successfulTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getSuccessfulStatementsTimer();
+      protected Counter successful(MetricsCollectingExecutionListener delegate) {
+        return delegate.getSuccessfulStatementsCounter();
       }
 
       @Override
-      protected Timer failedTimer(MetricsCollectingExecutionListener delegate) {
-        return delegate.getFailedStatementsTimer();
+      protected Counter failed(MetricsCollectingExecutionListener delegate) {
+        return delegate.getFailedStatementsCounter();
       }
 
       @Override
@@ -499,11 +522,11 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
 
     protected abstract MetricFilter filter();
 
-    protected abstract Timer totalTimer(MetricsCollectingExecutionListener delegate);
+    protected abstract Timer timer(MetricsCollectingExecutionListener delegate);
 
-    protected abstract Timer successfulTimer(MetricsCollectingExecutionListener delegate);
+    protected abstract Counter successful(MetricsCollectingExecutionListener delegate);
 
-    protected abstract Timer failedTimer(MetricsCollectingExecutionListener delegate);
+    protected abstract Counter failed(MetricsCollectingExecutionListener delegate);
 
     protected abstract String eventName();
 

@@ -9,7 +9,6 @@ package com.datastax.dsbulk.executor.api.listener;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.result.Result;
 
 /**
  * A listener for bulk executions.
@@ -22,25 +21,71 @@ public interface ExecutionListener {
    * Called when a statement is about to be executed.
    *
    * @param statement the statement to execute.
-   * @param context the statement execution context.
+   * @param context the global statement execution context.
    */
   default void onExecutionStarted(Statement statement, ExecutionContext context) {}
 
   /**
-   * Called when a result is received.
+   * Called when a write request is about to be sent.
    *
-   * @param result the received result.
-   * @param context the statement execution context.
+   * @param statement the statement to execute.
+   * @param context the local request execution context.
    */
-  default void onResultReceived(Result result, ExecutionContext context) {}
+  default void onWriteRequestStarted(Statement statement, ExecutionContext context) {}
+
+  /**
+   * Called when a write request has been completed successfully.
+   *
+   * @param statement the statement to execute.
+   * @param context the local request execution context.
+   */
+  default void onWriteRequestSuccessful(Statement statement, ExecutionContext context) {}
+
+  /**
+   * Called when a write request has failed.
+   *
+   * @param statement the statement to execute.
+   * @param error the request execution error.
+   * @param context the local request execution context.
+   */
+  default void onWriteRequestFailed(
+      Statement statement, Throwable error, ExecutionContext context) {}
+
+  /**
+   * Called when a read request is about to be sent.
+   *
+   * @param statement the statement to execute.
+   * @param context the local request execution context.
+   */
+  default void onReadRequestStarted(Statement statement, ExecutionContext context) {}
+
+  /**
+   * Called when a read request has been completed successfully.
+   *
+   * @param statement the statement to execute.
+   * @param numberOfRows the number of rows received.
+   * @param context the local request execution context.
+   */
+  default void onReadRequestSuccessful(
+      Statement statement, int numberOfRows, ExecutionContext context) {}
+
+  /**
+   * Called when a read request has failed.
+   *
+   * @param statement the statement to execute.
+   * @param error the request execution error.
+   * @param context the local request execution context.
+   */
+  default void onReadRequestFailed(
+      Statement statement, Throwable error, ExecutionContext context) {}
 
   /**
    * Called when a statement has been successfully executed.
    *
    * @param statement the executed statement.
-   * @param context the statement execution context.
+   * @param context the global statement execution context.
    */
-  default void onExecutionCompleted(Statement statement, ExecutionContext context) {}
+  default void onExecutionSuccessful(Statement statement, ExecutionContext context) {}
 
   /**
    * Called when a statement execution has failed.

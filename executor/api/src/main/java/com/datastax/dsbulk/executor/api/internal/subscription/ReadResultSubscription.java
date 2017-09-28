@@ -12,10 +12,9 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
+import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
 import java.util.Queue;
@@ -23,7 +22,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import org.reactivestreams.Subscriber;
 
-public class ReadResultSubscription extends ResultSetSubscription<ReadResult> {
+public class ReadResultSubscription extends ResultSubscription<ReadResult, ResultSet> {
 
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
   public ReadResultSubscription(
@@ -49,37 +48,42 @@ public class ReadResultSubscription extends ResultSetSubscription<ReadResult> {
   }
 
   @Override
-  protected void consumePage(ResultSet rs) {
-    boolean lastPage = rs.getExecutionInfo().getPagingState() == null;
-    ListenableFuture<ResultSet> nextPage = null;
-    for (Row row : rs) {
+  public void start() {
+    super.start();
+    fetchNextPage(() -> session.executeAsync(statement));
+  }
+
+  @Override
+  void onRequestStarted(ExecutionContext local) {
+    listener.ifPresent(l -> l.onReadRequestStarted(statement, local));
+  }
+
+  @Override
+  void onRequestSuccessful(ResultSet page, ExecutionContext local) {
+    listener.ifPresent(
+        l -> l.onReadRequestSuccessful(statement, page.getAvailableWithoutFetching(), local));
+    for (Row row : page) {
       if (isCancelled()) {
         return;
       }
-      if (!lastPage && nextPage == null && getRequested() > rs.getAvailableWithoutFetching()) {
-        nextPage = fetchNextPage(rs::fetchMoreResults);
-        if (nextPage == null) {
-          return;
-        }
-      }
-      DefaultReadResult result = new DefaultReadResult(statement, rs.getExecutionInfo(), row);
-      onNext(result);
+      onNext(new DefaultReadResult(statement, page.getExecutionInfo(), row));
     }
+    boolean lastPage = page.getExecutionInfo().getPagingState() == null;
     if (lastPage) {
       onComplete();
-    } else {
-      if (nextPage == null) {
-        nextPage = fetchNextPage(rs::fetchMoreResults);
-        if (nextPage == null) {
-          return;
-        }
-      }
-      Futures.addCallback(nextPage, this, executor);
+    } else if (!isCancelled()) {
+      fetchNextPage(page::fetchMoreResults);
     }
   }
 
   @Override
-  protected ReadResult toErrorResult(BulkExecutionException error) {
+  void onRequestFailed(Throwable t, ExecutionContext local) {
+    listener.ifPresent(l -> l.onReadRequestFailed(statement, t, local));
+    onError(t);
+  }
+
+  @Override
+  ReadResult toErrorResult(BulkExecutionException error) {
     return new DefaultReadResult(error);
   }
 }

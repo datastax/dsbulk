@@ -117,9 +117,9 @@ public abstract class AbstractReadWriteIT {
     reporter.report();
     LOGGER.info("Finished");
 
-    assertThat(metrics.getTotalOperationsTimer().getCount()).isEqualTo(500);
-    assertThat(metrics.getSuccessfulOperationsTimer().getCount()).isEqualTo(500);
-    assertThat(metrics.getFailedOperationsTimer().getCount()).isEqualTo(0L);
+    assertThat(metrics.getReadsWritesTimer().getCount()).isEqualTo(500);
+    assertThat(metrics.getSuccessfulReadsWritesCounter().getCount()).isEqualTo(500);
+    assertThat(metrics.getFailedReadsWritesCounter().getCount()).isEqualTo(0L);
   }
 
   @SuppressWarnings("ConstantConditions")
@@ -206,8 +206,8 @@ public abstract class AbstractReadWriteIT {
     long actual = session.execute("SELECT COUNT(*) FROM country_by_ip").one().getLong(0);
     assertThat(actual)
         .isEqualTo(500)
-        .isEqualTo(metrics.getTotalReadsTimer().getCount())
-        .isEqualTo(metrics.getTotalWritesTimer().getCount());
+        .isEqualTo(metrics.getReadsTimer().getCount())
+        .isEqualTo(metrics.getWritesTimer().getCount());
   }
 
   protected abstract BulkExecutor getBulkExecutor(ExecutionListener metrics, Session session);
