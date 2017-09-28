@@ -39,7 +39,6 @@ public class CSVLoadEndToEndIT {
 
   @Test
   public void full_load() throws Exception {
-
     String[] args = {
       "load",
       "--log.directory",

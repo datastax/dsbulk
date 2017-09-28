@@ -238,7 +238,7 @@ Log files for a specific run will be located in a sub-directory inside the direc
 
 Setting this value to `.` denotes the current working directory.
 
-Default: **"."**.
+Default: **"./logs"**.
 
 #### -reportRate,--monitoring.reportRate _&lt;string&gt;_
 
@@ -1105,7 +1105,7 @@ Log files for a specific run will be located in a sub-directory inside the direc
 
 Setting this value to `.` denotes the current working directory.
 
-Default: **"."**.
+Default: **"./logs"**.
 
 #### ---log.maxThreads _&lt;string&gt;_
 
