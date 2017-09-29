@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.commons.internal.reflection;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -16,15 +17,17 @@ public final class ReflectionUtils {
       Arrays.asList("", "com.datastax.driver.core.policies.", "com.datastax.driver.core.");
 
   public static <T> T newInstance(String className)
-      throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+      throws InstantiationException, IllegalAccessException, ClassNotFoundException,
+          NoSuchMethodException, InvocationTargetException {
     Class<T> cl = resolveClass(className);
     return newInstance(cl);
   }
 
   @SuppressWarnings("WeakerAccess")
   public static <T> T newInstance(Class<T> cl)
-      throws IllegalAccessException, InstantiationException {
-    return cl.newInstance();
+      throws IllegalAccessException, InstantiationException, NoSuchMethodException,
+          InvocationTargetException {
+    return cl.getConstructor().newInstance();
   }
 
   public static <T> Class<T> resolveClass(String className) throws ClassNotFoundException {
