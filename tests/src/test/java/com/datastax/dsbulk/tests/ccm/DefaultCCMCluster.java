@@ -678,13 +678,6 @@ public class DefaultCCMCluster implements CCMCluster {
     return String.format("CCM cluster %s @ %s", clusterName, System.identityHashCode(this));
   }
 
-  @Override
-  protected void finalize() throws Throwable {
-    LOGGER.debug("GC'ing {}", this);
-    close();
-    super.finalize();
-  }
-
   private void handleCCMException(CCMException e) {
     LOGGER.error("CCM output:\n{}", e.getOut());
     setKeepLogs();

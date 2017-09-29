@@ -33,6 +33,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
+@SuppressWarnings("unchecked")
 public class DefaultRecordMapperTest {
 
   private static final String C1 = "col1";
@@ -49,7 +50,6 @@ public class DefaultRecordMapperTest {
   private RecordMetadata recordMetadata;
   private URI location = URI.create("file://file1?line=1");
 
-  @SuppressWarnings("unchecked")
   @Before
   public void setUp() throws Exception {
     variableCaptor = ArgumentCaptor.forClass(String.class);
@@ -110,7 +110,6 @@ public class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
 
-    //noinspection unchecked
     verify(boundStatement, times(3))
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
@@ -133,7 +132,6 @@ public class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
 
-    //noinspection unchecked
     verify(boundStatement, times(2))
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
@@ -155,7 +153,6 @@ public class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
 
-    //noinspection unchecked
     verify(boundStatement)
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
@@ -176,7 +173,6 @@ public class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
 
-    //noinspection unchecked
     verify(boundStatement, times(2))
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 
@@ -201,7 +197,6 @@ public class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
 
-    //noinspection unchecked
     verify(boundStatement, times(2))
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
 

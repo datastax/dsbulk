@@ -220,7 +220,9 @@ public final class StatementWriter implements Appendable {
       boolean bufferLengthExceeded = byteBuffer.remaining() > maxBufferLengthInBytes;
       // prevent large blobs from being converted to strings
       if (bufferLengthExceeded) {
-        byteBuffer = (ByteBuffer) byteBuffer.duplicate().limit(maxBufferLengthInBytes);
+        byteBuffer = byteBuffer.duplicate();
+        //noinspection Since15
+        byteBuffer.limit(maxBufferLengthInBytes);
         // force usage of blob codec as any other codec would probably fail to format
         // a cropped byte buffer anyway
         String formatted = TypeCodec.blob().format(byteBuffer);
