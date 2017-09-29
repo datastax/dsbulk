@@ -47,7 +47,7 @@
     </fileSet>
 
     <fileSet>
-      <directory>${project.build.directory}/conf</directory>
+      <directory>${project.basedir}/src/conf</directory>
       <outputDirectory>conf</outputDirectory>
     </fileSet>
 

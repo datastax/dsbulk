@@ -41,7 +41,7 @@ public class SettingsDocumentor {
       new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
   private static final Map<String, String> LONG_TO_SHORT_OPTIONS;
 
-  public static final Option CONFIG_FILE_OPTION =
+  static final Option CONFIG_FILE_OPTION =
       Option.builder("f")
           .hasArg()
           .argName("string")
@@ -82,6 +82,8 @@ public class SettingsDocumentor {
   public static final Map<String, Group> GROUPS =
       new TreeMap<>(new PriorityComparator("Common", "connector", "connector.csv", "schema"));
 
+  private static final String TITLE = "DataStax Bulk Loader Options";
+
   static {
     PREFERRED_SETTINGS.add("driver.auth.provider");
 
@@ -101,16 +103,12 @@ public class SettingsDocumentor {
     initGroups();
   }
 
-  public static void main(String[] args) {
-    try {
-      new SettingsDocumentor(args[0], Paths.get(args[1]));
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-    }
+  public static void main(String[] args) throws FileNotFoundException {
+    new SettingsDocumentor(Paths.get(args[0]));
   }
 
   @SuppressWarnings("WeakerAccess")
-  SettingsDocumentor(String title, Path filePath) throws FileNotFoundException {
+  SettingsDocumentor(Path filePath) throws FileNotFoundException {
     try (PrintWriter out =
         new PrintWriter(new BufferedOutputStream(new FileOutputStream(filePath.toFile())))) {
       // Print page title
@@ -119,8 +117,9 @@ public class SettingsDocumentor {
               + "*NOTE:* The long options described here can be persisted in `conf/application.conf` "
               + "and thus permanently override defaults and avoid specifying options on the command "
               + "line.%n%n"
+              + "A template configuration file can be found [here](./application.template.conf).%n%n"
               + "## Sections%n%n",
-          title);
+          TITLE);
 
       // Print links to relevant sections.
       for (String groupName : GROUPS.keySet()) {

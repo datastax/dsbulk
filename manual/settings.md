@@ -2,6 +2,8 @@
 
 *NOTE:* The long options described here can be persisted in `conf/application.conf` and thus permanently override defaults and avoid specifying options on the command line.
 
+A template configuration file can be found [here](./application.template.conf).
+
 ## Sections
 
 <a href="#Common">Common Settings</a><br>
@@ -149,7 +151,7 @@ Applies to both load and unload workflows.
 
 If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping.
 
-Mappings should be specified as a HOCON map (https://github.com/typesafehub/config/blob/master/HOCON.md) of the following form:
+Mappings should be specified as a map of the following form:
 
 - Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, etc. are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
@@ -271,11 +273,7 @@ Default: **"csv"**.
 <a name="connector.csv"></a>
 ### Connector Csv Settings
 
-Reference configuration for the CSV Connector.
-
-Note that a paragraph is written in one line, and paragraphs are separated by a blank line.
-This has the benefit of rendering well in markdown as well as plain-text help output (since
-the help text formatter wraps lines appropriately).
+CSV Connector configuration.
 
 #### -url,--connector.csv.url _&lt;string&gt;_
 
@@ -457,7 +455,7 @@ Applies to both load and unload workflows.
 
 If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping.
 
-Mappings should be specified as a HOCON map (https://github.com/typesafehub/config/blob/master/HOCON.md) of the following form:
+Mappings should be specified as a map of the following form:
 
 - Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, etc. are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
