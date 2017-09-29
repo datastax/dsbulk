@@ -771,11 +771,69 @@ Default: **"dse"**.
 
 Settings for various driver policies.
 
-#### -lbp,--driver.policy.lbp _&lt;string&gt;_
+#### -lbp,--driver.policy.lbp.name _&lt;string&gt;_
 
-The simple or fully-qualified class name of the `LoadBalancingPolicy` implementation to use.
+The name of the load balancing policy.
 
-If not specified, defaults to the driver's default load balancing policy (`com.datastax.driver.dse.DseLoadBalancingPolicy`).
+Supported policies include: `dse`, `dcAware`, `roundRobin`, `whiteList`, `tokenAware`. Available options for the policies are list below as appropriate. For more information, refer to the driver documentation for the policy.
+
+If not specified, defaults to the driver's default load balancing policy, which is currently the `DseLoadBalancingPolicy` wrapping a `DcAwareRoundRobinPolicy`.
+
+Default: **&lt;unspecified&gt;**.
+
+#### ---driver.policy.lbp.dcAware.allowRemoteDCsForLocalConsistencyLevel _&lt;boolean&gt;_
+
+
+
+Default: **false**.
+
+#### ---driver.policy.lbp.dcAware.localDc _&lt;string&gt;_
+
+
+
+Default: **&lt;unspecified&gt;**.
+
+#### ---driver.policy.lbp.dcAware.usedHostsPerRemoteDc _&lt;number&gt;_
+
+
+
+Default: **0**.
+
+#### ---driver.policy.lbp.dse.childPolicy _&lt;string&gt;_
+
+The child policy being wrapped.
+
+It is required to be one of the policies mentioned above.
+
+Default: **&lt;unspecified&gt;**.
+
+#### ---driver.policy.lbp.tokenAware.childPolicy _&lt;string&gt;_
+
+The child policy being wrapped.
+
+It is required to be one of the policies mentioned above.
+
+Default: **&lt;unspecified&gt;**.
+
+#### ---driver.policy.lbp.tokenAware.shuffleReplicas _&lt;boolean&gt;_
+
+
+
+Default: **true**.
+
+#### ---driver.policy.lbp.whiteList.childPolicy _&lt;string&gt;_
+
+The child policy being wrapped.
+
+It is required to be one of the policies mentioned above.
+
+Default: **&lt;unspecified&gt;**.
+
+#### ---driver.policy.lbp.whiteList.hosts _&lt;string&gt;_
+
+List of hosts to white list.
+
+This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
 Default: **&lt;unspecified&gt;**.
 

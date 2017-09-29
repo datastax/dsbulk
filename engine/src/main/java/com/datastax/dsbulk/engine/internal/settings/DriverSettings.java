@@ -17,11 +17,17 @@ import com.datastax.driver.core.RemoteEndpointAwareJdkSSLOptions;
 import com.datastax.driver.core.RemoteEndpointAwareNettySSLOptions;
 import com.datastax.driver.core.RemoteEndpointAwareSSLOptions;
 import com.datastax.driver.core.SocketOptions;
+import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
+import com.datastax.driver.core.policies.LoadBalancingPolicy;
 import com.datastax.driver.core.policies.NoSpeculativeExecutionPolicy;
 import com.datastax.driver.core.policies.RetryPolicy;
+import com.datastax.driver.core.policies.RoundRobinPolicy;
 import com.datastax.driver.core.policies.SpeculativeExecutionPolicy;
+import com.datastax.driver.core.policies.TokenAwarePolicy;
+import com.datastax.driver.core.policies.WhiteListPolicy;
 import com.datastax.driver.dse.DseCluster;
+import com.datastax.driver.dse.DseLoadBalancingPolicy;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -41,8 +47,12 @@ import java.net.URL;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
@@ -68,14 +78,7 @@ public class DriverSettings implements SettingsValidator {
 
   public DseCluster newCluster() throws Exception {
     DseCluster.Builder builder = DseCluster.builder().withClusterName(executionId + "-driver");
-    int defaultPort = config.getInt("port");
-    Arrays.asList(config.getString("hosts").split(",\\s*"))
-        .forEach(
-            s -> {
-              String[] tokens = s.split(":");
-              int port = tokens.length > 1 ? Integer.parseInt(tokens[1]) : defaultPort;
-              builder.addContactPointsWithPorts(new InetSocketAddress(tokens[0], port));
-            });
+    getHostsStream(config, "hosts").forEach(builder::addContactPointsWithPorts);
 
     builder
         .withCompression(config.getEnum(ProtocolOptions.Compression.class, "protocol.compression"))
@@ -109,8 +112,9 @@ public class DriverSettings implements SettingsValidator {
         .withAddressTranslator(config.getInstance("addressTranslator"));
 
     // TODO configure policies
-    if (config.hasPath("policy.lbp")) {
-      builder.withLoadBalancingPolicy(config.getInstance("policy.lbp"));
+    if (config.hasPath("policy.lbp.name")) {
+      builder.withLoadBalancingPolicy(
+          getLoadBalancingPolicy(config, config.getEnum(BuiltinLBP.class, "policy.lbp.name")));
     }
     if (config.hasPath("policy.retry")) {
       Class<RetryPolicy> retryPolicyClass = config.getClass("policy.retry");
@@ -142,6 +146,70 @@ public class DriverSettings implements SettingsValidator {
     return builder.build();
   }
 
+  private LoadBalancingPolicy getLoadBalancingPolicy(LoaderConfig config, BuiltinLBP lbpName)
+      throws BulkConfigurationException {
+    Set<BuiltinLBP> seenPolicies = new LinkedHashSet<>();
+    return getLoadBalancingPolicy(config, lbpName, seenPolicies);
+  }
+
+  private LoadBalancingPolicy getLoadBalancingPolicy(
+      LoaderConfig config, BuiltinLBP lbpName, Set<BuiltinLBP> seenPolicies)
+      throws BulkConfigurationException {
+    LoadBalancingPolicy policy = null;
+    LoadBalancingPolicy childPolicy = null;
+    LoaderConfig lbpConfig = config.getConfig("policy.lbp");
+    seenPolicies.add(lbpName);
+
+    String childPolicyPath = lbpName.name() + ".childPolicy";
+    if (lbpName == BuiltinLBP.dse
+        || lbpName == BuiltinLBP.whiteList
+        || lbpName == BuiltinLBP.tokenAware) {
+      BuiltinLBP childName = lbpConfig.getEnum(BuiltinLBP.class, childPolicyPath);
+      if (childName != null) {
+        if (seenPolicies.contains(childName)) {
+          throw new BulkConfigurationException(
+              "Load balancing policy chaining loop detected: "
+                  + seenPolicies.stream().map(BuiltinLBP::name).collect(Collectors.joining(","))
+                  + ","
+                  + childName.name());
+        }
+        childPolicy =
+            getLoadBalancingPolicy(
+                config, lbpConfig.getEnum(BuiltinLBP.class, childPolicyPath), seenPolicies);
+      }
+    }
+
+    switch (lbpName) {
+      case dse:
+        policy = new DseLoadBalancingPolicy(childPolicy);
+        break;
+      case dcAware:
+        DCAwareRoundRobinPolicy.Builder builder = DCAwareRoundRobinPolicy.builder();
+        builder
+            .withLocalDc(lbpConfig.getString("dcAware.localDc"))
+            .withUsedHostsPerRemoteDc(lbpConfig.getInt("dcAware.usedHostsPerRemoteDc"));
+        if (lbpConfig.getBoolean("dcAware.allowRemoteDCsForLocalConsistencyLevel")) {
+          builder.allowRemoteDCsForLocalConsistencyLevel();
+        }
+        policy = builder.build();
+        break;
+      case roundRobin:
+        policy = new RoundRobinPolicy();
+        break;
+      case whiteList:
+        policy =
+            new WhiteListPolicy(
+                childPolicy,
+                getHostsStream(config, "policy.lbp.whiteList.hosts").collect(Collectors.toList()));
+        break;
+      case tokenAware:
+        policy =
+            new TokenAwarePolicy(childPolicy, lbpConfig.getBoolean("tokenAware.shuffleReplicas"));
+        break;
+    }
+    return policy;
+  }
+
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getInt("port");
@@ -168,23 +236,29 @@ public class DriverSettings implements SettingsValidator {
       config.getString("auth.provider");
       if (!config.getString("auth.provider").equals("None")) {
         String authProviderName = config.getString("auth.provider");
-        if (authProviderName.equals("PlainTextAuthProvider")
-            || authProviderName.equals("DsePlainTextAuthProvider")) {
-          if (!config.hasPath("auth.username") || !config.hasPath("auth.password")) {
-            throw new BulkConfigurationException(
-                authProviderName + " must be provided with both auth.username and auth.password");
-          }
-        } else if (authProviderName.equals("DseGSSAPIAuthProvider")) {
-          if (!config.hasPath("auth.principal") || !config.hasPath("auth.saslProtocol")) {
+        switch (authProviderName) {
+          case "PlainTextAuthProvider":
+          case "DsePlainTextAuthProvider":
+            if (!config.hasPath("auth.username") || !config.hasPath("auth.password")) {
+              throw new BulkConfigurationException(
+                  authProviderName + " must be provided with both auth.username and auth.password");
+            }
+            break;
+          case "DseGSSAPIAuthProvider":
+            if (!config.hasPath("auth.principal") || !config.hasPath("auth.saslProtocol")) {
+              throw new BulkConfigurationException(
+                  authProviderName
+                      + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional.");
+            }
+            break;
+          default:
             throw new BulkConfigurationException(
                 authProviderName
-                    + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional.");
-          }
-        } else {
-          throw new BulkConfigurationException(
-              authProviderName
-                  + " is not a valid auth provider. Valid auth providers are PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider");
+                    + " is not a valid auth provider. Valid auth providers are PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider");
         }
+      }
+      if (config.hasPath("policy.name")) {
+        getLoadBalancingPolicy(config, config.getEnum(BuiltinLBP.class, "policy.name"));
       }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "driver");
@@ -298,6 +372,17 @@ public class DriverSettings implements SettingsValidator {
     }
   }
 
+  private Stream<InetSocketAddress> getHostsStream(LoaderConfig config, String path) {
+    int defaultPort = config.getInt("port");
+    return Arrays.stream(config.getString(path).split(",\\s*"))
+        .map(
+            s -> {
+              String[] tokens = s.split(":");
+              int port = tokens.length > 1 ? Integer.parseInt(tokens[1]) : defaultPort;
+              return new InetSocketAddress(tokens[0], port);
+            });
+  }
+
   @VisibleForTesting
   static class KeyTabConfiguration extends Configuration {
 
@@ -354,5 +439,13 @@ public class DriverSettings implements SettingsValidator {
             options)
       };
     }
+  }
+
+  private enum BuiltinLBP {
+    dse,
+    dcAware,
+    roundRobin,
+    whiteList,
+    tokenAware
   }
 }

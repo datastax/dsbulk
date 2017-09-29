@@ -84,6 +84,7 @@ public class SettingsDocumentor {
 
   static {
     PREFERRED_SETTINGS.add("driver.auth.provider");
+    PREFERRED_SETTINGS.add("driver.policy.lbp.name");
 
     Config shortcutsConf =
         ConfigFactory.parseResourcesAnySyntax("shortcuts.conf").getConfig("dsbulk");

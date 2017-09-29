@@ -242,7 +242,7 @@ public class MainTest {
     assertThat(result.getString("driver.auth.password")).isEqualTo("pass");
     assertThat(result.getString("driver.auth.username")).isEqualTo("user");
     assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
-    assertThat(result.getString("driver.policy.lbp")).isEqualTo("lbp");
+    assertThat(result.getString("driver.policy.lbp.name")).isEqualTo("lbp");
     assertThat(result.getString("driver.policy.retry")).isEqualTo("retry");
     assertThat(result.getInt("driver.port")).isEqualTo(9876);
     assertThat(result.getString("driver.query.consistency")).isEqualTo("cl");
@@ -342,8 +342,24 @@ public class MainTest {
               "address-translator",
               "--driver.policy.retry",
               "retry-policy",
-              "--driver.policy.lbp",
+              "--driver.policy.lbp.name",
               "lbp",
+              "--driver.policy.lbp.dse.childPolicy",
+              "dseChild",
+              "--driver.policy.lbp.dcAware.localDc",
+              "localDc",
+              "--driver.policy.lbp.dcAware.allowRemoteDCsForLocalConsistencyLevel",
+              "true",
+              "--driver.policy.lbp.dcAware.usedHostsPerRemoteDc",
+              "28",
+              "--driver.policy.lbp.tokenAware.childPolicy",
+              "tokenAwareChild",
+              "--driver.policy.lbp.tokenAware.shuffleReplicas",
+              "false",
+              "--driver.policy.lbp.whiteList.childPolicy",
+              "whiteListChild",
+              "--driver.policy.lbp.whiteList.hosts",
+              "wh1, wh2",
               "--driver.policy.specexec",
               "specexec",
               "--batch.mode",
@@ -463,7 +479,19 @@ public class MainTest {
     assertThat(result.getString("driver.timestampGenerator")).isEqualTo("ts-gen");
     assertThat(result.getString("driver.addressTranslator")).isEqualTo("address-translator");
     assertThat(result.getString("driver.policy.retry")).isEqualTo("retry-policy");
-    assertThat(result.getString("driver.policy.lbp")).isEqualTo("lbp");
+    assertThat(result.getString("driver.policy.lbp.name")).isEqualTo("lbp");
+    assertThat(result.getString("driver.policy.lbp.dse.childPolicy")).isEqualTo("dseChild");
+    assertThat(result.getString("driver.policy.lbp.dcAware.localDc")).isEqualTo("localDc");
+    assertThat(
+            result.getBoolean("driver.policy.lbp.dcAware.allowRemoteDCsForLocalConsistencyLevel"))
+        .isTrue();
+    assertThat(result.getInt("driver.policy.lbp.dcAware.usedHostsPerRemoteDc")).isEqualTo(28);
+    assertThat(result.getString("driver.policy.lbp.tokenAware.childPolicy"))
+        .isEqualTo("tokenAwareChild");
+    assertThat(result.getBoolean("driver.policy.lbp.tokenAware.shuffleReplicas")).isFalse();
+    assertThat(result.getString("driver.policy.lbp.whiteList.childPolicy"))
+        .isEqualTo("whiteListChild");
+    assertThat(result.getString("driver.policy.lbp.whiteList.hosts")).isEqualTo("wh1, wh2");
     assertThat(result.getString("driver.policy.specexec")).isEqualTo("specexec");
     assertThat(result.getString("batch.mode")).isEqualTo("batch-mode");
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
