@@ -346,11 +346,11 @@ public class MainTest {
               "lbp",
               "--driver.policy.lbp.dse.childPolicy",
               "dseChild",
-              "--driver.policy.lbp.dcAware.localDc",
+              "--driver.policy.lbp.dcAwareRoundRobin.localDc",
               "localDc",
-              "--driver.policy.lbp.dcAware.allowRemoteDCsForLocalConsistencyLevel",
+              "--driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel",
               "true",
-              "--driver.policy.lbp.dcAware.usedHostsPerRemoteDc",
+              "--driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc",
               "28",
               "--driver.policy.lbp.tokenAware.childPolicy",
               "tokenAwareChild",
@@ -481,11 +481,14 @@ public class MainTest {
     assertThat(result.getString("driver.policy.retry")).isEqualTo("retry-policy");
     assertThat(result.getString("driver.policy.lbp.name")).isEqualTo("lbp");
     assertThat(result.getString("driver.policy.lbp.dse.childPolicy")).isEqualTo("dseChild");
-    assertThat(result.getString("driver.policy.lbp.dcAware.localDc")).isEqualTo("localDc");
+    assertThat(result.getString("driver.policy.lbp.dcAwareRoundRobin.localDc"))
+        .isEqualTo("localDc");
     assertThat(
-            result.getBoolean("driver.policy.lbp.dcAware.allowRemoteDCsForLocalConsistencyLevel"))
+            result.getBoolean(
+                "driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel"))
         .isTrue();
-    assertThat(result.getInt("driver.policy.lbp.dcAware.usedHostsPerRemoteDc")).isEqualTo(28);
+    assertThat(result.getInt("driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc"))
+        .isEqualTo(28);
     assertThat(result.getString("driver.policy.lbp.tokenAware.childPolicy"))
         .isEqualTo("tokenAwareChild");
     assertThat(result.getBoolean("driver.policy.lbp.tokenAware.shuffleReplicas")).isFalse();

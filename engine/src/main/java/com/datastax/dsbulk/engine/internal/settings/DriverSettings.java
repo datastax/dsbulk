@@ -183,12 +183,12 @@ public class DriverSettings implements SettingsValidator {
       case dse:
         policy = new DseLoadBalancingPolicy(childPolicy);
         break;
-      case dcAware:
+      case dcAwareRoundRobin:
         DCAwareRoundRobinPolicy.Builder builder = DCAwareRoundRobinPolicy.builder();
         builder
-            .withLocalDc(lbpConfig.getString("dcAware.localDc"))
-            .withUsedHostsPerRemoteDc(lbpConfig.getInt("dcAware.usedHostsPerRemoteDc"));
-        if (lbpConfig.getBoolean("dcAware.allowRemoteDCsForLocalConsistencyLevel")) {
+            .withLocalDc(lbpConfig.getString("dcAwareRoundRobin.localDc"))
+            .withUsedHostsPerRemoteDc(lbpConfig.getInt("dcAwareRoundRobin.usedHostsPerRemoteDc"));
+        if (lbpConfig.getBoolean("dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel")) {
           builder.allowRemoteDCsForLocalConsistencyLevel();
         }
         policy = builder.build();
@@ -443,7 +443,7 @@ public class DriverSettings implements SettingsValidator {
 
   private enum BuiltinLBP {
     dse,
-    dcAware,
+    dcAwareRoundRobin,
     roundRobin,
     whiteList,
     tokenAware

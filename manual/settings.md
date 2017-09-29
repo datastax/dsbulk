@@ -775,25 +775,27 @@ Settings for various driver policies.
 
 The name of the load balancing policy.
 
-Supported policies include: `dse`, `dcAware`, `roundRobin`, `whiteList`, `tokenAware`. Available options for the policies are list below as appropriate. For more information, refer to the driver documentation for the policy.
+Supported policies include: `dse`, `dcAwareRoundRobin`, `roundRobin`, `whiteList`, `tokenAware`. Available options for the policies are listed below as appropriate. For more information, refer to the driver documentation for the policy.
 
-If not specified, defaults to the driver's default load balancing policy, which is currently the `DseLoadBalancingPolicy` wrapping a `DcAwareRoundRobinPolicy`.
+If not specified, defaults to the driver's default load balancing policy, which is currently the `DseLoadBalancingPolicy` wrapping a `TokenAwarePolicy`, wrapping a `DcAwareRoundRobinPolicy`.
+
+NOTE: It is critical for a token-aware policy to be used in the chain in order to benefit from batching by partition key.
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.policy.lbp.dcAware.allowRemoteDCsForLocalConsistencyLevel _&lt;boolean&gt;_
+#### ---driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel _&lt;boolean&gt;_
 
 
 
 Default: **false**.
 
-#### ---driver.policy.lbp.dcAware.localDc _&lt;string&gt;_
+#### ---driver.policy.lbp.dcAwareRoundRobin.localDc _&lt;string&gt;_
 
 
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.policy.lbp.dcAware.usedHostsPerRemoteDc _&lt;number&gt;_
+#### ---driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc _&lt;number&gt;_
 
 
 
@@ -813,7 +815,7 @@ The child policy being wrapped.
 
 It is required to be one of the policies mentioned above.
 
-Default: **&lt;unspecified&gt;**.
+Default: **"roundRobin"**.
 
 #### ---driver.policy.lbp.tokenAware.shuffleReplicas _&lt;boolean&gt;_
 
