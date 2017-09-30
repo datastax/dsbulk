@@ -18,12 +18,8 @@ import com.datastax.driver.core.RemoteEndpointAwareNettySSLOptions;
 import com.datastax.driver.core.RemoteEndpointAwareSSLOptions;
 import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
-import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.policies.LoadBalancingPolicy;
-import com.datastax.driver.core.policies.NoSpeculativeExecutionPolicy;
-import com.datastax.driver.core.policies.RetryPolicy;
 import com.datastax.driver.core.policies.RoundRobinPolicy;
-import com.datastax.driver.core.policies.SpeculativeExecutionPolicy;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.datastax.driver.core.policies.WhiteListPolicy;
 import com.datastax.driver.dse.DseCluster;
@@ -34,6 +30,7 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.datastax.dsbulk.engine.policies.MultipleRetryPolicy;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
@@ -111,28 +108,13 @@ public class DriverSettings implements SettingsValidator {
         .withTimestampGenerator(config.getInstance("timestampGenerator"))
         .withAddressTranslator(config.getInstance("addressTranslator"));
 
-    // TODO configure policies
     if (config.hasPath("policy.lbp.name")) {
       builder.withLoadBalancingPolicy(
           getLoadBalancingPolicy(config, config.getEnum(BuiltinLBP.class, "policy.lbp.name")));
     }
-    if (config.hasPath("policy.retry")) {
-      Class<RetryPolicy> retryPolicyClass = config.getClass("policy.retry");
-      if (retryPolicyClass.equals(DefaultRetryPolicy.class)) {
-        builder.withRetryPolicy(DefaultRetryPolicy.INSTANCE);
-      } else {
-        builder.withRetryPolicy(config.getInstance("policy.retry"));
-      }
-    }
-    if (config.hasPath("policy.specexec")) {
-      Class<SpeculativeExecutionPolicy> speculativeExecutionPolicyClass =
-          config.getClass("policy.specexec");
-      if (speculativeExecutionPolicyClass.equals(NoSpeculativeExecutionPolicy.class)) {
-        builder.withSpeculativeExecutionPolicy(NoSpeculativeExecutionPolicy.INSTANCE);
-      } else {
-        builder.withSpeculativeExecutionPolicy(config.getInstance("policy.specexec"));
-      }
-    }
+
+    // Configure retry-policy.
+    builder.withRetryPolicy(new MultipleRetryPolicy(config.getInt("policy.maxRetries")));
 
     if (!config.getString("auth.provider").equals("None")) {
       AuthProvider authProvider = createAuthProvider();
@@ -260,6 +242,7 @@ public class DriverSettings implements SettingsValidator {
       if (config.hasPath("policy.name")) {
         getLoadBalancingPolicy(config, config.getEnum(BuiltinLBP.class, "policy.name"));
       }
+      config.getInt("policy.maxRetries");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "driver");
     }

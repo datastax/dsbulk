@@ -25,7 +25,6 @@ import com.datastax.driver.core.RemoteEndpointAwareNettySSLOptions;
 import com.datastax.driver.core.SSLOptions;
 import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
-import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.policies.IdentityTranslator;
 import com.datastax.driver.core.policies.LoadBalancingPolicy;
 import com.datastax.driver.core.policies.NoSpeculativeExecutionPolicy;
@@ -40,6 +39,7 @@ import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
+import com.datastax.dsbulk.engine.policies.MultipleRetryPolicy;
 import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
@@ -108,7 +108,8 @@ public class DriverSettingsTest {
         .isInstanceOf(AtomicMonotonicTimestampGenerator.class);
     assertThat(policies.getAddressTranslator()).isInstanceOf(IdentityTranslator.class);
     assertThat(policies.getLoadBalancingPolicy()).isInstanceOf(DseLoadBalancingPolicy.class);
-    assertThat(policies.getRetryPolicy()).isInstanceOf(DefaultRetryPolicy.class);
+    assertThat(policies.getRetryPolicy()).isInstanceOf(MultipleRetryPolicy.class);
+    assertThat(Whitebox.getInternalState(policies.getRetryPolicy(), "maxRetryCount")).isEqualTo(10);
     assertThat(policies.getSpeculativeExecutionPolicy())
         .isInstanceOf(NoSpeculativeExecutionPolicy.class);
     assertThat(configuration.getProtocolOptions().getSSLOptions()).isNull();

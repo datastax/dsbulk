@@ -213,7 +213,7 @@ public class MainTest {
               "-u", "user",
               "-h", "host1, host2",
               "-lbp", "lbp",
-              "-retry", "retry",
+              "-maxRetries", "42",
               "-port", "9876",
               "-cl", "cl",
               "-maxErrors", "123",
@@ -243,7 +243,7 @@ public class MainTest {
     assertThat(result.getString("driver.auth.username")).isEqualTo("user");
     assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
     assertThat(result.getString("driver.policy.lbp.name")).isEqualTo("lbp");
-    assertThat(result.getString("driver.policy.retry")).isEqualTo("retry");
+    assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(42);
     assertThat(result.getInt("driver.port")).isEqualTo(9876);
     assertThat(result.getString("driver.query.consistency")).isEqualTo("cl");
     assertThat(result.getInt("log.maxErrors")).isEqualTo(123);
@@ -340,8 +340,6 @@ public class MainTest {
               "ts-gen",
               "--driver.addressTranslator",
               "address-translator",
-              "--driver.policy.retry",
-              "retry-policy",
               "--driver.policy.lbp.name",
               "lbp",
               "--driver.policy.lbp.dse.childPolicy",
@@ -360,8 +358,8 @@ public class MainTest {
               "whiteListChild",
               "--driver.policy.lbp.whiteList.hosts",
               "wh1, wh2",
-              "--driver.policy.specexec",
-              "specexec",
+              "--driver.policy.maxRetries",
+              "29",
               "--batch.mode",
               "batch-mode",
               "--batch.bufferSize",
@@ -478,7 +476,6 @@ public class MainTest {
     assertThat(result.getString("driver.ssl.openssl.privateKey")).isEqualTo("key");
     assertThat(result.getString("driver.timestampGenerator")).isEqualTo("ts-gen");
     assertThat(result.getString("driver.addressTranslator")).isEqualTo("address-translator");
-    assertThat(result.getString("driver.policy.retry")).isEqualTo("retry-policy");
     assertThat(result.getString("driver.policy.lbp.name")).isEqualTo("lbp");
     assertThat(result.getString("driver.policy.lbp.dse.childPolicy")).isEqualTo("dseChild");
     assertThat(result.getString("driver.policy.lbp.dcAwareRoundRobin.localDc"))
@@ -495,7 +492,7 @@ public class MainTest {
     assertThat(result.getString("driver.policy.lbp.whiteList.childPolicy"))
         .isEqualTo("whiteListChild");
     assertThat(result.getString("driver.policy.lbp.whiteList.hosts")).isEqualTo("wh1, wh2");
-    assertThat(result.getString("driver.policy.specexec")).isEqualTo("specexec");
+    assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(29);
     assertThat(result.getString("batch.mode")).isEqualTo("batch-mode");
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
     assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);

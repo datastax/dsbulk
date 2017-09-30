@@ -837,21 +837,11 @@ This must be a comma-separated list of hosts, each specified by a host-name or i
 
 Default: **&lt;unspecified&gt;**.
 
-#### -retry,--driver.policy.retry _&lt;string&gt;_
+#### -maxRetries,--driver.policy.maxRetries _&lt;number&gt;_
 
-The simple or fully-qualified class name of the `RetryPolicy` implementation to use.
+Maximum number of retries for a timed-out request.
 
-If not specified, defaults to the driver's default retry policy (`com.datastax.driver.core.policies.DefaultRetryPolicy`).
-
-Default: **&lt;unspecified&gt;**.
-
-#### ---driver.policy.specexec _&lt;string&gt;_
-
-The simple or fully-qualified class name of the `SpeculativeExecutionPolicy` implementation to use.
-
-If not specified, defaults to the driver's default speculative execution policy (`com.datastax.driver.core.policies.NoSpeculativeExecutionPolicy`).
-
-Default: **&lt;unspecified&gt;**.
+Default: **10**.
 
 <a name="driver.pooling"></a>
 ### Driver Pooling Settings

@@ -37,6 +37,7 @@ public class SettingValidatorTest {
     "--driver.query.idempotence=notAboolean",
     "--driver.timestampGenerator=badInstance",
     "--driver.addressTranslator=badINstance",
+    "--driver.policy.maxRetries=notANumber",
     "--connector.csv.skipLines=notANumber",
     "--connector.csv.maxLines=notANumber",
     "--connector.csv.recursive=tralse",
