@@ -29,10 +29,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 /** */
 public class MetricsManager implements AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MetricsManager.class);
 
   private final MetricRegistry registry = new MetricRegistry();
   private final MetricsCollectingExecutionListener listener =
@@ -213,6 +217,7 @@ public class MetricsManager implements AutoCloseable {
   }
 
   private void reportFinalMetrics() {
+    LOGGER.info("Final stats:");
     if (resultMappingsReporter != null) {
       resultMappingsReporter.report();
     }

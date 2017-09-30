@@ -11,17 +11,17 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 public enum WorkflowType {
   LOAD {
     @Override
-    public Workflow newWorkflow(LoaderConfig config) throws Exception {
+    public Workflow newWorkflow(LoaderConfig config) {
       return new LoadWorkflow(config);
     }
   },
 
   UNLOAD {
     @Override
-    public Workflow newWorkflow(LoaderConfig config) throws Exception {
+    public Workflow newWorkflow(LoaderConfig config) {
       return new UnloadWorkflow(config);
     }
   };
 
-  public abstract Workflow newWorkflow(LoaderConfig config) throws Exception;
+  public abstract Workflow newWorkflow(LoaderConfig config);
 }

@@ -324,17 +324,17 @@ public class SettingsValidatorTest {
   @Test
   public void should_error_unknown_lbp() throws Exception {
     new Main(
-        new String[] {
-          "load",
-          "--connector.csv.url=/path/to/my/file",
-          "-m",
-          "c1=c2",
-          "--driver.policy.lbp.name",
-          "unknown",
-          "--schema.query",
-          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
-        })
-    .run();
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "c1=c2",
+              "--driver.policy.lbp.name",
+              "unknown",
+              "--schema.query",
+              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+            })
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Invalid value at 'policy.lbp.name'");
   }
@@ -342,19 +342,19 @@ public class SettingsValidatorTest {
   @Test
   public void should_error_lbp_bad_child_policy() throws Exception {
     new Main(
-        new String[] {
-          "load",
-          "--connector.csv.url=/path/to/my/file",
-          "-m",
-          "c1=c2",
-          "--driver.policy.lbp.name",
-          "dse",
-          "--driver.policy.lbp.dse.childPolicy",
-          "junk",
-          "--schema.query",
-          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
-        })
-    .run();
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "c1=c2",
+              "--driver.policy.lbp.name",
+              "dse",
+              "--driver.policy.lbp.dse.childPolicy",
+              "junk",
+              "--schema.query",
+              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+            })
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Invalid value at 'dse.childPolicy'");
   }
@@ -362,18 +362,18 @@ public class SettingsValidatorTest {
   @Test
   public void should_error_lbp_chaining_loop_self() throws Exception {
     new Main(
-        new String[] {
-          "load",
-          "--connector.csv.url=/path/to/my/file",
-          "-m",
-          "c1=c2",
-          "--driver.policy.lbp.name",
-          "dse",
-          "--driver.policy.lbp.dse.childPolicy",
-          "dse",
-          "--schema.query",
-          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
-        })
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "c1=c2",
+              "--driver.policy.lbp.name",
+              "dse",
+              "--driver.policy.lbp.dse.childPolicy",
+              "dse",
+              "--schema.query",
+              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+            })
         .run();
 
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
@@ -383,23 +383,23 @@ public class SettingsValidatorTest {
   @Test
   public void should_error_lbp_chaining_loop() throws Exception {
     new Main(
-        new String[] {
-          "load",
-          "--connector.csv.url=/path/to/my/file",
-          "-m",
-          "c1=c2",
-          "--driver.policy.lbp.name",
-          "dse",
-          "--driver.policy.lbp.dse.childPolicy",
-          "whiteList",
-          "--driver.policy.lbp.whiteList.childPolicy",
-          "tokenAware",
-          "--driver.policy.lbp.tokenAware.childPolicy",
-          "whiteList",
-          "--schema.query",
-          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
-        })
-    .run();
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "c1=c2",
+              "--driver.policy.lbp.name",
+              "dse",
+              "--driver.policy.lbp.dse.childPolicy",
+              "whiteList",
+              "--driver.policy.lbp.whiteList.childPolicy",
+              "tokenAware",
+              "--driver.policy.lbp.tokenAware.childPolicy",
+              "whiteList",
+              "--schema.query",
+              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+            })
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .contains(

@@ -8,7 +8,6 @@ package com.datastax.dsbulk.engine;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import com.datastax.driver.core.Metadata;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -45,14 +44,19 @@ public class UnloadWorkflow implements Workflow {
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.UNLOAD);
   private final LoaderConfig config;
 
-  private DriverSettings driverSettings;
-  private ConnectorSettings connectorSettings;
   private SchemaSettings schemaSettings;
-  private ExecutorSettings executorSettings;
-  private LogSettings logSettings;
-  private CodecSettings codecSettings;
-  private MonitoringSettings monitoringSettings;
-  private EngineSettings engineSettings;
+  private Scheduler readsScheduler;
+  private Scheduler mapperScheduler;
+  private Connector connector;
+  private MetricsManager metricsManager;
+  private ReactorBulkReader executor;
+  private LogManager logManager;
+  private ReadResultMapper readResultMapper;
+  private DseCluster cluster;
+  private int maxConcurrentReads;
+  private int maxMappingThreads;
+
+  private volatile boolean closed = false;
 
   UnloadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -63,86 +67,81 @@ public class UnloadWorkflow implements Workflow {
     SettingsManager settingsManager = new SettingsManager(config, executionId, WorkflowType.UNLOAD);
     settingsManager.loadConfiguration();
     settingsManager.logEffectiveSettings();
-    logSettings = settingsManager.getLogSettings();
-    driverSettings = settingsManager.getDriverSettings();
-    connectorSettings = settingsManager.getConnectorSettings();
+    LogSettings logSettings = settingsManager.getLogSettings();
+    DriverSettings driverSettings = settingsManager.getDriverSettings();
+    ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
     schemaSettings = settingsManager.getSchemaSettings();
-    executorSettings = settingsManager.getExecutorSettings();
-    codecSettings = settingsManager.getCodecSettings();
-    monitoringSettings = settingsManager.getMonitoringSettings();
-    engineSettings = settingsManager.getEngineSettings();
+    ExecutorSettings executorSettings = settingsManager.getExecutorSettings();
+    CodecSettings codecSettings = settingsManager.getCodecSettings();
+    MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
+    EngineSettings engineSettings = settingsManager.getEngineSettings();
+    maxConcurrentReads = executorSettings.getMaxConcurrentOps();
+    maxMappingThreads = engineSettings.getMaxMappingThreads();
+    readsScheduler = Schedulers.newParallel("range-reads", maxConcurrentReads);
+    mapperScheduler = Schedulers.newParallel("result-mapper", maxMappingThreads);
+    connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
+    connector.init();
+    cluster = driverSettings.newCluster();
+    String keyspace = schemaSettings.getKeyspace();
+    DseSession session = cluster.connect(keyspace);
+    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD);
+    metricsManager.init();
+    logManager = logSettings.newLogManager(cluster);
+    logManager.init();
+    executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
+    RecordMetadata recordMetadata = connector.getRecordMetadata();
+    ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
+    readResultMapper =
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
   }
 
   @Override
-  public void execute() throws WorkflowEngineExecutionException {
-
-    LOGGER.info("Starting unload workflow engine execution " + executionId);
+  public void execute() {
+    LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-
-    int maxConcurrentReads = executorSettings.getMaxConcurrentOps();
-    int maxMappingThreads = engineSettings.getMaxMappingThreads();
-
-    Scheduler readsScheduler = Schedulers.newParallel("range-reads", maxConcurrentReads);
-    Scheduler mapperScheduler = Schedulers.newParallel("result-mapper", maxMappingThreads);
-
-    String keyspace = config.getString("schema.keyspace");
-    if (keyspace != null && keyspace.isEmpty()) {
-      keyspace = null;
-    }
-    if (keyspace != null) {
-      keyspace = Metadata.quoteIfNecessary(keyspace);
-    }
-
-    try (DseCluster cluster = driverSettings.newCluster();
-        DseSession session = cluster.connect(keyspace);
-        Connector connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
-        MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD);
-        LogManager logManager = logSettings.newLogManager(cluster);
-        ReactorBulkReader executor =
-            executorSettings.newReadExecutor(session, metricsManager.getExecutionListener())) {
-
-      connector.init();
-      metricsManager.init();
-      logManager.init();
-
-      RecordMetadata recordMetadata = connector.getRecordMetadata();
-      ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
-      ReadResultMapper readResultMapper =
-          schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-
-      Flux<Record> records =
-          Flux.fromIterable(schemaSettings.createReadStatements(cluster))
-              .flatMap(
-                  statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
-                  maxConcurrentReads)
-              .compose(logManager.newReadErrorHandler())
-              .parallel(maxMappingThreads)
-              .runOn(mapperScheduler)
-              .map(readResultMapper::map)
-              .sequential()
-              .compose(metricsManager.newResultMapperMonitor())
-              .compose(logManager.newResultMapperErrorHandler())
-              .publish()
-              .autoConnect(2);
-
-      // publish results to two subscribers: the connector,
-      // and a dummy blockLast subscription to block until complete
-      records.subscribe(connector.write());
-      records.blockLast();
-
-    } catch (Exception e) {
-      throw new WorkflowEngineExecutionException(
-          "Uncaught exception during unload workflow engine execution " + executionId, e);
-    } finally {
-      readsScheduler.dispose();
-      mapperScheduler.dispose();
-    }
-
+    Flux<Record> records =
+        Flux.fromIterable(schemaSettings.createReadStatements(cluster))
+            .flatMap(
+                statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
+                maxConcurrentReads)
+            .compose(logManager.newReadErrorHandler())
+            .parallel(maxMappingThreads)
+            .runOn(mapperScheduler)
+            .map(readResultMapper::map)
+            .sequential()
+            .compose(metricsManager.newResultMapperMonitor())
+            .compose(logManager.newResultMapperErrorHandler())
+            .publish()
+            .autoConnect(2);
+    // publish results to two subscribers: the connector,
+    // and a dummy blockLast subscription to block until complete
+    records.subscribe(connector.write());
+    records.blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
-    LOGGER.info(
-        "Unload workflow engine execution {} finished in {}.",
-        executionId,
-        WorkflowUtils.formatElapsed(seconds));
+    LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+  }
+
+  @Override
+  public synchronized void close() throws Exception {
+    if (!closed) {
+      LOGGER.info("{} closing.", this);
+      Exception e = WorkflowUtils.closeQuietly(connector, null);
+      e = WorkflowUtils.closeQuietly(readsScheduler, e);
+      e = WorkflowUtils.closeQuietly(mapperScheduler, e);
+      e = WorkflowUtils.closeQuietly(executor, e);
+      e = WorkflowUtils.closeQuietly(metricsManager, e);
+      e = WorkflowUtils.closeQuietly(logManager, e);
+      closed = true;
+      LOGGER.info("{} closed.", this);
+      if (e != null) {
+        throw e;
+      }
+    }
+  }
+
+  @Override
+  public String toString() {
+    return "Unload workflow engine execution " + executionId;
   }
 }

@@ -11,12 +11,14 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.google.common.base.Throwables;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.util.Random;
+import reactor.core.Disposable;
 
 public class WorkflowUtils {
 
@@ -41,5 +43,43 @@ public class WorkflowUtils {
     } else {
       return String.format("%d seconds", sec);
     }
+  }
+
+  public static Exception closeQuietly(AutoCloseable closeable, Exception suppressed) {
+    if (closeable != null) {
+      try {
+        closeable.close();
+        return null;
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } catch (Exception e) {
+        if (suppressed != null) {
+          e.addSuppressed(suppressed);
+        }
+        return e;
+      }
+    }
+    return suppressed;
+  }
+
+  public static Exception closeQuietly(Disposable disposable, Exception suppressed) {
+    if (disposable != null && !disposable.isDisposed()) {
+      try {
+        disposable.dispose();
+        return null;
+      } catch (Exception e) {
+        // Reactor framework often wraps InterruptedException
+        Throwable root = Throwables.getRootCause(e);
+        if (root instanceof InterruptedException) {
+          Thread.currentThread().interrupt();
+        } else {
+          if (suppressed != null) {
+            e.addSuppressed(suppressed);
+          }
+          return e;
+        }
+      }
+    }
+    return suppressed;
   }
 }

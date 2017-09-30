@@ -6,8 +6,8 @@
  */
 package com.datastax.dsbulk.connectors.api;
 
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
@@ -29,6 +29,24 @@ public interface Connector extends AutoCloseable {
   Subscriber<Record> write();
 
   /**
+   * Validatesthe connector settings.
+   *
+   * @param settings the settings to validate.
+   * @param read whether the connector should be configured for reading or writing.
+   * @throws BulkConfigurationException if the connector fails to validate its settings properly.
+   */
+  void validate(LoaderConfig settings, boolean read) throws BulkConfigurationException;
+
+  /**
+   * Configures the connector.
+   *
+   * @param settings the connector settings.
+   * @param read whether the connector should be configured for reading or writing.
+   * @throws BulkConfigurationException if the connector fails to configure properly.
+   */
+  default void configure(LoaderConfig settings, boolean read) throws BulkConfigurationException {}
+
+  /**
    * Initializes the connector.
    *
    * @throws Exception if the connector fails to initialize properly.
@@ -41,15 +59,6 @@ public interface Connector extends AutoCloseable {
    * @throws Exception if the connector fails to close properly.
    */
   default void close() throws Exception {}
-
-  /**
-   * Configures the connector.
-   *
-   * @param settings the connector settings.
-   * @param read whether the connector should be configured for reading or writing.
-   * @throws Exception if the connector fails to configure properly.
-   */
-  default void configure(LoaderConfig settings, boolean read) throws Exception {}
 
   /**
    * Returns metadata about the records that this connector can read or write.
@@ -65,6 +74,4 @@ public interface Connector extends AutoCloseable {
   default RecordMetadata getRecordMetadata() {
     return RecordMetadata.DEFAULT;
   }
-
-  void validate(LoaderConfig settings, boolean read) throws BulkConfigurationException;
 }

@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.commons.internal.config;
 
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.typesafe.config.ConfigException;
 
 public class ConfigUtils {
@@ -25,6 +26,7 @@ public class ConfigUtils {
               + "."
               + errorMsg
               + ". See settings.md or help for more info.",
+          e,
           path);
     } else if (e instanceof ConfigException.Parse) {
       return new BulkConfigurationException(
@@ -33,10 +35,11 @@ public class ConfigUtils {
               + ". "
               + e.getMessage()
               + ". See settings.md or help for more info.",
+          e,
           path);
     } else {
       // Catch-all for other types of exceptions.
-      return new BulkConfigurationException(e.getMessage(), path);
+      return new BulkConfigurationException(e.getMessage(), e, path);
     }
   }
 }

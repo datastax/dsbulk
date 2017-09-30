@@ -8,10 +8,12 @@ package com.datastax.dsbulk.engine;
 
 import static com.datastax.dsbulk.engine.internal.OptionUtils.DEFAULT;
 
+import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.HelpUtils;
 import com.datastax.dsbulk.engine.internal.OptionUtils;
+import com.google.common.base.Throwables;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueType;
@@ -71,9 +73,10 @@ public class Main {
       DefaultLoaderConfig config = new DefaultLoaderConfig(cmdLineConfig.withFallback(DEFAULT));
       config.checkValid(REFERENCE);
       WorkflowType workflowType = WorkflowType.valueOf(args[0].toUpperCase());
-      Workflow workflow = workflowType.newWorkflow(config);
-      workflow.init();
-      workflow.execute();
+      WorkflowThread workflowThread = new WorkflowThread(workflowType, config);
+      Runtime.getRuntime().addShutdownHook(new CleanupThread(workflowThread));
+      workflowThread.start();
+      workflowThread.join();
       return 0;
     } catch (HelpRequestException e) {
       HelpUtils.emitGlobalHelp();
@@ -86,6 +89,9 @@ public class Main {
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
       return 1;
+    } catch (Error e) {
+      LOGGER.error(e.getMessage(), e);
+      throw e;
     }
   }
 
@@ -152,7 +158,6 @@ public class Main {
   private static void initDefaultConfig(String[] optionArgs) {
     // If the user specified the -f option (giving us an app config path),
     // set the config.file property to tell TypeSafeConfig.
-
     String appConfigPath = getAppConfigPath(optionArgs);
     if (appConfigPath != null) {
       System.setProperty("config.file", appConfigPath);
@@ -173,7 +178,6 @@ public class Main {
         break;
       }
     }
-
     return appConfigPath;
   }
 
@@ -182,12 +186,71 @@ public class Main {
     if (connectorName.isEmpty()) {
       connectorName = null;
     }
-
     String connectorNameFromArgs = getConnectorNameFromArgs(optionArgs);
     if (connectorNameFromArgs != null && !connectorNameFromArgs.isEmpty()) {
       connectorName = connectorNameFromArgs;
     }
     return connectorName;
+  }
+
+  private static class WorkflowThread extends Thread {
+
+    private final WorkflowType workflowType;
+    private final LoaderConfig config;
+
+    private WorkflowThread(WorkflowType workflowType, LoaderConfig config) {
+      super("workflow-runner");
+      this.workflowType = workflowType;
+      this.config = config;
+    }
+
+    @Override
+    public void run() {
+      Workflow workflow = workflowType.newWorkflow(config);
+      try {
+        workflow.init();
+        workflow.execute();
+      } catch (Throwable t) {
+        // Reactor framework often wraps InterruptedException
+        Throwable root = Throwables.getRootCause(t);
+        if (root instanceof InterruptedException) {
+          LOGGER.error("{} aborted.", workflow);
+          Thread.currentThread().interrupt();
+        } else {
+          LOGGER.error(String.format("%s failed.", workflow), t);
+          if (t instanceof Error) {
+            throw ((Error) t);
+          }
+        }
+      } finally {
+        try {
+          workflow.close();
+        } catch (Exception e) {
+          LOGGER.error(String.format("%s could not be closed.", workflow), e);
+        }
+      }
+    }
+  }
+
+  private static class CleanupThread extends Thread {
+
+    private final WorkflowThread workflowThread;
+
+    private CleanupThread(WorkflowThread workflowThread) {
+      super("cleanup=thread");
+      this.workflowThread = workflowThread;
+    }
+
+    @Override
+    public void run() {
+      try {
+        if (workflowThread.isAlive()) {
+          workflowThread.interrupt();
+          workflowThread.join();
+        }
+      } catch (Exception ignored) {
+      }
+    }
   }
 
   // Simple exception indicating that the user wants to know the

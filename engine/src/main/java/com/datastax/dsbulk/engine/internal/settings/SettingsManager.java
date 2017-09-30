@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.typesafe.config.ConfigRenderOptions;
@@ -42,7 +43,7 @@ public class SettingsManager {
     this.workflowType = workflowType;
   }
 
-  public void loadConfiguration() throws Exception {
+  public void loadConfiguration() throws BulkConfigurationException {
     logSettings = new LogSettings(config.getConfig("log"), executionId);
     logSettings.validateConfig(workflowType);
     driverSettings = new DriverSettings(config.getConfig("driver"), executionId);
