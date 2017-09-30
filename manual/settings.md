@@ -214,7 +214,7 @@ Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QU
 
 Default: **"LOCAL_ONE"**.
 
-#### ---executor.maxPerSecond _&lt;number&gt;_
+#### --executor.maxPerSecond _&lt;number&gt;_
 
 The maximum number of concurrent requests per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many requests as their number of inner statements.
 
@@ -384,7 +384,7 @@ Only one character can be specified. Note that this setting applies to all files
 
 Default: **"\\"**.
 
-#### ---connector.csv.fileNameFormat _&lt;string&gt;_
+#### --connector.csv.fileNameFormat _&lt;string&gt;_
 
 The file name format to use when writing.
 
@@ -394,7 +394,7 @@ The file name must comply with the formatting rules of `String.format()`, and mu
 
 Default: **"output-%0,6d.csv"**.
 
-#### ---connector.csv.fileNamePattern _&lt;string&gt;_
+#### --connector.csv.fileNamePattern _&lt;string&gt;_
 
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`.
 
@@ -418,7 +418,7 @@ Only one character can be specified. Note that this setting applies to all files
 
 Default: **"\""**.
 
-#### ---connector.csv.recursive _&lt;boolean&gt;_
+#### --connector.csv.recursive _&lt;boolean&gt;_
 
 Whether to scan for files in subdirectories of the root directory.
 
@@ -488,7 +488,7 @@ By default, empty strings are converted to `null`s in load workflows, and conver
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---schema.nullToUnset _&lt;boolean&gt;_
+#### --schema.nullToUnset _&lt;boolean&gt;_
 
 Whether or not to map `null` input values to "unset" in the database, meaning don't modify a potentially pre-existing value of this field for this row.
 
@@ -520,7 +520,7 @@ The column names in the SELECT clause will be used to match column names specifi
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---schema.recordMetadata _&lt;string&gt;_
+#### --schema.recordMetadata _&lt;string&gt;_
 
 Record metadata.
 
@@ -551,19 +551,19 @@ Only applicable for load workflows, ignored otherwise.
 
 See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more information.
 
-#### ---batch.bufferSize _&lt;number&gt;_
+#### --batch.bufferSize _&lt;number&gt;_
 
 The buffer size to use when batching.
 
 Default: **10000**.
 
-#### ---batch.maxBatchSize _&lt;number&gt;_
+#### --batch.maxBatchSize _&lt;number&gt;_
 
 The maximum batch size.
 
 Default: **100**.
 
-#### ---batch.mode _&lt;string&gt;_
+#### --batch.mode _&lt;string&gt;_
 
 The grouping mode. Valid values are:
 - **PARTITION_KEY**: Groups together statements that share the same partition key. This is the default mode, and the preferred one.
@@ -580,7 +580,7 @@ When writing, these settings determine how record fields emitted by connectors a
 
 When unloading, these settings determine how row cells emitted by DSE are formatted.
 
-#### ---codec.booleanWords _&lt;list&lt;string&gt;&gt;_
+#### --codec.booleanWords _&lt;list&lt;string&gt;&gt;_
 
 All representations of true and false supported by dsbulk. Each representation is of the form `true-value:false-value`, case-insensitive.
 
@@ -590,7 +590,7 @@ In unload workflows, the first true-false pair will be used to format booleans; 
 
 Default: **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
 
-#### ---codec.date _&lt;string&gt;_
+#### --codec.date _&lt;string&gt;_
 
 The temporal pattern to use for `String` to CQL date conversions. This can be either:
 
@@ -607,13 +607,13 @@ The locale to use for locale-sensitive conversions.
 
 Default: **"en_US"**.
 
-#### ---codec.number _&lt;string&gt;_
+#### --codec.number _&lt;string&gt;_
 
 The `DecimalFormat` pattern to use for `String` to `Number` conversions. See `java.text.DecimalFormat` for details about the pattern syntax to use.
 
 Default: **"#,###.##"**.
 
-#### ---codec.time _&lt;string&gt;_
+#### --codec.time _&lt;string&gt;_
 
 The temporal pattern to use for `String` to CQL time conversions. This can be either:
 
@@ -630,7 +630,7 @@ The time zone to use for temporal conversions that do not convey any explicit ti
 
 Default: **"UTC"**.
 
-#### ---codec.timestamp _&lt;string&gt;_
+#### --codec.timestamp _&lt;string&gt;_
 
 The temporal pattern to use for `String` to CQL timestamp conversions. This can be either:
 
@@ -665,7 +665,7 @@ Note that all nodes in a cluster must accept connections on the same port number
 
 Default: **9042**.
 
-#### ---driver.addressTranslator _&lt;string&gt;_
+#### --driver.addressTranslator _&lt;string&gt;_
 
 The simple or fully-qualified class name of the address translator to use.
 
@@ -673,7 +673,7 @@ This is only needed if the nodes are not directly reachable from the driver (for
 
 Default: **"IdentityTranslator"**.
 
-#### ---driver.timestampGenerator _&lt;string&gt;_
+#### --driver.timestampGenerator _&lt;string&gt;_
 
 The simple or fully-qualified class name of the timestamp generator to use. Built-in options are:
 
@@ -708,7 +708,7 @@ Providers that accept this setting:
 
 Default: **"cassandra"**.
 
-#### ---driver.auth.provider _&lt;string&gt;_
+#### --driver.auth.provider _&lt;string&gt;_
 
 The name of the AuthProvider to use.
  - **None**: no authentication.
@@ -721,7 +721,7 @@ The name of the AuthProvider to use.
 
 Default: **"None"**.
 
-#### ---driver.auth.authorizationId _&lt;string&gt;_
+#### --driver.auth.authorizationId _&lt;string&gt;_
 
 The authorization ID to use. Optional.
 
@@ -733,7 +733,7 @@ Providers that accept this setting:
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.auth.keyTab _&lt;string&gt;_
+#### --driver.auth.keyTab _&lt;string&gt;_
 
 The path of the Kerberos keytab file to use for authentication. Optional.
 
@@ -744,7 +744,7 @@ Providers that accept this setting:
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.auth.principal _&lt;string&gt;_
+#### --driver.auth.principal _&lt;string&gt;_
 
 The Kerberos principal to use. Required.
 
@@ -753,7 +753,7 @@ Providers that accept this setting:
 
 Default: **"user@DATASTAX.COM"**.
 
-#### ---driver.auth.saslProtocol _&lt;string&gt;_
+#### --driver.auth.saslProtocol _&lt;string&gt;_
 
 The SASL protocol name to use. Required.
 
@@ -781,25 +781,25 @@ NOTE: It is critical for a token-aware policy to be used in the chain in order t
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel _&lt;boolean&gt;_
+#### --driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel _&lt;boolean&gt;_
 
 
 
 Default: **false**.
 
-#### ---driver.policy.lbp.dcAwareRoundRobin.localDc _&lt;string&gt;_
+#### --driver.policy.lbp.dcAwareRoundRobin.localDc _&lt;string&gt;_
 
 
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc _&lt;number&gt;_
+#### --driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc _&lt;number&gt;_
 
 
 
 Default: **0**.
 
-#### ---driver.policy.lbp.dse.childPolicy _&lt;string&gt;_
+#### --driver.policy.lbp.dse.childPolicy _&lt;string&gt;_
 
 The child policy being wrapped.
 
@@ -807,7 +807,7 @@ It is required to be one of the policies mentioned above.
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.policy.lbp.tokenAware.childPolicy _&lt;string&gt;_
+#### --driver.policy.lbp.tokenAware.childPolicy _&lt;string&gt;_
 
 The child policy being wrapped.
 
@@ -815,13 +815,13 @@ It is required to be one of the policies mentioned above.
 
 Default: **"roundRobin"**.
 
-#### ---driver.policy.lbp.tokenAware.shuffleReplicas _&lt;boolean&gt;_
+#### --driver.policy.lbp.tokenAware.shuffleReplicas _&lt;boolean&gt;_
 
 
 
 Default: **true**.
 
-#### ---driver.policy.lbp.whiteList.childPolicy _&lt;string&gt;_
+#### --driver.policy.lbp.whiteList.childPolicy _&lt;string&gt;_
 
 The child policy being wrapped.
 
@@ -829,7 +829,7 @@ It is required to be one of the policies mentioned above.
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.policy.lbp.whiteList.hosts _&lt;string&gt;_
+#### --driver.policy.lbp.whiteList.hosts _&lt;string&gt;_
 
 List of hosts to white list.
 
@@ -850,19 +850,19 @@ Pooling-specific settings.
 
 The driver maintains a connection pool to each node, according to the distance assigned to it by the load balancing policy. If the distance is `IGNORED`, no connections are maintained.
 
-#### ---driver.pooling.heartbeat _&lt;string&gt;_
+#### --driver.pooling.heartbeat _&lt;string&gt;_
 
 The heartbeat interval. If a connection stays idle for that duration (no reads), the driver sends a dummy message on it to make sure it's still alive. If not, the connection is trashed and replaced.
 
 Default: **"30 seconds"**.
 
-#### ---driver.pooling.local.connections _&lt;number&gt;_
+#### --driver.pooling.local.connections _&lt;number&gt;_
 
 The number of connections in the pool for nodes at "local" distance.
 
 Default: **1**.
 
-#### ---driver.pooling.local.requests _&lt;number&gt;_
+#### --driver.pooling.local.requests _&lt;number&gt;_
 
 The maximum number of requests that can be executed concurrently on a connection.
 
@@ -870,13 +870,13 @@ This must be between 1 and 32768.
 
 Default: **32768**.
 
-#### ---driver.pooling.remote.connections _&lt;number&gt;_
+#### --driver.pooling.remote.connections _&lt;number&gt;_
 
 The number of connections in the pool for nodes at "remote" distance.
 
 Default: **1**.
 
-#### ---driver.pooling.remote.requests _&lt;number&gt;_
+#### --driver.pooling.remote.requests _&lt;number&gt;_
 
 The maximum number of requests that can be executed concurrently on a connection.
 
@@ -889,7 +889,7 @@ Default: **1024**.
 
 Native Protocol-specific settings.
 
-#### ---driver.protocol.compression _&lt;string&gt;_
+#### --driver.protocol.compression _&lt;string&gt;_
 
 The compression algorithm to use.
 Valid values are: `NONE`, `LZ4`, `SNAPPY`.
@@ -909,7 +909,7 @@ Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QU
 
 Default: **"LOCAL_ONE"**.
 
-#### ---driver.query.fetchSize _&lt;number&gt;_
+#### --driver.query.fetchSize _&lt;number&gt;_
 
 The page size. This controls how many rows will be retrieved simultaneously in a single network round trip (the goal being to avoid loading too many results in memory at the same time).
 
@@ -917,13 +917,13 @@ Only applicable in unload scenarios, ignored otherwise.
 
 Default: **5000**.
 
-#### ---driver.query.idempotence _&lt;boolean&gt;_
+#### --driver.query.idempotence _&lt;boolean&gt;_
 
 The default idempotence of statements generated by the loader.
 
 Default: **true**.
 
-#### ---driver.query.serialConsistency _&lt;string&gt;_
+#### --driver.query.serialConsistency _&lt;string&gt;_
 
 The serial consistency level to use for writes.
 
@@ -938,7 +938,7 @@ Default: **"LOCAL_SERIAL"**.
 
 Socket-related settings.
 
-#### ---driver.socket.readTimeout _&lt;string&gt;_
+#### --driver.socket.readTimeout _&lt;string&gt;_
 
 How long the driver waits for a request to complete. This is a global limit on the duration of a `session.execute()` call, including any internal retries the driver might do.
 
@@ -951,7 +951,7 @@ Encryption-specific settings.
 
 For more information about how to configure this section, see the Java Secure Socket Extension (JSSE) Reference Guide: http://docs.oracle.com/javase/6/docs/technotes/guides/security/jsse/JSSERefGuide.html. You can also check the DataStax Java driver documentation on SSL: http://docs.datastax.com/en/developer/java-driver-dse/latest/manual/ssl/
 
-#### ---driver.ssl.cipherSuites _&lt;list&gt;_
+#### --driver.ssl.cipherSuites _&lt;list&gt;_
 
 The cipher suites to enable.
 
@@ -961,7 +961,7 @@ This property is optional. If it is not present, the driver won't explicitly ena
 
 Default: **[]**.
 
-#### ---driver.ssl.keystore.algorithm _&lt;string&gt;_
+#### --driver.ssl.keystore.algorithm _&lt;string&gt;_
 
 The algorithm to use.
 
@@ -969,13 +969,13 @@ Valid values are: `SunX509`, `NewSunX509`.
 
 Default: **"SunX509"**.
 
-#### ---driver.ssl.keystore.password _&lt;string&gt;_
+#### --driver.ssl.keystore.password _&lt;string&gt;_
 
 The keystore password.
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.ssl.keystore.path _&lt;string&gt;_
+#### --driver.ssl.keystore.path _&lt;string&gt;_
 
 The path of the keystore file.
 
@@ -983,7 +983,7 @@ This setting is optional. If left unspecified, no client authentication will be 
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.ssl.openssl.keyCertChain _&lt;string&gt;_
+#### --driver.ssl.openssl.keyCertChain _&lt;string&gt;_
 
 The path of the certificate chain file.
 
@@ -991,13 +991,13 @@ This setting is optional. If left unspecified, no client authentication will be 
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.ssl.openssl.privateKey _&lt;string&gt;_
+#### --driver.ssl.openssl.privateKey _&lt;string&gt;_
 
 The path of the private key file.
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.ssl.provider _&lt;string&gt;_
+#### --driver.ssl.provider _&lt;string&gt;_
 
 The SSL provider to use.
 
@@ -1013,7 +1013,7 @@ Follow these instructions to find out how to add this dependency: http://netty.i
 
 Default: **"None"**.
 
-#### ---driver.ssl.truststore.algorithm _&lt;string&gt;_
+#### --driver.ssl.truststore.algorithm _&lt;string&gt;_
 
 The algorithm to use.
 
@@ -1021,13 +1021,13 @@ Valid values are: `PKIX`, `SunX509`.
 
 Default: **"SunX509"**.
 
-#### ---driver.ssl.truststore.password _&lt;string&gt;_
+#### --driver.ssl.truststore.password _&lt;string&gt;_
 
 The truststore password.
 
 Default: **&lt;unspecified&gt;**.
 
-#### ---driver.ssl.truststore.path _&lt;string&gt;_
+#### --driver.ssl.truststore.path _&lt;string&gt;_
 
 The path of the truststore file.
 
@@ -1040,7 +1040,7 @@ Default: **&lt;unspecified&gt;**.
 
 Workflow Engine-specific settings.
 
-#### ---engine.maxMappingThreads _&lt;string&gt;_
+#### --engine.maxMappingThreads _&lt;string&gt;_
 
 The maximum number of threads to allocate for serializing and deserializing, as well as for mapping records or results.
 
@@ -1055,7 +1055,7 @@ Default: **"1C"**.
 
 Executor-specific settings.
 
-#### ---executor.maxPerSecond _&lt;number&gt;_
+#### --executor.maxPerSecond _&lt;number&gt;_
 
 The maximum number of concurrent requests per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many requests as their number of inner statements.
 
@@ -1063,7 +1063,7 @@ Setting this option to any negative value will disable it.
 
 Default: **100000**.
 
-#### ---executor.continuousPaging.enabled _&lt;boolean&gt;_
+#### --executor.continuousPaging.enabled _&lt;boolean&gt;_
 
 Whether or not continuous paging is enabled.
 
@@ -1072,7 +1072,7 @@ of this setting.
 
 Default: **true**.
 
-#### ---executor.continuousPaging.maxPages _&lt;number&gt;_
+#### --executor.continuousPaging.maxPages _&lt;number&gt;_
 
 The maximum number of pages to retrieve.
 
@@ -1080,7 +1080,7 @@ Setting this value to zero retrieves all pages available.
 
 Default: **0**.
 
-#### ---executor.continuousPaging.maxPagesPerSecond _&lt;number&gt;_
+#### --executor.continuousPaging.maxPagesPerSecond _&lt;number&gt;_
 
 The maximum number of pages per second.
 
@@ -1088,14 +1088,14 @@ Setting this value to zero indicates no limit.
 
 Default: **0**.
 
-#### ---executor.continuousPaging.pageSize _&lt;number&gt;_
+#### --executor.continuousPaging.pageSize _&lt;number&gt;_
 
 The size of the page. The unit to use is determined by the *executor.continuousPaging.pageUnit* setting.
 
 
 Default: **5000**.
 
-#### ---executor.continuousPaging.pageUnit _&lt;string&gt;_
+#### --executor.continuousPaging.pageUnit _&lt;string&gt;_
 
 The unit to use for the *executor.continuousPaging.pageSize* setting.
 
@@ -1103,7 +1103,7 @@ Possible values are: `ROWS`, `BYTES`.
 
 Default: **"ROWS"**.
 
-#### ---executor.maxConcurrentOps _&lt;string&gt;_
+#### --executor.maxConcurrentOps _&lt;string&gt;_
 
 The maximum number operations (reads or writes) that can be issued concurrently for the same table,
 for a given workflow.
@@ -1114,7 +1114,7 @@ The special syntax `NC` can be used to specify a number of threads that is a mul
 
 Default: **"1C"**.
 
-#### ---executor.maxInFlight _&lt;number&gt;_
+#### --executor.maxInFlight _&lt;number&gt;_
 
 The maximum number of "in-flight" requests. In other words, sets the maximum number of concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard against workflows that generate more requests than they can handle. Batch statements count for as many requests as their number of inner statements.
 
@@ -1122,7 +1122,7 @@ Setting this option to any negative value will disable it.
 
 Default: **1000**.
 
-#### ---executor.maxThreads _&lt;string&gt;_
+#### --executor.maxThreads _&lt;string&gt;_
 
 The maximum number of threads to allocate for the executor. These threads are used to submit requests and process responses.
 
@@ -1155,7 +1155,7 @@ Setting this value to `.` denotes the current working directory.
 
 Default: **"./logs"**.
 
-#### ---log.maxThreads _&lt;string&gt;_
+#### --log.maxThreads _&lt;string&gt;_
 
 The maximum number of threads to allocate to log files management.
 
@@ -1163,7 +1163,7 @@ The special syntax `NC` can be used to specify a number of threads that is a mul
 
 Default: **"4"**.
 
-#### ---log.stmt.level _&lt;string&gt;_
+#### --log.stmt.level _&lt;string&gt;_
 
 The desired log level.
 
@@ -1174,7 +1174,7 @@ Possible values are:
 
 Default: **"EXTENDED"**.
 
-#### ---log.stmt.maxBoundValueLength _&lt;number&gt;_
+#### --log.stmt.maxBoundValueLength _&lt;number&gt;_
 
 The maximum length for a bound value. Bound values longer than this value will be truncated.
 
@@ -1182,7 +1182,7 @@ Setting this value to `-1` disables this feature (not recommended).
 
 Default: **50**.
 
-#### ---log.stmt.maxBoundValues _&lt;number&gt;_
+#### --log.stmt.maxBoundValues _&lt;number&gt;_
 
 The maximum number of bound values to print. If the statement has more bound values than this limit, the exceeding values will not be printed.
 
@@ -1190,7 +1190,7 @@ Setting this value to `-1` disables this feature (not recommended).
 
 Default: **50**.
 
-#### ---log.stmt.maxInnerStatements _&lt;number&gt;_
+#### --log.stmt.maxInnerStatements _&lt;number&gt;_
 
 The maximum number of inner statements to print for a batch statement.
 
@@ -1202,7 +1202,7 @@ Setting this value to `-1` disables this feature (not recommended).
 
 Default: **10**.
 
-#### ---log.stmt.maxQueryStringLength _&lt;number&gt;_
+#### --log.stmt.maxQueryStringLength _&lt;number&gt;_
 
 The maximum length for a query string. Query strings longer than this value will be truncated.
 
@@ -1225,7 +1225,7 @@ Durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 
-#### ---monitoring.durationUnit _&lt;string&gt;_
+#### --monitoring.durationUnit _&lt;string&gt;_
 
 The time unit to use when printing latency durations.
 
@@ -1233,7 +1233,7 @@ Valid values: all `TimeUnit` enum constants.
 
 Default: **"MILLISECONDS"**.
 
-#### ---monitoring.expectedReads _&lt;number&gt;_
+#### --monitoring.expectedReads _&lt;number&gt;_
 
 The expected total number of reads.
 
@@ -1243,7 +1243,7 @@ Setting this value to `-1` disables this feature.
 
 Default: **-1**.
 
-#### ---monitoring.expectedWrites _&lt;number&gt;_
+#### --monitoring.expectedWrites _&lt;number&gt;_
 
 The expected total number of writes.
 
@@ -1261,7 +1261,7 @@ Note that to enable *remote* JMX reporting, several properties must also be set 
 
 Default: **true**.
 
-#### ---monitoring.rateUnit _&lt;string&gt;_
+#### --monitoring.rateUnit _&lt;string&gt;_
 
 The time unit to use when printing throughput rates.
 
