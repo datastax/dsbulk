@@ -16,6 +16,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Timer;
 import org.junit.After;
 import org.junit.Before;
@@ -73,15 +74,14 @@ public class MetricsReportingExecutionListenerTest {
         "Reads: total: 0, successful: 0, failed: 0; 0 reads/second (mean 0.00, 75p 0.00, 99p 0.00 milliseconds)");
 
     // simulate 3 reads, 2 successful and 1 failed
-    Timer total = delegate.getTotalReadsTimer();
+    Timer total = delegate.getReadsTimer();
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
-    Timer successful = delegate.getSuccessfulReadsTimer();
-    successful.update(10, MILLISECONDS);
-    successful.update(10, MILLISECONDS);
-    Timer failed = delegate.getFailedReadsTimer();
-    failed.update(10, MILLISECONDS);
+    Counter successful = delegate.getSuccessfulReadsCounter();
+    successful.inc(2);
+    Counter failed = delegate.getFailedReadsCounter();
+    failed.inc();
 
     listener.report();
 
@@ -107,15 +107,14 @@ public class MetricsReportingExecutionListenerTest {
         "Reads: total: 0, successful: 0, failed: 0; 0 reads/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00 milliseconds)");
 
     // simulate 3 reads, 2 successful and 1 failed
-    Timer total = delegate.getTotalReadsTimer();
+    Timer total = delegate.getReadsTimer();
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
-    Timer successful = delegate.getSuccessfulReadsTimer();
-    successful.update(10, MILLISECONDS);
-    successful.update(10, MILLISECONDS);
-    Timer failed = delegate.getFailedReadsTimer();
-    failed.update(10, MILLISECONDS);
+    Counter successful = delegate.getSuccessfulReadsCounter();
+    successful.inc(2);
+    Counter failed = delegate.getFailedReadsCounter();
+    failed.inc();
 
     listener.report();
 
@@ -141,15 +140,14 @@ public class MetricsReportingExecutionListenerTest {
         "Writes: total: 0, successful: 0, failed: 0; 0 writes/second (mean 0.00, 75p 0.00, 99p 0.00 milliseconds)");
 
     // simulate 3 writes, 2 successful and 1 failed
-    Timer total = delegate.getTotalWritesTimer();
+    Timer total = delegate.getWritesTimer();
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
-    Timer successful = delegate.getSuccessfulWritesTimer();
-    successful.update(10, MILLISECONDS);
-    successful.update(10, MILLISECONDS);
-    Timer failed = delegate.getFailedWritesTimer();
-    failed.update(10, MILLISECONDS);
+    Counter successful = delegate.getSuccessfulWritesCounter();
+    successful.inc(2);
+    Counter failed = delegate.getFailedWritesCounter();
+    failed.inc();
 
     listener.report();
 
@@ -175,15 +173,14 @@ public class MetricsReportingExecutionListenerTest {
         "Writes: total: 0, successful: 0, failed: 0; 0 writes/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00 milliseconds)");
 
     // simulate 3 writes, 2 successful and 1 failed
-    Timer total = delegate.getTotalWritesTimer();
+    Timer total = delegate.getWritesTimer();
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
-    Timer successful = delegate.getSuccessfulWritesTimer();
-    successful.update(10, MILLISECONDS);
-    successful.update(10, MILLISECONDS);
-    Timer failed = delegate.getFailedWritesTimer();
-    failed.update(10, MILLISECONDS);
+    Counter successful = delegate.getSuccessfulWritesCounter();
+    successful.inc(2);
+    Counter failed = delegate.getFailedWritesCounter();
+    failed.inc();
 
     listener.report();
 
@@ -209,15 +206,14 @@ public class MetricsReportingExecutionListenerTest {
         "Reads/Writes: total: 0, successful: 0, failed: 0; 0 reads-writes/second (mean 0.00, 75p 0.00, 99p 0.00 milliseconds)");
 
     // simulate 3 reads/writes, 2 successful and 1 failed
-    Timer total = delegate.getTotalOperationsTimer();
+    Timer total = delegate.getReadsWritesTimer();
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
-    Timer successful = delegate.getSuccessfulOperationsTimer();
-    successful.update(10, MILLISECONDS);
-    successful.update(10, MILLISECONDS);
-    Timer failed = delegate.getFailedOperationsTimer();
-    failed.update(10, MILLISECONDS);
+    Counter successful = delegate.getSuccessfulReadsWritesCounter();
+    successful.inc(2);
+    Counter failed = delegate.getFailedReadsWritesCounter();
+    failed.inc();
 
     listener.report();
 
@@ -238,15 +234,14 @@ public class MetricsReportingExecutionListenerTest {
     MetricsCollectingExecutionListener delegate =
         (MetricsCollectingExecutionListener) Whitebox.getInternalState(listener, "delegate");
     // simulate 3 reads/writes, 2 successful and 1 failed
-    Timer total = delegate.getTotalOperationsTimer();
+    Timer total = delegate.getReadsWritesTimer();
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
-    Timer successful = delegate.getSuccessfulOperationsTimer();
-    successful.update(10, MILLISECONDS);
-    successful.update(10, MILLISECONDS);
-    Timer failed = delegate.getFailedOperationsTimer();
-    failed.update(10, MILLISECONDS);
+    Counter successful = delegate.getSuccessfulReadsWritesCounter();
+    successful.inc(2);
+    Counter failed = delegate.getFailedReadsWritesCounter();
+    failed.inc();
 
     listener.report();
 
@@ -272,15 +267,14 @@ public class MetricsReportingExecutionListenerTest {
         "Reads/Writes: total: 0, successful: 0, failed: 0; 0 reads-writes/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00 milliseconds)");
 
     // simulate 3 reads/writes, 2 successful and 1 failed
-    Timer total = delegate.getTotalOperationsTimer();
+    Timer total = delegate.getReadsWritesTimer();
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
-    Timer successful = delegate.getSuccessfulOperationsTimer();
-    successful.update(10, MILLISECONDS);
-    successful.update(10, MILLISECONDS);
-    Timer failed = delegate.getFailedOperationsTimer();
-    failed.update(10, MILLISECONDS);
+    Counter successful = delegate.getSuccessfulReadsWritesCounter();
+    successful.inc(2);
+    Counter failed = delegate.getFailedReadsWritesCounter();
+    failed.inc();
 
     listener.report();
 
@@ -306,15 +300,14 @@ public class MetricsReportingExecutionListenerTest {
         "Statements: total: 0, successful: 0, failed: 0; 0 stmts/second (mean 0.00, 75p 0.00, 99p 0.00 milliseconds)");
 
     // simulate 3 stmts, 2 successful and 1 failed
-    Timer total = delegate.getTotalStatementsTimer();
+    Timer total = delegate.getStatementsTimer();
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
-    Timer successful = delegate.getSuccessfulStatementsTimer();
-    successful.update(10, MILLISECONDS);
-    successful.update(10, MILLISECONDS);
-    Timer failed = delegate.getFailedStatementsTimer();
-    failed.update(10, MILLISECONDS);
+    Counter successful = delegate.getSuccessfulStatementsCounter();
+    successful.inc(2);
+    Counter failed = delegate.getFailedStatementsCounter();
+    failed.inc();
 
     listener.report();
 
@@ -340,15 +333,14 @@ public class MetricsReportingExecutionListenerTest {
         "Statements: total: 0, successful: 0, failed: 0; 0 stmts/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00 milliseconds)");
 
     // simulate 3 stmts, 2 successful and 1 failed
-    Timer total = delegate.getTotalStatementsTimer();
+    Timer total = delegate.getStatementsTimer();
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
     total.update(10, MILLISECONDS);
-    Timer successful = delegate.getSuccessfulStatementsTimer();
-    successful.update(10, MILLISECONDS);
-    successful.update(10, MILLISECONDS);
-    Timer failed = delegate.getFailedStatementsTimer();
-    failed.update(10, MILLISECONDS);
+    Counter successful = delegate.getSuccessfulStatementsCounter();
+    successful.inc(2);
+    Counter failed = delegate.getFailedStatementsCounter();
+    failed.inc();
 
     listener.report();
 

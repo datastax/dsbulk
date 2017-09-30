@@ -11,6 +11,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
+import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.google.common.util.concurrent.RateLimiter;
@@ -24,7 +25,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 import org.reactivestreams.Subscriber;
 
-public class WriteResultSubscription extends ResultSetSubscription<WriteResult> {
+public class WriteResultSubscription extends ResultSubscription<WriteResult, ResultSet> {
 
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
   public WriteResultSubscription(
@@ -49,14 +50,32 @@ public class WriteResultSubscription extends ResultSetSubscription<WriteResult> 
   }
 
   @Override
-  protected void consumePage(ResultSet rs) {
+  public void start() {
+    super.start();
+    fetchNextPage(() -> session.executeAsync(statement));
+  }
+
+  @Override
+  void onRequestStarted(ExecutionContext local) {
+    listener.ifPresent(l -> l.onWriteRequestStarted(statement, local));
+  }
+
+  @Override
+  void onRequestSuccessful(ResultSet rs, ExecutionContext local) {
     assert rs.isFullyFetched();
+    listener.ifPresent(l -> l.onWriteRequestSuccessful(statement, local));
     onNext(new DefaultWriteResult(statement, rs.getExecutionInfo()));
     onComplete();
   }
 
   @Override
-  protected WriteResult toErrorResult(BulkExecutionException error) {
+  void onRequestFailed(Throwable t, ExecutionContext local) {
+    listener.ifPresent(l -> l.onWriteRequestFailed(statement, t, local));
+    onError(t);
+  }
+
+  @Override
+  WriteResult toErrorResult(BulkExecutionException error) {
     return new DefaultWriteResult(error);
   }
 

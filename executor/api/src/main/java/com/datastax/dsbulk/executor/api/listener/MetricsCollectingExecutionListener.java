@@ -8,13 +8,12 @@ package com.datastax.dsbulk.executor.api.listener;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.datastax.dsbulk.executor.api.result.Result;
 import java.util.stream.IntStream;
 
 /** A {@link ExecutionListener} that records useful metrics about the ongoing bulk operations. */
@@ -22,21 +21,21 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
 
   private final MetricRegistry registry;
 
-  private final Timer totalStatementsTimer;
-  private final Timer successfulStatementsTimer;
-  private final Timer failedStatementsTimer;
+  private final Timer statementsTimer;
+  private final Counter successfulStatementsCounter;
+  private final Counter failedStatementsCounter;
 
-  private final Timer totalReadsTimer;
-  private final Timer successfulReadsTimer;
-  private final Timer failedReadsTimer;
+  private final Timer readsTimer;
+  private final Counter successfulReadsCounter;
+  private final Counter failedReadsCounter;
 
-  private final Timer totalWritesTimer;
-  private final Timer successfulWritesTimer;
-  private final Timer failedWritesTimer;
+  private final Timer writesTimer;
+  private final Counter successfulWritesCounter;
+  private final Counter failedWritesCounter;
 
-  private final Timer totalOperationsTimer;
-  private final Timer successfulOperationsTimer;
-  private final Timer failedOperationsTimer;
+  private final Timer readsWritesTimer;
+  private final Counter successfulReadsWritesCounter;
+  private final Counter failedReadsWritesCounter;
 
   /** Creates a new instance using a newly-allocated {@link MetricRegistry}. */
   public MetricsCollectingExecutionListener() {
@@ -51,21 +50,40 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   public MetricsCollectingExecutionListener(MetricRegistry registry) {
     this.registry = registry;
 
-    totalStatementsTimer = registry.timer("executor/statements/total");
-    successfulStatementsTimer = registry.timer("executor/statements/successful");
-    failedStatementsTimer = registry.timer("executor/statements/failed");
+    statementsTimer = registry.timer("executor/statements/total");
+    successfulStatementsCounter = registry.counter("executor/statements/successful");
+    failedStatementsCounter = registry.counter("executor/statements/failed");
 
-    totalReadsTimer = registry.timer("executor/reads/total");
-    successfulReadsTimer = registry.timer("executor/reads/successful");
-    failedReadsTimer = registry.timer("executor/reads/failed");
+    readsTimer = registry.timer("executor/reads/total");
+    successfulReadsCounter = registry.counter("executor/reads/successful");
+    failedReadsCounter = registry.counter("executor/reads/failed");
 
-    totalWritesTimer = registry.timer("executor/writes/total");
-    successfulWritesTimer = registry.timer("executor/writes/successful");
-    failedWritesTimer = registry.timer("executor/writes/failed");
+    writesTimer = registry.timer("executor/writes/total");
+    successfulWritesCounter = registry.counter("executor/writes/successful");
+    failedWritesCounter = registry.counter("executor/writes/failed");
 
-    totalOperationsTimer = registry.timer("executor/reads-writes/total");
-    successfulOperationsTimer = registry.timer("executor/reads-writes/successful");
-    failedOperationsTimer = registry.timer("executor/reads-writes/failed");
+    readsWritesTimer = registry.timer("executor/reads-writes/total");
+    successfulReadsWritesCounter = registry.counter("executor/reads-writes/successful");
+    failedReadsWritesCounter = registry.counter("executor/reads-writes/failed");
+  }
+
+  private static void start(ExecutionContext context, Timer timer) {
+    context.setAttribute(timer, timer.time());
+  }
+
+  private static void stop(ExecutionContext context, Timer timer, int delta) {
+    Timer.Context timerContext =
+        (Timer.Context) context.getAttribute(timer).orElseThrow(IllegalStateException::new);
+    long elapsed = timerContext.stop();
+    IntStream.range(1, delta).forEach(v -> timer.update(elapsed, NANOSECONDS));
+  }
+
+  private static int delta(Statement statement) {
+    if (statement instanceof BatchStatement) {
+      return ((BatchStatement) statement).size();
+    } else {
+      return 1;
+    }
   }
 
   /**
@@ -81,36 +99,36 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
    * Returns a {@link Timer} for total statement executions (successful and failed).
    *
    * <p>A batch statement is counted as one single statement. If that's not what you want, you are
-   * probably looking for {@link #getTotalWritesTimer()}.
+   * probably looking for {@link #getWritesTimer()}.
    *
    * @return a {@link Timer} for total statement executions (successful and failed).
    */
-  public Timer getTotalStatementsTimer() {
-    return totalStatementsTimer;
+  public Timer getStatementsTimer() {
+    return statementsTimer;
   }
 
   /**
-   * Returns a {@link Timer} for successful statement executions.
+   * Returns a {@link Counter} for successful statement executions.
    *
    * <p>A batch statement is counted as one single statement. If that's not what you want, you are
-   * probably looking for {@link #getSuccessfulWritesTimer()}.
+   * probably looking for {@link #getSuccessfulWritesCounter()}.
    *
-   * @return a {@link Timer} for successful statement executions.
+   * @return a {@link Counter} for successful statement executions.
    */
-  public Timer getSuccessfulStatementsTimer() {
-    return successfulStatementsTimer;
+  public Counter getSuccessfulStatementsCounter() {
+    return successfulStatementsCounter;
   }
 
   /**
-   * Returns a {@link Timer} for failed statement executions.
+   * Returns a {@link Counter} for failed statement executions.
    *
    * <p>A batch statement is counted as one single statement. If that's not what you want, you are
-   * probably looking for {@link #getFailedWritesTimer()}.
+   * probably looking for {@link #getFailedWritesCounter()}.
    *
-   * @return a {@link Timer} for failed statement executions.
+   * @return a {@link Counter} for failed statement executions.
    */
-  public Timer getFailedStatementsTimer() {
-    return failedStatementsTimer;
+  public Counter getFailedStatementsCounter() {
+    return failedStatementsCounter;
   }
 
   /**
@@ -120,26 +138,26 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
    * @return a {@link Timer} that evaluates the duration of execution of reads, both successful and
    *     failed.
    */
-  public Timer getTotalReadsTimer() {
-    return totalReadsTimer;
+  public Timer getReadsTimer() {
+    return readsTimer;
   }
 
   /**
-   * Returns a {@link Timer} that evaluates the duration of execution of successful reads.
+   * Returns a {@link Counter} that evaluates the duration of execution of successful reads.
    *
-   * @return a {@link Timer} that evaluates the duration of execution of successful reads.
+   * @return a {@link Counter} that evaluates the duration of execution of successful reads.
    */
-  public Timer getSuccessfulReadsTimer() {
-    return successfulReadsTimer;
+  public Counter getSuccessfulReadsCounter() {
+    return successfulReadsCounter;
   }
 
   /**
-   * Returns a {@link Timer} that evaluates the duration of execution of failed reads.
+   * Returns a {@link Counter} that evaluates the duration of execution of failed reads.
    *
-   * @return a {@link Timer} that evaluates the duration of execution of failed reads.
+   * @return a {@link Counter} that evaluates the duration of execution of failed reads.
    */
-  public Timer getFailedReadsTimer() {
-    return failedReadsTimer;
+  public Counter getFailedReadsCounter() {
+    return failedReadsCounter;
   }
 
   /**
@@ -147,37 +165,38 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
    * failed.
    *
    * <p>A batch statement is counted as many times as the number of child statements it contains. If
-   * that's not what you want, you are probably looking for {@link #getTotalStatementsTimer()}.
+   * that's not what you want, you are probably looking for {@link #getStatementsTimer()}.
    *
    * @return a {@link Timer} that evaluates the duration of execution of writes, both successful and
    *     failed.
    */
-  public Timer getTotalWritesTimer() {
-    return totalWritesTimer;
+  public Timer getWritesTimer() {
+    return writesTimer;
   }
 
   /**
-   * Returns a {@link Timer} that evaluates the duration of execution of successful writes.
+   * Returns a {@link Counter} that evaluates the duration of execution of successful writes.
    *
    * <p>A batch statement is counted as many times as the number of child statements it contains. If
-   * that's not what you want, you are probably looking for {@link #getSuccessfulStatementsTimer()}.
+   * that's not what you want, you are probably looking for {@link
+   * #getSuccessfulStatementsCounter()}.
    *
-   * @return a {@link Timer} that evaluates the duration of execution of successful writes.
+   * @return a {@link Counter} that evaluates the duration of execution of successful writes.
    */
-  public Timer getSuccessfulWritesTimer() {
-    return successfulWritesTimer;
+  public Counter getSuccessfulWritesCounter() {
+    return successfulWritesCounter;
   }
 
   /**
-   * Returns a {@link Timer} that evaluates the duration of execution of failed writes.
+   * Returns a {@link Counter} that evaluates the duration of execution of failed writes.
    *
    * <p>A batch statement is counted as many times as the number of child statements it contains. If
-   * that's not what you want, you are probably looking for {@link #getFailedStatementsTimer()}.
+   * that's not what you want, you are probably looking for {@link #getFailedStatementsCounter()}.
    *
-   * @return a {@link Timer} that evaluates the duration of execution of failed writes.
+   * @return a {@link Counter} that evaluates the duration of execution of failed writes.
    */
-  public Timer getFailedWritesTimer() {
-    return failedWritesTimer;
+  public Counter getFailedWritesCounter() {
+    return failedWritesCounter;
   }
 
   /**
@@ -186,91 +205,92 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
    *
    * @return a {@link Timer} that evaluates the duration of execution of all operations.
    */
-  public Timer getTotalOperationsTimer() {
-    return totalOperationsTimer;
+  public Timer getReadsWritesTimer() {
+    return readsWritesTimer;
   }
 
   /**
-   * Returns a {@link Timer} that evaluates the duration of execution of all successful operations,
-   * including reads and writes.
+   * Returns a {@link Counter} that evaluates the duration of execution of all successful
+   * operations, including reads and writes.
    *
-   * @return a {@link Timer} that evaluates the duration of execution of all successful operations.
+   * @return a {@link Counter} that evaluates the duration of execution of all successful
+   *     operations.
    */
-  public Timer getSuccessfulOperationsTimer() {
-    return successfulOperationsTimer;
+  public Counter getSuccessfulReadsWritesCounter() {
+    return successfulReadsWritesCounter;
   }
 
   /**
-   * Returns a {@link Timer} that evaluates the duration of execution of all failed operations,
+   * Returns a {@link Counter} that evaluates the duration of execution of all failed operations,
    * including reads and writes.
    *
-   * @return a {@link Timer} that evaluates the duration of execution of all failed operations.
+   * @return a {@link Counter} that evaluates the duration of execution of all failed operations.
    */
-  public Timer getFailedOperationsTimer() {
-    return failedOperationsTimer;
+  public Counter getFailedReadsWritesCounter() {
+    return failedReadsWritesCounter;
   }
 
   @Override
   public void onExecutionStarted(Statement statement, ExecutionContext context) {
-    start(context, totalStatementsTimer);
-    start(context, successfulStatementsTimer);
-    start(context, failedStatementsTimer);
-    start(context, totalReadsTimer);
-    start(context, successfulReadsTimer);
-    start(context, failedReadsTimer);
-    start(context, totalWritesTimer);
-    start(context, successfulWritesTimer);
-    start(context, failedWritesTimer);
-    start(context, totalOperationsTimer);
-    start(context, successfulOperationsTimer);
-    start(context, failedOperationsTimer);
+    start(context, statementsTimer);
   }
 
   @Override
-  public void onResultReceived(Result result, ExecutionContext context) {
-    int delta = delta(result.getStatement());
-    stop(context, totalOperationsTimer, delta);
-    if (result instanceof ReadResult) {
-      stop(context, totalReadsTimer, delta);
-    } else {
-      stop(context, totalWritesTimer, delta);
-    }
-    if (result.isSuccess()) {
-      stop(context, successfulOperationsTimer, delta);
-      if (result instanceof ReadResult) stop(context, successfulReadsTimer, delta);
-      else stop(context, successfulWritesTimer, delta);
-    } else {
-      stop(context, failedOperationsTimer, delta);
-      if (result instanceof ReadResult) stop(context, failedReadsTimer, delta);
-      else stop(context, failedWritesTimer, delta);
-    }
+  public void onWriteRequestStarted(Statement statement, ExecutionContext context) {
+    start(context, writesTimer);
+    start(context, readsWritesTimer);
   }
 
   @Override
-  public void onExecutionCompleted(Statement statement, ExecutionContext context) {
-    stop(context, totalStatementsTimer, 1);
-    stop(context, successfulStatementsTimer, 1);
+  public void onReadRequestStarted(Statement statement, ExecutionContext context) {
+    start(context, readsTimer);
+    start(context, readsWritesTimer);
+  }
+
+  @Override
+  public void onWriteRequestSuccessful(Statement statement, ExecutionContext context) {
+    int delta = delta(statement);
+    stop(context, writesTimer, delta);
+    stop(context, readsWritesTimer, delta);
+    successfulWritesCounter.inc(delta);
+    successfulReadsWritesCounter.inc(delta);
+  }
+
+  @Override
+  public void onWriteRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+    int delta = delta(statement);
+    stop(context, writesTimer, delta);
+    stop(context, readsWritesTimer, delta);
+    failedWritesCounter.inc(delta);
+    failedReadsWritesCounter.inc(delta);
+  }
+
+  @Override
+  public void onReadRequestSuccessful(
+      Statement statement, int numberOfRows, ExecutionContext context) {
+    stop(context, readsTimer, numberOfRows);
+    stop(context, readsWritesTimer, numberOfRows);
+    successfulReadsCounter.inc(numberOfRows);
+    successfulReadsWritesCounter.inc(numberOfRows);
+  }
+
+  @Override
+  public void onReadRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+    stop(context, readsTimer, 1);
+    stop(context, readsWritesTimer, 1);
+    failedReadsCounter.inc();
+    failedReadsWritesCounter.inc();
+  }
+
+  @Override
+  public void onExecutionSuccessful(Statement statement, ExecutionContext context) {
+    stop(context, statementsTimer, 1);
+    successfulStatementsCounter.inc();
   }
 
   @Override
   public void onExecutionFailed(BulkExecutionException exception, ExecutionContext context) {
-    stop(context, totalStatementsTimer, 1);
-    stop(context, failedStatementsTimer, 1);
-  }
-
-  private static void start(ExecutionContext context, Timer timer) {
-    context.setAttribute(timer, timer.time());
-  }
-
-  private static void stop(ExecutionContext context, Timer timer, int delta) {
-    Timer.Context timerContext =
-        (Timer.Context) context.getAttribute(timer).orElseThrow(IllegalStateException::new);
-    long elapsed = timerContext.stop();
-    IntStream.range(1, delta).forEach(v -> timer.update(elapsed, NANOSECONDS));
-  }
-
-  private static int delta(Statement statement) {
-    if (statement instanceof BatchStatement) return ((BatchStatement) statement).size();
-    else return 1;
+    stop(context, statementsTimer, 1);
+    failedStatementsCounter.inc();
   }
 }

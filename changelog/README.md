@@ -60,3 +60,4 @@
 - [bug] DAT-122: Operation.log file is not created inside operation directory.
 - [improvement] DAT-124: Java process should exit with non-zero status in case of error.
 - [improvement] DAT-116: Log errors to stderr, not stdout.
+- [bug] DAT-114: 'Reads' timer metrics should report correct latencies.

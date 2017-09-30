@@ -8,7 +8,6 @@ package com.datastax.dsbulk.executor.api.listener;
 
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.result.Result;
 import com.google.common.collect.ImmutableList;
 import java.util.Arrays;
 import java.util.List;
@@ -34,17 +33,43 @@ public class CompositeExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onResultReceived(Result result, ExecutionContext context) {
-    listeners.forEach(l -> l.onResultReceived(result, context));
-  }
-
-  @Override
-  public void onExecutionCompleted(Statement statement, ExecutionContext context) {
-    listeners.forEach(l -> l.onExecutionCompleted(statement, context));
+  public void onExecutionSuccessful(Statement statement, ExecutionContext context) {
+    listeners.forEach(l -> l.onExecutionSuccessful(statement, context));
   }
 
   @Override
   public void onExecutionFailed(BulkExecutionException exception, ExecutionContext context) {
     listeners.forEach(l -> l.onExecutionFailed(exception, context));
+  }
+
+  @Override
+  public void onWriteRequestStarted(Statement statement, ExecutionContext context) {
+    listeners.forEach(l -> l.onWriteRequestStarted(statement, context));
+  }
+
+  @Override
+  public void onWriteRequestSuccessful(Statement statement, ExecutionContext context) {
+    listeners.forEach(l -> l.onWriteRequestSuccessful(statement, context));
+  }
+
+  @Override
+  public void onWriteRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+    listeners.forEach(l -> l.onWriteRequestFailed(statement, error, context));
+  }
+
+  @Override
+  public void onReadRequestStarted(Statement statement, ExecutionContext context) {
+    listeners.forEach(l -> l.onReadRequestStarted(statement, context));
+  }
+
+  @Override
+  public void onReadRequestSuccessful(
+      Statement statement, int numberOfRows, ExecutionContext context) {
+    listeners.forEach(l -> l.onReadRequestSuccessful(statement, numberOfRows, context));
+  }
+
+  @Override
+  public void onReadRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+    listeners.forEach(l -> l.onReadRequestFailed(statement, error, context));
   }
 }

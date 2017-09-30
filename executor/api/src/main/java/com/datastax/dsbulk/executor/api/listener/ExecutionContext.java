@@ -6,10 +6,21 @@
  */
 package com.datastax.dsbulk.executor.api.listener;
 
+import com.datastax.driver.core.Statement;
 import java.util.Optional;
 
 /**
- * The context of a statement execution.
+ * The context of a statement or request execution.
+ *
+ * <p>The scope of a context can be either global, if it is associated with a global execution event
+ * such as {@link ExecutionListener#onExecutionStarted(Statement, ExecutionContext)
+ * onExecutionStarted} or {@link ExecutionListener#onExecutionSuccessful(Statement,
+ * ExecutionContext) onExecutionSuccessful}; or local to a request-response cycle, if it is
+ * associated with a request execution event such as {@link
+ * ExecutionListener#onWriteRequestStarted(Statement, ExecutionContext)} or {@link
+ * ExecutionListener#onWriteRequestSuccessful(Statement, ExecutionContext)}.
+ *
+ * <p>See the javadocs of {@link ExecutionListener} to understand when its scope is global or local.
  *
  * @see ExecutionListener
  */
