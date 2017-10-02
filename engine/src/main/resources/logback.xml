@@ -31,4 +31,6 @@
     <appender-ref ref="STDERR"/>
   </root>
 
+  <logger name="com.datastax.driver" level="WARN"/>
+
 </configuration>
