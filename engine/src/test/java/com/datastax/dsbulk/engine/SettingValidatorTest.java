@@ -325,6 +325,8 @@ public class SettingValidatorTest {
           "c1=c2",
           "--driver.policy.lbp.name",
           "dse",
+          "--driver.policy.lbp.dse.childPolicy",
+          "junk",
           "--schema.query",
           "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
         });

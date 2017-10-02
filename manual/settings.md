@@ -805,7 +805,7 @@ The child policy being wrapped.
 
 It is required to be one of the policies mentioned above.
 
-Default: **&lt;unspecified&gt;**.
+Default: **"roundRobin"**.
 
 #### --driver.policy.lbp.tokenAware.childPolicy _&lt;string&gt;_
 
@@ -827,7 +827,7 @@ The child policy being wrapped.
 
 It is required to be one of the policies mentioned above.
 
-Default: **&lt;unspecified&gt;**.
+Default: **"roundRobin"**.
 
 #### --driver.policy.lbp.whiteList.hosts _&lt;string&gt;_
 
