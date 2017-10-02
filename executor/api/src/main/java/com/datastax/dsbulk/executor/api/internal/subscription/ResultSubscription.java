@@ -118,16 +118,19 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
     return cancelled;
   }
 
-  long getRequested() {
-    return requested;
-  }
-
   void fetchNextPage(Supplier<ListenableFuture<R>> request) {
     ExecutionContext local = new DefaultExecutionContext();
     rateLimiter.ifPresent(limiter -> limiter.acquire(size));
     requestPermits.ifPresent(permits -> permits.acquireUninterruptibly(size));
     onRequestStarted(local);
-    ListenableFuture<R> page = request.get();
+    ListenableFuture<R> page;
+    try {
+      page = request.get();
+    } catch (Exception e) {
+      requestPermits.ifPresent(permits -> permits.release(size));
+      onRequestFailed(e, local);
+      return;
+    }
     Futures.addCallback(
         page,
         new FutureCallback<R>() {
