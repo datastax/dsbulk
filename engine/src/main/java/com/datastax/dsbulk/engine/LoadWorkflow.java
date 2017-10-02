@@ -21,7 +21,6 @@ import com.datastax.dsbulk.engine.internal.settings.BatchSettings;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.datastax.dsbulk.engine.internal.settings.ConnectorSettings;
 import com.datastax.dsbulk.engine.internal.settings.DriverSettings;
-import com.datastax.dsbulk.engine.internal.settings.EngineSettings;
 import com.datastax.dsbulk.engine.internal.settings.ExecutorSettings;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
@@ -52,7 +51,6 @@ public class LoadWorkflow implements Workflow {
   private LogSettings logSettings;
   private CodecSettings codecSettings;
   private MonitoringSettings monitoringSettings;
-  private EngineSettings engineSettings;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -71,7 +69,6 @@ public class LoadWorkflow implements Workflow {
     executorSettings = settingsManager.getExecutorSettings();
     codecSettings = settingsManager.getCodecSettings();
     monitoringSettings = settingsManager.getMonitoringSettings();
-    engineSettings = settingsManager.getEngineSettings();
   }
 
   @Override
@@ -81,10 +78,8 @@ public class LoadWorkflow implements Workflow {
     Stopwatch timer = Stopwatch.createStarted();
 
     int maxConcurrentWrites = executorSettings.getMaxConcurrentOps();
-    int maxMappingThreads = engineSettings.getMaxMappingThreads();
 
     Scheduler writesScheduler = Schedulers.newParallel("batch-writes", maxConcurrentWrites);
-    Scheduler mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
     String keyspace = config.getString("schema.keyspace");
     if (keyspace != null && keyspace.isEmpty()) {
       keyspace = null;
@@ -111,10 +106,7 @@ public class LoadWorkflow implements Workflow {
       ReactorUnsortedStatementBatcher batcher = batchSettings.newStatementBatcher(cluster);
 
       Flux.from(connector.read())
-          .parallel(maxMappingThreads)
-          .runOn(mapperScheduler)
           .map(recordMapper::map)
-          .sequential()
           .compose(metricsManager.newRecordMapperMonitor())
           .compose(logManager.newRecordMapperErrorHandler())
           .compose(batcher)
@@ -130,7 +122,6 @@ public class LoadWorkflow implements Workflow {
           "Uncaught exception during load workflow engine execution " + executionId, e);
     } finally {
       writesScheduler.dispose();
-      mapperScheduler.dispose();
     }
 
     timer.stop();

@@ -61,3 +61,4 @@
 - [improvement] DAT-124: Java process should exit with non-zero status in case of error.
 - [improvement] DAT-116: Log errors to stderr, not stdout.
 - [bug] DAT-114: 'Reads' timer metrics should report correct latencies.
+- [improvement] DAT-127: Remove unbounded queues from CSV connector.
