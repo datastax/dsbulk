@@ -4,11 +4,11 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.executor.api.internal.subscription;
+package com.datastax.dsbulk.commons.internal.reactive;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
-final class Operators {
+public final class Operators {
 
   /**
    * Evaluates if a request is strictly positive otherwise throws an exception.
@@ -17,7 +17,7 @@ final class Operators {
    * @return true if > 0, false if == 0.
    * @throws IllegalArgumentException if the request is invalid (i.e., < 0).
    */
-  static boolean validate(long n) {
+  public static boolean validate(long n) {
     if (n == 0) {
       return false;
     }
@@ -35,7 +35,7 @@ final class Operators {
    * @param instance the owning instance to update.
    * @param toAdd the delta to add.
    */
-  static <T> void addCap(AtomicLongFieldUpdater<T> updater, T instance, long toAdd) {
+  public static <T> void addCap(AtomicLongFieldUpdater<T> updater, T instance, long toAdd) {
     long r, u;
     do {
       r = updater.get(instance);
@@ -54,7 +54,7 @@ final class Operators {
    * @param instance the owning instance to update.
    * @param toSub the delta to subtract.
    */
-  static <T> void subCap(AtomicLongFieldUpdater<T> updater, T instance, long toSub) {
+  public static <T> void subCap(AtomicLongFieldUpdater<T> updater, T instance, long toSub) {
     long r, u;
     do {
       r = updater.get(instance);
