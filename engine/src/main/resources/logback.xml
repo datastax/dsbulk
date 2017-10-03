@@ -11,6 +11,16 @@
   <property scope="context" name="com.datastax.dsbulk.PRODUCTION" value="true"/>
 
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.out</target>
+    <filter class="com.datastax.dsbulk.engine.internal.log.StandardOutFilter"/>
+    <encoder>
+      <pattern>%date{ISO8601,UTC} %-5level %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <filter class="com.datastax.dsbulk.engine.internal.log.StandardErrorFilter"/>
     <encoder>
       <pattern>%date{ISO8601,UTC} %-5level %msg%n</pattern>
     </encoder>
@@ -18,6 +28,9 @@
 
   <root level="INFO">
     <appender-ref ref="STDOUT"/>
+    <appender-ref ref="STDERR"/>
   </root>
+
+  <logger name="com.datastax.driver" level="WARN"/>
 
 </configuration>

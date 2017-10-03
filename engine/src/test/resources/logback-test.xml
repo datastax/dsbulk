@@ -9,6 +9,16 @@
 <configuration>
 
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.out</target>
+    <filter class="com.datastax.dsbulk.engine.internal.log.StandardOutFilter"/>
+    <encoder>
+      <pattern>%-5level [%thread] %logger{40} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <filter class="com.datastax.dsbulk.engine.internal.log.StandardErrorFilter"/>
     <encoder>
       <pattern>%-5level [%thread] %logger{40} - %msg%n</pattern>
     </encoder>
@@ -16,6 +26,7 @@
 
   <root level="${log.root.level:-OFF}">
     <appender-ref ref="STDOUT"/>
+    <appender-ref ref="STDERR"/>
   </root>
 
 </configuration>

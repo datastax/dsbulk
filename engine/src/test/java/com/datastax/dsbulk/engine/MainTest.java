@@ -9,6 +9,8 @@ package com.datastax.dsbulk.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import com.datastax.dsbulk.engine.internal.HelpUtils;
 import com.datastax.dsbulk.engine.internal.OptionUtils;
 import com.typesafe.config.Config;
@@ -25,12 +27,16 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.LoggerFactory;
 
 public class MainTest {
+
   private PrintStream originalStderr;
   private PrintStream originalStdout;
   private ByteArrayOutputStream stderr;
   private ByteArrayOutputStream stdout;
+  private Logger root;
+  private Level oldLevel;
 
   @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -38,18 +44,20 @@ public class MainTest {
   public void setUp() throws Exception {
     originalStdout = System.out;
     originalStderr = System.err;
-
     stdout = new ByteArrayOutputStream();
     System.setOut(new PrintStream(stdout));
-
     stderr = new ByteArrayOutputStream();
     System.setErr(new PrintStream(stderr));
+    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    oldLevel = root.getLevel();
+    root.setLevel(Level.INFO);
   }
 
   @After
   public void tearDown() throws Exception {
     System.setOut(originalStdout);
     System.setErr(originalStderr);
+    root.setLevel(oldLevel);
     System.clearProperty("config.file");
     ConfigFactory.invalidateCaches();
     OptionUtils.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
@@ -57,32 +65,32 @@ public class MainTest {
 
   @Test
   public void should_show_help_when_no_args() throws Exception {
-    new Main(new String[] {});
+    new Main(new String[] {}).run();
     assertGlobalHelp();
   }
 
   @Test
   public void should_show_help_when_help_opt_arg() throws Exception {
-    new Main(new String[] {"--help"});
+    new Main(new String[] {"--help"}).run();
     assertGlobalHelp();
   }
 
   @Test
   public void should_show_help_when_help_subcommand() throws Exception {
-    new Main(new String[] {"help"});
+    new Main(new String[] {"help"}).run();
     assertGlobalHelp();
   }
 
   @Test
   public void should_show_error_when_junk_subcommand() throws Exception {
-    new Main(new String[] {"junk"});
+    new Main(new String[] {"junk"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("First argument must be subcommand \"load\", \"unload\", or \"help\"");
   }
 
   @Test
   public void should_show_help_without_error_when_junk_subcommand_and_help() throws Exception {
-    new Main(new String[] {"junk", "--help"});
+    new Main(new String[] {"junk", "--help"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
     assertGlobalHelp();
@@ -90,7 +98,7 @@ public class MainTest {
 
   @Test
   public void should_show_help_without_error_when_good_subcommand_and_help() throws Exception {
-    new Main(new String[] {"load", "--help"});
+    new Main(new String[] {"load", "--help"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
     assertGlobalHelp();
@@ -98,7 +106,7 @@ public class MainTest {
 
   @Test
   public void should_show_error_for_help_bad_section() throws Exception {
-    new Main(new String[] {"help", "noexist"});
+    new Main(new String[] {"help", "noexist"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .contains("noexist is not a valid section. Available sections include")
@@ -107,7 +115,7 @@ public class MainTest {
 
   @Test
   public void should_show_section_help() throws Exception {
-    new Main(new String[] {"help", "batch"});
+    new Main(new String[] {"help", "batch"}).run();
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
     assertThat(out)
         .contains("--batch.mode")
@@ -116,7 +124,7 @@ public class MainTest {
 
   @Test
   public void should_show_section_help_with_subsection_pointers() throws Exception {
-    new Main(new String[] {"help", "driver"});
+    new Main(new String[] {"help", "driver"}).run();
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
     assertThat(out)
         .contains("--driver.hosts")
@@ -126,14 +134,14 @@ public class MainTest {
 
   @Test
   public void should_show_section_help_with_connector_shortcuts() throws Exception {
-    new Main(new String[] {"help", "connector.csv"});
+    new Main(new String[] {"help", "connector.csv"}).run();
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
     assertThat(out).contains("-url, --connector.csv.url");
   }
 
   @Test
   public void should_show_help_without_error_when_no_subcommand_and_help() throws Exception {
-    new Main(new String[] {"-k", "k1", "--help"});
+    new Main(new String[] {"-k", "k1", "--help"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
     assertGlobalHelp();
@@ -144,7 +152,7 @@ public class MainTest {
     {
       File f = tempFolder.newFile("myapp.conf");
       Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
-      new Main(new String[] {"load", "-f", f.getPath()});
+      new Main(new String[] {"load", "-f", f.getPath()}).run();
       String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
       assertThat(err)
           .doesNotContain("First argument must be subcommand")
@@ -153,7 +161,7 @@ public class MainTest {
     {
       File f = tempFolder.newFile("myapp3.conf");
       Files.write(f.toPath(), "dsbulk.driver.socket.readTimeout=wonky".getBytes("UTF-8"));
-      new Main(new String[] {"load", "-f", f.getPath()});
+      new Main(new String[] {"load", "-f", f.getPath()}).run();
       String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
       assertThat(err)
           .doesNotContain("First argument must be subcommand")
@@ -163,7 +171,7 @@ public class MainTest {
 
   @Test
   public void should_error_out_for_bad_config_file() throws Exception {
-    new Main(new String[] {"load", "-f", "noexist"});
+    new Main(new String[] {"load", "-f", "noexist"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .doesNotContain("First argument must be subcommand")
@@ -174,7 +182,7 @@ public class MainTest {
   public void should_accept_connector_name_in_args_over_config_file() throws Exception {
     File f = tempFolder.newFile("myapp.conf");
     Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
-    new Main(new String[] {"load", "-c", "fromargs", "-f", f.getPath()});
+    new Main(new String[] {"load", "-c", "fromargs", "-f", f.getPath()}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .doesNotContain("First argument must be subcommand")
@@ -183,7 +191,7 @@ public class MainTest {
 
   @Test
   public void should_handle_connector_name_long_option() throws Exception {
-    new Main(new String[] {"load", "--connector.name", "fromargs"});
+    new Main(new String[] {"load", "--connector.name", "fromargs"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .doesNotContain("First argument must be subcommand")
@@ -192,7 +200,7 @@ public class MainTest {
 
   @Test
   public void should_handle_connector_name_long_option_with_equal() throws Exception {
-    new Main(new String[] {"load", "--connector.name=fromargs"});
+    new Main(new String[] {"load", "--connector.name=fromargs"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .doesNotContain("First argument must be subcommand")
@@ -574,7 +582,7 @@ public class MainTest {
 
   @Test
   public void should_show_version_message_when_asked() throws Exception {
-    new Main(new String[] {"--version"});
+    new Main(new String[] {"--version"}).run();
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
     assertThat(out).isEqualTo(String.format("%s%n", HelpUtils.getVersionMessage()));
   }

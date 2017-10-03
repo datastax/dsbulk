@@ -1148,14 +1148,14 @@ public abstract class AbstractBulkExecutorTest {
           .onExecutionStarted(
               argThat(new StatementMatcher(successful1)), any(ExecutionContext.class));
       verify(listener)
-          .onExecutionCompleted(
+          .onExecutionSuccessful(
               argThat(new StatementMatcher(successful1)), any(ExecutionContext.class));
       if (expectedSuccessful > 1) {
         verify(listener)
             .onExecutionStarted(
                 argThat(new StatementMatcher(successful2)), any(ExecutionContext.class));
         verify(listener)
-            .onExecutionCompleted(
+            .onExecutionSuccessful(
                 argThat(new StatementMatcher(successful2)), any(ExecutionContext.class));
       }
     }
@@ -1172,7 +1172,7 @@ public abstract class AbstractBulkExecutorTest {
         .onExecutionFailed(
             argThat(new BulkExecutionExceptionMatcher(successful2)), any(ExecutionContext.class));
     verify(listener, never())
-        .onExecutionCompleted(argThat(new StatementMatcher(failed)), any(ExecutionContext.class));
+        .onExecutionSuccessful(argThat(new StatementMatcher(failed)), any(ExecutionContext.class));
   }
 
   private void verifySuccessfulWriteResult(WriteResult r) {

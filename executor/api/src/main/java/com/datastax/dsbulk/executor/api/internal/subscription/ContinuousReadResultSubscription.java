@@ -13,11 +13,12 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
+import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.RateLimiter;
+import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.Executor;
@@ -58,35 +59,37 @@ public class ContinuousReadResultSubscription
 
   public void start() {
     super.start();
-    ListenableFuture<AsyncContinuousPagingResult> firstPage =
-        fetchNextPage(() -> session.executeContinuouslyAsync(statement, options));
-    if (firstPage != null) {
-      Futures.addCallback(firstPage, this, executor);
+    fetchNextPage(() -> session.executeContinuouslyAsync(statement, options));
+  }
+
+  @Override
+  void onRequestStarted(ExecutionContext local) {
+    listener.ifPresent(l -> l.onReadRequestStarted(statement, local));
+  }
+
+  @Override
+  void onRequestSuccessful(AsyncContinuousPagingResult page, ExecutionContext local) {
+    // unfortunately we need to eagerly consume the page to get the number of rows
+    List<Row> rows = Lists.newArrayList(page.currentPage());
+    listener.ifPresent(l -> l.onReadRequestSuccessful(statement, rows.size(), local));
+    for (Row row : rows) {
+      if (isCancelled()) {
+        page.cancel();
+        return;
+      }
+      onNext(new DefaultReadResult(statement, page.getExecutionInfo(), row));
+    }
+    if (page.isLast()) {
+      onComplete();
+    } else if (!isCancelled()) {
+      fetchNextPage(page::nextPage);
     }
   }
 
   @Override
-  protected void consumePage(AsyncContinuousPagingResult pagingResult) {
-    boolean lastPage = pagingResult.isLast();
-    for (Row row : pagingResult.currentPage()) {
-      if (isCancelled()) {
-        pagingResult.cancel();
-        return;
-      }
-      DefaultReadResult result =
-          new DefaultReadResult(statement, pagingResult.getExecutionInfo(), row);
-      onNext(result);
-    }
-    if (lastPage) {
-      onComplete();
-    } else {
-      ListenableFuture<AsyncContinuousPagingResult> nextPage =
-          fetchNextPage(pagingResult::nextPage);
-      if (nextPage == null) {
-        return;
-      }
-      Futures.addCallback(nextPage, this, executor);
-    }
+  void onRequestFailed(Throwable t, ExecutionContext local) {
+    listener.ifPresent(l -> l.onReadRequestFailed(statement, t, local));
+    onError(t);
   }
 
   @Override

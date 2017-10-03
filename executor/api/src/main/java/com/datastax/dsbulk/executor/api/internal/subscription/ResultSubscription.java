@@ -15,11 +15,11 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.Result;
 import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
 import java.util.Queue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -28,34 +28,32 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-public abstract class ResultSubscription<T extends Result, R>
-    implements Subscription, FutureCallback<R> {
+public abstract class ResultSubscription<T extends Result, R> implements Subscription {
 
-  protected final Statement statement;
-  protected final Session session;
-  protected final Executor executor;
+  final Statement statement;
+  final Session session;
+  final Optional<ExecutionListener> listener;
 
   private final Subscriber<? super T> subscriber;
   private final Queue<T> queue;
-
+  private final Executor executor;
   private final Optional<Semaphore> requestPermits;
-  private final Optional<ExecutionListener> listener;
   private final Optional<RateLimiter> rateLimiter;
-
   private final boolean failFast;
   private final int size;
-  private final ExecutionContext context = new DefaultExecutionContext();
+
+  private final ExecutionContext global = new DefaultExecutionContext();
+  private final Lock lock = new ReentrantLock();
+  private final Condition notFull = lock.newCondition();
 
   private volatile BulkExecutionException error;
   private volatile boolean done;
   private volatile boolean cancelled = false;
-
-  private final Lock lock = new ReentrantLock();
-  private final Condition notFull = lock.newCondition();
 
   @SuppressWarnings("unused")
   private volatile int wip;
@@ -96,7 +94,7 @@ public abstract class ResultSubscription<T extends Result, R>
   }
 
   public void start() {
-    listener.ifPresent(l -> l.onExecutionStarted(statement, context));
+    listener.ifPresent(l -> l.onExecutionStarted(statement, global));
   }
 
   @Override
@@ -120,37 +118,38 @@ public abstract class ResultSubscription<T extends Result, R>
     return cancelled;
   }
 
-  long getRequested() {
-    return requested;
-  }
-
-  ListenableFuture<R> fetchNextPage(Callable<ListenableFuture<R>> query) {
+  void fetchNextPage(Supplier<ListenableFuture<R>> request) {
+    ExecutionContext local = new DefaultExecutionContext();
     rateLimiter.ifPresent(limiter -> limiter.acquire(size));
     requestPermits.ifPresent(permits -> permits.acquireUninterruptibly(size));
+    onRequestStarted(local);
+    ListenableFuture<R> page;
     try {
-      return query.call();
-    } catch (Throwable ex) {
-      // in rare cases, the driver throws instead of failing the future
+      page = request.get();
+    } catch (Exception e) {
       requestPermits.ifPresent(permits -> permits.release(size));
-      onError(ex);
-      return null;
+      onRequestFailed(e, local);
+      return;
     }
-  }
+    Futures.addCallback(
+        page,
+        new FutureCallback<R>() {
+          @Override
+          public void onSuccess(R result) {
+            requestPermits.ifPresent(permits -> permits.release(size));
+            onRequestSuccessful(result, local);
+          }
 
-  @Override
-  public void onSuccess(R rs) {
-    requestPermits.ifPresent(permits -> permits.release(size));
-    consumePage(rs);
-  }
-
-  @Override
-  public void onFailure(Throwable t) {
-    requestPermits.ifPresent(permits -> permits.release(size));
-    onError(t);
+          @Override
+          public void onFailure(Throwable t) {
+            requestPermits.ifPresent(permits -> permits.release(size));
+            onRequestFailed(t, local);
+          }
+        },
+        executor);
   }
 
   void onNext(T result) {
-    listener.ifPresent(l -> l.onResultReceived(result, context));
     while (!queue.offer(result)) {
       drain();
       lock.lock();
@@ -169,7 +168,7 @@ public abstract class ResultSubscription<T extends Result, R>
   }
 
   void onComplete() {
-    listener.ifPresent(l -> l.onExecutionCompleted(statement, context));
+    listener.ifPresent(l -> l.onExecutionSuccessful(statement, global));
     done = true;
     drain();
   }
@@ -181,7 +180,7 @@ public abstract class ResultSubscription<T extends Result, R>
     } else {
       onNext(toErrorResult(error));
     }
-    listener.ifPresent(l -> l.onExecutionFailed(error, context));
+    listener.ifPresent(l -> l.onExecutionFailed(error, global));
     done = true;
     drain();
   }
@@ -271,7 +270,11 @@ public abstract class ResultSubscription<T extends Result, R>
     }
   }
 
-  protected abstract void consumePage(R result);
+  abstract void onRequestStarted(ExecutionContext local);
 
-  protected abstract T toErrorResult(BulkExecutionException error);
+  abstract void onRequestSuccessful(R result, ExecutionContext local);
+
+  abstract void onRequestFailed(Throwable t, ExecutionContext local);
+
+  abstract T toErrorResult(BulkExecutionException error);
 }

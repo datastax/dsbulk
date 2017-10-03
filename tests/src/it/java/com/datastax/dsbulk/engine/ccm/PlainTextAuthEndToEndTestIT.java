@@ -78,7 +78,7 @@ public class PlainTextAuthEndToEndTestIT extends AbstractEndToEndTestIT {
     customLoadArgs.add("--driver.auth.password");
     customLoadArgs.add("cassandra");
 
-    new Main(fetchCompleteArgs("load", customLoadArgs));
+    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
     validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
     Path full_unload_dir = Paths.get("./target/full_unload_dir");
     Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
@@ -97,7 +97,7 @@ public class PlainTextAuthEndToEndTestIT extends AbstractEndToEndTestIT {
     customUnloadArgs.add("--driver.auth.password");
     customUnloadArgs.add("cassandra");
 
-    new Main(fetchCompleteArgs("unload", customUnloadArgs));
+    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
 
     EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
   }

@@ -58,7 +58,7 @@ public class CSVLoadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new Main(args);
+    new Main(args).run();
     validateQueryCount(24, ConsistencyLevel.ONE);
   }
 
@@ -84,7 +84,7 @@ public class CSVLoadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new Main(args);
+    new Main(args).run();
     validateQueryCount(24, ConsistencyLevel.ONE);
   }
 
@@ -110,7 +110,7 @@ public class CSVLoadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    new Main(args);
+    new Main(args).run();
     validateQueryCount(21, ConsistencyLevel.LOCAL_ONE);
     EndToEndUtils.validateBadOps(3);
     EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");
@@ -180,7 +180,7 @@ public class CSVLoadEndToEndIT {
     };
 
     // There are 24 rows of data, but one extra query due to the retry for the write timeout.
-    new Main(args);
+    new Main(args).run();
     validateQueryCount(25, ConsistencyLevel.LOCAL_ONE);
     EndToEndUtils.validateBadOps(4);
     EndToEndUtils.validateExceptionsLog(4, "Source  :", "load-errors.log");
@@ -211,7 +211,7 @@ public class CSVLoadEndToEndIT {
       "--schema.mapping",
       "{0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
-    new Main(args);
+    new Main(args).run();
     validateQueryCount(21, ConsistencyLevel.LOCAL_ONE);
     EndToEndUtils.validateBadOps(3);
     EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");

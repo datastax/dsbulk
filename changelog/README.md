@@ -58,3 +58,7 @@
 - [improvement] DAT-117: Support blob and duration types.
 - [improvement] DAT-78: Generate template file for users.
 - [bug] DAT-122: Operation.log file is not created inside operation directory.
+- [improvement] DAT-124: Java process should exit with non-zero status in case of error.
+- [improvement] DAT-116: Log errors to stderr, not stdout.
+- [bug] DAT-114: 'Reads' timer metrics should report correct latencies.
+- [improvement] DAT-46: Provide a way to configure driver policies.

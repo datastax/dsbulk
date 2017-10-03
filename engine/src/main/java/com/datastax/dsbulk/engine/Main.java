@@ -25,28 +25,38 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** */
 public class Main {
 
   private static final Config REFERENCE = ConfigFactory.defaultReference().getConfig("dsbulk");
+  private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+
+  private final String[] args;
 
   public static void main(String[] args) {
     URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    new Main(args);
+    int status = new Main(args).run();
+    System.exit(status);
   }
 
   public Main(String[] args) {
+    this.args = args;
+  }
+
+  public int run() {
     String connectorName;
     try {
       if (args.length == 0 || (args[0].equals("help") && args.length == 1)) {
         HelpUtils.emitGlobalHelp();
-        return;
+        return args.length == 0 ? 1 : 0;
       }
 
       if (args[0].equals("help")) {
         HelpUtils.emitSectionHelp(args[1]);
-        return;
+        return 0;
       }
 
       String[] optionArgs =
@@ -64,14 +74,18 @@ public class Main {
       Workflow workflow = workflowType.newWorkflow(config);
       workflow.init();
       workflow.execute();
+      return 0;
     } catch (HelpRequestException e) {
       HelpUtils.emitGlobalHelp();
+      return 0;
     } catch (VersionRequestException e) {
       PrintWriter pw = new PrintWriter(System.out);
       pw.println(HelpUtils.getVersionMessage());
       pw.flush();
+      return 0;
     } catch (Exception e) {
-      System.err.println(e.getMessage());
+      LOGGER.error(e.getMessage(), e);
+      return 1;
     }
   }
 
