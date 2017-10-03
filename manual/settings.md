@@ -557,6 +557,14 @@ The buffer size to use when batching.
 
 Default: **1000**.
 
+#### --batch.bufferTimeout _&lt;string&gt;_
+
+The maximum amount of time to wait for incoming items to batch before flushing.
+The buffer will be flushed when this duration is elapsed
+or when *bufferSize* is reached, whichever happens first.
+
+Default: **"1 seconds"**.
+
 #### --batch.maxBatchSize _&lt;number&gt;_
 
 The maximum batch size.

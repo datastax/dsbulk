@@ -29,7 +29,8 @@ public class BatchSettings implements SettingsValidator {
         cluster,
         config.getEnum(StatementBatcher.BatchMode.class, "mode"),
         config.getInt("maxBatchSize"),
-        config.getInt("bufferSize"));
+        config.getInt("bufferSize"),
+        config.getDuration("bufferTimeout"));
   }
 
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
@@ -37,6 +38,7 @@ public class BatchSettings implements SettingsValidator {
       config.getEnum(StatementBatcher.BatchMode.class, "mode");
       config.getInt("maxBatchSize");
       config.getInt("bufferSize");
+      config.getDuration("bufferTimeout");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
     }

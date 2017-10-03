@@ -128,10 +128,9 @@ public interface LoaderConfig extends Config {
       Pattern pattern = Pattern.compile("(.+)\\s*C", Pattern.CASE_INSENSITIVE);
       Matcher matcher = pattern.matcher(getString(path));
       if (matcher.matches()) {
-        return
-            (int)
-                (((float) Runtime.getRuntime().availableProcessors())
-                    * Float.parseFloat(matcher.group(1)));
+        return (int)
+            (((float) Runtime.getRuntime().availableProcessors())
+                * Float.parseFloat(matcher.group(1)));
       } else {
         throw new ConfigException.WrongType(
             origin(),
