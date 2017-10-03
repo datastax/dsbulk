@@ -240,7 +240,6 @@ public class MainTest {
               "-header", "header",
               "-skipLines", "3",
               "-maxLines", "111",
-              "-maxThreads", "222",
               "-quote", "'",
               "-url", "http://findit"
             });
@@ -272,7 +271,6 @@ public class MainTest {
     assertThat(result.getString("connector.csv.header")).isEqualTo("header");
     assertThat(result.getInt("connector.csv.skipLines")).isEqualTo(3);
     assertThat(result.getInt("connector.csv.maxLines")).isEqualTo(111);
-    assertThat(result.getInt("connector.csv.maxThreads")).isEqualTo(222);
     assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
     assertThat(result.getString("connector.csv.url")).isEqualTo("http://findit");
   }
@@ -376,8 +374,6 @@ public class MainTest {
               "10",
               "--executor.maxThreads",
               "11",
-              "--executor.maxConcurrentOps",
-              "27",
               "--executor.maxInFlight",
               "12",
               "--executor.maxPerSecond",
@@ -505,7 +501,6 @@ public class MainTest {
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
     assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);
     assertThat(result.getInt("executor.maxThreads")).isEqualTo(11);
-    assertThat(result.getInt("executor.maxConcurrentOps")).isEqualTo(27);
     assertThat(result.getInt("executor.maxInFlight")).isEqualTo(12);
     assertThat(result.getInt("executor.maxPerSecond")).isEqualTo(13);
     assertThat(result.getString("executor.continuousPaging.pageUnit")).isEqualTo("BYTES");
@@ -555,7 +550,6 @@ public class MainTest {
               "--connector.csv.fileNamePattern", "pat",
               "--connector.csv.fileNameFormat", "fmt",
               "--connector.csv.recursive", "true",
-              "--connector.csv.maxThreads", "1",
               "--connector.csv.encoding", "enc",
               "--connector.csv.header", "false",
               "--connector.csv.delimiter", "|",
@@ -569,7 +563,6 @@ public class MainTest {
     assertThat(result.getString("connector.csv.fileNamePattern")).isEqualTo("pat");
     assertThat(result.getString("connector.csv.fileNameFormat")).isEqualTo("fmt");
     assertThat(result.getBoolean("connector.csv.recursive")).isTrue();
-    assertThat(result.getInt("connector.csv.maxThreads")).isEqualTo(1);
     assertThat(result.getString("connector.csv.encoding")).isEqualTo("enc");
     assertThat(result.getBoolean("connector.csv.header")).isFalse();
     assertThat(result.getString("connector.csv.delimiter")).isEqualTo("|");

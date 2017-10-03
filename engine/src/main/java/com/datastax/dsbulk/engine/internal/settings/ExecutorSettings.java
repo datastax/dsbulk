@@ -41,7 +41,6 @@ public class ExecutorSettings implements SettingsValidator {
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
   private final LoaderConfig config;
-  private ThreadPoolExecutor executor;
 
   ExecutorSettings(LoaderConfig config) {
     this.config = config;
@@ -54,15 +53,6 @@ public class ExecutorSettings implements SettingsValidator {
   public ReactorBulkReader newReadExecutor(
       Session session, MetricsCollectingExecutionListener executionListener) {
     return newBulkExecutor(session, executionListener, WorkflowType.UNLOAD);
-  }
-
-  @SuppressWarnings("unused")
-  public ThreadPoolExecutor getExecutorThreadPool() {
-    return executor;
-  }
-
-  public int getMaxConcurrentOps() {
-    return config.getThreads("maxConcurrentOps");
   }
 
   private ReactorBulkExecutor newBulkExecutor(
@@ -99,7 +89,6 @@ public class ExecutorSettings implements SettingsValidator {
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getThreads("maxThreads");
-      config.getThreads("maxConcurrentOps");
       config.getInt("maxPerSecond");
       config.getInt("maxInFlight");
     } catch (ConfigException e) {
@@ -123,7 +112,7 @@ public class ExecutorSettings implements SettingsValidator {
       ExecutionListener executionListener) {
     int threads = config.getThreads("maxThreads");
     // will be closed when the Bulk Executor gets closed
-    executor =
+    ThreadPoolExecutor executor =
         new ThreadPoolExecutor(
             0,
             threads,

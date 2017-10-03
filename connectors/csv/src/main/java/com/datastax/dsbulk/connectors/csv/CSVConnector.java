@@ -6,19 +6,15 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
-import static java.nio.file.FileVisitResult.CONTINUE;
-import static java.nio.file.FileVisitResult.TERMINATE;
-import static java.util.concurrent.TimeUnit.MINUTES;
-
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.google.common.base.Suppliers;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.csv.CsvFormat;
@@ -39,18 +35,12 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Collections;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jetbrains.annotations.NotNull;
+import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -60,9 +50,6 @@ import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.SignalType;
-import reactor.core.publisher.WorkQueueProcessor;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 /**
  * A connector for CSV files.
@@ -89,14 +76,12 @@ public class CSVConnector implements Connector {
   private char comment;
   private long skipLines;
   private long maxLines;
-  private int maxThreads;
   private boolean recursive;
   private boolean header;
   private String fileNameFormat;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
   private AtomicInteger counter;
-  private ExecutorService threadPool;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -110,7 +95,6 @@ public class CSVConnector implements Connector {
     comment = settings.getChar("comment");
     skipLines = settings.getLong("skipLines");
     maxLines = settings.getLong("maxLines");
-    maxThreads = settings.getThreads("maxThreads");
     recursive = settings.getBoolean("recursive");
     header = settings.getBoolean("header");
     fileNameFormat = settings.getString("fileNameFormat");
@@ -140,11 +124,6 @@ public class CSVConnector implements Connector {
       writerSettings.setQuoteEscapingEnabled(true);
       counter = new AtomicInteger(0);
     }
-    if (maxThreads > 1) {
-      threadPool =
-          Executors.newFixedThreadPool(
-              maxThreads, new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
-    }
   }
 
   @Override
@@ -165,21 +144,11 @@ public class CSVConnector implements Connector {
       settings.getChar("comment");
       settings.getLong("skipLines");
       settings.getLong("maxLines");
-      settings.getThreads("maxThreads");
       settings.getBoolean("recursive");
       settings.getBoolean("header");
       settings.getString("fileNameFormat");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
-    }
-  }
-
-  @Override
-  public void close() throws Exception {
-    if (threadPool != null) {
-      threadPool.shutdown();
-      threadPool.awaitTermination(1, MINUTES);
-      threadPool.shutdownNow();
     }
   }
 
@@ -196,161 +165,6 @@ public class CSVConnector implements Connector {
   @Override
   public Subscriber<Record> write() {
     assert !read;
-    if (root != null && maxThreads > 1) {
-      return writeMultipleThreads();
-    } else {
-      return writeSingleThread();
-    }
-  }
-
-  private void tryReadFromDirectory() throws URISyntaxException {
-    try {
-      Path root = Paths.get(url.toURI());
-      if (Files.isDirectory(root)) {
-        if (!Files.isReadable(root)) {
-          throw new IllegalArgumentException("Directory is not readable: " + root);
-        }
-        this.root = root;
-      }
-    } catch (FileSystemNotFoundException ignored) {
-      // not a path on a known filesystem, fall back to reading from URL directly
-    }
-  }
-
-  private void tryWriteToDirectory() throws URISyntaxException, IOException {
-    try {
-      Path root = Paths.get(url.toURI());
-      if (!Files.exists(root)) {
-        root = Files.createDirectories(root);
-      }
-      if (Files.isDirectory(root)) {
-        if (!Files.isWritable(root)) {
-          throw new IllegalArgumentException("Directory is not writable: " + root);
-        }
-        this.root = root;
-      }
-    } catch (FileSystemNotFoundException ignored) {
-      // not a path on a known filesystem, fall back to writing to URL directly
-    }
-  }
-
-  private Flux<Record> readSingleFile(URL url) {
-    Flux<Record> records =
-        Flux.create(
-            e -> {
-              CsvParser parser = new CsvParser(parserSettings);
-              LOGGER.debug("Reading {}", url);
-              try (InputStream is = openInputStream(url)) {
-                parser.beginParsing(is, encoding);
-                while (true) {
-                  com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
-                  ParsingContext context = parser.getContext();
-                  String source = context.currentParsedContent();
-                  if (row == null) {
-                    break;
-                  }
-                  if (e.isCancelled()) {
-                    break;
-                  }
-                  Record record;
-                  long line = context.currentLine();
-                  int column = context.currentColumn();
-                  if (header) {
-                    record =
-                        new DefaultRecord(
-                            source,
-                            Suppliers.memoize(() -> URIUtils.createLocationURI(url, line, column)),
-                            context.parsedHeaders(),
-                            (Object[]) row.getValues());
-                  } else {
-                    record =
-                        new DefaultRecord(
-                            source,
-                            Suppliers.memoize(() -> URIUtils.createLocationURI(url, line, column)),
-                            (Object[]) row.getValues());
-                  }
-                  LOGGER.trace("Emitting record {}", record);
-                  e.next(record);
-                }
-                LOGGER.debug("Done reading {}", url);
-                e.complete();
-                parser.stopParsing();
-              } catch (IOException e1) {
-                LOGGER.error("Error writing to " + url, e1);
-                e.error(e1);
-                parser.stopParsing();
-              }
-            },
-            FluxSink.OverflowStrategy.BUFFER);
-    if (maxLines != -1) {
-      records = records.take(maxLines);
-    }
-    return records;
-  }
-
-  private Publisher<Record> readMultipleFiles() {
-    Scheduler scheduler =
-        maxThreads > 1 ? Schedulers.fromExecutor(threadPool) : Schedulers.immediate();
-    return Flux.merge(
-        scanRootDirectory()
-            .map(
-                p -> {
-                  try {
-                    return readSingleFile(p.toUri().toURL()).subscribeOn(scheduler);
-                  } catch (MalformedURLException e) {
-                    throw new RuntimeException(e);
-                  }
-                }),
-        maxThreads);
-  }
-
-  private Flux<Path> scanRootDirectory() {
-    return Flux.create(
-        e -> {
-          PathMatcher matcher = root.getFileSystem().getPathMatcher("glob:" + pattern);
-          try {
-            Files.walkFileTree(
-                root,
-                Collections.emptySet(),
-                recursive ? Integer.MAX_VALUE : 1,
-                new SimpleFileVisitor<Path>() {
-
-                  @Override
-                  public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
-                      throws IOException {
-                    return e.isCancelled() ? TERMINATE : CONTINUE;
-                  }
-
-                  @Override
-                  public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                      throws IOException {
-                    if (Files.isReadable(file)
-                        && Files.isRegularFile(file)
-                        && matcher.matches(file)
-                        && !e.isCancelled()) {
-                      e.next(file);
-                    }
-                    return e.isCancelled() ? TERMINATE : CONTINUE;
-                  }
-
-                  @Override
-                  public FileVisitResult visitFileFailed(Path file, IOException ex)
-                      throws IOException {
-                    LOGGER.warn("Could not read " + file.toAbsolutePath().toUri().toURL(), e);
-                    return e.isCancelled() ? TERMINATE : CONTINUE;
-                  }
-                });
-            e.complete();
-          } catch (IOException e1) {
-            e.error(e1);
-          }
-        },
-        FluxSink.OverflowStrategy.BUFFER);
-  }
-
-  @NotNull
-  private Subscriber<Record> writeSingleThread() {
-
     return new BaseSubscriber<Record>() {
 
       private URL url;
@@ -400,13 +214,117 @@ public class CSVConnector implements Connector {
     };
   }
 
-  private Subscriber<Record> writeMultipleThreads() {
-    WorkQueueProcessor<Record> dispatcher =
-        WorkQueueProcessor.<Record>builder().executor(threadPool).bufferSize(1024).build();
-    for (int i = 0; i < maxThreads; i++) {
-      dispatcher.subscribe(writeSingleThread());
+  private void tryReadFromDirectory() throws URISyntaxException {
+    try {
+      Path root = Paths.get(url.toURI());
+      if (Files.isDirectory(root)) {
+        if (!Files.isReadable(root)) {
+          throw new IllegalArgumentException("Directory is not readable: " + root);
+        }
+        this.root = root;
+      }
+    } catch (FileSystemNotFoundException ignored) {
+      // not a path on a known filesystem, fall back to reading from URL directly
     }
-    return dispatcher;
+  }
+
+  private void tryWriteToDirectory() throws URISyntaxException, IOException {
+    try {
+      Path root = Paths.get(url.toURI());
+      if (!Files.exists(root)) {
+        root = Files.createDirectories(root);
+      }
+      if (Files.isDirectory(root)) {
+        if (!Files.isWritable(root)) {
+          throw new IllegalArgumentException("Directory is not writable: " + root);
+        }
+        this.root = root;
+      }
+    } catch (FileSystemNotFoundException ignored) {
+      // not a path on a known filesystem, fall back to writing to URL directly
+    }
+  }
+
+  private Flux<Record> readSingleFile(URL url) {
+    Flux<Record> records =
+        Flux.create(
+            e -> {
+              SimpleBackpressureController controller = new SimpleBackpressureController();
+              e.onRequest(controller::signalRequested);
+              CsvParser parser = new CsvParser(parserSettings);
+              LOGGER.debug("Reading {}", url);
+              try (InputStream is = openInputStream(url)) {
+                parser.beginParsing(is, encoding);
+                while (true) {
+                  com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
+                  ParsingContext context = parser.getContext();
+                  String source = context.currentParsedContent();
+                  if (row == null) {
+                    break;
+                  }
+                  if (e.isCancelled()) {
+                    break;
+                  }
+                  Record record;
+                  long line = context.currentLine();
+                  int column = context.currentColumn();
+                  if (header) {
+                    record =
+                        new DefaultRecord(
+                            source,
+                            Suppliers.memoize(() -> URIUtils.createLocationURI(url, line, column)),
+                            context.parsedHeaders(),
+                            (Object[]) row.getValues());
+                  } else {
+                    record =
+                        new DefaultRecord(
+                            source,
+                            Suppliers.memoize(() -> URIUtils.createLocationURI(url, line, column)),
+                            (Object[]) row.getValues());
+                  }
+                  LOGGER.trace("Emitting record {}", record);
+                  controller.awaitRequested(1);
+                  e.next(record);
+                }
+                LOGGER.debug("Done reading {}", url);
+                e.complete();
+                parser.stopParsing();
+              } catch (IOException e1) {
+                LOGGER.error("Error writing to " + url, e1);
+                e.error(e1);
+                parser.stopParsing();
+              }
+            },
+            FluxSink.OverflowStrategy.ERROR);
+    if (maxLines != -1) {
+      records = records.take(maxLines);
+    }
+    return records;
+  }
+
+  private Publisher<Record> readMultipleFiles() {
+    PathMatcher matcher = root.getFileSystem().getPathMatcher("glob:" + pattern);
+    return Flux.defer(
+            () -> {
+              try {
+                Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
+                return Flux.fromStream(files);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .filter(Files::isReadable)
+        .filter(Files::isRegularFile)
+        .filter(matcher::matches)
+        .map(
+            file -> {
+              try {
+                return file.toUri().toURL();
+              } catch (MalformedURLException e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .flatMap(this::readSingleFile);
   }
 
   private CsvWriter createCSVWriter(URL url) {

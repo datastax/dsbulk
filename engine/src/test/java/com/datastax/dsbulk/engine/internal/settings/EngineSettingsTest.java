@@ -21,14 +21,14 @@ public class EngineSettingsTest {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
     EngineSettings settings = new EngineSettings(config);
     assertThat(settings.getMaxMappingThreads())
-        .isEqualTo(Runtime.getRuntime().availableProcessors());
+        .isEqualTo(Runtime.getRuntime().availableProcessors() / 2);
   }
 
   @Test
   public void should_create_custom_engine_settings() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxMappingThreads = 8C, maxConcurrentReads = 4C")
+            ConfigFactory.parseString("maxMappingThreads = 8C")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
     EngineSettings settings = new EngineSettings(config);
     assertThat(settings.getMaxMappingThreads())
