@@ -11,13 +11,9 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.typesafe.config.ConfigException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** */
 public class EngineSettings implements SettingsValidator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(EngineSettings.class);
 
   private final LoaderConfig config;
 
@@ -29,14 +25,9 @@ public class EngineSettings implements SettingsValidator {
     return config.getThreads("maxMappingThreads");
   }
 
-  public int getMaxConcurrentOps() {
-    return config.getThreads("maxConcurrentOps");
-  }
-
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getThreads("maxMappingThreads");
-      config.getThreads("maxConcurrentOps");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
     }

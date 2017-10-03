@@ -58,7 +58,6 @@ public class STDOutUnloadIT {
       "unload",
       "--log.directory=./target",
       "--connector.csv.url=stdout:/",
-      "--connector.csv.maxThreads=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression=NONE",

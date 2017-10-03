@@ -220,7 +220,7 @@ The maximum number of concurrent requests per second. This acts as a safeguard a
 
 Setting this option to any negative value will disable it.
 
-Default: **100000**.
+Default: **500000**.
 
 #### -maxErrors,--log.maxErrors _&lt;number&gt;_
 
@@ -403,12 +403,6 @@ Ignored when writing. Ignored for non-file URLs.
 Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
 
 Default: **"\*\*/\*.csv"**.
-
-#### -maxThreads,--connector.csv.maxThreads _&lt;string&gt;_
-
-The maximum number of reading or writing threads. In other words, this setting controls how many files can be read or written simultaneously.
-
-Default: **"0.5C"**.
 
 #### -quote,--connector.csv.quote _&lt;string&gt;_
 
@@ -1056,7 +1050,7 @@ Applies to both load and unload workflows.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"4C"**.
+Default: **"1C"**.
 
 #### --engine.maxMappingThreads _&lt;string&gt;_
 
@@ -1079,7 +1073,7 @@ The maximum number of concurrent requests per second. This acts as a safeguard a
 
 Setting this option to any negative value will disable it.
 
-Default: **100000**.
+Default: **500000**.
 
 #### --executor.continuousPaging.enabled _&lt;boolean&gt;_
 

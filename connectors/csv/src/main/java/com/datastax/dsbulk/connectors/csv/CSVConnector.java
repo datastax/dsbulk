@@ -6,8 +6,6 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
-
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
@@ -17,7 +15,6 @@ import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.google.common.base.Suppliers;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.csv.CsvFormat;
@@ -42,11 +39,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
-import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -56,9 +50,6 @@ import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.SignalType;
-import reactor.core.publisher.WorkQueueProcessor;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 /**
  * A connector for CSV files.
@@ -85,15 +76,12 @@ public class CSVConnector implements Connector {
   private char comment;
   private long skipLines;
   private long maxLines;
-  private int maxThreads;
   private boolean recursive;
   private boolean header;
   private String fileNameFormat;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
   private AtomicInteger counter;
-  private ExecutorService threadPool;
-  private Scheduler scheduler;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -107,7 +95,6 @@ public class CSVConnector implements Connector {
     comment = settings.getChar("comment");
     skipLines = settings.getLong("skipLines");
     maxLines = settings.getLong("maxLines");
-    maxThreads = settings.getThreads("maxThreads");
     recursive = settings.getBoolean("recursive");
     header = settings.getBoolean("header");
     fileNameFormat = settings.getString("fileNameFormat");
@@ -137,14 +124,6 @@ public class CSVConnector implements Connector {
       writerSettings.setQuoteEscapingEnabled(true);
       counter = new AtomicInteger(0);
     }
-    if (maxThreads > 1) {
-      threadPool =
-          Executors.newCachedThreadPool(
-              new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
-      scheduler = Schedulers.fromExecutor(threadPool);
-    } else {
-      scheduler = Schedulers.immediate();
-    }
   }
 
   @Override
@@ -165,24 +144,11 @@ public class CSVConnector implements Connector {
       settings.getChar("comment");
       settings.getLong("skipLines");
       settings.getLong("maxLines");
-      settings.getThreads("maxThreads");
       settings.getBoolean("recursive");
       settings.getBoolean("header");
       settings.getString("fileNameFormat");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
-    }
-  }
-
-  @Override
-  public void close() throws Exception {
-    if (threadPool != null) {
-      threadPool.shutdown();
-      threadPool.awaitTermination(1, MINUTES);
-      threadPool.shutdownNow();
-    }
-    if (scheduler != null) {
-      scheduler.dispose();
     }
   }
 
@@ -199,11 +165,53 @@ public class CSVConnector implements Connector {
   @Override
   public Subscriber<Record> write() {
     assert !read;
-    if (root != null && maxThreads > 1) {
-      return writeMultipleThreads();
-    } else {
-      return writeSingleThread();
-    }
+    return new BaseSubscriber<Record>() {
+
+      private URL url;
+      private CsvWriter writer;
+
+      private void start() {
+        url = getOrCreateDestinationURL();
+        writer = createCSVWriter(url);
+        LOGGER.debug("Writing " + url);
+      }
+
+      @Override
+      protected void hookOnSubscribe(Subscription subscription) {
+        start();
+        subscription.request(Long.MAX_VALUE);
+      }
+
+      @Override
+      protected void hookOnNext(Record record) {
+        if (root != null && writer.getRecordCount() == maxLines) {
+          end();
+          start();
+        }
+        if (header && writer.getRecordCount() == 0) {
+          writer.writeHeaders(record.fields());
+        }
+        LOGGER.trace("Writing record {}", record);
+        writer.writeRow(record.values());
+      }
+
+      @Override
+      protected void hookOnError(Throwable t) {
+        LOGGER.error("Error writing to " + url, t);
+      }
+
+      @Override
+      protected void hookFinally(SignalType type) {
+        end();
+      }
+
+      private void end() {
+        LOGGER.debug("Done writing {}", url);
+        if (writer != null) {
+          writer.close();
+        }
+      }
+    };
   }
 
   private void tryReadFromDirectory() throws URISyntaxException {
@@ -316,68 +324,7 @@ public class CSVConnector implements Connector {
                 throw new RuntimeException(e);
               }
             })
-        .flatMap(url -> readSingleFile(url).subscribeOn(scheduler), maxThreads);
-  }
-
-  @NotNull
-  private Subscriber<Record> writeSingleThread() {
-
-    return new BaseSubscriber<Record>() {
-
-      private URL url;
-      private CsvWriter writer;
-
-      private void start() {
-        url = getOrCreateDestinationURL();
-        writer = createCSVWriter(url);
-        LOGGER.debug("Writing " + url);
-      }
-
-      @Override
-      protected void hookOnSubscribe(Subscription subscription) {
-        start();
-        subscription.request(Long.MAX_VALUE);
-      }
-
-      @Override
-      protected void hookOnNext(Record record) {
-        if (root != null && writer.getRecordCount() == maxLines) {
-          end();
-          start();
-        }
-        if (header && writer.getRecordCount() == 0) {
-          writer.writeHeaders(record.fields());
-        }
-        LOGGER.trace("Writing record {}", record);
-        writer.writeRow(record.values());
-      }
-
-      @Override
-      protected void hookOnError(Throwable t) {
-        LOGGER.error("Error writing to " + url, t);
-      }
-
-      @Override
-      protected void hookFinally(SignalType type) {
-        end();
-      }
-
-      private void end() {
-        LOGGER.debug("Done writing {}", url);
-        if (writer != null) {
-          writer.close();
-        }
-      }
-    };
-  }
-
-  private Subscriber<Record> writeMultipleThreads() {
-    WorkQueueProcessor<Record> dispatcher =
-        WorkQueueProcessor.<Record>builder().executor(threadPool).build();
-    for (int i = 0; i < maxThreads; i++) {
-      dispatcher.subscribe(writeSingleThread());
-    }
-    return dispatcher;
+        .flatMap(this::readSingleFile);
   }
 
   private CsvWriter createCSVWriter(URL url) {

@@ -34,23 +34,4 @@ public class EngineSettingsTest {
     assertThat(settings.getMaxMappingThreads())
         .isEqualTo(Runtime.getRuntime().availableProcessors() * 8);
   }
-
-  @Test
-  public void should_report_default_max_concurrent_ops() throws Exception {
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
-    EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getMaxConcurrentOps())
-        .isEqualTo(Runtime.getRuntime().availableProcessors() * 4);
-  }
-
-  @Test
-  public void should_create_custom_max_concurrent_ops() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxConcurrentOps = 0.5C")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
-    EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getMaxConcurrentOps())
-        .isEqualTo(Runtime.getRuntime().availableProcessors() / 2);
-  }
 }

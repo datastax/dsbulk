@@ -45,7 +45,6 @@ public class UnloadWorkflow implements Workflow {
   private final LoaderConfig config;
 
   private SchemaSettings schemaSettings;
-  private Scheduler readsScheduler;
   private Scheduler mapperScheduler;
   private Connector connector;
   private MetricsManager metricsManager;
@@ -75,10 +74,8 @@ public class UnloadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentReads = engineSettings.getMaxConcurrentOps();
     maxMappingThreads = engineSettings.getMaxMappingThreads();
-    readsScheduler = Schedulers.newElastic("range-reads");
-    mapperScheduler = Schedulers.newElastic("result-mapper");
+    mapperScheduler = Schedulers.newParallel("result-mapper", maxMappingThreads);
     connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
     connector.init();
     cluster = driverSettings.newCluster();
@@ -101,9 +98,7 @@ public class UnloadWorkflow implements Workflow {
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Record> records =
         Flux.fromIterable(schemaSettings.createReadStatements(cluster))
-            .flatMap(
-                statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
-                maxConcurrentReads)
+            .flatMap(statement -> executor.readReactive(statement))
             .compose(logManager.newReadErrorHandler())
             .parallel(maxMappingThreads)
             .runOn(mapperScheduler)
@@ -127,7 +122,6 @@ public class UnloadWorkflow implements Workflow {
     if (!closed) {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(connector, null);
-      e = WorkflowUtils.closeQuietly(readsScheduler, e);
       e = WorkflowUtils.closeQuietly(mapperScheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(metricsManager, e);

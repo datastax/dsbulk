@@ -92,8 +92,6 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url");
     customUnloadArgs.add(full_unload_dir.toString());
-    customUnloadArgs.add("--connector.csv.maxThreads");
-    customUnloadArgs.add("1");
     customUnloadArgs.add("--schema.query");
     customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
@@ -126,7 +124,6 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
 
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url=" + full_unload_dir.toString());
-    customUnloadArgs.add("--connector.csv.maxThreads=1");
     customUnloadArgs.add("--schema.keyspace=" + KS);
     customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_COMPLEX.toString());
     customUnloadArgs.add("--schema.mapping");
@@ -159,7 +156,6 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     EndToEndUtils.deleteIfExists(full_unload_dir);
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url=" + full_unload_dir.toString());
-    customUnloadArgs.add("--connector.csv.maxThreads=1");
     customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(
@@ -201,8 +197,6 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("-url");
     customUnloadArgs.add(full_unload_dir.toString());
-    customUnloadArgs.add("--connector.csv.maxThreads");
-    customUnloadArgs.add("1");
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add("key=key,my source=my destination");
     customUnloadArgs.add("-header");
@@ -242,7 +236,6 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
 
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url=" + full_unload_dir.toString());
-    customUnloadArgs.add("--connector.csv.maxThreads=1");
     customUnloadArgs.add("--schema.query=" + READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
     customUnloadArgs.add("--schema.mapping");
     customUnloadArgs.add(

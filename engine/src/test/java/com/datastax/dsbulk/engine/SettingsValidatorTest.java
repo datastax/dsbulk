@@ -24,7 +24,6 @@ public class SettingsValidatorTest {
   private PrintStream originalStderr;
   private PrintStream originalStdout;
   private ByteArrayOutputStream stderr;
-  private ByteArrayOutputStream stdout;
   private Logger root;
   private Level oldLevel;
 
@@ -54,7 +53,6 @@ public class SettingsValidatorTest {
     "--connector.csv.quote=",
     "--connector.csv.escape=",
     "--connector.csv.comment=",
-    "--connector.csv.maxThreads=notANumber",
     "--schema.nullToUnset=tralse",
     "--batch.maxBatchSize=NotANumber",
     "--batch.bufferSize=NotANumber",
@@ -64,7 +62,6 @@ public class SettingsValidatorTest {
     "--monitoring.expectedWrites=NotANumber",
     "--monitoring.expectedWrites=expectedReads",
     "--monitoring.jmx=tralse",
-    "--engine.maxConcurrentOps=NotANumber",
     "--engine.maxMappingThreads=NotANumber"
   };
 
@@ -88,7 +85,7 @@ public class SettingsValidatorTest {
   public void setUp() throws Exception {
     originalStdout = System.out;
     originalStderr = System.err;
-    stdout = new ByteArrayOutputStream();
+    ByteArrayOutputStream stdout = new ByteArrayOutputStream();
     System.setOut(new PrintStream(stdout));
     stderr = new ByteArrayOutputStream();
     System.setErr(new PrintStream(stderr));

@@ -186,8 +186,7 @@ public class CSVConnectorTest {
     Path out = Files.createTempDirectory("test").resolve("nonexistent");
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = \"%s\", escape = \"\\\"\", maxThreads = 1", out))
+            ConfigFactory.parseString(String.format("url = \"%s\", escape = \"\\\"\"", out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -214,8 +213,7 @@ public class CSVConnectorTest {
     Path out = Files.createTempDirectory("test");
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = \"%s\", escape = \"\\\"\", maxThreads = 4", out))
+            ConfigFactory.parseString(String.format("url = \"%s\", escape = \"\\\"\"", out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -242,8 +240,7 @@ public class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", escape = \"\\\"\", maxThreads = 1, maxLines = 4", out))
+                    String.format("url = \"%s\", escape = \"\\\"\", maxLines = 4", out))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();

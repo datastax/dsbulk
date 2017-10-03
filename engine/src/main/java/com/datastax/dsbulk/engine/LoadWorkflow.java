@@ -43,13 +43,11 @@ public class LoadWorkflow implements Workflow {
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.LOAD);
   private final LoaderConfig config;
 
-  private Scheduler writesScheduler;
   private Scheduler mapperScheduler;
   private RecordMapper recordMapper;
   private ReactorUnsortedStatementBatcher batcher;
   private ReactorBulkWriter executor;
   private Connector connector;
-  private int maxConcurrentWrites;
   private int maxMappingThreads;
   private MetricsManager metricsManager;
   private LogManager logManager;
@@ -74,10 +72,8 @@ public class LoadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentWrites = engineSettings.getMaxConcurrentOps();
     maxMappingThreads = engineSettings.getMaxMappingThreads();
-    writesScheduler = Schedulers.newElastic("batch-writes");
-    mapperScheduler = Schedulers.newElastic("record-mapper");
+    mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
     connector.init();
     DseCluster cluster = driverSettings.newCluster();
@@ -107,9 +103,7 @@ public class LoadWorkflow implements Workflow {
         .compose(logManager.newRecordMapperErrorHandler())
         .compose(batcher)
         .compose(metricsManager.newBatcherMonitor())
-        .flatMap(
-            statement -> executor.writeReactive(statement).subscribeOn(writesScheduler),
-            maxConcurrentWrites)
+        .flatMap(statement -> executor.writeReactive(statement))
         .compose(logManager.newWriteErrorHandler())
         .compose(logManager.newLocationTracker())
         .blockLast();
@@ -123,7 +117,6 @@ public class LoadWorkflow implements Workflow {
     if (!closed) {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(connector, null);
-      e = WorkflowUtils.closeQuietly(writesScheduler, e);
       e = WorkflowUtils.closeQuietly(mapperScheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(metricsManager, e);
