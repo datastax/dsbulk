@@ -61,10 +61,10 @@ public class SettingsValidatorTest {
     "--executor.maxPerSecond=NotANumber",
     "--executor.maxInFlight=NotANumber",
     "--executor.maxThreads=NotANumber",
-    "--executor.maxConcurrentOps=NotANumber",
     "--monitoring.expectedWrites=NotANumber",
     "--monitoring.expectedWrites=expectedReads",
     "--monitoring.jmx=tralse",
+    "--engine.maxConcurrentOps=NotANumber",
     "--engine.maxMappingThreads=NotANumber"
   };
 

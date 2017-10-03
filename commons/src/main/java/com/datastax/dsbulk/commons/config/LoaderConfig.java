@@ -122,15 +122,16 @@ public interface LoaderConfig extends Config {
    * @throws ConfigException.WrongType if value is not convertible to a number of threads.
    */
   default int getThreads(String path) {
-    String setting = getString(path);
-    int threads;
     try {
-      threads = Integer.parseInt(setting);
-    } catch (NumberFormatException e) {
-      Pattern pattern = Pattern.compile("(\\d+)\\s*C", Pattern.CASE_INSENSITIVE);
-      Matcher matcher = pattern.matcher(setting);
-      if (matcher.find()) {
-        threads = Runtime.getRuntime().availableProcessors() * Integer.parseInt(matcher.group(1));
+      return getInt(path);
+    } catch (ConfigException.WrongType e) {
+      Pattern pattern = Pattern.compile("(.+)\\s*C", Pattern.CASE_INSENSITIVE);
+      Matcher matcher = pattern.matcher(getString(path));
+      if (matcher.matches()) {
+        return
+            (int)
+                (((float) Runtime.getRuntime().availableProcessors())
+                    * Float.parseFloat(matcher.group(1)));
       } else {
         throw new ConfigException.WrongType(
             origin(),
@@ -139,7 +140,6 @@ public interface LoaderConfig extends Config {
             getValue(path).valueType().toString());
       }
     }
-    return threads;
   }
 
   /**

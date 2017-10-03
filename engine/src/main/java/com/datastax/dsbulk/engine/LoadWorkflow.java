@@ -74,10 +74,10 @@ public class LoadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentWrites = executorSettings.getMaxConcurrentOps();
+    maxConcurrentWrites = engineSettings.getMaxConcurrentOps();
     maxMappingThreads = engineSettings.getMaxMappingThreads();
-    writesScheduler = Schedulers.newParallel("batch-writes", maxConcurrentWrites);
-    mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
+    writesScheduler = Schedulers.newElastic("batch-writes");
+    mapperScheduler = Schedulers.newElastic("record-mapper");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
     connector.init();
     DseCluster cluster = driverSettings.newCluster();

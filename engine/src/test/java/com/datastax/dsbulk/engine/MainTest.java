@@ -376,8 +376,6 @@ public class MainTest {
               "10",
               "--executor.maxThreads",
               "11",
-              "--executor.maxConcurrentOps",
-              "27",
               "--executor.maxInFlight",
               "12",
               "--executor.maxPerSecond",
@@ -449,7 +447,9 @@ public class MainTest {
               "--connector.name",
               "conn",
               "--engine.maxMappingThreads",
-              "26"
+              "26",
+              "--engine.maxConcurrentOps",
+              "27"
             });
     assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
     assertThat(result.getInt("driver.port")).isEqualTo(1);
@@ -505,7 +505,6 @@ public class MainTest {
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
     assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);
     assertThat(result.getInt("executor.maxThreads")).isEqualTo(11);
-    assertThat(result.getInt("executor.maxConcurrentOps")).isEqualTo(27);
     assertThat(result.getInt("executor.maxInFlight")).isEqualTo(12);
     assertThat(result.getInt("executor.maxPerSecond")).isEqualTo(13);
     assertThat(result.getString("executor.continuousPaging.pageUnit")).isEqualTo("BYTES");
@@ -542,6 +541,7 @@ public class MainTest {
     assertThat(result.getString("schema.recordMetadata")).isEqualTo("{0:f3, 1:f4}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");
     assertThat(result.getInt("engine.maxMappingThreads")).isEqualTo(26);
+    assertThat(result.getInt("engine.maxConcurrentOps")).isEqualTo(27);
   }
 
   @Test

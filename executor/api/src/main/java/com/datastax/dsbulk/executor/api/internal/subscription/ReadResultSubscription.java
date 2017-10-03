@@ -16,6 +16,7 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.RateLimiter;
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.Executor;
@@ -60,13 +61,17 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
 
   @Override
   void onRequestSuccessful(ResultSet page, ExecutionContext local) {
-    listener.ifPresent(
-        l -> l.onReadRequestSuccessful(statement, page.getAvailableWithoutFetching(), local));
-    for (Row row : page) {
+    final int size = page.getAvailableWithoutFetching();
+    listener.ifPresent(l -> l.onReadRequestSuccessful(statement, size, local));
+    Iterator<Row> it = page.iterator();
+    int i = 0;
+    while (it.hasNext() && i < size) {
       if (isCancelled()) {
         return;
       }
+      Row row = it.next();
       onNext(new DefaultReadResult(statement, page.getExecutionInfo(), row));
+      i++;
     }
     boolean lastPage = page.getExecutionInfo().getPagingState() == null;
     if (lastPage) {

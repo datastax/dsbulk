@@ -75,10 +75,10 @@ public class UnloadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentReads = executorSettings.getMaxConcurrentOps();
+    maxConcurrentReads = engineSettings.getMaxConcurrentOps();
     maxMappingThreads = engineSettings.getMaxMappingThreads();
-    readsScheduler = Schedulers.newParallel("range-reads", maxConcurrentReads);
-    mapperScheduler = Schedulers.newParallel("result-mapper", maxMappingThreads);
+    readsScheduler = Schedulers.newElastic("range-reads");
+    mapperScheduler = Schedulers.newElastic("result-mapper");
     connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
     connector.init();
     cluster = driverSettings.newCluster();
