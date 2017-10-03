@@ -44,6 +44,7 @@ public class SettingsValidatorTest {
     "--driver.query.idempotence=notAboolean",
     "--driver.timestampGenerator=badInstance",
     "--driver.addressTranslator=badINstance",
+    "--driver.policy.maxRetries=notANumber",
     "--connector.csv.skipLines=notANumber",
     "--connector.csv.maxLines=notANumber",
     "--connector.csv.recursive=tralse",
@@ -318,5 +319,90 @@ public class SettingsValidatorTest {
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .contains("schema.keyspace and schema.table must be defined when using inferred mapping");
+  }
+
+  @Test
+  public void should_error_unknown_lbp() throws Exception {
+    new Main(
+        new String[] {
+          "load",
+          "--connector.csv.url=/path/to/my/file",
+          "-m",
+          "c1=c2",
+          "--driver.policy.lbp.name",
+          "unknown",
+          "--schema.query",
+          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+        })
+    .run();
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).contains("Invalid value at 'policy.lbp.name'");
+  }
+
+  @Test
+  public void should_error_lbp_bad_child_policy() throws Exception {
+    new Main(
+        new String[] {
+          "load",
+          "--connector.csv.url=/path/to/my/file",
+          "-m",
+          "c1=c2",
+          "--driver.policy.lbp.name",
+          "dse",
+          "--driver.policy.lbp.dse.childPolicy",
+          "junk",
+          "--schema.query",
+          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+        })
+    .run();
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).contains("Invalid value at 'dse.childPolicy'");
+  }
+
+  @Test
+  public void should_error_lbp_chaining_loop_self() throws Exception {
+    new Main(
+        new String[] {
+          "load",
+          "--connector.csv.url=/path/to/my/file",
+          "-m",
+          "c1=c2",
+          "--driver.policy.lbp.name",
+          "dse",
+          "--driver.policy.lbp.dse.childPolicy",
+          "dse",
+          "--schema.query",
+          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+        })
+        .run();
+
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).contains("Load balancing policy chaining loop detected: dse,dse");
+  }
+
+  @Test
+  public void should_error_lbp_chaining_loop() throws Exception {
+    new Main(
+        new String[] {
+          "load",
+          "--connector.csv.url=/path/to/my/file",
+          "-m",
+          "c1=c2",
+          "--driver.policy.lbp.name",
+          "dse",
+          "--driver.policy.lbp.dse.childPolicy",
+          "whiteList",
+          "--driver.policy.lbp.whiteList.childPolicy",
+          "tokenAware",
+          "--driver.policy.lbp.tokenAware.childPolicy",
+          "whiteList",
+          "--schema.query",
+          "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+        })
+    .run();
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .contains(
+            "Load balancing policy chaining loop detected: dse,whiteList,tokenAware,whiteList");
   }
 }

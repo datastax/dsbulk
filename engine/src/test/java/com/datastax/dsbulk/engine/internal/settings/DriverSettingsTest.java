@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.AuthProvider;
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.Host;
 import com.datastax.driver.core.PlainTextAuthProvider;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.QueryOptions;
@@ -23,10 +24,13 @@ import com.datastax.driver.core.RemoteEndpointAwareJdkSSLOptions;
 import com.datastax.driver.core.RemoteEndpointAwareNettySSLOptions;
 import com.datastax.driver.core.SSLOptions;
 import com.datastax.driver.core.SocketOptions;
-import com.datastax.driver.core.policies.DefaultRetryPolicy;
+import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.IdentityTranslator;
+import com.datastax.driver.core.policies.LoadBalancingPolicy;
 import com.datastax.driver.core.policies.NoSpeculativeExecutionPolicy;
 import com.datastax.driver.core.policies.Policies;
+import com.datastax.driver.core.policies.TokenAwarePolicy;
+import com.datastax.driver.core.policies.WhiteListPolicy;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseConfiguration;
 import com.datastax.driver.dse.DseLoadBalancingPolicy;
@@ -35,6 +39,8 @@ import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
+import com.datastax.dsbulk.engine.policies.MultipleRetryPolicy;
+import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import io.netty.handler.ssl.SslContext;
@@ -43,6 +49,7 @@ import java.net.URL;
 import java.util.List;
 import javax.security.auth.login.Configuration;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
@@ -101,7 +108,8 @@ public class DriverSettingsTest {
         .isInstanceOf(AtomicMonotonicTimestampGenerator.class);
     assertThat(policies.getAddressTranslator()).isInstanceOf(IdentityTranslator.class);
     assertThat(policies.getLoadBalancingPolicy()).isInstanceOf(DseLoadBalancingPolicy.class);
-    assertThat(policies.getRetryPolicy()).isInstanceOf(DefaultRetryPolicy.class);
+    assertThat(policies.getRetryPolicy()).isInstanceOf(MultipleRetryPolicy.class);
+    assertThat(Whitebox.getInternalState(policies.getRetryPolicy(), "maxRetryCount")).isEqualTo(10);
     assertThat(policies.getSpeculativeExecutionPolicy())
         .isInstanceOf(NoSpeculativeExecutionPolicy.class);
     assertThat(configuration.getProtocolOptions().getSSLOptions()).isNull();
@@ -266,5 +274,79 @@ public class DriverSettingsTest {
     SslContext sslContext = (SslContext) Whitebox.getInternalState(sslOptions, "context");
     // these are the OpenSSL equivalents to JSSE cipher names
     assertThat(sslContext.cipherSuites()).containsExactly("AES128-SHA", "AES256-SHA");
+  }
+
+  @Test
+  public void should_configure_lbp() throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    " port = 9123, "
+                        + "policy { "
+                        + "  lbp { "
+                        + "    name=dse, "
+                        + "    dse {"
+                        + "      childPolicy=whiteList,"
+                        + "    }, "
+                        + "    dcAwareRoundRobin {"
+                        + "      localDc=127.0.0.2,"
+                        + "      allowRemoteDCsForLocalConsistencyLevel=true,"
+                        + "      usedHostsPerRemoteDc=2,"
+                        + "    }, "
+                        + "    tokenAware {"
+                        + "      childPolicy = dcAwareRoundRobin,"
+                        + "      shuffleReplicas = false,"
+                        + "    }, "
+                        + "    whiteList {"
+                        + "      childPolicy = tokenAware,"
+                        + "      hosts = \"127.0.0.4:9000, 127.0.0.1\","
+                        + "    }, "
+                        + "  }"
+                        + "}")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DseCluster cluster = driverSettings.newCluster();
+    assertThat(cluster).isNotNull();
+    DseConfiguration configuration = cluster.getConfiguration();
+
+    // The main lbp is a DseLoadBalancingPolicy
+    LoadBalancingPolicy lbp = configuration.getPolicies().getLoadBalancingPolicy();
+    assertThat(lbp).isInstanceOf(DseLoadBalancingPolicy.class);
+    DseLoadBalancingPolicy dseLbp = (DseLoadBalancingPolicy) lbp;
+
+    // ...which chains to a WhiteListPolicy
+    assertThat(dseLbp.getChildPolicy()).isInstanceOf(WhiteListPolicy.class);
+    WhiteListPolicy whiteListPolicy = (WhiteListPolicy) dseLbp.getChildPolicy();
+
+    // ... whose host-list is not reachable. But we can invoke the predicate to
+    // verify that our two hosts are in the white list.
+    @SuppressWarnings({"unchecked", "Guava"})
+    Predicate<Host> predicate =
+        (Predicate<Host>) Whitebox.getInternalState(whiteListPolicy, "predicate");
+    assertThat(predicate.apply(makeHostWithAddress("127.0.0.1", 9123))).isTrue();
+    assertThat(predicate.apply(makeHostWithAddress("127.0.0.4", 9123))).isFalse();
+    assertThat(predicate.apply(makeHostWithAddress("127.0.0.4", 9000))).isTrue();
+
+    // The whitelist policy chains to a token-aware policy.
+    assertThat(whiteListPolicy.getChildPolicy()).isInstanceOf(TokenAwarePolicy.class);
+    TokenAwarePolicy tokenAwarePolicy = (TokenAwarePolicy) whiteListPolicy.getChildPolicy();
+    assertThat(Whitebox.getInternalState(tokenAwarePolicy, "shuffleReplicas")).isEqualTo(false);
+
+    // ...which chains to a DCAwareRoundRobinPolicy
+    assertThat(tokenAwarePolicy.getChildPolicy()).isInstanceOf(DCAwareRoundRobinPolicy.class);
+    DCAwareRoundRobinPolicy dcAwareRoundRobinPolicy =
+        (DCAwareRoundRobinPolicy) tokenAwarePolicy.getChildPolicy();
+    assertThat(Whitebox.getInternalState(dcAwareRoundRobinPolicy, "localDc"))
+        .isEqualTo("127.0.0.2");
+    assertThat(Whitebox.getInternalState(dcAwareRoundRobinPolicy, "dontHopForLocalCL"))
+        .isEqualTo(false);
+    assertThat(Whitebox.getInternalState(dcAwareRoundRobinPolicy, "usedHostsPerRemoteDc"))
+        .isEqualTo(2);
+  }
+
+  private Host makeHostWithAddress(String host, int port) {
+    Host h = Mockito.mock(Host.class);
+    Mockito.when(h.getSocketAddress()).thenReturn(new InetSocketAddress(host, port));
+    return h;
   }
 }

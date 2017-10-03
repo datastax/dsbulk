@@ -86,6 +86,7 @@ public class SettingsDocumentor {
 
   static {
     PREFERRED_SETTINGS.add("driver.auth.provider");
+    PREFERRED_SETTINGS.add("driver.policy.lbp.name");
 
     Config shortcutsConf =
         ConfigFactory.parseResourcesAnySyntax("shortcuts.conf").getConfig("dsbulk");
@@ -146,10 +147,10 @@ public class SettingsDocumentor {
           ConfigValue settingValue = DEFAULT.getValue(settingName);
           String shortOpt =
               LONG_TO_SHORT_OPTIONS.containsKey(settingName)
-                  ? LONG_TO_SHORT_OPTIONS.get(settingName) + ","
+                  ? "-" + LONG_TO_SHORT_OPTIONS.get(settingName) + ","
                   : "";
           out.printf(
-              "#### -%s--%s _&lt;%s&gt;_%n%n%s%n%n",
+              "#### %s--%s _&lt;%s&gt;_%n%n%s%n%n",
               shortOpt,
               settingName,
               StringUtils.htmlEscape(DEFAULT.getTypeString(settingName)),

@@ -168,6 +168,8 @@ public class CSVLoadEndToEndIT {
       CsvUtils.CSV_RECORDS_ERROR.toExternalForm(),
       "--driver.query.consistency",
       "LOCAL_ONE",
+      "--driver.policy.maxRetries",
+      "1",
       "--driver.hosts",
       "" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
       "--driver.protocol.compression",
@@ -177,8 +179,9 @@ public class CSVLoadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
+    // There are 24 rows of data, but one extra query due to the retry for the write timeout.
     new Main(args).run();
-    validateQueryCount(24, ConsistencyLevel.LOCAL_ONE);
+    validateQueryCount(25, ConsistencyLevel.LOCAL_ONE);
     EndToEndUtils.validateBadOps(4);
     EndToEndUtils.validateExceptionsLog(4, "Source  :", "load-errors.log");
   }
