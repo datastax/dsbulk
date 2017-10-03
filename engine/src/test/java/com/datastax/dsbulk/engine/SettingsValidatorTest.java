@@ -333,7 +333,8 @@ public class SettingsValidatorTest {
           "unknown",
           "--schema.query",
           "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
-        });
+        })
+    .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Invalid value at 'policy.lbp.name'");
   }
@@ -352,7 +353,8 @@ public class SettingsValidatorTest {
           "junk",
           "--schema.query",
           "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
-        });
+        })
+    .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Invalid value at 'dse.childPolicy'");
   }
@@ -371,7 +373,9 @@ public class SettingsValidatorTest {
           "dse",
           "--schema.query",
           "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
-        });
+        })
+        .run();
+
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Load balancing policy chaining loop detected: dse,dse");
   }
@@ -394,7 +398,8 @@ public class SettingsValidatorTest {
           "whiteList",
           "--schema.query",
           "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
-        });
+        })
+    .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .contains(
