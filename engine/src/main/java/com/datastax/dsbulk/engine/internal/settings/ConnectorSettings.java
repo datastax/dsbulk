@@ -6,8 +6,8 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.WorkflowType;
 import java.util.ServiceLoader;
@@ -18,11 +18,11 @@ public class ConnectorSettings implements SettingsValidator {
 
   private final LoaderConfig config;
 
-  ConnectorSettings(LoaderConfig config) throws Exception {
+  ConnectorSettings(LoaderConfig config) {
     this.config = config;
   }
 
-  public Connector getConnector(WorkflowType workflowType) throws Exception {
+  public Connector getConnector(WorkflowType workflowType) throws BulkConfigurationException {
     String connectorName = config.getString("name");
     Connector connector = locateConnector(connectorName);
     if (config.hasPath(connectorName)) {

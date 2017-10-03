@@ -6,9 +6,12 @@
  */
 package com.datastax.dsbulk.engine;
 
-public interface Workflow {
+public interface Workflow extends AutoCloseable {
 
   void init() throws Exception;
 
-  void execute() throws WorkflowEngineExecutionException;
+  void execute() throws Exception;
+
+  @Override
+  void close() throws Exception;
 }

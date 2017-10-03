@@ -8,7 +8,6 @@ package com.datastax.dsbulk.engine;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import com.datastax.driver.core.Metadata;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -44,15 +43,18 @@ public class LoadWorkflow implements Workflow {
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.LOAD);
   private final LoaderConfig config;
 
-  private DriverSettings driverSettings;
-  private ConnectorSettings connectorSettings;
-  private SchemaSettings schemaSettings;
-  private BatchSettings batchSettings;
-  private ExecutorSettings executorSettings;
-  private LogSettings logSettings;
-  private CodecSettings codecSettings;
-  private MonitoringSettings monitoringSettings;
-  private EngineSettings engineSettings;
+  private Scheduler writesScheduler;
+  private Scheduler mapperScheduler;
+  private RecordMapper recordMapper;
+  private ReactorUnsortedStatementBatcher batcher;
+  private ReactorBulkWriter executor;
+  private Connector connector;
+  private int maxConcurrentWrites;
+  private int maxMappingThreads;
+  private MetricsManager metricsManager;
+  private LogManager logManager;
+
+  private volatile boolean closed = false;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -63,81 +65,79 @@ public class LoadWorkflow implements Workflow {
     SettingsManager settingsManager = new SettingsManager(config, executionId, WorkflowType.LOAD);
     settingsManager.loadConfiguration();
     settingsManager.logEffectiveSettings();
-    logSettings = settingsManager.getLogSettings();
-    driverSettings = settingsManager.getDriverSettings();
-    connectorSettings = settingsManager.getConnectorSettings();
-    schemaSettings = settingsManager.getSchemaSettings();
-    batchSettings = settingsManager.getBatchSettings();
-    executorSettings = settingsManager.getExecutorSettings();
-    codecSettings = settingsManager.getCodecSettings();
-    monitoringSettings = settingsManager.getMonitoringSettings();
-    engineSettings = settingsManager.getEngineSettings();
+    LogSettings logSettings = settingsManager.getLogSettings();
+    DriverSettings driverSettings = settingsManager.getDriverSettings();
+    ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
+    SchemaSettings schemaSettings = settingsManager.getSchemaSettings();
+    BatchSettings batchSettings = settingsManager.getBatchSettings();
+    ExecutorSettings executorSettings = settingsManager.getExecutorSettings();
+    CodecSettings codecSettings = settingsManager.getCodecSettings();
+    MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
+    EngineSettings engineSettings = settingsManager.getEngineSettings();
+    maxConcurrentWrites = executorSettings.getMaxConcurrentOps();
+    maxMappingThreads = engineSettings.getMaxMappingThreads();
+    writesScheduler = Schedulers.newParallel("batch-writes", maxConcurrentWrites);
+    mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
+    connector = connectorSettings.getConnector(WorkflowType.LOAD);
+    connector.init();
+    DseCluster cluster = driverSettings.newCluster();
+    String keyspace = schemaSettings.getKeyspace();
+    DseSession session = cluster.connect(keyspace);
+    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD);
+    metricsManager.init();
+    logManager = logSettings.newLogManager(cluster);
+    logManager.init();
+    executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
+    recordMapper =
+        schemaSettings.createRecordMapper(
+            session, connector.getRecordMetadata(), codecSettings.createCodecRegistry(cluster));
+    batcher = batchSettings.newStatementBatcher(cluster);
   }
 
   @Override
-  public void execute() throws WorkflowEngineExecutionException {
-
-    LOGGER.info("Starting load workflow engine execution " + executionId);
+  public void execute() {
+    LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-
-    int maxConcurrentWrites = executorSettings.getMaxConcurrentOps();
-    int maxMappingThreads = engineSettings.getMaxMappingThreads();
-
-    Scheduler writesScheduler = Schedulers.newParallel("batch-writes", maxConcurrentWrites);
-    Scheduler mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
-    String keyspace = config.getString("schema.keyspace");
-    if (keyspace != null && keyspace.isEmpty()) {
-      keyspace = null;
-    }
-    if (keyspace != null) {
-      keyspace = Metadata.quoteIfNecessary(keyspace);
-    }
-
-    try (Connector connector = connectorSettings.getConnector(WorkflowType.LOAD);
-        DseCluster cluster = driverSettings.newCluster();
-        DseSession session = cluster.connect(keyspace);
-        MetricsManager metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD);
-        LogManager logManager = logSettings.newLogManager(cluster);
-        ReactorBulkWriter executor =
-            executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener())) {
-
-      connector.init();
-      metricsManager.init();
-      logManager.init();
-
-      RecordMapper recordMapper =
-          schemaSettings.createRecordMapper(
-              session, connector.getRecordMetadata(), codecSettings.createCodecRegistry(cluster));
-      ReactorUnsortedStatementBatcher batcher = batchSettings.newStatementBatcher(cluster);
-
-      Flux.from(connector.read())
-          .parallel(maxMappingThreads)
-          .runOn(mapperScheduler)
-          .map(recordMapper::map)
-          .sequential()
-          .compose(metricsManager.newRecordMapperMonitor())
-          .compose(logManager.newRecordMapperErrorHandler())
-          .compose(batcher)
-          .compose(metricsManager.newBatcherMonitor())
-          .flatMap(
-              statement -> executor.writeReactive(statement).subscribeOn(writesScheduler),
-              maxConcurrentWrites)
-          .compose(logManager.newWriteErrorHandler())
-          .blockLast();
-
-    } catch (Exception e) {
-      throw new WorkflowEngineExecutionException(
-          "Uncaught exception during load workflow engine execution " + executionId, e);
-    } finally {
-      writesScheduler.dispose();
-      mapperScheduler.dispose();
-    }
-
+    Flux.from(connector.read())
+        .parallel(maxMappingThreads)
+        .runOn(mapperScheduler)
+        .map(recordMapper::map)
+        .sequential()
+        .compose(metricsManager.newRecordMapperMonitor())
+        .compose(logManager.newRecordMapperErrorHandler())
+        .compose(batcher)
+        .compose(metricsManager.newBatcherMonitor())
+        .flatMap(
+            statement -> executor.writeReactive(statement).subscribeOn(writesScheduler),
+            maxConcurrentWrites)
+        .compose(logManager.newWriteErrorHandler())
+        .compose(logManager.newLocationTracker())
+        .blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
-    LOGGER.info(
-        "Load workflow engine execution {} finished in {}.",
-        executionId,
-        WorkflowUtils.formatElapsed(seconds));
+    LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+  }
+
+  @Override
+  public synchronized void close() throws Exception {
+    if (!closed) {
+      LOGGER.info("{} closing.", this);
+      Exception e = WorkflowUtils.closeQuietly(connector, null);
+      e = WorkflowUtils.closeQuietly(writesScheduler, e);
+      e = WorkflowUtils.closeQuietly(mapperScheduler, e);
+      e = WorkflowUtils.closeQuietly(executor, e);
+      e = WorkflowUtils.closeQuietly(metricsManager, e);
+      e = WorkflowUtils.closeQuietly(logManager, e);
+      closed = true;
+      LOGGER.info("{} closed.", this);
+      if (e != null) {
+        throw e;
+      }
+    }
+  }
+
+  @Override
+  public String toString() {
+    return "Load workflow engine execution " + executionId;
   }
 }

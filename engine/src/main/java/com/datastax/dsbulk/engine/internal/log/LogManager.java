@@ -11,12 +11,15 @@ import static com.datastax.dsbulk.engine.internal.log.LogUtils.appendStatementIn
 import static com.datastax.dsbulk.engine.internal.log.LogUtils.printAndMaybeAddNewLine;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
+import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
@@ -26,20 +29,25 @@ import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.Result;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.CacheWriter;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.UnicastProcessor;
@@ -48,13 +56,18 @@ import reactor.core.scheduler.Schedulers;
 /** */
 public class LogManager implements AutoCloseable {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(LogManager.class);
+
   private final Cluster cluster;
   private final Path executionDirectory;
   private final ExecutorService executor;
   private final int maxErrors;
   private final StatementFormatter formatter;
   private final StatementFormatVerbosity verbosity;
-  private final Set<Disposable> disposables = new HashSet<>();
+
+  private final Set<Disposable> subscriptions = new HashSet<>();
+  private final Set<UnicastProcessor<?>> processors = new HashSet<>();
+
   private final AtomicInteger errors = new AtomicInteger(0);
 
   private final LoadingCache<Path, PrintWriter> openFiles =
@@ -71,8 +84,29 @@ public class LogManager implements AutoCloseable {
                   new PrintWriter(
                       Files.newBufferedWriter(path, Charset.forName("UTF-8"), CREATE_NEW, WRITE)));
 
+  private final Cache<URI, Long> locations =
+      Caffeine.newBuilder()
+          .writer(
+              new CacheWriter<URI, Long>() {
+                @Override
+                public void write(URI key, Long value) {}
+
+                @Override
+                public void delete(URI base, Long line, RemovalCause cause) {
+                  locationsWriter.print(base);
+                  locationsWriter.print('\t');
+                  locationsWriter.print(line);
+                  locationsWriter.println();
+                  locationsWriter.flush();
+                }
+              })
+          .expireAfterAccess(30, SECONDS)
+          .maximumSize(1000)
+          .build();
+
   private CodecRegistry codecRegistry;
   private ProtocolVersion protocolVersion;
+  private PrintWriter locationsWriter;
 
   public LogManager(
       Cluster cluster,
@@ -101,6 +135,13 @@ public class LogManager implements AutoCloseable {
       throw new IllegalArgumentException(
           String.format("Directory %s is not writable", executionDirectory));
     }
+    this.locationsWriter =
+        new PrintWriter(
+            Files.newBufferedWriter(
+                executionDirectory.resolve("locations.txt"),
+                Charset.forName("UTF-8"),
+                CREATE_NEW,
+                WRITE));
   }
 
   public Path getExecutionDirectory() {
@@ -110,16 +151,27 @@ public class LogManager implements AutoCloseable {
   @Override
   public void close() throws InterruptedException {
     executor.shutdown();
-    executor.awaitTermination(1, TimeUnit.MINUTES);
-    // FIXME it seems that sometimes an item might get lost when the disposable is canceled too soon
-    disposables.forEach(Disposable::dispose);
-    openFiles.invalidateAll();
+    processors.forEach(UnicastProcessor::onComplete);
+    subscriptions.forEach(Disposable::dispose);
+    executor.awaitTermination(1, MINUTES);
     executor.shutdownNow();
+    openFiles.invalidateAll();
+    openFiles.cleanUp();
+    locations.invalidateAll();
+    locations.cleanUp();
+    if (locationsWriter != null) {
+      locationsWriter.flush();
+      locationsWriter.close();
+      LOGGER.info(
+          "Last processed locations can be found in {}",
+          executionDirectory.resolve("locations.txt"));
+    }
   }
 
   public Function<Flux<Statement>, Flux<Statement>> newRecordMapperErrorHandler() {
     UnicastProcessor<UnmappableStatement> ps = UnicastProcessor.create();
-    disposables.add(
+    processors.add(ps);
+    subscriptions.add(
         ps.doOnNext(this::appendToDebugFile)
             .doOnNext(this::appendToBadFile)
             .subscribeOn(Schedulers.fromExecutor(executor))
@@ -129,9 +181,9 @@ public class LogManager implements AutoCloseable {
             .doOnNext(
                 r -> {
                   if (r instanceof UnmappableStatement) {
+                    ps.onNext((UnmappableStatement) r);
                     if (maxErrors > 0 && errors.incrementAndGet() > maxErrors)
                       throw new TooManyErrorsException(maxErrors);
-                    ps.onNext((UnmappableStatement) r);
                   }
                 })
             .filter(r -> !(r instanceof UnmappableStatement));
@@ -139,7 +191,8 @@ public class LogManager implements AutoCloseable {
 
   public Function<Flux<Record>, Flux<Record>> newResultMapperErrorHandler() {
     UnicastProcessor<UnmappableRecord> ps = UnicastProcessor.create();
-    disposables.add(
+    processors.add(ps);
+    subscriptions.add(
         ps.doOnNext(this::appendToDebugFile)
             .subscribeOn(Schedulers.fromExecutor(executor))
             .subscribe());
@@ -148,9 +201,9 @@ public class LogManager implements AutoCloseable {
             .doOnNext(
                 r -> {
                   if (r instanceof UnmappableRecord) {
+                    ps.onNext((UnmappableRecord) r);
                     if (maxErrors > 0 && errors.incrementAndGet() > maxErrors)
                       throw new TooManyErrorsException(maxErrors);
-                    ps.onNext((UnmappableRecord) r);
                   }
                 })
             .filter(r -> !(r instanceof UnmappableRecord));
@@ -158,7 +211,8 @@ public class LogManager implements AutoCloseable {
 
   public Function<Flux<WriteResult>, Flux<WriteResult>> newWriteErrorHandler() {
     UnicastProcessor<WriteResult> ps = UnicastProcessor.create();
-    disposables.add(
+    processors.add(ps);
+    subscriptions.add(
         ps.doOnNext(this::appendToDebugFile)
             .doOnNext(this::appendToBadFile)
             .subscribeOn(Schedulers.fromExecutor(executor))
@@ -168,9 +222,10 @@ public class LogManager implements AutoCloseable {
             .doOnNext(
                 r -> {
                   if (!r.isSuccess()) {
-                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors)
-                      throw new TooManyErrorsException(maxErrors);
                     ps.onNext(r);
+                    if (maxErrors > 0 && errors.addAndGet(delta(r.getStatement())) > maxErrors) {
+                      throw new TooManyErrorsException(maxErrors);
+                    }
                   }
                 })
             .filter(Result::isSuccess);
@@ -178,7 +233,8 @@ public class LogManager implements AutoCloseable {
 
   public Function<Flux<ReadResult>, Flux<ReadResult>> newReadErrorHandler() {
     UnicastProcessor<ReadResult> ps = UnicastProcessor.create();
-    disposables.add(
+    processors.add(ps);
+    subscriptions.add(
         ps.doOnNext(this::appendToDebugFile)
             .subscribeOn(Schedulers.fromExecutor(executor))
             .subscribe());
@@ -187,13 +243,17 @@ public class LogManager implements AutoCloseable {
             .doOnNext(
                 r -> {
                   if (!r.isSuccess()) {
+                    ps.onNext(r);
                     if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
                       throw new TooManyErrorsException(maxErrors);
                     }
-                    ps.onNext(r);
                   }
                 })
             .filter(Result::isSuccess);
+  }
+
+  public Function<Flux<WriteResult>, Flux<WriteResult>> newLocationTracker() {
+    return upstream -> upstream.doOnNext(this::incrementLocations);
   }
 
   @SuppressWarnings("unchecked")
@@ -259,5 +319,49 @@ public class LogManager implements AutoCloseable {
     result.getError().orElseThrow(IllegalStateException::new).printStackTrace(writer);
     writer.println();
     writer.flush();
+  }
+
+  @SuppressWarnings("unchecked")
+  private void incrementLocations(WriteResult result) {
+    Statement statement = result.getStatement();
+    if (statement instanceof BatchStatement) {
+      for (Statement child : ((BatchStatement) statement).getStatements()) {
+        if (child instanceof BulkStatement) {
+          incrementLocations((BulkStatement<Record>) child);
+        }
+      }
+    } else if (statement instanceof BulkStatement) {
+      incrementLocations(((BulkStatement<Record>) statement));
+    }
+  }
+
+  private void incrementLocations(BulkStatement<Record> statement) {
+    URI location = statement.getSource().getLocation();
+    long line = URIUtils.extractLine(location);
+    if (line != -1) {
+      try {
+        URI base = URIUtils.getBaseURI(location);
+        locations
+            .asMap()
+            .compute(
+                base,
+                (uri, current) -> {
+                  if (current == null || line > current) {
+                    return line;
+                  }
+                  return current;
+                });
+      } catch (URISyntaxException ignored) {
+        // should not happen
+      }
+    }
+  }
+
+  private static int delta(Statement statement) {
+    if (statement instanceof BatchStatement) {
+      return ((BatchStatement) statement).size();
+    } else {
+      return 1;
+    }
   }
 }

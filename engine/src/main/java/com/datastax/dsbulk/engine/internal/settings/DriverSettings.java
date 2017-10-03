@@ -26,8 +26,8 @@ import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseLoadBalancingPolicy;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.policies.MultipleRetryPolicy;
@@ -36,10 +36,7 @@ import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
-import java.io.File;
 import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.KeyStore;
 import java.security.SecureRandom;
@@ -73,7 +70,7 @@ public class DriverSettings implements SettingsValidator {
     this.executionId = executionId;
   }
 
-  public DseCluster newCluster() throws Exception {
+  public DseCluster newCluster() throws BulkConfigurationException {
     DseCluster.Builder builder = DseCluster.builder().withClusterName(executionId + "-driver");
     getHostsStream(config, "hosts").forEach(builder::addContactPointsWithPorts);
 
@@ -121,7 +118,12 @@ public class DriverSettings implements SettingsValidator {
       builder.withAuthProvider(authProvider);
     }
     if (!config.getString("ssl.provider").equals("None")) {
-      RemoteEndpointAwareSSLOptions sslOptions = createSSLOptions();
+      RemoteEndpointAwareSSLOptions sslOptions;
+      try {
+        sslOptions = createSSLOptions();
+      } catch (Exception e) {
+        throw new BulkConfigurationException("Could not configure SSL", e, "driver.ssl");
+      }
       builder.withSSL(sslOptions);
     }
 
@@ -153,7 +155,8 @@ public class DriverSettings implements SettingsValidator {
               "Load balancing policy chaining loop detected: "
                   + seenPolicies.stream().map(BuiltinLBP::name).collect(Collectors.joining(","))
                   + ","
-                  + childName.name());
+                  + childName.name(),
+              "driver.policy.lbp");
         }
         childPolicy =
             getLoadBalancingPolicy(
@@ -200,7 +203,8 @@ public class DriverSettings implements SettingsValidator {
       if (!config.hasPath("hosts")) {
         throw new BulkConfigurationException(
             "driver.hosts is mandatory. Please set driver.hosts "
-                + "and try again. See settings.md or help for more information.");
+                + "and try again. See settings.md or help for more information.",
+            "driver");
       }
       config.getString("hosts");
       config.getInt("pooling.local.connections");
@@ -223,20 +227,23 @@ public class DriverSettings implements SettingsValidator {
           case "DsePlainTextAuthProvider":
             if (!config.hasPath("auth.username") || !config.hasPath("auth.password")) {
               throw new BulkConfigurationException(
-                  authProviderName + " must be provided with both auth.username and auth.password");
+                  authProviderName + " must be provided with both auth.username and auth.password",
+                  "driver");
             }
             break;
           case "DseGSSAPIAuthProvider":
             if (!config.hasPath("auth.principal") || !config.hasPath("auth.saslProtocol")) {
               throw new BulkConfigurationException(
                   authProviderName
-                      + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional.");
+                      + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional.",
+                  "driver");
             }
             break;
           default:
             throw new BulkConfigurationException(
                 authProviderName
-                    + " is not a valid auth provider. Valid auth providers are PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider");
+                    + " is not a valid auth provider. Valid auth providers are PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider",
+                "driver");
         }
       }
       if (config.hasPath("policy.name")) {
@@ -248,7 +255,7 @@ public class DriverSettings implements SettingsValidator {
     }
   }
 
-  private AuthProvider createAuthProvider() throws URISyntaxException, MalformedURLException {
+  private AuthProvider createAuthProvider() {
     String authProviderName = config.getString("auth.provider");
     switch (authProviderName) {
       case "PlainTextAuthProvider":
@@ -268,9 +275,8 @@ public class DriverSettings implements SettingsValidator {
         String principal = config.getString("auth.principal");
         Configuration configuration;
         if (config.hasPath("auth.keyTab")) {
-          String keyTab =
-              new File(new URL(config.getString("auth.keyTab")).toURI()).getAbsolutePath();
-          configuration = new KeyTabConfiguration(principal, keyTab);
+          URL keyTab = config.getURL("auth.keyTab");
+          configuration = new KeyTabConfiguration(principal, keyTab.getPath());
         } else {
           configuration = new TicketCacheConfiguration(principal);
         }

@@ -10,9 +10,10 @@ import static java.nio.file.FileVisitResult.CONTINUE;
 import static java.nio.file.FileVisitResult.TERMINATE;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -33,7 +34,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -99,7 +99,7 @@ public class CSVConnector implements Connector {
   private ExecutorService threadPool;
 
   @Override
-  public void configure(LoaderConfig settings, boolean read) throws MalformedURLException {
+  public void configure(LoaderConfig settings, boolean read) {
     this.read = read;
     url = settings.getURL("url");
     pattern = settings.getString("fileNamePattern");
@@ -153,7 +153,8 @@ public class CSVConnector implements Connector {
       if (!settings.hasPath("url")) {
         throw new BulkConfigurationException(
             "url is mandatory when using the csv connector. Please set connector.csv.url "
-                + "and try again. See settings.md or help for more information.");
+                + "and try again. See settings.md or help for more information.",
+            "connector.csv");
       }
       settings.getURL("url");
       settings.getString("fileNamePattern");
@@ -252,18 +253,20 @@ public class CSVConnector implements Connector {
                     break;
                   }
                   Record record;
+                  long line = context.currentLine();
+                  int column = context.currentColumn();
                   if (header) {
                     record =
                         new DefaultRecord(
                             source,
-                            Suppliers.memoize(() -> getCurrentLocation(url, context)),
+                            Suppliers.memoize(() -> URIUtils.createLocationURI(url, line, column)),
                             context.parsedHeaders(),
                             (Object[]) row.getValues());
                   } else {
                     record =
                         new DefaultRecord(
                             source,
-                            Suppliers.memoize(() -> getCurrentLocation(url, context)),
+                            Suppliers.memoize(() -> URIUtils.createLocationURI(url, line, column)),
                             (Object[]) row.getValues());
                   }
                   LOGGER.trace("Emitting record {}", record);
@@ -427,18 +430,6 @@ public class CSVConnector implements Connector {
     }
     // assume we are writing to a single URL and ignore fileNameFormat
     return url;
-  }
-
-  private static URI getCurrentLocation(URL url, ParsingContext context) {
-    long line = context.currentLine();
-    int column = context.currentColumn();
-    return URI.create(
-        url.toExternalForm()
-            + (url.getQuery() == null ? '?' : '&')
-            + "?line="
-            + line
-            + "&column="
-            + column);
   }
 
   private static InputStream openInputStream(URL url) throws IOException {

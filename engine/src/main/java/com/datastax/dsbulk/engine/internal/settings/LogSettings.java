@@ -12,8 +12,8 @@ import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.FileAppender;
 import com.datastax.driver.core.Cluster;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
@@ -21,8 +21,6 @@ import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosit
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,16 +30,15 @@ import org.slf4j.LoggerFactory;
 /** */
 public class LogSettings implements SettingsValidator {
 
-  public static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
+  private static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
 
   private final LoaderConfig config;
   private final Path executionDirectory;
 
-  LogSettings(LoaderConfig config, String executionId)
-      throws MalformedURLException, URISyntaxException {
+  LogSettings(LoaderConfig config, String executionId) {
     this.config = config;
     executionDirectory = config.getPath("directory").resolve(executionId);
     LOGGER.info("Operation output directory: {}", executionDirectory);
