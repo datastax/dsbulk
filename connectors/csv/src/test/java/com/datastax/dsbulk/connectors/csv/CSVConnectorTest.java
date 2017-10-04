@@ -180,6 +180,19 @@ public class CSVConnectorTest {
   }
 
   @Test
+  public void should_scan_directory_recursively_with_custom_file_name_format() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(String.format("url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"", url("/root-custom")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
+    connector.close();
+  }
+
+  @Test
   public void should_write_single_file() throws Exception {
     CSVConnector connector = new CSVConnector();
     // test directory creation
