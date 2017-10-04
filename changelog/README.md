@@ -63,3 +63,4 @@
 - [bug] DAT-114: 'Reads' timer metrics should report correct latencies.
 - [improvement] DAT-46: Provide a way to configure driver policies.
 - [new feature] DAT-125: Report last successfully ingested lines in case of load failure.
+- [improvement] DAT-132: When logging bound parameters of statements, be more clear about unset values.
