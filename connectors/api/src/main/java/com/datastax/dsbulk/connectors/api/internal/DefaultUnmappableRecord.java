@@ -4,8 +4,9 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.engine.internal.record;
+package com.datastax.dsbulk.connectors.api.internal;
 
+import com.datastax.dsbulk.connectors.api.UnmappableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.net.URI;

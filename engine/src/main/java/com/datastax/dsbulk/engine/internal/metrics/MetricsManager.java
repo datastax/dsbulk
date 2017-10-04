@@ -17,8 +17,8 @@ import com.codahale.metrics.UniformReservoir;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.UnmappableRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
-import com.datastax.dsbulk.engine.internal.record.UnmappableRecord;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.MetricsReportingExecutionListener;
@@ -235,7 +235,7 @@ public class MetricsManager implements AutoCloseable {
     }
   }
 
-  public Function<Flux<Record>, Flux<Record>> newResultMapperMonitor() {
+  public Function<Flux<Record>, Flux<Record>> newUnmappableRecordMonitor() {
     return upstream ->
         upstream.doOnNext(
             r -> {
@@ -248,7 +248,7 @@ public class MetricsManager implements AutoCloseable {
             });
   }
 
-  public Function<Flux<Statement>, Flux<Statement>> newRecordMapperMonitor() {
+  public Function<Flux<Statement>, Flux<Statement>> newUnmappableStatementMonitor() {
     return upstream ->
         upstream.doOnNext(
             stmt -> {

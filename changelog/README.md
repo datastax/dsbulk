@@ -63,3 +63,4 @@
 - [bug] DAT-114: 'Reads' timer metrics should report correct latencies.
 - [improvement] DAT-46: Provide a way to configure driver policies.
 - [new feature] DAT-125: Report last successfully ingested lines in case of load failure.
+- [new feature] DAT-129: Handle connector recoverable read errors gracefully.
