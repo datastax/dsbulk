@@ -54,7 +54,9 @@ public class UnloadWorkflow implements Workflow {
   private ReadResultMapper readResultMapper;
   private DseCluster cluster;
   private int maxConcurrentReads;
-  private int maxMappingThreads;
+  private int maxConcurrentMappings;
+  private int mappingsBufferSize;
+  private int readsBufferSize;
 
   private volatile boolean closed = false;
 
@@ -76,7 +78,9 @@ public class UnloadWorkflow implements Workflow {
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
     maxConcurrentReads = engineSettings.getMaxConcurrentOps();
-    maxMappingThreads = engineSettings.getMaxMappingThreads();
+    maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
+    mappingsBufferSize = engineSettings.getMappingsBufferSize();
+    readsBufferSize = engineSettings.getOpsBufferSize();
     readsScheduler = Schedulers.newElastic("range-reads");
     mapperScheduler = Schedulers.newElastic("result-mapper");
     connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
@@ -103,15 +107,16 @@ public class UnloadWorkflow implements Workflow {
         Flux.fromIterable(schemaSettings.createReadStatements(cluster))
             .flatMap(
                 statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
-                maxConcurrentReads)
+                maxConcurrentReads,
+                readsBufferSize)
             .compose(logManager.newReadErrorHandler())
-            .parallel(maxMappingThreads)
+            .parallel(maxConcurrentMappings, mappingsBufferSize)
             .runOn(mapperScheduler)
             .map(readResultMapper::map)
-            .sequential()
+            .sequential(1024) // FIXME should this one be configurable?
             .compose(metricsManager.newResultMapperMonitor())
             .compose(logManager.newResultMapperErrorHandler())
-            .publish()
+            .publish(1024) // FIXME should this one be configurable?
             .autoConnect(2);
     // publish results to two subscribers: the connector,
     // and a dummy blockLast subscription to block until complete

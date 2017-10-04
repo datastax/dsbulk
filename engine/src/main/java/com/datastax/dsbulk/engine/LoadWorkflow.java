@@ -50,7 +50,9 @@ public class LoadWorkflow implements Workflow {
   private ReactorBulkWriter executor;
   private Connector connector;
   private int maxConcurrentWrites;
-  private int maxMappingThreads;
+  private int maxConcurrentMappings;
+  private int mappingsBufferSize;
+  private int writesBufferSize;
   private MetricsManager metricsManager;
   private LogManager logManager;
 
@@ -75,7 +77,9 @@ public class LoadWorkflow implements Workflow {
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
     maxConcurrentWrites = engineSettings.getMaxConcurrentOps();
-    maxMappingThreads = engineSettings.getMaxMappingThreads();
+    maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
+    mappingsBufferSize = engineSettings.getMappingsBufferSize();
+    writesBufferSize = engineSettings.getOpsBufferSize();
     writesScheduler = Schedulers.newElastic("batch-writes");
     mapperScheduler = Schedulers.newElastic("record-mapper");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
@@ -99,17 +103,18 @@ public class LoadWorkflow implements Workflow {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux.from(connector.read())
-        .parallel(maxMappingThreads)
+        .parallel(maxConcurrentMappings, mappingsBufferSize)
         .runOn(mapperScheduler)
         .map(recordMapper::map)
-        .sequential()
+        .sequential(1024) // FIXME should this one be configurable?
         .compose(metricsManager.newRecordMapperMonitor())
         .compose(logManager.newRecordMapperErrorHandler())
         .compose(batcher)
         .compose(metricsManager.newBatcherMonitor())
         .flatMap(
             statement -> executor.writeReactive(statement).subscribeOn(writesScheduler),
-            maxConcurrentWrites)
+            maxConcurrentWrites,
+            writesBufferSize)
         .compose(logManager.newWriteErrorHandler())
         .compose(logManager.newLocationTracker())
         .blockLast();

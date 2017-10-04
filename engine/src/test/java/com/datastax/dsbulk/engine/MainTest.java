@@ -446,7 +446,7 @@ public class MainTest {
               "{0:\"f3\", 1:\"f4\"}",
               "--connector.name",
               "conn",
-              "--engine.maxMappingThreads",
+              "--engine.maxConcurrentMappings",
               "26",
               "--engine.maxConcurrentOps",
               "27"
@@ -540,7 +540,7 @@ public class MainTest {
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
     assertThat(result.getString("schema.recordMetadata")).isEqualTo("{0:f3, 1:f4}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");
-    assertThat(result.getInt("engine.maxMappingThreads")).isEqualTo(26);
+    assertThat(result.getInt("engine.maxConcurrentMappings")).isEqualTo(26);
     assertThat(result.getInt("engine.maxConcurrentOps")).isEqualTo(27);
   }
 

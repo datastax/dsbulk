@@ -25,18 +25,28 @@ public class EngineSettings implements SettingsValidator {
     this.config = config;
   }
 
-  public int getMaxMappingThreads() {
-    return config.getThreads("maxMappingThreads");
+  public int getMaxConcurrentMappings() {
+    return config.getThreads("maxConcurrentMappings");
   }
 
   public int getMaxConcurrentOps() {
     return config.getThreads("maxConcurrentOps");
   }
 
+  public int getMappingsBufferSize() {
+    return config.getInt("mappingsBufferSize");
+  }
+
+  public int getOpsBufferSize() {
+    return config.getInt("opsBufferSize");
+  }
+
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
-      config.getThreads("maxMappingThreads");
+      config.getThreads("maxConcurrentMappings");
       config.getThreads("maxConcurrentOps");
+      config.getInt("mappingsBufferSize");
+      config.getInt("opsBufferSize");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
     }

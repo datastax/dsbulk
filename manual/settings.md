@@ -408,7 +408,7 @@ Default: **"\*\*/\*.csv"**.
 
 The maximum number of reading or writing threads. In other words, this setting controls how many files can be read or written simultaneously.
 
-Default: **"0.5C"**.
+Default: **"1C"**.
 
 #### -quote,--connector.csv.quote _&lt;string&gt;_
 
@@ -555,7 +555,7 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 The buffer size to use when batching.
 
-Default: **1000**.
+Default: **10000**.
 
 #### --batch.bufferTimeout _&lt;string&gt;_
 
@@ -1048,6 +1048,24 @@ Default: **&lt;unspecified&gt;**.
 
 Workflow Engine-specific settings.
 
+#### --engine.mappingsBufferSize _&lt;number&gt;_
+
+The buffer size for mapped records.
+
+Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
+
+Default: **100000**.
+
+#### --engine.maxConcurrentMappings _&lt;string&gt;_
+
+The maximum number of threads to allocate for serializing and deserializing, as well as for mapping records or results.
+
+Applies to both read and write workflows.
+
+The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
+
+Default: **"1C"**.
+
 #### --engine.maxConcurrentOps _&lt;string&gt;_
 
 The maximum number operations (reads or writes) that can be issued concurrently.
@@ -1056,17 +1074,15 @@ Applies to both load and unload workflows.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"4C"**.
+Default: **"2C"**.
 
-#### --engine.maxMappingThreads _&lt;string&gt;_
+#### --engine.opsBufferSize _&lt;number&gt;_
 
-The maximum number of threads to allocate for serializing and deserializing, as well as for mapping records or results.
+The buffer size for reads or writes.
 
-Applies to both read and write workflows.
+Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
 
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
-
-Default: **"0.5C"**.
+Default: **1024**.
 
 <a name="executor"></a>
 ## Executor Settings
@@ -1127,7 +1143,7 @@ The maximum number of "in-flight" requests. In other words, sets the maximum num
 
 Setting this option to any negative value will disable it.
 
-Default: **10000**.
+Default: **1000**.
 
 #### --executor.maxThreads _&lt;string&gt;_
 
@@ -1135,7 +1151,7 @@ The maximum number of threads to allocate for the executor. These threads are us
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"0.5C"**.
+Default: **"2C"**.
 
 <a name="log"></a>
 ## Log Settings
