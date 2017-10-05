@@ -37,11 +37,16 @@ public class EngineSettings implements SettingsValidator {
     return config.getInt("mappingsBufferSize");
   }
 
+  public int getReadsBufferSize() {
+    return config.getInt("readsBufferSize");
+  }
+
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getThreads("maxConcurrentMappings");
       config.getThreads("maxConcurrentReads");
       config.getInt("mappingsBufferSize");
+      config.getInt("readsBufferSize");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
     }

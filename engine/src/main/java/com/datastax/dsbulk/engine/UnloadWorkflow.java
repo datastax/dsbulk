@@ -54,6 +54,7 @@ public class UnloadWorkflow implements Workflow {
   private ReadResultMapper readResultMapper;
   private DseCluster cluster;
   private int maxConcurrentReads;
+  private int readsBufferSize;
   private int maxConcurrentMappings;
   private int mappingsBufferSize;
 
@@ -77,6 +78,7 @@ public class UnloadWorkflow implements Workflow {
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
     maxConcurrentReads = engineSettings.getMaxConcurrentReads();
+    readsBufferSize = engineSettings.getReadsBufferSize();
     maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
     mappingsBufferSize = engineSettings.getMappingsBufferSize();
     readsScheduler = Schedulers.newElastic("range-reads");
@@ -105,7 +107,8 @@ public class UnloadWorkflow implements Workflow {
         Flux.fromIterable(schemaSettings.createReadStatements(cluster))
             .flatMap(
                 statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
-                maxConcurrentReads)
+                maxConcurrentReads,
+                readsBufferSize)
             .compose(logManager.newReadErrorHandler())
             .parallel(maxConcurrentMappings, mappingsBufferSize)
             .runOn(mapperScheduler)
