@@ -21,9 +21,9 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.UnmappableRecord;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
-import com.datastax.dsbulk.engine.internal.record.UnmappableRecord;
 import com.datastax.dsbulk.engine.internal.statement.BulkStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
@@ -168,7 +168,7 @@ public class LogManager implements AutoCloseable {
     }
   }
 
-  public Function<Flux<Statement>, Flux<Statement>> newRecordMapperErrorHandler() {
+  public Function<Flux<Statement>, Flux<Statement>> newUnmappableStatementErrorHandler() {
     UnicastProcessor<UnmappableStatement> ps = UnicastProcessor.create();
     processors.add(ps);
     subscriptions.add(
@@ -189,7 +189,7 @@ public class LogManager implements AutoCloseable {
             .filter(r -> !(r instanceof UnmappableStatement));
   }
 
-  public Function<Flux<Record>, Flux<Record>> newResultMapperErrorHandler() {
+  public Function<Flux<Record>, Flux<Record>> newUnmappableRecordErrorHandler() {
     UnicastProcessor<UnmappableRecord> ps = UnicastProcessor.create();
     processors.add(ps);
     subscriptions.add(

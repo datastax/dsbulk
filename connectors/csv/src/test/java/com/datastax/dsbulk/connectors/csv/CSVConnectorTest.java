@@ -16,6 +16,7 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.UnmappableRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -281,6 +282,33 @@ public class CSVConnectorTest {
             "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
             ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
     connector.close();
+  }
+
+  @Test
+  public void should_return_unmappable_record_when_line_malformed() throws Exception {
+    InputStream stdin = System.in;
+    try {
+      String lines = "header1,header2\n" + "value1,value2,value3";
+      InputStream is = new ByteArrayInputStream(lines.getBytes("UTF-8"));
+      System.setIn(is);
+      CSVConnector connector = new CSVConnector();
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString("header = true, url = \"stdin:/\"")
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      List<Record> actual = Flux.from(connector.read()).collectList().block();
+      assertThat(actual).hasSize(1);
+      assertThat(actual.get(0)).isInstanceOf(UnmappableRecord.class);
+      assertThat(actual.get(0).getSource()).isEqualTo("value1,value2,value3");
+      assertThat(((UnmappableRecord) actual.get(0)).getError())
+          .isInstanceOf(IllegalArgumentException.class);
+      assertThat(actual.get(0).values()).isEmpty();
+      connector.close();
+    } finally {
+      System.setIn(stdin);
+    }
   }
 
   private static List<Record> createRecords() {
