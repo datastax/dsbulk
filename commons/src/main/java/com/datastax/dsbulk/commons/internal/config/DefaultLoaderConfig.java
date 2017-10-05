@@ -236,7 +236,14 @@ public class DefaultLoaderConfig implements LoaderConfig {
       if (!rawValue.startsWith("[")) {
         rawValue = "[" + rawValue + "]";
       }
-      return ConfigFactory.parseString("dummyKey = " + rawValue).getStringList("dummyKey");
+
+      // This seems a little strange. Basically, rawValue may contain null items, and we
+      // want to treat those as string null, not true null. So, map such items.
+      return ConfigFactory.parseString("dummyKey = " + rawValue)
+          .getList("dummyKey")
+          .stream()
+          .map(elt -> elt.valueType() == ConfigValueType.NULL ? "null" : elt.unwrapped().toString())
+          .collect(Collectors.toList());
     }
   }
 

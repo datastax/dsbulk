@@ -185,7 +185,10 @@ public class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"", url("/root-custom")))
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
+                        url("/root-custom")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
