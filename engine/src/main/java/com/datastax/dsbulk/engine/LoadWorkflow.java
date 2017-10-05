@@ -99,12 +99,14 @@ public class LoadWorkflow implements Workflow {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux.from(connector.read())
+        .compose(metricsManager.newUnmappableRecordMonitor())
+        .compose(logManager.newUnmappableRecordErrorHandler())
         .parallel(maxMappingThreads)
         .runOn(mapperScheduler)
         .map(recordMapper::map)
         .sequential()
-        .compose(metricsManager.newRecordMapperMonitor())
-        .compose(logManager.newRecordMapperErrorHandler())
+        .compose(metricsManager.newUnmappableStatementMonitor())
+        .compose(logManager.newUnmappableStatementErrorHandler())
         .compose(batcher)
         .compose(metricsManager.newBatcherMonitor())
         .flatMap(
