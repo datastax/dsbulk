@@ -220,7 +220,7 @@ The maximum number of concurrent requests per second. This acts as a safeguard a
 
 Setting this option to any negative value will disable it.
 
-Default: **100000**.
+Default: **-1**.
 
 #### -maxErrors,--log.maxErrors _&lt;number&gt;_
 
@@ -404,11 +404,13 @@ Only applicable when the *url* setting points to a directory on a known filesyst
 
 Default: **"\*\*/\*.csv"**.
 
-#### -maxThreads,--connector.csv.maxThreads _&lt;string&gt;_
+#### -maxConcurrentFiles,--connector.csv.maxConcurrentFiles _&lt;string&gt;_
 
-The maximum number of reading or writing threads. In other words, this setting controls how many files can be read or written simultaneously.
+The maximum number of files that can be read or written simultaneously.
 
-Default: **"1C"**.
+The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
+
+Default: **"0.25C"**.
 
 #### -quote,--connector.csv.quote _&lt;string&gt;_
 
@@ -417,6 +419,14 @@ The character used for quoting fields when the field delimiter is part of the fi
 Only one character can be specified. Note that this setting applies to all files to be read or written.
 
 Default: **"\""**.
+
+#### --connector.csv.recordsBufferSize _&lt;number&gt;_
+
+The buffer size to use to store records produced by the CSV parser threads.
+
+Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
+
+Default: **10000**.
 
 #### --connector.csv.recursive _&lt;boolean&gt;_
 
@@ -902,7 +912,7 @@ Native Protocol-specific settings.
 The compression algorithm to use.
 Valid values are: `NONE`, `LZ4`, `SNAPPY`.
 
-Default: **"LZ4"**.
+Default: **"NONE"**.
 
 <a name="driver.query"></a>
 ### Driver Query Settings
@@ -1064,7 +1074,7 @@ Applies to both read and write workflows.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"1C"**.
+Default: **"0.5C"**.
 
 #### --engine.maxConcurrentReads _&lt;string&gt;_
 
@@ -1074,11 +1084,13 @@ Applies to unload workflow.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"2C"**.
+Default: **"0.5C"**.
 
-#### --engine.opsBufferSize _&lt;number&gt;_
+#### --engine.readsBufferSize _&lt;number&gt;_
 
-The buffer size for reads or writes.
+The buffer size for reads.
+
+Applies to unload workflow.
 
 Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
 
@@ -1095,7 +1107,7 @@ The maximum number of concurrent requests per second. This acts as a safeguard a
 
 Setting this option to any negative value will disable it.
 
-Default: **100000**.
+Default: **-1**.
 
 #### --executor.continuousPaging.enabled _&lt;boolean&gt;_
 
@@ -1143,7 +1155,7 @@ The maximum number of "in-flight" requests. In other words, sets the maximum num
 
 Setting this option to any negative value will disable it.
 
-Default: **1000**.
+Default: **100000**.
 
 #### --executor.maxThreads _&lt;string&gt;_
 
@@ -1151,7 +1163,7 @@ The maximum number of threads to allocate for the executor. These threads are us
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"2C"**.
+Default: **"1C"**.
 
 <a name="log"></a>
 ## Log Settings
@@ -1178,13 +1190,13 @@ Setting this value to `.` denotes the current working directory.
 
 Default: **"./logs"**.
 
-#### --log.maxThreads _&lt;string&gt;_
+#### --log.maxThreads _&lt;number&gt;_
 
 The maximum number of threads to allocate to log files management.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"0.25C"**.
+Default: **2**.
 
 #### --log.stmt.level _&lt;string&gt;_
 

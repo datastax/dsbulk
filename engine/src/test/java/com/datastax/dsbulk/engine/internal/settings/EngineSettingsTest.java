@@ -21,7 +21,7 @@ public class EngineSettingsTest {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
     EngineSettings settings = new EngineSettings(config);
     assertThat(settings.getMaxConcurrentMappings())
-        .isEqualTo(Runtime.getRuntime().availableProcessors() / 4);
+        .isEqualTo(Runtime.getRuntime().availableProcessors() / 2);
   }
 
   @Test
