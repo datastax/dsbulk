@@ -85,7 +85,7 @@ public class CSVConnector implements Connector {
   private char comment;
   private long skipLines;
   private long maxLines;
-  private int maxThreads;
+  private int maxConcurrentFiles;
   private boolean recursive;
   private boolean header;
   private String fileNameFormat;
@@ -94,6 +94,7 @@ public class CSVConnector implements Connector {
   private AtomicInteger counter;
   private ExecutorService threadPool;
   private Scheduler scheduler;
+  private int recordsBufferSize;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -107,7 +108,8 @@ public class CSVConnector implements Connector {
     comment = settings.getChar("comment");
     skipLines = settings.getLong("skipLines");
     maxLines = settings.getLong("maxLines");
-    maxThreads = settings.getThreads("maxThreads");
+    maxConcurrentFiles = settings.getThreads("maxConcurrentFiles");
+    recordsBufferSize = settings.getInt("recordsBufferSize");
     recursive = settings.getBoolean("recursive");
     header = settings.getBoolean("header");
     fileNameFormat = settings.getString("fileNameFormat");
@@ -137,7 +139,7 @@ public class CSVConnector implements Connector {
       writerSettings.setQuoteEscapingEnabled(true);
       counter = new AtomicInteger(0);
     }
-    if (maxThreads > 1) {
+    if (maxConcurrentFiles > 1) {
       threadPool =
           Executors.newCachedThreadPool(
               new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
@@ -165,7 +167,8 @@ public class CSVConnector implements Connector {
       settings.getChar("comment");
       settings.getLong("skipLines");
       settings.getLong("maxLines");
-      settings.getThreads("maxThreads");
+      settings.getThreads("maxConcurrentFiles");
+      settings.getInt("recordsBufferSize");
       settings.getBoolean("recursive");
       settings.getBoolean("header");
       settings.getString("fileNameFormat");
@@ -199,7 +202,7 @@ public class CSVConnector implements Connector {
   @Override
   public Subscriber<Record> write() {
     assert !read;
-    if (root != null && maxThreads > 1) {
+    if (root != null && maxConcurrentFiles > 1) {
       return writeMultipleThreads();
     } else {
       return writeSingleThread();
@@ -316,7 +319,10 @@ public class CSVConnector implements Connector {
                 throw new RuntimeException(e);
               }
             })
-        .flatMap(url -> readSingleFile(url).subscribeOn(scheduler), maxThreads);
+        .flatMap(
+            url -> readSingleFile(url).subscribeOn(scheduler),
+            maxConcurrentFiles,
+            recordsBufferSize);
   }
 
   @NotNull
@@ -374,7 +380,7 @@ public class CSVConnector implements Connector {
   private Subscriber<Record> writeMultipleThreads() {
     WorkQueueProcessor<Record> dispatcher =
         WorkQueueProcessor.<Record>builder().executor(threadPool).build();
-    for (int i = 0; i < maxThreads; i++) {
+    for (int i = 0; i < maxConcurrentFiles; i++) {
       dispatcher.subscribe(writeSingleThread());
     }
     return dispatcher;

@@ -54,7 +54,7 @@ public class SettingsValidatorTest {
     "--connector.csv.quote=",
     "--connector.csv.escape=",
     "--connector.csv.comment=",
-    "--connector.csv.maxThreads=notANumber",
+    "--connector.csv.maxConcurrentFiles=notANumber",
     "--schema.nullToUnset=tralse",
     "--batch.maxBatchSize=NotANumber",
     "--batch.bufferSize=NotANumber",

@@ -58,7 +58,7 @@ public class ConnectorSettingsTest {
             "url",
             "fileNamePattern",
             "recursive",
-            "maxThreads",
+            "maxConcurrentFiles",
             "encoding",
             "header",
             "delimiter",
