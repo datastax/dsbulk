@@ -20,8 +20,8 @@ import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
-import com.datastax.dsbulk.engine.internal.record.DefaultUnmappableRecord;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import java.net.URI;
@@ -107,7 +107,7 @@ public class MetricsManagerTest {
             Duration.ofSeconds(5));
     manager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
-    records.compose(manager.newResultMapperMonitor()).blockLast();
+    records.compose(manager.newUnmappableRecordMonitor()).blockLast();
     manager.close();
     MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
     assertThat(registry.meter("records/total").getCount()).isEqualTo(3);
@@ -130,7 +130,7 @@ public class MetricsManagerTest {
             Duration.ofSeconds(5));
     manager.init();
     Flux<Statement> statements = Flux.just(stmt1, stmt2, stmt3);
-    statements.compose(manager.newRecordMapperMonitor()).blockLast();
+    statements.compose(manager.newUnmappableStatementMonitor()).blockLast();
     manager.close();
     MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
     assertThat(registry.meter("mappings/total").getCount()).isEqualTo(3);
