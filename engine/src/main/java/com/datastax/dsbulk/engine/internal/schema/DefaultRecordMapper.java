@@ -69,10 +69,13 @@ public class DefaultRecordMapper implements RecordMapper {
 
   @Override
   public Statement map(Record record) {
+    String currentField = null;
+    String variable = null;
     try {
       BoundStatement bs = boundStatementFactory.apply(record, insertStatement);
       for (String field : record.fields()) {
-        String variable = mapping.fieldToVariable(field);
+        currentField = field;
+        variable = mapping.fieldToVariable(field);
         if (variable != null) {
           DataType cqlType = insertStatement.getVariables().getType(variable);
           TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
@@ -84,7 +87,7 @@ public class DefaultRecordMapper implements RecordMapper {
       }
       return bs;
     } catch (Exception e) {
-      return new UnmappableStatement(record, e);
+      return new UnmappableStatement(record, currentField, variable, e);
     }
   }
 

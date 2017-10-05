@@ -23,6 +23,8 @@ public class LogUtils {
   public static void appendStatementInfo(UnmappableStatement statement, PrintWriter writer) {
     writer.println("Location: " + statement.getLocation());
     writer.println("Source  : " + formatSource(statement.getSource()));
+    writer.println("Field   : " + statement.getFieldName());
+    writer.println("Column  : " + statement.getColumnName());
   }
 
   public static void appendRecordInfo(Record record, PrintWriter writer) {

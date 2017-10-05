@@ -15,11 +15,23 @@ public class UnmappableStatement extends BulkSimpleStatement<Record> {
 
   private final URI location;
   private final Throwable error;
+  private final String columnName;
+  private final String fieldName;
 
-  public UnmappableStatement(Record record, Throwable error) {
+  public UnmappableStatement(Record record, String fieldName, String columnName, Throwable error) {
     super(record, error.getMessage());
     this.location = record.getLocation();
     this.error = error;
+    this.columnName = columnName;
+    this.fieldName = fieldName;
+  }
+
+  public String getColumnName() {
+    return columnName;
+  }
+
+  public String getFieldName() {
+    return fieldName;
   }
 
   public URI getLocation() {
