@@ -109,8 +109,8 @@ public class UnloadWorkflow implements Workflow {
             .runOn(mapperScheduler)
             .map(readResultMapper::map)
             .sequential()
-            .compose(metricsManager.newResultMapperMonitor())
-            .compose(logManager.newResultMapperErrorHandler())
+            .compose(metricsManager.newUnmappableRecordMonitor())
+            .compose(logManager.newUnmappableRecordErrorHandler())
             .publish()
             .autoConnect(2);
     // publish results to two subscribers: the connector,

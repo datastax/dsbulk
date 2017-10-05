@@ -290,6 +290,22 @@ public class SchemaSettingsTest {
   @Test
   public void should_create_settings_when_null_strings_are_specified() throws Exception {
     {
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"null\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("null");
+    }
+
+    {
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"null, NULL\", keyspace=ks, table=t1");
+      SchemaSettings schemaSettings = new SchemaSettings(config);
+
+      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+          .containsOnly("null", "NULL");
+    }
+
+    {
       LoaderConfig config =
           makeLoaderConfig("nullStrings = \"[NIL, NULL]\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config);

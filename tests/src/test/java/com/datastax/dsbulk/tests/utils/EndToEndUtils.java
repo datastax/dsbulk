@@ -210,7 +210,9 @@ public class EndToEndUtils {
       SimulacronRule simulacron, int numOfQueries, String query, ConsistencyLevel level) {
     List<QueryLog> logs = simulacron.cluster().getLogs().getQueryLogs();
     List<QueryLog> ipLogs =
-        logs.stream().filter(l -> l.getQuery().startsWith(query)).collect(Collectors.toList());
+        logs.stream()
+            .filter(l -> !l.getType().equals("PREPARE") && l.getQuery().startsWith(query))
+            .collect(Collectors.toList());
     Assertions.assertThat(ipLogs.size()).isEqualTo(numOfQueries);
     for (QueryLog log : ipLogs) {
       Assertions.assertThat(log.getConsistency()).isEqualTo(level);

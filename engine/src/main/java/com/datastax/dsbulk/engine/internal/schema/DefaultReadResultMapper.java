@@ -12,7 +12,7 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
-import com.datastax.dsbulk.engine.internal.record.DefaultUnmappableRecord;
+import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.base.Suppliers;
 import com.google.common.reflect.TypeToken;

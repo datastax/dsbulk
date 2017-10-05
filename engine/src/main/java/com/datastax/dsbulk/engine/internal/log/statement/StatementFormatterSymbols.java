@@ -16,7 +16,7 @@ public class StatementFormatterSymbols {
   public static final String statementsCount = "%s stmts";
   public static final String truncatedOutput = "...";
   public static final String nullValue = "<NULL>";
-  public static final String unsetValue = "<?>";
+  public static final String unsetValue = "<UNSET>";
   public static final String listElementSeparator = ", ";
   public static final String nameValueSeparator = " : ";
   public static final String idempotent = "idempotence : %s";

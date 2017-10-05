@@ -21,8 +21,8 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
-import com.datastax.dsbulk.engine.internal.record.DefaultUnmappableRecord;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
@@ -146,7 +146,7 @@ public class LogManagerTest {
     logManager.init();
     Flux<Statement> stmts = Flux.just(stmt1, stmt2, stmt3);
     try {
-      stmts.compose(logManager.newRecordMapperErrorHandler()).blockLast();
+      stmts.compose(logManager.newUnmappableStatementErrorHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
@@ -187,7 +187,7 @@ public class LogManagerTest {
     logManager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
     try {
-      records.compose(logManager.newResultMapperErrorHandler()).blockLast();
+      records.compose(logManager.newUnmappableRecordErrorHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
