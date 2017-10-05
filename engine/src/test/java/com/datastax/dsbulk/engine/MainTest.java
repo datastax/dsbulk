@@ -448,7 +448,7 @@ public class MainTest {
               "conn",
               "--engine.maxConcurrentMappings",
               "26",
-              "--engine.maxConcurrentOps",
+              "--engine.maxConcurrentReads",
               "27"
             });
     assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
@@ -541,7 +541,7 @@ public class MainTest {
     assertThat(result.getString("schema.recordMetadata")).isEqualTo("{0:f3, 1:f4}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");
     assertThat(result.getInt("engine.maxConcurrentMappings")).isEqualTo(26);
-    assertThat(result.getInt("engine.maxConcurrentOps")).isEqualTo(27);
+    assertThat(result.getInt("engine.maxConcurrentReads")).isEqualTo(27);
   }
 
   @Test

@@ -43,16 +43,13 @@ public class LoadWorkflow implements Workflow {
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.LOAD);
   private final LoaderConfig config;
 
-  private Scheduler writesScheduler;
   private Scheduler mapperScheduler;
   private RecordMapper recordMapper;
   private ReactorUnsortedStatementBatcher batcher;
   private ReactorBulkWriter executor;
   private Connector connector;
-  private int maxConcurrentWrites;
   private int maxConcurrentMappings;
   private int mappingsBufferSize;
-  private int writesBufferSize;
   private MetricsManager metricsManager;
   private LogManager logManager;
 
@@ -76,11 +73,8 @@ public class LoadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentWrites = engineSettings.getMaxConcurrentOps();
     maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
     mappingsBufferSize = engineSettings.getMappingsBufferSize();
-    writesBufferSize = engineSettings.getOpsBufferSize();
-    writesScheduler = Schedulers.newElastic("batch-writes");
     mapperScheduler = Schedulers.newElastic("record-mapper");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
     connector.init();
@@ -106,15 +100,12 @@ public class LoadWorkflow implements Workflow {
         .parallel(maxConcurrentMappings, mappingsBufferSize)
         .runOn(mapperScheduler)
         .map(recordMapper::map)
-        .sequential(1024) // FIXME should this one be configurable?
+        .sequential()
         .compose(metricsManager.newRecordMapperMonitor())
         .compose(logManager.newRecordMapperErrorHandler())
         .compose(batcher)
         .compose(metricsManager.newBatcherMonitor())
-        .flatMap(
-            statement -> executor.writeReactive(statement).subscribeOn(writesScheduler),
-            maxConcurrentWrites,
-            writesBufferSize)
+        .flatMap(executor::writeReactive)
         .compose(logManager.newWriteErrorHandler())
         .compose(logManager.newLocationTracker())
         .blockLast();
@@ -128,7 +119,6 @@ public class LoadWorkflow implements Workflow {
     if (!closed) {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(connector, null);
-      e = WorkflowUtils.closeQuietly(writesScheduler, e);
       e = WorkflowUtils.closeQuietly(mapperScheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(metricsManager, e);

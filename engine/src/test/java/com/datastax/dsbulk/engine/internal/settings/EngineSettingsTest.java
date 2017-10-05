@@ -36,21 +36,21 @@ public class EngineSettingsTest {
   }
 
   @Test
-  public void should_report_default_max_concurrent_ops() throws Exception {
+  public void should_report_default_max_concurrent_reads() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
     EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getMaxConcurrentOps())
+    assertThat(settings.getMaxConcurrentReads())
         .isEqualTo(Runtime.getRuntime().availableProcessors() * 2);
   }
 
   @Test
-  public void should_create_custom_max_concurrent_ops() throws Exception {
+  public void should_create_custom_max_concurrent_reads() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxConcurrentOps = 0.5C")
+            ConfigFactory.parseString("maxConcurrentReads = 0.5C")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
     EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getMaxConcurrentOps())
+    assertThat(settings.getMaxConcurrentReads())
         .isEqualTo(Runtime.getRuntime().availableProcessors() / 2);
   }
 }

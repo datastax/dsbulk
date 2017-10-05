@@ -1066,11 +1066,11 @@ The special syntax `NC` can be used to specify a number of threads that is a mul
 
 Default: **"1C"**.
 
-#### --engine.maxConcurrentOps _&lt;string&gt;_
+#### --engine.maxConcurrentReads _&lt;string&gt;_
 
-The maximum number operations (reads or writes) that can be issued concurrently.
+The maximum number of reads that can be issued concurrently.
 
-Applies to both load and unload workflows.
+Applies to unload workflow.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 

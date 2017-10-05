@@ -56,7 +56,6 @@ public class UnloadWorkflow implements Workflow {
   private int maxConcurrentReads;
   private int maxConcurrentMappings;
   private int mappingsBufferSize;
-  private int readsBufferSize;
 
   private volatile boolean closed = false;
 
@@ -77,10 +76,9 @@ public class UnloadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentReads = engineSettings.getMaxConcurrentOps();
+    maxConcurrentReads = engineSettings.getMaxConcurrentReads();
     maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
     mappingsBufferSize = engineSettings.getMappingsBufferSize();
-    readsBufferSize = engineSettings.getOpsBufferSize();
     readsScheduler = Schedulers.newElastic("range-reads");
     mapperScheduler = Schedulers.newElastic("result-mapper");
     connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
@@ -107,16 +105,15 @@ public class UnloadWorkflow implements Workflow {
         Flux.fromIterable(schemaSettings.createReadStatements(cluster))
             .flatMap(
                 statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
-                maxConcurrentReads,
-                readsBufferSize)
+                maxConcurrentReads)
             .compose(logManager.newReadErrorHandler())
             .parallel(maxConcurrentMappings, mappingsBufferSize)
             .runOn(mapperScheduler)
             .map(readResultMapper::map)
-            .sequential(1024) // FIXME should this one be configurable?
+            .sequential()
             .compose(metricsManager.newResultMapperMonitor())
             .compose(logManager.newResultMapperErrorHandler())
-            .publish(1024) // FIXME should this one be configurable?
+            .publish()
             .autoConnect(2);
     // publish results to two subscribers: the connector,
     // and a dummy blockLast subscription to block until complete

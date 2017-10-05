@@ -64,7 +64,7 @@ public class SettingsValidatorTest {
     "--monitoring.expectedWrites=NotANumber",
     "--monitoring.expectedWrites=expectedReads",
     "--monitoring.jmx=tralse",
-    "--engine.maxConcurrentOps=NotANumber",
+    "--engine.maxConcurrentReads=NotANumber",
     "--engine.maxConcurrentMappings=NotANumber"
   };
 
