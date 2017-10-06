@@ -183,13 +183,13 @@ public class CSVConnector implements Connector {
 
   @Override
   public void close() throws Exception {
+    if (scheduler != null) {
+      scheduler.dispose();
+    }
     if (threadPool != null) {
       threadPool.shutdown();
       threadPool.awaitTermination(1, MINUTES);
       threadPool.shutdownNow();
-    }
-    if (scheduler != null) {
-      scheduler.dispose();
     }
   }
 
