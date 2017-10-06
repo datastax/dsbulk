@@ -60,24 +60,24 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
   }
 
   @Override
-  void onRequestSuccessful(ResultSet page, ExecutionContext local) {
-    final int size = page.getAvailableWithoutFetching();
+  void onRequestSuccessful(ResultSet resultSet, ExecutionContext local) {
+    int size = resultSet.getAvailableWithoutFetching();
     listener.ifPresent(l -> l.onReadRequestSuccessful(statement, size, local));
-    Iterator<Row> it = page.iterator();
+    Iterator<Row> it = resultSet.iterator();
     int i = 0;
     while (it.hasNext() && i < size) {
       if (isCancelled()) {
         return;
       }
       Row row = it.next();
-      onNext(new DefaultReadResult(statement, page.getExecutionInfo(), row));
+      onNext(new DefaultReadResult(statement, resultSet.getExecutionInfo(), row));
       i++;
     }
-    boolean lastPage = page.getExecutionInfo().getPagingState() == null;
+    boolean lastPage = resultSet.getExecutionInfo().getPagingState() == null;
     if (lastPage) {
       onComplete();
     } else if (!isCancelled()) {
-      fetchNextPage(page::fetchMoreResults);
+      fetchNextPage(resultSet::fetchMoreResults);
     }
   }
 
