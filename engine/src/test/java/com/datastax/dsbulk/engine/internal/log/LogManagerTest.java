@@ -103,9 +103,15 @@ public class LogManagerTest {
         new DefaultUnmappableRecord(source2, () -> this.location2, new RuntimeException("error 2"));
     record3 =
         new DefaultUnmappableRecord(source3, () -> this.location3, new RuntimeException("error 3"));
-    stmt1 = new UnmappableStatement(record1, "f1", "c1", new RuntimeException("error 1"));
-    stmt2 = new UnmappableStatement(record2, "f2", "c2", new RuntimeException("error 2"));
-    stmt3 = new UnmappableStatement(record3, "f3", "c3", new RuntimeException("error 3"));
+    stmt1 =
+        new UnmappableStatement(
+            record1, URI.create("http://record1"), new RuntimeException("error 1"));
+    stmt2 =
+        new UnmappableStatement(
+            record2, URI.create("http://record2"), new RuntimeException("error 2"));
+    stmt3 =
+        new UnmappableStatement(
+            record3, URI.create("http://record3"), new RuntimeException("error 3"));
     writeResult1 =
         new DefaultWriteResult(
             new BulkExecutionException(

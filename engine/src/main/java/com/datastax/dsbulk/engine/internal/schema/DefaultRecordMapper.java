@@ -12,6 +12,7 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
@@ -87,7 +88,11 @@ public class DefaultRecordMapper implements RecordMapper {
       }
       return bs;
     } catch (Exception e) {
-      return new UnmappableStatement(record, currentField, variable, e);
+      return new UnmappableStatement(
+          record,
+          URIUtils.addParamsToURI(
+              record.getLocation(), "fieldName", currentField, "columnName", variable),
+          e);
     }
   }
 

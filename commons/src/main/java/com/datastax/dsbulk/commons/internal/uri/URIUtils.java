@@ -32,6 +32,20 @@ public class URIUtils {
             + column);
   }
 
+  public static URI addParamsToURI(URI uri, String key, String value, String... rest) {
+    if (rest.length % 2 == 1) {
+      throw new IllegalArgumentException("params list must have an even number of elements");
+    }
+
+    StringBuilder sb = new StringBuilder(uri.toString());
+    sb.append(uri.getQuery() == null ? '?' : '&');
+    sb.append(key).append("=").append(value);
+    for (int i = 0; i < rest.length; i += 2) {
+      sb.append("&").append(rest[i]).append('=').append(rest[i + 1]);
+    }
+    return URI.create(sb.toString());
+  }
+
   public static long extractLine(URI location) {
     ListMultimap<String, String> parameters = parseURIParameters(location);
     List<String> values = parameters.get(LINE);
