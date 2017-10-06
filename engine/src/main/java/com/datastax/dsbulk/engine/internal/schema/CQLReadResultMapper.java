@@ -15,18 +15,25 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.base.Suppliers;
 
 /** */
+@SuppressWarnings("unused")
 public class CQLReadResultMapper implements ReadResultMapper {
 
   @Override
   public Record map(ReadResult result) {
     return new DefaultRecord(
-        result, Suppliers.memoize(() -> ResultUtils.getLocation(result)), inferWriteQuery(result));
+        result,
+        Suppliers.memoize(
+            () ->
+                URIUtils.getRowLocation(
+                    result.getStatement(), result.getRow(), result.getExecutionInfo())),
+        inferWriteQuery(result));
   }
 
   private static String inferWriteQuery(ReadResult result) {

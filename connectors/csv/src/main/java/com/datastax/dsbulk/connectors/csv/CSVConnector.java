@@ -258,9 +258,8 @@ public class CSVConnector implements Connector {
                   }
                   Record record;
                   long line = context.currentLine();
-                  int column = context.currentColumn();
                   Supplier<URI> location =
-                      Suppliers.memoize(() -> URIUtils.createLocationURI(url, line, column));
+                      Suppliers.memoize(() -> URIUtils.createLocationURI(url, line));
                   try {
                     if (header) {
                       record =

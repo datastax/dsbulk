@@ -24,6 +24,8 @@ import java.util.function.BiFunction;
 /** */
 public class DefaultRecordMapper implements RecordMapper {
 
+  private static final String FIELD = "field";
+  private static final String CQL_TYPE = "cqlType";
   private final PreparedStatement insertStatement;
 
   private final Mapping mapping;
@@ -72,16 +74,18 @@ public class DefaultRecordMapper implements RecordMapper {
   public Statement map(Record record) {
     String currentField = null;
     String variable = null;
+    Object raw = null;
+    DataType cqlType = null;
     try {
       BoundStatement bs = boundStatementFactory.apply(record, insertStatement);
       for (String field : record.fields()) {
         currentField = field;
         variable = mapping.fieldToVariable(field);
         if (variable != null) {
-          DataType cqlType = insertStatement.getVariables().getType(variable);
+          cqlType = insertStatement.getVariables().getType(variable);
           TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
           if (fieldType != null) {
-            Object raw = record.getFieldValue(field);
+            raw = record.getFieldValue(field);
             bindColumn(bs, variable, raw, cqlType, fieldType);
           }
         }
@@ -91,7 +95,13 @@ public class DefaultRecordMapper implements RecordMapper {
       return new UnmappableStatement(
           record,
           URIUtils.addParamsToURI(
-              record.getLocation(), "fieldName", currentField, "columnName", variable),
+              record.getLocation(),
+              FIELD,
+              currentField,
+              variable,
+              raw == null ? null : raw.toString(),
+              CQL_TYPE,
+              cqlType == null ? null : cqlType.toString()),
           e);
     }
   }

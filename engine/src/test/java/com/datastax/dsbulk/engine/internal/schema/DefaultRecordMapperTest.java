@@ -224,7 +224,7 @@ public class DefaultRecordMapperTest {
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     assertThat(((UnmappableStatement) result).getSource()).isEqualTo(record);
     assertThat(((UnmappableStatement) result).getLocation().toString())
-        .isEqualTo(location.toString() + "&fieldName=2&columnName=My+Fancy+Column+Name");
+        .isEqualTo(location.toString() + "&field=2&My+Fancy+Column+Name=NULL&cqlType=varchar");
 
     //noinspection unchecked
     verify(boundStatement, times(1))
