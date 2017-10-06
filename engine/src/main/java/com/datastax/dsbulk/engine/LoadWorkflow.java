@@ -43,15 +43,17 @@ public class LoadWorkflow implements Workflow {
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.LOAD);
   private final LoaderConfig config;
 
+  private Connector connector;
   private Scheduler mapperScheduler;
   private RecordMapper recordMapper;
-  private ReactorUnsortedStatementBatcher batcher;
-  private ReactorBulkWriter executor;
-  private Connector connector;
-  private int maxConcurrentMappings;
-  private int mappingsBufferSize;
   private MetricsManager metricsManager;
   private LogManager logManager;
+  private ReactorUnsortedStatementBatcher batcher;
+  private DseCluster cluster;
+  private ReactorBulkWriter executor;
+
+  private int maxConcurrentMappings;
+  private int mappingsBufferSize;
 
   private volatile boolean closed = false;
 
@@ -78,7 +80,7 @@ public class LoadWorkflow implements Workflow {
     mapperScheduler = Schedulers.newElastic("record-mapper");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
     connector.init();
-    DseCluster cluster = driverSettings.newCluster();
+    cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD);
@@ -122,6 +124,7 @@ public class LoadWorkflow implements Workflow {
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(metricsManager, e);
       e = WorkflowUtils.closeQuietly(logManager, e);
+      e = WorkflowUtils.closeQuietly(cluster, e);
       closed = true;
       LOGGER.info("{} closed.", this);
       if (e != null) {
