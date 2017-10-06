@@ -112,7 +112,10 @@ public class LoadWorkflow implements Workflow {
         .compose(metricsManager.newBatcherMonitor())
         .flatMap(executor::writeReactive)
         .compose(logManager.newWriteErrorHandler())
-        //.compose(logManager.newLocationTracker())
+        .parallel(maxConcurrentMappings, mappingsBufferSize)
+        .runOn(mapperScheduler)
+        .composeGroup(logManager.newLocationTracker())
+        .sequential()
         .blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
