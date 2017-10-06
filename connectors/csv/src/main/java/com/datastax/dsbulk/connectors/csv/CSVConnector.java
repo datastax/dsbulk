@@ -288,7 +288,7 @@ public class CSVConnector implements Connector {
                 sink.complete();
                 parser.stopParsing();
               } catch (Exception e) {
-                LOGGER.error("Error writing to " + url, e);
+                LOGGER.error("Error reading from " + url, e);
                 sink.error(e);
                 parser.stopParsing();
               }
