@@ -8,9 +8,11 @@ package com.datastax.dsbulk.commons.internal.uri;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.List;
 import java.util.StringTokenizer;
 
@@ -41,7 +43,14 @@ public class URIUtils {
     sb.append(uri.getQuery() == null ? '?' : '&');
     sb.append(key).append("=").append(value);
     for (int i = 0; i < rest.length; i += 2) {
-      sb.append("&").append(rest[i]).append('=').append(rest[i + 1]);
+      try {
+        sb.append("&")
+            .append(URLEncoder.encode(rest[i], "UTF-8"))
+            .append('=')
+            .append(URLEncoder.encode(rest[i + 1], "UTF-8"));
+      } catch (UnsupportedEncodingException e) {
+        // swallow, this should never happen for UTF-8
+      }
     }
     return URI.create(sb.toString());
   }
