@@ -98,7 +98,6 @@ public class CSVConnector implements Connector {
   private AtomicInteger counter;
   private ExecutorService threadPool;
   private Scheduler scheduler;
-  private int recordsBufferSize;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -113,7 +112,6 @@ public class CSVConnector implements Connector {
     skipLines = settings.getLong("skipLines");
     maxLines = settings.getLong("maxLines");
     maxConcurrentFiles = settings.getThreads("maxConcurrentFiles");
-    recordsBufferSize = settings.getInt("recordsBufferSize");
     recursive = settings.getBoolean("recursive");
     header = settings.getBoolean("header");
     fileNameFormat = settings.getString("fileNameFormat");
@@ -172,7 +170,6 @@ public class CSVConnector implements Connector {
       settings.getLong("skipLines");
       settings.getLong("maxLines");
       settings.getThreads("maxConcurrentFiles");
-      settings.getInt("recordsBufferSize");
       settings.getBoolean("recursive");
       settings.getBoolean("header");
       settings.getString("fileNameFormat");
@@ -327,8 +324,7 @@ public class CSVConnector implements Connector {
             })
         .flatMap(
             url -> readSingleFile(url).subscribeOn(scheduler),
-            maxConcurrentFiles,
-            recordsBufferSize);
+            maxConcurrentFiles);
   }
 
   @NotNull
