@@ -99,8 +99,9 @@ public class LoadWorkflow implements Workflow {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux.from(connector.read())
-//        .compose(metricsManager.newUnmappableRecordMonitor())
-//        .compose(logManager.newUnmappableRecordErrorHandler())
+        .publishOn(mapperScheduler, mappingsBufferSize)
+        .compose(metricsManager.newUnmappableRecordMonitor())
+        .compose(logManager.newUnmappableRecordErrorHandler())
         .parallel(maxConcurrentMappings, mappingsBufferSize)
         .runOn(mapperScheduler)
         .map(recordMapper::map)
