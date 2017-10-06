@@ -139,7 +139,7 @@ public class StatementFormatterTest {
         .contains("SELECT * FROM t WHERE c1 = ? AND c2 = ? AND c3 = ?")
         .contains("c1 : 'foo'")
         .contains("c2 : <NULL>")
-        .contains("c3 : <?>");
+        .contains("c3 : <UNSET>");
   }
 
   @Test

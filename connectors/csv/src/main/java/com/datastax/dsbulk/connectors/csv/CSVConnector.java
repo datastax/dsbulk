@@ -16,6 +16,7 @@ import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
 import com.google.common.base.Suppliers;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
@@ -33,9 +34,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLStreamHandler;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
@@ -45,6 +48,7 @@ import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
@@ -63,9 +67,9 @@ import reactor.core.scheduler.Schedulers;
 /**
  * A connector for CSV files.
  *
- * <p>It is capable of reading from any URL, provided that there is a {@link
- * java.net.URLStreamHandler handler} installed for it. For file URLs, it is also capable of reading
- * several files at once from a given root directory.
+ * <p>It is capable of reading from any URL, provided that there is a {@link URLStreamHandler
+ * handler} installed for it. For file URLs, it is also capable of reading several files at once
+ * from a given root directory.
  *
  * <p>This connector is highly configurable; see its {@code reference.conf} file, bundled within its
  * jar archive, for detailed information.
@@ -243,9 +247,9 @@ public class CSVConnector implements Connector {
   private Flux<Record> readSingleFile(URL url) {
     Flux<Record> records =
         Flux.create(
-            e -> {
+            sink -> {
               SimpleBackpressureController controller = new SimpleBackpressureController();
-              e.onRequest(controller::signalRequested);
+              sink.onRequest(controller::signalRequested);
               CsvParser parser = new CsvParser(parserSettings);
               LOGGER.debug("Reading {}", url);
               try (InputStream is = openInputStream(url)) {
@@ -257,36 +261,38 @@ public class CSVConnector implements Connector {
                   if (row == null) {
                     break;
                   }
-                  if (e.isCancelled()) {
+                  if (sink.isCancelled()) {
                     break;
                   }
                   Record record;
                   long line = context.currentLine();
                   int column = context.currentColumn();
-                  if (header) {
-                    record =
-                        new DefaultRecord(
-                            source,
-                            Suppliers.memoize(() -> URIUtils.createLocationURI(url, line, column)),
-                            context.parsedHeaders(),
-                            (Object[]) row.getValues());
-                  } else {
-                    record =
-                        new DefaultRecord(
-                            source,
-                            Suppliers.memoize(() -> URIUtils.createLocationURI(url, line, column)),
-                            (Object[]) row.getValues());
+                  Supplier<URI> location =
+                      Suppliers.memoize(() -> URIUtils.createLocationURI(url, line, column));
+                  try {
+                    if (header) {
+                      record =
+                          new DefaultRecord(
+                              source,
+                              location,
+                              context.parsedHeaders(),
+                              (Object[]) row.getValues());
+                    } else {
+                      record = new DefaultRecord(source, location, (Object[]) row.getValues());
+                    }
+                  } catch (Exception e) {
+                    record = new DefaultUnmappableRecord(source, location, e);
                   }
                   LOGGER.trace("Emitting record {}", record);
                   controller.awaitRequested(1);
-                  e.next(record);
+                  sink.next(record);
                 }
                 LOGGER.debug("Done reading {}", url);
-                e.complete();
+                sink.complete();
                 parser.stopParsing();
-              } catch (IOException e1) {
-                LOGGER.error("Error writing to " + url, e1);
-                e.error(e1);
+              } catch (Exception e) {
+                LOGGER.error("Error writing to " + url, e);
+                sink.error(e);
                 parser.stopParsing();
               }
             },
