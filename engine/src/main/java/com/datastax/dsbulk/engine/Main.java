@@ -213,14 +213,14 @@ public class Main {
       } catch (Throwable t) {
         // Reactor framework often wraps InterruptedException
         Throwable root = Throwables.getRootCause(t);
-        if (root instanceof InterruptedException) {
-          LOGGER.error("{} aborted.", workflow);
+        if (t instanceof InterruptedException || root instanceof InterruptedException) {
+          LOGGER.error(workflow + " aborted.", t);
           Thread.currentThread().interrupt();
         } else {
-          LOGGER.error(String.format("%s failed.", workflow), t);
-          if (t instanceof Error) {
-            throw ((Error) t);
-          }
+          LOGGER.error(workflow + " failed.", t);
+        }
+        if (t instanceof Error) {
+          throw ((Error) t);
         }
       } finally {
         try {
