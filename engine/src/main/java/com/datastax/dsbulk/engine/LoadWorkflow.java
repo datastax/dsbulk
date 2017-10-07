@@ -29,6 +29,7 @@ import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -56,6 +57,7 @@ public class LoadWorkflow implements Workflow {
   private int mappingsBufferSize;
 
   private volatile boolean closed = false;
+  private ThreadPoolExecutor executorThreadPool;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -92,6 +94,7 @@ public class LoadWorkflow implements Workflow {
         schemaSettings.createRecordMapper(
             session, connector.getRecordMetadata(), codecSettings.createCodecRegistry(cluster));
     batcher = batchSettings.newStatementBatcher(cluster);
+    executorThreadPool = executorSettings.getExecutorThreadPool();
   }
 
   @Override
@@ -110,7 +113,8 @@ public class LoadWorkflow implements Workflow {
         .compose(logManager.newUnmappableStatementErrorHandler())
         .compose(batcher)
         .compose(metricsManager.newBatcherMonitor())
-        .concatMap(executor::writeReactive, mappingsBufferSize)
+        .flatMap(statement -> executor.writeReactive(statement).subscribeOn(Schedulers.fromExecutorService(executorThreadPool)),
+            maxConcurrentMappings, mappingsBufferSize)
         .compose(logManager.newWriteErrorHandler())
         .parallel(maxConcurrentMappings, mappingsBufferSize)
         .runOn(mapperScheduler)
