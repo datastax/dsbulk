@@ -6,8 +6,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ProtocolVersion;
@@ -30,8 +28,8 @@ import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,9 +86,15 @@ public class ExecutorSettings implements SettingsValidator {
 
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
-      config.getThreads("maxThreads");
       config.getInt("maxPerSecond");
       config.getInt("maxInFlight");
+      Config continuousPagingConfig = config.getConfig("continuousPaging");
+      if (continuousPagingConfig.getBoolean("enabled")) {
+        continuousPagingConfig.getInt("pageSize");
+        continuousPagingConfig.getEnum(ContinuousPagingOptions.PageUnit.class, "pageUnit");
+        continuousPagingConfig.getInt("maxPages");
+        continuousPagingConfig.getInt("maxPagesPerSecond");
+      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor");
     }
@@ -110,17 +114,9 @@ public class ExecutorSettings implements SettingsValidator {
   private void configure(
       AbstractBulkExecutorBuilder<? extends ReactiveBulkExecutor> builder,
       ExecutionListener executionListener) {
-    int threads = config.getThreads("maxThreads");
     // will be closed when the Bulk Executor gets closed
-    ThreadPoolExecutor executor =
-        new ThreadPoolExecutor(
-            0,
-            threads,
-            60,
-            SECONDS,
-            new SynchronousQueue<>(),
-            new ThreadFactoryBuilder().setNameFormat("bulk-executor-%0,2d").build(),
-            new ThreadPoolExecutor.CallerRunsPolicy());
+    ExecutorService executor = Executors.newCachedThreadPool(
+        new ThreadFactoryBuilder().setNameFormat("bulk-executor-%0,2d").build());
     builder
         .withExecutor(executor)
         .withExecutionListener(executionListener)

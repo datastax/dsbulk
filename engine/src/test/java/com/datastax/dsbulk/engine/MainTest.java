@@ -403,8 +403,6 @@ public class MainTest {
               "9",
               "--batch.maxBatchSize",
               "10",
-              "--executor.maxThreads",
-              "11",
               "--executor.maxInFlight",
               "12",
               "--executor.maxPerSecond",
@@ -419,8 +417,6 @@ public class MainTest {
               "16",
               "--log.directory",
               "log-out",
-              "--log.maxThreads",
-              "17",
               "--log.maxErrors",
               "18",
               "--log.stmt.level",
@@ -533,7 +529,6 @@ public class MainTest {
     assertThat(result.getString("batch.mode")).isEqualTo("batch-mode");
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
     assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);
-    assertThat(result.getInt("executor.maxThreads")).isEqualTo(11);
     assertThat(result.getInt("executor.maxInFlight")).isEqualTo(12);
     assertThat(result.getInt("executor.maxPerSecond")).isEqualTo(13);
     assertThat(result.getString("executor.continuousPaging.pageUnit")).isEqualTo("BYTES");
@@ -541,7 +536,6 @@ public class MainTest {
     assertThat(result.getInt("executor.continuousPaging.maxPages")).isEqualTo(15);
     assertThat(result.getInt("executor.continuousPaging.maxPagesPerSecond")).isEqualTo(16);
     assertThat(result.getString("log.directory")).isEqualTo("log-out");
-    assertThat(result.getInt("log.maxThreads")).isEqualTo(17);
     assertThat(result.getInt("log.maxErrors")).isEqualTo(18);
     assertThat(result.getString("log.stmt.level")).isEqualTo("NORMAL");
     assertThat(result.getInt("log.stmt.maxQueryStringLength")).isEqualTo(19);
