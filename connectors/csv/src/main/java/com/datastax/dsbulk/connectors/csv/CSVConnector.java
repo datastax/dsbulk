@@ -322,9 +322,7 @@ public class CSVConnector implements Connector {
                 throw new RuntimeException(e);
               }
             })
-        .flatMap(
-            url -> readSingleFile(url).subscribeOn(scheduler),
-            maxConcurrentFiles);
+        .flatMap(url -> readSingleFile(url).subscribeOn(scheduler), maxConcurrentFiles);
   }
 
   @NotNull

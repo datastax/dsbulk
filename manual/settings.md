@@ -408,6 +408,10 @@ Default: **"\*\*/\*.csv"**.
 
 The maximum number of files that can be read or written simultaneously.
 
+When reading, it is usually not enough to set this value higher than 1, as the underlying CSV parsing library is fast enough, even when reading one file at a time, that it will never be a performance bottleneck.
+
+When writing, however, this value should be set to a ratio of the number of available cores.
+
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
 Default: **"0.25C"**.
@@ -419,14 +423,6 @@ The character used for quoting fields when the field delimiter is part of the fi
 Only one character can be specified. Note that this setting applies to all files to be read or written.
 
 Default: **"\""**.
-
-#### --connector.csv.recordsBufferSize _&lt;number&gt;_
-
-The buffer size to use to store records produced by the CSV parser threads.
-
-Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
-
-Default: **10000**.
 
 #### --connector.csv.recursive _&lt;boolean&gt;_
 
@@ -1094,7 +1090,7 @@ Applies to unload workflow.
 
 Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
 
-Default: **1024**.
+Default: **100000**.
 
 <a name="executor"></a>
 ## Executor Settings
@@ -1157,14 +1153,6 @@ Setting this option to any negative value will disable it.
 
 Default: **100000**.
 
-#### --executor.maxThreads _&lt;string&gt;_
-
-The maximum number of threads to allocate for the executor. These threads are used to process responses, but not to submit requests (these are submitted on the calling thread).
-
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
-
-Default: **"1C"**.
-
 <a name="log"></a>
 ## Log Settings
 
@@ -1189,14 +1177,6 @@ Log files for a specific run will be located in a sub-directory inside the direc
 Setting this value to `.` denotes the current working directory.
 
 Default: **"./logs"**.
-
-#### --log.maxThreads _&lt;number&gt;_
-
-The maximum number of threads to allocate to log files management.
-
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
-
-Default: **2**.
 
 #### --log.stmt.level _&lt;string&gt;_
 

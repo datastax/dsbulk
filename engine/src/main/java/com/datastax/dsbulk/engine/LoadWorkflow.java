@@ -110,7 +110,7 @@ public class LoadWorkflow implements Workflow {
         .compose(logManager.newUnmappableStatementErrorHandler())
         .compose(batcher)
         .compose(metricsManager.newBatcherMonitor())
-        .concatMap(executor::writeReactive)
+        .concatMap(executor::writeReactive, mappingsBufferSize)
         .compose(logManager.newWriteErrorHandler())
         .parallel(maxConcurrentMappings, mappingsBufferSize)
         .runOn(mapperScheduler)

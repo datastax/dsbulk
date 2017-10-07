@@ -115,8 +115,9 @@ public class ExecutorSettings implements SettingsValidator {
       AbstractBulkExecutorBuilder<? extends ReactiveBulkExecutor> builder,
       ExecutionListener executionListener) {
     // will be closed when the Bulk Executor gets closed
-    ExecutorService executor = Executors.newCachedThreadPool(
-        new ThreadFactoryBuilder().setNameFormat("bulk-executor-%0,2d").build());
+    ExecutorService executor =
+        Executors.newCachedThreadPool(
+            new ThreadFactoryBuilder().setNameFormat("bulk-executor-%0,2d").build());
     builder
         .withExecutor(executor)
         .withExecutionListener(executionListener)

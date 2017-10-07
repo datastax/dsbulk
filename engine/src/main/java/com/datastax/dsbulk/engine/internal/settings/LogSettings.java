@@ -70,7 +70,8 @@ public class LogSettings implements SettingsValidator {
     StatementFormatVerbosity verbosity =
         config.getEnum(StatementFormatVerbosity.class, "stmt.level");
     ExecutorService executor =
-        Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
+        Executors.newCachedThreadPool(
+            new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
     return new LogManager(
         cluster, executionDirectory, executor, config.getInt("maxErrors"), formatter, verbosity);
   }
