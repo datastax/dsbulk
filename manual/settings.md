@@ -561,7 +561,9 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 The buffer size to use when batching.
 
-Default: **10000**.
+It is recommended to set this value equal to **engine.bufferSize**.
+
+Default: **8192**.
 
 #### --batch.bufferTimeout _&lt;string&gt;_
 
@@ -575,7 +577,11 @@ Default: **"1 seconds"**.
 
 The maximum batch size.
 
-Default: **100**.
+The ideal batch size depends on how large is the data to be inserted: the larger the data, the smaller this value should be.
+
+The ideal batch size also depends on the batch mode in use. When using **PARTITION_KEY**, it is usually better to use large batch sizes (around 100). When using **REPLICA_SET** however, batches sizes should remain small (around 10).
+
+Default: **96**.
 
 #### --batch.mode _&lt;string&gt;_
 
@@ -1054,43 +1060,23 @@ Default: **&lt;unspecified&gt;**.
 
 Workflow Engine-specific settings.
 
-#### --engine.mappingsBufferSize _&lt;number&gt;_
+#### --engine.bufferSize _&lt;number&gt;_
 
-The buffer size for mapped records.
+The buffer size used internally by the workflow engine.
 
 Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
 
-Default: **100000**.
+Default: **8192**.
 
-#### --engine.maxConcurrentMappings _&lt;string&gt;_
+#### --engine.maxConcurrentOps _&lt;string&gt;_
 
-The maximum number of threads to allocate for serializing and deserializing, as well as for mapping records or results.
+The maximum number of threads to allocate for workflow operations, such as record mappings, result mappings, etc.
 
 Applies to both read and write workflows.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"0.5C"**.
-
-#### --engine.maxConcurrentReads _&lt;string&gt;_
-
-The maximum number of reads that can be issued concurrently.
-
-Applies to unload workflow.
-
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
-
-Default: **"0.5C"**.
-
-#### --engine.readsBufferSize _&lt;number&gt;_
-
-The buffer size for reads.
-
-Applies to unload workflow.
-
-Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
-
-Default: **100000**.
+Default: **"0.25C"**.
 
 <a name="executor"></a>
 ## Executor Settings
@@ -1152,6 +1138,18 @@ The maximum number of "in-flight" requests. In other words, sets the maximum num
 Setting this option to any negative value will disable it.
 
 Default: **100000**.
+
+#### --executor.maxThreads _&lt;number&gt;_
+
+The maximum number of threads to allocate for asynchronous handling of response callbacks.
+
+Note that these threads are used to process responses, but not to submit requests (these are submitted on the calling thread).
+
+The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
+
+Setting this value to -1 will disable this thread pool entirely, in which case response callbacks will be executed on one of the driver's internal Netty theads; this should be fine in most scenarios, unless the consumers are too slow or need to perform any blocking operation, which could lead to deadlocks.
+
+Default: **-1**.
 
 <a name="log"></a>
 ## Log Settings

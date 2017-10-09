@@ -47,18 +47,15 @@ public class UnloadWorkflow implements Workflow {
   private final LoaderConfig config;
 
   private Connector connector;
-  private Scheduler readsScheduler;
-  private Scheduler mapperScheduler;
+  private Scheduler scheduler;
   private ReadResultMapper readResultMapper;
   private MetricsManager metricsManager;
   private LogManager logManager;
   private DseCluster cluster;
   private ReactorBulkReader executor;
 
-  private int maxConcurrentReads;
-  private int readsBufferSize;
-  private int maxConcurrentMappings;
-  private int mappingsBufferSize;
+  private int maxConcurrentOps;
+  private int bufferSize;
 
   private List<Statement> readStatements;
 
@@ -81,12 +78,9 @@ public class UnloadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentReads = engineSettings.getMaxConcurrentReads();
-    readsBufferSize = engineSettings.getReadsBufferSize();
-    maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
-    mappingsBufferSize = engineSettings.getMappingsBufferSize();
-    readsScheduler = Schedulers.newElastic("range-reads");
-    mapperScheduler = Schedulers.newElastic("result-mapper");
+    maxConcurrentOps = engineSettings.getMaxConcurrentOps();
+    bufferSize = engineSettings.getBufferSize();
+    scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
     connector.init();
     cluster = driverSettings.newCluster();
@@ -110,13 +104,10 @@ public class UnloadWorkflow implements Workflow {
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Record> records =
         Flux.fromIterable(readStatements)
-            .flatMap(
-                statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
-                maxConcurrentReads,
-                readsBufferSize)
+            .flatMap(statement -> executor.readReactive(statement), maxConcurrentOps, bufferSize)
             .compose(logManager.newReadErrorHandler())
-            .parallel(maxConcurrentMappings, mappingsBufferSize)
-            .runOn(mapperScheduler)
+            .parallel(maxConcurrentOps, bufferSize)
+            .runOn(scheduler)
             .map(readResultMapper::map)
             .sequential()
             .compose(metricsManager.newUnmappableRecordMonitor())
@@ -137,8 +128,7 @@ public class UnloadWorkflow implements Workflow {
     if (!closed) {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(connector, null);
-      e = WorkflowUtils.closeQuietly(readsScheduler, e);
-      e = WorkflowUtils.closeQuietly(mapperScheduler, e);
+      e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(metricsManager, e);
       e = WorkflowUtils.closeQuietly(logManager, e);

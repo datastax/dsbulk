@@ -62,8 +62,8 @@ public class SettingsValidatorTest {
     "--monitoring.expectedWrites=NotANumber",
     "--monitoring.expectedWrites=expectedReads",
     "--monitoring.jmx=tralse",
-    "--engine.maxConcurrentReads=NotANumber",
-    "--engine.maxConcurrentMappings=NotANumber"
+    "--engine.bufferSize=NotANumber",
+    "--engine.maxConcurrentOps=NotANumber"
   };
 
   private static final String[] BAD_ENUM = {

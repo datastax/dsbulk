@@ -20,37 +20,35 @@ public class EngineSettingsTest {
   public void should_create_default_engine_settings() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
     EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getMaxConcurrentMappings())
-        .isEqualTo(Runtime.getRuntime().availableProcessors() / 2);
+    assertThat(settings.getMaxConcurrentOps())
+        .isEqualTo(Runtime.getRuntime().availableProcessors() / 4);
   }
 
   @Test
   public void should_create_custom_engine_settings() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxConcurrentMappings = 8C")
+            ConfigFactory.parseString("maxConcurrentOps = 8C")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
     EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getMaxConcurrentMappings())
+    assertThat(settings.getMaxConcurrentOps())
         .isEqualTo(Runtime.getRuntime().availableProcessors() * 8);
   }
 
   @Test
-  public void should_report_default_max_concurrent_reads() throws Exception {
+  public void should_report_default_buffer_size() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
     EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getMaxConcurrentReads())
-        .isEqualTo(Runtime.getRuntime().availableProcessors() / 2);
+    assertThat(settings.getBufferSize()).isEqualTo(8192);
   }
 
   @Test
-  public void should_create_custom_max_concurrent_reads() throws Exception {
+  public void should_create_custom_buffer_size() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxConcurrentReads = 0.5C")
+            ConfigFactory.parseString("bufferSize = 100")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
     EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getMaxConcurrentReads())
-        .isEqualTo(Runtime.getRuntime().availableProcessors() / 2);
+    assertThat(settings.getBufferSize()).isEqualTo(100);
   }
 }

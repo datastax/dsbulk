@@ -29,7 +29,6 @@ import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
-import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -45,7 +44,7 @@ public class LoadWorkflow implements Workflow {
   private final LoaderConfig config;
 
   private Connector connector;
-  private Scheduler mapperScheduler;
+  private Scheduler scheduler;
   private RecordMapper recordMapper;
   private MetricsManager metricsManager;
   private LogManager logManager;
@@ -53,11 +52,10 @@ public class LoadWorkflow implements Workflow {
   private DseCluster cluster;
   private ReactorBulkWriter executor;
 
-  private int maxConcurrentMappings;
-  private int mappingsBufferSize;
+  private int maxConcurrentOps;
+  private int bufferSize;
 
   private volatile boolean closed = false;
-  private ThreadPoolExecutor executorThreadPool;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -77,9 +75,9 @@ public class LoadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
-    mappingsBufferSize = engineSettings.getMappingsBufferSize();
-    mapperScheduler = Schedulers.newElastic("record-mapper");
+    maxConcurrentOps = engineSettings.getMaxConcurrentOps();
+    bufferSize = engineSettings.getBufferSize();
+    scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
     connector.init();
     cluster = driverSettings.newCluster();
@@ -94,7 +92,6 @@ public class LoadWorkflow implements Workflow {
         schemaSettings.createRecordMapper(
             session, connector.getRecordMetadata(), codecSettings.createCodecRegistry(cluster));
     batcher = batchSettings.newStatementBatcher(cluster);
-    executorThreadPool = executorSettings.getExecutorThreadPool();
   }
 
   @Override
@@ -102,24 +99,24 @@ public class LoadWorkflow implements Workflow {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux.from(connector.read())
-        .publishOn(mapperScheduler, mappingsBufferSize)
+        .publishOn(scheduler, bufferSize)
         .compose(metricsManager.newUnmappableRecordMonitor())
         .compose(logManager.newUnmappableRecordErrorHandler())
-        .parallel(maxConcurrentMappings, mappingsBufferSize)
-        .runOn(mapperScheduler)
+        .parallel(maxConcurrentOps, bufferSize)
+        .runOn(scheduler, bufferSize)
         .map(recordMapper::map)
-        .sequential()
+        .sequential(bufferSize)
         .compose(metricsManager.newUnmappableStatementMonitor())
         .compose(logManager.newUnmappableStatementErrorHandler())
         .compose(batcher)
         .compose(metricsManager.newBatcherMonitor())
-        .flatMap(statement -> executor.writeReactive(statement).subscribeOn(Schedulers.fromExecutorService(executorThreadPool)),
-            maxConcurrentMappings, mappingsBufferSize)
+        // use buffer size as max concurrency here
+        .flatMap(executor::writeReactive, bufferSize, bufferSize)
         .compose(logManager.newWriteErrorHandler())
-        .parallel(maxConcurrentMappings, mappingsBufferSize)
-        .runOn(mapperScheduler)
+        .parallel(maxConcurrentOps, bufferSize)
+        .runOn(scheduler, bufferSize)
         .composeGroup(logManager.newLocationTracker())
-        .sequential()
+        .sequential(bufferSize)
         .blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
@@ -131,7 +128,7 @@ public class LoadWorkflow implements Workflow {
     if (!closed) {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(connector, null);
-      e = WorkflowUtils.closeQuietly(mapperScheduler, e);
+      e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(metricsManager, e);
       e = WorkflowUtils.closeQuietly(logManager, e);
