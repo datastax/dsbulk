@@ -44,7 +44,6 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.slf4j.Logger;
@@ -108,7 +107,6 @@ public class LogManager implements AutoCloseable {
   private CodecRegistry codecRegistry;
   private ProtocolVersion protocolVersion;
   private PrintWriter locationsWriter;
-  private AtomicBoolean aborted;
 
   public LogManager(
       Cluster cluster,
@@ -144,7 +142,6 @@ public class LogManager implements AutoCloseable {
                 Charset.forName("UTF-8"),
                 CREATE_NEW,
                 WRITE));
-    aborted = new AtomicBoolean(false);
   }
 
   public Path getExecutionDirectory() {
@@ -185,11 +182,8 @@ public class LogManager implements AutoCloseable {
                 r -> {
                   if (r instanceof UnmappableStatement) {
                     ps.onNext((UnmappableStatement) r);
-                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
-                      if (aborted.compareAndSet(false, true)) {
-                        throw new TooManyErrorsException(maxErrors);
-                      }
-                    }
+                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors)
+                      throw new TooManyErrorsException(maxErrors);
                   }
                 })
             .filter(r -> !(r instanceof UnmappableStatement));
@@ -208,11 +202,8 @@ public class LogManager implements AutoCloseable {
                 r -> {
                   if (r instanceof UnmappableRecord) {
                     ps.onNext((UnmappableRecord) r);
-                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
-                      if (aborted.compareAndSet(false, true)) {
-                        throw new TooManyErrorsException(maxErrors);
-                      }
-                    }
+                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors)
+                      throw new TooManyErrorsException(maxErrors);
                   }
                 })
             .filter(r -> !(r instanceof UnmappableRecord));
@@ -233,9 +224,7 @@ public class LogManager implements AutoCloseable {
                   if (!r.isSuccess()) {
                     ps.onNext(r);
                     if (maxErrors > 0 && errors.addAndGet(delta(r.getStatement())) > maxErrors) {
-                      if (aborted.compareAndSet(false, true)) {
-                        throw new TooManyErrorsException(maxErrors);
-                      }
+                      throw new TooManyErrorsException(maxErrors);
                     }
                   }
                 })
@@ -256,9 +245,7 @@ public class LogManager implements AutoCloseable {
                   if (!r.isSuccess()) {
                     ps.onNext(r);
                     if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
-                      if (aborted.compareAndSet(false, true)) {
-                        throw new TooManyErrorsException(maxErrors);
-                      }
+                      throw new TooManyErrorsException(maxErrors);
                     }
                   }
                 })
