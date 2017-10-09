@@ -9,6 +9,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -36,7 +37,13 @@ public class DefaultReadResultMapper implements ReadResultMapper {
   @Override
   public Record map(ReadResult result) {
     Row row = result.getRow().orElseThrow(IllegalStateException::new);
-    Supplier<URI> location = Suppliers.memoize(() -> ResultUtils.getLocation(result));
+    Supplier<URI> location =
+        Suppliers.memoize(
+            () ->
+                URIUtils.getRowLocation(
+                    result.getStatement(),
+                    result.getRow().orElseThrow(IllegalStateException::new),
+                    result.getExecutionInfo().orElseThrow(IllegalStateException::new)));
     try {
       DefaultRecord record = new DefaultRecord(result, location);
       for (ColumnDefinitions.Definition col : row.getColumnDefinitions()) {
