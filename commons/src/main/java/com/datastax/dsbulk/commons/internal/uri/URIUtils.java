@@ -25,7 +25,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.List;
-import java.util.Optional;
 import java.util.StringTokenizer;
 
 public class URIUtils {
@@ -108,17 +107,11 @@ public class URIUtils {
    * <p>Variable values are {@link TypeCodec#format(Object) formatted} as CQL literals.
    *
    * @param statement The statement that was executed to produce the result
-   * @param optionalRow The optionalRow of the result
-   * @param optionalExecutionInfo The execution info of the result
+   * @param row The row of the result
+   * @param executionInfo The execution info of the result
    * @return The read result row location URI.
    */
-  @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-  public static URI getRowLocation(
-      Statement statement,
-      Optional<Row> optionalRow,
-      Optional<ExecutionInfo> optionalExecutionInfo) {
-    Row row = optionalRow.orElseThrow(IllegalStateException::new);
-    ExecutionInfo executionInfo = optionalExecutionInfo.orElseThrow(IllegalStateException::new);
+  public static URI getRowLocation(Statement statement, Row row, ExecutionInfo executionInfo) {
     InetSocketAddress host = executionInfo.getQueriedHost().getSocketAddress();
     ColumnDefinitions resultVariables = row.getColumnDefinitions();
     CodecRegistry codecRegistry = DriverCoreHooks.getCodecRegistry(resultVariables);

@@ -21,23 +21,19 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class URIUtilsTest {
-  private Optional<Row> optionalRow;
   private BoundStatement boundStatement;
-  private Optional<ExecutionInfo> optionalExecutionInfo;
+  private Row row;
+  private ExecutionInfo executionInfo;
 
   @Before
   public void setUp() throws Exception {
-    Row row = mock(Row.class);
-    ExecutionInfo executionInfo = mock(ExecutionInfo.class);
-    optionalRow = Optional.ofNullable(row);
+    row = mock(Row.class);
+    executionInfo = mock(ExecutionInfo.class);
     boundStatement = mock(BoundStatement.class);
-    optionalExecutionInfo = Optional.ofNullable(executionInfo);
 
     Host host = mock(Host.class);
     PreparedStatement ps = mock(PreparedStatement.class);
@@ -71,7 +67,7 @@ public class URIUtilsTest {
 
   @Test
   public void should_create_location_for_bound_statement() throws Exception {
-    URI location = URIUtils.getRowLocation(boundStatement, optionalRow, optionalExecutionInfo);
+    URI location = URIUtils.getRowLocation(boundStatement, row, executionInfo);
     assertThat(location)
         .hasScheme("cql")
         .hasHost("127.0.0.1")

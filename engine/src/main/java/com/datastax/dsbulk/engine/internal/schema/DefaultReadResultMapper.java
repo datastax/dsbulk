@@ -41,7 +41,9 @@ public class DefaultReadResultMapper implements ReadResultMapper {
         Suppliers.memoize(
             () ->
                 URIUtils.getRowLocation(
-                    result.getStatement(), result.getRow(), result.getExecutionInfo()));
+                    result.getStatement(),
+                    result.getRow().orElseThrow(IllegalStateException::new),
+                    result.getExecutionInfo().orElseThrow(IllegalStateException::new)));
     try {
       DefaultRecord record = new DefaultRecord(result, location);
       for (ColumnDefinitions.Definition col : row.getColumnDefinitions()) {

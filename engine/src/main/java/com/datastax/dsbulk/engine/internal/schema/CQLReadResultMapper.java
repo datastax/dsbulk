@@ -32,7 +32,9 @@ public class CQLReadResultMapper implements ReadResultMapper {
         Suppliers.memoize(
             () ->
                 URIUtils.getRowLocation(
-                    result.getStatement(), result.getRow(), result.getExecutionInfo())),
+                    result.getStatement(),
+                    result.getRow().orElseThrow(IllegalStateException::new),
+                    result.getExecutionInfo().orElseThrow(IllegalStateException::new))),
         inferWriteQuery(result));
   }
 
