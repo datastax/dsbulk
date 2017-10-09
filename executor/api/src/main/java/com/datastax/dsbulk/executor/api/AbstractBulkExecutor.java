@@ -17,6 +17,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -95,8 +96,8 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
 
   @Override
   public void close() throws InterruptedException {
-    if (executor instanceof ThreadPoolExecutor) {
-      ThreadPoolExecutor tpe = (ThreadPoolExecutor) executor;
+    if (executor instanceof ExecutorService) {
+      ExecutorService tpe = (ExecutorService) executor;
       tpe.shutdown();
       tpe.awaitTermination(1, MINUTES);
       tpe.shutdownNow();
