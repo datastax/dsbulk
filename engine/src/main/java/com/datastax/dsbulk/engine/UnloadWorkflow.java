@@ -8,6 +8,7 @@ package com.datastax.dsbulk.engine;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -30,6 +31,7 @@ import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.executor.api.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -44,17 +46,18 @@ public class UnloadWorkflow implements Workflow {
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.UNLOAD);
   private final LoaderConfig config;
 
-  private SchemaSettings schemaSettings;
-  private Scheduler readsScheduler;
-  private Scheduler mapperScheduler;
   private Connector connector;
-  private MetricsManager metricsManager;
-  private ReactorBulkReader executor;
-  private LogManager logManager;
+  private Scheduler scheduler;
   private ReadResultMapper readResultMapper;
+  private MetricsManager metricsManager;
+  private LogManager logManager;
   private DseCluster cluster;
-  private int maxConcurrentReads;
-  private int maxMappingThreads;
+  private ReactorBulkReader executor;
+
+  private int maxConcurrentOps;
+  private int bufferSize;
+
+  private List<Statement> readStatements;
 
   private volatile boolean closed = false;
 
@@ -70,15 +73,14 @@ public class UnloadWorkflow implements Workflow {
     LogSettings logSettings = settingsManager.getLogSettings();
     DriverSettings driverSettings = settingsManager.getDriverSettings();
     ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
-    schemaSettings = settingsManager.getSchemaSettings();
+    SchemaSettings schemaSettings = settingsManager.getSchemaSettings();
     ExecutorSettings executorSettings = settingsManager.getExecutorSettings();
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentReads = executorSettings.getMaxConcurrentOps();
-    maxMappingThreads = engineSettings.getMaxMappingThreads();
-    readsScheduler = Schedulers.newParallel("range-reads", maxConcurrentReads);
-    mapperScheduler = Schedulers.newParallel("result-mapper", maxMappingThreads);
+    maxConcurrentOps = engineSettings.getMaxConcurrentOps();
+    bufferSize = engineSettings.getBufferSize();
+    scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
     connector.init();
     cluster = driverSettings.newCluster();
@@ -93,6 +95,7 @@ public class UnloadWorkflow implements Workflow {
     ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
     readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    readStatements = schemaSettings.createReadStatements(cluster);
   }
 
   @Override
@@ -100,13 +103,11 @@ public class UnloadWorkflow implements Workflow {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Record> records =
-        Flux.fromIterable(schemaSettings.createReadStatements(cluster))
-            .flatMap(
-                statement -> executor.readReactive(statement).subscribeOn(readsScheduler),
-                maxConcurrentReads)
+        Flux.fromIterable(readStatements)
+            .flatMap(statement -> executor.readReactive(statement), maxConcurrentOps, bufferSize)
             .compose(logManager.newReadErrorHandler())
-            .parallel(maxMappingThreads)
-            .runOn(mapperScheduler)
+            .parallel(maxConcurrentOps, bufferSize)
+            .runOn(scheduler)
             .map(readResultMapper::map)
             .sequential()
             .compose(metricsManager.newUnmappableRecordMonitor())
@@ -127,11 +128,11 @@ public class UnloadWorkflow implements Workflow {
     if (!closed) {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(connector, null);
-      e = WorkflowUtils.closeQuietly(readsScheduler, e);
-      e = WorkflowUtils.closeQuietly(mapperScheduler, e);
+      e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(metricsManager, e);
       e = WorkflowUtils.closeQuietly(logManager, e);
+      e = WorkflowUtils.closeQuietly(cluster, e);
       closed = true;
       LOGGER.info("{} closed.", this);
       if (e != null) {

@@ -86,7 +86,7 @@ public class PlainTextAuthEndToEndTestIT extends AbstractEndToEndTestIT {
     List<String> customUnloadArgs = new LinkedList<>();
     customUnloadArgs.add("--connector.csv.url");
     customUnloadArgs.add(full_unload_dir.toString());
-    customUnloadArgs.add("--connector.csv.maxThreads");
+    customUnloadArgs.add("--connector.csv.maxConcurrentFiles");
     customUnloadArgs.add("1");
     customUnloadArgs.add("--schema.query");
     customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
@@ -112,7 +112,7 @@ public class PlainTextAuthEndToEndTestIT extends AbstractEndToEndTestIT {
     customArgs.add("--schema.mapping");
     customArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
-    customArgs.add("--connector.csv.maxThreads");
+    customArgs.add("--connector.csv.maxConcurrentFiles");
     customArgs.add("1");
     return EndToEndUtils.fetchCompleteArgs(op, contact_point, port, customArgs);
   }

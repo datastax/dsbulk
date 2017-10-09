@@ -67,3 +67,4 @@
 - [improvement] DAT-132: When logging bound parameters of statements, be more clear about unset values.
 - [bug] DAT-130: nullStrings setting doesn't handle "null" string properly.
 - [improvement] DAT-133: When encountering a field parsing error, report the field index/name.
+- [improvement] DAT-127: Remove unbounded queues from CSV connector.

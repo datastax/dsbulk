@@ -34,7 +34,6 @@ public class SettingsValidatorTest {
     "--log.stmt.maxBoundValueLength=NotANumber",
     "--log.stmt.maxBoundValues=NotANumber",
     "--log.stmt.maxInnerStatements=NotANumber",
-    "--log.maxThreads=badValue",
     "--driver.port=notANumber",
     "--driver.pooling.local.connections=NotANumber",
     "--driver.pooling.remote.connections=notANumber",
@@ -54,18 +53,17 @@ public class SettingsValidatorTest {
     "--connector.csv.quote=",
     "--connector.csv.escape=",
     "--connector.csv.comment=",
-    "--connector.csv.maxThreads=notANumber",
+    "--connector.csv.maxConcurrentFiles=notANumber",
     "--schema.nullToUnset=tralse",
     "--batch.maxBatchSize=NotANumber",
     "--batch.bufferSize=NotANumber",
     "--executor.maxPerSecond=NotANumber",
     "--executor.maxInFlight=NotANumber",
-    "--executor.maxThreads=NotANumber",
-    "--executor.maxConcurrentOps=NotANumber",
     "--monitoring.expectedWrites=NotANumber",
     "--monitoring.expectedWrites=expectedReads",
     "--monitoring.jmx=tralse",
-    "--engine.maxMappingThreads=NotANumber"
+    "--engine.bufferSize=NotANumber",
+    "--engine.maxConcurrentOps=NotANumber"
   };
 
   private static final String[] BAD_ENUM = {

@@ -22,12 +22,9 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Supplier;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -48,8 +45,6 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
   private final int size;
 
   private final ExecutionContext global = new DefaultExecutionContext();
-  private final Lock lock = new ReentrantLock();
-  private final Condition notFull = lock.newCondition();
 
   private volatile BulkExecutionException error;
   private volatile boolean done;
@@ -110,7 +105,6 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
     cancelled = true;
     if (WIP.getAndIncrement(this) == 0) {
       queue.clear();
-      notifyNotFull();
     }
   }
 
@@ -152,14 +146,7 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
   void onNext(T result) {
     while (!queue.offer(result)) {
       drain();
-      lock.lock();
-      try {
-        notFull.await(1, TimeUnit.MILLISECONDS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      } finally {
-        lock.unlock();
-      }
+      LockSupport.parkNanos(10);
       if (isCancelled()) {
         return;
       }
@@ -197,14 +184,12 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
       while (e != r) {
         if (isCancelled()) {
           queue.clear();
-          notifyNotFull();
           return;
         }
 
         boolean d = done;
 
         T result = queue.poll();
-        notifyNotFull();
 
         boolean empty = result == null;
 
@@ -225,7 +210,6 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
       if (e == r) {
         if (isCancelled()) {
           queue.clear();
-          notifyNotFull();
           return;
         }
 
@@ -258,15 +242,6 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
       } else {
         subscriber.onComplete();
       }
-    }
-  }
-
-  private void notifyNotFull() {
-    lock.lock();
-    try {
-      notFull.signal();
-    } finally {
-      lock.unlock();
     }
   }
 

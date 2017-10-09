@@ -20,18 +20,35 @@ public class EngineSettingsTest {
   public void should_create_default_engine_settings() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
     EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getMaxMappingThreads())
-        .isEqualTo(Runtime.getRuntime().availableProcessors());
+    assertThat(settings.getMaxConcurrentOps())
+        .isEqualTo(Runtime.getRuntime().availableProcessors() / 4);
   }
 
   @Test
   public void should_create_custom_engine_settings() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxMappingThreads = 8C, maxConcurrentReads = 4C")
+            ConfigFactory.parseString("maxConcurrentOps = 8C")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
     EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getMaxMappingThreads())
+    assertThat(settings.getMaxConcurrentOps())
         .isEqualTo(Runtime.getRuntime().availableProcessors() * 8);
+  }
+
+  @Test
+  public void should_report_default_buffer_size() throws Exception {
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
+    EngineSettings settings = new EngineSettings(config);
+    assertThat(settings.getBufferSize()).isEqualTo(8192);
+  }
+
+  @Test
+  public void should_create_custom_buffer_size() throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("bufferSize = 100")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
+    EngineSettings settings = new EngineSettings(config);
+    assertThat(settings.getBufferSize()).isEqualTo(100);
   }
 }

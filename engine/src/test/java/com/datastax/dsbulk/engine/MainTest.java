@@ -214,35 +214,64 @@ public class MainTest {
             "csv",
             "load",
             new String[] {
-              "-locale", "locale",
-              "-timeZone", "tz",
-              "-c", "conn",
-              "-p", "pass",
-              "-u", "user",
-              "-h", "host1, host2",
-              "-lbp", "lbp",
-              "-maxRetries", "42",
-              "-port", "9876",
-              "-cl", "cl",
-              "-maxErrors", "123",
-              "-logDir", "logdir",
-              "-jmx", "false",
-              "-reportRate", "456",
-              "-k", "ks",
-              "-m", "{0:\"f1\", 1:\"f2\"}",
-              "-nullStrings", "[nil, nada]",
-              "-query", "INSERT INTO foo",
-              "-t", "table",
-              "-comment", "comment",
-              "-delim", "|",
-              "-encoding", "enc",
-              "-escape", "^",
-              "-header", "header",
-              "-skipLines", "3",
-              "-maxLines", "111",
-              "-maxThreads", "222",
-              "-quote", "'",
-              "-url", "http://findit"
+              "-locale",
+              "locale",
+              "-timeZone",
+              "tz",
+              "-c",
+              "conn",
+              "-p",
+              "pass",
+              "-u",
+              "user",
+              "-h",
+              "host1, host2",
+              "-lbp",
+              "lbp",
+              "-maxRetries",
+              "42",
+              "-port",
+              "9876",
+              "-cl",
+              "cl",
+              "-maxErrors",
+              "123",
+              "-logDir",
+              "logdir",
+              "-jmx",
+              "false",
+              "-reportRate",
+              "456",
+              "-k",
+              "ks",
+              "-m",
+              "{0:\"f1\", 1:\"f2\"}",
+              "-nullStrings",
+              "[nil, nada]",
+              "-query",
+              "INSERT INTO foo",
+              "-t",
+              "table",
+              "-comment",
+              "comment",
+              "-delim",
+              "|",
+              "-encoding",
+              "enc",
+              "-escape",
+              "^",
+              "-header",
+              "header",
+              "-skipLines",
+              "3",
+              "-maxLines",
+              "111",
+              "-maxConcurrentFiles",
+              "222",
+              "-quote",
+              "'",
+              "-url",
+              "http://findit"
             });
     assertThat(result.getString("codec.locale")).isEqualTo("locale");
     assertThat(result.getString("codec.timeZone")).isEqualTo("tz");
@@ -272,7 +301,7 @@ public class MainTest {
     assertThat(result.getString("connector.csv.header")).isEqualTo("header");
     assertThat(result.getInt("connector.csv.skipLines")).isEqualTo(3);
     assertThat(result.getInt("connector.csv.maxLines")).isEqualTo(111);
-    assertThat(result.getInt("connector.csv.maxThreads")).isEqualTo(222);
+    assertThat(result.getInt("connector.csv.maxConcurrentFiles")).isEqualTo(222);
     assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
     assertThat(result.getString("connector.csv.url")).isEqualTo("http://findit");
   }
@@ -374,10 +403,6 @@ public class MainTest {
               "9",
               "--batch.maxBatchSize",
               "10",
-              "--executor.maxThreads",
-              "11",
-              "--executor.maxConcurrentOps",
-              "27",
               "--executor.maxInFlight",
               "12",
               "--executor.maxPerSecond",
@@ -392,8 +417,6 @@ public class MainTest {
               "16",
               "--log.directory",
               "log-out",
-              "--log.maxThreads",
-              "17",
               "--log.maxErrors",
               "18",
               "--log.stmt.level",
@@ -448,8 +471,10 @@ public class MainTest {
               "{0:\"f3\", 1:\"f4\"}",
               "--connector.name",
               "conn",
-              "--engine.maxMappingThreads",
-              "26"
+              "--engine.maxConcurrentOps",
+              "26",
+              "--engine.bufferSize",
+              "27"
             });
     assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
     assertThat(result.getInt("driver.port")).isEqualTo(1);
@@ -504,8 +529,6 @@ public class MainTest {
     assertThat(result.getString("batch.mode")).isEqualTo("batch-mode");
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
     assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);
-    assertThat(result.getInt("executor.maxThreads")).isEqualTo(11);
-    assertThat(result.getInt("executor.maxConcurrentOps")).isEqualTo(27);
     assertThat(result.getInt("executor.maxInFlight")).isEqualTo(12);
     assertThat(result.getInt("executor.maxPerSecond")).isEqualTo(13);
     assertThat(result.getString("executor.continuousPaging.pageUnit")).isEqualTo("BYTES");
@@ -513,7 +536,6 @@ public class MainTest {
     assertThat(result.getInt("executor.continuousPaging.maxPages")).isEqualTo(15);
     assertThat(result.getInt("executor.continuousPaging.maxPagesPerSecond")).isEqualTo(16);
     assertThat(result.getString("log.directory")).isEqualTo("log-out");
-    assertThat(result.getInt("log.maxThreads")).isEqualTo(17);
     assertThat(result.getInt("log.maxErrors")).isEqualTo(18);
     assertThat(result.getString("log.stmt.level")).isEqualTo("NORMAL");
     assertThat(result.getInt("log.stmt.maxQueryStringLength")).isEqualTo(19);
@@ -541,7 +563,8 @@ public class MainTest {
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
     assertThat(result.getString("schema.recordMetadata")).isEqualTo("{0:f3, 1:f4}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");
-    assertThat(result.getInt("engine.maxMappingThreads")).isEqualTo(26);
+    assertThat(result.getInt("engine.maxConcurrentOps")).isEqualTo(26);
+    assertThat(result.getInt("engine.bufferSize")).isEqualTo(27);
   }
 
   @Test
@@ -551,25 +574,38 @@ public class MainTest {
             "csv",
             "load",
             new String[] {
-              "--connector.csv.url", "url",
-              "--connector.csv.fileNamePattern", "pat",
-              "--connector.csv.fileNameFormat", "fmt",
-              "--connector.csv.recursive", "true",
-              "--connector.csv.maxThreads", "1",
-              "--connector.csv.encoding", "enc",
-              "--connector.csv.header", "false",
-              "--connector.csv.delimiter", "|",
-              "--connector.csv.quote", "'",
-              "--connector.csv.escape", "*",
-              "--connector.csv.comment", "#",
-              "--connector.csv.skipLines", "2",
-              "--connector.csv.maxLines", "3"
+              "--connector.csv.url",
+              "url",
+              "--connector.csv.fileNamePattern",
+              "pat",
+              "--connector.csv.fileNameFormat",
+              "fmt",
+              "--connector.csv.recursive",
+              "true",
+              "--connector.csv.maxConcurrentFiles",
+              "1",
+              "--connector.csv.encoding",
+              "enc",
+              "--connector.csv.header",
+              "false",
+              "--connector.csv.delimiter",
+              "|",
+              "--connector.csv.quote",
+              "'",
+              "--connector.csv.escape",
+              "*",
+              "--connector.csv.comment",
+              "#",
+              "--connector.csv.skipLines",
+              "2",
+              "--connector.csv.maxLines",
+              "3"
             });
     assertThat(result.getString("connector.csv.url")).isEqualTo("url");
     assertThat(result.getString("connector.csv.fileNamePattern")).isEqualTo("pat");
     assertThat(result.getString("connector.csv.fileNameFormat")).isEqualTo("fmt");
     assertThat(result.getBoolean("connector.csv.recursive")).isTrue();
-    assertThat(result.getInt("connector.csv.maxThreads")).isEqualTo(1);
+    assertThat(result.getInt("connector.csv.maxConcurrentFiles")).isEqualTo(1);
     assertThat(result.getString("connector.csv.encoding")).isEqualTo("enc");
     assertThat(result.getBoolean("connector.csv.header")).isFalse();
     assertThat(result.getString("connector.csv.delimiter")).isEqualTo("|");

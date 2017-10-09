@@ -27,9 +27,11 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.dsbulk.executor.api.reader.ReactorBulkReader;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
@@ -41,7 +43,6 @@ public class ExecutorSettings implements SettingsValidator {
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
   private final LoaderConfig config;
-  private ThreadPoolExecutor executor;
 
   ExecutorSettings(LoaderConfig config) {
     this.config = config;
@@ -54,15 +55,6 @@ public class ExecutorSettings implements SettingsValidator {
   public ReactorBulkReader newReadExecutor(
       Session session, MetricsCollectingExecutionListener executionListener) {
     return newBulkExecutor(session, executionListener, WorkflowType.UNLOAD);
-  }
-
-  @SuppressWarnings("unused")
-  public ThreadPoolExecutor getExecutorThreadPool() {
-    return executor;
-  }
-
-  public int getMaxConcurrentOps() {
-    return config.getThreads("maxConcurrentOps");
   }
 
   private ReactorBulkExecutor newBulkExecutor(
@@ -99,9 +91,15 @@ public class ExecutorSettings implements SettingsValidator {
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getThreads("maxThreads");
-      config.getThreads("maxConcurrentOps");
       config.getInt("maxPerSecond");
       config.getInt("maxInFlight");
+      Config continuousPagingConfig = config.getConfig("continuousPaging");
+      if (continuousPagingConfig.getBoolean("enabled")) {
+        continuousPagingConfig.getInt("pageSize");
+        continuousPagingConfig.getEnum(ContinuousPagingOptions.PageUnit.class, "pageUnit");
+        continuousPagingConfig.getInt("maxPages");
+        continuousPagingConfig.getInt("maxPagesPerSecond");
+      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor");
     }
@@ -123,15 +121,20 @@ public class ExecutorSettings implements SettingsValidator {
       ExecutionListener executionListener) {
     int threads = config.getThreads("maxThreads");
     // will be closed when the Bulk Executor gets closed
-    executor =
-        new ThreadPoolExecutor(
-            0,
-            threads,
-            60,
-            SECONDS,
-            new SynchronousQueue<>(),
-            new ThreadFactoryBuilder().setNameFormat("bulk-executor-%0,2d").build(),
-            new ThreadPoolExecutor.CallerRunsPolicy());
+    Executor executor;
+    if (threads < 0) {
+      executor = MoreExecutors.directExecutor();
+    } else {
+      executor =
+          new ThreadPoolExecutor(
+              0,
+              threads,
+              60,
+              SECONDS,
+              new SynchronousQueue<>(),
+              new ThreadFactoryBuilder().setNameFormat("bulk-executor-%0,2d").build(),
+              new ThreadPoolExecutor.CallerRunsPolicy());
+    }
     builder
         .withExecutor(executor)
         .withExecutionListener(executionListener)

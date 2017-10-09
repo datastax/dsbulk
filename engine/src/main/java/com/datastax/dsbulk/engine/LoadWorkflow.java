@@ -43,16 +43,17 @@ public class LoadWorkflow implements Workflow {
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.LOAD);
   private final LoaderConfig config;
 
-  private Scheduler writesScheduler;
-  private Scheduler mapperScheduler;
-  private RecordMapper recordMapper;
-  private ReactorUnsortedStatementBatcher batcher;
-  private ReactorBulkWriter executor;
   private Connector connector;
-  private int maxConcurrentWrites;
-  private int maxMappingThreads;
+  private Scheduler scheduler;
+  private RecordMapper recordMapper;
   private MetricsManager metricsManager;
   private LogManager logManager;
+  private ReactorUnsortedStatementBatcher batcher;
+  private DseCluster cluster;
+  private ReactorBulkWriter executor;
+
+  private int maxConcurrentOps;
+  private int bufferSize;
 
   private volatile boolean closed = false;
 
@@ -74,13 +75,12 @@ public class LoadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentWrites = executorSettings.getMaxConcurrentOps();
-    maxMappingThreads = engineSettings.getMaxMappingThreads();
-    writesScheduler = Schedulers.newParallel("batch-writes", maxConcurrentWrites);
-    mapperScheduler = Schedulers.newParallel("record-mapper", maxMappingThreads);
+    maxConcurrentOps = engineSettings.getMaxConcurrentOps();
+    bufferSize = engineSettings.getBufferSize();
+    scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
     connector.init();
-    DseCluster cluster = driverSettings.newCluster();
+    cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD);
@@ -99,21 +99,24 @@ public class LoadWorkflow implements Workflow {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux.from(connector.read())
+        .publishOn(scheduler, bufferSize)
         .compose(metricsManager.newUnmappableRecordMonitor())
         .compose(logManager.newUnmappableRecordErrorHandler())
-        .parallel(maxMappingThreads)
-        .runOn(mapperScheduler)
+        .parallel(maxConcurrentOps, bufferSize)
+        .runOn(scheduler, bufferSize)
         .map(recordMapper::map)
-        .sequential()
+        .sequential(bufferSize)
         .compose(metricsManager.newUnmappableStatementMonitor())
         .compose(logManager.newUnmappableStatementErrorHandler())
         .compose(batcher)
         .compose(metricsManager.newBatcherMonitor())
-        .flatMap(
-            statement -> executor.writeReactive(statement).subscribeOn(writesScheduler),
-            maxConcurrentWrites)
+        // use buffer size as max concurrency here
+        .flatMap(executor::writeReactive, bufferSize, bufferSize)
         .compose(logManager.newWriteErrorHandler())
-        .compose(logManager.newLocationTracker())
+        .parallel(maxConcurrentOps, bufferSize)
+        .runOn(scheduler, bufferSize)
+        .composeGroup(logManager.newLocationTracker())
+        .sequential(bufferSize)
         .blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
@@ -125,11 +128,11 @@ public class LoadWorkflow implements Workflow {
     if (!closed) {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(connector, null);
-      e = WorkflowUtils.closeQuietly(writesScheduler, e);
-      e = WorkflowUtils.closeQuietly(mapperScheduler, e);
+      e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(metricsManager, e);
       e = WorkflowUtils.closeQuietly(logManager, e);
+      e = WorkflowUtils.closeQuietly(cluster, e);
       closed = true;
       LOGGER.info("{} closed.", this);
       if (e != null) {

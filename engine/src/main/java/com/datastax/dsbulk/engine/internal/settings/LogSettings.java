@@ -54,7 +54,6 @@ public class LogSettings implements SettingsValidator {
       config.getInt("stmt.maxInnerStatements");
       config.getEnum(StatementFormatVerbosity.class, "stmt.level");
       config.getInt("maxErrors");
-      config.getThreads("maxThreads");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "log");
     }
@@ -70,10 +69,9 @@ public class LogSettings implements SettingsValidator {
             .build();
     StatementFormatVerbosity verbosity =
         config.getEnum(StatementFormatVerbosity.class, "stmt.level");
-    int threads = config.getThreads("maxThreads");
     ExecutorService executor =
-        Executors.newFixedThreadPool(
-            threads, new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
+        Executors.newCachedThreadPool(
+            new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
     return new LogManager(
         cluster, executionDirectory, executor, config.getInt("maxErrors"), formatter, verbosity);
   }

@@ -220,7 +220,7 @@ The maximum number of concurrent requests per second. This acts as a safeguard a
 
 Setting this option to any negative value will disable it.
 
-Default: **100000**.
+Default: **-1**.
 
 #### -maxErrors,--log.maxErrors _&lt;number&gt;_
 
@@ -404,11 +404,17 @@ Only applicable when the *url* setting points to a directory on a known filesyst
 
 Default: **"\*\*/\*.csv"**.
 
-#### -maxThreads,--connector.csv.maxThreads _&lt;number&gt;_
+#### -maxConcurrentFiles,--connector.csv.maxConcurrentFiles _&lt;string&gt;_
 
-The maximum number of reading or writing threads. In other words, this setting controls how many files can be read or written simultaneously.
+The maximum number of files that can be read or written simultaneously.
 
-Default: **4**.
+When reading, it is usually not enough to set this value higher than 1, as the underlying CSV parsing library is fast enough, even when reading one file at a time, that it will never be a performance bottleneck.
+
+When writing, however, this value should be set to a ratio of the number of available cores.
+
+The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
+
+Default: **"0.25C"**.
 
 #### -quote,--connector.csv.quote _&lt;string&gt;_
 
@@ -555,13 +561,27 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 The buffer size to use when batching.
 
-Default: **10000**.
+It is recommended to set this value equal to **engine.bufferSize**.
+
+Default: **8192**.
+
+#### --batch.bufferTimeout _&lt;string&gt;_
+
+The maximum amount of time to wait for incoming items to batch before flushing.
+The buffer will be flushed when this duration is elapsed
+or when *bufferSize* is reached, whichever happens first.
+
+Default: **"1 seconds"**.
 
 #### --batch.maxBatchSize _&lt;number&gt;_
 
 The maximum batch size.
 
-Default: **100**.
+The ideal batch size depends on how large is the data to be inserted: the larger the data, the smaller this value should be.
+
+The ideal batch size also depends on the batch mode in use. When using **PARTITION_KEY**, it is usually better to use large batch sizes (around 100). When using **REPLICA_SET** however, batches sizes should remain small (around 10).
+
+Default: **96**.
 
 #### --batch.mode _&lt;string&gt;_
 
@@ -860,7 +880,7 @@ Default: **"30 seconds"**.
 
 The number of connections in the pool for nodes at "local" distance.
 
-Default: **1**.
+Default: **4**.
 
 #### --driver.pooling.local.requests _&lt;number&gt;_
 
@@ -894,7 +914,7 @@ Native Protocol-specific settings.
 The compression algorithm to use.
 Valid values are: `NONE`, `LZ4`, `SNAPPY`.
 
-Default: **"LZ4"**.
+Default: **"NONE"**.
 
 <a name="driver.query"></a>
 ### Driver Query Settings
@@ -1040,15 +1060,23 @@ Default: **&lt;unspecified&gt;**.
 
 Workflow Engine-specific settings.
 
-#### --engine.maxMappingThreads _&lt;string&gt;_
+#### --engine.bufferSize _&lt;number&gt;_
 
-The maximum number of threads to allocate for serializing and deserializing, as well as for mapping records or results.
+The buffer size used internally by the workflow engine.
+
+Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
+
+Default: **8192**.
+
+#### --engine.maxConcurrentOps _&lt;string&gt;_
+
+The maximum number of threads to allocate for workflow operations, such as record mappings, result mappings, etc.
 
 Applies to both read and write workflows.
 
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
+The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"1C"**.
+Default: **"0.25C"**.
 
 <a name="executor"></a>
 ## Executor Settings
@@ -1061,7 +1089,7 @@ The maximum number of concurrent requests per second. This acts as a safeguard a
 
 Setting this option to any negative value will disable it.
 
-Default: **100000**.
+Default: **-1**.
 
 #### --executor.continuousPaging.enabled _&lt;boolean&gt;_
 
@@ -1103,32 +1131,25 @@ Possible values are: `ROWS`, `BYTES`.
 
 Default: **"ROWS"**.
 
-#### --executor.maxConcurrentOps _&lt;string&gt;_
-
-The maximum number operations (reads or writes) that can be issued concurrently for the same table,
-for a given workflow.
-
-Applies to both load and unload workflows.
-
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
-
-Default: **"1C"**.
-
 #### --executor.maxInFlight _&lt;number&gt;_
 
 The maximum number of "in-flight" requests. In other words, sets the maximum number of concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard against workflows that generate more requests than they can handle. Batch statements count for as many requests as their number of inner statements.
 
 Setting this option to any negative value will disable it.
 
-Default: **1000**.
+Default: **100000**.
 
-#### --executor.maxThreads _&lt;string&gt;_
+#### --executor.maxThreads _&lt;number&gt;_
 
-The maximum number of threads to allocate for the executor. These threads are used to submit requests and process responses.
+The maximum number of threads to allocate for asynchronous handling of response callbacks.
+
+Note that these threads are used to process responses, but not to submit requests (these are submitted on the calling thread).
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
 
-Default: **"4C"**.
+Setting this value to -1 will disable this thread pool entirely, in which case response callbacks will be executed on one of the driver's internal Netty theads; this should be fine in most scenarios, unless the consumers are too slow or need to perform any blocking operation, which could lead to deadlocks.
+
+Default: **-1**.
 
 <a name="log"></a>
 ## Log Settings
@@ -1154,14 +1175,6 @@ Log files for a specific run will be located in a sub-directory inside the direc
 Setting this value to `.` denotes the current working directory.
 
 Default: **"./logs"**.
-
-#### --log.maxThreads _&lt;string&gt;_
-
-The maximum number of threads to allocate to log files management.
-
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
-
-Default: **"4"**.
 
 #### --log.stmt.level _&lt;string&gt;_
 

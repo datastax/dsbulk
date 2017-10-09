@@ -10,7 +10,7 @@ import static com.datastax.driver.core.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.driver.core.ConsistencyLevel.LOCAL_SERIAL;
 import static com.datastax.driver.core.HostDistance.LOCAL;
 import static com.datastax.driver.core.HostDistance.REMOTE;
-import static com.datastax.driver.core.ProtocolOptions.Compression.LZ4;
+import static com.datastax.driver.core.ProtocolOptions.Compression.NONE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
@@ -87,15 +87,15 @@ public class DriverSettingsTest {
     assertThat(
             Whitebox.getInternalState(configuration.getProtocolOptions(), "initialProtocolVersion"))
         .isNull();
-    assertThat(configuration.getProtocolOptions().getCompression()).isEqualTo(LZ4);
+    assertThat(configuration.getProtocolOptions().getCompression()).isEqualTo(NONE);
     QueryOptions queryOptions = configuration.getQueryOptions();
     assertThat(queryOptions.getConsistencyLevel()).isEqualTo(LOCAL_ONE);
     assertThat(queryOptions.getSerialConsistencyLevel()).isEqualTo(LOCAL_SERIAL);
     assertThat(queryOptions.getFetchSize()).isEqualTo(5000);
     assertThat(queryOptions.getDefaultIdempotence()).isTrue();
     PoolingOptions poolingOptions = configuration.getPoolingOptions();
-    assertThat(poolingOptions.getCoreConnectionsPerHost(LOCAL)).isEqualTo(1);
-    assertThat(poolingOptions.getMaxConnectionsPerHost(LOCAL)).isEqualTo(1);
+    assertThat(poolingOptions.getCoreConnectionsPerHost(LOCAL)).isEqualTo(4);
+    assertThat(poolingOptions.getMaxConnectionsPerHost(LOCAL)).isEqualTo(4);
     assertThat(poolingOptions.getCoreConnectionsPerHost(REMOTE)).isEqualTo(1);
     assertThat(poolingOptions.getMaxConnectionsPerHost(REMOTE)).isEqualTo(1);
     assertThat(poolingOptions.getMaxRequestsPerConnection(LOCAL)).isEqualTo(32768);
