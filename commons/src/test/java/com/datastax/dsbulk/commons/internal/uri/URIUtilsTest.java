@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.engine.internal.schema;
+package com.datastax.dsbulk.commons.internal.uri;
 
 import static com.datastax.driver.core.DriverCoreTestHooks.newColumnDefinitions;
 import static com.datastax.driver.core.DriverCoreTestHooks.newDefinition;
@@ -19,30 +19,27 @@ import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
-import com.datastax.dsbulk.executor.api.result.ReadResult;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ResultUtilsTest {
-
-  private ReadResult result;
+public class URIUtilsTest {
+  private BoundStatement boundStatement;
+  private Row row;
+  private ExecutionInfo executionInfo;
 
   @Before
   public void setUp() throws Exception {
-    result = mock(ReadResult.class);
-    BoundStatement boundStatement = mock(BoundStatement.class);
-    Row row = mock(Row.class);
-    ExecutionInfo executionInfo = mock(ExecutionInfo.class);
+    row = mock(Row.class);
+    executionInfo = mock(ExecutionInfo.class);
+    boundStatement = mock(BoundStatement.class);
+
     Host host = mock(Host.class);
     PreparedStatement ps = mock(PreparedStatement.class);
-    when(result.getRow()).thenReturn(Optional.ofNullable(row));
-    when(result.getStatement()).thenReturn(boundStatement);
-    when(result.getExecutionInfo()).thenReturn(Optional.ofNullable(executionInfo));
     when(executionInfo.getQueriedHost()).thenReturn(host);
     when(host.getSocketAddress()).thenReturn(new InetSocketAddress("127.0.0.1", 9042));
+
     ColumnDefinitions.Definition c1 = newDefinition("myKeyspace", "myTable", "c1", DataType.cint());
     ColumnDefinitions.Definition c2 =
         newDefinition("myKeyspace", "myTable", "c2", DataType.varchar());
@@ -50,6 +47,7 @@ public class ResultUtilsTest {
         newDefinition("myKeyspace", "myTable", "c3", DataType.varchar());
     ColumnDefinitions resultVariables = newColumnDefinitions(c1, c2, c3);
     when(row.getColumnDefinitions()).thenReturn(resultVariables);
+
     when(boundStatement.preparedStatement()).thenReturn(ps);
     when(ps.getQueryString()).thenReturn("irrelevant");
     // simulates a WHERE clause like token(...) > :start and token(...) <= :end and c1 = :c1
@@ -69,7 +67,7 @@ public class ResultUtilsTest {
 
   @Test
   public void should_create_location_for_bound_statement() throws Exception {
-    URI location = ResultUtils.getLocation(result);
+    URI location = URIUtils.getRowLocation(boundStatement, row, executionInfo);
     assertThat(location)
         .hasScheme("cql")
         .hasHost("127.0.0.1")

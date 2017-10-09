@@ -88,7 +88,9 @@ public class MetricsManagerTest {
         new DefaultUnmappableRecord(source3, () -> location3, new RuntimeException("irrelevant"));
     stmt1 = new BulkSimpleStatement<>(record1, "irrelevant");
     stmt2 = new BulkSimpleStatement<>(record2, "irrelevant");
-    stmt3 = new UnmappableStatement(record3, new RuntimeException("irrelevant"));
+    stmt3 =
+        new UnmappableStatement(
+            record3, URI.create("http://record3"), new RuntimeException("irrelevant"));
     batch = new BatchStatement().add(stmt1).add(stmt2);
   }
 

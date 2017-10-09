@@ -39,7 +39,6 @@
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dse-java-driver-core</artifactId>
-      <scope>test</scope>
     </dependency>
 
     <dependency>
