@@ -97,9 +97,9 @@ public class URIUtils {
    *
    * <p>URIs returned by this method are of the following form:
    *
-   * <pre>
+   * <pre>{@code
    * cql://host:port/keyspace/table?var1=value1&var2=value2
-   * </pre>
+   * }</pre>
    *
    * <p>Both bound variables – if any – and result set variables are collected and returned in the
    * location URI.
