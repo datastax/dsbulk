@@ -1139,18 +1139,6 @@ Setting this option to any negative value will disable it.
 
 Default: **100000**.
 
-#### --executor.maxThreads _&lt;number&gt;_
-
-The maximum number of threads to allocate for asynchronous handling of response callbacks.
-
-Note that these threads are used to process responses, but not to submit requests (these are submitted on the calling thread).
-
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 4C = 4 * 8 = 32 threads.
-
-Setting this value to -1 will disable this thread pool entirely, in which case response callbacks will be executed on one of the driver's internal Netty theads; this should be fine in most scenarios, unless the consumers are too slow or need to perform any blocking operation, which could lead to deadlocks.
-
-Default: **-1**.
-
 <a name="log"></a>
 ## Log Settings
 

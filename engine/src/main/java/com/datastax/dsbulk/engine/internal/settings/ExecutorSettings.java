@@ -6,8 +6,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ProtocolVersion;
@@ -27,13 +25,8 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.dsbulk.executor.api.reader.ReactorBulkReader;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
-import com.google.common.util.concurrent.MoreExecutors;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +83,6 @@ public class ExecutorSettings implements SettingsValidator {
 
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
-      config.getThreads("maxThreads");
       config.getInt("maxPerSecond");
       config.getInt("maxInFlight");
       Config continuousPagingConfig = config.getConfig("continuousPaging");
@@ -119,24 +111,8 @@ public class ExecutorSettings implements SettingsValidator {
   private void configure(
       AbstractBulkExecutorBuilder<? extends ReactiveBulkExecutor> builder,
       ExecutionListener executionListener) {
-    int threads = config.getThreads("maxThreads");
-    // will be closed when the Bulk Executor gets closed
-    Executor executor;
-    if (threads < 0) {
-      executor = MoreExecutors.directExecutor();
-    } else {
-      executor =
-          new ThreadPoolExecutor(
-              0,
-              threads,
-              60,
-              SECONDS,
-              new SynchronousQueue<>(),
-              new ThreadFactoryBuilder().setNameFormat("bulk-executor-%0,2d").build(),
-              new ThreadPoolExecutor.CallerRunsPolicy());
-    }
     builder
-        .withExecutor(executor)
+        .withoutExecutor()
         .withExecutionListener(executionListener)
         .withMaxInFlightRequests(config.getInt("maxInFlight"))
         .withMaxRequestsPerSecond(config.getInt("maxPerSecond"))
