@@ -16,9 +16,7 @@ import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.RateLimiter;
-import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.Executor;
@@ -69,14 +67,12 @@ public class ContinuousReadResultSubscription
 
   @Override
   void onRequestSuccessful(AsyncContinuousPagingResult page, ExecutionContext local) {
-    // unfortunately we need to eagerly consume the page to get the number of rows
-    List<Row> rows = Lists.newArrayList(page.currentPage());
-    listener.ifPresent(l -> l.onReadRequestSuccessful(statement, rows.size(), local));
-    for (Row row : rows) {
+    for (Row row : page.currentPage()) {
       if (isCancelled()) {
         page.cancel();
         return;
       }
+      listener.ifPresent(l -> l.onReadRequestSuccessful(statement, 1, local));
       onNext(new DefaultReadResult(statement, page.getExecutionInfo(), row));
     }
     if (page.isLast()) {
