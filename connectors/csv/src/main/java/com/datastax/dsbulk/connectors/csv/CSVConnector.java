@@ -141,14 +141,10 @@ public class CSVConnector implements Connector {
       writerSettings.setQuoteEscapingEnabled(true);
       counter = new AtomicInteger(0);
     }
-    if (maxConcurrentFiles > 1) {
-      threadPool =
-          Executors.newCachedThreadPool(
-              new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
-      scheduler = Schedulers.fromExecutor(threadPool);
-    } else {
-      scheduler = Schedulers.immediate();
-    }
+    threadPool =
+        Executors.newCachedThreadPool(
+            new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
+    scheduler = Schedulers.fromExecutor(threadPool);
   }
 
   @Override
