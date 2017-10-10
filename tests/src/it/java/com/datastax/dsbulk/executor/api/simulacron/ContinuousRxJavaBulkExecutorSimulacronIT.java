@@ -6,7 +6,6 @@
  */
 package com.datastax.dsbulk.executor.api.simulacron;
 
-import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.dsbulk.executor.api.ContinuousRxJavaBulkExecutor;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -17,8 +16,10 @@ public class ContinuousRxJavaBulkExecutorSimulacronIT extends AbstractBulkExecut
   @BeforeClass
   public static void createBulkExecutors() {
     failFastExecutor =
-        ContinuousRxJavaBulkExecutor.builder((ContinuousPagingSession) session).build();
-    failSafeExecutor =
-        ContinuousRxJavaBulkExecutor.builder((ContinuousPagingSession) session).failSafe().build();
+        ContinuousRxJavaBulkExecutor.builder(session)
+            // serialize execution of statements to force results to be produced in deterministic order
+            .withoutExecutor()
+            .build();
+    failSafeExecutor = ContinuousRxJavaBulkExecutor.builder(session).failSafe().build();
   }
 }

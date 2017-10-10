@@ -13,7 +13,11 @@ public class DefaultReactorBulkExecutorSimulacronIT extends AbstractBulkExecutor
 
   @BeforeClass
   public static void createBulkExecutors() {
-    failFastExecutor = DefaultReactorBulkExecutor.builder(session).build();
+    failFastExecutor =
+        DefaultReactorBulkExecutor.builder(session)
+            // serialize execution of statements to force results to be produced in deterministic order
+            .withoutExecutor()
+            .build();
     failSafeExecutor = DefaultReactorBulkExecutor.builder(session).failSafe().build();
   }
 }

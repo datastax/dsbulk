@@ -6,8 +6,6 @@
  */
 package com.datastax.dsbulk.executor.api;
 
-import com.google.common.util.concurrent.MoreExecutors;
-
 public class DefaultRxJavaBulkExecutorTest extends AbstractNonContinuousBulkExecutorTest {
 
   @Override
@@ -15,7 +13,7 @@ public class DefaultRxJavaBulkExecutorTest extends AbstractNonContinuousBulkExec
     AbstractBulkExecutorBuilder<DefaultRxJavaBulkExecutor> builder =
         DefaultRxJavaBulkExecutor.builder(session)
             // serialize execution of statements to force results to be produced in deterministic order
-            .withExecutor(MoreExecutors.directExecutor())
+            .withoutExecutor()
             .withExecutionListener(listener);
     if (failSafe) builder.failSafe();
     return builder.build();

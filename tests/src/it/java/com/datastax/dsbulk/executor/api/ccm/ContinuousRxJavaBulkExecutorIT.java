@@ -23,7 +23,7 @@ public class ContinuousRxJavaBulkExecutorIT extends AbstractContinuousBulkExecut
     failFastExecutor =
         ContinuousRxJavaBulkExecutor.builder(session)
             // serialize execution of statements to force results to be produced in deterministic order
-            .withMaxInFlightRequests(1)
+            .withoutExecutor()
             .build();
     failSafeExecutor = ContinuousRxJavaBulkExecutor.builder(session).failSafe().build();
   }

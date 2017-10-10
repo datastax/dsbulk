@@ -12,7 +12,11 @@ import org.junit.BeforeClass;
 public class DefaultRxJavaBulkExecutorSimulacronIT extends AbstractBulkExecutorSimulacronIT {
   @BeforeClass
   public static void createBulkExecutors() {
-    failFastExecutor = DefaultRxJavaBulkExecutor.builder(session).build();
+    failFastExecutor =
+        DefaultRxJavaBulkExecutor.builder(session)
+            // serialize execution of statements to force results to be produced in deterministic order
+            .withoutExecutor()
+            .build();
     failSafeExecutor = DefaultRxJavaBulkExecutor.builder(session).failSafe().build();
   }
 }

@@ -21,7 +21,7 @@ public class DefaultRxJavaBulkExecutorIT extends AbstractBulkExecutorIT {
     failFastExecutor =
         DefaultRxJavaBulkExecutor.builder(session)
             // serialize execution of statements to force results to be produced in deterministic order
-            .withMaxInFlightRequests(1)
+            .withoutExecutor()
             .build();
     failSafeExecutor = DefaultRxJavaBulkExecutor.builder(session).failSafe().build();
   }
