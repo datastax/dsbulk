@@ -348,6 +348,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
               convertDuration(snapshot.getMean()),
               convertDuration(snapshot.get75thPercentile()),
               convertDuration(snapshot.get99thPercentile()),
+              convertDuration(snapshot.get999thPercentile()),
               durationUnit));
     } else {
       float achieved = (float) total / (float) expectedTotal * 100f;
@@ -363,6 +364,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
               convertDuration(snapshot.getMean()),
               convertDuration(snapshot.get75thPercentile()),
               convertDuration(snapshot.get99thPercentile()),
+              convertDuration(snapshot.get999thPercentile()),
               durationUnit));
     }
   }
@@ -372,7 +374,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
       return metricType.eventName()
           + ": total: %,d, successful: %,d, failed: %,d; %,.0f "
           + metricType.unit()
-          + "/%s (mean %,.2f, 75p %,.2f, 99p %,.2f %s)";
+          + "/%s (mean %,.2f, 75p %,.2f, 99p %,.2f, 999p %,.2f %s)";
     } else {
       int numDigits = String.format("%,d", expectedTotal).length();
       return metricType.eventName()
@@ -384,7 +386,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
           + metricType.unit()
           + "/%s, "
           + "progression: %,.0f%% "
-          + "(mean %,.2f, 75p %,.2f, 99p %,.2f %s)";
+          + "(mean %,.2f, 75p %,.2f, 99p %,.2f, 999p %,.2f %s)";
     }
   }
 
