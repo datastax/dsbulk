@@ -117,7 +117,7 @@ public class LoadWorkflow implements Workflow {
     if (batchingEnabled) {
       flux = flux.compose(batcher).compose(metricsManager.newBatcherMonitor());
     }
-    flux.flatMap(executor::writeReactive, maxConcurrentOps, bufferSize)
+    flux.flatMap(executor::writeReactive, bufferSize, bufferSize)
         .compose(logManager.newWriteErrorHandler())
         .parallel(maxConcurrentOps, bufferSize)
         .runOn(scheduler)
