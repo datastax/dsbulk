@@ -573,6 +573,12 @@ or when *bufferSize* is reached, whichever happens first.
 
 Default: **"1 seconds"**.
 
+#### --batch.enabled _&lt;boolean&gt;_
+
+Whether to enable batching of statements or not.
+
+Default: **true**.
+
 #### --batch.maxBatchSize _&lt;number&gt;_
 
 The maximum batch size.
