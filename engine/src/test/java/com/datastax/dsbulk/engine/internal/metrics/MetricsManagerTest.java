@@ -106,7 +106,8 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
-            Duration.ofSeconds(5));
+            Duration.ofSeconds(5),
+            false);
     manager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
     records.compose(manager.newUnmappableRecordMonitor()).blockLast();
@@ -129,7 +130,8 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
-            Duration.ofSeconds(5));
+            Duration.ofSeconds(5),
+            true);
     manager.init();
     Flux<Statement> statements = Flux.just(stmt1, stmt2, stmt3);
     statements.compose(manager.newUnmappableStatementMonitor()).blockLast();
@@ -152,7 +154,8 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
-            Duration.ofSeconds(5));
+            Duration.ofSeconds(5),
+            true);
     manager.init();
     Flux<Statement> statements = Flux.just(batch, stmt3);
     statements.compose(manager.newBatcherMonitor()).blockLast();

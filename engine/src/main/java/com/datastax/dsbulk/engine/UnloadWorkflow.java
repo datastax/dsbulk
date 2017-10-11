@@ -86,7 +86,7 @@ public class UnloadWorkflow implements Workflow {
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
-    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD);
+    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD, false);
     metricsManager.init();
     logManager = logSettings.newLogManager(cluster);
     logManager.init();
@@ -117,7 +117,7 @@ public class UnloadWorkflow implements Workflow {
     // publish results to two subscribers: the connector,
     // and a dummy blockLast subscription to block until complete
     records.subscribe(connector.write());
-    records.blockLast();
+    records.then().block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));

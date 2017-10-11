@@ -51,6 +51,7 @@ public class MetricsManager implements AutoCloseable {
   private final long expectedReads;
   private final boolean jmx;
   private final Duration reportInterval;
+  private final boolean batchingEnabled;
 
   private Meter records;
   private Meter failedRecords;
@@ -75,7 +76,8 @@ public class MetricsManager implements AutoCloseable {
       long expectedWrites,
       long expectedReads,
       boolean jmx,
-      Duration reportInterval) {
+      Duration reportInterval,
+      boolean batchingEnabled) {
     this.workflowType = workflowType;
     this.executionId = executionId;
     this.scheduler = scheduler;
@@ -85,6 +87,7 @@ public class MetricsManager implements AutoCloseable {
     this.expectedReads = expectedReads;
     this.jmx = jmx;
     this.reportInterval = reportInterval;
+    this.batchingEnabled = batchingEnabled;
   }
 
   public void init() {
@@ -101,7 +104,9 @@ public class MetricsManager implements AutoCloseable {
     switch (workflowType) {
       case LOAD:
         startRecordMappingsReporter();
-        startBatchesReporter();
+        if (batchingEnabled) {
+          startBatchesReporter();
+        }
         startWritesReporter();
         break;
 
