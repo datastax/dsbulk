@@ -216,7 +216,7 @@ Default: **"LOCAL_ONE"**.
 
 #### --executor.maxPerSecond _&lt;number&gt;_
 
-The maximum number of concurrent requests per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many requests as their number of inner statements.
+The maximum number of concurrent operations per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many operations as their number of inner statements.
 
 Setting this option to any negative value will disable it.
 
@@ -1091,7 +1091,7 @@ Executor-specific settings.
 
 #### --executor.maxPerSecond _&lt;number&gt;_
 
-The maximum number of concurrent requests per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many requests as their number of inner statements.
+The maximum number of concurrent operations per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many operations as their number of inner statements.
 
 Setting this option to any negative value will disable it.
 
@@ -1139,7 +1139,7 @@ Default: **"ROWS"**.
 
 #### --executor.maxInFlight _&lt;number&gt;_
 
-The maximum number of "in-flight" requests. In other words, sets the maximum number of concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard against workflows that generate more requests than they can handle. Batch statements count for as many requests as their number of inner statements.
+The maximum number of "in-flight" requests. In other words, sets the maximum number of concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard against workflows that generate more requests than they can handle. Batch statements count for 1 request.
 
 Setting this option to any negative value will disable it.
 

@@ -115,13 +115,13 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
   void fetchNextPage(Supplier<ListenableFuture<R>> request) {
     ExecutionContext local = new DefaultExecutionContext();
     rateLimiter.ifPresent(limiter -> limiter.acquire(size));
-    requestPermits.ifPresent(permits -> permits.acquireUninterruptibly(size));
+    requestPermits.ifPresent(permits -> permits.acquireUninterruptibly(1));
     onRequestStarted(local);
     ListenableFuture<R> page;
     try {
       page = request.get();
     } catch (Exception e) {
-      requestPermits.ifPresent(permits -> permits.release(size));
+      requestPermits.ifPresent(permits -> permits.release(1));
       onRequestFailed(e, local);
       return;
     }
@@ -130,13 +130,13 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
         new FutureCallback<R>() {
           @Override
           public void onSuccess(R result) {
-            requestPermits.ifPresent(permits -> permits.release(size));
+            requestPermits.ifPresent(permits -> permits.release(1));
             onRequestSuccessful(result, local);
           }
 
           @Override
           public void onFailure(Throwable t) {
-            requestPermits.ifPresent(permits -> permits.release(size));
+            requestPermits.ifPresent(permits -> permits.release(1));
             onRequestFailed(t, local);
           }
         },
