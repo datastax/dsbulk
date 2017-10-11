@@ -47,8 +47,8 @@ public class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(8192);
-    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(96);
+    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(1024);
+    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
   @Test
@@ -60,8 +60,8 @@ public class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
-    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(8192);
-    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(96);
+    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(1024);
+    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
   @Test
@@ -74,7 +74,7 @@ public class BatchSettingsTest {
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(5000);
-    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(96);
+    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
   @Test
@@ -86,7 +86,7 @@ public class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(8192);
+    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(1024);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
   }
 }

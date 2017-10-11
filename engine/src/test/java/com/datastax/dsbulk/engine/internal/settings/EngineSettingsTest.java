@@ -39,7 +39,7 @@ public class EngineSettingsTest {
   public void should_report_default_buffer_size() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
     EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getBufferSize()).isEqualTo(8192);
+    assertThat(settings.getBufferSize()).isEqualTo(1024);
   }
 
   @Test
