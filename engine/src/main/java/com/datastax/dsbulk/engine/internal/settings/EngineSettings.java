@@ -11,13 +11,9 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.typesafe.config.ConfigException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** */
 public class EngineSettings implements SettingsValidator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(EngineSettings.class);
 
   private final LoaderConfig config;
 
