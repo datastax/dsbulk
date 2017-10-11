@@ -54,7 +54,7 @@ public class UnloadWorkflow implements Workflow {
   private DseCluster cluster;
   private ReactorBulkReader executor;
 
-  private int maxConcurrentOps;
+  private int maxConcurrentMappings;
   private int bufferSize;
 
   private List<Statement> readStatements;
@@ -78,7 +78,7 @@ public class UnloadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentOps = engineSettings.getMaxConcurrentOps();
+    maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
     bufferSize = engineSettings.getBufferSize();
     scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
@@ -104,9 +104,9 @@ public class UnloadWorkflow implements Workflow {
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Record> records =
         Flux.fromIterable(readStatements)
-            .flatMap(statement -> executor.readReactive(statement), maxConcurrentOps, bufferSize)
+            .flatMap(executor::readReactive)
             .compose(logManager.newReadErrorHandler())
-            .parallel(maxConcurrentOps, bufferSize)
+            .parallel(maxConcurrentMappings, bufferSize)
             .runOn(scheduler)
             .map(readResultMapper::map)
             .sequential()

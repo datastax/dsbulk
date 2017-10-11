@@ -97,6 +97,10 @@ public class ExecutorSettings implements SettingsValidator {
     }
   }
 
+  public int getMaxInFlight() {
+    return config.getInt("maxInFlight");
+  }
+
   private boolean continuousPagingAvailable(Session session) {
     return session instanceof ContinuousPagingSession
         && session

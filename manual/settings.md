@@ -218,6 +218,8 @@ Default: **"LOCAL_ONE"**.
 
 The maximum number of concurrent operations per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many operations as their number of inner statements.
 
+You should reduce this value when your latencies get too high. This is usually a sign that the remote cluster cannot keep up with the throughput, and requests will eventually time out.
+
 Setting this option to any negative value will disable it.
 
 Default: **-1**.
@@ -559,8 +561,7 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 #### --batch.bufferSize _&lt;number&gt;_
 
-The buffer size to use when batching.
-
+The buffer size to use for batching statements.
 
 Default: **1024**.
 
@@ -1071,11 +1072,11 @@ The buffer size used internally by the workflow engine.
 
 Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
 
-Default: **1024**.
+Default: **4096**.
 
-#### --engine.maxConcurrentOps _&lt;string&gt;_
+#### --engine.maxConcurrentMappings _&lt;string&gt;_
 
-The maximum number of threads to allocate for workflow operations, such as record mappings, result mappings, etc.
+The maximum number of concurrent record and result mappings.
 
 Applies to both read and write workflows.
 
@@ -1091,6 +1092,8 @@ Executor-specific settings.
 #### --executor.maxPerSecond _&lt;number&gt;_
 
 The maximum number of concurrent operations per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many operations as their number of inner statements.
+
+You should reduce this value when your latencies get too high. This is usually a sign that the remote cluster cannot keep up with the throughput, and requests will eventually time out.
 
 Setting this option to any negative value will disable it.
 
@@ -1140,9 +1143,11 @@ Default: **"ROWS"**.
 
 The maximum number of "in-flight" requests. In other words, sets the maximum number of concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard against workflows that generate more requests than they can handle. Batch statements count for 1 request.
 
+You should reduce this value when the throughput for reads and writes cannot match the throughput of mappers; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory.
+
 Setting this option to any negative value will disable it.
 
-Default: **1000**.
+Default: **1024**.
 
 <a name="log"></a>
 ## Log Settings

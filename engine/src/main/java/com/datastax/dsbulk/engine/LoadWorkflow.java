@@ -53,7 +53,8 @@ public class LoadWorkflow implements Workflow {
   private DseCluster cluster;
   private ReactorBulkWriter executor;
 
-  private int maxConcurrentOps;
+  private int maxConcurrentMappings;
+  private int maxConcurrentWrites;
   private int bufferSize;
   private boolean batchingEnabled;
 
@@ -77,7 +78,8 @@ public class LoadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentOps = engineSettings.getMaxConcurrentOps();
+    maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
+    maxConcurrentWrites = executorSettings.getMaxInFlight();
     bufferSize = engineSettings.getBufferSize();
     scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
@@ -108,7 +110,7 @@ public class LoadWorkflow implements Workflow {
             .publishOn(scheduler, bufferSize)
             .compose(metricsManager.newUnmappableRecordMonitor())
             .compose(logManager.newUnmappableRecordErrorHandler())
-            .parallel(maxConcurrentOps, bufferSize)
+            .parallel(maxConcurrentMappings)
             .runOn(scheduler)
             .map(recordMapper::map)
             .sequential()
@@ -117,9 +119,9 @@ public class LoadWorkflow implements Workflow {
     if (batchingEnabled) {
       flux = flux.compose(batcher).compose(metricsManager.newBatcherMonitor());
     }
-    flux.flatMap(executor::writeReactive, bufferSize, bufferSize)
+    flux.flatMap(executor::writeReactive, maxConcurrentWrites)
         .compose(logManager.newWriteErrorHandler())
-        .parallel(maxConcurrentOps, bufferSize)
+        .parallel(maxConcurrentMappings)
         .runOn(scheduler)
         .composeGroup(logManager.newLocationTracker())
         .sequential()
