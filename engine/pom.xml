@@ -141,6 +141,7 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- used only during build to generate documentation -->
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-text</artifactId>

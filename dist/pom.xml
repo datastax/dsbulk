@@ -61,6 +61,13 @@
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-engine</artifactId>
+      <exclusions>
+        <!-- used only during build to generate documentation -->
+        <exclusion>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-text</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
