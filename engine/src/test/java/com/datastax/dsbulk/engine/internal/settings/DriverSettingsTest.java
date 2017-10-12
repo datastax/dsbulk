@@ -102,7 +102,7 @@ public class DriverSettingsTest {
     assertThat(poolingOptions.getMaxRequestsPerConnection(REMOTE)).isEqualTo(1024);
     assertThat(poolingOptions.getHeartbeatIntervalSeconds()).isEqualTo(30);
     SocketOptions socketOptions = configuration.getSocketOptions();
-    assertThat(socketOptions.getReadTimeoutMillis()).isEqualTo(12000);
+    assertThat(socketOptions.getReadTimeoutMillis()).isEqualTo(60000);
     Policies policies = configuration.getPolicies();
     assertThat(policies.getTimestampGenerator())
         .isInstanceOf(AtomicMonotonicTimestampGenerator.class);

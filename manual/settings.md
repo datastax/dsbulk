@@ -968,7 +968,7 @@ Socket-related settings.
 
 How long the driver waits for a request to complete. This is a global limit on the duration of a `session.execute()` call, including any internal retries the driver might do.
 
-Default: **"12 seconds"**.
+Default: **"60 seconds"**.
 
 <a name="driver.ssl"></a>
 ### Driver Ssl Settings
