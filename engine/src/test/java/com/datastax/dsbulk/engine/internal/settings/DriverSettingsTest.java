@@ -272,8 +272,8 @@ public class DriverSettingsTest {
     SSLOptions sslOptions = configuration.getProtocolOptions().getSSLOptions();
     assertThat(sslOptions).isInstanceOf(RemoteEndpointAwareNettySSLOptions.class);
     SslContext sslContext = (SslContext) Whitebox.getInternalState(sslOptions, "context");
-    // these are the OpenSSL equivalents to JSSE cipher names
-    assertThat(sslContext.cipherSuites()).containsExactly("AES128-SHA", "AES256-SHA");
+    assertThat(sslContext.cipherSuites())
+        .containsExactly("TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA");
   }
 
   @Test
