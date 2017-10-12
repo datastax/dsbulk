@@ -90,6 +90,7 @@ public class DefaultRecordMapper implements RecordMapper {
           }
         }
       }
+      record.clear();
       return bs;
     } catch (Exception e) {
       return new UnmappableStatement(
