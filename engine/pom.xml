@@ -161,7 +161,7 @@
         <executions>
           <execution>
             <id>generate-settings-doc</id>
-            <phase>prepare-package</phase>
+            <phase>process-classes</phase>
             <goals>
               <goal>java</goal>
             </goals>
@@ -174,7 +174,7 @@
           </execution>
           <execution>
             <id>generate-example-conf</id>
-            <phase>prepare-package</phase>
+            <phase>process-classes</phase>
             <goals>
               <goal>java</goal>
             </goals>
