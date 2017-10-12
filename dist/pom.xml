@@ -50,16 +50,6 @@
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
-      <artifactId>dsbulk-connectors-json</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dsbulk-connectors-cql</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-engine</artifactId>
       <exclusions>
         <!-- used only during build to generate documentation -->
