@@ -28,7 +28,7 @@ public class MonitoringSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.monitoring"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
-    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD);
+    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true);
     assertThat(metricsManager).isNotNull();
     assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
     assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(MILLISECONDS);
@@ -51,7 +51,7 @@ public class MonitoringSettingsTest {
                     + "expectedReads = 50,"
                     + "jmx = false"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
-    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD);
+    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true);
     assertThat(metricsManager).isNotNull();
     assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);
     assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(SECONDS);

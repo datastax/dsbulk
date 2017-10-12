@@ -60,4 +60,12 @@ public interface Record {
    * @return the value associated with the given field.
    */
   Object getFieldValue(String field);
+
+  /**
+   * Clear all fields in this record.
+   *
+   * <p>This method should be used to free memory, when this record's fields have been successfully
+   * processed and are no longer required.
+   */
+  void clear();
 }

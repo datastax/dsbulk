@@ -216,7 +216,9 @@ Default: **"LOCAL_ONE"**.
 
 #### --executor.maxPerSecond _&lt;number&gt;_
 
-The maximum number of concurrent requests per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many requests as their number of inner statements.
+The maximum number of concurrent operations per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many operations as their number of inner statements.
+
+You should reduce this value when your latencies get too high. This is usually a sign that the remote cluster cannot keep up with the throughput, and requests will eventually time out.
 
 Setting this option to any negative value will disable it.
 
@@ -559,11 +561,9 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 #### --batch.bufferSize _&lt;number&gt;_
 
-The buffer size to use when batching.
+The buffer size to use for batching statements.
 
-It is recommended to set this value equal to **engine.bufferSize**.
-
-Default: **8192**.
+Default: **1024**.
 
 #### --batch.bufferTimeout _&lt;string&gt;_
 
@@ -573,15 +573,21 @@ or when *bufferSize* is reached, whichever happens first.
 
 Default: **"1 seconds"**.
 
+#### --batch.enabled _&lt;boolean&gt;_
+
+Whether to enable batching of statements or not.
+
+Default: **true**.
+
 #### --batch.maxBatchSize _&lt;number&gt;_
 
 The maximum batch size.
 
 The ideal batch size depends on how large is the data to be inserted: the larger the data, the smaller this value should be.
 
-The ideal batch size also depends on the batch mode in use. When using **PARTITION_KEY**, it is usually better to use large batch sizes (around 100). When using **REPLICA_SET** however, batches sizes should remain small (around 10).
+The ideal batch size also depends on the batch mode in use. When using **PARTITION_KEY**, it is usually better to use larger batch sizes. When using **REPLICA_SET** however, batches sizes should remain small (below 10).
 
-Default: **96**.
+Default: **32**.
 
 #### --batch.mode _&lt;string&gt;_
 
@@ -1066,11 +1072,11 @@ The buffer size used internally by the workflow engine.
 
 Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
 
-Default: **8192**.
+Default: **4096**.
 
-#### --engine.maxConcurrentOps _&lt;string&gt;_
+#### --engine.maxConcurrentMappings _&lt;string&gt;_
 
-The maximum number of threads to allocate for workflow operations, such as record mappings, result mappings, etc.
+The maximum number of concurrent record and result mappings.
 
 Applies to both read and write workflows.
 
@@ -1085,7 +1091,9 @@ Executor-specific settings.
 
 #### --executor.maxPerSecond _&lt;number&gt;_
 
-The maximum number of concurrent requests per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many requests as their number of inner statements.
+The maximum number of concurrent operations per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements count for as many operations as their number of inner statements.
+
+You should reduce this value when your latencies get too high. This is usually a sign that the remote cluster cannot keep up with the throughput, and requests will eventually time out.
 
 Setting this option to any negative value will disable it.
 
@@ -1133,11 +1141,13 @@ Default: **"ROWS"**.
 
 #### --executor.maxInFlight _&lt;number&gt;_
 
-The maximum number of "in-flight" requests. In other words, sets the maximum number of concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard against workflows that generate more requests than they can handle. Batch statements count for as many requests as their number of inner statements.
+The maximum number of "in-flight" requests. In other words, sets the maximum number of concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard against workflows that generate more requests than they can handle. Batch statements count for 1 request.
+
+You should reduce this value when the throughput for reads and writes cannot match the throughput of mappers; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory.
 
 Setting this option to any negative value will disable it.
 
-Default: **100000**.
+Default: **1024**.
 
 <a name="log"></a>
 ## Log Settings

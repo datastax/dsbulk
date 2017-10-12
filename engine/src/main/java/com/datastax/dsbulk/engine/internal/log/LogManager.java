@@ -336,7 +336,8 @@ public class LogManager implements AutoCloseable {
   }
 
   private void incrementLocations(BulkStatement<Record> statement) {
-    URI location = statement.getSource().getLocation();
+    Record record = statement.getSource();
+    URI location = record.getLocation();
     long line = URIUtils.extractLine(location);
     if (line != -1) {
       try {

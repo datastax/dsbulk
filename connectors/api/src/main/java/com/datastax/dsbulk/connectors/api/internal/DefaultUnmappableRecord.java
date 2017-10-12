@@ -53,6 +53,11 @@ public class DefaultUnmappableRecord implements UnmappableRecord {
   }
 
   @Override
+  public void clear() {
+    // NO-OP
+  }
+
+  @Override
   public Throwable getError() {
     return error;
   }

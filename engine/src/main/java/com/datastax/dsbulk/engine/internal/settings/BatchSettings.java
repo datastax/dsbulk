@@ -24,6 +24,10 @@ public class BatchSettings implements SettingsValidator {
     this.config = config;
   }
 
+  public boolean isBatchingEnabled() {
+    return config.getBoolean("enabled");
+  }
+
   public ReactorUnsortedStatementBatcher newStatementBatcher(Cluster cluster) {
     return new ReactorUnsortedStatementBatcher(
         cluster,
@@ -35,6 +39,7 @@ public class BatchSettings implements SettingsValidator {
 
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
+      config.getBoolean("enabled");
       config.getEnum(StatementBatcher.BatchMode.class, "mode");
       config.getInt("maxBatchSize");
       config.getInt("bufferSize");

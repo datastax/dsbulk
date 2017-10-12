@@ -8,6 +8,7 @@ package com.datastax.dsbulk.engine;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -52,8 +53,10 @@ public class LoadWorkflow implements Workflow {
   private DseCluster cluster;
   private ReactorBulkWriter executor;
 
-  private int maxConcurrentOps;
+  private int maxConcurrentMappings;
+  private int maxConcurrentWrites;
   private int bufferSize;
+  private boolean batchingEnabled;
 
   private volatile boolean closed = false;
 
@@ -75,7 +78,8 @@ public class LoadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxConcurrentOps = engineSettings.getMaxConcurrentOps();
+    maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
+    maxConcurrentWrites = executorSettings.getMaxInFlight();
     bufferSize = engineSettings.getBufferSize();
     scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
@@ -83,7 +87,8 @@ public class LoadWorkflow implements Workflow {
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
-    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD);
+    batchingEnabled = batchSettings.isBatchingEnabled();
+    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD, batchingEnabled);
     metricsManager.init();
     logManager = logSettings.newLogManager(cluster);
     logManager.init();
@@ -91,33 +96,37 @@ public class LoadWorkflow implements Workflow {
     recordMapper =
         schemaSettings.createRecordMapper(
             session, connector.getRecordMetadata(), codecSettings.createCodecRegistry(cluster));
-    batcher = batchSettings.newStatementBatcher(cluster);
+    if (batchingEnabled) {
+      batcher = batchSettings.newStatementBatcher(cluster);
+    }
   }
 
   @Override
   public void execute() {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    Flux.from(connector.read())
-        .publishOn(scheduler, bufferSize)
-        .compose(metricsManager.newUnmappableRecordMonitor())
-        .compose(logManager.newUnmappableRecordErrorHandler())
-        .parallel(maxConcurrentOps, bufferSize)
-        .runOn(scheduler, bufferSize)
-        .map(recordMapper::map)
-        .sequential(bufferSize)
-        .compose(metricsManager.newUnmappableStatementMonitor())
-        .compose(logManager.newUnmappableStatementErrorHandler())
-        .compose(batcher)
-        .compose(metricsManager.newBatcherMonitor())
-        // use buffer size as max concurrency here
-        .flatMap(executor::writeReactive, bufferSize, bufferSize)
+    Flux<Statement> flux =
+        Flux.from(connector.read())
+            .publishOn(scheduler, bufferSize)
+            .compose(metricsManager.newUnmappableRecordMonitor())
+            .compose(logManager.newUnmappableRecordErrorHandler())
+            .parallel(maxConcurrentMappings)
+            .runOn(scheduler)
+            .map(recordMapper::map)
+            .sequential()
+            .compose(metricsManager.newUnmappableStatementMonitor())
+            .compose(logManager.newUnmappableStatementErrorHandler());
+    if (batchingEnabled) {
+      flux = flux.compose(batcher).compose(metricsManager.newBatcherMonitor());
+    }
+    flux.flatMap(executor::writeReactive, maxConcurrentWrites)
         .compose(logManager.newWriteErrorHandler())
-        .parallel(maxConcurrentOps, bufferSize)
-        .runOn(scheduler, bufferSize)
+        .parallel(maxConcurrentMappings)
+        .runOn(scheduler)
         .composeGroup(logManager.newLocationTracker())
-        .sequential(bufferSize)
-        .blockLast();
+        .sequential()
+        .then()
+        .block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
