@@ -215,10 +215,13 @@ public class Main {
         Throwable root = Throwables.getRootCause(t);
         if (t instanceof InterruptedException || root instanceof InterruptedException) {
           LOGGER.error(workflow + " aborted.", t);
-          Thread.currentThread().interrupt();
+          // do not set the thread's interrupted status, we are going to exit anyway
         } else {
           LOGGER.error(workflow + " failed.", t);
         }
+        // make sure the error above is printed to System.err
+        // before the closing sequence is printed to System.out
+        System.err.flush();
         if (t instanceof Error) {
           throw ((Error) t);
         }

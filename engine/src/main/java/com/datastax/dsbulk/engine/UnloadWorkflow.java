@@ -19,6 +19,7 @@ import com.datastax.dsbulk.engine.internal.WorkflowUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
+import com.datastax.dsbulk.engine.internal.reactive.DelegatingBlockingSubscriber;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.datastax.dsbulk.engine.internal.settings.ConnectorSettings;
@@ -32,6 +33,7 @@ import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.executor.api.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -45,6 +47,7 @@ public class UnloadWorkflow implements Workflow {
 
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.UNLOAD);
   private final LoaderConfig config;
+  private final AtomicBoolean closed = new AtomicBoolean(false);
 
   private Connector connector;
   private Scheduler scheduler;
@@ -53,13 +56,10 @@ public class UnloadWorkflow implements Workflow {
   private LogManager logManager;
   private DseCluster cluster;
   private ReactorBulkReader executor;
-
   private int maxConcurrentMappings;
   private int bufferSize;
-
   private List<Statement> readStatements;
-
-  private volatile boolean closed = false;
+  private DelegatingBlockingSubscriber<Record> subscriber;
 
   UnloadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -83,57 +83,59 @@ public class UnloadWorkflow implements Workflow {
     scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
     connector.init();
+    subscriber = new DelegatingBlockingSubscriber<>(connector.write());
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD, false);
     metricsManager.init();
     logManager = logSettings.newLogManager(cluster);
-    logManager.init();
+    logManager.init(subscriber, subscriber);
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
     readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     readStatements = schemaSettings.createReadStatements(cluster);
+    closed.set(false);
   }
 
   @Override
-  public void execute() {
+  public void execute() throws InterruptedException {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    Flux<Record> records =
-        Flux.fromIterable(readStatements)
-            .flatMap(executor::readReactive)
-            .compose(logManager.newReadErrorHandler())
-            .parallel(maxConcurrentMappings, bufferSize)
-            .runOn(scheduler)
-            .map(readResultMapper::map)
-            .sequential()
-            .compose(metricsManager.newUnmappableRecordMonitor())
-            .compose(logManager.newUnmappableRecordErrorHandler())
-            .publish()
-            .autoConnect(2);
-    // publish results to two subscribers: the connector,
-    // and a dummy blockLast subscription to block until complete
-    records.subscribe(connector.write());
-    records.then().block();
+    Flux.fromIterable(readStatements)
+        .flatMap(executor::readReactive)
+        .compose(logManager.newReadErrorHandler())
+        .parallel(maxConcurrentMappings, bufferSize)
+        .runOn(scheduler)
+        .map(readResultMapper::map)
+        .sequential()
+        .compose(metricsManager.newUnmappableRecordMonitor())
+        .compose(logManager.newUnmappableRecordErrorHandler())
+        .subscribe(subscriber);
+    subscriber.block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
   }
 
   @Override
-  public synchronized void close() throws Exception {
-    if (!closed) {
+  public void close() throws Exception {
+    if (closed.compareAndSet(false, true)) {
       LOGGER.info("{} closing.", this);
-      Exception e = WorkflowUtils.closeQuietly(connector, null);
+      Exception e = WorkflowUtils.closeQuietly(metricsManager, null);
+      e = WorkflowUtils.closeQuietly(connector, e);
       e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
-      e = WorkflowUtils.closeQuietly(metricsManager, e);
       e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(cluster, e);
-      closed = true;
+      if (metricsManager != null) {
+        metricsManager.reportFinalMetrics();
+      }
+      if (logManager != null) {
+        logManager.reportLastLocations();
+      }
       LOGGER.info("{} closed.", this);
       if (e != null) {
         throw e;

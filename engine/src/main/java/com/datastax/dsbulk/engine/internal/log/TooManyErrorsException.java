@@ -9,14 +9,14 @@ package com.datastax.dsbulk.engine.internal.log;
 /** */
 public class TooManyErrorsException extends RuntimeException {
 
-  private final int maxLoadErrors;
+  private final int maxErrors;
 
-  public TooManyErrorsException(int maxLoadErrors) {
-    super("Too many errors, the maximum allowed is " + maxLoadErrors);
-    this.maxLoadErrors = maxLoadErrors;
+  public TooManyErrorsException(int maxErrors) {
+    super("Too many errors, the maximum allowed is " + maxErrors);
+    this.maxErrors = maxErrors;
   }
 
   public int getMaxErrors() {
-    return maxLoadErrors;
+    return maxErrors;
   }
 }

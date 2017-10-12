@@ -194,10 +194,28 @@ public class MetricsManager implements AutoCloseable {
   @Override
   public void close() throws Exception {
     closeReporters();
-    reportFinalMetrics();
     scheduler.shutdown();
     scheduler.awaitTermination(1, MINUTES);
     scheduler.shutdownNow();
+  }
+
+  public void reportFinalMetrics() {
+    LOGGER.info("Final stats:");
+    if (resultMappingsReporter != null) {
+      resultMappingsReporter.report();
+    }
+    if (recordMappingsReporter != null) {
+      recordMappingsReporter.report();
+    }
+    if (batchesReporter != null) {
+      batchesReporter.report();
+    }
+    if (writesReporter != null) {
+      writesReporter.report();
+    }
+    if (readsReporter != null) {
+      readsReporter.report();
+    }
   }
 
   private void closeReporters() {
@@ -218,25 +236,6 @@ public class MetricsManager implements AutoCloseable {
     }
     if (readsReporter != null) {
       readsReporter.close();
-    }
-  }
-
-  private void reportFinalMetrics() {
-    LOGGER.info("Final stats:");
-    if (resultMappingsReporter != null) {
-      resultMappingsReporter.report();
-    }
-    if (recordMappingsReporter != null) {
-      recordMappingsReporter.report();
-    }
-    if (batchesReporter != null) {
-      batchesReporter.report();
-    }
-    if (writesReporter != null) {
-      writesReporter.report();
-    }
-    if (readsReporter != null) {
-      readsReporter.report();
     }
   }
 

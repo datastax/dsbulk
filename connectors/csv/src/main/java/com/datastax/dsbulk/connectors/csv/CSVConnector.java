@@ -6,7 +6,8 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -18,6 +19,7 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
 import com.google.common.base.Suppliers;
+import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
@@ -28,8 +30,6 @@ import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -39,6 +39,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
@@ -98,6 +99,7 @@ public class CSVConnector implements Connector {
   private AtomicInteger counter;
   private ExecutorService threadPool;
   private Scheduler scheduler;
+  private WorkQueueProcessor<Record> writeQueueProcessor;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -176,12 +178,15 @@ public class CSVConnector implements Connector {
 
   @Override
   public void close() throws Exception {
+    if (writeQueueProcessor != null) {
+      writeQueueProcessor.awaitAndShutdown(5, SECONDS);
+    }
     if (scheduler != null) {
       scheduler.dispose();
     }
     if (threadPool != null) {
       threadPool.shutdown();
-      threadPool.awaitTermination(1, MINUTES);
+      threadPool.awaitTermination(5, SECONDS);
       threadPool.shutdownNow();
     }
   }
@@ -366,19 +371,28 @@ public class CSVConnector implements Connector {
       private void end() {
         LOGGER.debug("Done writing {}", url);
         if (writer != null) {
-          writer.close();
+          try {
+            writer.close();
+          } catch (IllegalStateException e) {
+            Throwable root = Throwables.getRootCause(e);
+            //noinspection StatementWithEmptyBody
+            if (root instanceof ClosedByInterruptException) {
+              // ok, happens when the workflow has been interrupted
+            } else {
+              LOGGER.error("Could not close " + url, root);
+            }
+          }
         }
       }
     };
   }
 
   private Subscriber<Record> writeMultipleThreads() {
-    WorkQueueProcessor<Record> dispatcher =
-        WorkQueueProcessor.<Record>builder().executor(threadPool).build();
+    writeQueueProcessor = WorkQueueProcessor.<Record>builder().executor(threadPool).build();
     for (int i = 0; i < maxConcurrentFiles; i++) {
-      dispatcher.subscribe(writeSingleThread());
+      writeQueueProcessor.subscribe(writeSingleThread());
     }
-    return dispatcher;
+    return writeQueueProcessor;
   }
 
   private CsvWriter createCSVWriter(URL url) {
@@ -414,7 +428,7 @@ public class CSVConnector implements Connector {
     // file URLs do not support writing, only reading,
     // so we need to special-case them here
     if (url.getProtocol().equals("file")) {
-      out = new FileOutputStream(new File(url.toURI()));
+      out = Files.newOutputStream(Paths.get(url.toURI()), CREATE_NEW);
     } else {
       URLConnection connection = url.openConnection();
       connection.setDoOutput(true);

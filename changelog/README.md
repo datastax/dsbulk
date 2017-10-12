@@ -69,3 +69,4 @@
 - [improvement] DAT-133: When encountering a field parsing error, report the field index/name.
 - [improvement] DAT-127: Remove unbounded queues from CSV connector.
 - [bug] DAT-136: Large records cause the workflow to OOM.
+- [bug] DAT-138: When maxErrors is reached the workflow does not always stop.

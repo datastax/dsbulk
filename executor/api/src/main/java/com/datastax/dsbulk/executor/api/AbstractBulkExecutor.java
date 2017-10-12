@@ -6,7 +6,6 @@
  */
 package com.datastax.dsbulk.executor.api;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Session;
@@ -104,7 +103,7 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
     if (executor instanceof ExecutorService) {
       ExecutorService tpe = (ExecutorService) executor;
       tpe.shutdown();
-      tpe.awaitTermination(1, MINUTES);
+      tpe.awaitTermination(5, SECONDS);
       tpe.shutdownNow();
     }
   }

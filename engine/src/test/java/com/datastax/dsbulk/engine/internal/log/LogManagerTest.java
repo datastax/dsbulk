@@ -8,8 +8,8 @@ package com.datastax.dsbulk.engine.internal.log;
 
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.datastax.driver.core.BatchStatement;
@@ -41,7 +41,10 @@ import java.nio.file.Path;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.internal.util.reflection.Whitebox;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.publisher.Flux;
 
 /** */
@@ -84,6 +87,9 @@ public class LogManagerTest {
           .withMaxBoundValues(10)
           .withMaxInnerStatements(10)
           .build();
+
+  private Subscriber<?> subscriber;
+  private Subscription subscription;
 
   @Before
   public void setUp() throws Exception {
@@ -137,21 +143,23 @@ public class LogManagerTest {
     batchWriteResult =
         new DefaultWriteResult(
             new BulkExecutionException(new RuntimeException("error batch"), batch));
+    subscriber = mock(Subscriber.class);
+    subscription = mock(Subscription.class);
   }
 
   @Test
   public void should_stop_when_max_record_mapping_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test2");
     LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
-    logManager.init();
+    logManager.init(subscriber, subscription);
     Flux<Statement> stmts = Flux.just(stmt1, stmt2, stmt3);
-    try {
-      stmts.compose(logManager.newUnmappableStatementErrorHandler()).blockLast();
-      fail("Expecting TooManyErrorsException to be thrown");
-    } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
-    }
+    stmts.compose(logManager.newUnmappableStatementErrorHandler()).blockLast();
+    ArgumentCaptor<TooManyErrorsException> argument =
+        ArgumentCaptor.forClass(TooManyErrorsException.class);
+    verify(subscriber).onError(argument.capture());
+    TooManyErrorsException e = argument.getValue();
+    assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+    assertThat(e.getMaxErrors()).isEqualTo(2);
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
     Path errors = logManager.getExecutionDirectory().resolve("record-mapping-errors.log");
@@ -184,15 +192,15 @@ public class LogManagerTest {
   public void should_stop_when_max_result_mapping_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test1");
     LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
-    logManager.init();
+    logManager.init(subscriber, subscription);
     Flux<Record> records = Flux.just(record1, record2, record3);
-    try {
-      records.compose(logManager.newUnmappableRecordErrorHandler()).blockLast();
-      fail("Expecting TooManyErrorsException to be thrown");
-    } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
-    }
+    records.compose(logManager.newUnmappableRecordErrorHandler()).blockLast();
+    ArgumentCaptor<TooManyErrorsException> argument =
+        ArgumentCaptor.forClass(TooManyErrorsException.class);
+    verify(subscriber).onError(argument.capture());
+    TooManyErrorsException e = argument.getValue();
+    assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+    assertThat(e.getMaxErrors()).isEqualTo(2);
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("result-mapping-errors.log");
     Path locations = logManager.getExecutionDirectory().resolve("locations.txt");
@@ -215,15 +223,15 @@ public class LogManagerTest {
   public void should_stop_when_max_write_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test3");
     LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
-    logManager.init();
+    logManager.init(subscriber, subscription);
     Flux<WriteResult> stmts = Flux.just(writeResult1, writeResult2, writeResult3);
-    try {
-      stmts.compose(logManager.newWriteErrorHandler()).blockLast();
-      fail("Expecting TooManyErrorsException to be thrown");
-    } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
-    }
+    stmts.compose(logManager.newWriteErrorHandler()).blockLast();
+    ArgumentCaptor<TooManyErrorsException> argument =
+        ArgumentCaptor.forClass(TooManyErrorsException.class);
+    verify(subscriber).onError(argument.capture());
+    TooManyErrorsException e = argument.getValue();
+    assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+    assertThat(e.getMaxErrors()).isEqualTo(2);
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
     Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
@@ -262,15 +270,15 @@ public class LogManagerTest {
   public void should_stop_when_max_write_errors_reached_and_statements_batched() throws Exception {
     Path outputDir = Files.createTempDirectory("test4");
     LogManager logManager = new LogManager(cluster, outputDir, executor, 1, formatter, EXTENDED);
-    logManager.init();
-    Flux<WriteResult> stmts = Flux.just(batchWriteResult, writeResult1);
-    try {
-      stmts.compose(logManager.newWriteErrorHandler()).blockLast();
-      fail("Expecting TooManyErrorsException to be thrown");
-    } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 1");
-      assertThat(e.getMaxErrors()).isEqualTo(1);
-    }
+    logManager.init(subscriber, subscription);
+    Flux<WriteResult> stmts = Flux.just(batchWriteResult);
+    stmts.compose(logManager.newWriteErrorHandler()).blockLast();
+    ArgumentCaptor<TooManyErrorsException> argument =
+        ArgumentCaptor.forClass(TooManyErrorsException.class);
+    verify(subscriber).onError(argument.capture());
+    TooManyErrorsException e = argument.getValue();
+    assertThat(e).hasMessage("Too many errors, the maximum allowed is 1");
+    assertThat(e.getMaxErrors()).isEqualTo(1);
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
     Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
@@ -306,15 +314,15 @@ public class LogManagerTest {
   public void should_stop_when_max_read_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test3");
     LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
-    logManager.init();
+    logManager.init(subscriber, subscription);
     Flux<ReadResult> stmts = Flux.just(readResult1, readResult2, readResult3);
-    try {
-      stmts.compose(logManager.newReadErrorHandler()).blockLast();
-      fail("Expecting TooManyErrorsException to be thrown");
-    } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
-    }
+    stmts.compose(logManager.newReadErrorHandler()).blockLast();
+    ArgumentCaptor<TooManyErrorsException> argument =
+        ArgumentCaptor.forClass(TooManyErrorsException.class);
+    verify(subscriber).onError(argument.capture());
+    TooManyErrorsException e = argument.getValue();
+    assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+    assertThat(e.getMaxErrors()).isEqualTo(2);
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
     Path locations = logManager.getExecutionDirectory().resolve("locations.txt");
@@ -341,7 +349,7 @@ public class LogManagerTest {
   public void should_record_locations() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager = new LogManager(cluster, outputDir, executor, 1, formatter, EXTENDED);
-    logManager.init();
+    logManager.init(subscriber, subscription);
     @SuppressWarnings("unchecked")
     Cache<URI, Long> locations =
         (Cache<URI, Long>) Whitebox.getInternalState(logManager, "locations");
