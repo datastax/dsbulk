@@ -234,7 +234,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     new Main(fetchCompleteArgs("load", customLoadArgs)).run();
     validateResultSetSize(21, READ_SUCCESSFUL_IP_BY_COUNTRY);
     EndToEndUtils.validateBadOps(3);
-    EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");
+    EndToEndUtils.validateExceptionsLog(3, "Source  :", "mapping-errors.log");
 
     Path full_unload_dir = Paths.get("./target/full_unload_dir");
     Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");

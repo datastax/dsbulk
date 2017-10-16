@@ -21,10 +21,19 @@ import java.util.stream.IntStream;
 public class DefaultRecord extends LinkedHashMap<String, Object> implements Record {
 
   private final Object source;
+  private final Supplier<URI> resource;
+  private final long position;
   private final Supplier<URI> location;
 
-  public DefaultRecord(Object source, Supplier<URI> location, Object... values) {
+  public DefaultRecord(
+      Object source,
+      Supplier<URI> resource,
+      long position,
+      Supplier<URI> location,
+      Object... values) {
     this.source = source;
+    this.resource = resource;
+    this.position = position;
     this.location = location;
     Streams.forEachPair(
         IntStream.range(0, values.length).boxed().map(Object::toString),
@@ -32,7 +41,15 @@ public class DefaultRecord extends LinkedHashMap<String, Object> implements Reco
         this::put);
   }
 
-  public DefaultRecord(Object source, Supplier<URI> location, String[] keys, Object... values) {
+  public DefaultRecord(
+      Object source,
+      Supplier<URI> resource,
+      long position,
+      Supplier<URI> location,
+      String[] keys,
+      Object... values) {
+    this.resource = resource;
+    this.position = position;
     if (keys.length != values.length) {
       throw new IllegalArgumentException("Keys and values have different sizes");
     }
@@ -44,6 +61,16 @@ public class DefaultRecord extends LinkedHashMap<String, Object> implements Reco
   @Override
   public Object getSource() {
     return source;
+  }
+
+  @Override
+  public URI getResource() {
+    return resource.get();
+  }
+
+  @Override
+  public long getPosition() {
+    return position;
   }
 
   @Override

@@ -18,11 +18,20 @@ import java.util.function.Supplier;
 public class DefaultUnmappableRecord implements UnmappableRecord {
 
   private final Object source;
+  private final Supplier<URI> resource;
+  private final long position;
   private final Supplier<URI> location;
   private final Throwable error;
 
-  public DefaultUnmappableRecord(Object source, Supplier<URI> location, Throwable error) {
+  public DefaultUnmappableRecord(
+      Object source,
+      Supplier<URI> resource,
+      long position,
+      Supplier<URI> location,
+      Throwable error) {
     this.source = source;
+    this.resource = resource;
+    this.position = position;
     this.location = location;
     this.error = error;
   }
@@ -30,6 +39,16 @@ public class DefaultUnmappableRecord implements UnmappableRecord {
   @Override
   public Object getSource() {
     return source;
+  }
+
+  @Override
+  public URI getResource() {
+    return resource.get();
+  }
+
+  @Override
+  public long getPosition() {
+    return position;
   }
 
   @Override

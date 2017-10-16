@@ -17,6 +17,7 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import java.util.function.BiFunction;
@@ -93,16 +94,22 @@ public class DefaultRecordMapper implements RecordMapper {
       record.clear();
       return bs;
     } catch (Exception e) {
+      String finalCurrentField = currentField;
+      String finalVariable = variable;
+      Object finalRaw = raw;
+      DataType finalCqlType = cqlType;
       return new UnmappableStatement(
           record,
-          URIUtils.addParamsToURI(
-              record.getLocation(),
-              FIELD,
-              currentField,
-              variable,
-              raw == null ? null : raw.toString(),
-              CQL_TYPE,
-              cqlType == null ? null : cqlType.toString()),
+          Suppliers.memoize(
+              () ->
+                  URIUtils.addParamsToURI(
+                      record.getLocation(),
+                      FIELD,
+                      finalCurrentField,
+                      finalVariable,
+                      finalRaw == null ? null : finalRaw.toString(),
+                      CQL_TYPE,
+                      finalCqlType == null ? null : finalCqlType.toString())),
           e);
     }
   }

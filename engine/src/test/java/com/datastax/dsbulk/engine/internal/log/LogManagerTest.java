@@ -7,6 +7,8 @@
 package com.datastax.dsbulk.engine.internal.log;
 
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
+import static com.google.common.collect.Range.closed;
+import static com.google.common.collect.Range.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -22,6 +24,7 @@ import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
+import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
@@ -30,7 +33,7 @@ import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
-import com.github.benmanes.caffeine.cache.Cache;
+import com.google.common.collect.Range;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import java.net.URI;
@@ -38,7 +41,11 @@ import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.LongStream;
+import org.assertj.core.util.Lists;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -54,6 +61,10 @@ public class LogManagerTest {
   private String source1 = "line1\n";
   private String source2 = "line2\n";
   private String source3 = "line3\n";
+
+  private URI resource1;
+  private URI resource2;
+  private URI resource3;
 
   private URI location1;
   private URI location2;
@@ -100,18 +111,24 @@ public class LogManagerTest {
     when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
     when(protocolOptions.getProtocolVersion()).thenReturn(ProtocolVersion.V4);
     when(configuration.getCodecRegistry()).thenReturn(CodecRegistry.DEFAULT_INSTANCE);
+    resource1 = new URI("file:///file1.csv");
+    resource2 = new URI("file:///file2.csv");
+    resource3 = new URI("file:///file3.csv");
     location1 = new URI("file:///file1.csv?line=1");
     location2 = new URI("file:///file2.csv?line=2");
     location3 = new URI("file:///file3.csv?line=3");
     record1 =
-        new DefaultUnmappableRecord(source1, () -> this.location1, new RuntimeException("error 1"));
+        new DefaultUnmappableRecord(
+            source1, () -> resource1, 1, () -> this.location1, new RuntimeException("error 1"));
     record2 =
-        new DefaultUnmappableRecord(source2, () -> this.location2, new RuntimeException("error 2"));
+        new DefaultUnmappableRecord(
+            source2, () -> resource2, 2, () -> this.location2, new RuntimeException("error 2"));
     record3 =
-        new DefaultUnmappableRecord(source3, () -> this.location3, new RuntimeException("error 3"));
-    stmt1 = new UnmappableStatement(record1, location1, new RuntimeException("error 1"));
-    stmt2 = new UnmappableStatement(record2, location2, new RuntimeException("error 2"));
-    stmt3 = new UnmappableStatement(record3, location3, new RuntimeException("error 3"));
+        new DefaultUnmappableRecord(
+            source3, () -> resource3, 3, () -> this.location3, new RuntimeException("error 3"));
+    stmt1 = new UnmappableStatement(record1, () -> location1, new RuntimeException("error 1"));
+    stmt2 = new UnmappableStatement(record2, () -> location2, new RuntimeException("error 2"));
+    stmt3 = new UnmappableStatement(record3, () -> location3, new RuntimeException("error 3"));
     writeResult1 =
         new DefaultWriteResult(
             new BulkExecutionException(
@@ -150,10 +167,11 @@ public class LogManagerTest {
   @Test
   public void should_stop_when_max_record_mapping_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test2");
-    LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
+    LogManager logManager =
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 2, formatter, EXTENDED);
     logManager.init(subscriber, subscription);
     Flux<Statement> stmts = Flux.just(stmt1, stmt2, stmt3);
-    stmts.compose(logManager.newUnmappableStatementErrorHandler()).blockLast();
+    stmts.transform(logManager.newUnmappableStatementErrorHandler()).blockLast();
     ArgumentCaptor<TooManyErrorsException> argument =
         ArgumentCaptor.forClass(TooManyErrorsException.class);
     verify(subscriber).onError(argument.capture());
@@ -162,13 +180,13 @@ public class LogManagerTest {
     assertThat(e.getMaxErrors()).isEqualTo(2);
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("record-mapping-errors.log");
-    Path locations = logManager.getExecutionDirectory().resolve("locations.txt");
+    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
+    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(locations.toFile()).exists();
+    assertThat(positions.toFile()).exists();
     assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
-        .containsOnly(bad, errors, locations);
+        .containsOnly(bad, errors, positions);
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
@@ -191,10 +209,11 @@ public class LogManagerTest {
   @Test
   public void should_stop_when_max_result_mapping_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test1");
-    LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
+    LogManager logManager =
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 2, formatter, EXTENDED);
     logManager.init(subscriber, subscription);
     Flux<Record> records = Flux.just(record1, record2, record3);
-    records.compose(logManager.newUnmappableRecordErrorHandler()).blockLast();
+    records.transform(logManager.newUnmappableRecordErrorHandler()).blockLast();
     ArgumentCaptor<TooManyErrorsException> argument =
         ArgumentCaptor.forClass(TooManyErrorsException.class);
     verify(subscriber).onError(argument.capture());
@@ -202,12 +221,14 @@ public class LogManagerTest {
     assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
     assertThat(e.getMaxErrors()).isEqualTo(2);
     logManager.close();
-    Path errors = logManager.getExecutionDirectory().resolve("result-mapping-errors.log");
-    Path locations = logManager.getExecutionDirectory().resolve("locations.txt");
+    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
+    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
+    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(locations.toFile()).exists();
+    assertThat(positions.toFile()).exists();
     assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
-        .containsOnly(errors, locations);
+        .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
@@ -222,10 +243,11 @@ public class LogManagerTest {
   @Test
   public void should_stop_when_max_write_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test3");
-    LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
+    LogManager logManager =
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 2, formatter, EXTENDED);
     logManager.init(subscriber, subscription);
     Flux<WriteResult> stmts = Flux.just(writeResult1, writeResult2, writeResult3);
-    stmts.compose(logManager.newWriteErrorHandler()).blockLast();
+    stmts.transform(logManager.newWriteErrorHandler()).blockLast();
     ArgumentCaptor<TooManyErrorsException> argument =
         ArgumentCaptor.forClass(TooManyErrorsException.class);
     verify(subscriber).onError(argument.capture());
@@ -235,17 +257,17 @@ public class LogManagerTest {
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
     Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
-    Path locations = logManager.getExecutionDirectory().resolve("locations.txt");
+    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(locations.toFile()).exists();
+    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
-        .containsOnly(bad, errors, locations);
+        .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
@@ -264,15 +286,21 @@ public class LogManagerTest {
         .contains("INSERT 3")
         .containsOnlyOnce(
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 3 (error 3)");
+    List<String> positionLines = Files.readAllLines(positions, Charset.forName("UTF-8"));
+    assertThat(positionLines)
+        .contains("file:///file1.csv:[1..1]")
+        .contains("file:///file2.csv:[2..2]")
+        .contains("file:///file3.csv:[3..3]");
   }
 
   @Test
   public void should_stop_when_max_write_errors_reached_and_statements_batched() throws Exception {
     Path outputDir = Files.createTempDirectory("test4");
-    LogManager logManager = new LogManager(cluster, outputDir, executor, 1, formatter, EXTENDED);
+    LogManager logManager =
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 1, formatter, EXTENDED);
     logManager.init(subscriber, subscription);
     Flux<WriteResult> stmts = Flux.just(batchWriteResult);
-    stmts.compose(logManager.newWriteErrorHandler()).blockLast();
+    stmts.transform(logManager.newWriteErrorHandler()).blockLast();
     ArgumentCaptor<TooManyErrorsException> argument =
         ArgumentCaptor.forClass(TooManyErrorsException.class);
     verify(subscriber).onError(argument.capture());
@@ -282,17 +310,17 @@ public class LogManagerTest {
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
     Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
-    Path locations = logManager.getExecutionDirectory().resolve("locations.txt");
+    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(locations.toFile()).exists();
+    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
-        .containsOnly(bad, errors, locations);
+        .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
@@ -308,15 +336,21 @@ public class LogManagerTest {
         .containsOnlyOnce(
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed")
         .contains("error batch");
+    List<String> positionLines = Files.readAllLines(positions, Charset.forName("UTF-8"));
+    assertThat(positionLines)
+        .contains("file:///file1.csv:[1..1]")
+        .contains("file:///file2.csv:[2..2]")
+        .contains("file:///file3.csv:[3..3]");
   }
 
   @Test
   public void should_stop_when_max_read_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test3");
-    LogManager logManager = new LogManager(cluster, outputDir, executor, 2, formatter, EXTENDED);
+    LogManager logManager =
+        new LogManager(WorkflowType.UNLOAD, cluster, outputDir, executor, 2, formatter, EXTENDED);
     logManager.init(subscriber, subscription);
     Flux<ReadResult> stmts = Flux.just(readResult1, readResult2, readResult3);
-    stmts.compose(logManager.newReadErrorHandler()).blockLast();
+    stmts.transform(logManager.newReadErrorHandler()).blockLast();
     ArgumentCaptor<TooManyErrorsException> argument =
         ArgumentCaptor.forClass(TooManyErrorsException.class);
     verify(subscriber).onError(argument.capture());
@@ -325,11 +359,8 @@ public class LogManagerTest {
     assertThat(e.getMaxErrors()).isEqualTo(2);
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
-    Path locations = logManager.getExecutionDirectory().resolve("locations.txt");
     assertThat(errors.toFile()).exists();
-    assertThat(locations.toFile()).exists();
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
-        .containsOnly(errors, locations);
+    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
@@ -346,60 +377,99 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_record_locations() throws Exception {
+  public void should_record_positions() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
-    LogManager logManager = new LogManager(cluster, outputDir, executor, 1, formatter, EXTENDED);
+    LogManager logManager =
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 1, formatter, EXTENDED);
     logManager.init(subscriber, subscription);
-    @SuppressWarnings("unchecked")
-    Cache<URI, Long> locations =
-        (Cache<URI, Long>) Whitebox.getInternalState(logManager, "locations");
-    Flux<WriteResult> stmts;
-    stmts =
-        Flux.just(result("file1", 1), result("file1", 2), result("file1", 3), result("file1", 4));
-    stmts.compose(logManager.newLocationTracker()).blockLast();
-    assertThat(locations.asMap())
-        .hasSize(1)
-        .hasEntrySatisfying(new URI("file1"), line -> assertThat(line).isEqualTo(4));
-    stmts =
-        Flux.just(result("file2", 1), result("file2", 2), result("file2", 3), result("file2", 5));
-    stmts.compose(logManager.newLocationTracker()).blockLast();
-    assertThat(locations.asMap())
-        .hasSize(2)
-        .hasEntrySatisfying(new URI("file1"), line -> assertThat(line).isEqualTo(4))
-        .hasEntrySatisfying(new URI("file2"), line -> assertThat(line).isEqualTo(5));
-    stmts =
-        Flux.just(result("file3", 5), result("file3", 3), result("file3", 2), result("file3", 1));
-    stmts.compose(logManager.newLocationTracker()).blockLast();
-    assertThat(locations.asMap())
-        .hasSize(3)
-        .hasEntrySatisfying(new URI("file1"), line -> assertThat(line).isEqualTo(4))
-        .hasEntrySatisfying(new URI("file2"), line -> assertThat(line).isEqualTo(5))
-        .hasEntrySatisfying(new URI("file3"), line -> assertThat(line).isEqualTo(5));
-    stmts =
-        Flux.just(result("file4", 4), result("file4", 3), result("file4", 2), result("file4", 1));
-    stmts.compose(logManager.newLocationTracker()).blockLast();
-    assertThat(locations.asMap())
-        .hasSize(4)
-        .hasEntrySatisfying(new URI("file1"), line -> assertThat(line).isEqualTo(4))
-        .hasEntrySatisfying(new URI("file2"), line -> assertThat(line).isEqualTo(5))
-        .hasEntrySatisfying(new URI("file3"), line -> assertThat(line).isEqualTo(5))
-        .hasEntrySatisfying(new URI("file4"), line -> assertThat(line).isEqualTo(4));
-    stmts = Flux.just(result("file5", 4));
-    stmts.compose(logManager.newLocationTracker()).blockLast();
-    assertThat(locations.asMap())
-        .hasSize(5)
-        .hasEntrySatisfying(new URI("file1"), line -> assertThat(line).isEqualTo(4))
-        .hasEntrySatisfying(new URI("file2"), line -> assertThat(line).isEqualTo(5))
-        .hasEntrySatisfying(new URI("file3"), line -> assertThat(line).isEqualTo(5))
-        .hasEntrySatisfying(new URI("file4"), line -> assertThat(line).isEqualTo(4))
-        .hasEntrySatisfying(new URI("file5"), line -> assertThat(line).isEqualTo(4));
+    assertRanges(logManager, new long[] {1, 2, 3, 4}, closed(1L, 4L));
+    assertRanges(logManager, new long[] {1, 2, 3, 5}, closed(1L, 3L), singleton(5L));
+    assertRanges(logManager, new long[] {5, 3, 2, 1}, closed(1L, 3L), singleton(5L));
+    assertRanges(logManager, new long[] {1, 3, 5, 4, 2}, closed(1L, 5L));
+    assertRanges(logManager, new long[] {2, 4, 5, 3, 1}, closed(1L, 5L));
+    assertRanges(logManager, new long[] {4, 3, 2, 1}, closed(1L, 4L));
+    assertRanges(logManager, new long[] {4, 3, 2, 1}, closed(1L, 4L));
+    assertRanges(logManager, new long[] {3, 2}, closed(2L, 3L));
+    assertRanges(logManager, new long[] {3, 5, 4, 2}, closed(2L, 5L));
     logManager.close();
   }
 
-  private WriteResult result(String file, int line) throws URISyntaxException {
-    URI location = new URI(file + "?line=" + line);
+  @Test
+  public void should_add_position() throws Exception {
+    List<Range<Long>> positions = new ArrayList<>();
+    positions = LogManager.addPosition(positions, 3);
+    assertThat(positions).containsExactly(singleton(3L));
+    positions = LogManager.addPosition(positions, 1);
+    assertThat(positions).containsExactly(singleton(1L), singleton(3L));
+    positions = LogManager.addPosition(positions, 2);
+    assertThat(positions).containsExactly(closed(1L, 3L));
+    positions = LogManager.addPosition(positions, 2);
+    assertThat(positions).containsExactly(closed(1L, 3L));
+    positions = LogManager.addPosition(positions, 6);
+    assertThat(positions).containsExactly(closed(1L, 3L), singleton(6L));
+    positions = LogManager.addPosition(positions, 5);
+    assertThat(positions).containsExactly(closed(1L, 3L), closed(5L, 6L));
+    positions = LogManager.addPosition(positions, 4);
+    assertThat(positions).containsExactly(closed(1L, 6L));
+  }
+
+  @Test
+  public void should_merge_positions() throws Exception {
+    assertThat(LogManager.mergePositions(ranges(), ranges())).isEmpty();
+    assertThat(LogManager.mergePositions(ranges(), ranges(closed(1L, 3L))))
+        .isEqualTo(ranges(closed(1L, 3L)));
+    assertThat(LogManager.mergePositions(ranges(closed(1L, 3L)), ranges()))
+        .isEqualTo(ranges(closed(1L, 3L)));
+    assertThat(LogManager.mergePositions(ranges(), ranges())).isEmpty();
+    assertThat(LogManager.mergePositions(ranges(closed(1L, 3L)), ranges(closed(1L, 3L))))
+        .isEqualTo(ranges(closed(1L, 3L)));
+    assertThat(LogManager.mergePositions(ranges(closed(1L, 3L)), ranges(closed(2L, 4L))))
+        .isEqualTo(ranges(closed(1L, 4L)));
+    assertThat(LogManager.mergePositions(ranges(closed(1L, 3L)), ranges(closed(4L, 6L))))
+        .isEqualTo(ranges(closed(1L, 6L)));
+    assertThat(LogManager.mergePositions(ranges(closed(1L, 3L)), ranges(closed(5L, 7L))))
+        .isEqualTo(ranges(closed(1L, 3L), closed(5L, 7L)));
+    assertThat(LogManager.mergePositions(ranges(closed(2L, 4L)), ranges(closed(1L, 3L))))
+        .isEqualTo(ranges(closed(1L, 4L)));
+    assertThat(LogManager.mergePositions(ranges(closed(4L, 6L)), ranges(closed(1L, 3L))))
+        .isEqualTo(ranges(closed(1L, 6L)));
+    assertThat(LogManager.mergePositions(ranges(closed(5L, 7L)), ranges(closed(1L, 3L))))
+        .isEqualTo(ranges(closed(1L, 3L), closed(5L, 7L)));
+  }
+
+  @SafeVarargs
+  private static List<Range<Long>> ranges(Range<Long>... ranges) {
+    return ranges == null ? Lists.emptyList() : Lists.newArrayList(ranges);
+  }
+
+  @SafeVarargs
+  private static void assertRanges(LogManager logManager, long[] lines, Range<Long>... ranges)
+      throws URISyntaxException {
+    Flux.fromStream(LongStream.of(lines).boxed())
+        .map(
+            line -> {
+              try {
+                return result(line);
+              } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .transform(logManager.newResultPositionTracker())
+        .blockLast();
+    @SuppressWarnings("unchecked")
+    Map<URI, List<Range<Long>>> positions =
+        (Map<URI, List<Range<Long>>>) Whitebox.getInternalState(logManager, "positions");
+    assertThat(positions)
+        .hasEntrySatisfying(new URI("file1"), l -> assertThat(l).containsExactly(ranges));
+    positions.clear();
+  }
+
+  private static WriteResult result(long position) throws URISyntaxException {
+    URI resource = new URI("file1");
+    URI location = new URI("file1?line=" + position);
     return new DefaultWriteResult(
-        new BulkSimpleStatement<>(new DefaultRecord("irrelevant", () -> location), "INSERT 1"),
+        new BulkSimpleStatement<>(
+            new DefaultRecord("irrelevant", () -> resource, position, () -> location), "INSERT 1"),
         null);
   }
 }

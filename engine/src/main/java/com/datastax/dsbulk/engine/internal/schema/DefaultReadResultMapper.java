@@ -37,15 +37,21 @@ public class DefaultReadResultMapper implements ReadResultMapper {
   @Override
   public Record map(ReadResult result) {
     Row row = result.getRow().orElseThrow(IllegalStateException::new);
+    Supplier<URI> resource =
+        Suppliers.memoize(
+            () ->
+                URIUtils.getRowResource(
+                    result.getRow().orElseThrow(IllegalStateException::new),
+                    result.getExecutionInfo().orElseThrow(IllegalStateException::new)));
     Supplier<URI> location =
         Suppliers.memoize(
             () ->
                 URIUtils.getRowLocation(
-                    result.getStatement(),
                     result.getRow().orElseThrow(IllegalStateException::new),
-                    result.getExecutionInfo().orElseThrow(IllegalStateException::new)));
+                    result.getExecutionInfo().orElseThrow(IllegalStateException::new),
+                    result.getStatement()));
     try {
-      DefaultRecord record = new DefaultRecord(result, location);
+      DefaultRecord record = new DefaultRecord(result, resource, -1, location);
       for (ColumnDefinitions.Definition col : row.getColumnDefinitions()) {
         // do not quote variable names here as the mapping expects them unquoted
         String variable = col.getName();
@@ -64,7 +70,7 @@ public class DefaultReadResultMapper implements ReadResultMapper {
       }
       return record;
     } catch (Exception e) {
-      return new DefaultUnmappableRecord(result, location, e);
+      return new DefaultUnmappableRecord(result, resource, -1, location, e);
     }
   }
 }

@@ -17,6 +17,7 @@ import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.typesafe.config.ConfigFactory;
 import java.io.File;
@@ -47,7 +48,7 @@ public class LogSettingsTest {
   public void should_create_log_manager_with_default_output_directory() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.log"));
     LogSettings settings = new LogSettings(config, "test");
-    LogManager logManager = settings.newLogManager(cluster);
+    LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
     try {
       logManager.init(null, null);
       assertThat(logManager).isNotNull();
@@ -70,7 +71,7 @@ public class LogSettingsTest {
             ConfigFactory.parseString("directory = \"" + dir + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
-    LogManager logManager = settings.newLogManager(cluster);
+    LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
     logManager.init(null, null);
     assertThat(logManager).isNotNull();
     assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
@@ -84,7 +85,7 @@ public class LogSettingsTest {
             ConfigFactory.parseString("directory = \"" + dir.toString() + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
-    LogManager logManager = settings.newLogManager(cluster);
+    LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
     logManager.init(null, null);
     assertThat(logManager).isNotNull();
     assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());

@@ -16,24 +16,27 @@ import com.datastax.driver.core.GettableData;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.util.List;
-import java.util.StringTokenizer;
 
 public class URIUtils {
 
-  private static final String LINE = "line";
+  private static final String POSITION = "pos";
 
-  public static URI createLocationURI(URL resource, long line) {
+  public static URI createResourceURI(URL resource) {
+    return URI.create(resource.toExternalForm());
+  }
+
+  public static URI createLocationURI(URL resource, long position) {
     return URI.create(
-        resource.toExternalForm() + (resource.getQuery() == null ? '?' : '&') + LINE + "=" + line);
+        resource.toExternalForm()
+            + (resource.getQuery() == null ? '?' : '&')
+            + POSITION
+            + "="
+            + position);
   }
 
   public static URI addParamsToURI(URI uri, String key, String value, String... rest) {
@@ -59,37 +62,36 @@ public class URIUtils {
     return URI.create(sb.toString());
   }
 
-  public static long extractLine(URI location) {
-    ListMultimap<String, String> parameters = parseURIParameters(location);
-    List<String> values = parameters.get(LINE);
-    if (values.isEmpty()) {
-      return -1;
-    }
-    return Long.parseLong(values.get(0));
-  }
-
-  public static URI getBaseURI(URI uri) throws URISyntaxException {
-    return new URI(
-        uri.getScheme(),
-        uri.getAuthority(),
-        uri.getPath(),
-        null, // Ignore the query part of the input url
-        uri.getFragment());
-  }
-
-  @SuppressWarnings("WeakerAccess")
-  public static ListMultimap<String, String> parseURIParameters(URI uri) {
-    if (uri == null || uri.getQuery() == null) {
-      return null;
-    }
-    ArrayListMultimap<String, String> map = ArrayListMultimap.create();
-    StringTokenizer tokenizer = new StringTokenizer(uri.getQuery(), "&");
-    while (tokenizer.hasMoreTokens()) {
-      String token = tokenizer.nextToken();
-      int idx = token.indexOf("=");
-      map.put(token.substring(0, idx), token.substring(idx + 1));
-    }
-    return map;
+  /**
+   * Returns the resource {@link URI} of a row in a read result.
+   *
+   * <p>URIs returned by this method are of the following form:
+   *
+   * <pre>{@code
+   * cql://host:port/keyspace/table
+   * }</pre>
+   *
+   * @param row The row of the result
+   * @param executionInfo The execution info of the result
+   * @return The read result row resource URI.
+   */
+  public static URI getRowResource(Row row, ExecutionInfo executionInfo) {
+    InetSocketAddress host = executionInfo.getQueriedHost().getSocketAddress();
+    ColumnDefinitions resultVariables = row.getColumnDefinitions();
+    // this might break if the statement has no result variables (unlikely)
+    // or if the first variable is not associated to a keyspace and table (also unlikely)
+    String keyspace = resultVariables.getKeyspace(0);
+    String table = resultVariables.getTable(0);
+    String sb =
+        "cql://"
+            + host.getAddress().getHostAddress()
+            + ':'
+            + host.getPort()
+            + '/'
+            + keyspace
+            + '/'
+            + table;
+    return URI.create(sb);
   }
 
   /**
@@ -106,12 +108,12 @@ public class URIUtils {
    *
    * <p>Variable values are {@link TypeCodec#format(Object) formatted} as CQL literals.
    *
-   * @param statement The statement that was executed to produce the result
    * @param row The row of the result
    * @param executionInfo The execution info of the result
+   * @param statement The statement that was executed to produce the result
    * @return The read result row location URI.
    */
-  public static URI getRowLocation(Statement statement, Row row, ExecutionInfo executionInfo) {
+  public static URI getRowLocation(Row row, ExecutionInfo executionInfo, Statement statement) {
     InetSocketAddress host = executionInfo.getQueriedHost().getSocketAddress();
     ColumnDefinitions resultVariables = row.getColumnDefinitions();
     CodecRegistry codecRegistry = DriverCoreHooks.getCodecRegistry(resultVariables);

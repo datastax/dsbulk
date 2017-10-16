@@ -82,15 +82,16 @@ public class MetricsManagerTest {
     String source1 = "line1\n";
     String source2 = "line2\n";
     String source3 = "line3\n";
-    record1 = new DefaultRecord(source1, () -> location1, "irrelevant");
-    record2 = new DefaultRecord(source2, () -> location2, "irrelevant");
+    record1 = new DefaultRecord(source1, null, -1, () -> location1, "irrelevant");
+    record2 = new DefaultRecord(source2, null, -1, () -> location2, "irrelevant");
     record3 =
-        new DefaultUnmappableRecord(source3, () -> location3, new RuntimeException("irrelevant"));
+        new DefaultUnmappableRecord(
+            source3, null, -1, () -> location3, new RuntimeException("irrelevant"));
     stmt1 = new BulkSimpleStatement<>(record1, "irrelevant");
     stmt2 = new BulkSimpleStatement<>(record2, "irrelevant");
     stmt3 =
         new UnmappableStatement(
-            record3, URI.create("http://record3"), new RuntimeException("irrelevant"));
+            record3, () -> URI.create("http://record3"), new RuntimeException("irrelevant"));
     batch = new BatchStatement().add(stmt1).add(stmt2);
   }
 
@@ -110,7 +111,7 @@ public class MetricsManagerTest {
             false);
     manager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
-    records.compose(manager.newUnmappableRecordMonitor()).blockLast();
+    records.transform(manager.newUnmappableRecordMonitor()).blockLast();
     manager.close();
     MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
     assertThat(registry.meter("records/total").getCount()).isEqualTo(3);
@@ -134,7 +135,7 @@ public class MetricsManagerTest {
             true);
     manager.init();
     Flux<Statement> statements = Flux.just(stmt1, stmt2, stmt3);
-    statements.compose(manager.newUnmappableStatementMonitor()).blockLast();
+    statements.transform(manager.newUnmappableStatementMonitor()).blockLast();
     manager.close();
     MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
     assertThat(registry.meter("mappings/total").getCount()).isEqualTo(3);
@@ -158,7 +159,7 @@ public class MetricsManagerTest {
             true);
     manager.init();
     Flux<Statement> statements = Flux.just(batch, stmt3);
-    statements.compose(manager.newBatcherMonitor()).blockLast();
+    statements.transform(manager.newBatcherMonitor()).blockLast();
     manager.close();
     MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
     assertThat(registry.histogram("batches/size").getCount()).isEqualTo(2);

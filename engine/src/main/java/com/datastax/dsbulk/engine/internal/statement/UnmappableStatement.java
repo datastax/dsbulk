@@ -9,21 +9,22 @@ package com.datastax.dsbulk.engine.internal.statement;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.google.common.base.MoreObjects;
 import java.net.URI;
+import java.util.function.Supplier;
 
 /** */
 public class UnmappableStatement extends BulkSimpleStatement<Record> {
 
-  private final URI location;
+  private final Supplier<URI> location;
   private final Throwable error;
 
-  public UnmappableStatement(Record record, URI location, Throwable error) {
+  public UnmappableStatement(Record record, Supplier<URI> location, Throwable error) {
     super(record, error.getMessage());
     this.location = location;
     this.error = error;
   }
 
   public URI getLocation() {
-    return location;
+    return location.get();
   }
 
   public Throwable getError() {

@@ -89,7 +89,7 @@ public class UnloadWorkflow implements Workflow {
     DseSession session = cluster.connect(keyspace);
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD, false);
     metricsManager.init();
-    logManager = logSettings.newLogManager(cluster);
+    logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
     logManager.init(subscriber, subscriber);
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     RecordMetadata recordMetadata = connector.getRecordMetadata();
@@ -106,13 +106,13 @@ public class UnloadWorkflow implements Workflow {
     Stopwatch timer = Stopwatch.createStarted();
     Flux.fromIterable(readStatements)
         .flatMap(executor::readReactive)
-        .compose(logManager.newReadErrorHandler())
+        .transform(logManager.newReadErrorHandler())
         .parallel(maxConcurrentMappings, bufferSize)
         .runOn(scheduler)
         .map(readResultMapper::map)
         .sequential()
-        .compose(metricsManager.newUnmappableRecordMonitor())
-        .compose(logManager.newUnmappableRecordErrorHandler())
+        .transform(metricsManager.newUnmappableRecordMonitor())
+        .transform(logManager.newUnmappableRecordErrorHandler())
         .subscribe(subscriber);
     subscriber.block();
     timer.stop();

@@ -67,7 +67,7 @@ public class URIUtilsTest {
 
   @Test
   public void should_create_location_for_bound_statement() throws Exception {
-    URI location = URIUtils.getRowLocation(boundStatement, row, executionInfo);
+    URI location = URIUtils.getRowLocation(row, executionInfo, boundStatement);
     assertThat(location)
         .hasScheme("cql")
         .hasHost("127.0.0.1")
