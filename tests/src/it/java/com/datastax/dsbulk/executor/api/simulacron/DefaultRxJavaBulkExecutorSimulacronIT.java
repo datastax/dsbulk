@@ -10,12 +10,14 @@ import com.datastax.dsbulk.executor.api.DefaultRxJavaBulkExecutor;
 import org.junit.BeforeClass;
 
 public class DefaultRxJavaBulkExecutorSimulacronIT extends AbstractBulkExecutorSimulacronIT {
+
   @BeforeClass
   public static void createBulkExecutors() {
     failFastExecutor =
         DefaultRxJavaBulkExecutor.builder(session)
-            // serialize execution of statements to force results to be produced in deterministic order
-            .withoutExecutor()
+            // serialize execution of statements to force results to be produced in deterministic
+            // order
+            .withMaxInFlightRequests(1)
             .build();
     failSafeExecutor = DefaultRxJavaBulkExecutor.builder(session).failSafe().build();
   }

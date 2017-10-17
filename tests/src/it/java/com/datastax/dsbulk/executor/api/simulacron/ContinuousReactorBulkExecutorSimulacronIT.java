@@ -12,12 +12,14 @@ import org.junit.Ignore;
 
 @Ignore
 public class ContinuousReactorBulkExecutorSimulacronIT extends AbstractBulkExecutorSimulacronIT {
+
   @BeforeClass
   public static void createBulkExecutors() {
     failFastExecutor =
         ContinuousReactorBulkExecutor.builder(session)
-            // serialize execution of statements to force results to be produced in deterministic order
-            .withoutExecutor()
+            // serialize execution of statements to force results to be produced in deterministic
+            // order
+            .withMaxInFlightRequests(1)
             .build();
     failSafeExecutor = ContinuousReactorBulkExecutor.builder(session).failSafe().build();
   }
