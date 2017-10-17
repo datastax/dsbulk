@@ -44,6 +44,7 @@ public class CSVUnloadEndToEndIT {
       "--connector.csv.maxConcurrentFiles=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.pooling.local.connections=1",
       "--driver.protocol.compression=NONE",
       "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "",
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
@@ -77,6 +78,7 @@ public class CSVUnloadEndToEndIT {
       "--connector.csv.skipLines=2",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.pooling.local.connections=1",
       "--driver.protocol.compression=NONE",
       "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
@@ -105,6 +107,7 @@ public class CSVUnloadEndToEndIT {
       "--connector.csv.maxConcurrentFiles=4 ",
       "--driver.query.consistency=LOCAL_ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.pooling.local.connections=1",
       "--driver.protocol.compression=NONE",
       "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
@@ -140,6 +143,7 @@ public class CSVUnloadEndToEndIT {
       "--connector.csv.maxConcurrentFiles=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.pooling.local.connections=1",
       "--driver.protocol.compression=NONE",
       "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
@@ -203,6 +207,7 @@ public class CSVUnloadEndToEndIT {
       "--connector.csv.maxConcurrentFiles=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.pooling.local.connections=1",
       "--driver.protocol.compression=NONE",
       "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"

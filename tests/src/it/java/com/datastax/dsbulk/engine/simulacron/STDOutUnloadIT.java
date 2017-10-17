@@ -61,6 +61,7 @@ public class STDOutUnloadIT {
       "--connector.csv.maxConcurrentFiles=1 ",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.pooling.local.connections=1",
       "--driver.protocol.compression=NONE",
       "-header",
       "false",
