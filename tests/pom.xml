@@ -142,7 +142,7 @@
     <dependency>
       <groupId>com.datastax.oss.simulacron</groupId>
       <artifactId>simulacron-native-server</artifactId>
-      <version>0.5.4</version>
+      <version>0.5.5</version>
     </dependency>
   </dependencies>
 
