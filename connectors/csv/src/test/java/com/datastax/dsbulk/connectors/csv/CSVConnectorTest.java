@@ -121,7 +121,7 @@ public class CSVConnectorTest {
       connector.configure(settings, false);
       connector.init();
       Flux<Record> records =
-          Flux.<Record>just(new DefaultRecord(null, null, "fóô", "bàr", "qïx"))
+          Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
               .publish()
               .autoConnect(2);
       records.subscribe(connector.write());
@@ -315,17 +315,121 @@ public class CSVConnectorTest {
     }
   }
 
+  @Test
+  public void should_skip_lines() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format("url = \"%s\", recursive = true, skipLines = 10", url("/root")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(450);
+    connector.close();
+  }
+
+  @Test
+  public void should_skip_lines2() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format("url = \"%s\", recursive = true, skipLines = 150", url("/root")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(0);
+    connector.close();
+  }
+
+  @Test
+  public void should_honor_max_lines() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format("url = \"%s\", recursive = true, maxLines = 10", url("/root")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(50);
+    connector.close();
+  }
+
+  @Test
+  public void should_honor_max_lines2() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format("url = \"%s\", recursive = true, maxLines = 1", url("/root")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(5);
+    connector.close();
+  }
+
+  @Test
+  public void should_honor_max_lines_and_skip_lines() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", recursive = true, skipLines = 95, maxLines = 10",
+                        url("/root")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(25);
+    connector.close();
+  }
+
+  @Test
+  public void should_honor_max_lines_and_skip_lines2() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", skipLines = 10, maxLines = 1",
+                        url("/root/ip-by-country-sample1.csv")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).getSource().toString().trim())
+        .isEqualTo(
+            "\"212.63.180.20\",\"212.63.180.23\",\"3560944660\",\"3560944663\",\"MZ\",\"Mozambique\"");
+    connector.close();
+  }
+
   private static List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
     String[] fields = new String[] {"Year", "Make", "Model", "Description", "Price"};
     records.add(
-        new DefaultRecord(null, null, fields, "1997", "Ford", "E350", "ac, abs, moon", "3000.00"));
-    records.add(
         new DefaultRecord(
-            null, null, fields, "1999", "Chevy", "Venture \"Extended Edition\"", null, "4900.00"));
+            null, null, -1, null, fields, "1997", "Ford", "E350", "ac, abs, moon", "3000.00"));
     records.add(
         new DefaultRecord(
             null,
+            null,
+            -1,
+            null,
+            fields,
+            "1999",
+            "Chevy",
+            "Venture \"Extended Edition\"",
+            null,
+            "4900.00"));
+    records.add(
+        new DefaultRecord(
+            null,
+            null,
+            -1,
             null,
             fields,
             "1996",
@@ -337,6 +441,8 @@ public class CSVConnectorTest {
         new DefaultRecord(
             null,
             null,
+            -1,
+            null,
             fields,
             "1999",
             "Chevy",
@@ -345,7 +451,16 @@ public class CSVConnectorTest {
             "5000.00"));
     records.add(
         new DefaultRecord(
-            null, null, fields, null, null, "Venture \"Extended Edition\"", null, "4900.00"));
+            null,
+            null,
+            -1,
+            null,
+            fields,
+            null,
+            null,
+            "Venture \"Extended Edition\"",
+            null,
+            "4900.00"));
     return records;
   }
 

@@ -25,6 +25,27 @@ public interface Record {
   Object getSource();
 
   /**
+   * Returns the record's resource location, typically the file or database table where it was
+   * extracted from.
+   *
+   * <p>Details about the returned URI, and in particular its scheme, are implementation-specific.
+   *
+   * @return The record's resource.
+   */
+  URI getResource();
+
+  /**
+   * Returns the record's position inside its {@link #getResource() resource}, typically the line
+   * number if the resource is a file, or the row number, if the resource is a database table.
+   *
+   * <p>Positions should be 1-based. If the position cannot be determined, this method should return
+   * -1.
+   *
+   * @return the record's position, or -1 if the position cannot be determined.
+   */
+  long getPosition();
+
+  /**
    * Returns the record location, typically its position in a file or its location in the origin
    * database table.
    *
@@ -32,6 +53,8 @@ public interface Record {
    * could not be written to the database.
    *
    * <p>Details about the returned URI, and in particular its scheme, are implementation-specific.
+   * Usually, the record's location URI is derived from its {@link #getResource() resource URI} and
+   * its {@link #getPosition() position}, but that is not a hard requirement.
    *
    * @return The record location.
    */

@@ -134,7 +134,10 @@ public class CSVConnector implements Connector {
     if (read) {
       parserSettings = new CsvParserSettings();
       parserSettings.setFormat(format);
-      parserSettings.setNumberOfRowsToSkip(skipLines);
+      // do not use this feature as the parser throws an error if the file
+      // has fewer lines than skipLines;
+      // we'll use the skip() operator instead.
+      // parserSettings.setNumberOfRowsToSkip(skipLines);
       parserSettings.setHeaderExtractionEnabled(header);
       parserSettings.setLineSeparatorDetectionEnabled(true);
     } else {
@@ -252,14 +255,15 @@ public class CSVConnector implements Connector {
               LOGGER.debug("Reading {}", url);
               try (InputStream is = openInputStream(url)) {
                 parser.beginParsing(is, encoding);
+                URI resource = URIUtils.createResourceURI(url);
                 while (true) {
+                  if (sink.isCancelled()) {
+                    break;
+                  }
                   com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
                   ParsingContext context = parser.getContext();
                   String source = context.currentParsedContent();
                   if (row == null) {
-                    break;
-                  }
-                  if (sink.isCancelled()) {
                     break;
                   }
                   Record record;
@@ -271,14 +275,18 @@ public class CSVConnector implements Connector {
                       record =
                           new DefaultRecord(
                               source,
+                              () -> resource,
+                              line,
                               location,
                               context.parsedHeaders(),
                               (Object[]) row.getValues());
                     } else {
-                      record = new DefaultRecord(source, location, (Object[]) row.getValues());
+                      record =
+                          new DefaultRecord(
+                              source, () -> resource, line, location, (Object[]) row.getValues());
                     }
                   } catch (Exception e) {
-                    record = new DefaultUnmappableRecord(source, location, e);
+                    record = new DefaultUnmappableRecord(source, () -> resource, line, location, e);
                   }
                   LOGGER.trace("Emitting record {}", record);
                   controller.awaitRequested(1);
@@ -286,14 +294,28 @@ public class CSVConnector implements Connector {
                 }
                 LOGGER.debug("Done reading {}", url);
                 sink.complete();
-                parser.stopParsing();
               } catch (Exception e) {
                 LOGGER.error("Error reading from " + url, e);
                 sink.error(e);
-                parser.stopParsing();
+              } finally {
+                try {
+                  if (!sink.isCancelled()) {
+                    // stopParsing() should not be called on a closed stream;
+                    // this might be the case if the parsing thread was interrupted
+                    // due to either the take operator below having reached its limit,
+                    // or a globally aborted operation. In both cases, sink.isCancelled()
+                    // should return true and thus serve as a safeguard.
+                    parser.stopParsing();
+                  }
+                } catch (Exception e) {
+                  LOGGER.error("Error closing " + url, e);
+                }
               }
             },
             FluxSink.OverflowStrategy.ERROR);
+    if (skipLines > 0) {
+      records = records.skip(skipLines);
+    }
     if (maxLines != -1) {
       records = records.take(maxLines);
     }

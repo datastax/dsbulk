@@ -59,7 +59,7 @@ public class LogSettings implements SettingsValidator {
     }
   }
 
-  public LogManager newLogManager(Cluster cluster) {
+  public LogManager newLogManager(WorkflowType workflowType, Cluster cluster) {
     StatementFormatter formatter =
         StatementFormatter.builder()
             .withMaxQueryStringLength(config.getInt("stmt.maxQueryStringLength"))
@@ -73,7 +73,13 @@ public class LogSettings implements SettingsValidator {
         Executors.newCachedThreadPool(
             new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
     return new LogManager(
-        cluster, executionDirectory, executor, config.getInt("maxErrors"), formatter, verbosity);
+        workflowType,
+        cluster,
+        executionDirectory,
+        executor,
+        config.getInt("maxErrors"),
+        formatter,
+        verbosity);
   }
 
   private void maybeStartExecutionLogFileAppender() {

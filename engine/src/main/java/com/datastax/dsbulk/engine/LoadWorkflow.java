@@ -29,7 +29,6 @@ import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
-import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -60,7 +59,7 @@ public class LoadWorkflow implements Workflow {
   private int maxConcurrentWrites;
   private int bufferSize;
   private boolean batchingEnabled;
-  private SimpleBlockingSubscriber<WriteResult> subscriber;
+  private SimpleBlockingSubscriber<Void> subscriber;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -93,7 +92,7 @@ public class LoadWorkflow implements Workflow {
     batchingEnabled = batchSettings.isBatchingEnabled();
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD, batchingEnabled);
     metricsManager.init();
-    logManager = logSettings.newLogManager(cluster);
+    logManager = logSettings.newLogManager(WorkflowType.LOAD, cluster);
     logManager.init(subscriber, subscriber);
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     recordMapper =
@@ -111,23 +110,23 @@ public class LoadWorkflow implements Workflow {
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Statement> flux =
         Flux.from(connector.read())
-            .publishOn(scheduler, bufferSize)
-            .compose(metricsManager.newUnmappableRecordMonitor())
-            .compose(logManager.newUnmappableRecordErrorHandler())
+            .publish(upstream -> upstream, bufferSize)
+            .transform(metricsManager.newUnmappableRecordMonitor())
+            .transform(logManager.newUnmappableRecordErrorHandler())
             .parallel(maxConcurrentMappings)
             .runOn(scheduler)
             .map(recordMapper::map)
             .sequential()
-            .compose(metricsManager.newUnmappableStatementMonitor())
-            .compose(logManager.newUnmappableStatementErrorHandler());
+            .transform(metricsManager.newUnmappableStatementMonitor())
+            .transform(logManager.newUnmappableStatementErrorHandler());
     if (batchingEnabled) {
-      flux = flux.compose(batcher).compose(metricsManager.newBatcherMonitor());
+      flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
     }
     flux.flatMap(executor::writeReactive, maxConcurrentWrites)
-        .compose(logManager.newWriteErrorHandler())
+        .transform(logManager.newWriteErrorHandler())
         .parallel(maxConcurrentMappings)
         .runOn(scheduler)
-        .composeGroup(logManager.newLocationTracker())
+        .composeGroup(logManager.newResultPositionTracker())
         .sequential()
         .subscribe(subscriber);
     subscriber.block();

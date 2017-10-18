@@ -119,7 +119,7 @@ public class CSVLoadEndToEndIT {
     new Main(args).run();
     validateQueryCount(21, ConsistencyLevel.LOCAL_ONE);
     EndToEndUtils.validateBadOps(3);
-    EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");
+    EndToEndUtils.validateExceptionsLog(3, "Source  :", "mapping-errors.log");
   }
 
   @Test
@@ -224,7 +224,7 @@ public class CSVLoadEndToEndIT {
     new Main(args).run();
     validateQueryCount(21, ConsistencyLevel.LOCAL_ONE);
     EndToEndUtils.validateBadOps(3);
-    EndToEndUtils.validateExceptionsLog(3, "Source  :", "record-mapping-errors.log");
+    EndToEndUtils.validateExceptionsLog(3, "Source  :", "mapping-errors.log");
   }
 
   private void validateQueryCount(int numOfQueries, ConsistencyLevel level) {
