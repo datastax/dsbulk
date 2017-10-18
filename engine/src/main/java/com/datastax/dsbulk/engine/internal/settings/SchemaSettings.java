@@ -47,6 +47,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class SchemaSettings implements SettingsValidator {
@@ -166,6 +167,7 @@ public class SchemaSettings implements SettingsValidator {
   private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session)
       throws BulkConfigurationException {
     BiMap<String, String> fieldsToVariables = null;
+    BiMap<String, String> explicitVariables = HashBiMap.create();
 
     if (config.hasPath("keyspace") && config.hasPath("table")) {
       keyspaceName = Metadata.quoteIfNecessary(config.getString("keyspace"));
@@ -190,14 +192,66 @@ public class SchemaSettings implements SettingsValidator {
         fieldsToVariables = HashBiMap.create();
       }
       for (String path : mapping.withoutPath(INFERRED_MAPPING_TOKEN).root().keySet()) {
-        // Use forcePut to override previously defined mappings.
-        fieldsToVariables.forcePut(path, mapping.getString(path));
+        if (explicitVariables.containsValue(mapping.getString(path))) {
+          if (mapping.getString(path).equals(explicitVariables.get(path))) {
+            // This mapping already exists. Skip it.
+            continue;
+          }
+          throw new BulkConfigurationException(
+              "Multiple input values in mapping resolve to column "
+                  + mapping.getString(path)
+                  + ". "
+                  + "Please review schema.mapping for duplicates.",
+              "schema.mapping");
+        }
+        explicitVariables.forcePut(path, mapping.getString(path));
+      }
+      for (Map.Entry<String, String> entry : explicitVariables.entrySet()) {
+        fieldsToVariables.forcePut(entry.getKey(), entry.getValue());
       }
     }
+    validateAllFieldsPresent(fieldsToVariables);
+    validateAllKeysPresent(fieldsToVariables);
     Preconditions.checkNotNull(
         fieldsToVariables,
         "Mapping was absent and could not be inferred, please provide an explicit mapping");
+
     return ImmutableBiMap.copyOf(fieldsToVariables);
+  }
+
+  private void validateAllFieldsPresent(BiMap<String, String> fieldsToVariables) {
+    if (table != null) {
+      fieldsToVariables
+          .entrySet()
+          .forEach(
+              action -> {
+                String value = action.getValue();
+                if (table.getColumn(value) == null) {
+                  throw new BulkConfigurationException(
+                      "Schema mapping "
+                          + value
+                          + " doesn't match any column found in table "
+                          + table.getName(),
+                      "schema.mapping");
+                }
+              });
+    }
+  }
+
+  private void validateAllKeysPresent(BiMap<String, String> fieldsToVariables) {
+    if (table != null) {
+      List<ColumnMetadata> primaryKeys = table.getPrimaryKey();
+      primaryKeys.forEach(
+          key -> {
+            if (!fieldsToVariables.containsValue(key.getName())) {
+              throw new BulkConfigurationException(
+                  "Missing required key column of "
+                      + key.getName()
+                      + " from header or schema.mapping. Please ensure it's included in the header or mapping",
+                  "schema.mapping");
+            }
+          });
+    }
   }
 
   private Config getMapping() throws BulkConfigurationException {
@@ -315,9 +369,7 @@ public class SchemaSettings implements SettingsValidator {
   }
 
   private class InferredMappingSpec {
-    private Set<String> includes = new HashSet<>();
     private Set<String> excludes = new HashSet<>();
-    private boolean includeAll = false;
 
     InferredMappingSpec(ConfigValue spec) {
       if (spec.valueType() == ConfigValueType.STRING) {
@@ -331,20 +383,15 @@ public class SchemaSettings implements SettingsValidator {
 
     private void processSpec(String specString) {
       if (specString.equals(INFERRED_MAPPING_TOKEN)) {
-        includeAll = true;
       } else if (specString.startsWith("-")) {
         // We're excluding a particular column. This implies that
         // we include all others.
         excludes.add(specString.substring(1));
-        includeAll = true;
-      } else {
-        includes.add(specString);
       }
     }
 
     boolean allow(String name) {
-      // Excludes take precedence over includes.
-      return !excludes.contains(name) && (includeAll || includes.contains(name));
+      return !excludes.contains(name);
     }
   }
 }
