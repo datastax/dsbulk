@@ -34,6 +34,7 @@ import com.github.benmanes.caffeine.cache.CacheWriter;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
@@ -44,8 +45,11 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
@@ -65,10 +69,11 @@ public class LogManager implements AutoCloseable {
   private final StatementFormatter formatter;
   private final StatementFormatVerbosity verbosity;
 
-  private final Set<Disposable> subscriptions = new HashSet<>();
+  private final Set<Disposable> disposables = new HashSet<>();
   private final Set<UnicastProcessor<?>> processors = new HashSet<>();
 
   private final AtomicInteger errors = new AtomicInteger(0);
+  private final AtomicBoolean aborted = new AtomicBoolean(false);
 
   private final LoadingCache<Path, PrintWriter> openFiles =
       Caffeine.newBuilder()
@@ -107,6 +112,8 @@ public class LogManager implements AutoCloseable {
   private CodecRegistry codecRegistry;
   private ProtocolVersion protocolVersion;
   private PrintWriter locationsWriter;
+  private Subscriber<?> subscriber;
+  private Subscription subscription;
 
   public LogManager(
       Cluster cluster,
@@ -123,7 +130,9 @@ public class LogManager implements AutoCloseable {
     this.verbosity = verbosity;
   }
 
-  public void init() throws IOException {
+  public void init(Subscriber<?> subscriber, Subscription subscription) throws IOException {
+    this.subscriber = subscriber;
+    this.subscription = subscription;
     codecRegistry = cluster.getConfiguration().getCodecRegistry();
     protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
     Files.createDirectories(executionDirectory);
@@ -142,8 +151,10 @@ public class LogManager implements AutoCloseable {
                 Charset.forName("UTF-8"),
                 CREATE_NEW,
                 WRITE));
+    aborted.set(false);
   }
 
+  @VisibleForTesting
   public Path getExecutionDirectory() {
     return executionDirectory;
   }
@@ -152,7 +163,7 @@ public class LogManager implements AutoCloseable {
   public void close() throws InterruptedException {
     executor.shutdown();
     processors.forEach(UnicastProcessor::onComplete);
-    subscriptions.forEach(Disposable::dispose);
+    disposables.forEach(Disposable::dispose);
     executor.awaitTermination(1, MINUTES);
     executor.shutdownNow();
     openFiles.invalidateAll();
@@ -162,6 +173,11 @@ public class LogManager implements AutoCloseable {
     if (locationsWriter != null) {
       locationsWriter.flush();
       locationsWriter.close();
+    }
+  }
+
+  public void reportLastLocations() {
+    if (locationsWriter != null) {
       LOGGER.info(
           "Last processed locations can be found in {}",
           executionDirectory.resolve("locations.txt"));
@@ -171,7 +187,7 @@ public class LogManager implements AutoCloseable {
   public Function<Flux<Statement>, Flux<Statement>> newUnmappableStatementErrorHandler() {
     UnicastProcessor<UnmappableStatement> ps = UnicastProcessor.create();
     processors.add(ps);
-    subscriptions.add(
+    disposables.add(
         ps.doOnNext(this::appendToDebugFile)
             .doOnNext(this::appendToBadFile)
             .subscribeOn(Schedulers.fromExecutor(executor))
@@ -182,8 +198,9 @@ public class LogManager implements AutoCloseable {
                 r -> {
                   if (r instanceof UnmappableStatement) {
                     ps.onNext((UnmappableStatement) r);
-                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors)
-                      throw new TooManyErrorsException(maxErrors);
+                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
+                      abort();
+                    }
                   }
                 })
             .filter(r -> !(r instanceof UnmappableStatement));
@@ -192,7 +209,7 @@ public class LogManager implements AutoCloseable {
   public Function<Flux<Record>, Flux<Record>> newUnmappableRecordErrorHandler() {
     UnicastProcessor<UnmappableRecord> ps = UnicastProcessor.create();
     processors.add(ps);
-    subscriptions.add(
+    disposables.add(
         ps.doOnNext(this::appendToDebugFile)
             .subscribeOn(Schedulers.fromExecutor(executor))
             .subscribe());
@@ -202,8 +219,9 @@ public class LogManager implements AutoCloseable {
                 r -> {
                   if (r instanceof UnmappableRecord) {
                     ps.onNext((UnmappableRecord) r);
-                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors)
-                      throw new TooManyErrorsException(maxErrors);
+                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
+                      abort();
+                    }
                   }
                 })
             .filter(r -> !(r instanceof UnmappableRecord));
@@ -212,7 +230,7 @@ public class LogManager implements AutoCloseable {
   public Function<Flux<WriteResult>, Flux<WriteResult>> newWriteErrorHandler() {
     UnicastProcessor<WriteResult> ps = UnicastProcessor.create();
     processors.add(ps);
-    subscriptions.add(
+    disposables.add(
         ps.doOnNext(this::appendToDebugFile)
             .doOnNext(this::appendToBadFile)
             .subscribeOn(Schedulers.fromExecutor(executor))
@@ -224,7 +242,7 @@ public class LogManager implements AutoCloseable {
                   if (!r.isSuccess()) {
                     ps.onNext(r);
                     if (maxErrors > 0 && errors.addAndGet(delta(r.getStatement())) > maxErrors) {
-                      throw new TooManyErrorsException(maxErrors);
+                      abort();
                     }
                   }
                 })
@@ -234,7 +252,7 @@ public class LogManager implements AutoCloseable {
   public Function<Flux<ReadResult>, Flux<ReadResult>> newReadErrorHandler() {
     UnicastProcessor<ReadResult> ps = UnicastProcessor.create();
     processors.add(ps);
-    subscriptions.add(
+    disposables.add(
         ps.doOnNext(this::appendToDebugFile)
             .subscribeOn(Schedulers.fromExecutor(executor))
             .subscribe());
@@ -242,10 +260,14 @@ public class LogManager implements AutoCloseable {
         upstream
             .doOnNext(
                 r -> {
+                  boolean flag = false;
+                  if (flag) {
+                    abort();
+                  }
                   if (!r.isSuccess()) {
                     ps.onNext(r);
                     if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
-                      throw new TooManyErrorsException(maxErrors);
+                      abort();
                     }
                   }
                 })
@@ -254,6 +276,13 @@ public class LogManager implements AutoCloseable {
 
   public Function<Flux<WriteResult>, Flux<WriteResult>> newLocationTracker() {
     return upstream -> upstream.doOnNext(this::incrementLocations);
+  }
+
+  private void abort() {
+    if (aborted.compareAndSet(false, true)) {
+      subscription.cancel();
+      subscriber.onError(new TooManyErrorsException(maxErrors));
+    }
   }
 
   @SuppressWarnings("unchecked")

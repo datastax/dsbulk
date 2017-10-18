@@ -16,6 +16,7 @@ import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.internal.WorkflowUtils;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
+import com.datastax.dsbulk.engine.internal.reactive.SimpleBlockingSubscriber;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dsbulk.engine.internal.settings.BatchSettings;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
@@ -28,8 +29,10 @@ import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
+import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -43,6 +46,7 @@ public class LoadWorkflow implements Workflow {
 
   private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.LOAD);
   private final LoaderConfig config;
+  private final AtomicBoolean closed = new AtomicBoolean(false);
 
   private Connector connector;
   private Scheduler scheduler;
@@ -52,13 +56,11 @@ public class LoadWorkflow implements Workflow {
   private ReactorUnsortedStatementBatcher batcher;
   private DseCluster cluster;
   private ReactorBulkWriter executor;
-
   private int maxConcurrentMappings;
   private int maxConcurrentWrites;
   private int bufferSize;
   private boolean batchingEnabled;
-
-  private volatile boolean closed = false;
+  private SimpleBlockingSubscriber<WriteResult> subscriber;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -84,6 +86,7 @@ public class LoadWorkflow implements Workflow {
     scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
     connector.init();
+    subscriber = new SimpleBlockingSubscriber<>();
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
@@ -91,7 +94,7 @@ public class LoadWorkflow implements Workflow {
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD, batchingEnabled);
     metricsManager.init();
     logManager = logSettings.newLogManager(cluster);
-    logManager.init();
+    logManager.init(subscriber, subscriber);
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     recordMapper =
         schemaSettings.createRecordMapper(
@@ -99,10 +102,11 @@ public class LoadWorkflow implements Workflow {
     if (batchingEnabled) {
       batcher = batchSettings.newStatementBatcher(cluster);
     }
+    closed.set(false);
   }
 
   @Override
-  public void execute() {
+  public void execute() throws InterruptedException {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Statement> flux =
@@ -125,24 +129,29 @@ public class LoadWorkflow implements Workflow {
         .runOn(scheduler)
         .composeGroup(logManager.newLocationTracker())
         .sequential()
-        .then()
-        .block();
+        .subscribe(subscriber);
+    subscriber.block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
   }
 
   @Override
-  public synchronized void close() throws Exception {
-    if (!closed) {
+  public void close() throws Exception {
+    if (closed.compareAndSet(false, true)) {
       LOGGER.info("{} closing.", this);
-      Exception e = WorkflowUtils.closeQuietly(connector, null);
+      Exception e = WorkflowUtils.closeQuietly(metricsManager, null);
+      e = WorkflowUtils.closeQuietly(connector, e);
       e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
-      e = WorkflowUtils.closeQuietly(metricsManager, e);
       e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(cluster, e);
-      closed = true;
+      if (metricsManager != null) {
+        metricsManager.reportFinalMetrics();
+      }
+      if (logManager != null) {
+        logManager.reportLastLocations();
+      }
       LOGGER.info("{} closed.", this);
       if (e != null) {
         throw e;

@@ -49,7 +49,7 @@ public class LogSettingsTest {
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(cluster);
     try {
-      logManager.init();
+      logManager.init(null, null);
       assertThat(logManager).isNotNull();
       assertThat(logManager.getExecutionDirectory().toFile().getAbsolutePath())
           .isEqualTo(Paths.get("./logs/test").normalize().toFile().getAbsolutePath());
@@ -71,7 +71,7 @@ public class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(cluster);
-    logManager.init();
+    logManager.init(null, null);
     assertThat(logManager).isNotNull();
     assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
   }
@@ -85,7 +85,7 @@ public class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(cluster);
-    logManager.init();
+    logManager.init(null, null);
     assertThat(logManager).isNotNull();
     assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
   }

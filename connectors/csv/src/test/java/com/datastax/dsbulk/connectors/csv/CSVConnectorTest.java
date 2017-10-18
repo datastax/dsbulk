@@ -211,6 +211,7 @@ public class CSVConnectorTest {
     Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
     records.subscribe(connector.write());
     records.blockLast();
+    connector.close();
     List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
     assertThat(actual).hasSize(7);
     assertThat(actual)
@@ -222,7 +223,6 @@ public class CSVConnectorTest {
             "air, moon roof, loaded\",4799.00",
             "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
             ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
-    connector.close();
   }
 
   @Test
@@ -239,6 +239,7 @@ public class CSVConnectorTest {
     Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
     records.subscribe(connector.write());
     records.blockLast();
+    connector.close();
     List<String> actual = collectLines(out);
     assertThat(actual)
         .containsOnly(
@@ -249,7 +250,6 @@ public class CSVConnectorTest {
             "air, moon roof, loaded\",4799.00",
             "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
             ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
-    connector.close();
   }
 
   @Test
@@ -268,6 +268,7 @@ public class CSVConnectorTest {
     Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
     records.subscribe(connector.write());
     records.blockLast();
+    connector.close();
     List<String> csv1 = Files.readAllLines(out.resolve("output-000001.csv"));
     List<String> csv2 = Files.readAllLines(out.resolve("output-000002.csv"));
     assertThat(csv1)
@@ -285,7 +286,6 @@ public class CSVConnectorTest {
             "Year,Make,Model,Description,Price",
             "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
             ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
-    connector.close();
   }
 
   @Test
