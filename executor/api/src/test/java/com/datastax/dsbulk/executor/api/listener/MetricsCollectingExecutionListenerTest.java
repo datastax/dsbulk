@@ -34,26 +34,37 @@ public class MetricsCollectingExecutionListenerTest {
   public void should_collect_metrics() throws Exception {
 
     MetricsCollectingExecutionListener listener = new MetricsCollectingExecutionListener();
-    DefaultExecutionContext global = new DefaultExecutionContext();
-    DefaultExecutionContext local1 = new DefaultExecutionContext();
-    DefaultExecutionContext local2 = new DefaultExecutionContext();
-    DefaultExecutionContext local3 = new DefaultExecutionContext();
-    DefaultExecutionContext local4 = new DefaultExecutionContext();
+
+    ExecutionContext global = new TestExecutionContext();
+    ExecutionContext local1 = new TestExecutionContext();
+    ExecutionContext local2 = new TestExecutionContext();
+    ExecutionContext local3 = new TestExecutionContext();
+    ExecutionContext local4 = new TestExecutionContext();
 
     listener.onExecutionStarted(successfulRead, global);
     listener.onExecutionStarted(failedRead, global);
     listener.onExecutionStarted(successfulWrite, global);
     listener.onExecutionStarted(failedWrite, global);
 
+    assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(0);
+
     listener.onReadRequestStarted(successfulRead, local1);
+    assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(1);
     listener.onReadRequestStarted(failedRead, local2);
+    assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(2);
     listener.onWriteRequestStarted(successfulWrite, local3);
+    assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(3);
     listener.onWriteRequestStarted(failedWrite, local4);
+    assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(4);
 
     listener.onReadRequestSuccessful(successfulRead, 3, local1);
+    assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(3);
     listener.onReadRequestFailed(failedRead, new RuntimeException(), local2);
+    assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(2);
     listener.onWriteRequestSuccessful(successfulWrite, local3);
+    assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(1);
     listener.onWriteRequestFailed(failedWrite, new RuntimeException(), local4);
+    assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(0);
 
     listener.onExecutionSuccessful(successfulRead, global);
     listener.onExecutionFailed(
@@ -82,5 +93,12 @@ public class MetricsCollectingExecutionListenerTest {
     assertThat(listener.getReadsTimer().getCount()).isEqualTo(4);
     assertThat(listener.getFailedReadsCounter().getCount()).isEqualTo(1);
     assertThat(listener.getSuccessfulReadsCounter().getCount()).isEqualTo(3);
+  }
+
+  private static class TestExecutionContext extends DefaultExecutionContext {
+    @Override
+    public long elapsedTimeNanos() {
+      return 42;
+    }
   }
 }

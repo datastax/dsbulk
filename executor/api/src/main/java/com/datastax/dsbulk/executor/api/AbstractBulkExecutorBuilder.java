@@ -10,17 +10,20 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
+import com.datastax.dsbulk.executor.api.result.QueueFactory;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.Result;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.dsbulk.executor.api.throttling.FixedRateLimiter;
+import com.datastax.dsbulk.executor.api.throttling.RateLimiter;
 import com.google.common.util.concurrent.MoreExecutors;
 import java.util.Objects;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
 
 /** A builder for {@link AbstractBulkExecutor} instances. */
+@SuppressWarnings("UnusedReturnValue")
 public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor> {
 
   final Session session;
@@ -29,13 +32,13 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
 
   int maxInFlightRequests = AbstractBulkExecutor.DEFAULT_MAX_INFLIGHT_REQUESTS;
 
-  int maxRequestsPerSecond = AbstractBulkExecutor.DEFAULT_MAX_REQUESTS_PER_SECOND;
+  RateLimiter rateLimiter = RateLimiter.DEFAULT;
 
   ExecutionListener listener;
 
   Supplier<Executor> executor = AbstractBulkExecutor.DEFAULT_EXECUTOR_SUPPLIER;
 
-  QueueFactory<ReadResult> queueFactory = AbstractBulkExecutor.DEFAULT_QUEUE_FACTORY;
+  QueueFactory queueFactory = QueueFactory.DEFAULT;
 
   AbstractBulkExecutorBuilder(Session session) {
     this.session = session;
@@ -64,7 +67,6 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
    *
    * @return this builder (for method chaining).
    */
-  @SuppressWarnings("UnusedReturnValue")
   public AbstractBulkExecutorBuilder<T> failSafe() {
     this.failFast = false;
     return this;
@@ -72,33 +74,68 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
 
   /**
    * Sets the maximum number of "in-flight" requests. In other words, sets the maximum amount of
-   * concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard
-   * against workflows that generate more requests that they can handle. The default is {@link
+   * concurrent uncompleted futures waiting for a response from the server.
+   *
+   * <p>This acts as a safeguard against workflows that generate more requests that they can handle.
+   *
+   * <p>The default is {@link
    * com.datastax.dsbulk.executor.api.AbstractBulkExecutor#DEFAULT_MAX_INFLIGHT_REQUESTS}. Setting
    * this option to any negative value will disable it.
    *
    * @param maxInFlightRequests the maximum number of "in-flight" requests.
    * @return this builder (for method chaining).
    */
-  @SuppressWarnings("UnusedReturnValue")
   public AbstractBulkExecutorBuilder<T> withMaxInFlightRequests(int maxInFlightRequests) {
     this.maxInFlightRequests = maxInFlightRequests;
     return this;
   }
 
   /**
-   * Sets the maximum number of concurrent requests per second. This acts as a safeguard against
-   * workflows that could overwhelm the cluster with more requests that it can handle. The default
-   * is {@link
-   * com.datastax.dsbulk.executor.api.AbstractBulkExecutor#DEFAULT_MAX_REQUESTS_PER_SECOND}. Setting
-   * this option to any negative value will disable it.
+   * Sets the maximum number of concurrent requests per second.
+   *
+   * <p>This acts as a safeguard against workflows that could overwhelm the cluster with more
+   * requests that it can handle.
+   *
+   * <p>This method is a shortcut for <code>
+   * {@link #withRateLimiter(RateLimiter) withRateLimiter(new FixedRateLimiter(maxRequestsPerSecond))}
+   * </code>.
    *
    * @param maxRequestsPerSecond the maximum number of concurrent requests per second.
    * @return this builder (for method chaining).
    */
-  @SuppressWarnings("UnusedReturnValue")
   public AbstractBulkExecutorBuilder<T> withMaxRequestsPerSecond(int maxRequestsPerSecond) {
-    this.maxRequestsPerSecond = maxRequestsPerSecond;
+    if (maxRequestsPerSecond < 1) {
+      throw new IllegalArgumentException(
+          "Expecting maxRequestsPerSecond to be strictly positive, got " + maxRequestsPerSecond);
+    }
+    this.rateLimiter = new FixedRateLimiter(maxRequestsPerSecond);
+    return this;
+  }
+
+  /**
+   * Sets the {@link RateLimiter} to use.
+   *
+   * <p>A rate limiter acts as a safeguard against workflows that could overwhelm the cluster with
+   * more requests that it can handle.
+   *
+   * <p>The default rate limiter is {@link RateLimiter#DEFAULT}.
+   *
+   * @param rateLimiter the {@link RateLimiter} to use; cannot be {@code null}.
+   * @return this builder (for method chaining).
+   */
+  public AbstractBulkExecutorBuilder<T> withRateLimiter(RateLimiter rateLimiter) {
+    Objects.requireNonNull(rateLimiter, "rateLimiter cannot be null");
+    this.rateLimiter = rateLimiter;
+    return this;
+  }
+
+  /**
+   * Disables the use of a {@link RateLimiter}. Use with caution.
+   *
+   * @return this builder (for method chaining).
+   */
+  public AbstractBulkExecutorBuilder<T> withoutRateLimiter() {
+    this.rateLimiter = null;
     return this;
   }
 
@@ -108,7 +145,6 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
    * @param listener the {@link ExecutionListener} to use.
    * @return this builder (for method chaining).
    */
-  @SuppressWarnings("UnusedReturnValue")
   public AbstractBulkExecutorBuilder<T> withExecutionListener(ExecutionListener listener) {
     this.listener = listener;
     return this;
@@ -138,7 +174,6 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
    *     thread.
    * @return this builder (for method chaining).
    */
-  @SuppressWarnings("UnusedReturnValue")
   public AbstractBulkExecutorBuilder<T> withExecutor(Executor executor) {
     Objects.requireNonNull(executor, "executor cannot be null");
     this.executor = () -> executor;
@@ -176,7 +211,6 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
    *
    * @return this builder (for method chaining).
    */
-  @SuppressWarnings("UnusedReturnValue")
   public AbstractBulkExecutorBuilder<T> withoutExecutor() {
     this.executor = MoreExecutors::directExecutor;
     return this;
@@ -185,15 +219,13 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
   /**
    * Sets the {@link QueueFactory} to use when executing read requests.
    *
-   * <p>By default, the queue factory will create {@link ArrayBlockingQueue} instances whose size is
-   * 4 times the statement's {@link Statement#getFetchSize() fetch size}.
+   * <p>By default, the queue factory is {@link QueueFactory#DEFAULT}.
    *
    * @param queueFactory the {@link QueueFactory} to use; cannot be {@code null}.
    * @return this builder (for method chaining).
    */
-  @SuppressWarnings("UnusedReturnValue")
-  public AbstractBulkExecutorBuilder<T> withQueueFactory(QueueFactory<ReadResult> queueFactory) {
-    Objects.requireNonNull(queueFactory, "queueFactory must not be null");
+  public AbstractBulkExecutorBuilder<T> withQueueFactory(QueueFactory queueFactory) {
+    Objects.requireNonNull(queueFactory, "queueFactory cannot be null");
     this.queueFactory = queueFactory;
     return this;
   }

@@ -11,7 +11,9 @@ import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.internal.subscription.ContinuousReadResultSubscription;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
+import com.datastax.dsbulk.executor.api.result.QueueFactory;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.dsbulk.executor.api.throttling.RateLimiter;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import org.reactivestreams.Publisher;
@@ -76,18 +78,11 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
       ContinuousPagingOptions options,
       boolean failFast,
       int maxInFlightRequests,
-      int maxRequestsPerSecond,
+      RateLimiter rateLimiter,
       ExecutionListener listener,
       Executor executor,
-      QueueFactory<ReadResult> queueFactory) {
-    super(
-        session,
-        failFast,
-        maxInFlightRequests,
-        maxRequestsPerSecond,
-        listener,
-        executor,
-        queueFactory);
+      QueueFactory queueFactory) {
+    super(session, failFast, maxInFlightRequests, rateLimiter, listener, executor, queueFactory);
     this.session = session;
     this.options = options;
   }

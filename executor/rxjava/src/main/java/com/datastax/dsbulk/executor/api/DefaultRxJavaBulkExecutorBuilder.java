@@ -8,6 +8,7 @@ package com.datastax.dsbulk.executor.api;
 
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
+import com.datastax.dsbulk.executor.api.result.QueueFactory;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import io.reactivex.internal.fuseable.SimplePlainQueue;
 import io.reactivex.internal.util.QueueDrainHelper;
@@ -37,7 +38,7 @@ public class DefaultRxJavaBulkExecutorBuilder
    */
   @Override
   public AbstractBulkExecutorBuilder<DefaultRxJavaBulkExecutor> withQueueFactory(
-      QueueFactory<ReadResult> queueFactory) {
+      QueueFactory queueFactory) {
     return super.withQueueFactory(queueFactory);
   }
 
@@ -47,7 +48,7 @@ public class DefaultRxJavaBulkExecutorBuilder
         session,
         failFast,
         maxInFlightRequests,
-        maxRequestsPerSecond,
+        rateLimiter,
         listener,
         executor.get(),
         queueFactory);

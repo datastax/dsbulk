@@ -57,7 +57,7 @@ public class SettingsValidatorTest {
     "--schema.nullToUnset=tralse",
     "--batch.maxBatchSize=NotANumber",
     "--batch.bufferSize=NotANumber",
-    "--executor.maxPerSecond=NotANumber",
+    "--executor.throttling.rate=NotANumber",
     "--executor.maxInFlight=NotANumber",
     "--monitoring.expectedWrites=NotANumber",
     "--monitoring.expectedWrites=expectedReads",
@@ -114,6 +114,7 @@ public class SettingsValidatorTest {
                 "--schema.keyspace=keyspace",
                 "--schema.table=table",
                 "--connector.csv.url=127.0.1.1",
+                "--executor.throttling.enabled=true",
                 argument
               })
           .run();

@@ -90,7 +90,9 @@ public class LoadWorkflow implements Workflow {
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
     batchingEnabled = batchSettings.isBatchingEnabled();
-    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD, batchingEnabled);
+    metricsManager =
+        monitoringSettings.newMetricsManager(
+            WorkflowType.LOAD, batchingEnabled, driverSettings.getRequestTimeoutMillis());
     metricsManager.init();
     logManager = logSettings.newLogManager(WorkflowType.LOAD, cluster);
     logManager.init(subscriber, subscriber);
@@ -110,7 +112,7 @@ public class LoadWorkflow implements Workflow {
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Statement> flux =
         Flux.from(connector.read())
-            .publish(upstream -> upstream, bufferSize)
+            .publishOn(scheduler, bufferSize)
             .transform(metricsManager.newUnmappableRecordMonitor())
             .transform(logManager.newUnmappableRecordErrorHandler())
             .parallel(maxConcurrentMappings)

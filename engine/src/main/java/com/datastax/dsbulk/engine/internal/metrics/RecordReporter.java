@@ -79,7 +79,7 @@ public class RecordReporter extends ScheduledReporter {
             totalMeter.getCount(),
             successfulMeter.getCount(),
             failedMeter.getCount(),
-            convertRate(totalMeter.getMeanRate()),
+            convertRate(totalMeter.getOneMinuteRate()),
             getRateUnit()));
   }
 
@@ -92,7 +92,7 @@ public class RecordReporter extends ScheduledReporter {
             successfulMeter.getCount(),
             failedMeter.getCount(),
             progression,
-            convertRate(totalMeter.getMeanRate()),
+            convertRate(totalMeter.getOneMinuteRate()),
             getRateUnit()));
   }
 }

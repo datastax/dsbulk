@@ -8,6 +8,7 @@ package com.datastax.dsbulk.executor.api;
 
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
+import com.datastax.dsbulk.executor.api.result.QueueFactory;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import reactor.util.concurrent.Queues;
 
@@ -44,7 +45,7 @@ public class ContinuousReactorBulkExecutorBuilder
    */
   @Override
   public AbstractBulkExecutorBuilder<ContinuousReactorBulkExecutor> withQueueFactory(
-      QueueFactory<ReadResult> queueFactory) {
+      QueueFactory queueFactory) {
     return super.withQueueFactory(queueFactory);
   }
 
@@ -55,7 +56,7 @@ public class ContinuousReactorBulkExecutorBuilder
         options,
         failFast,
         maxInFlightRequests,
-        maxRequestsPerSecond,
+        rateLimiter,
         listener,
         executor.get(),
         queueFactory);

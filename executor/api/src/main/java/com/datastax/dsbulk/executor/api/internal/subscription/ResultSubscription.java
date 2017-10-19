@@ -14,10 +14,10 @@ import com.datastax.dsbulk.executor.api.internal.listener.DefaultExecutionContex
 import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.Result;
+import com.datastax.dsbulk.executor.api.throttling.RateLimiter;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.RateLimiter;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.Executor;
@@ -44,7 +44,7 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
   private final boolean failFast;
   private final int size;
 
-  private final ExecutionContext global = new DefaultExecutionContext();
+  private final DefaultExecutionContext global = new DefaultExecutionContext();
 
   private volatile BulkExecutionException error;
   private volatile boolean done;
@@ -89,6 +89,7 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
   }
 
   public void start() {
+    global.start();
     listener.ifPresent(l -> l.onExecutionStarted(statement, global));
   }
 
@@ -113,15 +114,17 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
   }
 
   void fetchNextPage(Supplier<ListenableFuture<R>> request) {
-    ExecutionContext local = new DefaultExecutionContext();
+    DefaultExecutionContext local = new DefaultExecutionContext();
     rateLimiter.ifPresent(limiter -> limiter.acquire(size));
     requestPermits.ifPresent(permits -> permits.acquireUninterruptibly(1));
+    local.start();
     onRequestStarted(local);
     ListenableFuture<R> page;
     try {
       page = request.get();
     } catch (Exception e) {
       requestPermits.ifPresent(permits -> permits.release(1));
+      local.stop();
       onRequestFailed(e, local);
       return;
     }
@@ -130,12 +133,14 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
         new FutureCallback<R>() {
           @Override
           public void onSuccess(R result) {
+            local.stop();
             requestPermits.ifPresent(permits -> permits.release(1));
             onRequestSuccessful(result, local);
           }
 
           @Override
           public void onFailure(Throwable t) {
+            local.stop();
             requestPermits.ifPresent(permits -> permits.release(1));
             onRequestFailed(t, local);
           }
@@ -155,12 +160,14 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
   }
 
   void onComplete() {
+    global.stop();
     listener.ifPresent(l -> l.onExecutionSuccessful(statement, global));
     done = true;
     drain();
   }
 
   void onError(Throwable t) {
+    global.stop();
     BulkExecutionException error = new BulkExecutionException(t, statement);
     if (failFast) {
       this.error = error;

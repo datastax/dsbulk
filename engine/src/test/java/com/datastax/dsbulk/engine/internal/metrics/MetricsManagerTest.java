@@ -25,7 +25,6 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import java.net.URI;
-import java.time.Duration;
 import java.util.concurrent.Executors;
 import org.junit.After;
 import org.junit.Before;
@@ -107,8 +106,9 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
-            Duration.ofSeconds(5),
-            false);
+            5,
+            false,
+            60000);
     manager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
     records.transform(manager.newUnmappableRecordMonitor()).blockLast();
@@ -131,8 +131,9 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
-            Duration.ofSeconds(5),
-            true);
+            5,
+            true,
+            60000);
     manager.init();
     Flux<Statement> statements = Flux.just(stmt1, stmt2, stmt3);
     statements.transform(manager.newUnmappableStatementMonitor()).blockLast();
@@ -155,8 +156,9 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
-            Duration.ofSeconds(5),
-            true);
+            5,
+            true,
+            60000);
     manager.init();
     Flux<Statement> statements = Flux.just(batch, stmt3);
     statements.transform(manager.newBatcherMonitor()).blockLast();

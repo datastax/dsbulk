@@ -10,12 +10,11 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
-import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.util.concurrent.RateLimiter;
+import com.datastax.dsbulk.executor.api.result.QueueFactory;
+import com.datastax.dsbulk.executor.api.throttling.RateLimiter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
@@ -30,9 +29,6 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
   /** The default number of maximum in-flight requests. */
   static final int DEFAULT_MAX_INFLIGHT_REQUESTS = 1_000;
 
-  /** The default maximum number of concurrent requests per second. */
-  static final int DEFAULT_MAX_REQUESTS_PER_SECOND = 100_000;
-
   static final Supplier<Executor> DEFAULT_EXECUTOR_SUPPLIER =
       () ->
           new ThreadPoolExecutor(
@@ -43,9 +39,6 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
               new SynchronousQueue<>(),
               new ThreadFactoryBuilder().setDaemon(true).setNameFormat("bulk-executor-%d").build(),
               new ThreadPoolExecutor.CallerRunsPolicy());
-
-  static final QueueFactory<ReadResult> DEFAULT_QUEUE_FACTORY =
-      statement -> new ArrayBlockingQueue<>(statement.getFetchSize() * 4);
 
   final Session session;
 
@@ -59,27 +52,27 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
 
   final Executor executor;
 
-  final QueueFactory<ReadResult> queueFactory;
+  final QueueFactory queueFactory;
 
   AbstractBulkExecutor(Session session) {
     this(
         session,
         true,
         DEFAULT_MAX_INFLIGHT_REQUESTS,
-        DEFAULT_MAX_REQUESTS_PER_SECOND,
+        RateLimiter.DEFAULT,
         null,
         DEFAULT_EXECUTOR_SUPPLIER.get(),
-        DEFAULT_QUEUE_FACTORY);
+        QueueFactory.DEFAULT);
   }
 
   AbstractBulkExecutor(
       Session session,
       boolean failFast,
       int maxInFlightRequests,
-      int maxRequestsPerSecond,
+      RateLimiter rateLimiter,
       ExecutionListener listener,
       Executor executor,
-      QueueFactory<ReadResult> queueFactory) {
+      QueueFactory queueFactory) {
     Objects.requireNonNull(session, "session cannot be null");
     Objects.requireNonNull(executor, "executor cannot be null");
     Objects.requireNonNull(queueFactory, "queueFactory cannot be null");
@@ -89,22 +82,22 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
         maxInFlightRequests < 0
             ? Optional.empty()
             : Optional.of(new Semaphore(maxInFlightRequests));
-    this.rateLimiter =
-        maxRequestsPerSecond < 0
-            ? Optional.empty()
-            : Optional.of(RateLimiter.create(maxRequestsPerSecond));
+    this.rateLimiter = Optional.ofNullable(rateLimiter);
     this.listener = Optional.ofNullable(listener);
     this.executor = executor;
     this.queueFactory = queueFactory;
   }
 
   @Override
-  public void close() throws InterruptedException {
+  public void close() throws Exception {
     if (executor instanceof ExecutorService) {
       ExecutorService tpe = (ExecutorService) executor;
       tpe.shutdown();
       tpe.awaitTermination(5, SECONDS);
       tpe.shutdownNow();
+    }
+    if (listener.isPresent()) {
+      listener.get().close();
     }
   }
 }

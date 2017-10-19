@@ -130,6 +130,10 @@ public class DriverSettings implements SettingsValidator {
     return builder.build();
   }
 
+  public long getRequestTimeoutMillis() {
+    return config.getDuration("socket.readTimeout").toMillis();
+  }
+
   private LoadBalancingPolicy getLoadBalancingPolicy(LoaderConfig config, BuiltinLBP lbpName)
       throws BulkConfigurationException {
     Set<BuiltinLBP> seenPolicies = new LinkedHashSet<>();

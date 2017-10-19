@@ -15,7 +15,7 @@ import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
  *
  * @see AbstractBulkExecutorBuilder#withExecutionListener(ExecutionListener)
  */
-public interface ExecutionListener {
+public interface ExecutionListener extends AutoCloseable {
 
   /**
    * Called when a statement is about to be executed.
@@ -94,4 +94,7 @@ public interface ExecutionListener {
    * @param context the statement execution context.
    */
   default void onExecutionFailed(BulkExecutionException exception, ExecutionContext context) {}
+
+  @Override
+  default void close() throws Exception {}
 }

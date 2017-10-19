@@ -14,7 +14,7 @@ import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
-import com.google.common.util.concurrent.RateLimiter;
+import com.datastax.dsbulk.executor.api.throttling.RateLimiter;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Objects;
