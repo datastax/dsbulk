@@ -87,7 +87,7 @@ public class LoadWorkflow implements Workflow {
     bufferSize = engineSettings.getBufferSize();
     dryRun = engineSettings.isDryRun();
     scheduler = Schedulers.newElastic("workflow");
-    connector = connectorSettings.getConnector(WorkflowType.LOAD);
+    connector = connectorSettings.getConnector();
     connector.init();
     subscriber = new SimpleBlockingSubscriber<>();
     cluster = driverSettings.newCluster();

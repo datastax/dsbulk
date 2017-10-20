@@ -51,20 +51,74 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class SchemaSettings implements SettingsValidator {
+public class SchemaSettings {
+
+  private static final String INFERRED_MAPPING_TOKEN = "__INFERRED_MAPPING";
+  private static final String NULL_TO_UNSET = "nullToUnset";
+  private static final String NULL_STRINGS = "nullStrings";
+  private static final String KEYSPACE = "keyspace";
+  private static final String TABLE = "table";
+  private static final String MAPPING = "mapping";
+  private static final String QUERY = "query";
+  private static final String RECORD_METADATA = "recordMetadata";
 
   private final LoaderConfig config;
-  private final String INFERRED_MAPPING_TOKEN = "__INFERRED_MAPPING";
-
+  private final ImmutableSet<String> nullStrings;
+  private final boolean nullToUnset;
   private TableMetadata table;
-  private String keyspaceName;
   private String tableName;
+  private String query;
   private PreparedStatement preparedStatement;
-  private ImmutableSet<String> nullStrings;
+  private String keyspaceName;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
-    nullStrings = ImmutableSet.copyOf(config.getStringList("nullStrings"));
+    try {
+      nullToUnset = config.getBoolean(NULL_TO_UNSET);
+      nullStrings = ImmutableSet.copyOf(config.getStringList(NULL_STRINGS));
+      boolean keyspaceTablePresent = false;
+      if (config.hasPath(KEYSPACE)) {
+        keyspaceName = Metadata.quoteIfNecessary(config.getString(KEYSPACE));
+      }
+      if (keyspaceName != null && config.hasPath(TABLE)) {
+        keyspaceTablePresent = true;
+        tableName = Metadata.quoteIfNecessary(config.getString(TABLE));
+      }
+
+      // If table is present, keyspace must be, but not necessarily the other way around.
+      if (config.hasPath(TABLE) && keyspaceName == null) {
+        throw new BulkConfigurationException(
+            "schema.keyspace must accompany schema.table in the configuration", "schema");
+      }
+
+      // If mapping is present, make sure it is parseable as a map.
+      if (config.hasPath(MAPPING)) {
+        Config mappingConfig = getMapping();
+        if (mappingConfig.hasPath(INFERRED_MAPPING_TOKEN) && !keyspaceTablePresent) {
+          throw new BulkConfigurationException(
+              "schema.keyspace and schema.table must be defined when using inferred mapping",
+              "schema");
+        }
+      }
+
+      // Either the keyspace and table must be present, or the mapping must be present.
+      if (!config.hasPath(MAPPING) && !keyspaceTablePresent) {
+        throw new BulkConfigurationException(
+            "schema.mapping, or schema.keyspace and schema.table must be defined", "schema");
+      }
+
+      // Either the keyspace and table must be present, or the mapping must be present.
+      if (!config.hasPath(QUERY) && !keyspaceTablePresent) {
+        throw new BulkConfigurationException(
+            "schema.query, or schema.keyspace and schema.table must be defined", "schema");
+      }
+      if (config.hasPath(QUERY)) {
+        query = config.getString(QUERY);
+      }
+
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
+    }
   }
 
   public RecordMapper createRecordMapper(
@@ -74,11 +128,7 @@ public class SchemaSettings implements SettingsValidator {
     PreparedStatement statement = prepareStatement(session, fieldsToVariables, WorkflowType.LOAD);
     DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
     return new DefaultRecordMapper(
-        statement,
-        mapping,
-        mergeRecordMetadata(recordMetadata),
-        nullStrings,
-        config.getBoolean("nullToUnset"));
+        statement, mapping, mergeRecordMetadata(recordMetadata), nullStrings, nullToUnset);
   }
 
   public ReadResultMapper createReadResultMapper(
@@ -112,57 +162,8 @@ public class SchemaSettings implements SettingsValidator {
                 .setToken("end", range.getEnd()));
   }
 
-  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
-    try {
-      config.getBoolean("nullToUnset");
-      config.getStringList("nullStrings");
-      boolean keyspaceTablePresent = false;
-      if (config.hasPath("keyspace") && config.hasPath("table")) {
-        keyspaceTablePresent = true;
-      }
-
-      // If table is present, keyspace must be, but not necessarily the other way around.
-      if (config.hasPath("table") && !config.hasPath("keyspace")) {
-        throw new BulkConfigurationException(
-            "schema.keyspace must accompany schema.table in the configuration", "schema");
-      }
-
-      // If mapping is present, make sure it is parseable as a map.
-      if (config.hasPath("mapping")) {
-        Config mapping = getMapping();
-        if (mapping.hasPath(INFERRED_MAPPING_TOKEN) && !keyspaceTablePresent) {
-          throw new BulkConfigurationException(
-              "schema.keyspace and schema.table must be defined when using inferred mapping",
-              "schema");
-        }
-      }
-
-      // Either the keyspace and table must be present, or the mapping must be present.
-      if (!config.hasPath("mapping") && !keyspaceTablePresent) {
-        throw new BulkConfigurationException(
-            "schema.mapping, or schema.keyspace and schema.table must be defined", "schema");
-      }
-
-      // Either the keyspace and table must be present, or the mapping must be present.
-      if (!config.hasPath("query") && !keyspaceTablePresent) {
-        throw new BulkConfigurationException(
-            "schema.query, or schema.keyspace and schema.table must be defined", "schema");
-      }
-
-    } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
-    }
-  }
-
   public String getKeyspace() {
-    String keyspace = config.getString("keyspace");
-    if (keyspace != null && keyspace.isEmpty()) {
-      keyspace = null;
-    }
-    if (keyspace != null) {
-      keyspace = Metadata.quoteIfNecessary(keyspace);
-    }
-    return keyspace;
+    return keyspaceName;
   }
 
   private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session)
@@ -170,9 +171,7 @@ public class SchemaSettings implements SettingsValidator {
     BiMap<String, String> fieldsToVariables = null;
     BiMap<String, String> explicitVariables = HashBiMap.create();
 
-    if (config.hasPath("keyspace") && config.hasPath("table")) {
-      keyspaceName = Metadata.quoteIfNecessary(config.getString("keyspace"));
-      tableName = Metadata.quoteIfNecessary(config.getString("table"));
+    if (keyspaceName != null && tableName != null) {
       KeyspaceMetadata keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
       Preconditions.checkNotNull(keyspace, "Keyspace does not exist: " + keyspaceName);
       table = keyspace.getTable(tableName);
@@ -180,7 +179,7 @@ public class SchemaSettings implements SettingsValidator {
           table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
     }
 
-    if (!config.hasPath("mapping")) {
+    if (!config.hasPath(MAPPING)) {
       fieldsToVariables = inferFieldsToVariablesMap();
     } else {
       Config mapping = getMapping();
@@ -253,14 +252,14 @@ public class SchemaSettings implements SettingsValidator {
   }
 
   private Config getMapping() throws BulkConfigurationException {
-    String mappingString = config.getString("mapping").replaceAll("\\*", INFERRED_MAPPING_TOKEN);
+    String mappingString = config.getString(MAPPING).replaceAll("\\*", INFERRED_MAPPING_TOKEN);
     try {
       return ConfigFactory.parseString(mappingString);
     } catch (ConfigException.Parse e) {
       // mappingString doesn't seem to be a map. Treat it as a list instead.
       Map<String, String> indexMap = new HashMap<>();
       int curInd = 0;
-      for (String s : config.getStringList("mapping")) {
+      for (String s : config.getStringList(MAPPING)) {
         indexMap.put(Integer.toString(curInd++), s);
       }
       return ConfigFactory.parseMap(indexMap);
@@ -268,10 +267,10 @@ public class SchemaSettings implements SettingsValidator {
   }
 
   private RecordMetadata mergeRecordMetadata(RecordMetadata fallback) {
-    if (config.hasPath("recordMetadata")) {
+    if (config.hasPath(RECORD_METADATA)) {
       ImmutableMap.Builder<String, TypeToken<?>> fieldsToTypes = new ImmutableMap.Builder<>();
       LoaderConfig recordMetadata =
-          new DefaultLoaderConfig(ConfigFactory.parseString(config.getString("recordMetadata")));
+          new DefaultLoaderConfig(ConfigFactory.parseString(config.getString(RECORD_METADATA)));
       for (String path : recordMetadata.root().keySet()) {
         fieldsToTypes.put(path, TypeToken.of(recordMetadata.getClass(path)));
       }
@@ -284,10 +283,7 @@ public class SchemaSettings implements SettingsValidator {
       Session session,
       ImmutableBiMap<String, String> fieldsToVariables,
       WorkflowType workflowType) {
-    String query;
-    if (config.hasPath("query")) {
-      query = config.getString("query");
-    } else {
+    if (query == null) {
       query =
           workflowType == WorkflowType.LOAD
               ? inferWriteQuery(fieldsToVariables)

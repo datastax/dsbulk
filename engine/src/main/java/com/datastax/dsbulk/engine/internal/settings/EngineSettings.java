@@ -6,40 +6,40 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.engine.WorkflowType;
 import com.typesafe.config.ConfigException;
 
 /** */
-public class EngineSettings implements SettingsValidator {
+public class EngineSettings {
 
-  private final LoaderConfig config;
+  private static final String MAX_CONCURRENT_MAPPINGS = "maxConcurrentMappings";
+  private static final String BUFFER_SIZE = "bufferSize";
+  private static final String DRY_RUN = "dryRun";
+
+  private final int maxConcurrentMappings;
+  private final int bufferSize;
+  private final boolean dryRun;
 
   EngineSettings(LoaderConfig config) {
-    this.config = config;
-  }
-
-  public int getMaxConcurrentMappings() {
-    return config.getThreads("maxConcurrentMappings");
-  }
-
-  public int getBufferSize() {
-    return config.getInt("bufferSize");
-  }
-
-  public boolean isDryRun() {
-    return config.getBoolean("dryRun");
-  }
-
-  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
-      config.getThreads("maxConcurrentMappings");
-      config.getInt("bufferSize");
-      config.getBoolean("dryRun");
+      maxConcurrentMappings = config.getThreads(MAX_CONCURRENT_MAPPINGS);
+      bufferSize = config.getInt(BUFFER_SIZE);
+      dryRun = config.getBoolean(DRY_RUN);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
     }
+  }
+
+  public int getMaxConcurrentMappings() {
+    return maxConcurrentMappings;
+  }
+
+  public int getBufferSize() {
+    return bufferSize;
+  }
+
+  public boolean isDryRun() {
+    return dryRun;
   }
 }

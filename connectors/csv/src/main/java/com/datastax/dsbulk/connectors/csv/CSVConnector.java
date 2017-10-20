@@ -78,6 +78,19 @@ import reactor.core.scheduler.Schedulers;
 public class CSVConnector implements Connector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
+  private static final String URL = "url";
+  private static final String FILE_NAME_PATTERN = "fileNamePattern";
+  private static final String ENCODING = "encoding";
+  private static final String DELIMITER = "delimiter";
+  private static final String QUOTE = "quote";
+  private static final String ESCAPE = "escape";
+  private static final String COMMENT = "comment";
+  private static final String SKIP_LINES = "skipLines";
+  private static final String MAX_LINES = "maxLines";
+  private static final String MAX_CONCURRENT_FILES = "maxConcurrentFiles";
+  private static final String RECURSIVE = "recursive";
+  private static final String HEADER = "header";
+  private static final String FILE_NAME_FORMAT = "fileNameFormat";
 
   private boolean read;
   private URL url;
@@ -103,20 +116,30 @@ public class CSVConnector implements Connector {
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
-    this.read = read;
-    url = settings.getURL("url");
-    pattern = settings.getString("fileNamePattern");
-    encoding = settings.getCharset("encoding");
-    delimiter = settings.getChar("delimiter");
-    quote = settings.getChar("quote");
-    escape = settings.getChar("escape");
-    comment = settings.getChar("comment");
-    skipLines = settings.getLong("skipLines");
-    maxLines = settings.getLong("maxLines");
-    maxConcurrentFiles = settings.getThreads("maxConcurrentFiles");
-    recursive = settings.getBoolean("recursive");
-    header = settings.getBoolean("header");
-    fileNameFormat = settings.getString("fileNameFormat");
+    try {
+      if (!settings.hasPath("url")) {
+        throw new BulkConfigurationException(
+            "url is mandatory when using the csv connector. Please set connector.csv.url "
+                + "and try again. See settings.md or help for more information.",
+            "connector.csv");
+      }
+      this.read = read;
+      url = settings.getURL(URL);
+      pattern = settings.getString(FILE_NAME_PATTERN);
+      encoding = settings.getCharset(ENCODING);
+      delimiter = settings.getChar(DELIMITER);
+      quote = settings.getChar(QUOTE);
+      escape = settings.getChar(ESCAPE);
+      comment = settings.getChar(COMMENT);
+      skipLines = settings.getLong(SKIP_LINES);
+      maxLines = settings.getLong(MAX_LINES);
+      maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
+      recursive = settings.getBoolean(RECURSIVE);
+      header = settings.getBoolean(HEADER);
+      fileNameFormat = settings.getString(FILE_NAME_FORMAT);
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
+    }
   }
 
   @Override
@@ -151,33 +174,6 @@ public class CSVConnector implements Connector {
         Executors.newCachedThreadPool(
             new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
     scheduler = Schedulers.fromExecutor(threadPool);
-  }
-
-  @Override
-  public void validate(LoaderConfig settings, boolean read) throws BulkConfigurationException {
-    try {
-      if (!settings.hasPath("url")) {
-        throw new BulkConfigurationException(
-            "url is mandatory when using the csv connector. Please set connector.csv.url "
-                + "and try again. See settings.md or help for more information.",
-            "connector.csv");
-      }
-      settings.getURL("url");
-      settings.getString("fileNamePattern");
-      settings.getCharset("encoding");
-      settings.getChar("delimiter");
-      settings.getChar("quote");
-      settings.getChar("escape");
-      settings.getChar("comment");
-      settings.getLong("skipLines");
-      settings.getLong("maxLines");
-      settings.getThreads("maxConcurrentFiles");
-      settings.getBoolean("recursive");
-      settings.getBoolean("header");
-      settings.getString("fileNameFormat");
-    } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
-    }
   }
 
   @Override

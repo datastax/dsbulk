@@ -10,7 +10,7 @@ import java.util.Collections;
 
 /** */
 public class StringUtils {
-
+  public static final String DELIMITER = ".";
   /**
    * Upper-cases the first letter of the given string
    *
