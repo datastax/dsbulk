@@ -75,6 +75,9 @@ public class SchemaSettingsTest {
     when(keyspace.getTable(anyString())).thenReturn(table);
     when(session.prepare(anyString())).thenReturn(ps);
     when(table.getColumns()).thenReturn(columns);
+    when(table.getColumn(C1)).thenReturn(col1);
+    when(table.getColumn(C2)).thenReturn(col2);
+    when(table.getColumn(C3)).thenReturn(col3);
     when(col1.getName()).thenReturn(C1);
     when(col2.getName()).thenReturn(C2);
     when(col3.getName()).thenReturn(C3);
@@ -124,6 +127,7 @@ public class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
+    System.out.println(argument.getValue());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format("insert into ks.table (%1$s,\"%2$s\") values (:%1$s,:\"%2$s\")", C1, C2));
@@ -220,28 +224,6 @@ public class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(String.format("INSERT INTO ks.t1(%1$s) VALUES (:%1$s)", C1));
     assertMapping((DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), C1, C1);
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
-  }
-
-  @Test
-  public void should_create_record_mapper_with_infered_mapping_restricted() throws Exception {
-    // Infer mapping but only for C1 and C2.
-    LoaderConfig config =
-        makeLoaderConfig(
-            "nullToUnset = true, keyspace=ks, table=t1, "
-                + String.format("mapping = \"{ *=[%1$s, \\\"%2$s\\\"] }\"", C1, C2));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
-    assertThat(recordMapper).isNotNull();
-    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
-    verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format("INSERT INTO ks.t1(%1$s,\"%2$s\") VALUES (:%1$s,:\"%2$s\")", C1, C2));
-    assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), C1, C1, C2, C2);
     assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
     assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
@@ -453,29 +435,6 @@ public class SchemaSettingsTest {
         .isEqualTo(
             String.format("SELECT %1$s FROM ks.t1 WHERE token() > :start AND token() <= :end", C1));
     assertMapping((DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"), C1, C1);
-    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
-  }
-
-  @Test
-  public void should_create_row_mapper_with_infered_mapping_restricted() throws Exception {
-    // Infer mapping but only for C1 and C2.
-    LoaderConfig config =
-        makeLoaderConfig(
-            "nullToUnset = true, keyspace=ks, table=t1, "
-                + String.format("mapping = \"{ *=[%1$s, \\\"%2$s\\\"] }\"", C1, C2));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    assertThat(readResultMapper).isNotNull();
-    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
-    verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "SELECT %1$s,\"%2$s\" FROM ks.t1 WHERE token() > :start AND token() <= :end",
-                C1, C2));
-    assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"), C1, C1, C2, C2);
     assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
