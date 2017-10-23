@@ -22,7 +22,6 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.MetricsReportingExecutionListener;
-import java.time.Duration;
 import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -39,8 +38,6 @@ public class MetricsManager implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricsManager.class);
 
   private final MetricRegistry registry = new MetricRegistry();
-  private final MetricsCollectingExecutionListener listener =
-      new MetricsCollectingExecutionListener(registry);
 
   private final WorkflowType workflowType;
   private final String executionId;
@@ -50,8 +47,9 @@ public class MetricsManager implements AutoCloseable {
   private final long expectedWrites;
   private final long expectedReads;
   private final boolean jmx;
-  private final Duration reportInterval;
+  private final long reportIntervalSeconds;
   private final boolean batchingEnabled;
+  private final MetricsCollectingExecutionListener listener;
 
   private Meter records;
   private Meter failedRecords;
@@ -76,8 +74,9 @@ public class MetricsManager implements AutoCloseable {
       long expectedWrites,
       long expectedReads,
       boolean jmx,
-      Duration reportInterval,
-      boolean batchingEnabled) {
+      long reportIntervalSeconds,
+      boolean batchingEnabled,
+      long requestTimeoutMilis) {
     this.workflowType = workflowType;
     this.executionId = executionId;
     this.scheduler = scheduler;
@@ -86,8 +85,14 @@ public class MetricsManager implements AutoCloseable {
     this.expectedWrites = expectedWrites;
     this.expectedReads = expectedReads;
     this.jmx = jmx;
-    this.reportInterval = reportInterval;
+    this.reportIntervalSeconds = reportIntervalSeconds;
     this.batchingEnabled = batchingEnabled;
+    listener =
+        new MetricsCollectingExecutionListener(
+            registry,
+            requestTimeoutMilis,
+            5,
+            MetricsReportingExecutionListener.REPORTED_PERCENTILES);
   }
 
   public void init() {
@@ -148,17 +153,17 @@ public class MetricsManager implements AutoCloseable {
 
   private void startResultMappingsReporter() {
     resultMappingsReporter = new RecordReporter(registry, rateUnit, scheduler, expectedWrites);
-    resultMappingsReporter.start(reportInterval.getSeconds(), SECONDS);
+    resultMappingsReporter.start(reportIntervalSeconds, SECONDS);
   }
 
   private void startRecordMappingsReporter() {
     recordMappingsReporter = new MappingReporter(registry, rateUnit, scheduler, expectedWrites);
-    recordMappingsReporter.start(reportInterval.getSeconds(), SECONDS);
+    recordMappingsReporter.start(reportIntervalSeconds, SECONDS);
   }
 
   private void startBatchesReporter() {
     batchesReporter = new BatchReporter(registry, scheduler);
-    batchesReporter.start(reportInterval.getSeconds(), SECONDS);
+    batchesReporter.start(reportIntervalSeconds, SECONDS);
   }
 
   private void startWritesReporter() {
@@ -173,7 +178,7 @@ public class MetricsManager implements AutoCloseable {
       builder.expectingTotalEvents(expectedWrites);
     }
     writesReporter = builder.build();
-    writesReporter.start(reportInterval.getSeconds(), SECONDS);
+    writesReporter.start(reportIntervalSeconds, SECONDS);
   }
 
   private void startReadsReporter() {
@@ -188,7 +193,7 @@ public class MetricsManager implements AutoCloseable {
       builder.expectingTotalEvents(expectedWrites);
     }
     readsReporter = builder.build();
-    readsReporter.start(reportInterval.getSeconds(), SECONDS);
+    readsReporter.start(reportIntervalSeconds, SECONDS);
   }
 
   @Override

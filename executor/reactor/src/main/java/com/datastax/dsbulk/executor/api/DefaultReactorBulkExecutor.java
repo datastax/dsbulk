@@ -13,8 +13,10 @@ import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.subscription.ReadResultSubscription;
 import com.datastax.dsbulk.executor.api.internal.subscription.WriteResultSubscription;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
+import com.datastax.dsbulk.executor.api.result.QueueFactory;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.dsbulk.executor.api.throttling.RateLimiter;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -62,18 +64,11 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
       Session session,
       boolean failFast,
       int maxInFlightRequests,
-      int maxRequestsPerSecond,
+      RateLimiter rateLimiter,
       ExecutionListener listener,
       Executor executor,
-      QueueFactory<ReadResult> queueFactory) {
-    super(
-        session,
-        failFast,
-        maxInFlightRequests,
-        maxRequestsPerSecond,
-        listener,
-        executor,
-        queueFactory);
+      QueueFactory queueFactory) {
+    super(session, failFast, maxInFlightRequests, rateLimiter, listener, executor, queueFactory);
     this.scheduler = Schedulers.fromExecutor(this.executor);
   }
 
@@ -232,7 +227,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   }
 
   @Override
-  public void close() throws InterruptedException {
+  public void close() throws Exception {
     super.close();
     scheduler.dispose();
   }

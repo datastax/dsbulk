@@ -6,7 +6,9 @@
  */
 package com.datastax.dsbulk.executor.api.listener;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
@@ -14,9 +16,13 @@ import com.codahale.metrics.Timer;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.github.rollingmetrics.histogram.HdrBuilder;
+import com.github.rollingmetrics.histogram.OverflowResolver;
+import java.time.Duration;
 import java.util.stream.IntStream;
 
 /** A {@link ExecutionListener} that records useful metrics about the ongoing bulk operations. */
+@SuppressWarnings({"Duplicates", "WeakerAccess"})
 public class MetricsCollectingExecutionListener implements ExecutionListener {
 
   private final MetricRegistry registry;
@@ -37,53 +43,69 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   private final Counter successfulReadsWritesCounter;
   private final Counter failedReadsWritesCounter;
 
-  /** Creates a new instance using a newly-allocated {@link MetricRegistry}. */
+  private final Counter inFlightRequestsCounter;
+
+  /**
+   * Creates a new instance using a newly-allocated {@link MetricRegistry}, a request timeout of 60
+   * seconds, no snapshot caching and tracing percentiles at 0.5, 0.75, 0.99, and 0.999.
+   */
   public MetricsCollectingExecutionListener() {
     this(new MetricRegistry());
+  }
+
+  /**
+   * Creates a new instance using a newly-allocated {@link MetricRegistry}, a request timeout of 60
+   * seconds, no snapshot caching and tracing percentiles at 0.5, 0.75, 0.99, and 0.999.
+   */
+  public MetricsCollectingExecutionListener(MetricRegistry registry) {
+    this(registry, SECONDS.toMillis(60), 0, MetricsReportingExecutionListener.REPORTED_PERCENTILES);
   }
 
   /**
    * Creates a new instance using the given {@link MetricRegistry}.
    *
    * @param registry The {@link MetricRegistry} to use.
+   * @param requestTimeoutMillis The request timeout in milliseconds to use; latencies higher than
+   *     this value will be rounded down.
+   * @param snapshotCacheIntervalSeconds The interval in seconds during which histogram snapshots
+   *     can be cached.
+   * @param percentilesToRecord the percentiles to record (to optimize memory footprint).
    */
-  public MetricsCollectingExecutionListener(MetricRegistry registry) {
+  public MetricsCollectingExecutionListener(
+      MetricRegistry registry,
+      long requestTimeoutMillis,
+      int snapshotCacheIntervalSeconds,
+      double[] percentilesToRecord) {
     this.registry = registry;
 
-    statementsTimer = registry.timer("executor/statements/total");
+    HdrBuilder hdrBuilder =
+        new HdrBuilder()
+            .resetReservoirPeriodicallyByChunks(Duration.ofMinutes(1), 10)
+            .withSignificantDigits(3)
+            .withLowestDiscernibleValue(MILLISECONDS.toNanos(1))
+            .withHighestTrackableValue(
+                MILLISECONDS.toNanos(requestTimeoutMillis),
+                OverflowResolver.REDUCE_TO_HIGHEST_TRACKABLE)
+            .withSnapshotCachingDuration(Duration.ofSeconds(snapshotCacheIntervalSeconds))
+            .withPredefinedPercentiles(percentilesToRecord);
+
+    statementsTimer = registry.timer("executor/statements/total", hdrBuilder::buildTimer);
     successfulStatementsCounter = registry.counter("executor/statements/successful");
     failedStatementsCounter = registry.counter("executor/statements/failed");
 
-    readsTimer = registry.timer("executor/reads/total");
+    readsTimer = registry.timer("executor/reads/total", hdrBuilder::buildTimer);
     successfulReadsCounter = registry.counter("executor/reads/successful");
     failedReadsCounter = registry.counter("executor/reads/failed");
 
-    writesTimer = registry.timer("executor/writes/total");
+    writesTimer = registry.timer("executor/writes/total", hdrBuilder::buildTimer);
     successfulWritesCounter = registry.counter("executor/writes/successful");
     failedWritesCounter = registry.counter("executor/writes/failed");
 
-    readsWritesTimer = registry.timer("executor/reads-writes/total");
+    readsWritesTimer = registry.timer("executor/reads-writes/total", hdrBuilder::buildTimer);
     successfulReadsWritesCounter = registry.counter("executor/reads-writes/successful");
     failedReadsWritesCounter = registry.counter("executor/reads-writes/failed");
-  }
 
-  private static void start(ExecutionContext context, Timer timer) {
-    context.setAttribute(timer, timer.time());
-  }
-
-  private static void stop(ExecutionContext context, Timer timer, int delta) {
-    Timer.Context timerContext =
-        (Timer.Context) context.getAttribute(timer).orElseThrow(IllegalStateException::new);
-    long elapsed = timerContext.stop();
-    IntStream.range(1, delta).forEach(v -> timer.update(elapsed, NANOSECONDS));
-  }
-
-  private static int delta(Statement statement) {
-    if (statement instanceof BatchStatement) {
-      return ((BatchStatement) statement).size();
-    } else {
-      return 1;
-    }
+    inFlightRequestsCounter = registry.counter("executor/in-flight");
   }
 
   /**
@@ -230,21 +252,26 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     return failedReadsWritesCounter;
   }
 
-  @Override
-  public void onExecutionStarted(Statement statement, ExecutionContext context) {
-    start(context, statementsTimer);
+  /**
+   * Returns a {@link Counter} that evaluates the number of current in-flight requests, i.e. the
+   * number of uncompleted futures waiting for a response from the server.
+   *
+   * <p>This gauge measures the sum of in-flight requests over the past minute, and applies a
+   *
+   * @return a {@link Counter} that evaluates the number of current in-flight requests.
+   */
+  public Counter getInFlightRequestsCounter() {
+    return inFlightRequestsCounter;
   }
 
   @Override
   public void onWriteRequestStarted(Statement statement, ExecutionContext context) {
-    start(context, writesTimer);
-    start(context, readsWritesTimer);
+    inFlightRequestsCounter.inc();
   }
 
   @Override
   public void onReadRequestStarted(Statement statement, ExecutionContext context) {
-    start(context, readsTimer);
-    start(context, readsWritesTimer);
+    inFlightRequestsCounter.inc();
   }
 
   @Override
@@ -254,6 +281,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     stop(context, readsWritesTimer, delta);
     successfulWritesCounter.inc(delta);
     successfulReadsWritesCounter.inc(delta);
+    inFlightRequestsCounter.dec();
   }
 
   @Override
@@ -263,6 +291,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     stop(context, readsWritesTimer, delta);
     failedWritesCounter.inc(delta);
     failedReadsWritesCounter.inc(delta);
+    inFlightRequestsCounter.dec();
   }
 
   @Override
@@ -272,6 +301,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     stop(context, readsWritesTimer, numberOfRows);
     successfulReadsCounter.inc(numberOfRows);
     successfulReadsWritesCounter.inc(numberOfRows);
+    inFlightRequestsCounter.dec();
   }
 
   @Override
@@ -280,6 +310,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     stop(context, readsWritesTimer, 1);
     failedReadsCounter.inc();
     failedReadsWritesCounter.inc();
+    inFlightRequestsCounter.dec();
   }
 
   @Override
@@ -292,5 +323,18 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   public void onExecutionFailed(BulkExecutionException exception, ExecutionContext context) {
     stop(context, statementsTimer, 1);
     failedStatementsCounter.inc();
+  }
+
+  private static void stop(ExecutionContext context, Timer timer, int delta) {
+    long elapsed = context.elapsedTimeNanos();
+    IntStream.range(0, delta).forEach(v -> timer.update(elapsed, NANOSECONDS));
+  }
+
+  private static int delta(Statement statement) {
+    if (statement instanceof BatchStatement) {
+      return ((BatchStatement) statement).size();
+    } else {
+      return 1;
+    }
   }
 }

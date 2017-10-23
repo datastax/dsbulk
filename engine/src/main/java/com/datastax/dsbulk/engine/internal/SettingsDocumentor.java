@@ -68,7 +68,8 @@ public class SettingsDocumentor {
           "driver.auth.password",
           "driver.auth.username",
           "driver.query.consistency",
-          "executor.maxPerSecond",
+          "executor.throttling.enabled",
+          "executor.throttling.rate",
           "log.maxErrors",
           "log.directory",
           "monitoring.reportRate");

@@ -16,7 +16,6 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.typesafe.config.ConfigFactory;
-import java.time.Duration;
 import org.junit.Test;
 import org.mockito.internal.util.reflection.Whitebox;
 
@@ -28,12 +27,11 @@ public class MonitoringSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.monitoring"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
-    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true);
+    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true, 60000);
     assertThat(metricsManager).isNotNull();
     assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
     assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(MILLISECONDS);
-    assertThat(Whitebox.getInternalState(metricsManager, "reportInterval"))
-        .isEqualTo(Duration.ofSeconds(5));
+    assertThat(Whitebox.getInternalState(metricsManager, "reportIntervalSeconds")).isEqualTo(5L);
     assertThat(Whitebox.getInternalState(metricsManager, "expectedWrites")).isEqualTo(-1L);
     assertThat(Whitebox.getInternalState(metricsManager, "expectedReads")).isEqualTo(-1L);
     assertThat(Whitebox.getInternalState(metricsManager, "jmx")).isEqualTo(true);
@@ -51,12 +49,11 @@ public class MonitoringSettingsTest {
                     + "expectedReads = 50,"
                     + "jmx = false"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
-    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true);
+    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true, 60000);
     assertThat(metricsManager).isNotNull();
     assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);
     assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(SECONDS);
-    assertThat(Whitebox.getInternalState(metricsManager, "reportInterval"))
-        .isEqualTo(Duration.ofMinutes(30));
+    assertThat(Whitebox.getInternalState(metricsManager, "reportIntervalSeconds")).isEqualTo(1800L);
     assertThat(Whitebox.getInternalState(metricsManager, "expectedWrites")).isEqualTo(1000L);
     assertThat(Whitebox.getInternalState(metricsManager, "expectedReads")).isEqualTo(50L);
     assertThat(Whitebox.getInternalState(metricsManager, "jmx")).isEqualTo(false);

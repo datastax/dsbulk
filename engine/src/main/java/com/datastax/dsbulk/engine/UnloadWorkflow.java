@@ -87,7 +87,9 @@ public class UnloadWorkflow implements Workflow {
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
-    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD, false);
+    metricsManager =
+        monitoringSettings.newMetricsManager(
+            WorkflowType.UNLOAD, false, driverSettings.getRequestTimeoutMillis());
     metricsManager.init();
     logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
     logManager.init(subscriber, subscriber);

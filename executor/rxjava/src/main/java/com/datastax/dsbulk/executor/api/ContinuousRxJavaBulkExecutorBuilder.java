@@ -10,7 +10,7 @@ import static com.datastax.dsbulk.executor.api.DefaultRxJavaBulkExecutorBuilder.
 
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
-import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.dsbulk.executor.api.result.QueueFactory;
 
 /** A builder for {@link ContinuousRxJavaBulkExecutor} instances. */
 public class ContinuousRxJavaBulkExecutorBuilder
@@ -45,7 +45,7 @@ public class ContinuousRxJavaBulkExecutorBuilder
    */
   @Override
   public AbstractBulkExecutorBuilder<ContinuousRxJavaBulkExecutor> withQueueFactory(
-      QueueFactory<ReadResult> queueFactory) {
+      QueueFactory queueFactory) {
     return super.withQueueFactory(queueFactory);
   }
 
@@ -56,7 +56,7 @@ public class ContinuousRxJavaBulkExecutorBuilder
         options,
         failFast,
         maxInFlightRequests,
-        maxRequestsPerSecond,
+        rateLimiter,
         listener,
         executor.get(),
         queueFactory);

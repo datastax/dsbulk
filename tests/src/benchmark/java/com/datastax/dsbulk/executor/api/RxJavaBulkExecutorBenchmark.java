@@ -206,7 +206,7 @@ public class RxJavaBulkExecutorBenchmark {
     }
 
     @TearDown(Level.Trial)
-    public void shutdown() throws InterruptedException {
+    public void shutdown() throws Exception {
       executor.close();
       continuousExecutor.close();
       session.close();

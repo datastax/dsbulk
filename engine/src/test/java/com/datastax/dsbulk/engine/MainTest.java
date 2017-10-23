@@ -405,7 +405,7 @@ public class MainTest {
               "10",
               "--executor.maxInFlight",
               "12",
-              "--executor.maxPerSecond",
+              "--executor.throttling.rate",
               "13",
               "--executor.continuousPaging.pageUnit",
               "BYTES",
@@ -530,7 +530,7 @@ public class MainTest {
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
     assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);
     assertThat(result.getInt("executor.maxInFlight")).isEqualTo(12);
-    assertThat(result.getInt("executor.maxPerSecond")).isEqualTo(13);
+    assertThat(result.getInt("executor.throttling.rate")).isEqualTo(13);
     assertThat(result.getString("executor.continuousPaging.pageUnit")).isEqualTo("BYTES");
     assertThat(result.getInt("executor.continuousPaging.pageSize")).isEqualTo(14);
     assertThat(result.getInt("executor.continuousPaging.maxPages")).isEqualTo(15);

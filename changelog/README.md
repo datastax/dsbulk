@@ -71,3 +71,5 @@
 - [bug] DAT-136: Large records cause the workflow to OOM.
 - [bug] DAT-138: When maxErrors is reached the workflow does not always stop.
 - [bug] DAT-128: Last recorded locations should be 100% accurate.
+- [new feature] DAT-139: Dynamic rate limiter.
+- [improvement] DAT-145: Use HdrHistogram as reservoir for latency measurement.

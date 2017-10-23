@@ -29,7 +29,8 @@ public class MonitoringSettings implements SettingsValidator {
     this.executionId = executionId;
   }
 
-  public MetricsManager newMetricsManager(WorkflowType workflowType, boolean batchingEnabled) {
+  public MetricsManager newMetricsManager(
+      WorkflowType workflowType, boolean batchingEnabled, long requestTimeoutMilis) {
     ThreadFactory threadFactory =
         new ThreadFactoryBuilder()
             .setDaemon(true)
@@ -52,8 +53,9 @@ public class MonitoringSettings implements SettingsValidator {
         expectedWrites,
         expectedReads,
         jmx,
-        reportInterval,
-        batchingEnabled);
+        reportInterval.getSeconds() == 0 ? 1 : reportInterval.getSeconds(),
+        batchingEnabled,
+        requestTimeoutMilis);
   }
 
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
