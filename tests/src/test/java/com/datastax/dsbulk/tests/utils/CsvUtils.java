@@ -59,6 +59,8 @@ public class CsvUtils {
       ClassLoader.getSystemResource("ip-by-country-partial-bad.csv");
   public static final URL CSV_RECORDS_SKIP =
       ClassLoader.getSystemResource("ip-by-country-skip-bad.csv");
+  public static final URL CSV_RECORDS_LONG =
+      ClassLoader.getSystemResource("ip-by-country-long-column.csv");
   public static final URL CSV_RECORDS_ERROR =
       ClassLoader.getSystemResource("ip-by-country-error.csv");
   public static final URL CSV_RECORDS_WITH_SPACES =

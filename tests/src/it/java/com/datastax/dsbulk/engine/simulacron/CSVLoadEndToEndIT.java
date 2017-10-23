@@ -217,6 +217,32 @@ public class CSVLoadEndToEndIT {
     EndToEndUtils.validateExceptionsLog(3, "Source  :", "mapping-errors.log");
   }
 
+  @Test
+  public void load_long_column() throws Exception {
+    //This will attempt to load a CSV file with column longer then 4096 characters.
+    String[] args = {
+      "load",
+      "--log.directory",
+      "./target",
+      "-header",
+      "false",
+      "--connector.csv.url",
+      CsvUtils.CSV_RECORDS_LONG.toExternalForm(),
+      "--driver.query.consistency",
+      "LOCAL_ONE",
+      "--driver.hosts",
+      "" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.protocol.compression",
+      "NONE",
+      "--schema.query",
+      CsvUtils.INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      "{0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+    };
+    new Main(args).run();
+    validateQueryCount(1, ConsistencyLevel.LOCAL_ONE);
+  }
+
   private void validateQueryCount(int numOfQueries, ConsistencyLevel level) {
     EndToEndUtils.validateQueryCount(simulacron, numOfQueries, "INSERT INTO ip_by_country", level);
   }
