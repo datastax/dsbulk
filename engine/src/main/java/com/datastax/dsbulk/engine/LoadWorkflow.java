@@ -110,7 +110,7 @@ public class LoadWorkflow implements Workflow {
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Statement> flux =
         Flux.from(connector.read())
-            .publish(upstream -> upstream, bufferSize)
+            .publishOn(scheduler, bufferSize)
             .transform(metricsManager.newUnmappableRecordMonitor())
             .transform(logManager.newUnmappableRecordErrorHandler())
             .parallel(maxConcurrentMappings)
