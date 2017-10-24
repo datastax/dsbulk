@@ -140,6 +140,7 @@ public class CSVConnector implements Connector {
       // parserSettings.setNumberOfRowsToSkip(skipLines);
       parserSettings.setHeaderExtractionEnabled(header);
       parserSettings.setLineSeparatorDetectionEnabled(true);
+      parserSettings.setMaxCharsPerColumn(-1);
     } else {
       writerSettings = new CsvWriterSettings();
       writerSettings.setFormat(format);
