@@ -43,6 +43,7 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -221,20 +222,17 @@ public class SchemaSettings implements SettingsValidator {
 
   private void validateAllFieldsPresent(BiMap<String, String> fieldsToVariables) {
     if (table != null) {
-      fieldsToVariables
-          .entrySet()
-          .forEach(
-              action -> {
-                String value = action.getValue();
-                if (table.getColumn(value) == null) {
-                  throw new BulkConfigurationException(
-                      "Schema mapping "
-                          + value
-                          + " doesn't match any column found in table "
-                          + table.getName(),
-                      "schema.mapping");
-                }
-              });
+      fieldsToVariables.forEach(
+          (key, value) -> {
+            if (table.getColumn(value) == null) {
+              throw new BulkConfigurationException(
+                  "Schema mapping "
+                      + value
+                      + " doesn't match any column found in table "
+                      + table.getName(),
+                  "schema.mapping");
+            }
+          });
     }
   }
 
@@ -259,7 +257,13 @@ public class SchemaSettings implements SettingsValidator {
     try {
       return ConfigFactory.parseString(mappingString);
     } catch (ConfigException.Parse e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema.mapping");
+      // mappingString doesn't seem to be a map. Treat it as a list instead.
+      Map<String, String> indexMap = new HashMap<>();
+      int curInd = 0;
+      for (String s : config.getStringList("mapping")) {
+        indexMap.put(Integer.toString(curInd++), s);
+      }
+      return ConfigFactory.parseMap(indexMap);
     }
   }
 
@@ -382,8 +386,7 @@ public class SchemaSettings implements SettingsValidator {
     }
 
     private void processSpec(String specString) {
-      if (specString.equals(INFERRED_MAPPING_TOKEN)) {
-      } else if (specString.startsWith("-")) {
+      if (specString.startsWith("-")) {
         // We're excluding a particular column. This implies that
         // we include all others.
         excludes.add(specString.substring(1));

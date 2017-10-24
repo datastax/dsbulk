@@ -113,6 +113,28 @@ public class SchemaSettingsTest {
   }
 
   @Test
+  public void should_create_record_mapper_when_mapping_is_a_list() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
+                + "nullToUnset = true, "
+                + "keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s)", C1, C2));
+    assertMapping(
+        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "0", C2, "1", C1);
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+  }
+
+  @Test
   public void should_create_record_mapper_when_mapping_and_statement_provided() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
@@ -364,6 +386,29 @@ public class SchemaSettingsTest {
                 C1, C2));
     assertMapping(
         (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"), "0", C2, "2", C1);
+    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
+  }
+
+  @Test
+  public void should_create_row_mapper_when_mapping_is_a_list() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
+                + "nullToUnset = true, "
+                + "keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    ReadResultMapper readResultMapper =
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    assertThat(readResultMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                C1, C2));
+    assertMapping(
+        (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"), "0", C2, "1", C1);
     assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
