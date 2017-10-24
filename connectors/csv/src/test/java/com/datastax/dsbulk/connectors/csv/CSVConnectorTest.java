@@ -80,6 +80,33 @@ public class CSVConnectorTest {
   }
 
   @Test
+  public void should_read_single_file_by_resource() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", escape = \"\\\"\", comment = \"#\"", url("/sample.csv")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> actual = Flux.merge(connector.readByResource()).collectList().block();
+    assertThat(actual).hasSize(5);
+    assertThat(actual.get(0).values())
+        .containsOnly("1997", "Ford", "E350", "ac, abs, moon", "3000.00");
+    assertThat(actual.get(1).values())
+        .containsOnly("1999", "Chevy", "Venture \"Extended Edition\"", null, "4900.00");
+    assertThat(actual.get(2).values())
+        .containsOnly(
+            "1996", "Jeep", "Grand Cherokee", "MUST SELL!\nair, moon roof, loaded", "4799.00");
+    assertThat(actual.get(3).values())
+        .containsOnly("1999", "Chevy", "Venture \"Extended Edition, Very Large\"", null, "5000.00");
+    assertThat(actual.get(4).values())
+        .containsOnly(null, null, "Venture \"Extended Edition\"", null, "4900.00");
+    connector.close();
+  }
+
+  @Test
   public void should_read_from_stdin_with_special_encoding() throws Exception {
     InputStream stdin = System.in;
     try {
@@ -126,7 +153,7 @@ public class CSVConnectorTest {
               .autoConnect(2);
       records.subscribe(connector.write());
       records.blockLast();
-      assertThat(new String(baos.toByteArray(), "UTF-8")).isEqualTo("fóô,bàr,qïx\n");
+      assertThat(new String(baos.toByteArray(), "ISO-8859-1")).isEqualTo("fóô,bàr,qïx\n");
       connector.close();
     } finally {
       System.setOut(stdout);
@@ -135,7 +162,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_scan_directory() throws Exception {
+  public void should_read_all_resources_in_directory() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -149,7 +176,21 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_scan_directory_with_path() throws Exception {
+  public void should_read_all_resources_in_directory_by_resource() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format("url = \"%s\", recursive = false", url("/root")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(300);
+    connector.close();
+  }
+
+  @Test
+  public void should_read_all_resources_in_directory_with_path() throws Exception {
     CSVConnector connector = new CSVConnector();
     String rootPath = CSVConnectorTest.class.getResource("/root").getPath();
     if (PlatformUtils.isWindows()) {
@@ -168,7 +209,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_scan_directory_recursively() throws Exception {
+  public void should_read_all_resources_in_directory_recursively() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -177,6 +218,19 @@ public class CSVConnectorTest {
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
+    connector.close();
+  }
+
+  @Test
+  public void should_read_all_resources_in_directory_recursively_by_resource() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(String.format("url = \"%s\", recursive = true", url("/root")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(500);
     connector.close();
   }
 

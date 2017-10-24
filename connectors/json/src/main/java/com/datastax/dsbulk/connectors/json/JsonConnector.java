@@ -25,6 +25,12 @@ public class JsonConnector implements Connector {
   }
 
   @Override
+  public Publisher<Publisher<Record>> readByResource() {
+    // TODO
+    return null;
+  }
+
+  @Override
   public Subscriber<Record> write() {
     // TODO
     return null;

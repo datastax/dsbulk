@@ -4,6 +4,7 @@
 
 - [improvement] DAT-81: Surface setup errors better.
 - [improvement] DAT-145: Use HdrHistogram as reservoir for latency measurement.
+- [improvement] DAT-146: Optimize load workflow for multiple files.
 
 
 ### 1.0.0-beta1

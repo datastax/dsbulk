@@ -15,11 +15,21 @@ import org.reactivestreams.Subscriber;
 public interface Connector extends AutoCloseable {
 
   /**
-   * Reads records from the datasource.
+   * Reads all records from the datasource in one single flow.
    *
    * @return a {@link Publisher} of records read from the datasource.
    */
   Publisher<Record> read();
+
+  /**
+   * Reads all records from the datasource in a flow of flows, grouped by resources.
+   *
+   * <p>This method might yield better performance when the number of resources to read is high
+   * (that is, higher than the number of available CPU cores).
+   *
+   * @return a {@link Publisher} of records read from the datasource, grouped by resources.
+   */
+  Publisher<Publisher<Record>> readByResource();
 
   /**
    * Writes records to the datasource.
@@ -29,7 +39,7 @@ public interface Connector extends AutoCloseable {
   Subscriber<Record> write();
 
   /**
-   * Validatesthe connector settings.
+   * Validates the connector settings.
    *
    * @param settings the settings to validate.
    * @param read whether the connector should be configured for reading or writing.
@@ -73,5 +83,17 @@ public interface Connector extends AutoCloseable {
    */
   default RecordMetadata getRecordMetadata() {
     return RecordMetadata.DEFAULT;
+  }
+
+  /**
+   * Returns an estimation of the total number of resources to read.
+   *
+   * <p>This method should return {@code -1} if the number of resources to read is unknown, or if
+   * the connector cannot read, or if the connector has not been configured to read but to write.
+   *
+   * @return an estimation of the total number of resources to read.
+   */
+  default long estimatedResourceCount() {
+    return -1L;
   }
 }

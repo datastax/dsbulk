@@ -53,6 +53,7 @@ import org.mockito.internal.util.reflection.Whitebox;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 /** */
 @SuppressWarnings("FieldCanBeLocal")
@@ -454,7 +455,7 @@ public class LogManagerTest {
                 throw new RuntimeException(e);
               }
             })
-        .transform(logManager.newResultPositionTracker())
+        .transform(logManager.newResultPositionTracker(Schedulers.elastic()))
         .blockLast();
     @SuppressWarnings("unchecked")
     Map<URI, List<Range<Long>>> positions =

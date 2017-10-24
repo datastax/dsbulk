@@ -108,27 +108,51 @@ public class LoadWorkflow implements Workflow {
   public void execute() throws InterruptedException {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    Flux<Statement> flux =
-        Flux.from(connector.read())
-            .publishOn(scheduler, bufferSize)
-            .transform(metricsManager.newUnmappableRecordMonitor())
-            .transform(logManager.newUnmappableRecordErrorHandler())
-            .parallel(maxConcurrentMappings)
-            .runOn(scheduler)
-            .map(recordMapper::map)
-            .sequential()
-            .transform(metricsManager.newUnmappableStatementMonitor())
-            .transform(logManager.newUnmappableStatementErrorHandler());
-    if (batchingEnabled) {
-      flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
+    long resourceCount = connector.estimatedResourceCount();
+    if (resourceCount >= 4) {
+      LOGGER.info("Optimizing reads by resource (estimated resource count: {})", resourceCount);
+      Flux.from(connector.readByResource())
+          .flatMap(
+              records -> {
+                Flux<Statement> flux =
+                    Flux.from(records)
+                        .transform(metricsManager.newUnmappableRecordMonitor())
+                        .transform(logManager.newUnmappableRecordErrorHandler())
+                        .map(recordMapper::map)
+                        .transform(metricsManager.newUnmappableStatementMonitor())
+                        .transform(logManager.newUnmappableStatementErrorHandler());
+                if (batchingEnabled) {
+                  flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
+                }
+                return flux.flatMap(
+                        statement -> executor.writeReactive(statement), maxConcurrentWrites)
+                    .transform(logManager.newWriteErrorHandler())
+                    .transform(logManager.newResultPositionTracker(scheduler))
+                    .subscribeOn(scheduler);
+              },
+              maxConcurrentMappings)
+          .subscribe(subscriber);
+    } else {
+      LOGGER.info("Not optimizing reads by resource (estimated resource count: {})", resourceCount);
+      Flux<Statement> flux =
+          Flux.from(connector.read())
+              .publishOn(scheduler, bufferSize)
+              .transform(metricsManager.newUnmappableRecordMonitor())
+              .transform(logManager.newUnmappableRecordErrorHandler())
+              .parallel(maxConcurrentMappings)
+              .runOn(scheduler)
+              .map(recordMapper::map)
+              .sequential()
+              .transform(metricsManager.newUnmappableStatementMonitor())
+              .transform(logManager.newUnmappableStatementErrorHandler());
+      if (batchingEnabled) {
+        flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
+      }
+      flux.flatMap(executor::writeReactive, maxConcurrentWrites)
+          .transform(logManager.newWriteErrorHandler())
+          .transform(logManager.newResultPositionTracker(scheduler))
+          .subscribe(subscriber);
     }
-    flux.flatMap(executor::writeReactive, maxConcurrentWrites)
-        .transform(logManager.newWriteErrorHandler())
-        .parallel(maxConcurrentMappings)
-        .runOn(scheduler)
-        .composeGroup(logManager.newResultPositionTracker())
-        .sequential()
-        .subscribe(subscriber);
     subscriber.block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);

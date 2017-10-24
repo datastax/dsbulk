@@ -104,16 +104,32 @@ public class UnloadWorkflow implements Workflow {
   public void execute() throws InterruptedException {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    Flux.fromIterable(readStatements)
-        .flatMap(executor::readReactive)
-        .transform(logManager.newReadErrorHandler())
-        .parallel(maxConcurrentMappings, bufferSize)
-        .runOn(scheduler)
-        .map(readResultMapper::map)
-        .sequential()
-        .transform(metricsManager.newUnmappableRecordMonitor())
-        .transform(logManager.newUnmappableRecordErrorHandler())
-        .subscribe(subscriber);
+    if (readStatements.size() >= 4) {
+      Flux.fromIterable(readStatements)
+          .flatMap(
+              statement ->
+                  executor
+                      .readReactive(statement)
+                      .transform(logManager.newReadErrorHandler())
+                      .map(readResultMapper::map)
+                      .transform(metricsManager.newUnmappableRecordMonitor())
+                      .transform(logManager.newUnmappableRecordErrorHandler())
+                      .subscribeOn(scheduler),
+              maxConcurrentMappings,
+              bufferSize)
+          .subscribe(subscriber);
+    } else {
+      Flux.fromIterable(readStatements)
+          .flatMap(executor::readReactive)
+          .transform(logManager.newReadErrorHandler())
+          .parallel(maxConcurrentMappings, bufferSize)
+          .runOn(scheduler)
+          .map(readResultMapper::map)
+          .sequential()
+          .transform(metricsManager.newUnmappableRecordMonitor())
+          .transform(logManager.newUnmappableRecordErrorHandler())
+          .subscribe(subscriber);
+    }
     subscriber.block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);

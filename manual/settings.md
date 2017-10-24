@@ -408,11 +408,9 @@ Default: **"\*\*/\*.csv"**.
 
 #### -maxConcurrentFiles,--connector.csv.maxConcurrentFiles _&lt;string&gt;_
 
-The maximum number of files that can be read or written simultaneously.
+The maximum number of files that can be written simultaneously.
 
-When reading, it is usually not required to set this to any value higher than 1, because the underlying CSV parsing library is so fast that it would hardly become a performance bottleneck, even when reading one file at a time.
-
-When writing, however, this value should be set to a ratio of the number of available cores.
+Ignored when reading.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
