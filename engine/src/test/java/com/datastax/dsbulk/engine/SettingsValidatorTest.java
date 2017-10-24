@@ -24,7 +24,10 @@ public class SettingsValidatorTest {
   private PrintStream originalStderr;
   private PrintStream originalStdout;
   private ByteArrayOutputStream stderr;
+
+  @SuppressWarnings("FieldCanBeLocal")
   private ByteArrayOutputStream stdout;
+
   private Logger root;
   private Level oldLevel;
 
@@ -267,22 +270,6 @@ public class SettingsValidatorTest {
     new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "c1=c2"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("schema.query, or schema.keyspace and schema.table must be defined");
-  }
-
-  @Test
-  public void should_error_invalid_schema_invalid_mapping() throws Exception {
-    new Main(
-            new String[] {
-              "load",
-              "--connector.csv.url=/path/to/my/file",
-              "-m",
-              "c1",
-              "--schema.keyspace=keyspace",
-              "--schema.table=table"
-            })
-        .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("Configuration entry of schema.mapping");
   }
 
   @Test

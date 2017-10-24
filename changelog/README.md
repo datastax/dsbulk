@@ -72,3 +72,4 @@
 - [bug] DAT-138: When maxErrors is reached the workflow does not always stop.
 - [bug] DAT-128: Last recorded locations should be 100% accurate.
 - [bug] DAT-144: When columns are larger than 4096 characters we error out.
+- [improvement] DAT-92: schema.mapping should support specifying an array of target columns.
