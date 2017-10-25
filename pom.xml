@@ -12,7 +12,7 @@
 
   <groupId>com.datastax.dse</groupId>
   <artifactId>dsbulk-parent</artifactId>
-  <version>1.0.0-alpha2-SNAPSHOT</version>
+  <version>1.0.0-beta1</version>
   <packaging>pom</packaging>
 
   <name>DataStax Bulk Loader</name>
@@ -713,7 +713,7 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
     <connection>scm:git:git@github.com:riptano/dsbulk.git</connection>
     <developerConnection>scm:git:git@github.com:riptano/dsbulk.git</developerConnection>
     <url>https://github.com/riptano/dsbulk</url>
-    <tag>HEAD</tag>
+    <tag>1.0.0-beta1</tag>
   </scm>
 
   <developers>
