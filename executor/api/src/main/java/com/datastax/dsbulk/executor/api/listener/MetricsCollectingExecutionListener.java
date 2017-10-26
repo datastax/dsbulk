@@ -14,9 +14,11 @@ import com.codahale.metrics.Timer;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.dsbulk.executor.api.internal.histogram.HdrHistogramReservoir;
 import java.util.stream.IntStream;
 
 /** A {@link ExecutionListener} that records useful metrics about the ongoing bulk operations. */
+@SuppressWarnings({"Duplicates", "WeakerAccess"})
 public class MetricsCollectingExecutionListener implements ExecutionListener {
 
   private final MetricRegistry registry;
@@ -37,6 +39,8 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   private final Counter successfulReadsWritesCounter;
   private final Counter failedReadsWritesCounter;
 
+  private final Counter inFlightRequestsCounter;
+
   /** Creates a new instance using a newly-allocated {@link MetricRegistry}. */
   public MetricsCollectingExecutionListener() {
     this(new MetricRegistry());
@@ -50,40 +54,27 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   public MetricsCollectingExecutionListener(MetricRegistry registry) {
     this.registry = registry;
 
-    statementsTimer = registry.timer("executor/statements/total");
+    statementsTimer =
+        registry.timer("executor/statements/total", () -> new Timer(new HdrHistogramReservoir()));
     successfulStatementsCounter = registry.counter("executor/statements/successful");
     failedStatementsCounter = registry.counter("executor/statements/failed");
 
-    readsTimer = registry.timer("executor/reads/total");
+    readsTimer =
+        registry.timer("executor/reads/total", () -> new Timer(new HdrHistogramReservoir()));
     successfulReadsCounter = registry.counter("executor/reads/successful");
     failedReadsCounter = registry.counter("executor/reads/failed");
 
-    writesTimer = registry.timer("executor/writes/total");
+    writesTimer =
+        registry.timer("executor/writes/total", () -> new Timer(new HdrHistogramReservoir()));
     successfulWritesCounter = registry.counter("executor/writes/successful");
     failedWritesCounter = registry.counter("executor/writes/failed");
 
-    readsWritesTimer = registry.timer("executor/reads-writes/total");
+    readsWritesTimer =
+        registry.timer("executor/reads-writes/total", () -> new Timer(new HdrHistogramReservoir()));
     successfulReadsWritesCounter = registry.counter("executor/reads-writes/successful");
     failedReadsWritesCounter = registry.counter("executor/reads-writes/failed");
-  }
 
-  private static void start(ExecutionContext context, Timer timer) {
-    context.setAttribute(timer, timer.time());
-  }
-
-  private static void stop(ExecutionContext context, Timer timer, int delta) {
-    Timer.Context timerContext =
-        (Timer.Context) context.getAttribute(timer).orElseThrow(IllegalStateException::new);
-    long elapsed = timerContext.stop();
-    IntStream.range(1, delta).forEach(v -> timer.update(elapsed, NANOSECONDS));
-  }
-
-  private static int delta(Statement statement) {
-    if (statement instanceof BatchStatement) {
-      return ((BatchStatement) statement).size();
-    } else {
-      return 1;
-    }
+    inFlightRequestsCounter = registry.counter("executor/in-flight");
   }
 
   /**
@@ -230,21 +221,24 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     return failedReadsWritesCounter;
   }
 
-  @Override
-  public void onExecutionStarted(Statement statement, ExecutionContext context) {
-    start(context, statementsTimer);
+  /**
+   * Returns a {@link Counter} that evaluates the number of current in-flight requests, i.e. the
+   * number of uncompleted futures waiting for a response from the server.
+   *
+   * @return a {@link Counter} that evaluates the number of current in-flight requests.
+   */
+  public Counter getInFlightRequestsCounter() {
+    return inFlightRequestsCounter;
   }
 
   @Override
   public void onWriteRequestStarted(Statement statement, ExecutionContext context) {
-    start(context, writesTimer);
-    start(context, readsWritesTimer);
+    inFlightRequestsCounter.inc();
   }
 
   @Override
   public void onReadRequestStarted(Statement statement, ExecutionContext context) {
-    start(context, readsTimer);
-    start(context, readsWritesTimer);
+    inFlightRequestsCounter.inc();
   }
 
   @Override
@@ -254,6 +248,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     stop(context, readsWritesTimer, delta);
     successfulWritesCounter.inc(delta);
     successfulReadsWritesCounter.inc(delta);
+    inFlightRequestsCounter.dec();
   }
 
   @Override
@@ -263,6 +258,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     stop(context, readsWritesTimer, delta);
     failedWritesCounter.inc(delta);
     failedReadsWritesCounter.inc(delta);
+    inFlightRequestsCounter.dec();
   }
 
   @Override
@@ -272,6 +268,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     stop(context, readsWritesTimer, numberOfRows);
     successfulReadsCounter.inc(numberOfRows);
     successfulReadsWritesCounter.inc(numberOfRows);
+    inFlightRequestsCounter.dec();
   }
 
   @Override
@@ -280,6 +277,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     stop(context, readsWritesTimer, 1);
     failedReadsCounter.inc();
     failedReadsWritesCounter.inc();
+    inFlightRequestsCounter.dec();
   }
 
   @Override
@@ -292,5 +290,18 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   public void onExecutionFailed(BulkExecutionException exception, ExecutionContext context) {
     stop(context, statementsTimer, 1);
     failedStatementsCounter.inc();
+  }
+
+  private static void stop(ExecutionContext context, Timer timer, int delta) {
+    long elapsed = context.elapsedTimeNanos();
+    IntStream.range(0, delta).forEach(v -> timer.update(elapsed, NANOSECONDS));
+  }
+
+  private static int delta(Statement statement) {
+    if (statement instanceof BatchStatement) {
+      return ((BatchStatement) statement).size();
+    } else {
+      return 1;
+    }
   }
 }
