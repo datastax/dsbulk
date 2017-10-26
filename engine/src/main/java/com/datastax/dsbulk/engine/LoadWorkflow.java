@@ -60,6 +60,7 @@ public class LoadWorkflow implements Workflow {
   private int bufferSize;
   private boolean batchingEnabled;
   private SimpleBlockingSubscriber<Void> subscriber;
+  private boolean dryRun;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -82,6 +83,7 @@ public class LoadWorkflow implements Workflow {
     maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
     maxConcurrentWrites = executorSettings.getMaxInFlight();
     bufferSize = engineSettings.getBufferSize();
+    dryRun = engineSettings.isDryRun();
     scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
     connector.init();
@@ -122,13 +124,17 @@ public class LoadWorkflow implements Workflow {
     if (batchingEnabled) {
       flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
     }
-    flux.flatMap(executor::writeReactive, maxConcurrentWrites)
-        .transform(logManager.newWriteErrorHandler())
-        .parallel(maxConcurrentMappings)
-        .runOn(scheduler)
-        .composeGroup(logManager.newResultPositionTracker())
-        .sequential()
-        .subscribe(subscriber);
+    if (dryRun) {
+      flux.then().subscribe(subscriber);
+    } else {
+      flux.flatMap(executor::writeReactive, maxConcurrentWrites)
+          .transform(logManager.newWriteErrorHandler())
+          .parallel(maxConcurrentMappings)
+          .runOn(scheduler)
+          .composeGroup(logManager.newResultPositionTracker())
+          .sequential()
+          .subscribe(subscriber);
+    }
     subscriber.block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);

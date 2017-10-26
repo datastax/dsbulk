@@ -24,9 +24,11 @@ public interface Connector extends AutoCloseable {
   /**
    * Writes records to the datasource.
    *
+   * @param dryRun whether the run is a dry-run, meaning that the connector should not write records
+   *     to the datasource.
    * @return A {@link Subscriber} of records to write to the datasource.
    */
-  Subscriber<Record> write();
+  Subscriber<Record> write(boolean dryRun);
 
   /**
    * Validatesthe connector settings.

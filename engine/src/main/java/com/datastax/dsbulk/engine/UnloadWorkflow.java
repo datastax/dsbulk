@@ -60,6 +60,7 @@ public class UnloadWorkflow implements Workflow {
   private int bufferSize;
   private List<Statement> readStatements;
   private DelegatingBlockingSubscriber<Record> subscriber;
+  private boolean dryRun;
 
   UnloadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -80,10 +81,11 @@ public class UnloadWorkflow implements Workflow {
     EngineSettings engineSettings = settingsManager.getEngineSettings();
     maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
     bufferSize = engineSettings.getBufferSize();
+    dryRun = engineSettings.isDryRun();
     scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
     connector.init();
-    subscriber = new DelegatingBlockingSubscriber<>(connector.write());
+    subscriber = new DelegatingBlockingSubscriber<>(connector.write(dryRun));
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);

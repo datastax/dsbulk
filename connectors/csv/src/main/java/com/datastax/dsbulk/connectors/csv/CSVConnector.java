@@ -206,12 +206,12 @@ public class CSVConnector implements Connector {
   }
 
   @Override
-  public Subscriber<Record> write() {
+  public Subscriber<Record> write(boolean dryRun) {
     assert !read;
     if (root != null && maxConcurrentFiles > 1) {
-      return writeMultipleThreads();
+      return writeMultipleThreads(dryRun);
     } else {
-      return writeSingleThread();
+      return writeSingleThread(dryRun);
     }
   }
 
@@ -349,7 +349,7 @@ public class CSVConnector implements Connector {
   }
 
   @NotNull
-  private Subscriber<Record> writeSingleThread() {
+  private Subscriber<Record> writeSingleThread(boolean dryRun) {
 
     return new BaseSubscriber<Record>() {
 
@@ -374,11 +374,13 @@ public class CSVConnector implements Connector {
           end();
           start();
         }
-        if (header && writer.getRecordCount() == 0) {
-          writer.writeHeaders(record.fields());
-        }
         LOGGER.trace("Writing record {}", record);
-        writer.writeRow(record.values());
+        if (!dryRun) {
+          if (header && writer.getRecordCount() == 0) {
+            writer.writeHeaders(record.fields());
+          }
+          writer.writeRow(record.values());
+        }
       }
 
       @Override
@@ -396,6 +398,16 @@ public class CSVConnector implements Connector {
         if (writer != null) {
           try {
             writer.close();
+            if (dryRun) {
+              // Delete output files created locally, if applicable.
+              int curCtr = counter.get();
+              for (int i = 1; i <= curCtr; ++i) {
+                URL url = getDestinationURLForCounter(i);
+                if (url.getProtocol().equals("file")) {
+                  Files.deleteIfExists(Paths.get(url.toURI()));
+                }
+              }
+            }
           } catch (IllegalStateException e) {
             Throwable root = Throwables.getRootCause(e);
             //noinspection StatementWithEmptyBody
@@ -404,16 +416,18 @@ public class CSVConnector implements Connector {
             } else {
               LOGGER.error("Could not close " + url, root);
             }
+          } catch (URISyntaxException | IOException e) {
+            // swallow; this can't actually happen.
           }
         }
       }
     };
   }
 
-  private Subscriber<Record> writeMultipleThreads() {
+  private Subscriber<Record> writeMultipleThreads(boolean dryRun) {
     writeQueueProcessor = WorkQueueProcessor.<Record>builder().executor(threadPool).build();
     for (int i = 0; i < maxConcurrentFiles; i++) {
-      writeQueueProcessor.subscribe(writeSingleThread());
+      writeQueueProcessor.subscribe(writeSingleThread(dryRun));
     }
     return writeQueueProcessor;
   }
@@ -428,10 +442,14 @@ public class CSVConnector implements Connector {
   }
 
   private URL getOrCreateDestinationURL() {
+    return getDestinationURLForCounter(counter.incrementAndGet());
+  }
+
+  private URL getDestinationURLForCounter(int ctr) {
     if (root != null) {
       try {
-        String next = String.format(fileNameFormat, counter.incrementAndGet());
-        return root.resolve(next).toUri().toURL();
+        String simpleFileName = String.format(fileNameFormat, ctr);
+        return root.resolve(simpleFileName).toUri().toURL();
       } catch (Exception e) {
         LOGGER.error("Could not create file URL with format " + fileNameFormat, e);
         throw new RuntimeException(e);

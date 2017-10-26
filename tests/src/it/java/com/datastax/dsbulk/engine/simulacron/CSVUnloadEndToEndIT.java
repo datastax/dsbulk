@@ -16,6 +16,7 @@ import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.result.SyntaxErrorResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Scanner;
@@ -53,6 +54,36 @@ public class CSVUnloadEndToEndIT {
 
     validateQueryCount(1, ConsistencyLevel.ONE);
     EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
+  }
+
+  @Test
+  public void full_unload_dry_run() throws Exception {
+
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    deleteIfExists(full_unload_dir);
+    RequestPrime prime = EndToEndUtils.createQueryWithResultSet("SELECT * FROM ip_by_country", 24);
+    simulacron.cluster().prime(new Prime(prime));
+    String[] unloadArgs = {
+      "unload",
+      "--log.directory=./target",
+      "-header",
+      "false",
+      "-dryRun",
+      "true",
+      "--connector.csv.url=" + full_unload_dir.toString(),
+      "--connector.csv.maxConcurrentFiles=1 ",
+      "--driver.query.consistency=ONE",
+      "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.protocol.compression=NONE",
+      "--schema.query=" + CsvUtils.SELECT_FROM_IP_BY_COUNTRY + "",
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+    };
+
+    new Main(unloadArgs).run();
+
+    validateQueryCount(1, ConsistencyLevel.ONE);
+    Assertions.assertThat(!Files.exists(full_unload_output_file));
   }
 
   @Test

@@ -29,10 +29,15 @@ public class EngineSettings implements SettingsValidator {
     return config.getInt("bufferSize");
   }
 
+  public boolean isDryRun() {
+    return config.getBoolean("dryRun");
+  }
+
   public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
       config.getThreads("maxConcurrentMappings");
       config.getInt("bufferSize");
+      config.getBoolean("dryRun");
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
     }
