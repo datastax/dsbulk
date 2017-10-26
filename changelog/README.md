@@ -73,4 +73,5 @@
 - [bug] DAT-128: Last recorded locations should be 100% accurate.
 - [bug] DAT-144: When columns are larger than 4096 characters we error out.
 - [improvement] DAT-92: schema.mapping should support specifying an array of target columns.
+- [improvement] DAT-81: Surface setup errors better.
 - [improvement] DAT-104: Add dry-run feature to try out load/unload without mutating the destination.
