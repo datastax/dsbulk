@@ -39,7 +39,7 @@ import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
-import com.datastax.dsbulk.engine.policies.MultipleRetryPolicy;
+import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
 import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
