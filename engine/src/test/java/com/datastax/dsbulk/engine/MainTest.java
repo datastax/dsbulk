@@ -631,17 +631,8 @@ public class MainTest {
 
   @Test
   public void should_show_error_when_unload_and_dryRun() throws Exception {
-    new Main(new String[] {
-        "unload",
-        "-dryRun",
-        "true",
-        "-url",
-        "/foo/bar",
-        "-k",
-        "k1",
-        "-t",
-        "t1"
-    }).run();
+    new Main(new String[] {"unload", "-dryRun", "true", "-url", "/foo/bar", "-k", "k1", "-t", "t1"})
+        .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Dry-run is not supported for unload");
   }
