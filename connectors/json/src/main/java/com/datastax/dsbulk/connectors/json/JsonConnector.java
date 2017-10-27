@@ -25,7 +25,7 @@ public class JsonConnector implements Connector {
   }
 
   @Override
-  public Subscriber<Record> write(boolean dryRun) {
+  public Subscriber<Record> write() {
     // TODO
     return null;
   }

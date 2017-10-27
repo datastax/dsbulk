@@ -172,9 +172,7 @@ Default: **&lt;unspecified&gt;**.
 
 Whether or not to run in dry-run mode.
 
-When enabled and loading, the tool proceeds as normal except it does not actually load any data.
-
-When enabled and unloading, the tool proceeds as normal except it does not actually write unloaded data to the destination path/uri.
+Only applicable for loads, the tool proceeds as normal except it does not actually load any data.
 
 Default: **false**.
 
@@ -1080,9 +1078,7 @@ Workflow Engine-specific settings.
 
 Whether or not to run in dry-run mode.
 
-When enabled and loading, the tool proceeds as normal except it does not actually load any data.
-
-When enabled and unloading, the tool proceeds as normal except it does not actually write unloaded data to the destination path/uri.
+Only applicable for loads, the tool proceeds as normal except it does not actually load any data.
 
 Default: **false**.
 

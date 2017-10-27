@@ -124,7 +124,7 @@ public class CSVConnectorTest {
           Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
               .publish()
               .autoConnect(2);
-      records.subscribe(connector.write(false));
+      records.subscribe(connector.write());
       records.blockLast();
       assertThat(new String(baos.toByteArray(), "UTF-8")).isEqualTo("fóô,bàr,qïx\n");
       connector.close();
@@ -209,7 +209,7 @@ public class CSVConnectorTest {
     connector.configure(settings, false);
     connector.init();
     Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
-    records.subscribe(connector.write(false));
+    records.subscribe(connector.write());
     records.blockLast();
     connector.close();
     List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
@@ -237,7 +237,7 @@ public class CSVConnectorTest {
     connector.configure(settings, false);
     connector.init();
     Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
-    records.subscribe(connector.write(false));
+    records.subscribe(connector.write());
     records.blockLast();
     connector.close();
     List<String> actual = collectLines(out);
@@ -266,7 +266,7 @@ public class CSVConnectorTest {
     connector.configure(settings, false);
     connector.init();
     Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
-    records.subscribe(connector.write(false));
+    records.subscribe(connector.write());
     records.blockLast();
     connector.close();
     List<String> csv1 = Files.readAllLines(out.resolve("output-000001.csv"));

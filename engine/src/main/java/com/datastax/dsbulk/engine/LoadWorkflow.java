@@ -134,7 +134,8 @@ public class LoadWorkflow implements Workflow {
     } else {
       writeResultFlux = flux.flatMap(executor::writeReactive, maxConcurrentWrites);
     }
-    writeResultFlux.transform(logManager.newWriteErrorHandler())
+    writeResultFlux
+        .transform(logManager.newWriteErrorHandler())
         .parallel(maxConcurrentMappings)
         .runOn(scheduler)
         .composeGroup(logManager.newResultPositionTracker())
@@ -175,8 +176,7 @@ public class LoadWorkflow implements Workflow {
   }
 
   /**
-   * Simple WriteResult implementation used in dry-run mode to fake
-   * getting a result from an INSERT.
+   * Simple WriteResult implementation used in dry-run mode to fake getting a result from an INSERT.
    */
   private static class TrivialWriteResult implements WriteResult {
     private Statement statement;
