@@ -8,6 +8,7 @@ package com.datastax.dsbulk.engine;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
@@ -29,8 +30,11 @@ import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
+import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,17 +128,18 @@ public class LoadWorkflow implements Workflow {
     if (batchingEnabled) {
       flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
     }
+    Flux<WriteResult> writeResultFlux;
     if (dryRun) {
-      flux.then().subscribe(subscriber);
+      writeResultFlux = flux.map(TrivialWriteResult::new);
     } else {
-      flux.flatMap(executor::writeReactive, maxConcurrentWrites)
-          .transform(logManager.newWriteErrorHandler())
-          .parallel(maxConcurrentMappings)
-          .runOn(scheduler)
-          .composeGroup(logManager.newResultPositionTracker())
-          .sequential()
-          .subscribe(subscriber);
+      writeResultFlux = flux.flatMap(executor::writeReactive, maxConcurrentWrites);
     }
+    writeResultFlux.transform(logManager.newWriteErrorHandler())
+        .parallel(maxConcurrentMappings)
+        .runOn(scheduler)
+        .composeGroup(logManager.newResultPositionTracker())
+        .sequential()
+        .subscribe(subscriber);
     subscriber.block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
@@ -167,5 +172,32 @@ public class LoadWorkflow implements Workflow {
   @Override
   public String toString() {
     return "Load workflow engine execution " + executionId;
+  }
+
+  /**
+   * Simple WriteResult implementation used in dry-run mode to fake
+   * getting a result from an INSERT.
+   */
+  private static class TrivialWriteResult implements WriteResult {
+    private Statement statement;
+
+    TrivialWriteResult(Statement statement) {
+      this.statement = statement;
+    }
+
+    @Override
+    public Statement getStatement() {
+      return statement;
+    }
+
+    @Override
+    public Optional<ExecutionInfo> getExecutionInfo() {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<BulkExecutionException> getError() {
+      return Optional.empty();
+    }
   }
 }
