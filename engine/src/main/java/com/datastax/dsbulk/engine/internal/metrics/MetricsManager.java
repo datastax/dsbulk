@@ -63,6 +63,7 @@ public class MetricsManager implements AutoCloseable {
   private RecordReporter resultMappingsReporter;
   private MappingReporter recordMappingsReporter;
   private BatchReporter batchesReporter;
+  private MemoryReporter memoryReporter;
   private MetricsReportingExecutionListener writesReporter;
   private MetricsReportingExecutionListener readsReporter;
   private JmxReporter jmxReporter;
@@ -101,6 +102,7 @@ public class MetricsManager implements AutoCloseable {
     if (jmx) {
       startJMXReporter();
     }
+    startMemoryReporter();
     switch (workflowType) {
       case LOAD:
         startRecordMappingsReporter();
@@ -161,6 +163,11 @@ public class MetricsManager implements AutoCloseable {
     batchesReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
+  private void startMemoryReporter() {
+    memoryReporter = new MemoryReporter(registry, scheduler);
+    memoryReporter.start(reportInterval.getSeconds(), SECONDS);
+  }
+
   private void startWritesReporter() {
     MetricsReportingExecutionListener.Builder builder =
         MetricsReportingExecutionListener.builder()
@@ -210,6 +217,9 @@ public class MetricsManager implements AutoCloseable {
     if (batchesReporter != null) {
       batchesReporter.report();
     }
+    if (memoryReporter != null) {
+      memoryReporter.report();
+    }
     if (writesReporter != null) {
       writesReporter.report();
     }
@@ -230,6 +240,9 @@ public class MetricsManager implements AutoCloseable {
     }
     if (batchesReporter != null) {
       batchesReporter.close();
+    }
+    if (memoryReporter != null) {
+      memoryReporter.close();
     }
     if (writesReporter != null) {
       writesReporter.close();
