@@ -14,15 +14,45 @@ import java.util.concurrent.ConcurrentMap;
 /** */
 public class DefaultExecutionContext implements ExecutionContext {
 
-  private final ConcurrentMap<Object, Object> attributes = new ConcurrentHashMap<>();
+  private volatile ConcurrentMap<Object, Object> attributes = null;
+
+  private volatile long start = -1;
+  private volatile long end = -1;
 
   @Override
   public void setAttribute(Object key, Object value) {
-    attributes.put(key, value);
+    getAttributes().put(key, value);
   }
 
   @Override
   public Optional<Object> getAttribute(Object key) {
-    return Optional.ofNullable(attributes.get(key));
+    return Optional.ofNullable(getAttributes().get(key));
+  }
+
+  @Override
+  public long elapsedTimeNanos() {
+    return start == -1 || end == -1 ? -1 : end - start;
+  }
+
+  public void start() {
+    this.start = System.nanoTime();
+  }
+
+  public void stop() {
+    this.end = System.nanoTime();
+  }
+
+  private ConcurrentMap<Object, Object> getAttributes() {
+    // Double check locking
+    if (attributes == null) {
+      synchronized (this) {
+        if (attributes == null) {
+          @SuppressWarnings("UnnecessaryLocalVariable")
+          ConcurrentMap<Object, Object> attributes = new ConcurrentHashMap<>();
+          this.attributes = attributes;
+        }
+      }
+    }
+    return attributes;
   }
 }
