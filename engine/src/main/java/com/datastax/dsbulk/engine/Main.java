@@ -45,11 +45,11 @@ public class Main {
     System.exit(status);
   }
 
-  public Main(String[] args) {
+  Main(String[] args) {
     this.args = args;
   }
 
-  public int run() {
+  int run() {
     String connectorName;
     try {
       if (args.length == 0 || (args[0].equals("help") && args.length == 1)) {
