@@ -89,7 +89,8 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
 
     new Main(fetchCompleteArgs(customLoadArgs)).run();
 
-    validateErrorMessageLogged("Multiple input values in mapping resolve to column", "country_code");
+    validateErrorMessageLogged(
+        "Multiple input values in mapping resolve to column", "country_code");
   }
 
   @Test
