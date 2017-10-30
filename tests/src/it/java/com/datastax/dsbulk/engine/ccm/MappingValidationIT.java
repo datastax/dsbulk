@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.LoggingEvent;
+import ch.qos.logback.classic.spi.ILoggingEvent;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Session;
@@ -87,9 +87,9 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
     customLoadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_code");
 
-    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
+    new Main(fetchCompleteArgs(customLoadArgs)).run();
 
-    validateErrorMessageLogged("Multiple values in csv mapping resolve to column", "country_code");
+    validateErrorMessageLogged("Multiple input values in mapping resolve to column", "country_code");
   }
 
   @Test
@@ -106,7 +106,7 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
     customLoadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number, 5=country_name");
 
-    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
+    new Main(fetchCompleteArgs(customLoadArgs)).run();
     validateErrorMessageLogged("Missing required key column of", "country_code");
   }
 
@@ -124,15 +124,15 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
     customLoadArgs.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code, 5=country_name, 6=extra");
 
-    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
+    new Main(fetchCompleteArgs(customLoadArgs)).run();
     validateErrorMessageLogged("doesn't match any column found in table", "extra");
   }
 
-  private String[] fetchCompleteArgs(String op, List<String> customArgs) {
+  private String[] fetchCompleteArgs(List<String> customArgs) {
     Host host = cluster.getMetadata().getAllHosts().iterator().next();
     String contact_point = host.getAddress().toString().replaceFirst("^/", "");
     String port = Integer.toString(host.getSocketAddress().getPort());
-    return EndToEndUtils.fetchCompleteArgs(op, contact_point, port, customArgs);
+    return EndToEndUtils.fetchCompleteArgs("load", contact_point, port, customArgs);
   }
 
   @After
@@ -140,25 +140,21 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
     session.execute("DROP KEYSPACE IF EXISTS " + KS);
   }
 
-  private void validateErrorMessageLogged(String msg1, String msg2) {
-
-    LoggingEvent event = findFirstErrorEvent();
+  private void validateErrorMessageLogged(String... msg) {
+    ILoggingEvent event = findFirstErrorEvent();
+    assertThat(event).isNotNull();
     String errorMsg = event.getMessage();
     assertThat(errorMsg).contains("Load workflow engine execution");
     assertThat(errorMsg).contains("failed");
     String exceptionString = event.getThrowableProxy().getMessage();
-    assertThat(exceptionString).contains(msg1);
-    assertThat(exceptionString).contains(msg2);
+    assertThat(exceptionString).contains(msg);
   }
 
-  private LoggingEvent findFirstErrorEvent() {
-    List<Object> events = appender.getEvents();
-    for (Object event : events) {
-      if (event instanceof LoggingEvent) {
-        LoggingEvent lEvent = (LoggingEvent) event;
-        if (lEvent.getLevel().equals(Level.ERROR)) {
-          return lEvent;
-        }
+  private ILoggingEvent findFirstErrorEvent() {
+    List<ILoggingEvent> events = appender.getEvents();
+    for (ILoggingEvent event : events) {
+      if (event.getLevel().equals(Level.ERROR)) {
+        return event;
       }
     }
     return null;

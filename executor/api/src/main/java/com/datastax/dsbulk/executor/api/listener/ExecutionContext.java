@@ -41,4 +41,16 @@ public interface ExecutionContext {
    * @return an {@link Optional} containing the attribute value, if present.
    */
   Optional<Object> getAttribute(Object key);
+
+  /**
+   * Returns the elapsed time, in nanoseconds, between start and end of execution.
+   *
+   * <p>The exact meaning of the value returned by this method depends on whether the context is
+   * global or local: for global contexts, this is the elapsed time for the whole statement
+   * execution; for local ones, this is the elapsed time for a single request-response cycle.
+   *
+   * @return the elapsed time, in nanoseconds, between start and end of execution; or -1, if the
+   *     execution hasn't finished yet.
+   */
+  long elapsedTimeNanos();
 }

@@ -60,6 +60,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.UnicastProcessor;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -194,18 +195,20 @@ public class LogManager implements AutoCloseable {
    */
   @NotNull
   public Function<Flux<Statement>, Flux<Statement>> newUnmappableStatementErrorHandler() {
-    UnicastProcessor<UnmappableStatement> processor = newUnmappableStatementProcessor();
+    FluxSink<UnmappableStatement> sink = newUnmappableStatementProcessor();
     return upstream ->
         upstream
             .doOnNext(
                 r -> {
                   if (r instanceof UnmappableStatement) {
-                    processor.onNext((UnmappableStatement) r);
+                    sink.next((UnmappableStatement) r);
                     if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
                       abort();
                     }
                   }
                 })
+            .doOnComplete(sink::complete)
+            .doOnError(sink::error)
             .filter(r -> !(r instanceof UnmappableStatement));
   }
 
@@ -224,18 +227,20 @@ public class LogManager implements AutoCloseable {
    */
   @NotNull
   public Function<Flux<Record>, Flux<Record>> newUnmappableRecordErrorHandler() {
-    UnicastProcessor<UnmappableRecord> processor = newUnmappableRecordProcessor();
+    FluxSink<UnmappableRecord> sink = newUnmappableRecordProcessor();
     return upstream ->
         upstream
             .doOnNext(
                 r -> {
                   if (r instanceof UnmappableRecord) {
-                    processor.onNext((UnmappableRecord) r);
+                    sink.next((UnmappableRecord) r);
                     if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
                       abort();
                     }
                   }
                 })
+            .doOnComplete(sink::complete)
+            .doOnError(sink::error)
             .filter(r -> !(r instanceof UnmappableRecord));
   }
 
@@ -251,18 +256,20 @@ public class LogManager implements AutoCloseable {
    */
   @NotNull
   public Function<Flux<WriteResult>, Flux<WriteResult>> newWriteErrorHandler() {
-    UnicastProcessor<WriteResult> processor = newWriteResultProcessor();
+    FluxSink<WriteResult> sink = newWriteResultProcessor();
     return upstream ->
         upstream
             .doOnNext(
                 r -> {
                   if (!r.isSuccess()) {
-                    processor.onNext(r);
+                    sink.next(r);
                     if (maxErrors > 0 && errors.addAndGet(delta(r.getStatement())) > maxErrors) {
                       abort();
                     }
                   }
                 })
+            .doOnComplete(sink::complete)
+            .doOnError(sink::error)
             .filter(Result::isSuccess);
   }
 
@@ -278,18 +285,20 @@ public class LogManager implements AutoCloseable {
    */
   @NotNull
   public Function<Flux<ReadResult>, Flux<ReadResult>> newReadErrorHandler() {
-    UnicastProcessor<ReadResult> processor = newReadResultProcessor();
+    FluxSink<ReadResult> sink = newReadResultProcessor();
     return upstream ->
         upstream
             .doOnNext(
                 r -> {
                   if (!r.isSuccess()) {
-                    processor.onNext(r);
+                    sink.next(r);
                     if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
                       abort();
                     }
                   }
                 })
+            .doOnComplete(sink::complete)
+            .doOnError(sink::error)
             .filter(Result::isSuccess);
   }
 
@@ -306,13 +315,6 @@ public class LogManager implements AutoCloseable {
   @NotNull
   public Function<Flux<WriteResult>, Flux<Void>> newResultPositionTracker() {
     return upstream -> upstream.map(Result::getStatement).transform(newStatementPositionTracker());
-  }
-
-  private void abort() {
-    if (aborted.compareAndSet(false, true)) {
-      subscription.cancel();
-      subscriber.onError(new TooManyErrorsException(maxErrors));
-    }
   }
 
   /**
@@ -403,7 +405,7 @@ public class LogManager implements AutoCloseable {
    * @return A processor for unmappable records.
    */
   @NotNull
-  private UnicastProcessor<UnmappableRecord> newUnmappableRecordProcessor() {
+  private FluxSink<UnmappableRecord> newUnmappableRecordProcessor() {
     UnicastProcessor<UnmappableRecord> processor = UnicastProcessor.create();
     processors.add(processor);
     Flux<UnmappableRecord> flux = processor.doOnNext(this::appendToDebugFile);
@@ -416,7 +418,7 @@ public class LogManager implements AutoCloseable {
     } else {
       disposables.add(flux.subscribeOn(scheduler).subscribe());
     }
-    return processor;
+    return processor.sink();
   }
 
   /**
@@ -431,7 +433,7 @@ public class LogManager implements AutoCloseable {
    * @return A processor for unmappable statements.
    */
   @NotNull
-  private UnicastProcessor<UnmappableStatement> newUnmappableStatementProcessor() {
+  private FluxSink<UnmappableStatement> newUnmappableStatementProcessor() {
     UnicastProcessor<UnmappableStatement> processor = UnicastProcessor.create();
     processors.add(processor);
     disposables.add(
@@ -442,7 +444,7 @@ public class LogManager implements AutoCloseable {
             .transform(newRecordPositionTracker())
             .subscribeOn(scheduler)
             .subscribe());
-    return processor;
+    return processor.sink();
   }
 
   /**
@@ -457,7 +459,7 @@ public class LogManager implements AutoCloseable {
    * @return A processor for failed write results.
    */
   @NotNull
-  private UnicastProcessor<WriteResult> newWriteResultProcessor() {
+  private FluxSink<WriteResult> newWriteResultProcessor() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
     processors.add(processor);
     disposables.add(
@@ -469,7 +471,7 @@ public class LogManager implements AutoCloseable {
             .transform(newRecordPositionTracker())
             .subscribeOn(scheduler)
             .subscribe());
-    return processor;
+    return processor.sink();
   }
 
   /**
@@ -484,11 +486,18 @@ public class LogManager implements AutoCloseable {
    * @return A processor for failed read results.
    */
   @NotNull
-  private UnicastProcessor<ReadResult> newReadResultProcessor() {
+  private FluxSink<ReadResult> newReadResultProcessor() {
     UnicastProcessor<ReadResult> processor = UnicastProcessor.create();
     processors.add(processor);
     disposables.add(processor.doOnNext(this::appendToDebugFile).subscribeOn(scheduler).subscribe());
-    return processor;
+    return processor.sink();
+  }
+
+  private void abort() {
+    if (aborted.compareAndSet(false, true)) {
+      subscription.cancel();
+      subscriber.onError(new TooManyErrorsException(maxErrors));
+    }
   }
 
   private void appendToBadFile(Record record) {

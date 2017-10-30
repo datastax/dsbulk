@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
  * An {@link ExecutionListener} that reports useful metrics about ongoing bulk operations. It relies
  * on a delegate {@link MetricsCollectingExecutionListener} as its source of metrics.
  */
+@SuppressWarnings("WeakerAccess")
 public class MetricsReportingExecutionListener extends ScheduledReporter
     implements ExecutionListener {
 
@@ -197,6 +198,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
   private final Timer timer;
   private final Counter failed;
   private final Counter successful;
+  private final Counter inFlight;
 
   /**
    * Creates a default instance of {@link MetricsReportingExecutionListener}.
@@ -244,6 +246,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
     this.timer = metricType.timer(delegate);
     this.successful = metricType.successful(delegate);
     this.failed = metricType.failed(delegate);
+    inFlight = delegate.getInFlightRequestsCounter();
   }
 
   private MetricsReportingExecutionListener(
@@ -266,6 +269,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
     this.timer = metricType.timer(delegate);
     this.successful = metricType.successful(delegate);
     this.failed = metricType.failed(delegate);
+    inFlight = delegate.getInFlightRequestsCounter();
   }
 
   @Override
@@ -321,7 +325,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
       SortedMap<String, Histogram> histograms,
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
-    report(timer, successful, failed);
+    report(timer, successful, failed, inFlight);
   }
 
   /**
@@ -330,8 +334,9 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
    * @param timer the timer recording events.
    * @param successful the counter recording successful events.
    * @param failed the counter recording failed events.
+   * @param inFlight the counter recording in-flight requests.
    */
-  protected void report(Timer timer, Counter successful, Counter failed) {
+  protected void report(Timer timer, Counter successful, Counter failed, Counter inFlight) {
     Snapshot snapshot = timer.getSnapshot();
     long total = timer.getCount();
     String durationUnit = getDurationUnit();
@@ -349,7 +354,8 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
               convertDuration(snapshot.get75thPercentile()),
               convertDuration(snapshot.get99thPercentile()),
               convertDuration(snapshot.get999thPercentile()),
-              durationUnit));
+              durationUnit,
+              inFlight.getCount()));
     } else {
       float achieved = (float) total / (float) expectedTotal * 100f;
       LOGGER.info(
@@ -365,7 +371,8 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
               convertDuration(snapshot.get75thPercentile()),
               convertDuration(snapshot.get99thPercentile()),
               convertDuration(snapshot.get999thPercentile()),
-              durationUnit));
+              durationUnit,
+              inFlight.getCount()));
     }
   }
 
@@ -374,7 +381,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
       return metricType.eventName()
           + ": total: %,d, successful: %,d, failed: %,d; %,.0f "
           + metricType.unit()
-          + "/%s (mean %,.2f, 75p %,.2f, 99p %,.2f, 999p %,.2f %s)";
+          + "/%s (mean %,.2f, 75p %,.2f, 99p %,.2f, 999p %,.2f %s, in-flight %,d)";
     } else {
       int numDigits = String.format("%,d", expectedTotal).length();
       return metricType.eventName()
@@ -386,7 +393,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
           + metricType.unit()
           + "/%s, "
           + "progression: %,.0f%% "
-          + "(mean %,.2f, 75p %,.2f, 99p %,.2f, 999p %,.2f %s)";
+          + "(mean %,.2f, 75p %,.2f, 99p %,.2f, 999p %,.2f %s, in-flight %,d)";
     }
   }
 

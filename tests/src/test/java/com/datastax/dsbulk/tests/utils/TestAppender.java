@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.tests.utils;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.Context;
 import ch.qos.logback.core.LogbackException;
@@ -15,15 +16,15 @@ import ch.qos.logback.core.status.Status;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TestAppender implements Appender {
-  List<Object> events = new ArrayList<Object>();
+public class TestAppender implements Appender<ILoggingEvent> {
+  List<ILoggingEvent> events = new ArrayList<>();
 
   public String getName() {
     return "TestAppender";
   }
 
   @Override
-  public void doAppend(Object event) throws LogbackException {
+  public void doAppend(ILoggingEvent event) throws LogbackException {
     events.add(event);
   }
 
@@ -66,12 +67,12 @@ public class TestAppender implements Appender {
   public void clearAllFilters() {}
 
   @Override
-  public List<Filter> getCopyOfAttachedFiltersList() {
+  public List<Filter<ILoggingEvent>> getCopyOfAttachedFiltersList() {
     return null;
   }
 
   @Override
-  public FilterReply getFilterChainDecision(Object event) {
+  public FilterReply getFilterChainDecision(ILoggingEvent event) {
     return null;
   }
 
@@ -86,7 +87,7 @@ public class TestAppender implements Appender {
     return false;
   }
 
-  public List<Object> getEvents() {
+  public List<ILoggingEvent> getEvents() {
     return events;
   }
 }
