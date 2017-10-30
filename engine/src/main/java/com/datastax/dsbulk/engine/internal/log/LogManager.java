@@ -207,6 +207,8 @@ public class LogManager implements AutoCloseable {
                     }
                   }
                 })
+            .doOnComplete(sink::complete)
+            .doOnError(sink::error)
             .filter(r -> !(r instanceof UnmappableStatement));
   }
 
@@ -237,6 +239,8 @@ public class LogManager implements AutoCloseable {
                     }
                   }
                 })
+            .doOnComplete(sink::complete)
+            .doOnError(sink::error)
             .filter(r -> !(r instanceof UnmappableRecord));
   }
 
@@ -264,6 +268,8 @@ public class LogManager implements AutoCloseable {
                     }
                   }
                 })
+            .doOnComplete(sink::complete)
+            .doOnError(sink::error)
             .filter(Result::isSuccess);
   }
 
@@ -291,6 +297,8 @@ public class LogManager implements AutoCloseable {
                     }
                   }
                 })
+            .doOnComplete(sink::complete)
+            .doOnError(sink::error)
             .filter(Result::isSuccess);
   }
 
@@ -307,13 +315,6 @@ public class LogManager implements AutoCloseable {
   @NotNull
   public Function<Flux<WriteResult>, Flux<Void>> newResultPositionTracker() {
     return upstream -> upstream.map(Result::getStatement).transform(newStatementPositionTracker());
-  }
-
-  private void abort() {
-    if (aborted.compareAndSet(false, true)) {
-      subscription.cancel();
-      subscriber.onError(new TooManyErrorsException(maxErrors));
-    }
   }
 
   /**
@@ -490,6 +491,13 @@ public class LogManager implements AutoCloseable {
     processors.add(processor);
     disposables.add(processor.doOnNext(this::appendToDebugFile).subscribeOn(scheduler).subscribe());
     return processor.sink();
+  }
+
+  private void abort() {
+    if (aborted.compareAndSet(false, true)) {
+      subscription.cancel();
+      subscriber.onError(new TooManyErrorsException(maxErrors));
+    }
   }
 
   private void appendToBadFile(Record record) {
