@@ -9,6 +9,7 @@ package com.datastax.dsbulk.engine;
 import static com.datastax.dsbulk.engine.internal.OptionUtils.DEFAULT;
 
 import com.datastax.driver.core.exceptions.DriverException;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
@@ -217,7 +218,7 @@ public class Main {
         if (t instanceof InterruptedException || root instanceof InterruptedException) {
           LOGGER.error(workflow + " aborted.", t);
           // do not set the thread's interrupted status, we are going to exit anyway
-        } else if (t instanceof DriverException) {
+        } else if (t instanceof DriverException || t instanceof BulkConfigurationException) {
           LOGGER.error(workflow + " failed.");
           LOGGER.error(t.getMessage());
         } else {

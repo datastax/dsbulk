@@ -271,7 +271,9 @@ public class MainTest {
               "-quote",
               "'",
               "-url",
-              "http://findit"
+              "http://findit",
+              "-dryRun",
+              "true"
             });
     assertThat(result.getString("codec.locale")).isEqualTo("locale");
     assertThat(result.getString("codec.timeZone")).isEqualTo("tz");
@@ -283,6 +285,7 @@ public class MainTest {
     assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(42);
     assertThat(result.getInt("driver.port")).isEqualTo(9876);
     assertThat(result.getString("driver.query.consistency")).isEqualTo("cl");
+    assertThat(result.getBoolean("engine.dryRun")).isTrue();
     assertThat(result.getInt("log.maxErrors")).isEqualTo(123);
     assertThat(result.getString("log.directory")).isEqualTo("logdir");
     assertThat(result.getBoolean("monitoring.jmx")).isFalse();
@@ -397,6 +400,8 @@ public class MainTest {
               "wh1, wh2",
               "--driver.policy.maxRetries",
               "29",
+              "--engine.dryRun",
+              "true",
               "--batch.mode",
               "batch-mode",
               "--batch.bufferSize",
@@ -526,6 +531,7 @@ public class MainTest {
         .isEqualTo("whiteListChild");
     assertThat(result.getString("driver.policy.lbp.whiteList.hosts")).isEqualTo("wh1, wh2");
     assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(29);
+    assertThat(result.getBoolean("engine.dryRun")).isTrue();
     assertThat(result.getString("batch.mode")).isEqualTo("batch-mode");
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
     assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);
@@ -621,6 +627,14 @@ public class MainTest {
     new Main(new String[] {"--version"}).run();
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
     assertThat(out).isEqualTo(String.format("%s%n", HelpUtils.getVersionMessage()));
+  }
+
+  @Test
+  public void should_show_error_when_unload_and_dryRun() throws Exception {
+    new Main(new String[] {"unload", "-dryRun", "true", "-url", "/foo/bar", "-k", "k1", "-t", "t1"})
+        .run();
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).contains("Dry-run is not supported for unload");
   }
 
   private void assertGlobalHelp() {
