@@ -8,7 +8,6 @@ package com.datastax.dsbulk.engine;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
@@ -30,11 +29,10 @@ import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
-import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,7 +128,7 @@ public class LoadWorkflow implements Workflow {
     }
     Flux<WriteResult> writeResultFlux;
     if (dryRun) {
-      writeResultFlux = flux.map(TrivialWriteResult::new);
+      writeResultFlux = flux.map(s -> new DefaultWriteResult(s, null));
     } else {
       writeResultFlux = flux.flatMap(executor::writeReactive, maxConcurrentWrites);
     }
@@ -173,31 +171,5 @@ public class LoadWorkflow implements Workflow {
   @Override
   public String toString() {
     return "Load workflow engine execution " + executionId;
-  }
-
-  /**
-   * Simple WriteResult implementation used in dry-run mode to fake getting a result from an INSERT.
-   */
-  private static class TrivialWriteResult implements WriteResult {
-    private Statement statement;
-
-    TrivialWriteResult(Statement statement) {
-      this.statement = statement;
-    }
-
-    @Override
-    public Statement getStatement() {
-      return statement;
-    }
-
-    @Override
-    public Optional<ExecutionInfo> getExecutionInfo() {
-      return Optional.empty();
-    }
-
-    @Override
-    public Optional<BulkExecutionException> getError() {
-      return Optional.empty();
-    }
   }
 }
