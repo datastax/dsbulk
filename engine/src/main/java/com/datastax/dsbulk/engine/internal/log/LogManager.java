@@ -20,6 +20,10 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.exceptions.BusyConnectionException;
+import com.datastax.driver.core.exceptions.BusyPoolException;
+import com.datastax.driver.core.exceptions.OperationTimedOutException;
+import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.UnmappableRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -141,7 +145,7 @@ public class LogManager implements AutoCloseable {
           String.format("Directory %s is not writable", executionDirectory));
     }
     if (workflowType == WorkflowType.LOAD) {
-      this.positionsPrinter =
+      positionsPrinter =
           new PrintWriter(
               Files.newBufferedWriter(
                   executionDirectory.resolve("positions.txt"),
@@ -203,7 +207,7 @@ public class LogManager implements AutoCloseable {
                   if (r instanceof UnmappableStatement) {
                     sink.next((UnmappableStatement) r);
                     if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
-                      abort();
+                      abort(new TooManyErrorsException(maxErrors));
                     }
                   }
                 })
@@ -235,7 +239,7 @@ public class LogManager implements AutoCloseable {
                   if (r instanceof UnmappableRecord) {
                     sink.next((UnmappableRecord) r);
                     if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
-                      abort();
+                      abort(new TooManyErrorsException(maxErrors));
                     }
                   }
                 })
@@ -263,8 +267,13 @@ public class LogManager implements AutoCloseable {
                 r -> {
                   if (!r.isSuccess()) {
                     sink.next(r);
-                    if (maxErrors > 0 && errors.addAndGet(delta(r.getStatement())) > maxErrors) {
-                      abort();
+                    assert r.getError().isPresent();
+                    Throwable cause = r.getError().get().getCause();
+                    if (isUnrecoverable(cause)) {
+                      abort(cause);
+                    } else if (maxErrors > 0
+                        && errors.addAndGet(delta(r.getStatement())) > maxErrors) {
+                      abort(new TooManyErrorsException(maxErrors));
                     }
                   }
                 })
@@ -292,8 +301,12 @@ public class LogManager implements AutoCloseable {
                 r -> {
                   if (!r.isSuccess()) {
                     sink.next(r);
-                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
-                      abort();
+                    assert r.getError().isPresent();
+                    Throwable cause = r.getError().get().getCause();
+                    if (isUnrecoverable(cause)) {
+                      abort(cause);
+                    } else if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
+                      abort(new TooManyErrorsException(maxErrors));
                     }
                   }
                 })
@@ -493,10 +506,10 @@ public class LogManager implements AutoCloseable {
     return processor.sink();
   }
 
-  private void abort() {
+  private void abort(Throwable t) {
     if (aborted.compareAndSet(false, true)) {
       subscription.cancel();
-      subscriber.onError(new TooManyErrorsException(maxErrors));
+      subscriber.onError(t);
     }
   }
 
@@ -661,5 +674,12 @@ public class LogManager implements AutoCloseable {
     } else {
       return 1;
     }
+  }
+
+  private static boolean isUnrecoverable(Throwable error) {
+    return !(error instanceof QueryExecutionException
+        || error instanceof OperationTimedOutException
+        || error instanceof BusyPoolException
+        || error instanceof BusyConnectionException);
   }
 }

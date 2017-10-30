@@ -4,6 +4,7 @@
 
 - [improvement] DAT-81: Surface setup errors better.
 - [improvement] DAT-145: Use HdrHistogram as reservoir for latency measurement.
+- [bug] DAT-137: Workflow Engine does not react to interruption signals properly.
 
 
 ### 1.0.0-beta1

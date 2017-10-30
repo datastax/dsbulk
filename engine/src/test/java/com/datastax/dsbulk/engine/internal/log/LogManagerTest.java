@@ -21,6 +21,8 @@ import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.exceptions.DriverInternalError;
+import com.datastax.driver.core.exceptions.OperationTimedOutException;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
@@ -55,12 +57,11 @@ import org.reactivestreams.Subscription;
 import reactor.core.publisher.Flux;
 
 /** */
-@SuppressWarnings("FieldCanBeLocal")
 public class LogManagerTest {
 
-  private String source1 = "line1\n";
-  private String source2 = "line2\n";
-  private String source3 = "line3\n";
+  private final String source1 = "line1\n";
+  private final String source2 = "line2\n";
+  private final String source3 = "line3\n";
 
   private URI resource1;
   private URI resource2;
@@ -89,9 +90,9 @@ public class LogManagerTest {
 
   private Cluster cluster;
 
-  private ListeningExecutorService executor = MoreExecutors.newDirectExecutorService();
+  private final ListeningExecutorService executor = MoreExecutors.newDirectExecutorService();
 
-  private StatementFormatter formatter =
+  private final StatementFormatter formatter =
       StatementFormatter.builder()
           .withMaxQueryStringLength(500)
           .withMaxBoundValueLength(50)
@@ -119,47 +120,53 @@ public class LogManagerTest {
     location3 = new URI("file:///file3.csv?line=3");
     record1 =
         new DefaultUnmappableRecord(
-            source1, () -> resource1, 1, () -> this.location1, new RuntimeException("error 1"));
+            source1, () -> resource1, 1, () -> location1, new RuntimeException("error 1"));
     record2 =
         new DefaultUnmappableRecord(
-            source2, () -> resource2, 2, () -> this.location2, new RuntimeException("error 2"));
+            source2, () -> resource2, 2, () -> location2, new RuntimeException("error 2"));
     record3 =
         new DefaultUnmappableRecord(
-            source3, () -> resource3, 3, () -> this.location3, new RuntimeException("error 3"));
+            source3, () -> resource3, 3, () -> location3, new RuntimeException("error 3"));
     stmt1 = new UnmappableStatement(record1, () -> location1, new RuntimeException("error 1"));
     stmt2 = new UnmappableStatement(record2, () -> location2, new RuntimeException("error 2"));
     stmt3 = new UnmappableStatement(record3, () -> location3, new RuntimeException("error 3"));
     writeResult1 =
         new DefaultWriteResult(
             new BulkExecutionException(
-                new RuntimeException("error 1"), new BulkSimpleStatement<>(record1, "INSERT 1")));
+                new OperationTimedOutException(null, "error 1"),
+                new BulkSimpleStatement<>(record1, "INSERT 1")));
     writeResult2 =
         new DefaultWriteResult(
             new BulkExecutionException(
-                new RuntimeException("error 2"), new BulkSimpleStatement<>(record2, "INSERT 2")));
+                new OperationTimedOutException(null, "error 2"),
+                new BulkSimpleStatement<>(record2, "INSERT 2")));
     writeResult3 =
         new DefaultWriteResult(
             new BulkExecutionException(
-                new RuntimeException("error 3"), new BulkSimpleStatement<>(record3, "INSERT 3")));
+                new OperationTimedOutException(null, "error 3"),
+                new BulkSimpleStatement<>(record3, "INSERT 3")));
     readResult1 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new RuntimeException("error 1"), new BulkSimpleStatement<>(record1, "SELECT 1")));
+                new OperationTimedOutException(null, "error 1"),
+                new BulkSimpleStatement<>(record1, "SELECT 1")));
     readResult2 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new RuntimeException("error 2"), new BulkSimpleStatement<>(record2, "SELECT 2")));
+                new OperationTimedOutException(null, "error 2"),
+                new BulkSimpleStatement<>(record2, "SELECT 2")));
     readResult3 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new RuntimeException("error 3"), new BulkSimpleStatement<>(record3, "SELECT 3")));
+                new OperationTimedOutException(null, "error 3"),
+                new BulkSimpleStatement<>(record3, "SELECT 3")));
     BatchStatement batch = new BatchStatement(BatchStatement.Type.UNLOGGED);
     batch.add(new BulkSimpleStatement<>(record1, "INSERT 1", "foo", 42));
     batch.add(new BulkSimpleStatement<>(record2, "INSERT 2", "bar", 43));
     batch.add(new BulkSimpleStatement<>(record3, "INSERT 3", "qix", 44));
     batchWriteResult =
         new DefaultWriteResult(
-            new BulkExecutionException(new RuntimeException("error batch"), batch));
+            new BulkExecutionException(new OperationTimedOutException(null, "error batch"), batch));
     subscriber = mock(Subscriber.class);
     subscription = mock(Subscription.class);
   }
@@ -377,6 +384,80 @@ public class LogManagerTest {
   }
 
   @Test
+  public void should_stop_when_unrecoverable_error_writing() throws Exception {
+    Path outputDir = Files.createTempDirectory("test4");
+    LogManager logManager =
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 1000, formatter, EXTENDED);
+    logManager.init(subscriber, subscription);
+    DefaultWriteResult result =
+        new DefaultWriteResult(
+            new BulkExecutionException(
+                new DriverInternalError("error 1"),
+                new BulkSimpleStatement<>(record1, "INSERT 1")));
+    Flux<WriteResult> stmts = Flux.just(result);
+    stmts.transform(logManager.newWriteErrorHandler()).blockLast();
+    ArgumentCaptor<DriverInternalError> argument =
+        ArgumentCaptor.forClass(DriverInternalError.class);
+    verify(subscriber).onError(argument.capture());
+    DriverInternalError e = argument.getValue();
+    assertThat(e).hasMessage("error 1");
+    logManager.close();
+    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
+    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
+    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    assertThat(bad.toFile()).exists();
+    assertThat(errors.toFile()).exists();
+    assertThat(positions.toFile()).exists();
+    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    assertThat(badLines).hasSize(1);
+    assertThat(badLines.get(0)).isEqualTo(source1.trim());
+    assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
+        .containsOnly(bad, errors, positions);
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .containsOnlyOnce("Location: " + location1)
+        .containsOnlyOnce("Source  : " + LogUtils.formatSingleLine(source1))
+        .contains("INSERT 1")
+        .containsOnlyOnce(
+            "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 1 (error 1)");
+    List<String> positionLines = Files.readAllLines(positions, Charset.forName("UTF-8"));
+    assertThat(positionLines).contains("file:///file1.csv:1");
+  }
+
+  @Test
+  public void should_stop_when_unrecoverable_error_reading() throws Exception {
+    Path outputDir = Files.createTempDirectory("test3");
+    LogManager logManager =
+        new LogManager(WorkflowType.UNLOAD, cluster, outputDir, executor, 2, formatter, EXTENDED);
+    logManager.init(subscriber, subscription);
+    DefaultReadResult result =
+        new DefaultReadResult(
+            new BulkExecutionException(
+                new DriverInternalError("error 1"),
+                new BulkSimpleStatement<>(record1, "SELECT 1")));
+    Flux<ReadResult> stmts = Flux.just(result);
+    stmts.transform(logManager.newReadErrorHandler()).blockLast();
+    ArgumentCaptor<DriverInternalError> argument =
+        ArgumentCaptor.forClass(DriverInternalError.class);
+    verify(subscriber).onError(argument.capture());
+    DriverInternalError e = argument.getValue();
+    assertThat(e).hasMessage("error 1");
+    logManager.close();
+    Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
+    assertThat(errors.toFile()).exists();
+    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(errors);
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .containsOnlyOnce("Location: " + location1)
+        .containsOnlyOnce("Source  : " + LogUtils.formatSingleLine(source1))
+        .contains("SELECT 1")
+        .containsOnlyOnce(
+            "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: SELECT 1 (error 1)");
+  }
+
+  @Test
   public void should_record_positions() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
@@ -456,7 +537,6 @@ public class LogManagerTest {
             })
         .transform(logManager.newResultPositionTracker())
         .blockLast();
-    @SuppressWarnings("unchecked")
     Map<URI, List<Range<Long>>> positions =
         (Map<URI, List<Range<Long>>>) Whitebox.getInternalState(logManager, "positions");
     assertThat(positions)
