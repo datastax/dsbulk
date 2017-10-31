@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.executor.api.listener;
 
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.google.common.collect.ImmutableList;
@@ -63,13 +64,17 @@ public class CompositeExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onReadRequestSuccessful(
-      Statement statement, int numberOfRows, ExecutionContext context) {
-    listeners.forEach(l -> l.onReadRequestSuccessful(statement, numberOfRows, context));
+  public void onReadRequestSuccessful(Statement statement, ExecutionContext context) {
+    listeners.forEach(l -> l.onReadRequestSuccessful(statement, context));
   }
 
   @Override
   public void onReadRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
     listeners.forEach(l -> l.onReadRequestFailed(statement, error, context));
+  }
+
+  @Override
+  public void onRowReceived(Row row, ExecutionContext context) {
+    listeners.forEach(l -> l.onRowReceived(row, context));
   }
 }

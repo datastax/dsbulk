@@ -12,13 +12,12 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.histogram.HdrHistogramReservoir;
-import java.util.stream.IntStream;
 
 /** A {@link ExecutionListener} that records useful metrics about the ongoing bulk operations. */
-@SuppressWarnings({"Duplicates", "WeakerAccess"})
 public class MetricsCollectingExecutionListener implements ExecutionListener {
 
   private final MetricRegistry registry;
@@ -262,13 +261,16 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onReadRequestSuccessful(
-      Statement statement, int numberOfRows, ExecutionContext context) {
-    stop(context, readsTimer, numberOfRows);
-    stop(context, readsWritesTimer, numberOfRows);
-    successfulReadsCounter.inc(numberOfRows);
-    successfulReadsWritesCounter.inc(numberOfRows);
+  public void onReadRequestSuccessful(Statement statement, ExecutionContext context) {
     inFlightRequestsCounter.dec();
+  }
+
+  @Override
+  public void onRowReceived(Row row, ExecutionContext context) {
+    stop(context, readsTimer, 1);
+    stop(context, readsWritesTimer, 1);
+    successfulReadsCounter.inc(1);
+    successfulReadsWritesCounter.inc(1);
   }
 
   @Override
@@ -294,7 +296,9 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
 
   private static void stop(ExecutionContext context, Timer timer, int delta) {
     long elapsed = context.elapsedTimeNanos();
-    IntStream.range(0, delta).forEach(v -> timer.update(elapsed, NANOSECONDS));
+    for (int i = 0; i < delta; i++) {
+      timer.update(elapsed, NANOSECONDS);
+    }
   }
 
   private static int delta(Statement statement) {
