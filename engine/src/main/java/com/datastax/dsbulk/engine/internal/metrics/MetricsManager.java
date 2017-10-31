@@ -22,6 +22,8 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.MetricsReportingExecutionListener;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
@@ -99,6 +101,8 @@ public class MetricsManager implements AutoCloseable {
     failedMappings = registry.meter("mappings/failed");
     successfulMappings = registry.meter("mappings/successful");
     batchSize = registry.histogram("batches/size", () -> new Histogram(new UniformReservoir()));
+    createMemoryGauges();
+
     if (jmx) {
       startJMXReporter();
     }
@@ -117,6 +121,73 @@ public class MetricsManager implements AutoCloseable {
         startResultMappingsReporter();
         break;
     }
+  }
+
+  private void createMemoryGauges() {
+    final int bytesPerMeg = 1024 * 1024;
+    registry.gauge(
+        "memory/used",
+        () ->
+            () -> {
+              Runtime runtime = Runtime.getRuntime();
+              return (runtime.totalMemory() - runtime.freeMemory()) / bytesPerMeg;
+            });
+
+    registry.gauge(
+        "memory/free",
+        () ->
+            () -> {
+              Runtime runtime = Runtime.getRuntime();
+              return runtime.freeMemory() / bytesPerMeg;
+            });
+
+    registry.gauge(
+        "memory/total",
+        () ->
+            () -> {
+              Runtime runtime = Runtime.getRuntime();
+              return runtime.totalMemory() / bytesPerMeg;
+            });
+
+    registry.gauge(
+        "memory/max",
+        () ->
+            () -> {
+              Runtime runtime = Runtime.getRuntime();
+              return runtime.maxMemory() / bytesPerMeg;
+            });
+
+    registry.gauge(
+        "memory/gc_count",
+        () ->
+            () -> {
+              // GC stats logic is from https://stackoverflow.com/a/467366/1786686
+              long total = 0;
+
+              for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+                long count = gc.getCollectionCount();
+                if (count >= 0) {
+                  total += count;
+                }
+              }
+              return total;
+            });
+
+    registry.gauge(
+        "memory/gc_time",
+        () ->
+            () -> {
+              // GC stats logic is from https://stackoverflow.com/a/467366/1786686
+              long gcTime = 0;
+
+              for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+                long time = gc.getCollectionTime();
+                if (time >= 0) {
+                  gcTime += time;
+                }
+              }
+              return gcTime;
+            });
   }
 
   private void startJMXReporter() {

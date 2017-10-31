@@ -16,10 +16,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
-import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
-import java.lang.management.GarbageCollectorMXBean;
-import java.lang.management.ManagementFactory;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import org.slf4j.Logger;
@@ -30,14 +27,20 @@ public class MemoryReporter extends ScheduledReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemoryReporter.class);
 
   private static final String MSG =
-      "Memory usage: used: %,d MB, free: %,d MB, total garbage collections: %,d, total gc time: %,d ms";
+      "Memory usage: used: %,d MB, free: %,d MB, total: %,d MB, maxMemory: %,d MB, total garbage collections: %,d, total gc time: %,d ms";
 
-  public MemoryReporter(MetricRegistry registry, ScheduledExecutorService scheduler) {
+  MemoryReporter(MetricRegistry registry, ScheduledExecutorService scheduler) {
     super(registry, "memory-reporter", createFilter(), SECONDS, MILLISECONDS, scheduler);
   }
 
   private static MetricFilter createFilter() {
-    return (name, metric) -> false;
+    return (name, metric) ->
+        name.equals("memory/used")
+            || name.equals("memory/free")
+            || name.equals("memory/total")
+            || name.equals("memory/max")
+            || name.equals("memory/gc_count")
+            || name.equals("memory/gc_time");
   }
 
   @Override
@@ -48,31 +51,21 @@ public class MemoryReporter extends ScheduledReporter {
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
 
-    // GC stats logic is from https://stackoverflow.com/a/467366/1786686
-    long totalGarbageCollections = 0;
-    long garbageCollectionTime = 0;
-
-    for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
-      long count = gc.getCollectionCount();
-
-      if (count >= 0) {
-        totalGarbageCollections += count;
-      }
-
-      long time = gc.getCollectionTime();
-
-      if (time >= 0) {
-        garbageCollectionTime += time;
-      }
-    }
-
-    Runtime runtime = Runtime.getRuntime();
+    Gauge freeMemoryGauge = gauges.get("memory/free");
+    Gauge totalMemoryGauge = gauges.get("memory/total");
+    Gauge usedMemoryGauge = gauges.get("memory/used");
+    Gauge maxMemoryGauge = gauges.get("memory/max");
+    Gauge gcCountGauge = gauges.get("memory/gc_count");
+    Gauge gcTimeGauge = gauges.get("memory/gc_time");
+    //noinspection MalformedFormatString
     LOGGER.info(
         String.format(
             MSG,
-            (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024),
-            runtime.freeMemory() / (1024 * 1024),
-            totalGarbageCollections,
-            garbageCollectionTime));
+            usedMemoryGauge.getValue(),
+            freeMemoryGauge.getValue(),
+            totalMemoryGauge.getValue(),
+            maxMemoryGauge.getValue(),
+            gcCountGauge.getValue(),
+            gcTimeGauge.getValue()));
   }
 }
