@@ -12,6 +12,7 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
+import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -254,8 +255,10 @@ public class CSVConnector implements Connector {
 
   private Flux<Record> readURL(URL url) {
     Flux<Record> records =
-        Flux.push(
+        Flux.create(
             sink -> {
+              SimpleBackpressureController controller = new SimpleBackpressureController();
+              sink.onRequest(controller::signalRequested);
               CsvParser parser = new CsvParser(parserSettings);
               LOGGER.debug("Reading {}", url);
               try (InputStream is = IOUtils.openInputStream(url)) {
@@ -294,6 +297,7 @@ public class CSVConnector implements Connector {
                     record = new DefaultUnmappableRecord(source, () -> resource, line, location, e);
                   }
                   LOGGER.trace("Emitting record {}", record);
+                  controller.awaitRequested(1);
                   sink.next(record);
                 }
                 LOGGER.debug("Done reading {}", url);
@@ -303,7 +307,7 @@ public class CSVConnector implements Connector {
                 sink.error(e);
               }
             },
-            FluxSink.OverflowStrategy.BUFFER);
+            FluxSink.OverflowStrategy.ERROR);
     if (skipLines > 0) {
       records = records.skip(skipLines);
     }
