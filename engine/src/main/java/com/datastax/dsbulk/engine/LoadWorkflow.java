@@ -128,8 +128,13 @@ public class LoadWorkflow implements Workflow {
                 if (batchingEnabled) {
                   flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
                 }
-                return flux.flatMap(
-                        statement -> executor.writeReactive(statement), maxConcurrentWrites)
+                Flux<WriteResult> writeResultFlux;
+                if (dryRun) {
+                  writeResultFlux = flux.map(s -> new DefaultWriteResult(s, null));
+                } else {
+                  writeResultFlux = flux.flatMap(executor::writeReactive, maxConcurrentWrites);
+                }
+                return writeResultFlux
                     .transform(logManager.newWriteErrorHandler())
                     .transform(logManager.newResultPositionTracker(scheduler))
                     .subscribeOn(scheduler);
@@ -137,30 +142,32 @@ public class LoadWorkflow implements Workflow {
               maxConcurrentMappings)
           .subscribe(subscriber);
     } else {
-      LOGGER.info("Not optimizing reads by resource (estimated resource count: {})", resourceCount);Flux<Statement> flux =
-        Flux.from(connector.read())
-            .publishOn(scheduler, bufferSize)
-            .transform(metricsManager.newUnmappableRecordMonitor())
-            .transform(logManager.newUnmappableRecordErrorHandler())
-            .parallel(maxConcurrentMappings)
-            .runOn(scheduler)
-            .map(recordMapper::map)
-            .sequential()
-            .transform(metricsManager.newUnmappableStatementMonitor())
-            .transform(logManager.newUnmappableStatementErrorHandler());
-    if (batchingEnabled) {
-      flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
+      LOGGER.info("Not optimizing reads by resource (estimated resource count: {})", resourceCount);
+      Flux<Statement> flux =
+          Flux.from(connector.read())
+              .publishOn(scheduler, bufferSize)
+              .transform(metricsManager.newUnmappableRecordMonitor())
+              .transform(logManager.newUnmappableRecordErrorHandler())
+              .parallel(maxConcurrentMappings)
+              .runOn(scheduler)
+              .map(recordMapper::map)
+              .sequential()
+              .transform(metricsManager.newUnmappableStatementMonitor())
+              .transform(logManager.newUnmappableStatementErrorHandler());
+      if (batchingEnabled) {
+        flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
+      }
+      Flux<WriteResult> writeResultFlux;
+      if (dryRun) {
+        writeResultFlux = flux.map(s -> new DefaultWriteResult(s, null));
+      } else {
+        writeResultFlux = flux.flatMap(executor::writeReactive, maxConcurrentWrites);
+      }
+      writeResultFlux
+          .transform(logManager.newWriteErrorHandler())
+          .transform(logManager.newResultPositionTracker(scheduler))
+          .subscribe(subscriber);
     }
-    Flux<WriteResult> writeResultFlux;
-    if (dryRun) {
-      writeResultFlux = flux.map(s -> new DefaultWriteResult(s, null));
-    } else {
-      writeResultFlux =flux.flatMap(executor::writeReactive, maxConcurrentWrites);
-    }
-    writeResultFlux
-        .transform(logManager.newWriteErrorHandler())
-        .transform(logManager.newResultPositionTracker(scheduler))
-        .subscribe(subscriber);}
     subscriber.block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
