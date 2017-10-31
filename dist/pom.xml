@@ -24,13 +24,6 @@
     Binary distribution of the DataStax Bulk Loader.
   </description>
 
-  <properties>
-    <joda.version>2.9.9</joda.version>
-    <jsr353-api.version>1.0</jsr353-api.version>
-    <esri.version>1.2.1</esri.version>
-    <osgi-core.version>4.3.0</osgi-core.version>
-  </properties>
-
   <dependencies>
 
     <dependency>
@@ -73,20 +66,6 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
-    </dependency>
-
-    <!-- source artifacts -->
-
-    <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dse-java-driver-core</artifactId>
-      <classifier>sources</classifier>
-    </dependency>
-
-    <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dse-java-driver-extras</artifactId>
-      <classifier>sources</classifier>
     </dependency>
 
   </dependencies>
@@ -147,26 +126,16 @@
             <artifactId>maven-javadoc-plugin</artifactId>
             <executions>
               <execution>
-                <id>attach-sources</id>
-                <configuration>
-                  <skip>true</skip>
-                </configuration>
-              </execution>
-              <execution>
-                <id>dependencies-javadoc</id>
-                <phase>package</phase>
+                <id>attach-javadocs</id>
                 <goals>
                   <goal>jar</goal>
                 </goals>
                 <configuration>
                   <includeDependencySources>true</includeDependencySources>
-                  <includeTransitiveDependencySources>true</includeTransitiveDependencySources>
                   <dependencySourceIncludes>
-                    <dependencySourceInclude>com.datastax.*</dependencySourceInclude>
+                    <dependencySourceInclude>com.datastax.dse:dsbulk-*</dependencySourceInclude>
                   </dependencySourceIncludes>
-                  <excludePackageNames>*.internal:internal.*</excludePackageNames>
-                  <!-- required unfortunately because javadocs from the java driver do not comply -->
-                  <additionalparam>-Xdoclint:none</additionalparam>
+                  <excludePackageNames>*.internal:*.internal.*</excludePackageNames>
                   <additionalDependencies>
                     <!--
                     dependencies from this project;
@@ -177,31 +146,6 @@
                       <groupId>io.reactivex.rxjava2</groupId>
                       <artifactId>rxjava</artifactId>
                       <version>${rx-java.version}</version>
-                    </additionalDependency>
-                    <!--
-                    dependencies from the java driver;
-                    not used in this project but required
-                    for javadoc generation
-                    -->
-                    <additionalDependency>
-                      <groupId>org.osgi</groupId>
-                      <artifactId>org.osgi.core</artifactId>
-                      <version>${osgi-core.version}</version>
-                    </additionalDependency>
-                    <additionalDependency>
-                      <groupId>joda-time</groupId>
-                      <artifactId>joda-time</artifactId>
-                      <version>${joda.version}</version>
-                    </additionalDependency>
-                    <additionalDependency>
-                      <groupId>javax.json</groupId>
-                      <artifactId>javax.json-api</artifactId>
-                      <version>${jsr353-api.version}</version>
-                    </additionalDependency>
-                    <additionalDependency>
-                      <groupId>com.esri.geometry</groupId>
-                      <artifactId>esri-geometry-api</artifactId>
-                      <version>${esri.version}</version>
                     </additionalDependency>
                   </additionalDependencies>
                 </configuration>

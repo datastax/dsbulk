@@ -62,21 +62,7 @@
       <excludes>
         <!-- Guava dependency that must be kept during build, but can be discarded now -->
         <exclude>org.codehaus.mojo:animal-sniffer-annotations*</exclude>
-        <!-- do not include source jars here -->
-        <exclude>com.datastax.*:*:jar:sources:*</exclude>
       </excludes>
-    </dependencySet>
-
-    <!-- sources for DataStax-owned dependencies (driver) -->
-    <dependencySet>
-      <outputDirectory>src</outputDirectory>
-      <useProjectArtifact>false</useProjectArtifact>
-      <scope>runtime</scope>
-      <includes>
-        <include>com.datastax.*:*:jar:sources:*</include>
-      </includes>
-      <unpack>false</unpack>
-      <outputFileNameMapping>${artifact.artifactId}-${artifact.version}-src.zip</outputFileNameMapping>
     </dependencySet>
 
   </dependencySets>
