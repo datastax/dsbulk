@@ -6,6 +6,7 @@
 - [improvement] DAT-145: Use HdrHistogram as reservoir for latency measurement.
 - [improvement] DAT-104: Add dry-run feature to try out load without writing to DSE.
 - [bug] DAT-137: Workflow Engine does not react to interruption signals properly.
+- [improvement] DAT-140: Report memory usage.
 
 
 ### 1.0.0-beta1
