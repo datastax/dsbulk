@@ -63,6 +63,33 @@ public class CSVLoadEndToEndIT {
   }
 
   @Test
+  public void full_load_dry_run() throws Exception {
+    String[] args = {
+      "load",
+      "--log.directory",
+      "./target",
+      "-header",
+      "false",
+      "--connector.csv.url",
+      CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm(),
+      "--driver.query.consistency",
+      "ONE",
+      "-dryRun",
+      "true",
+      "--driver.hosts",
+      EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
+      "--driver.protocol.compression",
+      "NONE",
+      "--schema.query",
+      CsvUtils.INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
+    };
+
+    new Main(args).run();
+    validateQueryCount(0, ConsistencyLevel.ONE);
+  }
+
+  @Test
   public void full_load_crlf() throws Exception {
 
     String[] args = {

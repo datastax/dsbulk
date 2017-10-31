@@ -29,6 +29,8 @@ import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
+import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
+import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -60,6 +62,7 @@ public class LoadWorkflow implements Workflow {
   private int bufferSize;
   private boolean batchingEnabled;
   private SimpleBlockingSubscriber<Void> subscriber;
+  private boolean dryRun;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -82,6 +85,7 @@ public class LoadWorkflow implements Workflow {
     maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
     maxConcurrentWrites = executorSettings.getMaxInFlight();
     bufferSize = engineSettings.getBufferSize();
+    dryRun = engineSettings.isDryRun();
     scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector(WorkflowType.LOAD);
     connector.init();
@@ -133,26 +137,30 @@ public class LoadWorkflow implements Workflow {
               maxConcurrentMappings)
           .subscribe(subscriber);
     } else {
-      LOGGER.info("Not optimizing reads by resource (estimated resource count: {})", resourceCount);
-      Flux<Statement> flux =
-          Flux.from(connector.read())
-              .publishOn(scheduler, bufferSize)
-              .transform(metricsManager.newUnmappableRecordMonitor())
-              .transform(logManager.newUnmappableRecordErrorHandler())
-              .parallel(maxConcurrentMappings)
-              .runOn(scheduler)
-              .map(recordMapper::map)
-              .sequential()
-              .transform(metricsManager.newUnmappableStatementMonitor())
-              .transform(logManager.newUnmappableStatementErrorHandler());
-      if (batchingEnabled) {
-        flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
-      }
-      flux.flatMap(executor::writeReactive, maxConcurrentWrites)
-          .transform(logManager.newWriteErrorHandler())
-          .transform(logManager.newResultPositionTracker(scheduler))
-          .subscribe(subscriber);
+      LOGGER.info("Not optimizing reads by resource (estimated resource count: {})", resourceCount);Flux<Statement> flux =
+        Flux.from(connector.read())
+            .publishOn(scheduler, bufferSize)
+            .transform(metricsManager.newUnmappableRecordMonitor())
+            .transform(logManager.newUnmappableRecordErrorHandler())
+            .parallel(maxConcurrentMappings)
+            .runOn(scheduler)
+            .map(recordMapper::map)
+            .sequential()
+            .transform(metricsManager.newUnmappableStatementMonitor())
+            .transform(logManager.newUnmappableStatementErrorHandler());
+    if (batchingEnabled) {
+      flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
     }
+    Flux<WriteResult> writeResultFlux;
+    if (dryRun) {
+      writeResultFlux = flux.map(s -> new DefaultWriteResult(s, null));
+    } else {
+      writeResultFlux =flux.flatMap(executor::writeReactive, maxConcurrentWrites);
+    }
+    writeResultFlux
+        .transform(logManager.newWriteErrorHandler())
+        .transform(logManager.newResultPositionTracker(scheduler))
+        .subscribe(subscriber);}
     subscriber.block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);

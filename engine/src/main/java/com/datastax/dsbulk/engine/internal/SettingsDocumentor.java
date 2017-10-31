@@ -63,6 +63,7 @@ public class SettingsDocumentor {
           "schema.keyspace",
           "schema.table",
           "schema.mapping",
+          "engine.dryRun",
           "driver.hosts",
           "driver.port",
           "driver.auth.password",

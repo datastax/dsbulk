@@ -168,6 +168,14 @@ The exact type of mapping to use depends on the connector being used. Some conne
 
 Default: **&lt;unspecified&gt;**.
 
+#### -dryRun,--engine.dryRun _&lt;boolean&gt;_
+
+Whether or not to run in dry-run mode.
+
+Only applicable for loads, the tool proceeds as normal except it does not actually load any data.
+
+Default: **false**.
+
 #### -h,--driver.hosts _&lt;string&gt;_
 
 The contact points to use for the initial connection to the cluster.
@@ -1063,6 +1071,14 @@ Default: **&lt;unspecified&gt;**.
 ## Engine Settings
 
 Workflow Engine-specific settings.
+
+#### -dryRun,--engine.dryRun _&lt;boolean&gt;_
+
+Whether or not to run in dry-run mode.
+
+Only applicable for loads, the tool proceeds as normal except it does not actually load any data.
+
+Default: **false**.
 
 #### --engine.bufferSize _&lt;number&gt;_
 
