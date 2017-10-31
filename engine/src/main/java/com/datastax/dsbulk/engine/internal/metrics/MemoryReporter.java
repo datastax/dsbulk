@@ -27,7 +27,8 @@ public class MemoryReporter extends ScheduledReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemoryReporter.class);
 
   private static final String MSG =
-      "Memory usage: used: %,d MB, free: %,d MB, total: %,d MB, maxMemory: %,d MB, total garbage collections: %,d, total gc time: %,d ms";
+      "Memory usage: used: %,d MB, free: %,d MB, allocated: %,d MB, available: %,d MB, "
+          + "total gc count: %,d, total gc time: %,d ms";
 
   MemoryReporter(MetricRegistry registry, ScheduledExecutorService scheduler) {
     super(registry, "memory-reporter", createFilter(), SECONDS, MILLISECONDS, scheduler);
@@ -37,8 +38,8 @@ public class MemoryReporter extends ScheduledReporter {
     return (name, metric) ->
         name.equals("memory/used")
             || name.equals("memory/free")
-            || name.equals("memory/total")
-            || name.equals("memory/max")
+            || name.equals("memory/allocated")
+            || name.equals("memory/available")
             || name.equals("memory/gc_count")
             || name.equals("memory/gc_time");
   }
@@ -52,9 +53,9 @@ public class MemoryReporter extends ScheduledReporter {
       SortedMap<String, Timer> timers) {
 
     Gauge freeMemoryGauge = gauges.get("memory/free");
-    Gauge totalMemoryGauge = gauges.get("memory/total");
+    Gauge allocatedMemoryGauge = gauges.get("memory/allocated");
     Gauge usedMemoryGauge = gauges.get("memory/used");
-    Gauge maxMemoryGauge = gauges.get("memory/max");
+    Gauge availableMemoryGauge = gauges.get("memory/available");
     Gauge gcCountGauge = gauges.get("memory/gc_count");
     Gauge gcTimeGauge = gauges.get("memory/gc_time");
     //noinspection MalformedFormatString
@@ -63,8 +64,8 @@ public class MemoryReporter extends ScheduledReporter {
             MSG,
             usedMemoryGauge.getValue(),
             freeMemoryGauge.getValue(),
-            totalMemoryGauge.getValue(),
-            maxMemoryGauge.getValue(),
+            allocatedMemoryGauge.getValue(),
+            availableMemoryGauge.getValue(),
             gcCountGauge.getValue(),
             gcTimeGauge.getValue()));
   }

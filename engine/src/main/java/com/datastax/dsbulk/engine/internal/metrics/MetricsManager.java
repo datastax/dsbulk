@@ -142,7 +142,7 @@ public class MetricsManager implements AutoCloseable {
             });
 
     registry.gauge(
-        "memory/total",
+        "memory/allocated",
         () ->
             () -> {
               Runtime runtime = Runtime.getRuntime();
@@ -150,7 +150,7 @@ public class MetricsManager implements AutoCloseable {
             });
 
     registry.gauge(
-        "memory/max",
+        "memory/available",
         () ->
             () -> {
               Runtime runtime = Runtime.getRuntime();
