@@ -16,9 +16,10 @@ import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
-import com.datastax.oss.simulacron.common.result.AlreadyExistsResult;
+import com.datastax.oss.simulacron.common.result.FunctionFailureResult;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
-import com.datastax.oss.simulacron.common.result.SyntaxErrorResult;
+import com.datastax.oss.simulacron.common.result.UnavailableResult;
+import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import java.util.ArrayList;
@@ -156,10 +157,14 @@ public class CSVLoadEndToEndIT {
             new SuccessResult(new ArrayList<>(), new HashMap<>()));
     simulacron.cluster().prime(new Prime(prime1));
 
+    // recoverable errors only
+
     params.put("country_name", "France");
     prime1 =
         EndToEndUtils.createParametrizedQuery(
-            INSERT_INTO_IP_BY_COUNTRY, params, new SyntaxErrorResult("France is not a keyword"));
+            INSERT_INTO_IP_BY_COUNTRY,
+            params,
+            new UnavailableResult(ConsistencyLevel.LOCAL_ONE, 1, 0));
     simulacron.cluster().prime(new Prime(prime1));
 
     params.put("country_name", "Gregistan");
@@ -175,14 +180,17 @@ public class CSVLoadEndToEndIT {
         EndToEndUtils.createParametrizedQuery(
             INSERT_INTO_IP_BY_COUNTRY,
             params,
-            new AlreadyExistsResult("Not a real country", "keyspace", "table"));
+            new WriteFailureResult(ConsistencyLevel.ONE, 0, 0, new HashMap<>(), WriteType.BATCH));
     simulacron.cluster().prime(new Prime(prime1));
 
     params = new HashMap<>();
     params.put("country_name", "United States");
     prime1 =
         EndToEndUtils.createParametrizedQuery(
-            INSERT_INTO_IP_BY_COUNTRY, params, new SyntaxErrorResult("USA is not keyword"));
+            INSERT_INTO_IP_BY_COUNTRY,
+            params,
+            new FunctionFailureResult(
+                "keyspace", "function", new ArrayList<>(), "bad function call"));
     simulacron.cluster().prime(new Prime(prime1));
 
     String[] args = {
@@ -206,9 +214,9 @@ public class CSVLoadEndToEndIT {
       "--schema.mapping={0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name}"
     };
 
-    // There are 24 rows of data, but one extra query due to the retry for the write timeout.
+    // There are 24 rows of data, but two extra queries due to the retry for the write timeout and the unavailable.
     new Main(args).run();
-    validateQueryCount(25, ConsistencyLevel.LOCAL_ONE);
+    validateQueryCount(26, ConsistencyLevel.LOCAL_ONE);
     EndToEndUtils.validateBadOps(4);
     EndToEndUtils.validateExceptionsLog(4, "Source  :", "load-errors.log");
   }
