@@ -51,4 +51,21 @@ public class EngineSettingsTest {
     EngineSettings settings = new EngineSettings(config);
     assertThat(settings.getBufferSize()).isEqualTo(100);
   }
+
+  @Test
+  public void should_report_default_dry_run() throws Exception {
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
+    EngineSettings settings = new EngineSettings(config);
+    assertThat(settings.isDryRun()).isFalse();
+  }
+
+  @Test
+  public void should_create_custom_dry_run() throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("dryRun = true")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
+    EngineSettings settings = new EngineSettings(config);
+    assertThat(settings.isDryRun()).isTrue();
+  }
 }

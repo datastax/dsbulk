@@ -11,6 +11,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -78,6 +79,12 @@ public class UnloadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
+
+    // First verify that dry-run is off; that's unsupported for unload.
+    if (engineSettings.isDryRun()) {
+      throw new BulkConfigurationException("Dry-run is not supported for unload", "engine.dryRun");
+    }
+
     maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
     bufferSize = engineSettings.getBufferSize();
     scheduler = Schedulers.newElastic("workflow");

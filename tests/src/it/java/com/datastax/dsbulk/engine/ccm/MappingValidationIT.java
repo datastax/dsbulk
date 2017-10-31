@@ -25,6 +25,7 @@ import com.datastax.dsbulk.tests.ccm.annotations.SessionConfig;
 import com.datastax.dsbulk.tests.utils.CsvUtils;
 import com.datastax.dsbulk.tests.utils.EndToEndUtils;
 import com.datastax.dsbulk.tests.utils.TestAppender;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import javax.inject.Inject;
@@ -142,22 +143,21 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
   }
 
   private void validateErrorMessageLogged(String... msg) {
-    ILoggingEvent event = findFirstErrorEvent();
-    assertThat(event).isNotNull();
-    String errorMsg = event.getMessage();
-    assertThat(errorMsg).contains("Load workflow engine execution");
-    assertThat(errorMsg).contains("failed");
-    String exceptionString = event.getThrowableProxy().getMessage();
-    assertThat(exceptionString).contains(msg);
+    List<String> errorMessages = getErrorEventMessages();
+    assertThat(errorMessages.size()).isGreaterThanOrEqualTo(2);
+    assertThat(errorMessages.get(0)).contains("Load workflow engine execution");
+    assertThat(errorMessages.get(0)).contains("failed");
+    assertThat(errorMessages.get(1)).contains(msg);
   }
 
-  private ILoggingEvent findFirstErrorEvent() {
+  private List<String> getErrorEventMessages() {
+    List<String> errorMessages = new ArrayList<>();
     List<ILoggingEvent> events = appender.getEvents();
     for (ILoggingEvent event : events) {
       if (event.getLevel().equals(Level.ERROR)) {
-        return event;
+        errorMessages.add(event.getMessage());
       }
     }
-    return null;
+    return errorMessages;
   }
 }
