@@ -88,7 +88,7 @@ public class UnloadWorkflow implements Workflow {
     maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
     bufferSize = engineSettings.getBufferSize();
     scheduler = Schedulers.newElastic("workflow");
-    connector = connectorSettings.getConnector(WorkflowType.UNLOAD);
+    connector = connectorSettings.getConnector();
     connector.init();
     subscriber = new DelegatingBlockingSubscriber<>(connector.write());
     cluster = driverSettings.newCluster();

@@ -14,33 +14,27 @@ import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-public class ConnectorSettings implements SettingsValidator {
+public class ConnectorSettings {
 
-  private final LoaderConfig config;
+  private final Connector connector;
 
-  ConnectorSettings(LoaderConfig config) {
-    this.config = config;
-  }
-
-  public Connector getConnector(WorkflowType workflowType) throws BulkConfigurationException {
+  ConnectorSettings(LoaderConfig config, WorkflowType type) {
+    // Attempting to fetch the connector will run through all the validation logic we have for parsing the configuration
     String connectorName = config.getString("name");
-    Connector connector = locateConnector(connectorName);
+    connector = locateConnector(connectorName);
     if (config.hasPath(connectorName)) {
       // the connector should be configured for reads when the workflow is LOAD
-      boolean read = workflowType == WorkflowType.LOAD;
+      boolean read = type == WorkflowType.LOAD;
       connector.configure(config.getConfig(connectorName), read);
-      return connector;
     } else {
-      throw new IllegalArgumentException(
-          String.format("Cannot find configuration entry for connector '%s'", connectorName));
+      throw new BulkConfigurationException(
+          String.format("Cannot find configuration entry for connector '%s'", connectorName),
+          "connector");
     }
   }
 
-  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
-    String connectorName = config.getString("name");
-    boolean read = type == WorkflowType.LOAD;
-    Connector connector = locateConnector(connectorName);
-    connector.validate(config.getConfig(connectorName), read);
+  public Connector getConnector() throws BulkConfigurationException {
+    return connector;
   }
 
   private static Connector locateConnector(String name) {
@@ -52,12 +46,13 @@ public class ConnectorSettings implements SettingsValidator {
       if (connector.getClass().getSimpleName().toLowerCase().startsWith(name.toLowerCase()))
         return connector;
     }
-    throw new IllegalArgumentException(
+    throw new BulkConfigurationException(
         String.format(
             "Cannot find connector '%s'; available connectors are: %s",
             name,
             StreamSupport.stream(connectors.spliterator(), false)
                 .map(connector -> connector.getClass().getName())
-                .collect(Collectors.joining(", "))));
+                .collect(Collectors.joining(", "))),
+        "connector");
   }
 }

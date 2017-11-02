@@ -36,12 +36,12 @@ import com.datastax.driver.dse.DseConfiguration;
 import com.datastax.driver.dse.DseLoadBalancingPolicy;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
 import com.google.common.base.Predicate;
-import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import io.netty.handler.ssl.SslContext;
 import java.net.InetSocketAddress;
@@ -55,7 +55,7 @@ import org.mockito.internal.util.reflection.Whitebox;
 /** */
 public class DriverSettingsTest {
 
-  @Test(expected = ConfigException.Missing.class)
+  @Test(expected = BulkConfigurationException.class)
   public void should_not_create_mapper_when_contact_points_not_provided() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
@@ -227,7 +227,7 @@ public class DriverSettingsTest {
                             + "}, "
                             + "truststore { "
                             + "   path = \"%s\","
-                            + "   password = cassandra1sfun "
+                            + "   password = cassandra1sfun"
                             + "}"
                             + "}",
                         keystore, truststore))
@@ -259,7 +259,7 @@ public class DriverSettingsTest {
                             + "   privateKey = \"%s\""
                             + "}, "
                             + "truststore { "
-                            + "   url = \"%s\","
+                            + "   path = \"%s\","
                             + "   password = cassandra1sfun "
                             + "}"
                             + "}",

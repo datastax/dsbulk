@@ -7,45 +7,46 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.typesafe.config.ConfigException;
+import java.time.Duration;
 
 /** */
-public class BatchSettings implements SettingsValidator {
+public class BatchSettings {
 
-  private final LoaderConfig config;
+  private static final String MODE = "mode";
+  private static final String MAX_BATCH_SIZE = "maxBatchSize";
+  private static final String BUFFER_SIZE = "bufferSize";
+  private static final String BUFFER_TIMEOUT = "bufferTimeout";
+  private static final String ENABLED = "enabled";
+
+  private final StatementBatcher.BatchMode mode;
+  private final int maxBatchSize;
+  private final int bufferSize;
+  private final Duration bufferTimeout;
+  private final boolean enabled;
 
   BatchSettings(LoaderConfig config) {
-    this.config = config;
+    try {
+      enabled = config.getBoolean(ENABLED);
+      mode = config.getEnum(StatementBatcher.BatchMode.class, MODE);
+      maxBatchSize = config.getInt(MAX_BATCH_SIZE);
+      bufferSize = config.getInt(BUFFER_SIZE);
+      bufferTimeout = config.getDuration(BUFFER_TIMEOUT);
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
+    }
   }
 
   public boolean isBatchingEnabled() {
-    return config.getBoolean("enabled");
+    return enabled;
   }
 
   public ReactorUnsortedStatementBatcher newStatementBatcher(Cluster cluster) {
     return new ReactorUnsortedStatementBatcher(
-        cluster,
-        config.getEnum(StatementBatcher.BatchMode.class, "mode"),
-        config.getInt("maxBatchSize"),
-        config.getInt("bufferSize"),
-        config.getDuration("bufferTimeout"));
-  }
-
-  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
-    try {
-      config.getBoolean("enabled");
-      config.getEnum(StatementBatcher.BatchMode.class, "mode");
-      config.getInt("maxBatchSize");
-      config.getInt("bufferSize");
-      config.getDuration("bufferTimeout");
-    } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
-    }
+        cluster, mode, maxBatchSize, bufferSize, bufferTimeout);
   }
 }

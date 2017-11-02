@@ -39,15 +39,6 @@ public interface Connector extends AutoCloseable {
   Subscriber<Record> write();
 
   /**
-   * Validates the connector settings.
-   *
-   * @param settings the settings to validate.
-   * @param read whether the connector should be configured for reading or writing.
-   * @throws BulkConfigurationException if the connector fails to validate its settings properly.
-   */
-  void validate(LoaderConfig settings, boolean read) throws BulkConfigurationException;
-
-  /**
    * Configures the connector.
    *
    * @param settings the connector settings.

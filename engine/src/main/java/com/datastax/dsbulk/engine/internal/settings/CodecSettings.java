@@ -8,10 +8,8 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,7 +30,7 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 /** */
-public class CodecSettings implements SettingsValidator {
+public class CodecSettings {
 
   /** A {@link DateTimeFormatter} that formats and parses all accepted CQL timestamp formats. */
   public static final DateTimeFormatter CQL_DATE_TIME_FORMAT =
@@ -60,23 +58,44 @@ public class CodecSettings implements SettingsValidator {
           .withZone(ZoneOffset.UTC);
 
   private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
+  private static final String LOCALE = "locale";
+  private static final String BOOLEAN_WORDS = "booleanWords";
+  private static final String NUMBER = "number";
+  private static final String TIME = "time";
+  private static final String TIME_ZONE = "timeZone";
+  private static final String DATE = "date";
+  private static final String TIMESTAMP = "timestamp";
 
-  private final LoaderConfig config;
+  private final String localeString;
+  private final List<String> booleanWords;
+  private final String number;
+  private final String time;
+  private final String timeZone;
+  private final String date;
+  private final String timestamp;
 
   CodecSettings(LoaderConfig config) {
-    this.config = config;
+    try {
+      localeString = config.getString(LOCALE);
+      booleanWords = config.getStringList(BOOLEAN_WORDS);
+      number = config.getString(NUMBER);
+      timeZone = config.getString(TIME_ZONE);
+      date = config.getString(DATE);
+      time = config.getString(TIME);
+      timestamp = config.getString(TIMESTAMP);
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "codec");
+    }
   }
 
   public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {
-    Locale locale = parseLocale(config.getString("locale"));
-    Map<String, Boolean> booleanInputs = getBooleanInputs(config.getStringList("booleanWords"));
-    Map<Boolean, String> booleanOutputs = getBooleanOutputs(config.getStringList("booleanWords"));
-    ThreadLocal<DecimalFormat> numberFormat = getNumberFormat(locale, config.getString("number"));
-    String timeZone = config.getString("timeZone");
-    DateTimeFormatter localDateFormat = getDateFormat(config.getString("date"), timeZone, locale);
-    DateTimeFormatter localTimeFormat = getDateFormat(config.getString("time"), timeZone, locale);
-    DateTimeFormatter timestampFormat =
-        getDateFormat(config.getString("timestamp"), timeZone, locale);
+    Locale locale = parseLocale(localeString);
+    Map<String, Boolean> booleanInputs = getBooleanInputs(booleanWords);
+    Map<Boolean, String> booleanOutputs = getBooleanOutputs(booleanWords);
+    ThreadLocal<DecimalFormat> numberFormat = getNumberFormat(locale, number);
+    DateTimeFormatter localDateFormat = getDateFormat(date, timeZone, locale);
+    DateTimeFormatter localTimeFormat = getDateFormat(time, timeZone, locale);
+    DateTimeFormatter timestampFormat = getDateFormat(timestamp, timeZone, locale);
     ObjectMapper objectMapper = getObjectMapper();
     CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
     return new ExtendedCodecRegistry(
@@ -88,20 +107,6 @@ public class CodecSettings implements SettingsValidator {
         localTimeFormat,
         timestampFormat,
         objectMapper);
-  }
-
-  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
-    try {
-      config.getString("locale");
-      config.getStringList("booleanWords");
-      config.getString("number");
-      config.getString("timeZone");
-      config.getString("date");
-      config.getString("time");
-      config.getString("timestamp");
-    } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "codec");
-    }
   }
 
   private static Locale parseLocale(String s) {
