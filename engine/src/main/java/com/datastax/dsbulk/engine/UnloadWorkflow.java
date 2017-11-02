@@ -61,6 +61,7 @@ public class UnloadWorkflow implements Workflow {
   private int bufferSize;
   private List<Statement> readStatements;
   private DelegatingBlockingSubscriber<Record> subscriber;
+  private int threadPerCoreThreshold;
 
   UnloadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -105,13 +106,15 @@ public class UnloadWorkflow implements Workflow {
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
+    threadPerCoreThreshold = engineSettings.getThreadPerCoreThreshold();
   }
 
   @Override
   public void execute() throws InterruptedException {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    if (readStatements.size() >= 4) {
+    if (readStatements.size() >= threadPerCoreThreshold) {
+      LOGGER.info("Optimizing workflow for the thread-per-core pattern");
       Flux.fromIterable(readStatements)
           .flatMap(
               statement ->

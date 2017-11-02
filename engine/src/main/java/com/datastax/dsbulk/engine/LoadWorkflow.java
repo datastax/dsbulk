@@ -63,6 +63,8 @@ public class LoadWorkflow implements Workflow {
   private boolean batchingEnabled;
   private SimpleBlockingSubscriber<Void> subscriber;
   private boolean dryRun;
+  private int threadPerCoreThreshold;
+  private long resourceCount;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -106,15 +108,16 @@ public class LoadWorkflow implements Workflow {
       batcher = batchSettings.newStatementBatcher(cluster);
     }
     closed.set(false);
+    resourceCount = connector.estimatedResourceCount();
+    threadPerCoreThreshold = engineSettings.getThreadPerCoreThreshold();
   }
 
   @Override
   public void execute() throws InterruptedException {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    long resourceCount = connector.estimatedResourceCount();
-    if (resourceCount >= config.getInt("engine.resourceThreshold")) {
-      LOGGER.info("Optimizing reads by resource (estimated resource count: {})", resourceCount);
+    if (resourceCount > threadPerCoreThreshold) {
+      LOGGER.info("Optimizing workflow for the thread-per-core pattern");
       Flux.from(connector.readByResource())
           .flatMap(
               records -> {
@@ -142,7 +145,6 @@ public class LoadWorkflow implements Workflow {
               maxConcurrentMappings)
           .subscribe(subscriber);
     } else {
-      LOGGER.info("Not optimizing reads by resource (estimated resource count: {})", resourceCount);
       Flux<Statement> flux =
           Flux.from(connector.read())
               .publishOn(scheduler, bufferSize)

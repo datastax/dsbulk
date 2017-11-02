@@ -1088,17 +1088,26 @@ Default: **4096**.
 
 The maximum number of concurrent record and result mappings.
 
-Applies to both read and write workflows.
+Applies to both load and unload workflows.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
 Default: **"0.25C"**.
 
-#### --engine.resourceThreshold _&lt;number&gt;_
+#### --engine.threadPerCoreThreshold _&lt;number&gt;_
 
+The minimum number of parallel tasks above which the egine will apply internal optimizations attempting to "pin" one thread to one CPU core.
 
+When the number of tasks to execute is below this threshold, the engine will operate in a mode where more thread context switches will happen, but thus allowing to optimize CPU usage when there aren't enough parallalel tasks available to occupy each CPU core.
 
-Default: **4**.
+When the number of tasks to execute is equal to or grater than this threshold, the engine will operate in a mode where a thread will be "pinned" to a CPU core; this usually results in less thread context switches and better performance, provided that there are enough parallel tasks available to occupy all or most CPU cores.
+
+The exact meaning of "parallel tasks" depends on the workflow:
+
+- For load workflows, it is the number of distinct resources to read, as reported by the connector in use.
+- For unload workflows, it is the number of statements to execute.
+
+Default: **5**.
 
 <a name="executor"></a>
 ## Executor Settings

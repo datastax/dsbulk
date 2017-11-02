@@ -59,6 +59,7 @@ public interface Connector extends AutoCloseable {
    *
    * @throws Exception if the connector fails to close properly.
    */
+  @Override
   default void close() throws Exception {}
 
   /**

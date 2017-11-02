@@ -68,4 +68,21 @@ public class EngineSettingsTest {
     EngineSettings settings = new EngineSettings(config);
     assertThat(settings.isDryRun()).isTrue();
   }
+
+  @Test
+  public void should_report_default_thread_per_core_threshold() throws Exception {
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
+    EngineSettings settings = new EngineSettings(config);
+    assertThat(settings.getThreadPerCoreThreshold()).isEqualTo(5);
+  }
+
+  @Test
+  public void should_create_custom_thread_per_core_threshold() throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("threadPerCoreThreshold = 42")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
+    EngineSettings settings = new EngineSettings(config);
+    assertThat(settings.getThreadPerCoreThreshold()).isEqualTo(42);
+  }
 }
