@@ -30,6 +30,7 @@ public class BatchSettingsTest {
 
   private Cluster cluster;
 
+  @SuppressWarnings("Duplicates")
   @Before
   public void setUp() throws Exception {
     cluster = mock(Cluster.class);
@@ -47,7 +48,7 @@ public class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(1024);
+    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(32);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
@@ -60,7 +61,7 @@ public class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
-    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(1024);
+    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(32);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
@@ -86,7 +87,7 @@ public class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(1024);
+    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(32);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
   }
 }

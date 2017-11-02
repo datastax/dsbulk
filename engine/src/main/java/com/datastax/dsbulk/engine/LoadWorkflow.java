@@ -113,7 +113,7 @@ public class LoadWorkflow implements Workflow {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     long resourceCount = connector.estimatedResourceCount();
-    if (resourceCount >= 4) {
+    if (resourceCount >= config.getInt("dsbulk.engine.resourceThreshold")) {
       LOGGER.info("Optimizing reads by resource (estimated resource count: {})", resourceCount);
       Flux.from(connector.readByResource())
           .flatMap(
