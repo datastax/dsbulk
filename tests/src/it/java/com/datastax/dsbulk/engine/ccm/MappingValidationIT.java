@@ -50,8 +50,7 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
   @SessionConfig(useKeyspace = SessionConfig.UseKeyspaceMode.FIXED, loggedKeyspaceName = KS)
   private static Session session;
 
-  @Inject
-  private static Cluster cluster;
+  @Inject private static Cluster cluster;
 
   @Override
   public String getKeyspace() {

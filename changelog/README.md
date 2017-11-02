@@ -91,3 +91,4 @@
 - [bug] DAT-69: CSV Connector fails to parse files with non-native line-ending.
 - [new feature] DAT-64: Implement connector writes.
 - [new feature] DAT-63: Support writing to standard output.
+- [improvement] DAT-109: Refactor setting initialization and validation.
