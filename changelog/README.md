@@ -8,6 +8,7 @@
 - [bug] DAT-137: Workflow Engine does not react to interruption signals properly.
 - [improvement] DAT-140: Report memory usage.
 - [bug] DAT-150: In-flight requests are negative when continuous paging is active.
+- [bug] DAT-152: Support query + keyspace settings combination.
 
 
 ### 1.0.0-beta1

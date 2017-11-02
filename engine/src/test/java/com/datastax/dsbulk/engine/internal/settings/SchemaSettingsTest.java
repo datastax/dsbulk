@@ -113,6 +113,31 @@ public class SchemaSettingsTest {
   }
 
   @Test
+  public void should_create_record_mapper_when_using_custom_query() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig(
+            "mapping = \"{ 0 = c1var , 2 = c2var }\", "
+                + "query = \"INSERT INTO ks.t1(c2, c1) VALUES (:c2var, :c1var)\", "
+                + "nullToUnset = true, "
+                + "keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c2, c1) VALUES (:c2var, :c1var)");
+    assertMapping(
+        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"),
+        "0",
+        "c1var",
+        "2",
+        "c2var");
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+  }
+
+  @Test
   public void should_create_record_mapper_when_mapping_is_a_list() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
