@@ -24,7 +24,6 @@ import org.reactivestreams.Subscriber;
 
 public class ReadResultSubscription extends ResultSubscription<ReadResult, ResultSet> {
 
-  @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
   public ReadResultSubscription(
       Subscriber<? super ReadResult> subscriber,
       Queue<ReadResult> queue,
@@ -60,13 +59,13 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
 
   @Override
   void onRequestSuccessful(ResultSet resultSet, ExecutionContext local) {
-    int size = resultSet.getAvailableWithoutFetching();
-    listener.ifPresent(l -> l.onReadRequestSuccessful(statement, size, local));
+    listener.ifPresent(l -> l.onReadRequestSuccessful(statement, local));
     int remaining = resultSet.getAvailableWithoutFetching();
     for (Row row : resultSet) {
       if (isCancelled()) {
         return;
       }
+      listener.ifPresent(l -> l.onRowReceived(row, local));
       onNext(new DefaultReadResult(statement, resultSet.getExecutionInfo(), row));
       if (--remaining == 0) {
         break;

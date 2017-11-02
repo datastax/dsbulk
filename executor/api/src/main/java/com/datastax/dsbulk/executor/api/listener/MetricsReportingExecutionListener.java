@@ -17,6 +17,7 @@ import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.google.common.base.Preconditions;
@@ -32,7 +33,6 @@ import org.slf4j.LoggerFactory;
  * An {@link ExecutionListener} that reports useful metrics about ongoing bulk operations. It relies
  * on a delegate {@link MetricsCollectingExecutionListener} as its source of metrics.
  */
-@SuppressWarnings("WeakerAccess")
 public class MetricsReportingExecutionListener extends ScheduledReporter
     implements ExecutionListener {
 
@@ -82,7 +82,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
      * @return {@code this} (for method chaining).
      */
     public Builder reportingReads() {
-      this.metricType = MetricType.READS;
+      metricType = MetricType.READS;
       return this;
     }
 
@@ -93,7 +93,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
      * @return {@code this} (for method chaining).
      */
     public Builder reportingWrites() {
-      this.metricType = MetricType.WRITES;
+      metricType = MetricType.WRITES;
       return this;
     }
 
@@ -103,7 +103,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
      * @return {@code this} (for method chaining).
      */
     public Builder reportingReadsAndWrites() {
-      this.metricType = MetricType.READS_AND_WRITES;
+      metricType = MetricType.READS_AND_WRITES;
       return this;
     }
 
@@ -115,7 +115,7 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
      * @return {@code this} (for method chaining).
      */
     public Builder reportingStatements() {
-      this.metricType = MetricType.STATEMENTS;
+      metricType = MetricType.STATEMENTS;
       return this;
     }
 
@@ -242,10 +242,10 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
         durationUnit);
     this.delegate = delegate;
     this.expectedTotal = expectedTotal;
-    this.msg = createMessageTemplate(expectedTotal, metricType);
-    this.timer = metricType.timer(delegate);
-    this.successful = metricType.successful(delegate);
-    this.failed = metricType.failed(delegate);
+    msg = createMessageTemplate(expectedTotal, metricType);
+    timer = metricType.timer(delegate);
+    successful = metricType.successful(delegate);
+    failed = metricType.failed(delegate);
     inFlight = delegate.getInFlightRequestsCounter();
   }
 
@@ -265,10 +265,10 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
         scheduler);
     this.delegate = delegate;
     this.expectedTotal = expectedTotal;
-    this.msg = createMessageTemplate(expectedTotal, metricType);
-    this.timer = metricType.timer(delegate);
-    this.successful = metricType.successful(delegate);
-    this.failed = metricType.failed(delegate);
+    msg = createMessageTemplate(expectedTotal, metricType);
+    timer = metricType.timer(delegate);
+    successful = metricType.successful(delegate);
+    failed = metricType.failed(delegate);
     inFlight = delegate.getInFlightRequestsCounter();
   }
 
@@ -298,9 +298,13 @@ public class MetricsReportingExecutionListener extends ScheduledReporter
   }
 
   @Override
-  public void onReadRequestSuccessful(
-      Statement statement, int numberOfRows, ExecutionContext context) {
-    delegate.onReadRequestSuccessful(statement, numberOfRows, context);
+  public void onReadRequestSuccessful(Statement statement, ExecutionContext context) {
+    delegate.onReadRequestSuccessful(statement, context);
+  }
+
+  @Override
+  public void onRowReceived(Row row, ExecutionContext context) {
+    delegate.onRowReceived(row, context);
   }
 
   @Override
