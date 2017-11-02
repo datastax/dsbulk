@@ -569,13 +569,13 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 The buffer size to use for batching statements.
 
-Default: **1024**.
+Default: **32**.
 
 #### --batch.bufferTimeout _&lt;string&gt;_
 
 The maximum amount of time to wait for incoming items to batch before flushing.
-The buffer will be flushed when this duration is elapsed
-or when *bufferSize* is reached, whichever happens first.
+
+The buffer will be flushed when this duration is elapsed or when *bufferSize* is reached, whichever happens first.
 
 Default: **"1 seconds"**.
 
@@ -587,11 +587,7 @@ Default: **true**.
 
 #### --batch.maxBatchSize _&lt;number&gt;_
 
-The maximum batch size.
-
-The ideal batch size depends on how large is the data to be inserted: the larger the data, the smaller this value should be.
-
-The ideal batch size also depends on the batch mode in use. When using **PARTITION_KEY**, it is usually better to use larger batch sizes. When using **REPLICA_SET** however, batches sizes should remain small (below 10).
+The buffer size to use for batching statements.
 
 Default: **32**.
 
@@ -1097,6 +1093,12 @@ Applies to both read and write workflows.
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
 Default: **"0.25C"**.
+
+#### --engine.resourceThreshold _&lt;number&gt;_
+
+
+
+Default: **4**.
 
 <a name="executor"></a>
 ## Executor Settings
