@@ -226,11 +226,9 @@ public class CSVConnector implements Connector {
           throw new IllegalArgumentException("Directory is not readable: " + root);
         }
         this.root = root;
-        try (Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1)) {
-          resourceCount = files.count();
-        }
+        resourceCount = scanRootDirectory().count().block();
       }
-    } catch (FileSystemNotFoundException | IOException ignored) {
+    } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to reading from URL directly
     }
   }
