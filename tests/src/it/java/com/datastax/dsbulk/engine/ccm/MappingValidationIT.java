@@ -50,7 +50,6 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
   @SessionConfig(useKeyspace = SessionConfig.UseKeyspaceMode.FIXED, loggedKeyspaceName = KS)
   private static Session session;
 
-  @SuppressWarnings("unused")
   @Inject
   private static Cluster cluster;
 
@@ -137,6 +136,7 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
     return EndToEndUtils.fetchCompleteArgs("load", contact_point, port, customArgs);
   }
 
+  @Override
   @After
   public void clearKeyspace() {
     session.execute("DROP KEYSPACE IF EXISTS " + KS);
@@ -144,10 +144,10 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
 
   private void validateErrorMessageLogged(String... msg) {
     List<String> errorMessages = getErrorEventMessages();
-    assertThat(errorMessages.size()).isGreaterThanOrEqualTo(2);
+    assertThat(errorMessages).isNotEmpty();
     assertThat(errorMessages.get(0)).contains("Load workflow engine execution");
     assertThat(errorMessages.get(0)).contains("failed");
-    assertThat(errorMessages.get(1)).contains(msg);
+    assertThat(errorMessages.get(0)).contains(msg);
   }
 
   private List<String> getErrorEventMessages() {

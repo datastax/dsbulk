@@ -29,7 +29,6 @@ public class ContinuousReadResultSubscription
   private final ContinuousPagingSession session;
   private final ContinuousPagingOptions options;
 
-  @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
   public ContinuousReadResultSubscription(
       Subscriber<? super ReadResult> subscriber,
       Queue<ReadResult> queue,
@@ -55,6 +54,7 @@ public class ContinuousReadResultSubscription
     this.options = options;
   }
 
+  @Override
   public void start() {
     super.start();
     fetchNextPage(() -> session.executeContinuouslyAsync(statement, options));
@@ -67,12 +67,13 @@ public class ContinuousReadResultSubscription
 
   @Override
   void onRequestSuccessful(AsyncContinuousPagingResult page, ExecutionContext local) {
+    listener.ifPresent(l -> l.onReadRequestSuccessful(statement, local));
     for (Row row : page.currentPage()) {
       if (isCancelled()) {
         page.cancel();
         return;
       }
-      listener.ifPresent(l -> l.onReadRequestSuccessful(statement, 1, local));
+      listener.ifPresent(l -> l.onRowReceived(row, local));
       onNext(new DefaultReadResult(statement, page.getExecutionInfo(), row));
     }
     if (page.isLast()) {

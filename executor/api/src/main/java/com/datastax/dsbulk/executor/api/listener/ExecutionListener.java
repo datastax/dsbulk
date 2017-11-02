@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.executor.api.listener;
 
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
@@ -63,11 +64,17 @@ public interface ExecutionListener {
    * Called when a read request has been completed successfully.
    *
    * @param statement the statement to execute.
-   * @param numberOfRows the number of rows received.
    * @param context the local request execution context.
    */
-  default void onReadRequestSuccessful(
-      Statement statement, int numberOfRows, ExecutionContext context) {}
+  default void onReadRequestSuccessful(Statement statement, ExecutionContext context) {}
+
+  /**
+   * Called when a row has been successfully received. Applicable only for reads.
+   *
+   * @param row the row.
+   * @param context the local request execution context.
+   */
+  default void onRowReceived(Row row, ExecutionContext context) {}
 
   /**
    * Called when a read request has failed.
