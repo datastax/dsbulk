@@ -211,8 +211,11 @@ public class SchemaSettings implements SettingsValidator {
         fieldsToVariables.forcePut(entry.getKey(), entry.getValue());
       }
     }
-    validateAllFieldsPresent(fieldsToVariables);
-    validateAllKeysPresent(fieldsToVariables);
+
+    if (!config.hasPath("query")) {
+      validateAllFieldsPresent(fieldsToVariables);
+      validateAllKeysPresent(fieldsToVariables);
+    }
     Preconditions.checkNotNull(
         fieldsToVariables,
         "Mapping was absent and could not be inferred, please provide an explicit mapping");

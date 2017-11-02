@@ -7,6 +7,7 @@
 - [improvement] DAT-104: Add dry-run feature to try out load without writing to DSE.
 - [bug] DAT-137: Workflow Engine does not react to interruption signals properly.
 - [improvement] DAT-140: Report memory usage.
+- [bug] DAT-152: Support query + keyspace settings combination.
 
 
 ### 1.0.0-beta1
