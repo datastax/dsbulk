@@ -22,6 +22,8 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.MetricsReportingExecutionListener;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
@@ -63,6 +65,7 @@ public class MetricsManager implements AutoCloseable {
   private RecordReporter resultMappingsReporter;
   private MappingReporter recordMappingsReporter;
   private BatchReporter batchesReporter;
+  private MemoryReporter memoryReporter;
   private MetricsReportingExecutionListener writesReporter;
   private MetricsReportingExecutionListener readsReporter;
   private JmxReporter jmxReporter;
@@ -98,9 +101,12 @@ public class MetricsManager implements AutoCloseable {
     failedMappings = registry.meter("mappings/failed");
     successfulMappings = registry.meter("mappings/successful");
     batchSize = registry.histogram("batches/size", () -> new Histogram(new UniformReservoir()));
+    createMemoryGauges();
+
     if (jmx) {
       startJMXReporter();
     }
+    startMemoryReporter();
     switch (workflowType) {
       case LOAD:
         startRecordMappingsReporter();
@@ -115,6 +121,73 @@ public class MetricsManager implements AutoCloseable {
         startResultMappingsReporter();
         break;
     }
+  }
+
+  private void createMemoryGauges() {
+    final int bytesPerMeg = 1024 * 1024;
+    registry.gauge(
+        "memory/used",
+        () ->
+            () -> {
+              Runtime runtime = Runtime.getRuntime();
+              return (runtime.totalMemory() - runtime.freeMemory()) / bytesPerMeg;
+            });
+
+    registry.gauge(
+        "memory/free",
+        () ->
+            () -> {
+              Runtime runtime = Runtime.getRuntime();
+              return runtime.freeMemory() / bytesPerMeg;
+            });
+
+    registry.gauge(
+        "memory/allocated",
+        () ->
+            () -> {
+              Runtime runtime = Runtime.getRuntime();
+              return runtime.totalMemory() / bytesPerMeg;
+            });
+
+    registry.gauge(
+        "memory/available",
+        () ->
+            () -> {
+              Runtime runtime = Runtime.getRuntime();
+              return runtime.maxMemory() / bytesPerMeg;
+            });
+
+    registry.gauge(
+        "memory/gc_count",
+        () ->
+            () -> {
+              // GC stats logic is from https://stackoverflow.com/a/467366/1786686
+              long total = 0;
+
+              for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+                long count = gc.getCollectionCount();
+                if (count >= 0) {
+                  total += count;
+                }
+              }
+              return total;
+            });
+
+    registry.gauge(
+        "memory/gc_time",
+        () ->
+            () -> {
+              // GC stats logic is from https://stackoverflow.com/a/467366/1786686
+              long gcTime = 0;
+
+              for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+                long time = gc.getCollectionTime();
+                if (time >= 0) {
+                  gcTime += time;
+                }
+              }
+              return gcTime;
+            });
   }
 
   private void startJMXReporter() {
@@ -159,6 +232,11 @@ public class MetricsManager implements AutoCloseable {
   private void startBatchesReporter() {
     batchesReporter = new BatchReporter(registry, scheduler);
     batchesReporter.start(reportInterval.getSeconds(), SECONDS);
+  }
+
+  private void startMemoryReporter() {
+    memoryReporter = new MemoryReporter(registry, scheduler);
+    memoryReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
   private void startWritesReporter() {
@@ -210,6 +288,9 @@ public class MetricsManager implements AutoCloseable {
     if (batchesReporter != null) {
       batchesReporter.report();
     }
+    if (memoryReporter != null) {
+      memoryReporter.report();
+    }
     if (writesReporter != null) {
       writesReporter.report();
     }
@@ -230,6 +311,9 @@ public class MetricsManager implements AutoCloseable {
     }
     if (batchesReporter != null) {
       batchesReporter.close();
+    }
+    if (memoryReporter != null) {
+      memoryReporter.close();
     }
     if (writesReporter != null) {
       writesReporter.close();
