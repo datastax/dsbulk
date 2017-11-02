@@ -114,7 +114,7 @@ public class UnloadWorkflow implements Workflow {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     if (readStatements.size() >= threadPerCoreThreshold) {
-      LOGGER.info("Using thread-per-core pattern");
+      LOGGER.info("Using thread-per-core pattern.");
       Flux.fromIterable(readStatements)
           .flatMap(
               statement ->

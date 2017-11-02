@@ -117,7 +117,7 @@ public class LoadWorkflow implements Workflow {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     if (resourceCount > threadPerCoreThreshold) {
-      LOGGER.info("Using thread-per-core pattern");
+      LOGGER.info("Using thread-per-core pattern.");
       Flux.from(connector.readByResource())
           .flatMap(
               records -> {
