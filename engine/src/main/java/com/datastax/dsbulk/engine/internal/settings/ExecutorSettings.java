@@ -10,7 +10,6 @@ import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -31,14 +30,43 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** */
-public class ExecutorSettings implements SettingsValidator {
+public class ExecutorSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
-  private final LoaderConfig config;
+  private static final String MAX_PER_SECOND = "maxPerSecond";
+  private static final String MAX_IN_FLIGHT = "maxInFlight";
+  private static final String CONTINUOUS_PAGING = "continuousPaging";
+  private static final String ENABLED = "enabled";
+  private static final String PAGE_SIZE = "pageSize";
+  private static final String PAGE_UNIT = "pageUnit";
+  private static final String MAX_PAGES = "maxPages";
+  private static final String MAX_PAGES_PER_SECOND = "maxPagesPerSecond";
+
+  private final int maxPerSecond;
+  private final int maxInFlight;
+  private final boolean continuousPagingEnabled;
+  private int pageSize;
+  private int maxPages;
+  private int maxPagesPerSecond;
+  private ContinuousPagingOptions.PageUnit pageUnit;
 
   ExecutorSettings(LoaderConfig config) {
-    this.config = config;
+    try {
+      maxPerSecond = config.getInt(MAX_PER_SECOND);
+      maxInFlight = config.getInt(MAX_IN_FLIGHT);
+      Config continuousPagingConfig = config.getConfig(CONTINUOUS_PAGING);
+      continuousPagingEnabled = continuousPagingConfig.getBoolean(ENABLED);
+      if (continuousPagingEnabled) {
+        pageSize = continuousPagingConfig.getInt(PAGE_SIZE);
+        pageUnit =
+            continuousPagingConfig.getEnum(ContinuousPagingOptions.PageUnit.class, PAGE_UNIT);
+        maxPages = continuousPagingConfig.getInt(MAX_PAGES);
+        maxPagesPerSecond = continuousPagingConfig.getInt(MAX_PAGES_PER_SECOND);
+      }
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor");
+    }
   }
 
   public ReactorBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
@@ -53,8 +81,7 @@ public class ExecutorSettings implements SettingsValidator {
   private ReactorBulkExecutor newBulkExecutor(
       Session session, ExecutionListener executionListener, WorkflowType workflowType) {
     if (workflowType == WorkflowType.UNLOAD) {
-      Config continuousPagingConfig = config.getConfig("continuousPaging");
-      if (continuousPagingConfig.getBoolean("enabled")) {
+      if (continuousPagingEnabled) {
         if (continuousPagingAvailable(session)) {
           continuousPagingAvailable(session);
           ContinuousReactorBulkExecutorBuilder builder =
@@ -62,12 +89,9 @@ public class ExecutorSettings implements SettingsValidator {
           configure(builder, executionListener);
           ContinuousPagingOptions options =
               ContinuousPagingOptions.builder()
-                  .withPageSize(
-                      continuousPagingConfig.getInt("pageSize"),
-                      continuousPagingConfig.getEnum(
-                          ContinuousPagingOptions.PageUnit.class, "pageUnit"))
-                  .withMaxPages(continuousPagingConfig.getInt("maxPages"))
-                  .withMaxPagesPerSecond(continuousPagingConfig.getInt("maxPagesPerSecond"))
+                  .withPageSize(pageSize, pageUnit)
+                  .withMaxPages(maxPages)
+                  .withMaxPagesPerSecond(maxPagesPerSecond)
                   .build();
           builder.withContinuousPagingOptions(options);
           return builder.build();
@@ -81,24 +105,8 @@ public class ExecutorSettings implements SettingsValidator {
     return builder.build();
   }
 
-  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
-    try {
-      config.getInt("maxPerSecond");
-      config.getInt("maxInFlight");
-      Config continuousPagingConfig = config.getConfig("continuousPaging");
-      if (continuousPagingConfig.getBoolean("enabled")) {
-        continuousPagingConfig.getInt("pageSize");
-        continuousPagingConfig.getEnum(ContinuousPagingOptions.PageUnit.class, "pageUnit");
-        continuousPagingConfig.getInt("maxPages");
-        continuousPagingConfig.getInt("maxPagesPerSecond");
-      }
-    } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor");
-    }
-  }
-
   public int getMaxInFlight() {
-    return config.getInt("maxInFlight");
+    return maxInFlight;
   }
 
   private boolean continuousPagingAvailable(Session session) {
@@ -118,8 +126,8 @@ public class ExecutorSettings implements SettingsValidator {
     builder
         .withoutExecutor()
         .withExecutionListener(executionListener)
-        .withMaxInFlightRequests(config.getInt("maxInFlight"))
-        .withMaxRequestsPerSecond(config.getInt("maxPerSecond"))
+        .withMaxInFlightRequests(maxInFlight)
+        .withMaxRequestsPerSecond(maxPerSecond)
         .failSafe();
   }
 }

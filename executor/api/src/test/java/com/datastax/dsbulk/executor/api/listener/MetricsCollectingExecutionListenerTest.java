@@ -7,8 +7,10 @@
 package com.datastax.dsbulk.executor.api.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
@@ -18,17 +20,18 @@ import org.junit.Test;
 /** */
 public class MetricsCollectingExecutionListenerTest {
 
-  private Statement successfulRead = new SimpleStatement("irrelevant");
-  private Statement failedRead = new SimpleStatement("irrelevant");
+  private final Statement successfulRead = new SimpleStatement("irrelevant");
+  private final Statement failedRead = new SimpleStatement("irrelevant");
 
-  private Statement successfulWrite =
+  private final Statement successfulWrite =
       new BatchStatement()
           .add(new SimpleStatement("irrelevant"))
           .add(new SimpleStatement("irrelevant"));
-  private Statement failedWrite =
+  private final Statement failedWrite =
       new BatchStatement()
           .add(new SimpleStatement("irrelevant"))
           .add(new SimpleStatement("irrelevant"));
+  private final Row row = mock(Row.class);
 
   @Test
   public void should_collect_metrics() throws Exception {
@@ -57,7 +60,11 @@ public class MetricsCollectingExecutionListenerTest {
     listener.onWriteRequestStarted(failedWrite, local4);
     assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(4);
 
-    listener.onReadRequestSuccessful(successfulRead, 3, local1);
+    listener.onReadRequestSuccessful(successfulRead, local1);
+    // simulate 3 rows received
+    listener.onRowReceived(row, local1);
+    listener.onRowReceived(row, local1);
+    listener.onRowReceived(row, local1);
     assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(3);
     listener.onReadRequestFailed(failedRead, new RuntimeException(), local2);
     assertThat(listener.getInFlightRequestsCounter().getCount()).isEqualTo(2);

@@ -45,23 +45,14 @@ public class SettingsManager {
 
   public void loadConfiguration() throws BulkConfigurationException {
     logSettings = new LogSettings(config.getConfig("log"), executionId);
-    logSettings.validateConfig(workflowType);
     driverSettings = new DriverSettings(config.getConfig("driver"), executionId);
-    driverSettings.validateConfig(workflowType);
-    connectorSettings = new ConnectorSettings(config.getConfig("connector"));
-    connectorSettings.validateConfig(workflowType);
+    connectorSettings = new ConnectorSettings(config.getConfig("connector"), workflowType);
     schemaSettings = new SchemaSettings(config.getConfig("schema"));
-    schemaSettings.validateConfig(workflowType);
     batchSettings = new BatchSettings(config.getConfig("batch"));
-    batchSettings.validateConfig(workflowType);
     executorSettings = new ExecutorSettings(config.getConfig("executor"));
-    executorSettings.validateConfig(workflowType);
     codecSettings = new CodecSettings(config.getConfig("codec"));
-    codecSettings.validateConfig(workflowType);
     monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), executionId);
-    monitoringSettings.validateConfig(workflowType);
     engineSettings = new EngineSettings(config.getConfig("engine"));
-    engineSettings.validateConfig(workflowType);
   }
 
   public void logEffectiveSettings() {

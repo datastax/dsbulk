@@ -6,13 +6,14 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.dsbulk.engine.internal.settings.StringUtils.DELIMITER;
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.FileAppender;
 import com.datastax.driver.core.Cluster;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -28,32 +29,41 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** */
-public class LogSettings implements SettingsValidator {
+public class LogSettings {
 
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
   private static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
-
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
 
-  private final LoaderConfig config;
+  //Path Constants
+  private static final String STMT = "stmt";
+  private static final String MAX_QUERY_STRING_LENGTH = STMT + DELIMITER + "maxQueryStringLength";
+  private static final String MAX_BOUND_VALUE_LENGTH = STMT + DELIMITER + "maxBoundValueLength";
+  private static final String MAX_BOUND_VALUES = STMT + DELIMITER + "maxBoundValues";
+  private static final String MAX_INNER_STATEMENTS = STMT + DELIMITER + "maxInnerStatements";
+  private static final String LEVEL = STMT + DELIMITER + "level";
+  private static final String MAX_ERRORS = "maxErrors";
+
   private final Path executionDirectory;
+  private final int maxQueryStringLength;
+  private final int maxBoundValueLength;
+  private final int maxBoundValues;
+  private final int maxInnerStatements;
+  private final StatementFormatVerbosity level;
+  private final int maxErrors;
 
   LogSettings(LoaderConfig config, String executionId) {
-    this.config = config;
     executionDirectory = config.getPath("directory").resolve(executionId);
     LOGGER.info("Operation output directory: {}", executionDirectory);
     System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
     maybeStartExecutionLogFileAppender();
-  }
-
-  public void validateConfig(WorkflowType type) throws BulkConfigurationException {
     try {
-      config.getInt("stmt.maxQueryStringLength");
-      config.getInt("stmt.maxBoundValueLength");
-      config.getInt("stmt.maxBoundValues");
-      config.getInt("stmt.maxInnerStatements");
-      config.getEnum(StatementFormatVerbosity.class, "stmt.level");
-      config.getInt("maxErrors");
+      maxQueryStringLength = config.getInt(MAX_QUERY_STRING_LENGTH);
+      maxBoundValueLength = config.getInt(MAX_BOUND_VALUE_LENGTH);
+      maxBoundValues = config.getInt(MAX_BOUND_VALUES);
+      maxInnerStatements = config.getInt(MAX_INNER_STATEMENTS);
+      level = config.getEnum(StatementFormatVerbosity.class, LEVEL);
+      maxErrors = config.getInt(MAX_ERRORS);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "log");
     }
@@ -62,24 +72,16 @@ public class LogSettings implements SettingsValidator {
   public LogManager newLogManager(WorkflowType workflowType, Cluster cluster) {
     StatementFormatter formatter =
         StatementFormatter.builder()
-            .withMaxQueryStringLength(config.getInt("stmt.maxQueryStringLength"))
-            .withMaxBoundValueLength(config.getInt("stmt.maxBoundValueLength"))
-            .withMaxBoundValues(config.getInt("stmt.maxBoundValues"))
-            .withMaxInnerStatements(config.getInt("stmt.maxInnerStatements"))
+            .withMaxQueryStringLength(maxQueryStringLength)
+            .withMaxBoundValueLength(maxBoundValueLength)
+            .withMaxBoundValues(maxBoundValues)
+            .withMaxInnerStatements(maxInnerStatements)
             .build();
-    StatementFormatVerbosity verbosity =
-        config.getEnum(StatementFormatVerbosity.class, "stmt.level");
     ExecutorService executor =
         Executors.newCachedThreadPool(
             new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
     return new LogManager(
-        workflowType,
-        cluster,
-        executionDirectory,
-        executor,
-        config.getInt("maxErrors"),
-        formatter,
-        verbosity);
+        workflowType, cluster, executionDirectory, executor, maxErrors, formatter, level);
   }
 
   private void maybeStartExecutionLogFileAppender() {
