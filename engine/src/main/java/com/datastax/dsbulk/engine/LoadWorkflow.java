@@ -16,7 +16,6 @@ import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.internal.WorkflowUtils;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
-import com.datastax.dsbulk.engine.internal.reactive.SimpleBlockingSubscriber;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dsbulk.engine.internal.settings.BatchSettings;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
@@ -61,7 +60,6 @@ public class LoadWorkflow implements Workflow {
   private int maxConcurrentWrites;
   private int bufferSize;
   private boolean batchingEnabled;
-  private SimpleBlockingSubscriber<Void> subscriber;
   private boolean dryRun;
   private int threadPerCoreThreshold;
   private long resourceCount;
@@ -91,7 +89,6 @@ public class LoadWorkflow implements Workflow {
     scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector();
     connector.init();
-    subscriber = new SimpleBlockingSubscriber<>();
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
@@ -99,7 +96,7 @@ public class LoadWorkflow implements Workflow {
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD, batchingEnabled);
     metricsManager.init();
     logManager = logSettings.newLogManager(WorkflowType.LOAD, cluster);
-    logManager.init(subscriber, subscriber);
+    logManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     recordMapper =
         schemaSettings.createRecordMapper(
@@ -116,36 +113,38 @@ public class LoadWorkflow implements Workflow {
   public void execute() throws InterruptedException {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
+    Flux<Void> flux;
     if (resourceCount > threadPerCoreThreshold) {
       LOGGER.info("Using thread-per-core pattern.");
-      Flux.from(connector.readByResource())
-          .flatMap(
-              records -> {
-                Flux<Statement> flux =
-                    Flux.from(records)
-                        .transform(metricsManager.newUnmappableRecordMonitor())
-                        .transform(logManager.newUnmappableRecordErrorHandler())
-                        .map(recordMapper::map)
-                        .transform(metricsManager.newUnmappableStatementMonitor())
-                        .transform(logManager.newUnmappableStatementErrorHandler());
-                if (batchingEnabled) {
-                  flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
-                }
-                Flux<WriteResult> writeResultFlux;
-                if (dryRun) {
-                  writeResultFlux = flux.map(s -> new DefaultWriteResult(s, null));
-                } else {
-                  writeResultFlux = flux.flatMap(executor::writeReactive, maxConcurrentWrites);
-                }
-                return writeResultFlux
-                    .transform(logManager.newWriteErrorHandler())
-                    .transform(logManager.newResultPositionTracker(scheduler))
-                    .subscribeOn(scheduler);
-              },
-              maxConcurrentMappings)
-          .subscribe(subscriber);
+      flux =
+          Flux.from(connector.readByResource())
+              .flatMap(
+                  records -> {
+                    Flux<Statement> stmts =
+                        Flux.from(records)
+                            .transform(metricsManager.newUnmappableRecordMonitor())
+                            .transform(logManager.newUnmappableRecordErrorHandler())
+                            .map(recordMapper::map)
+                            .transform(metricsManager.newUnmappableStatementMonitor())
+                            .transform(logManager.newUnmappableStatementErrorHandler());
+                    if (batchingEnabled) {
+                      stmts =
+                          stmts.transform(batcher).transform(metricsManager.newBatcherMonitor());
+                    }
+                    Flux<WriteResult> results;
+                    if (dryRun) {
+                      results = stmts.map(s -> new DefaultWriteResult(s, null));
+                    } else {
+                      results = stmts.flatMap(executor::writeReactive, maxConcurrentWrites);
+                    }
+                    return results
+                        .transform(logManager.newWriteErrorHandler())
+                        .transform(logManager.newResultPositionTracker(scheduler))
+                        .subscribeOn(scheduler);
+                  },
+                  maxConcurrentMappings);
     } else {
-      Flux<Statement> flux =
+      Flux<Statement> stmts =
           Flux.from(connector.read())
               .publishOn(scheduler, bufferSize)
               .transform(metricsManager.newUnmappableRecordMonitor())
@@ -157,20 +156,20 @@ public class LoadWorkflow implements Workflow {
               .transform(metricsManager.newUnmappableStatementMonitor())
               .transform(logManager.newUnmappableStatementErrorHandler());
       if (batchingEnabled) {
-        flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
+        stmts = stmts.transform(batcher).transform(metricsManager.newBatcherMonitor());
       }
-      Flux<WriteResult> writeResultFlux;
+      Flux<WriteResult> results;
       if (dryRun) {
-        writeResultFlux = flux.map(s -> new DefaultWriteResult(s, null));
+        results = stmts.map(s -> new DefaultWriteResult(s, null));
       } else {
-        writeResultFlux = flux.flatMap(executor::writeReactive, maxConcurrentWrites);
+        results = stmts.flatMap(executor::writeReactive, maxConcurrentWrites);
       }
-      writeResultFlux
-          .transform(logManager.newWriteErrorHandler())
-          .transform(logManager.newResultPositionTracker(scheduler))
-          .subscribe(subscriber);
+      flux =
+          results
+              .transform(logManager.newWriteErrorHandler())
+              .transform(logManager.newResultPositionTracker(scheduler));
     }
-    subscriber.block();
+    flux.blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));

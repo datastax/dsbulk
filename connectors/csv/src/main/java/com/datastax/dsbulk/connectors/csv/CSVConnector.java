@@ -375,12 +375,16 @@ public class CSVConnector implements Connector {
       }
 
       @Override
+      protected void hookOnComplete() {
+        LOGGER.debug("Done writing {}", url);
+      }
+
+      @Override
       protected void hookFinally(SignalType type) {
         end();
       }
 
       private void end() {
-        LOGGER.debug("Done writing {}", url);
         if (writer != null) {
           try {
             writer.close();

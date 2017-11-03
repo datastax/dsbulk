@@ -54,17 +54,15 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.jetbrains.annotations.NotNull;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Signal;
 import reactor.core.publisher.UnicastProcessor;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -87,7 +85,6 @@ public class LogManager implements AutoCloseable {
   private final Set<UnicastProcessor<?>> processors = new HashSet<>();
 
   private final AtomicInteger errors = new AtomicInteger(0);
-  private final AtomicBoolean aborted = new AtomicBoolean(false);
 
   private final LoadingCache<Path, PrintWriter> openFiles =
       Caffeine.newBuilder()
@@ -109,8 +106,6 @@ public class LogManager implements AutoCloseable {
   private CodecRegistry codecRegistry;
   private ProtocolVersion protocolVersion;
   private PrintWriter positionsPrinter;
-  private Subscriber<?> subscriber;
-  private Subscription subscription;
 
   public LogManager(
       WorkflowType workflowType,
@@ -130,9 +125,7 @@ public class LogManager implements AutoCloseable {
     scheduler = Schedulers.fromExecutor(executor);
   }
 
-  public void init(Subscriber<?> subscriber, Subscription subscription) throws IOException {
-    this.subscriber = subscriber;
-    this.subscription = subscription;
+  public void init() throws IOException {
     codecRegistry = cluster.getConfiguration().getCodecRegistry();
     protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
     Files.createDirectories(executionDirectory);
@@ -153,7 +146,6 @@ public class LogManager implements AutoCloseable {
                   CREATE_NEW,
                   WRITE));
     }
-    aborted.set(false);
   }
 
   @VisibleForTesting
@@ -202,17 +194,22 @@ public class LogManager implements AutoCloseable {
     FluxSink<UnmappableStatement> sink = newUnmappableStatementProcessor();
     return upstream ->
         upstream
-            .doOnNext(
-                r -> {
-                  if (r instanceof UnmappableStatement) {
-                    sink.next((UnmappableStatement) r);
-                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
-                      abort(new TooManyErrorsException(maxErrors));
+            .materialize()
+            .map(
+                signal -> {
+                  if (signal.isOnNext()) {
+                    Statement stmt = signal.get();
+                    if (stmt instanceof UnmappableStatement) {
+                      sink.next((UnmappableStatement) stmt);
+                      if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
+                        return Signal.error(new TooManyErrorsException(maxErrors));
+                      }
                     }
                   }
+                  return signal;
                 })
-            .doOnComplete(sink::complete)
-            .doOnError(sink::error)
+            .<Statement>dematerialize()
+            .doOnTerminate(sink::complete)
             .filter(r -> !(r instanceof UnmappableStatement));
   }
 
@@ -234,17 +231,22 @@ public class LogManager implements AutoCloseable {
     FluxSink<UnmappableRecord> sink = newUnmappableRecordProcessor();
     return upstream ->
         upstream
-            .doOnNext(
-                r -> {
-                  if (r instanceof UnmappableRecord) {
-                    sink.next((UnmappableRecord) r);
-                    if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
-                      abort(new TooManyErrorsException(maxErrors));
+            .materialize()
+            .map(
+                signal -> {
+                  if (signal.isOnNext()) {
+                    Record r = signal.get();
+                    if (r instanceof UnmappableRecord) {
+                      sink.next((UnmappableRecord) r);
+                      if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
+                        return Signal.error(new TooManyErrorsException(maxErrors));
+                      }
                     }
                   }
+                  return signal;
                 })
-            .doOnComplete(sink::complete)
-            .doOnError(sink::error)
+            .<Record>dematerialize()
+            .doOnTerminate(sink::complete)
             .filter(r -> !(r instanceof UnmappableRecord));
   }
 
@@ -263,22 +265,27 @@ public class LogManager implements AutoCloseable {
     FluxSink<WriteResult> sink = newWriteResultProcessor();
     return upstream ->
         upstream
-            .doOnNext(
-                r -> {
-                  if (!r.isSuccess()) {
-                    sink.next(r);
-                    assert r.getError().isPresent();
-                    Throwable cause = r.getError().get().getCause();
-                    if (isUnrecoverable(cause)) {
-                      abort(cause);
-                    } else if (maxErrors > 0
-                        && errors.addAndGet(delta(r.getStatement())) > maxErrors) {
-                      abort(new TooManyErrorsException(maxErrors));
+            .materialize()
+            .map(
+                signal -> {
+                  if (signal.isOnNext()) {
+                    WriteResult r = signal.get();
+                    if (!r.isSuccess()) {
+                      sink.next(r);
+                      assert r.getError().isPresent();
+                      Throwable cause = r.getError().get().getCause();
+                      if (isUnrecoverable(cause)) {
+                        return Signal.error(cause);
+                      } else if (maxErrors > 0
+                          && errors.addAndGet(delta(r.getStatement())) > maxErrors) {
+                        return Signal.error(new TooManyErrorsException(maxErrors));
+                      }
                     }
                   }
+                  return signal;
                 })
-            .doOnComplete(sink::complete)
-            .doOnError(sink::error)
+            .<WriteResult>dematerialize()
+            .doOnTerminate(sink::complete)
             .filter(Result::isSuccess);
   }
 
@@ -297,21 +304,26 @@ public class LogManager implements AutoCloseable {
     FluxSink<ReadResult> sink = newReadResultProcessor();
     return upstream ->
         upstream
-            .doOnNext(
-                r -> {
-                  if (!r.isSuccess()) {
-                    sink.next(r);
-                    assert r.getError().isPresent();
-                    Throwable cause = r.getError().get().getCause();
-                    if (isUnrecoverable(cause)) {
-                      abort(cause);
-                    } else if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
-                      abort(new TooManyErrorsException(maxErrors));
+            .materialize()
+            .map(
+                signal -> {
+                  if (signal.isOnNext()) {
+                    ReadResult r = signal.get();
+                    if (!r.isSuccess()) {
+                      sink.next(r);
+                      assert r.getError().isPresent();
+                      Throwable cause = r.getError().get().getCause();
+                      if (isUnrecoverable(cause)) {
+                        return Signal.error(cause);
+                      } else if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
+                        return Signal.error(new TooManyErrorsException(maxErrors));
+                      }
                     }
                   }
+                  return signal;
                 })
-            .doOnComplete(sink::complete)
-            .doOnError(sink::error)
+            .<ReadResult>dematerialize()
+            .doOnTerminate(sink::complete)
             .filter(Result::isSuccess);
   }
 
@@ -509,13 +521,6 @@ public class LogManager implements AutoCloseable {
     processors.add(processor);
     disposables.add(processor.doOnNext(this::appendToDebugFile).subscribeOn(scheduler).subscribe());
     return processor.sink();
-  }
-
-  private void abort(Throwable t) {
-    if (aborted.compareAndSet(false, true)) {
-      subscription.cancel();
-      subscriber.onError(t);
-    }
   }
 
   private void appendToBadFile(Record record) {
