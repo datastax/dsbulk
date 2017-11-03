@@ -67,6 +67,7 @@ public class SettingsManager {
           String.format(
               "%s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
     }
+    LOGGER.info("Available CPU cores: " + Runtime.getRuntime().availableProcessors());
   }
 
   public DriverSettings getDriverSettings() {

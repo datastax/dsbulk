@@ -55,6 +55,7 @@ import org.mockito.internal.util.reflection.Whitebox;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 /** */
 public class LogManagerTest {
@@ -535,7 +536,7 @@ public class LogManagerTest {
                 throw new RuntimeException(e);
               }
             })
-        .transform(logManager.newResultPositionTracker())
+        .transform(logManager.newResultPositionTracker(Schedulers.elastic()))
         .blockLast();
     Map<URI, List<Range<Long>>> positions =
         (Map<URI, List<Range<Long>>>) Whitebox.getInternalState(logManager, "positions");

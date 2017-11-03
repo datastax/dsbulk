@@ -61,6 +61,7 @@ public class UnloadWorkflow implements Workflow {
   private int bufferSize;
   private List<Statement> readStatements;
   private DelegatingBlockingSubscriber<Record> subscriber;
+  private int threadPerCoreThreshold;
 
   UnloadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -105,22 +106,40 @@ public class UnloadWorkflow implements Workflow {
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
+    threadPerCoreThreshold = engineSettings.getThreadPerCoreThreshold();
   }
 
   @Override
   public void execute() throws InterruptedException {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    Flux.fromIterable(readStatements)
-        .flatMap(executor::readReactive)
-        .transform(logManager.newReadErrorHandler())
-        .parallel(maxConcurrentMappings, bufferSize)
-        .runOn(scheduler)
-        .map(readResultMapper::map)
-        .sequential()
-        .transform(metricsManager.newUnmappableRecordMonitor())
-        .transform(logManager.newUnmappableRecordErrorHandler())
-        .subscribe(subscriber);
+    if (readStatements.size() >= threadPerCoreThreshold) {
+      LOGGER.info("Using thread-per-core pattern.");
+      Flux.fromIterable(readStatements)
+          .flatMap(
+              statement ->
+                  executor
+                      .readReactive(statement)
+                      .transform(logManager.newReadErrorHandler())
+                      .map(readResultMapper::map)
+                      .transform(metricsManager.newUnmappableRecordMonitor())
+                      .transform(logManager.newUnmappableRecordErrorHandler())
+                      .subscribeOn(scheduler),
+              maxConcurrentMappings,
+              bufferSize)
+          .subscribe(subscriber);
+    } else {
+      Flux.fromIterable(readStatements)
+          .flatMap(executor::readReactive)
+          .transform(logManager.newReadErrorHandler())
+          .parallel(maxConcurrentMappings, bufferSize)
+          .runOn(scheduler)
+          .map(readResultMapper::map)
+          .sequential()
+          .transform(metricsManager.newUnmappableRecordMonitor())
+          .transform(logManager.newUnmappableRecordErrorHandler())
+          .subscribe(subscriber);
+    }
     subscriber.block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);

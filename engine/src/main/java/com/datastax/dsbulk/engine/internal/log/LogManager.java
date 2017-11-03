@@ -320,14 +320,15 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Used only by the load workflow.
    *
-   * <p>Extracts the result's {@link Statement} and applies {@link #newStatementPositionTracker()
-   * statementPositionTracker}.
+   * <p>Extracts the result's {@link Statement} and applies {@link
+   * #newStatementPositionTracker(Scheduler) statementPositionTracker}.
    *
    * @return A tracker for result positions.
+   * @param scheduler the scheduler to use.
    */
-  @NotNull
-  public Function<Flux<WriteResult>, Flux<Void>> newResultPositionTracker() {
-    return upstream -> upstream.map(Result::getStatement).transform(newStatementPositionTracker());
+  public Function<Flux<WriteResult>, Flux<Void>> newResultPositionTracker(Scheduler scheduler) {
+    return upstream ->
+        upstream.map(Result::getStatement).transform(newStatementPositionTracker(scheduler));
   }
 
   /**
@@ -335,15 +336,18 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Used only by the load workflow.
    *
-   * <p>Extracts the statements's {@link Record}s and applies {@link #newRecordPositionTracker()
-   * recordPositionTracker}.
+   * <p>Extracts the statements's {@link Record}s and applies {@link
+   * #newRecordPositionTracker(Scheduler) recordPositionTracker}.
    *
    * @return A tracker for statement positions.
+   * @param scheduler the scheduler to use.
    */
-  @NotNull
-  private Function<Flux<? extends Statement>, Flux<Void>> newStatementPositionTracker() {
+  private Function<Flux<? extends Statement>, Flux<Void>> newStatementPositionTracker(
+      Scheduler scheduler) {
     return upstream ->
-        upstream.transform(newStatementToRecordMapper()).transform(newRecordPositionTracker());
+        upstream
+            .transform(newStatementToRecordMapper())
+            .transform(newRecordPositionTracker(scheduler));
   }
 
   /**
@@ -355,13 +359,14 @@ public class LogManager implements AutoCloseable {
    * {@link Record#getPosition() positions} into continuous ranges.
    *
    * @return A tracker for statement positions.
+   * @param scheduler the scheduler to use.
    */
-  @NotNull
-  private Function<Flux<? extends Record>, Flux<Void>> newRecordPositionTracker() {
+  private Function<Flux<? extends Record>, Flux<Void>> newRecordPositionTracker(
+      Scheduler scheduler) {
     return upstream ->
         upstream
             .filter(record -> record.getPosition() > 0)
-            .windowTimeout(512, Duration.ofSeconds(1))
+            .windowTimeout(1024, Duration.ofSeconds(1))
             .flatMap(
                 window ->
                     window
@@ -373,9 +378,8 @@ public class LogManager implements AutoCloseable {
                                     .doOnNext(
                                         ranges ->
                                             positions.merge(
-                                                group.key(), ranges, LogManager::mergePositions))),
-                512,
-                512)
+                                                group.key(), ranges, LogManager::mergePositions))
+                                    .subscribeOn(scheduler)))
             .then()
             .flux();
   }
@@ -413,7 +417,8 @@ public class LogManager implements AutoCloseable {
    * <p>Used in both load and unload workflows.
    *
    * <p>Appends the record to the debug file, then (for load workflows only) to the bad file and
-   * forwards the record's position to the {@link #newRecordPositionTracker() position tracker}.
+   * forwards the record's position to the {@link #newRecordPositionTracker(Scheduler) position
+   * tracker}.
    *
    * @return A processor for unmappable records.
    */
@@ -425,7 +430,7 @@ public class LogManager implements AutoCloseable {
     if (workflowType == WorkflowType.LOAD) {
       disposables.add(
           flux.doOnNext(this::appendToBadFile)
-              .transform(newRecordPositionTracker())
+              .transform(newRecordPositionTracker(scheduler))
               .subscribeOn(scheduler)
               .subscribe());
     } else {
@@ -440,8 +445,8 @@ public class LogManager implements AutoCloseable {
    * <p>Used only in the load workflow.
    *
    * <p>Appends the statement to the debug file, then extracts its record, appends it to the bad
-   * file, then forwards the record's position to the {@link #newRecordPositionTracker() position
-   * tracker}.
+   * file, then forwards the record's position to the {@link #newRecordPositionTracker(Scheduler)
+   * position tracker}.
    *
    * @return A processor for unmappable statements.
    */
@@ -454,7 +459,7 @@ public class LogManager implements AutoCloseable {
             .doOnNext(this::appendToDebugFile)
             .transform(newStatementToRecordMapper())
             .doOnNext(this::appendToBadFile)
-            .transform(newRecordPositionTracker())
+            .transform(newRecordPositionTracker(scheduler))
             .subscribeOn(scheduler)
             .subscribe());
     return processor.sink();
@@ -467,7 +472,7 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Appends the failed result to the debug file, then extracts its statement, then extracts its
    * record, then appends it to the bad file, then forwards the record's position to the {@link
-   * #newRecordPositionTracker() position tracker}.
+   * #newRecordPositionTracker(Scheduler) position tracker}.
    *
    * @return A processor for failed write results.
    */
@@ -481,7 +486,7 @@ public class LogManager implements AutoCloseable {
             .map(Result::getStatement)
             .transform(newStatementToRecordMapper())
             .doOnNext(this::appendToBadFile)
-            .transform(newRecordPositionTracker())
+            .transform(newRecordPositionTracker(scheduler))
             .subscribeOn(scheduler)
             .subscribe());
     return processor.sink();
@@ -494,7 +499,7 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Extracts the statement, then appends it to the debug file, then extracts its record, appends
    * it to the bad file, then forwards the record's position to the {@link
-   * #newRecordPositionTracker() position tracker}.
+   * #newRecordPositionTracker(Scheduler) position tracker}.
    *
    * @return A processor for failed read results.
    */

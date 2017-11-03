@@ -63,6 +63,8 @@ public class LoadWorkflow implements Workflow {
   private boolean batchingEnabled;
   private SimpleBlockingSubscriber<Void> subscriber;
   private boolean dryRun;
+  private int threadPerCoreThreshold;
+  private long resourceCount;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -106,39 +108,68 @@ public class LoadWorkflow implements Workflow {
       batcher = batchSettings.newStatementBatcher(cluster);
     }
     closed.set(false);
+    resourceCount = connector.estimatedResourceCount();
+    threadPerCoreThreshold = engineSettings.getThreadPerCoreThreshold();
   }
 
   @Override
   public void execute() throws InterruptedException {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    Flux<Statement> flux =
-        Flux.from(connector.read())
-            .publishOn(scheduler, bufferSize)
-            .transform(metricsManager.newUnmappableRecordMonitor())
-            .transform(logManager.newUnmappableRecordErrorHandler())
-            .parallel(maxConcurrentMappings)
-            .runOn(scheduler)
-            .map(recordMapper::map)
-            .sequential()
-            .transform(metricsManager.newUnmappableStatementMonitor())
-            .transform(logManager.newUnmappableStatementErrorHandler());
-    if (batchingEnabled) {
-      flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
-    }
-    Flux<WriteResult> writeResultFlux;
-    if (dryRun) {
-      writeResultFlux = flux.map(s -> new DefaultWriteResult(s, null));
+    if (resourceCount > threadPerCoreThreshold) {
+      LOGGER.info("Using thread-per-core pattern.");
+      Flux.from(connector.readByResource())
+          .flatMap(
+              records -> {
+                Flux<Statement> flux =
+                    Flux.from(records)
+                        .transform(metricsManager.newUnmappableRecordMonitor())
+                        .transform(logManager.newUnmappableRecordErrorHandler())
+                        .map(recordMapper::map)
+                        .transform(metricsManager.newUnmappableStatementMonitor())
+                        .transform(logManager.newUnmappableStatementErrorHandler());
+                if (batchingEnabled) {
+                  flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
+                }
+                Flux<WriteResult> writeResultFlux;
+                if (dryRun) {
+                  writeResultFlux = flux.map(s -> new DefaultWriteResult(s, null));
+                } else {
+                  writeResultFlux = flux.flatMap(executor::writeReactive, maxConcurrentWrites);
+                }
+                return writeResultFlux
+                    .transform(logManager.newWriteErrorHandler())
+                    .transform(logManager.newResultPositionTracker(scheduler))
+                    .subscribeOn(scheduler);
+              },
+              maxConcurrentMappings)
+          .subscribe(subscriber);
     } else {
-      writeResultFlux = flux.flatMap(executor::writeReactive, maxConcurrentWrites);
+      Flux<Statement> flux =
+          Flux.from(connector.read())
+              .publishOn(scheduler, bufferSize)
+              .transform(metricsManager.newUnmappableRecordMonitor())
+              .transform(logManager.newUnmappableRecordErrorHandler())
+              .parallel(maxConcurrentMappings)
+              .runOn(scheduler)
+              .map(recordMapper::map)
+              .sequential()
+              .transform(metricsManager.newUnmappableStatementMonitor())
+              .transform(logManager.newUnmappableStatementErrorHandler());
+      if (batchingEnabled) {
+        flux = flux.transform(batcher).transform(metricsManager.newBatcherMonitor());
+      }
+      Flux<WriteResult> writeResultFlux;
+      if (dryRun) {
+        writeResultFlux = flux.map(s -> new DefaultWriteResult(s, null));
+      } else {
+        writeResultFlux = flux.flatMap(executor::writeReactive, maxConcurrentWrites);
+      }
+      writeResultFlux
+          .transform(logManager.newWriteErrorHandler())
+          .transform(logManager.newResultPositionTracker(scheduler))
+          .subscribe(subscriber);
     }
-    writeResultFlux
-        .transform(logManager.newWriteErrorHandler())
-        .parallel(maxConcurrentMappings)
-        .runOn(scheduler)
-        .composeGroup(logManager.newResultPositionTracker())
-        .sequential()
-        .subscribe(subscriber);
     subscriber.block();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);

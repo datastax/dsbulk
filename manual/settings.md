@@ -416,11 +416,9 @@ Default: **"\*\*/\*.csv"**.
 
 #### -maxConcurrentFiles,--connector.csv.maxConcurrentFiles _&lt;string&gt;_
 
-The maximum number of files that can be read or written simultaneously.
+The maximum number of files that can be written simultaneously.
 
-When reading, it is usually not required to set this to any value higher than 1, because the underlying CSV parsing library is so fast that it would hardly become a performance bottleneck, even when reading one file at a time.
-
-When writing, however, this value should be set to a ratio of the number of available cores.
+Ignored when reading.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
@@ -571,13 +569,13 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 The buffer size to use for batching statements.
 
-Default: **1024**.
+Default: **32**.
 
 #### --batch.bufferTimeout _&lt;string&gt;_
 
 The maximum amount of time to wait for incoming items to batch before flushing.
-The buffer will be flushed when this duration is elapsed
-or when *bufferSize* is reached, whichever happens first.
+
+The buffer will be flushed when this duration is elapsed or when *bufferSize* is reached, whichever happens first.
 
 Default: **"1 seconds"**.
 
@@ -589,11 +587,7 @@ Default: **true**.
 
 #### --batch.maxBatchSize _&lt;number&gt;_
 
-The maximum batch size.
-
-The ideal batch size depends on how large is the data to be inserted: the larger the data, the smaller this value should be.
-
-The ideal batch size also depends on the batch mode in use. When using **PARTITION_KEY**, it is usually better to use larger batch sizes. When using **REPLICA_SET** however, batches sizes should remain small (below 10).
+The buffer size to use for batching statements.
 
 Default: **32**.
 
@@ -1094,11 +1088,26 @@ Default: **4096**.
 
 The maximum number of concurrent record and result mappings.
 
-Applies to both read and write workflows.
+Applies to both load and unload workflows.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
 Default: **"0.25C"**.
+
+#### --engine.threadPerCoreThreshold _&lt;number&gt;_
+
+The minimum number of parallel tasks above which the egine will apply internal optimizations attempting to "pin" one thread to one CPU core.
+
+When the number of tasks to execute is below this threshold, the engine will operate in a mode where more thread context switches will happen, but thus allowing to optimize CPU usage when there aren't enough parallalel tasks available to occupy each CPU core.
+
+When the number of tasks to execute is equal to or grater than this threshold, the engine will operate in a mode where a thread will be "pinned" to a CPU core; this usually results in less thread context switches and better performance, provided that there are enough parallel tasks available to occupy all or most CPU cores.
+
+The exact meaning of "parallel tasks" depends on the workflow:
+
+- For load workflows, it is the number of distinct resources to read, as reported by the connector in use.
+- For unload workflows, it is the number of statements to execute.
+
+Default: **5**.
 
 <a name="executor"></a>
 ## Executor Settings

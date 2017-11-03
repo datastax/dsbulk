@@ -6,12 +6,12 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
@@ -28,16 +28,13 @@ import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.charset.Charset;
@@ -62,8 +59,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.SignalType;
 import reactor.core.publisher.WorkQueueProcessor;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 /**
  * A connector for CSV files.
@@ -107,11 +102,11 @@ public class CSVConnector implements Connector {
   private boolean recursive;
   private boolean header;
   private String fileNameFormat;
+  private long resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
   private AtomicInteger counter;
   private ExecutorService threadPool;
-  private Scheduler scheduler;
   private WorkQueueProcessor<Record> writeQueueProcessor;
 
   @Override
@@ -170,19 +165,12 @@ public class CSVConnector implements Connector {
       writerSettings.setQuoteEscapingEnabled(true);
       counter = new AtomicInteger(0);
     }
-    threadPool =
-        Executors.newCachedThreadPool(
-            new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
-    scheduler = Schedulers.fromExecutor(threadPool);
   }
 
   @Override
   public void close() throws Exception {
     if (writeQueueProcessor != null) {
       writeQueueProcessor.awaitAndShutdown(5, SECONDS);
-    }
-    if (scheduler != null) {
-      scheduler.dispose();
     }
     if (threadPool != null) {
       threadPool.shutdown();
@@ -192,12 +180,26 @@ public class CSVConnector implements Connector {
   }
 
   @Override
+  public long estimatedResourceCount() {
+    return resourceCount;
+  }
+
+  @Override
   public Publisher<Record> read() {
     assert read;
     if (root != null) {
-      return readMultipleFiles();
+      return scanRootDirectory().flatMap(this::readURL);
     } else {
-      return readSingleFile(url);
+      return readURL(url);
+    }
+  }
+
+  @Override
+  public Publisher<Publisher<Record>> readByResource() {
+    if (root != null) {
+      return scanRootDirectory().map(this::readURL);
+    } else {
+      return Flux.just(readURL(url));
     }
   }
 
@@ -205,20 +207,22 @@ public class CSVConnector implements Connector {
   public Subscriber<Record> write() {
     assert !read;
     if (root != null && maxConcurrentFiles > 1) {
-      return writeMultipleThreads();
+      return multipleWriteSubscriber();
     } else {
-      return writeSingleThread();
+      return singleWriteSubscriber();
     }
   }
 
   private void tryReadFromDirectory() throws URISyntaxException {
     try {
+      resourceCount = 1L;
       Path root = Paths.get(url.toURI());
       if (Files.isDirectory(root)) {
         if (!Files.isReadable(root)) {
           throw new IllegalArgumentException("Directory is not readable: " + root);
         }
         this.root = root;
+        resourceCount = scanRootDirectory().take(100).count().block();
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to reading from URL directly
@@ -227,6 +231,7 @@ public class CSVConnector implements Connector {
 
   private void tryWriteToDirectory() throws URISyntaxException, IOException {
     try {
+      resourceCount = -1L;
       Path root = Paths.get(url.toURI());
       if (!Files.exists(root)) {
         root = Files.createDirectories(root);
@@ -242,7 +247,7 @@ public class CSVConnector implements Connector {
     }
   }
 
-  private Flux<Record> readSingleFile(URL url) {
+  private Flux<Record> readURL(URL url) {
     Flux<Record> records =
         Flux.create(
             sink -> {
@@ -250,7 +255,7 @@ public class CSVConnector implements Connector {
               sink.onRequest(controller::signalRequested);
               CsvParser parser = new CsvParser(parserSettings);
               LOGGER.debug("Reading {}", url);
-              try (InputStream is = openInputStream(url)) {
+              try (InputStream is = IOUtils.openInputStream(url)) {
                 parser.beginParsing(is, encoding);
                 URI resource = URIUtils.createResourceURI(url);
                 while (true) {
@@ -294,19 +299,6 @@ public class CSVConnector implements Connector {
               } catch (Exception e) {
                 LOGGER.error("Error reading from " + url, e);
                 sink.error(e);
-              } finally {
-                try {
-                  if (!sink.isCancelled()) {
-                    // stopParsing() should not be called on a closed stream;
-                    // this might be the case if the parsing thread was interrupted
-                    // due to either the take operator below having reached its limit,
-                    // or a globally aborted operation. In both cases, sink.isCancelled()
-                    // should return true and thus serve as a safeguard.
-                    parser.stopParsing();
-                  }
-                } catch (Exception e) {
-                  LOGGER.error("Error closing " + url, e);
-                }
               }
             },
             FluxSink.OverflowStrategy.ERROR);
@@ -319,11 +311,12 @@ public class CSVConnector implements Connector {
     return records;
   }
 
-  private Publisher<Record> readMultipleFiles() {
+  private Flux<URL> scanRootDirectory() {
     PathMatcher matcher = root.getFileSystem().getPathMatcher("glob:" + pattern);
     return Flux.defer(
             () -> {
               try {
+                // this stream will be closed by the flux, do not add it to a try-with-resources block
                 Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
                 return Flux.fromStream(files);
               } catch (IOException e) {
@@ -340,12 +333,11 @@ public class CSVConnector implements Connector {
               } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
               }
-            })
-        .flatMap(url -> readSingleFile(url).subscribeOn(scheduler), maxConcurrentFiles);
+            });
   }
 
   @NotNull
-  private Subscriber<Record> writeSingleThread() {
+  private Subscriber<Record> singleWriteSubscriber() {
 
     return new BaseSubscriber<Record>() {
 
@@ -394,29 +386,31 @@ public class CSVConnector implements Connector {
             writer.close();
           } catch (IllegalStateException e) {
             Throwable root = Throwables.getRootCause(e);
-            //noinspection StatementWithEmptyBody
-            if (root instanceof ClosedByInterruptException) {
-              // ok, happens when the workflow has been interrupted
-            } else {
+            if (!(root instanceof ClosedByInterruptException)) {
               LOGGER.error("Could not close " + url, root);
             }
+            // else ok, happens when the workflow has been interrupted
           }
         }
       }
     };
   }
 
-  private Subscriber<Record> writeMultipleThreads() {
+  private Subscriber<Record> multipleWriteSubscriber() {
+    threadPool =
+        Executors.newCachedThreadPool(
+            new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
     writeQueueProcessor = WorkQueueProcessor.<Record>builder().executor(threadPool).build();
     for (int i = 0; i < maxConcurrentFiles; i++) {
-      writeQueueProcessor.subscribe(writeSingleThread());
+      writeQueueProcessor.subscribe(singleWriteSubscriber());
     }
     return writeQueueProcessor;
   }
 
   private CsvWriter createCSVWriter(URL url) {
     try {
-      return new CsvWriter(openOutputStream(url), writerSettings);
+      return new CsvWriter(
+          new OutputStreamWriter(IOUtils.openOutputStream(url), encoding), writerSettings);
     } catch (Exception e) {
       LOGGER.error("Could not create CSV writer for " + url, e);
       throw new RuntimeException(e);
@@ -435,24 +429,5 @@ public class CSVConnector implements Connector {
     }
     // assume we are writing to a single URL and ignore fileNameFormat
     return url;
-  }
-
-  private static InputStream openInputStream(URL url) throws IOException {
-    InputStream in = url.openStream();
-    return in instanceof BufferedInputStream ? in : new BufferedInputStream(in);
-  }
-
-  private static OutputStream openOutputStream(URL url) throws IOException, URISyntaxException {
-    OutputStream out;
-    // file URLs do not support writing, only reading,
-    // so we need to special-case them here
-    if (url.getProtocol().equals("file")) {
-      out = Files.newOutputStream(Paths.get(url.toURI()), CREATE_NEW);
-    } else {
-      URLConnection connection = url.openConnection();
-      connection.setDoOutput(true);
-      out = connection.getOutputStream();
-    }
-    return out instanceof BufferedOutputStream ? out : new BufferedOutputStream(out);
   }
 }

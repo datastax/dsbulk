@@ -10,6 +10,7 @@
 - [bug] DAT-150: In-flight requests are negative when continuous paging is active.
 - [bug] DAT-152: Support query + keyspace settings combination.
 - [improvement] DAT-109: Refactor setting initialization and validation.
+- [improvement] DAT-146: Optimize load workflow for multiple files.
 
 
 ### 1.0.0-beta1
@@ -93,3 +94,4 @@
 - [bug] DAT-69: CSV Connector fails to parse files with non-native line-ending.
 - [new feature] DAT-64: Implement connector writes.
 - [new feature] DAT-63: Support writing to standard output.
+- [improvement] DAT-109: Refactor setting initialization and validation.

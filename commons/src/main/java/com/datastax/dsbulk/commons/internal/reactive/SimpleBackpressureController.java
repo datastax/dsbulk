@@ -32,9 +32,6 @@ public final class SimpleBackpressureController {
     protected boolean tryReleaseShared(long permits) {
       for (; ; ) {
         long current = getState();
-        if (current == Long.MAX_VALUE) {
-          return true;
-        }
         long update = current + permits;
         if (update < 0L) {
           // overflow
@@ -50,9 +47,6 @@ public final class SimpleBackpressureController {
     protected long tryAcquireShared(long permits) {
       for (; ; ) {
         long current = getState();
-        if (current == Long.MAX_VALUE) {
-          return current;
-        }
         long update = current - permits;
         if (update < 0L) {
           return update;
