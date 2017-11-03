@@ -386,11 +386,10 @@ public class CSVConnector implements Connector {
             writer.close();
           } catch (IllegalStateException e) {
             Throwable root = Throwables.getRootCause(e);
-            if (root instanceof ClosedByInterruptException) {
-              // ok, happens when the workflow has been interrupted
-            } else {
+            if (!(root instanceof ClosedByInterruptException)) {
               LOGGER.error("Could not close " + url, root);
             }
+            // else ok, happens when the workflow has been interrupted
           }
         }
       }
