@@ -73,7 +73,7 @@ public class EngineSettingsTest {
   public void should_report_default_thread_per_core_threshold() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.engine"));
     EngineSettings settings = new EngineSettings(config);
-    assertThat(settings.getThreadPerCoreThreshold()).isEqualTo(5);
+    assertThat(settings.getThreadPerCoreThreshold()).isEqualTo(4);
   }
 
   @Test
