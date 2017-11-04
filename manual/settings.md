@@ -569,6 +569,10 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 The buffer size to use for batching statements.
 
+The buffer will be flushed when this size is reached, or when *bufferTimeout* is elapsed, whichever happens first.
+
+It is usually not necessary to set this value higher than `maxBatchSize`, unless the dataset to load is unsorted, in which case a higher value might improve the average batch size.
+
 Default: **32**.
 
 #### --batch.bufferTimeout _&lt;string&gt;_
@@ -587,7 +591,11 @@ Default: **true**.
 
 #### --batch.maxBatchSize _&lt;number&gt;_
 
-The buffer size to use for batching statements.
+The maximum batch size.
+
+The ideal batch size depends on how large is the data to be inserted: the larger the data, the smaller this value should be.
+
+The ideal batch size also depends on the batch mode in use. When using **PARTITION_KEY**, it is usually better to use larger batch sizes. When using **REPLICA_SET** however, batches sizes should remain small (below 10).
 
 Default: **32**.
 
@@ -1107,7 +1115,7 @@ The exact meaning of "parallel tasks" depends on the workflow:
 - For load workflows, it is the number of distinct resources to read, as reported by the connector in use.
 - For unload workflows, it is the number of statements to execute.
 
-Default: **5**.
+Default: **4**.
 
 <a name="executor"></a>
 ## Executor Settings
