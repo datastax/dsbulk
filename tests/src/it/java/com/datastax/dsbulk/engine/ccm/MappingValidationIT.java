@@ -8,11 +8,11 @@
 package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.tests.utils.CsvUtils.createIpByCountryTable;
+import static com.datastax.dsbulk.tests.utils.EndToEndUtils.getErrorEventMessages;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Session;
@@ -25,7 +25,6 @@ import com.datastax.dsbulk.tests.ccm.annotations.SessionConfig;
 import com.datastax.dsbulk.tests.utils.CsvUtils;
 import com.datastax.dsbulk.tests.utils.EndToEndUtils;
 import com.datastax.dsbulk.tests.utils.TestAppender;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import javax.inject.Inject;
@@ -142,21 +141,10 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
   }
 
   private void validateErrorMessageLogged(String... msg) {
-    List<String> errorMessages = getErrorEventMessages();
+    List<String> errorMessages = getErrorEventMessages(appender);
     assertThat(errorMessages).isNotEmpty();
     assertThat(errorMessages.get(0)).contains("Load workflow engine execution");
     assertThat(errorMessages.get(0)).contains("failed");
     assertThat(errorMessages.get(0)).contains(msg);
-  }
-
-  private List<String> getErrorEventMessages() {
-    List<String> errorMessages = new ArrayList<>();
-    List<ILoggingEvent> events = appender.getEvents();
-    for (ILoggingEvent event : events) {
-      if (event.getLevel().equals(Level.ERROR)) {
-        errorMessages.add(event.getMessage());
-      }
-    }
-    return errorMessages;
   }
 }
