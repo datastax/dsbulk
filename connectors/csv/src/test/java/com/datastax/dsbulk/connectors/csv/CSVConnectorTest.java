@@ -507,6 +507,7 @@ public class CSVConnectorTest {
     // don't send a terminal event as the terminal event could cancel the upstream subscription
     // before the write workers are created and fail to write.
     assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
+    connector.close();
   }
 
   private static List<Record> createRecords() {

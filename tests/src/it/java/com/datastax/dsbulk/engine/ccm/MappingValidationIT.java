@@ -13,6 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Session;
@@ -41,34 +43,40 @@ import org.slf4j.LoggerFactory;
 public class MappingValidationIT extends AbstractEndToEndTestIT {
   private static final String KS = "mappingvalidation";
 
-  private Logger root;
-  private TestAppender appender;
-  private Level oldLevel;
-
   @Inject
   @SessionConfig(useKeyspace = SessionConfig.UseKeyspaceMode.FIXED, loggedKeyspaceName = KS)
   private static Session session;
 
   @Inject private static Cluster cluster;
 
+  private Logger root;
+  private TestAppender appender;
+  private Level oldLevel;
+
+  private Appender<ILoggingEvent> stdout;
+
   @Override
   public String getKeyspace() {
     return KS;
   }
 
+  @SuppressWarnings("Duplicates")
   @Before
   public void setUp() throws Exception {
     root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
     appender = new TestAppender();
     root.addAppender(appender);
     oldLevel = root.getLevel();
-    root.setLevel(Level.DEBUG);
+    root.setLevel(Level.INFO);
+    stdout = root.getAppender("STDOUT");
+    root.detachAppender(stdout);
   }
 
   @After
   public void tearDown() throws Exception {
-    root.detachAppender(appender.getName());
+    root.detachAppender(appender);
     root.setLevel(oldLevel);
+    root.addAppender(stdout);
   }
 
   @Test

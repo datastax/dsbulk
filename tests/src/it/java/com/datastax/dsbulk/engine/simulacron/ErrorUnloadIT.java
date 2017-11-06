@@ -10,6 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.tests.SimulacronRule;
 import com.datastax.dsbulk.tests.utils.CsvUtils;
@@ -18,9 +20,8 @@ import com.datastax.dsbulk.tests.utils.TestAppender;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
-import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import org.junit.After;
 import org.junit.Before;
@@ -34,35 +35,33 @@ public class ErrorUnloadIT {
   private Logger root;
   private TestAppender appender;
   private Level oldLevel;
+  private Appender<ILoggingEvent> stdout;
 
+  @SuppressWarnings("Duplicates")
   @Before
   public void setUp() throws Exception {
     root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
     appender = new TestAppender();
     root.addAppender(appender);
     oldLevel = root.getLevel();
-    root.setLevel(Level.DEBUG);
+    root.setLevel(Level.INFO);
+    stdout = root.getAppender("STDOUT");
+    root.detachAppender(stdout);
   }
 
   @After
   public void tearDown() throws Exception {
-    root.detachAppender(appender.getName());
+    root.detachAppender(appender);
     root.setLevel(oldLevel);
+    root.addAppender(stdout);
   }
 
+  @SuppressWarnings("ResultOfMethodCallIgnored")
   @Test
   public void unload_existing_file() throws Exception {
     //Prior to DAT-151 this case would hang
-    String existingFileName = "./target/full_unload_dir/output-000001.csv";
-    Path full_unload_dir = Paths.get("./target/full_unload_dir");
-    Path full_unload_output_file = Paths.get(existingFileName);
-    //cleanup anything that is there.
-    EndToEndUtils.deleteIfExists(full_unload_dir);
-
-    //Guarantee we have a duplicate file in place.
-    File existingFile = new File(existingFileName);
-    existingFile.getParentFile().mkdirs();
-    existingFile.createNewFile();
+    Path directory = Files.createTempDirectory("full_unload_dir");
+    Path file = Files.createFile(directory.resolve("output-000001.csv"));
     RequestPrime prime = EndToEndUtils.createQueryWithResultSet("SELECT * FROM ip_by_country", 24);
     simulacron.cluster().prime(new Prime(prime));
     String[] unloadArgs = {
@@ -70,7 +69,7 @@ public class ErrorUnloadIT {
       "--log.directory=./target",
       "-header",
       "false",
-      "--connector.csv.url=" + full_unload_output_file.toString(),
+      "--connector.csv.url=" + directory,
       "--connector.csv.maxConcurrentFiles=1",
       "--driver.query.consistency=ONE",
       "--driver.hosts=" + EndToEndUtils.fetchSimulacronContactPointsForArg(simulacron),
@@ -81,11 +80,9 @@ public class ErrorUnloadIT {
     new Main(unloadArgs).run();
     List<String> errorMessages = EndToEndUtils.getErrorEventMessages(appender);
     assertThat(errorMessages).isNotEmpty();
-    assertThat(errorMessages.get(0))
-        .contains(
-            "Could not create CSV writer for file:/Users/gregbestland/git/datastax-loader/tests/target/full_unload_dir/output-000001.csv");
-    assertThat(errorMessages.get(1))
-        .contains(
-            "Error writing to file:/Users/gregbestland/git/datastax-loader/tests/target/full_unload_dir/output-000001.csv");
+    assertThat(errorMessages.get(0)).contains("Could not create CSV writer for file:" + file);
+    assertThat(errorMessages.get(1)).contains("Error writing to file:" + file);
+    Files.delete(file);
+    Files.delete(directory);
   }
 }
