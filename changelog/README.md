@@ -11,6 +11,7 @@
 - [bug] DAT-152: Support query + keyspace settings combination.
 - [improvement] DAT-109: Refactor setting initialization and validation.
 - [improvement] DAT-146: Optimize load workflow for multiple files.
+- [bug]: DAT-151: Unload workflow hangs when a destination file already exists.
 
 
 ### 1.0.0-beta1

@@ -31,12 +31,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.UnicastProcessor;
 
 /** */
 public class CSVConnectorTest {
@@ -458,6 +461,52 @@ public class CSVConnectorTest {
     assertThat(records.get(0).getSource().toString().trim())
         .isEqualTo(
             "\"212.63.180.20\",\"212.63.180.23\",\"3560944660\",\"3560944663\",\"MZ\",\"Mozambique\"");
+    connector.close();
+  }
+
+  @Test
+  public void should_cancel_write_single_file_when_io_error() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Path out = Files.createTempDirectory("test");
+    Path file = out.resolve("output-000001.csv");
+    // will cause the write to fail because the file already exists
+    Files.createFile(file);
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(String.format("url = \"%s\", maxConcurrentFiles = 1", out))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    Flux<Record> records = Flux.fromIterable(createRecords());
+    CountDownLatch latch = new CountDownLatch(1);
+    records.doOnCancel(latch::countDown).subscribe(connector.write());
+    assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
+    connector.close();
+  }
+
+  @Test
+  public void should_cancel_write_multiple_files_when_io_error() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Path out = Files.createTempDirectory("test");
+    Path file1 = out.resolve("output-000001.csv");
+    Path file2 = out.resolve("output-000002.csv");
+    // will cause the write workers to fail because the files already exist
+    Files.createFile(file1);
+    Files.createFile(file2);
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(String.format("url = \"%s\", maxConcurrentFiles = 2", out))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    UnicastProcessor<Record> records = UnicastProcessor.create();
+    CountDownLatch latch = new CountDownLatch(1);
+    records.doOnCancel(latch::countDown).subscribe(connector.write());
+    List<Record> list = createRecords();
+    records.onNext(list.get(0));
+    // don't send a terminal event as the terminal event could cancel the upstream subscription
+    // before the write workers are created and fail to write.
+    assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
     connector.close();
   }
 

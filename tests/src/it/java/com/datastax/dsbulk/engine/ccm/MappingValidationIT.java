@@ -8,11 +8,13 @@
 package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.tests.utils.CsvUtils.createIpByCountryTable;
+import static com.datastax.dsbulk.tests.utils.EndToEndUtils.getErrorEventMessages;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Session;
@@ -25,7 +27,6 @@ import com.datastax.dsbulk.tests.ccm.annotations.SessionConfig;
 import com.datastax.dsbulk.tests.utils.CsvUtils;
 import com.datastax.dsbulk.tests.utils.EndToEndUtils;
 import com.datastax.dsbulk.tests.utils.TestAppender;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import javax.inject.Inject;
@@ -42,34 +43,40 @@ import org.slf4j.LoggerFactory;
 public class MappingValidationIT extends AbstractEndToEndTestIT {
   private static final String KS = "mappingvalidation";
 
-  private Logger root;
-  private TestAppender appender;
-  private Level oldLevel;
-
   @Inject
   @SessionConfig(useKeyspace = SessionConfig.UseKeyspaceMode.FIXED, loggedKeyspaceName = KS)
   private static Session session;
 
   @Inject private static Cluster cluster;
 
+  private Logger root;
+  private TestAppender appender;
+  private Level oldLevel;
+
+  private Appender<ILoggingEvent> stdout;
+
   @Override
   public String getKeyspace() {
     return KS;
   }
 
+  @SuppressWarnings("Duplicates")
   @Before
   public void setUp() throws Exception {
     root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
     appender = new TestAppender();
     root.addAppender(appender);
     oldLevel = root.getLevel();
-    root.setLevel(Level.DEBUG);
+    root.setLevel(Level.INFO);
+    stdout = root.getAppender("STDOUT");
+    root.detachAppender(stdout);
   }
 
   @After
   public void tearDown() throws Exception {
-    root.detachAppender(appender.getName());
+    root.detachAppender(appender);
     root.setLevel(oldLevel);
+    root.addAppender(stdout);
   }
 
   @Test
@@ -142,21 +149,10 @@ public class MappingValidationIT extends AbstractEndToEndTestIT {
   }
 
   private void validateErrorMessageLogged(String... msg) {
-    List<String> errorMessages = getErrorEventMessages();
+    List<String> errorMessages = getErrorEventMessages(appender);
     assertThat(errorMessages).isNotEmpty();
     assertThat(errorMessages.get(0)).contains("Load workflow engine execution");
     assertThat(errorMessages.get(0)).contains("failed");
     assertThat(errorMessages.get(0)).contains(msg);
-  }
-
-  private List<String> getErrorEventMessages() {
-    List<String> errorMessages = new ArrayList<>();
-    List<ILoggingEvent> events = appender.getEvents();
-    for (ILoggingEvent event : events) {
-      if (event.getLevel().equals(Level.ERROR)) {
-        errorMessages.add(event.getMessage());
-      }
-    }
-    return errorMessages;
   }
 }
