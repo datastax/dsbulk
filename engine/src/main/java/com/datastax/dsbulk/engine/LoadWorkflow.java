@@ -8,9 +8,12 @@ package com.datastax.dsbulk.engine;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.driver.core.Host;
+import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.internal.WorkflowUtils;
@@ -32,7 +35,10 @@ import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -92,6 +98,7 @@ public class LoadWorkflow implements Workflow {
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
+    checkProductCompatibility(session);
     batchingEnabled = batchSettings.isBatchingEnabled();
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD, batchingEnabled);
     metricsManager.init();
@@ -195,6 +202,21 @@ public class LoadWorkflow implements Workflow {
       if (e != null) {
         throw e;
       }
+    }
+  }
+
+  private void checkProductCompatibility(Session session) {
+    Set<Host> hosts = session.getCluster().getMetadata().getAllHosts();
+    List<Host> nonDseHosts =
+        hosts.stream().filter(host -> host.getDseVersion() == null).collect(Collectors.toList());
+    if (nonDseHosts.size() != 0) {
+      LOGGER.error(
+          "Incompatible cluster detected. Load functionality is only compatible with a DSE cluster.");
+      LOGGER.error("The following nodes do not appear to be running DSE:");
+      for (Host host : nonDseHosts) {
+        LOGGER.error(host.toString());
+      }
+      throw new BulkConfigurationException("Unable to load data to non DSE cluster", "load");
     }
   }
 
