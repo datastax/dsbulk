@@ -6,33 +6,34 @@
 # http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
 # Look for a usable Java 8 binary in JAVA_HOME, the result of /usr/libexec/java_home, or path.
-for J in "$JAVA_HOME"/bin/java "$(/usr/libexec/java_home 2> /dev/null)/bin/java" java ; do
-  if [ -x $J ]; then
+for J in "$JAVA" "$JAVA_HOME"/bin/java "$(/usr/libexec/java_home 2> /dev/null)/bin/java" $(which java) ; do
+  if [ ! -z "$J" -a -x "$J" ]; then
     VER=$($J -version 2>&1 | head -1 | sed -e 's/[^"]*"//' -e 's/".*//' -e 's/\.[^\.]*$//')
     MAJOR=$(echo $VER | sed -e 's/\..*$//')
     MINOR=$(echo $VER | sed -e 's/^.*\.//')
     if [ $MAJOR -ge 1 -a $MINOR -ge 8 ] ; then
       # This Java is at least 1.8.
-      JAVA=$J
+      JAVA_CMD=$J
       break
     fi
   fi
 done
 
-if [ -z "$JAVA" ] ; then
+if [ -z "$JAVA_CMD" ] ; then
   echo "Unable to find java 8 (or later) executable. Check JAVA_HOME and PATH environment variables." >&2
   exit 1
 fi
 
-INSTALL_DIR=`dirname "$0"`/..
+INSTALL_DIR=$(realpath `dirname "$0"`)/..
 
 # Set CLASSPATH to include all the jars in the lib dir + the conf directory
 # (which contains reference.conf).
+jars=
 for i in $INSTALL_DIR/lib/*.jar $INSTALL_DIR/conf; do
-  CLASSPATH="$CLASSPATH:$i"
+  jars="$jars:$i"
 done
 
-export CLASSPATH
+DSBULK_JAVA_OPTS="$DSBULK_JAVA_OPTS -cp $jars"
 
 # Attempt to find the window width, to make help output look nicer. This
 # expression should work on Linux and Mac at least. If the result isn't a number,
@@ -43,4 +44,4 @@ if /bin/expr  "$COLUMNS" + 0 > /dev/null 2>&1 ; then
 fi
 
 # Run the tool.
-$JAVA $DSBULK_JAVA_OPTS com.datastax.dsbulk.engine.Main "$@"
+$JAVA_CMD $DSBULK_JAVA_OPTS com.datastax.dsbulk.engine.Main "$@"
