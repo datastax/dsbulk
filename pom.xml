@@ -513,34 +513,6 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
               <link>http://fasterxml.github.io/jackson-core/javadoc/2.9/</link>
               <link>http://fasterxml.github.io/jackson-databind/javadoc/2.9/</link>
             </links>
-            <!-- optional dependencies from other modules (must be explicitly declared here in order to be correctly resolved) -->
-            <additionalDependencies>
-              <additionalDependency>
-                <groupId>net.jpountz.lz4</groupId>
-                <artifactId>lz4</artifactId>
-                <version>${lz4.version}</version>
-              </additionalDependency>
-              <additionalDependency>
-                <groupId>org.hdrhistogram</groupId>
-                <artifactId>HdrHistogram</artifactId>
-                <version>${hdr.version}</version>
-              </additionalDependency>
-              <additionalDependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-core</artifactId>
-                <version>${jackson.version}</version>
-              </additionalDependency>
-              <additionalDependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-annotations</artifactId>
-                <version>${jackson.version}</version>
-              </additionalDependency>
-              <additionalDependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson.version}</version>
-              </additionalDependency>
-            </additionalDependencies>
           </configuration>
           <executions>
             <execution>
