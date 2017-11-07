@@ -106,6 +106,82 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
   }
 
   @Test
+  public void full_load_unload_lz4() throws Exception {
+    /* Simple test case which attempts to load and unload data using ccm. */
+    createIpByCountryTable(session);
+    List<String> customLoadArgs = new LinkedList<>();
+    customLoadArgs.add("--driver.protocol.compression");
+    customLoadArgs.add("LZ4");
+    customLoadArgs.add("--connector.csv.url");
+    customLoadArgs.add(CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm());
+    customLoadArgs.add("--schema.query");
+    customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
+    customLoadArgs.add("--schema.mapping");
+    customLoadArgs.add(
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
+
+    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
+    validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    EndToEndUtils.deleteIfExists(full_unload_dir);
+    List<String> customUnloadArgs = new LinkedList<>();
+    customUnloadArgs.add("--driver.protocol.compression");
+    customUnloadArgs.add("LZ4");
+    customUnloadArgs.add("--connector.csv.url");
+    customUnloadArgs.add(full_unload_dir.toString());
+    customUnloadArgs.add("--connector.csv.maxConcurrentFiles");
+    customUnloadArgs.add("1");
+    customUnloadArgs.add("--schema.query");
+    customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.mapping");
+    customUnloadArgs.add(
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
+
+    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
+
+    EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
+  }
+
+  @Test
+  public void full_load_unload_snappy() throws Exception {
+    /* Simple test case which attempts to load and unload data using ccm. */
+    createIpByCountryTable(session);
+    List<String> customLoadArgs = new LinkedList<>();
+    customLoadArgs.add("--driver.protocol.compression");
+    customLoadArgs.add("SNAPPY");
+    customLoadArgs.add("--connector.csv.url");
+    customLoadArgs.add(CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm());
+    customLoadArgs.add("--schema.query");
+    customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
+    customLoadArgs.add("--schema.mapping");
+    customLoadArgs.add(
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
+
+    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
+    validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
+    Path full_unload_dir = Paths.get("./target/full_unload_dir");
+    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+    EndToEndUtils.deleteIfExists(full_unload_dir);
+    List<String> customUnloadArgs = new LinkedList<>();
+    customUnloadArgs.add("--driver.protocol.compression");
+    customUnloadArgs.add("SNAPPY");
+    customUnloadArgs.add("--connector.csv.url");
+    customUnloadArgs.add(full_unload_dir.toString());
+    customUnloadArgs.add("--connector.csv.maxConcurrentFiles");
+    customUnloadArgs.add("1");
+    customUnloadArgs.add("--schema.query");
+    customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
+    customUnloadArgs.add("--schema.mapping");
+    customUnloadArgs.add(
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
+
+    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
+
+    EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
+  }
+
+  @Test
   public void full_load_unload_complex() throws Exception {
     /* Attempts to load and unload complex types (Collections, UDTs, etc). */
     createComplexTable(session);
@@ -264,6 +340,7 @@ public class CCMTotalEndToEndIT extends AbstractEndToEndTestIT {
     return EndToEndUtils.fetchCompleteArgs(op, contact_point, port, customArgs);
   }
 
+  @Override
   @After
   public void clearKeyspace() {
     session.execute("DROP KEYSPACE IF EXISTS " + KS);
