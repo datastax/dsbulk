@@ -43,7 +43,7 @@
     <config.version>1.3.1</config.version>
     <guava.version>23.0</guava.version>
     <netty.version>4.1.16.Final</netty.version>
-    <caffeine.version>2.5.4</caffeine.version>
+    <caffeine.version>2.6.0</caffeine.version>
     <jnr-ffi.version>2.1.6</jnr-ffi.version>
     <jnr-posix.version>3.0.42</jnr-posix.version>
     <slf4j.version>1.7.25</slf4j.version>
