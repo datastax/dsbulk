@@ -130,24 +130,12 @@
         <groupId>com.datastax.dse</groupId>
         <artifactId>dse-java-driver-core</artifactId>
         <version>${driver.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-          </exclusion>
-        </exclusions>
       </dependency>
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dse-java-driver-extras</artifactId>
         <version>${driver.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-          </exclusion>
-        </exclusions>
       </dependency>
 
       <dependency>
