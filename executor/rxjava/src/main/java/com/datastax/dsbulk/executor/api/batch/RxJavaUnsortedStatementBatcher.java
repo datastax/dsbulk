@@ -11,8 +11,6 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Statement;
 import io.reactivex.Flowable;
 import io.reactivex.FlowableTransformer;
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 /**
  * An {@link RxJavaStatementBatcher} that implements {@link FlowableTransformer} so that it can be
@@ -30,37 +28,29 @@ public class RxJavaUnsortedStatementBatcher extends RxJavaStatementBatcher
     implements FlowableTransformer<Statement, Statement> {
 
   /** The default size for the internal buffer. */
-  public static final int DEFAULT_BUFFER_SIZE = 1000;
-
-  public static final Duration DEFAULT_BufferTimeout = Duration.ofSeconds(5);
+  public static final int DEFAULT_BUFFER_SIZE = 512;
 
   private final int bufferSize;
-  private final Duration bufferTimeout;
 
   public RxJavaUnsortedStatementBatcher() {
-    this(DEFAULT_BUFFER_SIZE, DEFAULT_BufferTimeout);
+    this(DEFAULT_BUFFER_SIZE);
   }
 
-  public RxJavaUnsortedStatementBatcher(int bufferSize, Duration bufferTimeout) {
+  public RxJavaUnsortedStatementBatcher(int bufferSize) {
     this.bufferSize = bufferSize;
-    this.bufferTimeout = bufferTimeout;
   }
 
   public RxJavaUnsortedStatementBatcher(Cluster cluster) {
-    this(cluster, DEFAULT_BUFFER_SIZE, DEFAULT_BufferTimeout);
+    this(cluster, DEFAULT_BUFFER_SIZE);
   }
 
-  public RxJavaUnsortedStatementBatcher(Cluster cluster, int bufferSize, Duration bufferTimeout) {
-    this(cluster, BatchMode.PARTITION_KEY, DEFAULT_MAX_BATCH_SIZE, bufferSize, bufferTimeout);
+  public RxJavaUnsortedStatementBatcher(Cluster cluster, int bufferSize) {
+    this(cluster, BatchMode.PARTITION_KEY, DEFAULT_MAX_BATCH_SIZE, bufferSize);
   }
 
   public RxJavaUnsortedStatementBatcher(
-      Cluster cluster,
-      BatchMode batchMode,
-      int maxBatchSize,
-      int bufferSize,
-      Duration bufferTimeout) {
-    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchSize, bufferSize, bufferTimeout);
+      Cluster cluster, BatchMode batchMode, int maxBatchSize, int bufferSize) {
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchSize, bufferSize);
   }
 
   public RxJavaUnsortedStatementBatcher(
@@ -68,18 +58,13 @@ public class RxJavaUnsortedStatementBatcher extends RxJavaStatementBatcher
       BatchMode batchMode,
       BatchStatement.Type batchType,
       int maxBatchSize,
-      int bufferSize,
-      Duration bufferTimeout) {
+      int bufferSize) {
     super(cluster, batchMode, batchType, maxBatchSize);
     this.bufferSize = bufferSize;
-    this.bufferTimeout = bufferTimeout;
   }
 
   @Override
   public Flowable<Statement> apply(Flowable<Statement> upstream) {
-    return upstream
-        .buffer(bufferTimeout.getSeconds(), TimeUnit.SECONDS, bufferSize)
-        .map(this::batchByGroupingKey)
-        .flatMap(Flowable::fromIterable);
+    return upstream.window(bufferSize).flatMap(this::batchByGroupingKey);
   }
 }

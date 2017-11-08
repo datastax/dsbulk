@@ -168,6 +168,9 @@ public class StatementBatcher {
    * <p>The grouping key to use is determined by the {@link BatchMode batch mode} in use by this
    * statement batcher.
    *
+   * <p>When the number of statements for the same grouping key is greater than the maximum batch
+   * size, statements will be split in different batches.
+   *
    * <p>When {@link BatchMode#PARTITION_KEY PARTITION_KEY} is used, the grouping key is the
    * statement's {@link Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or
    * {@link Statement#getRoutingToken() routing token}, whichever is available.
@@ -188,6 +191,9 @@ public class StatementBatcher {
    *
    * <p>The grouping key to use is determined by the {@link BatchMode batch mode} in use by this
    * statement batcher.
+   *
+   * <p>When the number of statements for the same grouping key is greater than the maximum batch
+   * size, statements will be split in different batches.
    *
    * <p>When {@link BatchMode#PARTITION_KEY PARTITION_KEY} is used, the grouping key is the
    * statement's {@link Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or
@@ -215,6 +221,9 @@ public class StatementBatcher {
    * <p>Note that when given one single statement, this method will not create a batch statement
    * containing that single statement; instead, it will return that same statement.
    *
+   * <p>When the number of given statements is greater than the maximum batch size, this method will
+   * split them into different batches.
+   *
    * <p>Use this method with caution; if the given statements do not share the same {@link
    * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key}, the resulting batch could
    * lead to write throughput degradation.
@@ -228,10 +237,13 @@ public class StatementBatcher {
   }
 
   /**
-   * Batches together all the given statements into one single {@link BatchStatement}.
+   * Batches together all the given statements into one or more {@link BatchStatement}s.
    *
    * <p>Note that when given one single statement, this method will not create a batch statement
    * containing that single statement; instead, it will return that same statement.
+   *
+   * <p>When the number of given statements is greater than the maximum batch size, this method will
+   * split them into different batches.
    *
    * <p>Use this method with caution; if the given statements do not share the same {@link
    * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key}, the resulting batch could

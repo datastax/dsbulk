@@ -124,4 +124,22 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
     assertThat(((BatchStatement) statements.singleOrError().blockingGet()).getStatements())
         .containsExactly(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
   }
+
+  @Test
+  public void should_honor_max_batch_size_reactive() throws Exception {
+    assignRoutingTokens();
+    ReactorStatementBatcher batcher = new ReactorStatementBatcher(2);
+    Flowable<Statement> statements =
+        Flowable.fromPublisher(
+            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch12, batch56, batch34);
+    statements =
+        Flowable.fromPublisher(
+            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch12, batch56, batch34);
+  }
 }

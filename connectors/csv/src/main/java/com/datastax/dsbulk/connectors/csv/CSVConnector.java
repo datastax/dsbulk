@@ -29,8 +29,7 @@ import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -86,6 +85,7 @@ public class CSVConnector implements Connector {
   private static final String RECURSIVE = "recursive";
   private static final String HEADER = "header";
   private static final String FILE_NAME_FORMAT = "fileNameFormat";
+  private static final String MAX_CHARS_PER_COLUMN = "maxCharsPerColumn";
 
   private boolean read;
   private URL url;
@@ -102,12 +102,13 @@ public class CSVConnector implements Connector {
   private boolean recursive;
   private boolean header;
   private String fileNameFormat;
-  private long resourceCount;
+  private int resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
   private AtomicInteger counter;
   private ExecutorService threadPool;
   private WorkQueueProcessor<Record> writeQueueProcessor;
+  private int maxCharsPerColumn;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -132,6 +133,7 @@ public class CSVConnector implements Connector {
       recursive = settings.getBoolean(RECURSIVE);
       header = settings.getBoolean(HEADER);
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
+      maxCharsPerColumn = settings.getInt(MAX_CHARS_PER_COLUMN);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
     }
@@ -158,7 +160,7 @@ public class CSVConnector implements Connector {
       // parserSettings.setNumberOfRowsToSkip(skipLines);
       parserSettings.setHeaderExtractionEnabled(header);
       parserSettings.setLineSeparatorDetectionEnabled(true);
-      parserSettings.setMaxCharsPerColumn(-1);
+      parserSettings.setMaxCharsPerColumn(maxCharsPerColumn);
     } else {
       writerSettings = new CsvWriterSettings();
       writerSettings.setFormat(format);
@@ -180,7 +182,7 @@ public class CSVConnector implements Connector {
   }
 
   @Override
-  public long estimatedResourceCount() {
+  public int estimatedResourceCount() {
     return resourceCount;
   }
 
@@ -215,14 +217,14 @@ public class CSVConnector implements Connector {
 
   private void tryReadFromDirectory() throws URISyntaxException {
     try {
-      resourceCount = 1L;
+      resourceCount = 1;
       Path root = Paths.get(url.toURI());
       if (Files.isDirectory(root)) {
         if (!Files.isReadable(root)) {
           throw new IllegalArgumentException("Directory is not readable: " + root);
         }
         this.root = root;
-        resourceCount = scanRootDirectory().take(100).count().block();
+        resourceCount = scanRootDirectory().take(100).count().block().intValue();
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to reading from URL directly
@@ -231,7 +233,7 @@ public class CSVConnector implements Connector {
 
   private void tryWriteToDirectory() throws URISyntaxException, IOException {
     try {
-      resourceCount = -1L;
+      resourceCount = -1;
       Path root = Paths.get(url.toURI());
       if (!Files.exists(root)) {
         root = Files.createDirectories(root);
@@ -255,8 +257,8 @@ public class CSVConnector implements Connector {
               sink.onRequest(controller::signalRequested);
               CsvParser parser = new CsvParser(parserSettings);
               LOGGER.debug("Reading {}", url);
-              try (InputStream is = IOUtils.openInputStream(url)) {
-                parser.beginParsing(is, encoding);
+              try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
+                parser.beginParsing(r);
                 URI resource = URIUtils.createResourceURI(url);
                 while (true) {
                   if (sink.isCancelled()) {
@@ -402,7 +404,8 @@ public class CSVConnector implements Connector {
 
   private Subscriber<Record> multipleWriteSubscriber() {
     threadPool =
-        Executors.newCachedThreadPool(
+        Executors.newFixedThreadPool(
+            maxConcurrentFiles,
             new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
     writeQueueProcessor = WorkQueueProcessor.<Record>builder().executor(threadPool).build();
     for (int i = 0; i < maxConcurrentFiles; i++) {
@@ -413,8 +416,7 @@ public class CSVConnector implements Connector {
 
   private CsvWriter createCSVWriter(URL url) {
     try {
-      return new CsvWriter(
-          new OutputStreamWriter(IOUtils.openOutputStream(url), encoding), writerSettings);
+      return new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
     } catch (Exception e) {
       LOGGER.error(String.format("Could not create CSV writer for %s: %s", url, e.getMessage()), e);
       throw new RuntimeException(e);

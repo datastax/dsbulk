@@ -50,6 +50,7 @@ public class StatementBatcherTest {
 
   BatchStatement batch12 = new BatchStatement(UNLOGGED).add(stmt1).add(stmt2);
   BatchStatement batch126 = new BatchStatement(UNLOGGED).add(stmt1).add(stmt2).add(stmt6);
+  BatchStatement batch56 = new BatchStatement(UNLOGGED).add(stmt5).add(stmt6);
   BatchStatement batch1256 =
       new BatchStatement(UNLOGGED).add(stmt1).add(stmt2).add(stmt5).add(stmt6);
   BatchStatement batch34 = new BatchStatement(UNLOGGED).add(stmt3).add(stmt4);
@@ -173,6 +174,17 @@ public class StatementBatcherTest {
     assertThat(statements).hasSize(1);
     Statement statement = statements.get(0);
     assertThat(statement).isSameAs(stmt1);
+  }
+
+  @Test
+  public void should_honor_max_batch_size() throws Exception {
+    assignRoutingTokens();
+    StatementBatcher batcher = new StatementBatcher(2);
+    List<Statement> statements =
+        batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch12, batch56, batch34);
+    statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch12, batch56, batch34);
   }
 
   protected void assignRoutingKeys() {

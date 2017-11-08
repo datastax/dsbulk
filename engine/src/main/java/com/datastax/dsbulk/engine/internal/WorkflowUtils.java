@@ -31,6 +31,15 @@ public class WorkflowUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkflowUtils.class);
 
+  /**
+   * The threshold, in number of resources to read or write, that triggers a thread-per-core
+   * optimization.
+   *
+   * <p>This threshold actually varies a bit depending on the dataset to load or unload, but it
+   * generally starts to be advantageous when the number of resources is >= 4.
+   */
+  public static final int TPC_THRESHOLD = 4;
+
   public static String newExecutionId(WorkflowType workflowType) {
     return workflowType
         + "_"
@@ -58,7 +67,6 @@ public class WorkflowUtils {
     if (closeable != null) {
       try {
         closeable.close();
-        return null;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       } catch (Exception e) {
@@ -75,7 +83,6 @@ public class WorkflowUtils {
     if (disposable != null && !disposable.isDisposed()) {
       try {
         disposable.dispose();
-        return null;
       } catch (Exception e) {
         // Reactor framework often wraps InterruptedException
         Throwable root = Throwables.getRootCause(e);

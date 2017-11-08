@@ -93,6 +93,9 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode batch mode} in use by this
    * statement batcher.
    *
+   * <p>When the number of statements for the same grouping key is greater than the maximum batch
+   * size, statements will be split in different batches.
+   *
    * <p>When {@link com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
    * PARTITION_KEY} is used, the grouping key is the statement's {@link
    * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or {@link
@@ -117,18 +120,27 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * <p>Note that when given one single statement, this method will not create a batch statement
    * containing that single statement; instead, it will return that same statement.
    *
+   * <p>When the number of given statements is greater than the maximum batch size, this method will
+   * split them into different batches.
+   *
    * <p>Use this method with caution; if the given statements do not share the same {@link
    * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key}, the resulting batch could
    * lead to write throughput degradation.
    *
    * @param statements the statements to batch together.
-   * @return A {@link Mono} of one single {@link BatchStatement} containing all the given statements
-   *     batched together, or a {@link Mono} of the original statement, if only one was provided.
+   * @return A {@link Flux} of {@link BatchStatement}s containing all the given statements batched
+   *     together, or a {@link Flux} of the original statement, if only one was provided.
    */
-  public Mono<Statement> batchAll(Publisher<? extends Statement> statements) {
+  public Flux<Statement> batchAll(Publisher<? extends Statement> statements) {
     return Flux.from(statements)
-        .reduce(new BatchStatement(batchType), BatchStatement::add)
-        // Don't wrap single statements in batch.
-        .map(batch -> batch.size() == 1 ? batch.getStatements().iterator().next() : batch);
+        .window(maxBatchSize)
+        .flatMap(
+            stmts ->
+                stmts
+                    .reduce(new BatchStatement(batchType), BatchStatement::add)
+                    // Don't wrap single statements in batch.
+                    .map(
+                        batch ->
+                            batch.size() == 1 ? batch.getStatements().iterator().next() : batch));
   }
 }

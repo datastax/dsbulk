@@ -27,11 +27,14 @@ import java.nio.file.Paths;
 import java.util.Comparator;
 import org.junit.Before;
 import org.junit.Test;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 /** */
 public class LogSettingsTest {
 
   private Cluster cluster;
+  private final Scheduler scheduler = Schedulers.immediate();
 
   @SuppressWarnings("Duplicates")
   @Before
@@ -49,7 +52,7 @@ public class LogSettingsTest {
   public void should_create_log_manager_with_default_output_directory() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.log"));
     LogSettings settings = new LogSettings(config, "test");
-    LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
+    LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster, scheduler);
     try {
       logManager.init();
       assertThat(logManager).isNotNull();
@@ -72,7 +75,7 @@ public class LogSettingsTest {
             ConfigFactory.parseString("directory = \"" + dir + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
-    LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
+    LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster, scheduler);
     logManager.init();
     assertThat(logManager).isNotNull();
     assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
@@ -86,7 +89,7 @@ public class LogSettingsTest {
             ConfigFactory.parseString("directory = \"" + dir.toString() + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
-    LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
+    LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster, scheduler);
     logManager.init();
     assertThat(logManager).isNotNull();
     assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());

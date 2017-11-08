@@ -13,7 +13,6 @@ import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
@@ -45,28 +44,23 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Signal;
 import reactor.core.publisher.UnicastProcessor;
 import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
+import reactor.util.concurrent.Queues;
 
 /** */
 public class LogManager implements AutoCloseable {
@@ -76,14 +70,10 @@ public class LogManager implements AutoCloseable {
   private final WorkflowType workflowType;
   private final Cluster cluster;
   private final Path executionDirectory;
-  private final ExecutorService executor;
   private final Scheduler scheduler;
   private final int maxErrors;
   private final StatementFormatter formatter;
   private final StatementFormatVerbosity verbosity;
-
-  private final Set<Disposable> disposables = new HashSet<>();
-  private final Set<UnicastProcessor<?>> processors = new HashSet<>();
 
   private final AtomicInteger errors = new AtomicInteger(0);
 
@@ -111,19 +101,18 @@ public class LogManager implements AutoCloseable {
   public LogManager(
       WorkflowType workflowType,
       Cluster cluster,
+      Scheduler scheduler,
       Path executionDirectory,
-      ExecutorService executor,
       int maxErrors,
       StatementFormatter formatter,
       StatementFormatVerbosity verbosity) {
     this.workflowType = workflowType;
     this.cluster = cluster;
     this.executionDirectory = executionDirectory;
-    this.executor = executor;
+    this.scheduler = scheduler;
     this.maxErrors = maxErrors;
     this.formatter = formatter;
     this.verbosity = verbosity;
-    scheduler = Schedulers.fromExecutor(executor);
   }
 
   public void init() throws IOException {
@@ -168,12 +157,6 @@ public class LogManager implements AutoCloseable {
 
   @Override
   public void close() throws InterruptedException {
-    scheduler.dispose();
-    executor.shutdown();
-    processors.forEach(UnicastProcessor::onComplete);
-    disposables.forEach(Disposable::dispose);
-    executor.awaitTermination(1, MINUTES);
-    executor.shutdownNow();
     openFiles.invalidateAll();
     openFiles.cleanUp();
     if (workflowType == WorkflowType.LOAD && positionsPrinter != null) {
@@ -345,15 +328,13 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Used only by the load workflow.
    *
-   * <p>Extracts the result's {@link Statement} and applies {@link
-   * #newStatementPositionTracker(Scheduler) statementPositionTracker}.
+   * <p>Extracts the result's {@link Statement} and applies {@link #newStatementPositionTracker()
+   * statementPositionTracker}.
    *
    * @return A tracker for result positions.
-   * @param scheduler the scheduler to use.
    */
-  public Function<Flux<WriteResult>, Flux<Void>> newResultPositionTracker(Scheduler scheduler) {
-    return upstream ->
-        upstream.map(Result::getStatement).transform(newStatementPositionTracker(scheduler));
+  public Function<Flux<WriteResult>, Flux<Void>> newResultPositionTracker() {
+    return upstream -> upstream.map(Result::getStatement).transform(newStatementPositionTracker());
   }
 
   /**
@@ -361,18 +342,14 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Used only by the load workflow.
    *
-   * <p>Extracts the statements's {@link Record}s and applies {@link
-   * #newRecordPositionTracker(Scheduler) recordPositionTracker}.
+   * <p>Extracts the statements's {@link Record}s and applies {@link #newRecordPositionTracker()
+   * recordPositionTracker}.
    *
    * @return A tracker for statement positions.
-   * @param scheduler the scheduler to use.
    */
-  private Function<Flux<? extends Statement>, Flux<Void>> newStatementPositionTracker(
-      Scheduler scheduler) {
+  private Function<Flux<? extends Statement>, Flux<Void>> newStatementPositionTracker() {
     return upstream ->
-        upstream
-            .transform(newStatementToRecordMapper())
-            .transform(newRecordPositionTracker(scheduler));
+        upstream.transform(newStatementToRecordMapper()).transform(newRecordPositionTracker());
   }
 
   /**
@@ -384,14 +361,12 @@ public class LogManager implements AutoCloseable {
    * {@link Record#getPosition() positions} into continuous ranges.
    *
    * @return A tracker for statement positions.
-   * @param scheduler the scheduler to use.
    */
-  private Function<Flux<? extends Record>, Flux<Void>> newRecordPositionTracker(
-      Scheduler scheduler) {
+  private Function<Flux<? extends Record>, Flux<Void>> newRecordPositionTracker() {
     return upstream ->
         upstream
             .filter(record -> record.getPosition() > 0)
-            .windowTimeout(1024, Duration.ofSeconds(1))
+            .window(Queues.SMALL_BUFFER_SIZE)
             .flatMap(
                 window ->
                     window
@@ -403,8 +378,8 @@ public class LogManager implements AutoCloseable {
                                     .doOnNext(
                                         ranges ->
                                             positions.merge(
-                                                group.key(), ranges, LogManager::mergePositions))
-                                    .subscribeOn(scheduler)))
+                                                group.key(), ranges, LogManager::mergePositions)),
+                            Queues.SMALL_BUFFER_SIZE))
             .then()
             .flux();
   }
@@ -442,24 +417,21 @@ public class LogManager implements AutoCloseable {
    * <p>Used in both load and unload workflows.
    *
    * <p>Appends the record to the debug file, then (for load workflows only) to the bad file and
-   * forwards the record's position to the {@link #newRecordPositionTracker(Scheduler) position
-   * tracker}.
+   * forwards the record's position to the {@link #newRecordPositionTracker() position tracker}.
    *
    * @return A processor for unmappable records.
    */
   @NotNull
   private FluxSink<UnmappableRecord> newUnmappableRecordProcessor() {
     UnicastProcessor<UnmappableRecord> processor = UnicastProcessor.create();
-    processors.add(processor);
     Flux<UnmappableRecord> flux = processor.doOnNext(this::appendToDebugFile);
     if (workflowType == WorkflowType.LOAD) {
-      disposables.add(
-          flux.doOnNext(this::appendToBadFile)
-              .transform(newRecordPositionTracker(scheduler))
-              .subscribeOn(scheduler)
-              .subscribe());
+      flux.doOnNext(this::appendToBadFile)
+          .transform(newRecordPositionTracker())
+          .subscribeOn(scheduler)
+          .subscribe();
     } else {
-      disposables.add(flux.subscribeOn(scheduler).subscribe());
+      flux.subscribeOn(scheduler).subscribe();
     }
     return processor.sink();
   }
@@ -470,23 +442,21 @@ public class LogManager implements AutoCloseable {
    * <p>Used only in the load workflow.
    *
    * <p>Appends the statement to the debug file, then extracts its record, appends it to the bad
-   * file, then forwards the record's position to the {@link #newRecordPositionTracker(Scheduler)
-   * position tracker}.
+   * file, then forwards the record's position to the {@link #newRecordPositionTracker() position
+   * tracker}.
    *
    * @return A processor for unmappable statements.
    */
   @NotNull
   private FluxSink<UnmappableStatement> newUnmappableStatementProcessor() {
     UnicastProcessor<UnmappableStatement> processor = UnicastProcessor.create();
-    processors.add(processor);
-    disposables.add(
-        processor
-            .doOnNext(this::appendToDebugFile)
-            .transform(newStatementToRecordMapper())
-            .doOnNext(this::appendToBadFile)
-            .transform(newRecordPositionTracker(scheduler))
-            .subscribeOn(scheduler)
-            .subscribe());
+    processor
+        .doOnNext(this::appendToDebugFile)
+        .transform(newStatementToRecordMapper())
+        .doOnNext(this::appendToBadFile)
+        .transform(newRecordPositionTracker())
+        .subscribeOn(scheduler)
+        .subscribe();
     return processor.sink();
   }
 
@@ -497,23 +467,21 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Appends the failed result to the debug file, then extracts its statement, then extracts its
    * record, then appends it to the bad file, then forwards the record's position to the {@link
-   * #newRecordPositionTracker(Scheduler) position tracker}.
+   * #newRecordPositionTracker() position tracker}.
    *
    * @return A processor for failed write results.
    */
   @NotNull
   private FluxSink<WriteResult> newWriteResultProcessor() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
-    processors.add(processor);
-    disposables.add(
-        processor
-            .doOnNext(this::appendToDebugFile)
-            .map(Result::getStatement)
-            .transform(newStatementToRecordMapper())
-            .doOnNext(this::appendToBadFile)
-            .transform(newRecordPositionTracker(scheduler))
-            .subscribeOn(scheduler)
-            .subscribe());
+    processor
+        .doOnNext(this::appendToDebugFile)
+        .map(Result::getStatement)
+        .transform(newStatementToRecordMapper())
+        .doOnNext(this::appendToBadFile)
+        .transform(newRecordPositionTracker())
+        .subscribeOn(scheduler)
+        .subscribe();
     return processor.sink();
   }
 
@@ -524,15 +492,14 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Extracts the statement, then appends it to the debug file, then extracts its record, appends
    * it to the bad file, then forwards the record's position to the {@link
-   * #newRecordPositionTracker(Scheduler) position tracker}.
+   * #newRecordPositionTracker() position tracker}.
    *
    * @return A processor for failed read results.
    */
   @NotNull
   private FluxSink<ReadResult> newReadResultProcessor() {
     UnicastProcessor<ReadResult> processor = UnicastProcessor.create();
-    processors.add(processor);
-    disposables.add(processor.doOnNext(this::appendToDebugFile).subscribeOn(scheduler).subscribe());
+    processor.doOnNext(this::appendToDebugFile).subscribeOn(scheduler).subscribe();
     return processor.sink();
   }
 
