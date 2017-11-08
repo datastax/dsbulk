@@ -126,7 +126,8 @@ public class SettingsValidatorTest {
     }
 
     // These errors will look like this; String: 1: Invalid value at 'protocol.compression':
-    // The enum class Compression has no constant of the name 'badValue' (should be one of [NONE, SNAPPY, LZ4].
+    // The enum class Compression has no constant of the name 'badValue' (should be one of [NONE,
+    // SNAPPY, LZ4].
     for (String argument : Arrays.asList(BAD_ENUM)) {
       new Main(
               new String[] {
@@ -142,8 +143,8 @@ public class SettingsValidatorTest {
       assertThat(err).contains("The enum class");
     }
 
-    // These errors will look like this; String: 1: Invalid value at 'socket.readTimeout': No number in duration value
-    // 'badValue
+    // These errors will look like this; String: 1: Invalid value at 'socket.readTimeout': No number
+    // in duration value 'badValue'
     for (String argument : Arrays.asList(BAD_DURATION)) {
       new Main(
               new String[] {
@@ -173,7 +174,8 @@ public class SettingsValidatorTest {
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .contains(
-            "driver.hosts is mandatory. Please set driver.hosts and try again. See settings.md or help for more information");
+            "driver.hosts is mandatory. Please set driver.hosts and try again. "
+                + "See settings.md or help for more information");
   }
 
   @Test
@@ -182,7 +184,8 @@ public class SettingsValidatorTest {
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .contains(
-            "url is mandatory when using the csv connector. Please set connector.csv.url and try again. See settings.md or help for more information.");
+            "url is mandatory when using the csv connector. Please set connector.csv.url and "
+                + "try again. See settings.md or help for more information.");
   }
 
   @Test
@@ -240,6 +243,94 @@ public class SettingsValidatorTest {
     new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("schema.mapping, or schema.keyspace and schema.table must be defined");
+  }
+
+  @Test
+  public void should_error_invalid_schema_query_with_ttl() throws Exception {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "--schema.query=xyz",
+              "--schema.queryTtl=30",
+              "--schema.keyspace=keyspace",
+              "--schema.table=table"
+            })
+        .run();
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .contains(
+            "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp "
+                + "is defined");
+  }
+
+  @Test
+  public void should_error_invalid_schema_query_with_timestamp() throws Exception {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "--schema.query=xyz",
+              "--schema.queryTimestamp=9876123",
+              "--schema.keyspace=keyspace",
+              "--schema.table=table"
+            })
+        .run();
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .contains(
+            "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp "
+                + "is defined");
+  }
+
+  @Test
+  public void should_error_invalid_schema_query_with_mapped_timestamp() throws Exception {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "--schema.query=xyz",
+              "--schema.mapping",
+              "f1=__query_timestamp",
+              "--schema.keyspace=keyspace",
+              "--schema.table=table"
+            })
+        .run();
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .contains("schema.query must not be defined when mapping a field to query-timestamp");
+  }
+
+  @Test
+  public void should_error_invalid_schema_query_with_mapped_ttl() throws Exception {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "--schema.query=xyz",
+              "--schema.mapping",
+              "f1=__query_ttl",
+              "--schema.keyspace=keyspace",
+              "--schema.table=table"
+            })
+        .run();
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).contains("schema.query must not be defined when mapping a field to query-ttl");
+  }
+
+  @Test
+  public void should_error_invalid_timestamp() throws Exception {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "--schema.queryTimestamp=junk",
+              "--schema.keyspace=keyspace",
+              "--schema.table=table"
+            })
+        .run();
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err).contains("Could not parse schema.queryTimestamp 'junk';");
   }
 
   @Test

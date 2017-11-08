@@ -42,6 +42,10 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,6 +57,9 @@ import java.util.Set;
 
 public class SchemaSettings {
 
+  public static final String TTL_VARNAME = "dsbulk_internal_ttl";
+  public static final String TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
+
   private static final String INFERRED_MAPPING_TOKEN = "__INFERRED_MAPPING";
   private static final String NULL_TO_UNSET = "nullToUnset";
   private static final String NULL_STRINGS = "nullStrings";
@@ -61,21 +68,38 @@ public class SchemaSettings {
   private static final String MAPPING = "mapping";
   private static final String QUERY = "query";
   private static final String RECORD_METADATA = "recordMetadata";
+  private static final String QUERY_TTL = "queryTtl";
+  private static final String QUERY_TIMESTAMP = "queryTimestamp";
+
+  // A mapping spec may refer to these special variables which are used to bind
+  // input fields to the write timestamp or ttl of the record.
+
+  private static final String EXTERNAL_TTL_VARNAME = "__query_ttl";
+  private static final String EXTERNAL_TIMESTAMP_VARNAME = "__query_timestamp";
 
   private final LoaderConfig config;
   private final ImmutableSet<String> nullStrings;
   private final boolean nullToUnset;
+  private final Config mapping;
+  private final BiMap<String, String> explicitVariables;
   private TableMetadata table;
   private String tableName;
   private String query;
   private PreparedStatement preparedStatement;
   private String keyspaceName;
+  private int ttl;
+  private long timestamp;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       nullStrings = ImmutableSet.copyOf(config.getStringList(NULL_STRINGS));
+      ttl = config.getInt(QUERY_TTL);
+      String timestamp = config.getString(QUERY_TIMESTAMP);
+      this.timestamp = parseTimestamp(timestamp);
+      this.query = config.hasPath(QUERY) ? config.getString(QUERY) : null;
+
       boolean keyspaceTablePresent = false;
       if (config.hasPath(KEYSPACE)) {
         keyspaceName = Metadata.quoteIfNecessary(config.getString(KEYSPACE));
@@ -88,34 +112,97 @@ public class SchemaSettings {
       // If table is present, keyspace must be, but not necessarily the other way around.
       if (config.hasPath(TABLE) && keyspaceName == null) {
         throw new BulkConfigurationException(
-            "schema.keyspace must accompany schema.table in the configuration", "schema");
+            prettyPath(KEYSPACE) + " must accompany schema.table in the configuration", "schema");
       }
 
       // If mapping is present, make sure it is parseable as a map.
       if (config.hasPath(MAPPING)) {
-        Config mappingConfig = getMapping();
-        if (mappingConfig.hasPath(INFERRED_MAPPING_TOKEN) && !keyspaceTablePresent) {
+        mapping = getMapping();
+        if (mapping.hasPath(INFERRED_MAPPING_TOKEN) && !keyspaceTablePresent) {
           throw new BulkConfigurationException(
-              "schema.keyspace and schema.table must be defined when using inferred mapping",
+              String.format(
+                  "%s and %s must be defined when using inferred mapping",
+                  prettyPath(KEYSPACE), prettyPath(TABLE)),
               "schema");
         }
+      } else {
+        mapping = null;
       }
 
       // Either the keyspace and table must be present, or the mapping must be present.
       if (!config.hasPath(MAPPING) && !keyspaceTablePresent) {
         throw new BulkConfigurationException(
-            "schema.mapping, or schema.keyspace and schema.table must be defined", "schema");
+            String.format(
+                "%s, or %s and %s must be defined",
+                prettyPath(MAPPING), prettyPath(KEYSPACE), prettyPath(TABLE)),
+            "schema");
       }
 
       // Either the keyspace and table must be present, or the mapping must be present.
-      if (!config.hasPath(QUERY) && !keyspaceTablePresent) {
+      if (query == null && !keyspaceTablePresent) {
         throw new BulkConfigurationException(
-            "schema.query, or schema.keyspace and schema.table must be defined", "schema");
-      }
-      if (config.hasPath(QUERY)) {
-        query = config.getString(QUERY);
+            String.format(
+                "%s, or %s and %s must be defined",
+                prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)),
+            "schema");
       }
 
+      // If a query is provided, ttl and timestamp must not be.
+      if (query != null && (!timestamp.isEmpty() || ttl != -1)) {
+        throw new BulkConfigurationException(
+            String.format(
+                "%s must not be defined if %s or %s is defined",
+                prettyPath(QUERY), prettyPath(QUERY_TTL), prettyPath(QUERY_TIMESTAMP)),
+            "schema");
+      }
+
+      if (mapping != null) {
+        explicitVariables = HashBiMap.create();
+        for (String fieldName : mapping.withoutPath(INFERRED_MAPPING_TOKEN).root().keySet()) {
+          String variableName = mapping.getString(fieldName);
+
+          // Rename the user-specified __query_* vars to the (legal) bound variable names.
+          if (variableName.equals(EXTERNAL_TTL_VARNAME)) {
+            variableName = TTL_VARNAME;
+          } else if (variableName.equals(EXTERNAL_TIMESTAMP_VARNAME)) {
+            variableName = TIMESTAMP_VARNAME;
+          }
+
+          if (explicitVariables.containsValue(variableName)) {
+            if (variableName.equals(explicitVariables.get(fieldName))) {
+              // This mapping already exists. Skip it.
+              continue;
+            }
+            throw new BulkConfigurationException(
+                "Multiple input values in mapping resolve to column "
+                    + mapping.getString(fieldName)
+                    + ". "
+                    + "Please review schema.mapping for duplicates.",
+                "schema.mapping");
+          }
+          explicitVariables.put(fieldName, variableName);
+        }
+
+        // Error out if the explicit variables map timestamp or ttl and
+        // there is an explicit query.
+        if (query != null) {
+          if (explicitVariables.containsValue(TIMESTAMP_VARNAME)) {
+            throw new BulkConfigurationException(
+                String.format(
+                    "%s must not be defined when mapping a field to query-timestamp",
+                    prettyPath(QUERY)),
+                "schema");
+          }
+          if (explicitVariables.containsValue(TTL_VARNAME)) {
+            throw new BulkConfigurationException(
+                String.format(
+                    "%s must not be defined when mapping a field to query-ttl", prettyPath(QUERY)),
+                "schema");
+          }
+        }
+      } else {
+        explicitVariables = null;
+      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
     }
@@ -128,7 +215,13 @@ public class SchemaSettings {
     PreparedStatement statement = prepareStatement(session, fieldsToVariables, WorkflowType.LOAD);
     DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
     return new DefaultRecordMapper(
-        statement, mapping, mergeRecordMetadata(recordMetadata), nullStrings, nullToUnset);
+        statement,
+        mapping,
+        mergeRecordMetadata(recordMetadata),
+        nullStrings,
+        nullToUnset,
+        ttl,
+        timestamp);
   }
 
   public ReadResultMapper createReadResultMapper(
@@ -166,10 +259,35 @@ public class SchemaSettings {
     return keyspaceName;
   }
 
+  private long parseTimestamp(String timestamp) {
+    if (timestamp.isEmpty()) {
+      return -1;
+    }
+
+    // Try parsing as an int, and then as ISO_LOCAL_DATE_TIME (interpreted as UTC)
+    long timestampLong;
+    try {
+      timestampLong = Long.parseLong(timestamp);
+    } catch (NumberFormatException e) {
+      try {
+        LocalDateTime parsedDateTime =
+            LocalDateTime.parse(timestamp, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        timestampLong = parsedDateTime.toEpochSecond(ZoneOffset.UTC) * 1000000L;
+      } catch (DateTimeParseException e1) {
+        throw new BulkConfigurationException(
+            String.format(
+                "Could not parse %s '%s'; accepted formats are numeric "
+                    + "microseconds since epoch or UTC date-time (e.g. '2017-01-02T12:34:56')",
+                prettyPath(QUERY_TIMESTAMP), timestamp),
+            "schema");
+      }
+    }
+    return timestampLong;
+  }
+
   private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session)
       throws BulkConfigurationException {
     BiMap<String, String> fieldsToVariables = null;
-    BiMap<String, String> explicitVariables = HashBiMap.create();
 
     if (keyspaceName != null && tableName != null) {
       KeyspaceMetadata keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
@@ -179,10 +297,9 @@ public class SchemaSettings {
           table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
     }
 
-    if (!config.hasPath(MAPPING)) {
+    if (mapping == null) {
       fieldsToVariables = inferFieldsToVariablesMap();
     } else {
-      Config mapping = getMapping();
       if (mapping.hasPath(INFERRED_MAPPING_TOKEN)) {
         fieldsToVariables =
             inferFieldsToVariablesMap(
@@ -191,27 +308,20 @@ public class SchemaSettings {
       if (fieldsToVariables == null) {
         fieldsToVariables = HashBiMap.create();
       }
-      for (String path : mapping.withoutPath(INFERRED_MAPPING_TOKEN).root().keySet()) {
-        if (explicitVariables.containsValue(mapping.getString(path))) {
-          if (mapping.getString(path).equals(explicitVariables.get(path))) {
-            // This mapping already exists. Skip it.
-            continue;
-          }
-          throw new BulkConfigurationException(
-              "Multiple input values in mapping resolve to column "
-                  + mapping.getString(path)
-                  + ". "
-                  + "Please review schema.mapping for duplicates.",
-              "schema.mapping");
-        }
-        explicitVariables.forcePut(path, mapping.getString(path));
-      }
+
       for (Map.Entry<String, String> entry : explicitVariables.entrySet()) {
         fieldsToVariables.forcePut(entry.getKey(), entry.getValue());
       }
     }
 
-    if (!config.hasPath("query")) {
+    // It's tempting to change this check to simply check the query data member.
+    // At the time of this writing, that would be totally safe; however, that
+    // member is not final, which leaves the possibility of it being initialized
+    // after the constructor but before this method is called (with the inferred query).
+    //
+    // We really want to know if the *user* provided a query, and only validate
+    // if he didn't. So, we go to the source: the config object.
+    if (!config.hasPath(QUERY)) {
       validateAllFieldsPresent(fieldsToVariables);
       validateAllKeysPresent(fieldsToVariables);
     }
@@ -226,7 +336,7 @@ public class SchemaSettings {
     if (table != null) {
       fieldsToVariables.forEach(
           (key, value) -> {
-            if (table.getColumn(value) == null) {
+            if (!isPseudoColumn(value) && table.getColumn(value) == null) {
               throw new BulkConfigurationException(
                   "Schema mapping "
                       + value
@@ -318,15 +428,44 @@ public class SchemaSettings {
     sb.append(") VALUES (");
     Set<String> cols = new LinkedHashSet<>(fieldsToVariables.values());
     Iterator<String> it = cols.iterator();
+    boolean isFirst = true;
     while (it.hasNext()) {
       String col = it.next();
-      sb.append(':');
-      sb.append(Metadata.quoteIfNecessary(col));
-      if (it.hasNext()) {
+      if (isPseudoColumn(col)) {
+        // This isn't a real column name.
+        continue;
+      }
+
+      if (!isFirst) {
         sb.append(',');
+      }
+      isFirst = false;
+      String field = fieldsToVariables.inverse().get(col);
+      if (field.contains("(")) {
+        // Assume this is a function call that should be placed directly in the query.
+        sb.append(field);
+      } else {
+        sb.append(':');
+        sb.append(Metadata.quoteIfNecessary(col));
       }
     }
     sb.append(')');
+
+    boolean hasTtl = ttl != -1 || fieldsToVariables.containsValue(TTL_VARNAME);
+    boolean hasTimestamp = timestamp != -1 || fieldsToVariables.containsValue(TIMESTAMP_VARNAME);
+    if (hasTtl || hasTimestamp) {
+      sb.append(" USING ");
+
+      if (hasTtl) {
+        sb.append("TTL :" + TTL_VARNAME);
+        if (hasTimestamp) {
+          sb.append(" AND ");
+        }
+      }
+      if (hasTimestamp) {
+        sb.append("TIMESTAMP :" + TIMESTAMP_VARNAME);
+      }
+    }
     return sb.toString();
   }
 
@@ -347,14 +486,21 @@ public class SchemaSettings {
     // for the same bound variable
     Set<String> cols = new LinkedHashSet<>(fieldsToVariables.values());
     Iterator<String> it = cols.iterator();
+    boolean isFirst = true;
     while (it.hasNext()) {
       // this assumes that the variable name found in the mapping
       // corresponds to a CQL column having the exact same name.
       String col = it.next();
-      sb.append(Metadata.quoteIfNecessary(col));
-      if (it.hasNext()) {
+      if (isPseudoColumn(col)) {
+        // This is not a real column. Skip it.
+        continue;
+      }
+
+      if (!isFirst) {
         sb.append(',');
       }
+      isFirst = false;
+      sb.append(Metadata.quoteIfNecessary(col));
     }
   }
 
@@ -369,6 +515,14 @@ public class SchemaSettings {
       }
     }
     sb.append(')');
+  }
+
+  private static String prettyPath(String path) {
+    return String.format("schema%s%s", StringUtils.DELIMITER, path);
+  }
+
+  private static boolean isPseudoColumn(String col) {
+    return col.equals(TTL_VARNAME) || col.equals(TIMESTAMP_VARNAME);
   }
 
   private class InferredMappingSpec {
