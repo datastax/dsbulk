@@ -5,8 +5,30 @@
 # This software can be used solely with DataStax Enterprise. Please consult the license at
 # http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
+# https://stackoverflow.com/a/697552
+# get the real path, follow links if needed
+real_path() {
+    if command -v realpath > /dev/null 2>&1; then
+        echo "$(realpath $1)"
+    else
+        SELF_PATH=$(cd -P -- "$(dirname -- "$0")" && pwd -P) && SELF_PATH=$SELF_PATH/$(basename -- "$0")
+
+        # resolve symlinks
+        while [[ -h $SELF_PATH ]]; do
+            # 1) cd to directory of the symlink
+            # 2) cd to the directory of where the symlink points
+            # 3) get the pwd
+            # 4) append the basename
+            DIR=$(dirname -- "$SELF_PATH")
+            SYM=$(readlink `[[ $OSTYPE != darwin* ]] && echo "-f"` "$SELF_PATH")
+            SELF_PATH=$(cd "$DIR" && cd "$(dirname -- "$SYM")" && pwd)/$(basename -- "$SYM")
+        done
+        echo "$SELF_PATH"
+    fi
+}
+
 # Look for a usable Java 8 binary in JAVA_HOME, the result of /usr/libexec/java_home, or path.
-for J in "$JAVA" "$JAVA_HOME"/bin/java "$(/usr/libexec/java_home 2> /dev/null)/bin/java" $(which java) ; do
+for J in "$JAVA" "$JAVA_HOME"/bin/java "$(/usr/libexec/java_home 2> /dev/null)/bin/java" $(command -v java) ; do
   if [ ! -z "$J" -a -x "$J" ]; then
     VER=$($J -version 2>&1 | head -1 | sed -e 's/[^"]*"//' -e 's/".*//' -e 's/\.[^\.]*$//')
     MAJOR=$(echo $VER | sed -e 's/\..*$//')
@@ -24,7 +46,7 @@ if [ -z "$JAVA_CMD" ] ; then
   exit 1
 fi
 
-INSTALL_DIR=$(realpath `dirname "$0"`)/..
+INSTALL_DIR=$(dirname `real_path "$0"`)/..
 
 # Set CLASSPATH to include all the jars in the lib dir + the conf directory
 # (which contains reference.conf).
@@ -32,6 +54,8 @@ jars=
 for i in $INSTALL_DIR/lib/*.jar $INSTALL_DIR/conf; do
   jars="$jars:$i"
 done
+
+[ ! -z "DSBULK_CLASSPATH_EXTRA" ] && jars="$jars:$DSBULK_CLASSPATH_EXTRA"
 
 DSBULK_JAVA_OPTS="$DSBULK_JAVA_OPTS -cp $jars"
 
