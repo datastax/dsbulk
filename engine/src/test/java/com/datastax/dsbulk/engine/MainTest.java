@@ -466,6 +466,10 @@ public class MainTest {
               "table",
               "--schema.query",
               "SELECT JUNK",
+              "--schema.queryTimestamp",
+              "98761234",
+              "--schema.queryTtl",
+              "28",
               "--schema.nullStrings",
               "NIL, NADA",
               "--schema.nullToUnset",
@@ -564,6 +568,8 @@ public class MainTest {
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
     assertThat(result.getString("schema.table")).isEqualTo("table");
     assertThat(result.getString("schema.query")).isEqualTo("SELECT JUNK");
+    assertThat(result.getString("schema.queryTimestamp")).isEqualTo("98761234");
+    assertThat(result.getInt("schema.queryTtl")).isEqualTo(28);
     assertThat(result.getString("schema.nullStrings")).isEqualTo("NIL, NADA");
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");

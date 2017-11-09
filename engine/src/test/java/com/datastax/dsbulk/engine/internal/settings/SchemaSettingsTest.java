@@ -8,7 +8,10 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.driver.core.DriverCoreTestHooks.newPreparedId;
 import static com.datastax.driver.core.ProtocolVersion.V4;
+import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
+import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TTL_VARNAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -22,6 +25,7 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
@@ -110,6 +114,162 @@ public class SchemaSettingsTest {
         (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
     assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
     assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+  }
+
+  @Test
+  public void should_fail_to_create_schema_settings_when_mapping_many_to_one() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig("mapping = \"{ 0 = f1, 1 = f1}\", keyspace=ks, table=t1");
+
+    @SuppressWarnings("ThrowableNotThrown")
+    Throwable thrown = catchThrowable(() -> new SchemaSettings(config));
+    assertThat(thrown)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("Multiple input values in mapping resolve to column f1");
+  }
+
+  @Test
+  public void should_create_record_mapper_when_mapping_ttl_and_timestamp() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format(
+                    "mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s, 1=__ttl, 3=__timestamp }\", ",
+                    C1, C2)
+                + "nullToUnset = true, "
+                + "keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) "
+                    + "USING TTL :%3$s AND TIMESTAMP :%4$s",
+                C1, C2, TTL_VARNAME, TIMESTAMP_VARNAME));
+    assertMapping(
+        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"),
+        "0",
+        C2,
+        "2",
+        C1,
+        "1",
+        TTL_VARNAME,
+        "3",
+        TIMESTAMP_VARNAME);
+    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+  }
+
+  @Test
+  public void should_create_record_mapper_when_mapping_function() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format("mapping = \"{ now() = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+                + "keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(String.format("INSERT INTO ks.t1(%1$s,\"%2$s\") VALUES (:%1$s,now())", C1, C2));
+    assertMapping(
+        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "now()", C2, "2", C1);
+    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+  }
+
+  @Test
+  public void should_create_record_mapper_with_static_ttl() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+                + "keyspace=ks, table=t1, queryTtl=30");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) USING TTL :%3$s",
+                C1, C2, TTL_VARNAME));
+    assertMapping(
+        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
+    assertThat(Whitebox.getInternalState(recordMapper, "ttl")).isEqualTo(30);
+  }
+
+  @Test
+  public void should_create_record_mapper_with_static_timestamp() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+                + "keyspace=ks, table=t1, queryTimestamp=30");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) USING TIMESTAMP :%3$s",
+                C1, C2, TIMESTAMP_VARNAME));
+    assertMapping(
+        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
+    assertThat(Whitebox.getInternalState(recordMapper, "timestamp")).isEqualTo(30L);
+  }
+
+  @Test
+  public void should_create_record_mapper_with_static_timestamp_datetime() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+                + "keyspace=ks, table=t1, queryTimestamp=\"2017-01-02T00:00:01\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) USING TIMESTAMP :%3$s",
+                C1, C2, TIMESTAMP_VARNAME));
+    assertMapping(
+        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
+    assertThat(Whitebox.getInternalState(recordMapper, "timestamp")).isEqualTo(1483315201000000L);
+  }
+
+  @Test
+  public void should_create_record_mapper_with_static_timestamp_and_ttl() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+                + "keyspace=ks, table=t1, queryTimestamp=30, queryTtl=25");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) "
+                    + "USING TTL :%3$s AND TIMESTAMP :%4$s",
+                C1, C2, TTL_VARNAME, TIMESTAMP_VARNAME));
+    assertMapping(
+        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
+    assertThat(Whitebox.getInternalState(recordMapper, "ttl")).isEqualTo(25);
+    assertThat(Whitebox.getInternalState(recordMapper, "timestamp")).isEqualTo(30L);
   }
 
   @Test

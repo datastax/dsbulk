@@ -6,6 +6,9 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
+import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TTL_VARNAME;
+
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Metadata;
@@ -40,19 +43,27 @@ public class DefaultRecordMapper implements RecordMapper {
   private final boolean nullToUnset;
 
   private final BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory;
+  private final int ttl;
+  private final long timestamp;
+  private final boolean hasTtlInMapping;
+  private final boolean hasTimestampInMapping;
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
       Mapping mapping,
       RecordMetadata recordMetadata,
       ImmutableSet<String> nullStrings,
-      boolean nullToUnset) {
+      boolean nullToUnset,
+      int ttl,
+      long timestamp) {
     this(
         insertStatement,
         mapping,
         recordMetadata,
         nullStrings,
         nullToUnset,
+        ttl,
+        timestamp,
         (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
   }
 
@@ -62,13 +73,19 @@ public class DefaultRecordMapper implements RecordMapper {
       RecordMetadata recordMetadata,
       ImmutableSet<String> nullStrings,
       boolean nullToUnset,
+      int ttl,
+      long timestamp,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
     this.nullStrings = nullStrings;
     this.nullToUnset = nullToUnset;
+    this.ttl = ttl;
+    this.timestamp = timestamp;
     this.boundStatementFactory = boundStatementFactory;
+    hasTimestampInMapping = mapping.variableToField(TIMESTAMP_VARNAME) != null;
+    hasTtlInMapping = mapping.variableToField(TTL_VARNAME) != null;
   }
 
   @Override
@@ -91,6 +108,15 @@ public class DefaultRecordMapper implements RecordMapper {
           }
         }
       }
+
+      if (ttl != -1 && !hasTtlInMapping) {
+        bindColumn(bs, TTL_VARNAME, ttl, DataType.cint(), TypeToken.of(Integer.class));
+      }
+
+      if (timestamp != -1 && !hasTimestampInMapping) {
+        bindColumn(bs, TIMESTAMP_VARNAME, timestamp, DataType.bigint(), TypeToken.of(Long.class));
+      }
+
       record.clear();
       return bs;
     } catch (Exception e) {
