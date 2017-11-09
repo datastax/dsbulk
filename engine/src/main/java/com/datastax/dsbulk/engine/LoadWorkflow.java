@@ -8,12 +8,11 @@ package com.datastax.dsbulk.engine;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
-import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.internal.WorkflowUtils;
@@ -98,7 +97,7 @@ public class LoadWorkflow implements Workflow {
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
-    checkProductCompatibility(session);
+    checkProductCompatibility(cluster);
     batchingEnabled = batchSettings.isBatchingEnabled();
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD, batchingEnabled);
     metricsManager.init();
@@ -205,8 +204,8 @@ public class LoadWorkflow implements Workflow {
     }
   }
 
-  private void checkProductCompatibility(Session session) {
-    Set<Host> hosts = session.getCluster().getMetadata().getAllHosts();
+  private static void checkProductCompatibility(Cluster cluster) {
+    Set<Host> hosts = cluster.getMetadata().getAllHosts();
     List<Host> nonDseHosts =
         hosts.stream().filter(host -> host.getDseVersion() == null).collect(Collectors.toList());
     if (nonDseHosts.size() != 0) {
@@ -216,7 +215,7 @@ public class LoadWorkflow implements Workflow {
       for (Host host : nonDseHosts) {
         LOGGER.error(host.toString());
       }
-      throw new BulkConfigurationException("Unable to load data to non DSE cluster", "load");
+      throw new IllegalStateException("Unable to load data to non DSE cluster");
     }
   }
 
