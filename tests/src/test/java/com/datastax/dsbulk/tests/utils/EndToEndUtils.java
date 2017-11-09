@@ -6,6 +6,8 @@
  */
 package com.datastax.dsbulk.tests.utils;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.tests.SimulacronRule;
@@ -249,5 +251,16 @@ public class EndToEndUtils {
             }
           });
     }
+  }
+
+  public static List<String> getErrorEventMessages(TestAppender appender) {
+    List<String> errorMessages = new ArrayList<>();
+    List<ILoggingEvent> events = appender.getEvents();
+    for (ILoggingEvent event : events) {
+      if (event.getLevel().equals(Level.ERROR)) {
+        errorMessages.add(event.getMessage());
+      }
+    }
+    return errorMessages;
   }
 }

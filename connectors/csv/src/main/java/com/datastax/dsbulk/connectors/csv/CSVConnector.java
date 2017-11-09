@@ -297,7 +297,7 @@ public class CSVConnector implements Connector {
                 LOGGER.debug("Done reading {}", url);
                 sink.complete();
               } catch (Exception e) {
-                LOGGER.error("Error reading from " + url, e);
+                LOGGER.error(String.format("Error reading from %s: %s", url, e.getMessage()), e);
                 sink.error(e);
               }
             },
@@ -371,7 +371,12 @@ public class CSVConnector implements Connector {
 
       @Override
       protected void hookOnError(Throwable t) {
-        LOGGER.error("Error writing to " + url, t);
+        LOGGER.error(String.format("Error writing to %s: %s", url, t.getMessage()), t);
+      }
+
+      @Override
+      protected void hookOnComplete() {
+        LOGGER.debug("Done writing {}", url);
       }
 
       @Override
@@ -380,14 +385,13 @@ public class CSVConnector implements Connector {
       }
 
       private void end() {
-        LOGGER.debug("Done writing {}", url);
         if (writer != null) {
           try {
             writer.close();
           } catch (IllegalStateException e) {
             Throwable root = Throwables.getRootCause(e);
             if (!(root instanceof ClosedByInterruptException)) {
-              LOGGER.error("Could not close " + url, root);
+              LOGGER.error(String.format("Could not close %s: %s", url, root.getMessage()), root);
             }
             // else ok, happens when the workflow has been interrupted
           }
@@ -412,7 +416,7 @@ public class CSVConnector implements Connector {
       return new CsvWriter(
           new OutputStreamWriter(IOUtils.openOutputStream(url), encoding), writerSettings);
     } catch (Exception e) {
-      LOGGER.error("Could not create CSV writer for " + url, e);
+      LOGGER.error(String.format("Could not create CSV writer for %s: %s", url, e.getMessage()), e);
       throw new RuntimeException(e);
     }
   }
@@ -423,7 +427,10 @@ public class CSVConnector implements Connector {
         String next = String.format(fileNameFormat, counter.incrementAndGet());
         return root.resolve(next).toUri().toURL();
       } catch (Exception e) {
-        LOGGER.error("Could not create file URL with format " + fileNameFormat, e);
+        LOGGER.error(
+            String.format(
+                "Could not create file URL with format %s: %s", fileNameFormat, e.getMessage()),
+            e);
         throw new RuntimeException(e);
       }
     }

@@ -20,7 +20,6 @@ import com.datastax.dsbulk.engine.internal.WorkflowUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
-import com.datastax.dsbulk.engine.internal.reactive.DelegatingBlockingSubscriber;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.datastax.dsbulk.engine.internal.settings.ConnectorSettings;
@@ -60,7 +59,6 @@ public class UnloadWorkflow implements Workflow {
   private int maxConcurrentMappings;
   private int bufferSize;
   private List<Statement> readStatements;
-  private DelegatingBlockingSubscriber<Record> subscriber;
   private int threadPerCoreThreshold;
 
   UnloadWorkflow(LoaderConfig config) {
@@ -91,14 +89,13 @@ public class UnloadWorkflow implements Workflow {
     scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector();
     connector.init();
-    subscriber = new DelegatingBlockingSubscriber<>(connector.write());
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD, false);
     metricsManager.init();
     logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
-    logManager.init(subscriber, subscriber);
+    logManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
@@ -113,34 +110,37 @@ public class UnloadWorkflow implements Workflow {
   public void execute() throws InterruptedException {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
+    Flux<Record> flux;
     if (readStatements.size() >= threadPerCoreThreshold) {
       LOGGER.info("Using thread-per-core pattern.");
-      Flux.fromIterable(readStatements)
-          .flatMap(
-              statement ->
-                  executor
-                      .readReactive(statement)
-                      .transform(logManager.newReadErrorHandler())
-                      .map(readResultMapper::map)
-                      .transform(metricsManager.newUnmappableRecordMonitor())
-                      .transform(logManager.newUnmappableRecordErrorHandler())
-                      .subscribeOn(scheduler),
-              maxConcurrentMappings,
-              bufferSize)
-          .subscribe(subscriber);
+      flux =
+          Flux.fromIterable(readStatements)
+              .flatMap(
+                  statement ->
+                      executor
+                          .readReactive(statement)
+                          .transform(logManager.newReadErrorHandler())
+                          .map(readResultMapper::map)
+                          .transform(metricsManager.newUnmappableRecordMonitor())
+                          .transform(logManager.newUnmappableRecordErrorHandler())
+                          .subscribeOn(scheduler),
+                  maxConcurrentMappings,
+                  bufferSize);
     } else {
-      Flux.fromIterable(readStatements)
-          .flatMap(executor::readReactive)
-          .transform(logManager.newReadErrorHandler())
-          .parallel(maxConcurrentMappings, bufferSize)
-          .runOn(scheduler)
-          .map(readResultMapper::map)
-          .sequential()
-          .transform(metricsManager.newUnmappableRecordMonitor())
-          .transform(logManager.newUnmappableRecordErrorHandler())
-          .subscribe(subscriber);
+      flux =
+          Flux.fromIterable(readStatements)
+              .flatMap(executor::readReactive)
+              .transform(logManager.newReadErrorHandler())
+              .parallel(maxConcurrentMappings, bufferSize)
+              .runOn(scheduler)
+              .map(readResultMapper::map)
+              .sequential()
+              .transform(metricsManager.newUnmappableRecordMonitor())
+              .transform(logManager.newUnmappableRecordErrorHandler());
     }
-    subscriber.block();
+    flux = flux.publish().autoConnect(2);
+    flux.subscribe(connector.write());
+    flux.blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));

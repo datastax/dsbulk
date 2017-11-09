@@ -606,6 +606,10 @@ The ideal batch size depends on how large is the data to be inserted: the larger
 
 The ideal batch size also depends on the batch mode in use. When using **PARTITION_KEY**, it is usually better to use larger batch sizes. When using **REPLICA_SET** however, batches sizes should remain small (below 10).
 
+The buffer will be flushed when this size is reached, or when *bufferTimeout* is elapsed, whichever happens first.
+
+It is usually not necessary to set this value higher than `maxBatchSize`, unless the dataset to load is unsorted, in which case a higher value might improve the average batch size.
+
 Default: **32**.
 
 #### --batch.bufferTimeout _&lt;string&gt;_
