@@ -6,6 +6,8 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
@@ -16,6 +18,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TokenRange;
+import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
@@ -23,6 +26,7 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
@@ -42,10 +46,7 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,8 +75,8 @@ public class SchemaSettings {
   // A mapping spec may refer to these special variables which are used to bind
   // input fields to the write timestamp or ttl of the record.
 
-  private static final String EXTERNAL_TTL_VARNAME = "__query_ttl";
-  private static final String EXTERNAL_TIMESTAMP_VARNAME = "__query_timestamp";
+  private static final String EXTERNAL_TTL_VARNAME = "__ttl";
+  private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
 
   private final LoaderConfig config;
   private final ImmutableSet<String> nullStrings;
@@ -161,7 +162,8 @@ public class SchemaSettings {
         for (String fieldName : mapping.withoutPath(INFERRED_MAPPING_TOKEN).root().keySet()) {
           String variableName = mapping.getString(fieldName);
 
-          // Rename the user-specified __query_* vars to the (legal) bound variable names.
+          // Rename the user-specified __ttl and __timestamp vars to the (legal) bound variable
+          // names.
           if (variableName.equals(EXTERNAL_TTL_VARNAME)) {
             variableName = TTL_VARNAME;
           } else if (variableName.equals(EXTERNAL_TIMESTAMP_VARNAME)) {
@@ -265,24 +267,29 @@ public class SchemaSettings {
     }
 
     // Try parsing as an int, and then as ISO_LOCAL_DATE_TIME (interpreted as UTC)
-    long timestampLong;
+
+    long timestampMicros;
     try {
-      timestampLong = Long.parseLong(timestamp);
+      timestampMicros = Long.parseLong(timestamp);
     } catch (NumberFormatException e) {
+      StringToInstantCodec codec = new StringToInstantCodec(CodecSettings.CQL_DATE_TIME_FORMAT);
       try {
-        LocalDateTime parsedDateTime =
-            LocalDateTime.parse(timestamp, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        timestampLong = parsedDateTime.toEpochSecond(ZoneOffset.UTC) * 1000000L;
-      } catch (DateTimeParseException e1) {
-        throw new BulkConfigurationException(
-            String.format(
-                "Could not parse %s '%s'; accepted formats are numeric "
-                    + "microseconds since epoch or UTC date-time (e.g. '2017-01-02T12:34:56')",
-                prettyPath(QUERY_TIMESTAMP), timestamp),
-            "schema");
+        Instant instant = codec.convertFrom(timestamp);
+        timestampMicros = MILLISECONDS.toMicros(instant.toEpochMilli());
+      } catch (InvalidTypeException e1) {
+        e1.addSuppressed(e);
+        BulkConfigurationException e2 =
+            new BulkConfigurationException(
+                String.format(
+                    "Could not parse %s '%s'; accepted formats are numeric "
+                        + "milliseconds since epoch or ISO-8601 date-time (e.g. '2017-01-02T12:34:56Z')",
+                    prettyPath(QUERY_TIMESTAMP), timestamp),
+                "schema");
+        e2.addSuppressed(e1);
+        throw e2;
       }
     }
-    return timestampLong;
+    return timestampMicros;
   }
 
   private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session)
@@ -441,7 +448,7 @@ public class SchemaSettings {
       }
       isFirst = false;
       String field = fieldsToVariables.inverse().get(col);
-      if (field.contains("(")) {
+      if (isFunction(field)) {
         // Assume this is a function call that should be placed directly in the query.
         sb.append(field);
       } else {
@@ -517,12 +524,17 @@ public class SchemaSettings {
     sb.append(')');
   }
 
-  private static String prettyPath(String path) {
-    return String.format("schema%s%s", StringUtils.DELIMITER, path);
+  private static boolean isFunction(String field) {
+    // If a field contains a paren, interpret it to be a cql function call.
+    return field.contains("(");
   }
 
   private static boolean isPseudoColumn(String col) {
     return col.equals(TTL_VARNAME) || col.equals(TIMESTAMP_VARNAME);
+  }
+
+  private static String prettyPath(String path) {
+    return String.format("schema%s%s", StringUtils.DELIMITER, path);
   }
 
   private class InferredMappingSpec {

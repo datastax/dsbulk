@@ -133,8 +133,7 @@ public class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig(
             String.format(
-                    "mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s, "
-                        + "1=__query_ttl, 3=__query_timestamp }\", ",
+                    "mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s, 1=__ttl, 3=__timestamp }\", ",
                     C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");

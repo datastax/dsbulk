@@ -291,7 +291,7 @@ public class SettingsValidatorTest {
               "--connector.csv.url=/path/to/my/file",
               "--schema.query=xyz",
               "--schema.mapping",
-              "f1=__query_timestamp",
+              "f1=__timestamp",
               "--schema.keyspace=keyspace",
               "--schema.table=table"
             })
@@ -309,7 +309,7 @@ public class SettingsValidatorTest {
               "--connector.csv.url=/path/to/my/file",
               "--schema.query=xyz",
               "--schema.mapping",
-              "f1=__query_ttl",
+              "f1=__ttl",
               "--schema.keyspace=keyspace",
               "--schema.table=table"
             })

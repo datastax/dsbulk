@@ -110,21 +110,11 @@ public class DefaultRecordMapper implements RecordMapper {
       }
 
       if (ttl != -1 && !hasTtlInMapping) {
-        bindColumn(
-            bs,
-            TTL_VARNAME,
-            ttl,
-            insertStatement.getVariables().getType(TTL_VARNAME),
-            TypeToken.of(Integer.class));
+        bindColumn(bs, TTL_VARNAME, ttl, DataType.cint(), TypeToken.of(Integer.class));
       }
 
       if (timestamp != -1 && !hasTimestampInMapping) {
-        bindColumn(
-            bs,
-            TIMESTAMP_VARNAME,
-            timestamp,
-            insertStatement.getVariables().getType(TIMESTAMP_VARNAME),
-            TypeToken.of(Long.class));
+        bindColumn(bs, TIMESTAMP_VARNAME, timestamp, DataType.bigint(), TypeToken.of(Long.class));
       }
 
       record.clear();

@@ -157,7 +157,7 @@ Mappings should be specified as a map of the following form:
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 
-To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__query_ttl` and `__query_timestamp`: `fieldA = __query_ttl`. Note that unlike `schema.query_timestamp`, this mapping only supports the numeric format of timestamp.
+To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`. Note that unlike `schema.query_timestamp`, this mapping only supports the numeric format of timestamp.
 
 In addition, for mapped data sources, it is also possible to specify that the mapping be partly auto-generated and partly explicitly specified. For example, if a source row has fields `c1`, `c2`, `c3`, and `c5`, and the table has columns `c1`, `c2`, `c3`, `c4`, one can map all like-named columns and specify that `c5` in the source maps to `c4` in the table as follows: `* = *, c5 = c4`
 
@@ -476,7 +476,7 @@ Mappings should be specified as a map of the following form:
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 
-To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__query_ttl` and `__query_timestamp`: `fieldA = __query_ttl`. Note that unlike `schema.query_timestamp`, this mapping only supports the numeric format of timestamp.
+To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`. Note that unlike `schema.query_timestamp`, this mapping only supports the numeric format of timestamp.
 
 In addition, for mapped data sources, it is also possible to specify that the mapping be partly auto-generated and partly explicitly specified. For example, if a source row has fields `c1`, `c2`, `c3`, and `c5`, and the table has columns `c1`, `c2`, `c3`, `c4`, one can map all like-named columns and specify that `c5` in the source maps to `c4` in the table as follows: `* = *, c5 = c4`
 
@@ -545,21 +545,25 @@ Only applicable for load; ignored for unload.
 The following formats are supported:
 
 * An integer indicating number of microseconds since epoch.
-* ISO UTC date-time, e.g. `2017-01-02T14:56:78`
+* A valid ISO-8601 date-time format, e.g. 2017-01-02T14:56:78+01:00 (if the format does not include a zone information, it is assumed UTC).
 
 Note that the second format has seconds-precision, not microseconds.
 
 If not specified, inserts/updates use current time of the system running the tool.
 
+For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
+
 Default: **&lt;unspecified&gt;**.
 
 #### --schema.queryTtl _&lt;number&gt;_
 
-Time-to-live of inserted/updated cells during load.
+Time-to-live of inserted/updated cells during load (seconds).
 
 Only applicable for load; ignored for unload.
 
 A value of -1 means there is no ttl.
+
+For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value).
 
 Default: **-1**.
 
