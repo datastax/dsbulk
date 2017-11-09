@@ -9,6 +9,7 @@ package com.datastax.dsbulk.engine;
 import static com.datastax.dsbulk.engine.internal.OptionUtils.DEFAULT;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.HelpUtils;
@@ -150,6 +151,7 @@ public class Main {
       if (type == ConfigValueType.STRING) {
         value = "\"" + value + "\"";
       }
+      value = ConfigUtils.escapeBackSlash(value);
       userSettings = ConfigFactory.parseString(path + "=" + value).withFallback(userSettings);
     }
     return userSettings;

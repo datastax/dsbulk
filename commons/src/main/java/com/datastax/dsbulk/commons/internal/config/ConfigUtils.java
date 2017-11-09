@@ -42,4 +42,8 @@ public class ConfigUtils {
       return new BulkConfigurationException(e.getMessage(), e, path);
     }
   }
+
+  public static String escapeBackSlash(String value) {
+    return value.replace("\\", "\\\\");
+  }
 }

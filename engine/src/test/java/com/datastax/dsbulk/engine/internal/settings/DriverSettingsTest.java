@@ -48,6 +48,7 @@ import java.net.InetSocketAddress;
 import java.net.URL;
 import java.util.List;
 import javax.security.auth.login.Configuration;
+import org.junit.AssumptionViolatedException;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.internal.util.reflection.Whitebox;
@@ -178,8 +179,9 @@ public class DriverSettingsTest {
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
     assertThat(Whitebox.getInternalState(loginConfiguration, "principal"))
         .isEqualTo("alice@DATASTAX.COM");
+    String keytabefield = (String) Whitebox.getInternalState(loginConfiguration, "keyTab");
     assertThat(Whitebox.getInternalState(loginConfiguration, "keyTab"))
-        .isEqualTo(PlatformUtils.isWindows() ? "C:\\path\\to\\my\\keyTab" : "/path/to/my/keyTab");
+        .isEqualTo("/path/to/my/keyTab");
   }
 
   @Test
@@ -244,6 +246,9 @@ public class DriverSettingsTest {
 
   @Test
   public void should_configure_encryption_with_OpenSSL() throws Exception {
+    if (PlatformUtils.isWindows()) {
+      throw new AssumptionViolatedException("Test not compatible with windows");
+    }
     URL keyCertChain = getClass().getResource("/client.crt");
     URL privateKey = getClass().getResource("/client.key");
     URL truststore = getClass().getResource("/client.truststore");

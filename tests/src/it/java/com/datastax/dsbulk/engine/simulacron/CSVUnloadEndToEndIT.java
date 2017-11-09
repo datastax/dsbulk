@@ -232,6 +232,7 @@ public class CSVUnloadEndToEndIT {
       i++;
     }
     Assertions.assertThat(i - 1).isEqualTo(expected);
+    content.close();
   }
 
   @SuppressWarnings("ResultOfMethodCallIgnored")

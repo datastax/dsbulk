@@ -16,6 +16,7 @@ import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
@@ -67,9 +68,10 @@ public class LogSettingsTest {
   @Test
   public void should_create_log_manager_when_output_directory_url_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
+    String dirtToLoad = ConfigUtils.escapeBackSlash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + dir + "\"")
+            ConfigFactory.parseString("directory = \"" + dirtToLoad + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
@@ -81,9 +83,10 @@ public class LogSettingsTest {
   @Test
   public void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
+    String dirtToLoad = ConfigUtils.escapeBackSlash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + dir.toString() + "\"")
+            ConfigFactory.parseString("directory = \"" + dirtToLoad + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
