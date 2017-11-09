@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright (C) 2017 DataStax Inc.
 #
@@ -8,23 +8,23 @@
 # https://stackoverflow.com/a/697552
 # get the real path, follow links if needed
 real_path() {
-    if command -v realpath > /dev/null 2>&1; then
-        echo "$(realpath $1)"
-    else
-        SELF_PATH=$(cd -P -- "$(dirname -- "$0")" && pwd -P) && SELF_PATH=$SELF_PATH/$(basename -- "$0")
+  if command -v realpath > /dev/null 2>&1; then
+    echo "$(realpath $1)"
+  else
+    SELF_PATH=$(cd -P -- "$(dirname -- "$1")" && pwd -P) && SELF_PATH=$SELF_PATH/$(basename -- "$1")
 
-        # resolve symlinks
-        while [[ -h $SELF_PATH ]]; do
-            # 1) cd to directory of the symlink
-            # 2) cd to the directory of where the symlink points
-            # 3) get the pwd
-            # 4) append the basename
-            DIR=$(dirname -- "$SELF_PATH")
-            SYM=$(readlink `[[ $OSTYPE != darwin* ]] && echo "-f"` "$SELF_PATH")
-            SELF_PATH=$(cd "$DIR" && cd "$(dirname -- "$SYM")" && pwd)/$(basename -- "$SYM")
-        done
-        echo "$SELF_PATH"
-    fi
+    # resolve symlinks
+    while [ -h "$SELF_PATH" ] ; do
+      # 1) cd to directory of the symlink
+      # 2) cd to the directory of where the symlink points
+      # 3) get the pwd
+      # 4) append the basename
+      DIR=$(dirname -- "$SELF_PATH")
+      SYM=$(readlink `[[ "$OSTYPE" != darwin* ]] && echo "-f"` "$SELF_PATH")
+      SELF_PATH=$(cd "$DIR" && cd "$(dirname -- "$SYM")" && pwd)/$(basename -- "$SYM")
+    done
+    echo $SELF_PATH
+  fi
 }
 
 # Look for a usable Java 8 binary in JAVA_HOME, the result of /usr/libexec/java_home, or path.
@@ -46,18 +46,18 @@ if [ -z "$JAVA_CMD" ] ; then
   exit 1
 fi
 
-INSTALL_DIR=$(dirname `real_path "$0"`)/..
+INSTALL_DIR=$(dirname "`real_path "$0"`")/..
 
 # Set CLASSPATH to include all the jars in the lib dir + the conf directory
-# (which contains reference.conf).
-jars=
-for i in $INSTALL_DIR/lib/*.jar $INSTALL_DIR/conf; do
-  jars="$jars:$i"
+# (which contains application.conf). This is non-trivial because the install-dir
+# may contain spaces.
+CP=$INSTALL_DIR/conf$(
+find "$INSTALL_DIR/lib" -name "*.jar" | while read i ; do
+  echo ":$i"
 done
-
-[ ! -z "DSBULK_CLASSPATH_EXTRA" ] && jars="$jars:$DSBULK_CLASSPATH_EXTRA"
-
-DSBULK_JAVA_OPTS="$DSBULK_JAVA_OPTS -cp $jars"
+)
+CP=$(echo $CP | sed -e 's/ :/:/g')
+[ ! -z "$DSBULK_CLASSPATH_EXTRA" ] && CP="$DSBULK_CLASSPATH_EXTRA:$CP"
 
 # Attempt to find the window width, to make help output look nicer. This
 # expression should work on Linux and Mac at least. If the result isn't a number,
@@ -68,4 +68,4 @@ if /bin/expr  "$COLUMNS" + 0 > /dev/null 2>&1 ; then
 fi
 
 # Run the tool.
-$JAVA_CMD $DSBULK_JAVA_OPTS com.datastax.dsbulk.engine.Main "$@"
+$JAVA_CMD $DSBULK_JAVA_OPTS -cp "$CP" com.datastax.dsbulk.engine.Main "$@"
