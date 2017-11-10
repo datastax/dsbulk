@@ -12,6 +12,8 @@
 - [improvement] DAT-109: Refactor setting initialization and validation.
 - [improvement] DAT-146: Optimize load workflow for multiple files.
 - [bug]: DAT-151: Unload workflow hangs when a destination file already exists.
+- [improvement] DAT-155: Make dsbulk script more friendly for use in a DSE installation.
+- [improvement] DAT-147: Support TIMESTAMP, TTL and now().
 - [improvement] DAT-142: Add DSE version validation.
 
 

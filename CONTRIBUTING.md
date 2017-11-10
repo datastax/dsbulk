@@ -1,5 +1,33 @@
 # Contributing guidelines
 
+## Branching model
+
+DSBulk uses [semantic versioning](http://semver.org/) and our development branches use the following scheme:
+
+```
+            1.0.1      1.0.2 ...                1.1.1 ...
+         -----*----------*------> 1.0.x      -----*------> 1.1.x
+        /                                   /
+       /                                   /
+      /                                   /
+-----*-----------------------------------*-------------------------> 1.x
+   1.0.0                               1.1.0        ...
+
+Legend:
+ > branch
+ * tag
+```
+
+- new features are developed on "minor" branches such as `1.x`, where minor releases (ending in `.0`) happen.
+- bugfixes go to "patch" branches such as `1.0.x` and `1.1.x`, where patch releases (ending in `.1`, `.2`...) happen.
+- patch branches are regularly merged to the bottom (`1.0.x` to `1.x`) so that bugfixes are 
+  applied to newer versions too.
+
+Consequently, the branch having the highest major + minor version (in the format `x.x.x`) 
+will be the branch to target bugfixes to. The branch in the format `x.x` which has the 
+highest major will be the branch to target new features to.
+
+
 ## Code formatting
 
 We follow the [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html). See
