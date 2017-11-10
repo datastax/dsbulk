@@ -12,6 +12,7 @@
 - [improvement] DAT-109: Refactor setting initialization and validation.
 - [improvement] DAT-146: Optimize load workflow for multiple files.
 - [bug]: DAT-151: Unload workflow hangs when a destination file already exists.
+- [improvement] DAT-142: Add DSE version validation.
 
 
 ### 1.0.0-beta1
@@ -96,4 +97,3 @@
 - [bug] DAT-69: CSV Connector fails to parse files with non-native line-ending.
 - [new feature] DAT-64: Implement connector writes.
 - [new feature] DAT-63: Support writing to standard output.
-- [improvement] DAT-142: Add DSE version validation.
