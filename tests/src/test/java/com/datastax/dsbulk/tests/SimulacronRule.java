@@ -27,7 +27,7 @@ public class SimulacronRule extends CassandraResourceRule {
   }
 
   public SimulacronRule(ClusterSpec.Builder clusterSpec) {
-    this(clusterSpec.build());
+    this(clusterSpec.withDSEVersion("5.1").build());
   }
 
   /**
