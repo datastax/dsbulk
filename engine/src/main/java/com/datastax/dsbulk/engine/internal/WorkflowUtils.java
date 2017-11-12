@@ -10,6 +10,8 @@ import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.Host;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.google.common.base.Throwables;
 import java.time.Instant;
@@ -17,10 +19,17 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
+import java.util.List;
 import java.util.Random;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 
 public class WorkflowUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(WorkflowUtils.class);
 
   public static String newExecutionId(WorkflowType workflowType) {
     return workflowType
@@ -81,5 +90,20 @@ public class WorkflowUtils {
       }
     }
     return suppressed;
+  }
+
+  public static void checkProductCompatibility(Cluster cluster) {
+    Set<Host> hosts = cluster.getMetadata().getAllHosts();
+    List<Host> nonDseHosts =
+        hosts.stream().filter(host -> host.getDseVersion() == null).collect(Collectors.toList());
+    if (nonDseHosts.size() != 0) {
+      LOGGER.error(
+          "Incompatible cluster detected. Load functionality is only compatible with a DSE cluster.");
+      LOGGER.error("The following nodes do not appear to be running DSE:");
+      for (Host host : nonDseHosts) {
+        LOGGER.error(host.toString());
+      }
+      throw new IllegalStateException("Unable to load data to non DSE cluster");
+    }
   }
 }

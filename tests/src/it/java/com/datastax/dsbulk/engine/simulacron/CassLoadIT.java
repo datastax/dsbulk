@@ -25,7 +25,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
-public class CassLoadTest {
+public class CassLoadIT {
   @Rule
   public SimulacronRule simulacron = new SimulacronRule(ClusterSpec.builder().withNodes(1).build());
 
@@ -76,9 +76,6 @@ public class CassLoadTest {
 
     new Main(args).run();
     List<String> errorMessages = EndToEndUtils.getErrorEventMessages(appender);
-    for (String error : errorMessages) {
-      System.out.println(error);
-    }
     assertThat(errorMessages).isNotEmpty();
     assertThat(errorMessages.get(0))
         .contains(
