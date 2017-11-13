@@ -14,7 +14,7 @@
     <target>System.out</target>
     <filter class="com.datastax.dsbulk.engine.internal.log.StandardOutFilter"/>
     <encoder>
-      <pattern>%date{ISO8601,UTC} %-5level %msg%n%nopex</pattern>
+      <pattern>%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg%n%nopex</pattern>
     </encoder>
   </appender>
 
@@ -22,7 +22,7 @@
     <target>System.err</target>
     <filter class="com.datastax.dsbulk.engine.internal.log.StandardErrorFilter"/>
     <encoder>
-      <pattern>%date{ISO8601,UTC} %-5level %msg%n%nopex</pattern>
+      <pattern>%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg%n%nopex</pattern>
     </encoder>
   </appender>
 

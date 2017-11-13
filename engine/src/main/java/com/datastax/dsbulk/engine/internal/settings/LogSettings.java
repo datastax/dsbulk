@@ -89,7 +89,7 @@ public class LogSettings {
     String production = lc.getProperty(PRODUCTION_KEY);
     if (production != null && production.equalsIgnoreCase("true")) {
       PatternLayoutEncoder ple = new PatternLayoutEncoder();
-      ple.setPattern("%date{ISO8601,UTC} %-5level %msg%n");
+      ple.setPattern("%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg%n");
       ple.setContext(lc);
       ple.start();
       FileAppender<ILoggingEvent> fileAppender = new FileAppender<>();
