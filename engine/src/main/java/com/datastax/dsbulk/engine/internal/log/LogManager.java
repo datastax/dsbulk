@@ -201,7 +201,7 @@ public class LogManager implements AutoCloseable {
                     Statement stmt = signal.get();
                     if (stmt instanceof UnmappableStatement) {
                       sink.next((UnmappableStatement) stmt);
-                      if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
+                      if (maxErrors >= 0 && errors.incrementAndGet() > maxErrors) {
                         return Signal.error(new TooManyErrorsException(maxErrors));
                       }
                     }
@@ -238,7 +238,7 @@ public class LogManager implements AutoCloseable {
                     Record r = signal.get();
                     if (r instanceof UnmappableRecord) {
                       sink.next((UnmappableRecord) r);
-                      if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
+                      if (maxErrors >= 0 && errors.incrementAndGet() > maxErrors) {
                         return Signal.error(new TooManyErrorsException(maxErrors));
                       }
                     }
@@ -276,7 +276,7 @@ public class LogManager implements AutoCloseable {
                       Throwable cause = r.getError().get().getCause();
                       if (isUnrecoverable(cause)) {
                         return Signal.error(cause);
-                      } else if (maxErrors > 0
+                      } else if (maxErrors >= 0
                           && errors.addAndGet(delta(r.getStatement())) > maxErrors) {
                         return Signal.error(new TooManyErrorsException(maxErrors));
                       }
@@ -315,7 +315,7 @@ public class LogManager implements AutoCloseable {
                       Throwable cause = r.getError().get().getCause();
                       if (isUnrecoverable(cause)) {
                         return Signal.error(cause);
-                      } else if (maxErrors > 0 && errors.incrementAndGet() > maxErrors) {
+                      } else if (maxErrors >= 0 && errors.incrementAndGet() > maxErrors) {
                         return Signal.error(new TooManyErrorsException(maxErrors));
                       }
                     }
