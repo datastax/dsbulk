@@ -33,10 +33,13 @@ import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -52,7 +55,6 @@ public class LoadWorkflow implements Workflow {
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
   private Connector connector;
-  private Scheduler scheduler;
   private RecordMapper recordMapper;
   private MetricsManager metricsManager;
   private LogManager logManager;
@@ -64,6 +66,7 @@ public class LoadWorkflow implements Workflow {
   private int resourceCount;
   private int batchBufferSize;
   private int maxInFlight;
+  private Set<Disposable> disposables;
 
   LoadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -85,7 +88,6 @@ public class LoadWorkflow implements Workflow {
     EngineSettings engineSettings = settingsManager.getEngineSettings();
     maxInFlight = executorSettings.getMaxInFlight();
     dryRun = engineSettings.isDryRun();
-    scheduler = Schedulers.newElastic("workflow");
     connector = connectorSettings.getConnector();
     connector.init();
     cluster = driverSettings.newCluster();
@@ -96,7 +98,7 @@ public class LoadWorkflow implements Workflow {
     batchBufferSize = batchSettings.getBufferSize();
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD, batchingEnabled);
     metricsManager.init();
-    logManager = logSettings.newLogManager(WorkflowType.LOAD, cluster, scheduler);
+    logManager = logSettings.newLogManager(WorkflowType.LOAD, cluster);
     logManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     recordMapper =
@@ -107,6 +109,7 @@ public class LoadWorkflow implements Workflow {
     }
     closed.set(false);
     resourceCount = connector.estimatedResourceCount();
+    disposables = new HashSet<>();
   }
 
   @Override
@@ -130,6 +133,8 @@ public class LoadWorkflow implements Workflow {
   @NotNull
   private Flux<Void> threadPerCoreFlux() {
     LOGGER.info("Using thread-per-core pattern.");
+    Scheduler scheduler = Schedulers.newParallel("workflow");
+    disposables.add(scheduler);
     return Flux.from(connector.readByResource())
         .flatMap(
             records -> {
@@ -154,11 +159,15 @@ public class LoadWorkflow implements Workflow {
 
   @NotNull
   private Flux<Void> parallelBatchedFlux() {
+    Scheduler scheduler1 = Schedulers.newSingle("workflow1");
+    Scheduler scheduler2 = Schedulers.newParallel("workflow2");
+    disposables.add(scheduler1);
+    disposables.add(scheduler2);
     return Flux.from(connector.readByResource())
         .flatMap(records -> Flux.from(records).window(batchBufferSize))
-        .publishOn(scheduler, Queues.SMALL_BUFFER_SIZE * 4)
+        .publishOn(scheduler1, Queues.SMALL_BUFFER_SIZE * 4)
         .parallel()
-        .runOn(scheduler)
+        .runOn(scheduler2)
         .flatMap(
             records ->
                 records
@@ -175,10 +184,14 @@ public class LoadWorkflow implements Workflow {
 
   @NotNull
   private Flux<Void> parallelUnbatchedFlux() {
+    Scheduler scheduler1 = Schedulers.newSingle("workflow1");
+    Scheduler scheduler2 = Schedulers.newParallel("workflow2");
+    disposables.add(scheduler1);
+    disposables.add(scheduler2);
     return Flux.from(connector.read())
-        .publishOn(scheduler, Queues.SMALL_BUFFER_SIZE * 4)
+        .publishOn(scheduler1, Queues.SMALL_BUFFER_SIZE * 4)
         .parallel()
-        .runOn(scheduler)
+        .runOn(scheduler2)
         .composeGroup(metricsManager.newUnmappableRecordMonitor())
         .composeGroup(logManager.newUnmappableRecordErrorHandler())
         .map(recordMapper::map)
@@ -201,14 +214,15 @@ public class LoadWorkflow implements Workflow {
         .transform(logManager.newResultPositionTracker());
   }
 
-  @SuppressWarnings("Duplicates")
   @Override
   public void close() throws Exception {
     if (closed.compareAndSet(false, true)) {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(metricsManager, null);
       e = WorkflowUtils.closeQuietly(connector, e);
-      e = WorkflowUtils.closeQuietly(scheduler, e);
+      for (Disposable disposable : disposables) {
+        e = WorkflowUtils.closeQuietly(disposable, e);
+      }
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(cluster, e);

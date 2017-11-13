@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 /** */
 public class LogSettings {
@@ -69,7 +70,7 @@ public class LogSettings {
     }
   }
 
-  public LogManager newLogManager(WorkflowType workflowType, Cluster cluster, Scheduler scheduler) {
+  public LogManager newLogManager(WorkflowType workflowType, Cluster cluster) {
     StatementFormatter formatter =
         StatementFormatter.builder()
             .withMaxQueryStringLength(maxQueryStringLength)
@@ -77,6 +78,7 @@ public class LogSettings {
             .withMaxBoundValues(maxBoundValues)
             .withMaxInnerStatements(maxInnerStatements)
             .build();
+    Scheduler scheduler = Schedulers.newParallel("log-manager", 4);
     return new LogManager(
         workflowType, cluster, scheduler, executionDirectory, maxErrors, formatter, level);
   }

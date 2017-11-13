@@ -82,7 +82,7 @@ public class UnloadWorkflow implements Workflow {
     if (engineSettings.isDryRun()) {
       throw new BulkConfigurationException("Dry-run is not supported for unload", "engine.dryRun");
     }
-    scheduler = Schedulers.newElastic("workflow");
+    scheduler = Schedulers.newParallel("workflow");
     connector = connectorSettings.getConnector();
     connector.init();
     cluster = driverSettings.newCluster();
@@ -90,7 +90,7 @@ public class UnloadWorkflow implements Workflow {
     DseSession session = cluster.connect(keyspace);
     metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD, false);
     metricsManager.init();
-    logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster, scheduler);
+    logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
     logManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     RecordMetadata recordMetadata = connector.getRecordMetadata();
@@ -148,7 +148,6 @@ public class UnloadWorkflow implements Workflow {
         .transform(logManager.newUnmappableRecordErrorHandler());
   }
 
-  @SuppressWarnings("Duplicates")
   @Override
   public void close() throws Exception {
     if (closed.compareAndSet(false, true)) {
