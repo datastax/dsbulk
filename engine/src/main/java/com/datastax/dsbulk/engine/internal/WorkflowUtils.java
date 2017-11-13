@@ -36,7 +36,7 @@ public class WorkflowUtils {
    * optimization.
    *
    * <p>This threshold actually varies a bit depending on the dataset to load or unload, but it
-   * generally starts to be advantageous when the number of resources is >= 4.
+   * generally starts to be advantageous when the number of resources is &gt;= 4.
    */
   public static final int TPC_THRESHOLD = 4;
 
