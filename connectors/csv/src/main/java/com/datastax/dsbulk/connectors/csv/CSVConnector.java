@@ -253,9 +253,10 @@ public class CSVConnector implements Connector {
     Flux<Record> records =
         Flux.create(
             sink -> {
-              SimpleBackpressureController controller = new SimpleBackpressureController();
-              sink.onRequest(controller::signalRequested);
               CsvParser parser = new CsvParser(parserSettings);
+              SimpleBackpressureController controller = new SimpleBackpressureController();
+              sink.onDispose(parser::stopParsing);
+              sink.onRequest(controller::signalRequested);
               LOGGER.debug("Reading {}", url);
               try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
                 parser.beginParsing(r);
