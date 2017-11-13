@@ -17,6 +17,7 @@ import com.datastax.driver.core.Statement;
 import io.reactivex.Flowable;
 import java.util.HashSet;
 import org.junit.Test;
+import reactor.core.publisher.Flux;
 
 /** */
 public class ReactorStatementBatcherTest extends StatementBatcherTest {
@@ -25,10 +26,9 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
   public void should_batch_by_routing_key_reactive() throws Exception {
     assignRoutingKeys();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher();
-    Flowable<Statement> statements =
-        Flowable.fromPublisher(
-            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
-    assertThat(statements.toList().blockingGet())
+    Flux<Statement> statements =
+        Flux.from(batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.collectList().block())
         .usingFieldByFieldElementComparator()
         .contains(batch126, batch34, stmt5);
   }
@@ -37,10 +37,9 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
   public void should_batch_by_routing_token_reactive() throws Exception {
     assignRoutingTokens();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher();
-    Flowable<Statement> statements =
-        Flowable.fromPublisher(
-            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
-    assertThat(statements.toList().blockingGet())
+    Flux<Statement> statements =
+        Flux.from(batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.collectList().block())
         .usingFieldByFieldElementComparator()
         .contains(batch1256, batch34);
   }
@@ -54,10 +53,9 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
     when(metadata.getReplicas("ks", key2)).thenReturn(replicaSet2);
     when(metadata.getReplicas("ks", key3)).thenReturn(replicaSet1);
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(cluster, REPLICA_SET);
-    Flowable<Statement> statements =
-        Flowable.fromPublisher(
-            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
-    assertThat(statements.toList().blockingGet())
+    Flux<Statement> statements =
+        Flux.from(batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.collectList().block())
         .usingFieldByFieldElementComparator()
         .contains(batch1256, batch34);
   }
@@ -71,10 +69,9 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
     when(metadata.getReplicas("ks", key2)).thenReturn(replicaSet2);
     when(metadata.getReplicas("ks", key3)).thenReturn(replicaSet1);
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(cluster, REPLICA_SET);
-    Flowable<Statement> statements =
-        Flowable.fromPublisher(
-            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
-    assertThat(statements.toList().blockingGet())
+    Flux<Statement> statements =
+        Flux.from(batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.collectList().block())
         .usingFieldByFieldElementComparator()
         .contains(batch1256, batch34);
   }
@@ -89,10 +86,9 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
     when(metadata.getReplicas("ks", key2)).thenReturn(new HashSet<>());
     when(metadata.getReplicas("ks", key3)).thenReturn(new HashSet<>());
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(cluster, REPLICA_SET);
-    Flowable<Statement> statements =
-        Flowable.fromPublisher(
-            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
-    assertThat(statements.toList().blockingGet())
+    Flux<Statement> statements =
+        Flux.from(batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.collectList().block())
         .usingFieldByFieldElementComparator()
         .contains(batch126, batch34, stmt5);
   }
@@ -107,10 +103,9 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
     when(metadata.getReplicas("ks", key2)).thenReturn(new HashSet<>());
     when(metadata.getReplicas("ks", key3)).thenReturn(new HashSet<>());
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(cluster, REPLICA_SET);
-    Flowable<Statement> statements =
-        Flowable.fromPublisher(
-            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
-    assertThat(statements.toList().blockingGet())
+    Flux<Statement> statements =
+        Flux.from(batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.collectList().block())
         .usingFieldByFieldElementComparator()
         .contains(batch1256, batch34);
   }
@@ -118,10 +113,9 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
   @Test
   public void should_batch_all_reactive() throws Exception {
     ReactorStatementBatcher batcher = new ReactorStatementBatcher();
-    Flowable<Statement> statements =
-        Flowable.fromPublisher(
-            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
-    assertThat(((BatchStatement) statements.singleOrError().blockingGet()).getStatements())
+    Flux<Statement> statements =
+        Flux.from(batcher.batchAll(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(((BatchStatement) statements.blockFirst()).getStatements())
         .containsExactly(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
   }
 

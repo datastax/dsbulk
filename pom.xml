@@ -61,6 +61,7 @@
     <commons-cli.version>1.4</commons-cli.version>
     <simulacron.version>0.6.0</simulacron.version>
     <awaitility.version>3.0.0</awaitility.version>
+    <surefire.version>2.20.1</surefire.version>
   </properties>
 
   <dependencyManagement>
@@ -157,6 +158,12 @@
       <dependency>
         <groupId>org.reactivestreams</groupId>
         <artifactId>reactive-streams</artifactId>
+        <version>${reactive-streams.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.reactivestreams</groupId>
+        <artifactId>reactive-streams-tck</artifactId>
         <version>${reactive-streams.version}</version>
       </dependency>
 
@@ -498,12 +505,12 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
 
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>2.20.1</version>
+          <version>${surefire.version}</version>
         </plugin>
 
         <plugin>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <version>2.20.1</version>
+          <version>${surefire.version}</version>
         </plugin>
 
         <plugin>

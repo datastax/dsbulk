@@ -44,9 +44,6 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
               new ThreadFactoryBuilder().setDaemon(true).setNameFormat("bulk-executor-%d").build(),
               new ThreadPoolExecutor.CallerRunsPolicy());
 
-  static final QueueFactory<ReadResult> DEFAULT_QUEUE_FACTORY =
-      statement -> new ArrayBlockingQueue<>(statement.getFetchSize() * 4);
-
   final Session session;
 
   final boolean failFast;
@@ -69,7 +66,7 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
         DEFAULT_MAX_REQUESTS_PER_SECOND,
         null,
         DEFAULT_EXECUTOR_SUPPLIER.get(),
-        DEFAULT_QUEUE_FACTORY);
+        defaultQueueFactory(session));
   }
 
   AbstractBulkExecutor(
@@ -82,7 +79,6 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
       QueueFactory<ReadResult> queueFactory) {
     Objects.requireNonNull(session, "session cannot be null");
     Objects.requireNonNull(executor, "executor cannot be null");
-    Objects.requireNonNull(queueFactory, "queueFactory cannot be null");
     this.session = session;
     this.failFast = failFast;
     this.requestPermits =
@@ -95,7 +91,17 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
             : Optional.of(RateLimiter.create(maxRequestsPerSecond));
     this.listener = Optional.ofNullable(listener);
     this.executor = executor;
-    this.queueFactory = queueFactory;
+    this.queueFactory = queueFactory == null ? defaultQueueFactory(session) : queueFactory;
+  }
+
+  private static QueueFactory<ReadResult> defaultQueueFactory(Session session) {
+    return statement -> {
+      int fetchSize = statement.getFetchSize();
+      if (fetchSize <= 0) {
+        fetchSize = session.getCluster().getConfiguration().getQueryOptions().getFetchSize();
+      }
+      return new ArrayBlockingQueue<>(fetchSize * 4);
+    };
   }
 
   @Override
