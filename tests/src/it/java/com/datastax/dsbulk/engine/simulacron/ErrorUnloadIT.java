@@ -56,7 +56,6 @@ public class ErrorUnloadIT {
     root.addAppender(stdout);
   }
 
-  @SuppressWarnings("ResultOfMethodCallIgnored")
   @Test
   public void unload_existing_file() throws Exception {
     //Prior to DAT-151 this case would hang
