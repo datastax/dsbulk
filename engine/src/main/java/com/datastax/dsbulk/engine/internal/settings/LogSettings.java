@@ -27,6 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 /** */
 public class LogSettings {
@@ -57,6 +58,7 @@ public class LogSettings {
     LOGGER.info("Operation output directory: {}", executionDirectory);
     System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
     maybeStartExecutionLogFileAppender();
+    installJavaLoggingToSLF4JBridge();
     try {
       maxQueryStringLength = config.getInt(MAX_QUERY_STRING_LENGTH);
       maxBoundValueLength = config.getInt(MAX_BOUND_VALUE_LENGTH);
@@ -103,5 +105,10 @@ public class LogSettings {
       logger.addAppender(fileAppender);
       logger.setLevel(Level.INFO);
     }
+  }
+
+  private void installJavaLoggingToSLF4JBridge() {
+    SLF4JBridgeHandler.removeHandlersForRootLogger();
+    SLF4JBridgeHandler.install();
   }
 }

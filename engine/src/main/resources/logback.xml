@@ -8,6 +8,8 @@
 -->
 <configuration>
 
+  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
+  
   <property scope="context" name="com.datastax.dsbulk.PRODUCTION" value="true"/>
 
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
