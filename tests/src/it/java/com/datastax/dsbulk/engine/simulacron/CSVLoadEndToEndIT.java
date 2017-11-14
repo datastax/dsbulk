@@ -263,6 +263,8 @@ public class CSVLoadEndToEndIT {
       "false",
       "--connector.csv.url",
       CsvUtils.CSV_RECORDS_LONG.toExternalForm(),
+      "--connector.csv.maxCharsPerColumn",
+      "10000",
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",

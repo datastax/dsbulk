@@ -20,14 +20,13 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
 import java.nio.file.Path;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 /** */
 public class LogSettings {
@@ -79,11 +78,9 @@ public class LogSettings {
             .withMaxBoundValues(maxBoundValues)
             .withMaxInnerStatements(maxInnerStatements)
             .build();
-    ExecutorService executor =
-        Executors.newCachedThreadPool(
-            new ThreadFactoryBuilder().setNameFormat("log-manager-%d").build());
+    Scheduler scheduler = Schedulers.newParallel("log-manager", 4);
     return new LogManager(
-        workflowType, cluster, executionDirectory, executor, maxErrors, formatter, level);
+        workflowType, cluster, scheduler, executionDirectory, maxErrors, formatter, level);
   }
 
   private void maybeStartExecutionLogFileAppender() {

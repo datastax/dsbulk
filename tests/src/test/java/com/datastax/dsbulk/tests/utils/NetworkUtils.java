@@ -7,6 +7,7 @@
 package com.datastax.dsbulk.tests.utils;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -81,11 +82,13 @@ public class NetworkUtils {
    * @throws IndexOutOfBoundsException if {@code dc} or {@code n} are out of bounds.
    */
   public static InetAddress addressOfNode(String ipPrefix, int[] nodesPerDC, int dc, int node) {
-    if (dc < 1 || dc > nodesPerDC.length)
+    if (dc < 1 || dc > nodesPerDC.length) {
       throw new IndexOutOfBoundsException("Invalid DC number: " + dc);
-    if (node < 1 || node > nodesPerDC[dc - 1])
+    }
+    if (node < 1 || node > nodesPerDC[dc - 1]) {
       throw new IndexOutOfBoundsException(
           String.format("Invalid node number: %s for DC %s", node, dc));
+    }
     return addressOfNode(ipPrefix, absoluteNodeNumber(nodesPerDC, dc, node));
   }
 
@@ -147,14 +150,11 @@ public class NetworkUtils {
   }
 
   public static void waitUntilPortIsUp(InetSocketAddress address) {
-    ConditionChecker.check().before(5, MINUTES).that(address, NetworkUtils::pingPort).becomesTrue();
+    await().atMost(5, MINUTES).until(() -> pingPort(address));
   }
 
   public static void waitUntilPortIsDown(InetSocketAddress address) {
-    ConditionChecker.check()
-        .before(5, MINUTES)
-        .that(address, NetworkUtils::pingPort)
-        .becomesFalse();
+    await().atMost(5, MINUTES).until(() -> !pingPort(address));
   }
 
   public static boolean pingPort(InetSocketAddress address) {

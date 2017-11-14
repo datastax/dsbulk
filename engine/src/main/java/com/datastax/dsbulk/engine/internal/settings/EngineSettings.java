@@ -13,40 +13,19 @@ import com.typesafe.config.ConfigException;
 /** */
 public class EngineSettings {
 
-  private static final String MAX_CONCURRENT_MAPPINGS = "maxConcurrentMappings";
-  private static final String BUFFER_SIZE = "bufferSize";
   private static final String DRY_RUN = "dryRun";
-  private static final String THREAD_PER_CORE_THRESHOLD = "threadPerCoreThreshold";
 
-  private final int maxConcurrentMappings;
-  private final int bufferSize;
   private final boolean dryRun;
-  private final int threadPerCoreThreshold;
 
   EngineSettings(LoaderConfig config) {
     try {
-      maxConcurrentMappings = config.getThreads(MAX_CONCURRENT_MAPPINGS);
-      bufferSize = config.getInt(BUFFER_SIZE);
       dryRun = config.getBoolean(DRY_RUN);
-      threadPerCoreThreshold = config.getInt(THREAD_PER_CORE_THRESHOLD);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
     }
   }
 
-  public int getMaxConcurrentMappings() {
-    return maxConcurrentMappings;
-  }
-
-  public int getBufferSize() {
-    return bufferSize;
-  }
-
   public boolean isDryRun() {
     return dryRun;
-  }
-
-  public int getThreadPerCoreThreshold() {
-    return threadPerCoreThreshold;
   }
 }

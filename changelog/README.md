@@ -15,6 +15,7 @@
 - [improvement] DAT-155: Make dsbulk script more friendly for use in a DSE installation.
 - [improvement] DAT-147: Support TIMESTAMP, TTL and now().
 - [improvement] DAT-142: Add DSE version validation.
+- [improvement] DAT-157: Optimize non-thread-per-core LoadWorkflow by trying to emit records to mapper threads together.
 
 
 ### 1.0.0-beta1

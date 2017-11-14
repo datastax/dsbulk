@@ -19,7 +19,7 @@ import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
+import com.datastax.dsbulk.executor.api.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,9 +46,9 @@ public class BatchSettingsTest {
   public void should_create_batcher_when_mode_is_default() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch"));
     BatchSettings settings = new BatchSettings(config);
-    ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    assertThat(settings.getBufferSize()).isEqualTo(32);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(32);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
@@ -59,9 +59,9 @@ public class BatchSettingsTest {
             ConfigFactory.parseString("mode = REPLICA_SET")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
-    ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    assertThat(settings.getBufferSize()).isEqualTo(32);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
-    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(32);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
@@ -72,9 +72,9 @@ public class BatchSettingsTest {
             ConfigFactory.parseString("bufferSize = 5000")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
-    ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    assertThat(settings.getBufferSize()).isEqualTo(5000);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(5000);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
@@ -85,9 +85,9 @@ public class BatchSettingsTest {
             ConfigFactory.parseString("maxBatchSize = 10")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
-    ReactorUnsortedStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    assertThat(settings.getBufferSize()).isEqualTo(32);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(Whitebox.getInternalState(batcher, "bufferSize")).isEqualTo(32);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
   }
 }

@@ -36,8 +36,6 @@ import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.google.common.collect.Range;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
@@ -52,6 +50,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.internal.util.reflection.Whitebox;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 /** */
@@ -88,8 +87,6 @@ public class LogManagerTest {
 
   private Cluster cluster;
 
-  private final ListeningExecutorService executor = MoreExecutors.newDirectExecutorService();
-
   private final StatementFormatter formatter =
       StatementFormatter.builder()
           .withMaxQueryStringLength(500)
@@ -97,6 +94,8 @@ public class LogManagerTest {
           .withMaxBoundValues(10)
           .withMaxInnerStatements(10)
           .build();
+
+  private final Scheduler scheduler = Schedulers.immediate();
 
   @Before
   public void setUp() throws Exception {
@@ -166,9 +165,9 @@ public class LogManagerTest {
 
   @Test
   public void should_stop_when_max_record_mapping_errors_reached() throws Exception {
-    Path outputDir = Files.createTempDirectory("test2");
+    Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 2, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 2, formatter, EXTENDED);
     logManager.init();
     Flux<Statement> stmts = Flux.just(stmt1, stmt2, stmt3);
     try {
@@ -208,9 +207,9 @@ public class LogManagerTest {
 
   @Test
   public void should_stop_when_max_result_mapping_errors_reached() throws Exception {
-    Path outputDir = Files.createTempDirectory("test1");
+    Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 2, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 2, formatter, EXTENDED);
     logManager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
     try {
@@ -242,9 +241,9 @@ public class LogManagerTest {
 
   @Test
   public void should_stop_when_max_write_errors_reached() throws Exception {
-    Path outputDir = Files.createTempDirectory("test3");
+    Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 2, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 2, formatter, EXTENDED);
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(writeResult1, writeResult2, writeResult3);
     try {
@@ -295,9 +294,9 @@ public class LogManagerTest {
 
   @Test
   public void should_stop_when_max_write_errors_reached_and_statements_batched() throws Exception {
-    Path outputDir = Files.createTempDirectory("test4");
+    Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 1, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 1, formatter, EXTENDED);
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(batchWriteResult);
     try {
@@ -345,9 +344,9 @@ public class LogManagerTest {
 
   @Test
   public void should_stop_when_max_read_errors_reached() throws Exception {
-    Path outputDir = Files.createTempDirectory("test3");
+    Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.UNLOAD, cluster, outputDir, executor, 2, formatter, EXTENDED);
+        new LogManager(WorkflowType.UNLOAD, cluster, scheduler, outputDir, 2, formatter, EXTENDED);
     logManager.init();
     Flux<ReadResult> stmts = Flux.just(readResult1, readResult2, readResult3);
     try {
@@ -380,7 +379,7 @@ public class LogManagerTest {
   public void should_stop_when_unrecoverable_error_writing() throws Exception {
     Path outputDir = Files.createTempDirectory("test4");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 1000, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 1000, formatter, EXTENDED);
     logManager.init();
     DefaultWriteResult result =
         new DefaultWriteResult(
@@ -420,9 +419,9 @@ public class LogManagerTest {
 
   @Test
   public void should_stop_when_unrecoverable_error_reading() throws Exception {
-    Path outputDir = Files.createTempDirectory("test3");
+    Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.UNLOAD, cluster, outputDir, executor, 2, formatter, EXTENDED);
+        new LogManager(WorkflowType.UNLOAD, cluster, scheduler, outputDir, 2, formatter, EXTENDED);
     logManager.init();
     DefaultReadResult result =
         new DefaultReadResult(
@@ -454,7 +453,7 @@ public class LogManagerTest {
   public void should_record_positions() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, outputDir, executor, 1, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 1, formatter, EXTENDED);
     logManager.init();
     assertRanges(logManager, new long[] {1, 2, 3, 4}, closed(1L, 4L));
     assertRanges(logManager, new long[] {1, 2, 3, 5}, closed(1L, 3L), singleton(5L));
@@ -528,7 +527,7 @@ public class LogManagerTest {
                 throw new RuntimeException(e);
               }
             })
-        .transform(logManager.newResultPositionTracker(Schedulers.elastic()))
+        .transform(logManager.newResultPositionTracker())
         .blockLast();
     @SuppressWarnings("unchecked")
     Map<URI, List<Range<Long>>> positions =

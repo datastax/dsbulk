@@ -85,7 +85,7 @@ public interface Connector extends AutoCloseable {
    *
    * @return an estimation of the total number of resources to read.
    */
-  default long estimatedResourceCount() {
-    return -1L;
+  default int estimatedResourceCount() {
+    return -1;
   }
 }

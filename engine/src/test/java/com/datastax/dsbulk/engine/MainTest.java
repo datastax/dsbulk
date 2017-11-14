@@ -479,11 +479,7 @@ public class MainTest {
               "--schema.recordMetadata",
               "{0:\"f3\", 1:\"f4\"}",
               "--connector.name",
-              "conn",
-              "--engine.maxConcurrentMappings",
-              "26",
-              "--engine.bufferSize",
-              "27"
+              "conn"
             });
     assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
     assertThat(result.getInt("driver.port")).isEqualTo(1);
@@ -575,8 +571,6 @@ public class MainTest {
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
     assertThat(result.getString("schema.recordMetadata")).isEqualTo("{0:f3, 1:f4}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");
-    assertThat(result.getInt("engine.maxConcurrentMappings")).isEqualTo(26);
-    assertThat(result.getInt("engine.bufferSize")).isEqualTo(27);
   }
 
   @Test

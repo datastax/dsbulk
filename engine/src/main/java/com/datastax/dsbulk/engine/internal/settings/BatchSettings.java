@@ -6,13 +6,13 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.executor.api.batch.ReactorUnsortedStatementBatcher;
+import com.datastax.dsbulk.executor.api.batch.ReactorStatementBatcher;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.typesafe.config.ConfigException;
-import java.time.Duration;
 
 /** */
 public class BatchSettings {
@@ -20,13 +20,11 @@ public class BatchSettings {
   private static final String MODE = "mode";
   private static final String MAX_BATCH_SIZE = "maxBatchSize";
   private static final String BUFFER_SIZE = "bufferSize";
-  private static final String BUFFER_TIMEOUT = "bufferTimeout";
   private static final String ENABLED = "enabled";
 
   private final StatementBatcher.BatchMode mode;
   private final int maxBatchSize;
   private final int bufferSize;
-  private final Duration bufferTimeout;
   private final boolean enabled;
 
   BatchSettings(LoaderConfig config) {
@@ -35,7 +33,6 @@ public class BatchSettings {
       mode = config.getEnum(StatementBatcher.BatchMode.class, MODE);
       maxBatchSize = config.getInt(MAX_BATCH_SIZE);
       bufferSize = config.getInt(BUFFER_SIZE);
-      bufferTimeout = config.getDuration(BUFFER_TIMEOUT);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
     }
@@ -45,8 +42,11 @@ public class BatchSettings {
     return enabled;
   }
 
-  public ReactorUnsortedStatementBatcher newStatementBatcher(Cluster cluster) {
-    return new ReactorUnsortedStatementBatcher(
-        cluster, mode, maxBatchSize, bufferSize, bufferTimeout);
+  public int getBufferSize() {
+    return bufferSize;
+  }
+
+  public ReactorStatementBatcher newStatementBatcher(Cluster cluster) {
+    return new ReactorStatementBatcher(cluster, mode, BatchStatement.Type.UNLOGGED, maxBatchSize);
   }
 }

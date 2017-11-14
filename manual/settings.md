@@ -417,6 +417,16 @@ Only applicable when the *url* setting points to a directory on a known filesyst
 
 Default: **"\*\*/\*.csv"**.
 
+#### --connector.csv.maxCharsPerColumn _&lt;number&gt;_
+
+The maximum number of characters that a field can contain.
+
+This setting is used to size internal buffers and to avoid out-of-memory problems.
+
+If set to -1, internal buffers will be resized dynamically. While convenient, this might lead to memory problems. It could also hurt throughput, if some large fields require constant resizings; if this is the case, it is preferable to set this value to a fixed positive number that is big enough to contain all field values.
+
+Default: **4096**.
+
 #### -maxConcurrentFiles,--connector.csv.maxConcurrentFiles _&lt;string&gt;_
 
 The maximum number of files that can be written simultaneously.
@@ -606,19 +616,11 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 The buffer size to use for batching statements.
 
-The buffer will be flushed when this size is reached, or when *bufferTimeout* is elapsed, whichever happens first.
+The buffer will be flushed when this size is reached.
 
 It is usually not necessary to set this value higher than `maxBatchSize`, unless the dataset to load is unsorted, in which case a higher value might improve the average batch size.
 
 Default: **32**.
-
-#### --batch.bufferTimeout _&lt;string&gt;_
-
-The maximum amount of time to wait for incoming items to batch before flushing.
-
-The buffer will be flushed when this duration is elapsed or when *bufferSize* is reached, whichever happens first.
-
-Default: **"1 seconds"**.
 
 #### --batch.enabled _&lt;boolean&gt;_
 
@@ -1120,39 +1122,6 @@ Whether or not to run in dry-run mode.
 Only applicable for loads, the tool proceeds as normal except it does not actually load any data.
 
 Default: **false**.
-
-#### --engine.bufferSize _&lt;number&gt;_
-
-The buffer size used internally by the workflow engine.
-
-Usually, the higher this number the better is the throughput; if you encounter OutOfMemoryErrors however, you should probably lower this number.
-
-Default: **4096**.
-
-#### --engine.maxConcurrentMappings _&lt;string&gt;_
-
-The maximum number of concurrent record and result mappings.
-
-Applies to both load and unload workflows.
-
-The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
-
-Default: **"0.25C"**.
-
-#### --engine.threadPerCoreThreshold _&lt;number&gt;_
-
-The minimum number of parallel tasks above which the egine will apply internal optimizations attempting to "pin" one thread to one CPU core.
-
-When the number of tasks to execute is below this threshold, the engine will operate in a mode where more thread context switches will happen, but thus allowing to optimize CPU usage when there aren't enough parallalel tasks available to occupy each CPU core.
-
-When the number of tasks to execute is equal to or grater than this threshold, the engine will operate in a mode where a thread will be "pinned" to a CPU core; this usually results in less thread context switches and better performance, provided that there are enough parallel tasks available to occupy all or most CPU cores.
-
-The exact meaning of "parallel tasks" depends on the workflow:
-
-- For load workflows, it is the number of distinct resources to read, as reported by the connector in use.
-- For unload workflows, it is the number of statements to execute.
-
-Default: **4**.
 
 <a name="executor"></a>
 ## Executor Settings

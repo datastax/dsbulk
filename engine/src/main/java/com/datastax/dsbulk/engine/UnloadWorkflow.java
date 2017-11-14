@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.engine;
 
+import static com.datastax.dsbulk.engine.internal.WorkflowUtils.TPC_THRESHOLD;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Statement;
@@ -34,6 +35,7 @@ import com.datastax.dsbulk.executor.api.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -56,10 +58,7 @@ public class UnloadWorkflow implements Workflow {
   private LogManager logManager;
   private DseCluster cluster;
   private ReactorBulkReader executor;
-  private int maxConcurrentMappings;
-  private int bufferSize;
   private List<Statement> readStatements;
-  private int threadPerCoreThreshold;
 
   UnloadWorkflow(LoaderConfig config) {
     this.config = config;
@@ -83,10 +82,7 @@ public class UnloadWorkflow implements Workflow {
     if (engineSettings.isDryRun()) {
       throw new BulkConfigurationException("Dry-run is not supported for unload", "engine.dryRun");
     }
-
-    maxConcurrentMappings = engineSettings.getMaxConcurrentMappings();
-    bufferSize = engineSettings.getBufferSize();
-    scheduler = Schedulers.newElastic("workflow");
+    scheduler = Schedulers.newParallel("workflow");
     connector = connectorSettings.getConnector();
     connector.init();
     cluster = driverSettings.newCluster();
@@ -103,7 +99,6 @@ public class UnloadWorkflow implements Workflow {
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
-    threadPerCoreThreshold = engineSettings.getThreadPerCoreThreshold();
   }
 
   @Override
@@ -111,32 +106,10 @@ public class UnloadWorkflow implements Workflow {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Record> flux;
-    if (readStatements.size() >= threadPerCoreThreshold) {
-      LOGGER.info("Using thread-per-core pattern.");
-      flux =
-          Flux.fromIterable(readStatements)
-              .flatMap(
-                  statement ->
-                      executor
-                          .readReactive(statement)
-                          .transform(logManager.newReadErrorHandler())
-                          .map(readResultMapper::map)
-                          .transform(metricsManager.newUnmappableRecordMonitor())
-                          .transform(logManager.newUnmappableRecordErrorHandler())
-                          .subscribeOn(scheduler),
-                  maxConcurrentMappings,
-                  bufferSize);
+    if (readStatements.size() >= TPC_THRESHOLD) {
+      flux = threadPerCoreFlux();
     } else {
-      flux =
-          Flux.fromIterable(readStatements)
-              .flatMap(executor::readReactive)
-              .transform(logManager.newReadErrorHandler())
-              .parallel(maxConcurrentMappings, bufferSize)
-              .runOn(scheduler)
-              .map(readResultMapper::map)
-              .sequential()
-              .transform(metricsManager.newUnmappableRecordMonitor())
-              .transform(logManager.newUnmappableRecordErrorHandler());
+      flux = parallelFlux();
     }
     flux = flux.publish().autoConnect(2);
     flux.subscribe(connector.write());
@@ -144,6 +117,35 @@ public class UnloadWorkflow implements Workflow {
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+  }
+
+  @NotNull
+  private Flux<Record> threadPerCoreFlux() {
+    LOGGER.info("Using thread-per-core pattern.");
+    return Flux.fromIterable(readStatements)
+        .flatMap(
+            statement ->
+                executor
+                    .readReactive(statement)
+                    .transform(logManager.newReadErrorHandler())
+                    .map(readResultMapper::map)
+                    .transform(metricsManager.newUnmappableRecordMonitor())
+                    .transform(logManager.newUnmappableRecordErrorHandler())
+                    .subscribeOn(scheduler),
+            Runtime.getRuntime().availableProcessors());
+  }
+
+  @NotNull
+  private Flux<Record> parallelFlux() {
+    return Flux.fromIterable(readStatements)
+        .flatMap(executor::readReactive)
+        .transform(logManager.newReadErrorHandler())
+        .parallel()
+        .runOn(scheduler)
+        .map(readResultMapper::map)
+        .sequential()
+        .transform(metricsManager.newUnmappableRecordMonitor())
+        .transform(logManager.newUnmappableRecordErrorHandler());
   }
 
   @Override
