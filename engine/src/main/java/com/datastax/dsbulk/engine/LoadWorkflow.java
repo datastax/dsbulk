@@ -220,8 +220,10 @@ public class LoadWorkflow implements Workflow {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(metricsManager, null);
       e = WorkflowUtils.closeQuietly(connector, e);
-      for (Disposable disposable : disposables) {
-        e = WorkflowUtils.closeQuietly(disposable, e);
+      if (disposables != null) {
+        for (Disposable disposable : disposables) {
+          e = WorkflowUtils.closeQuietly(disposable, e);
+        }
       }
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(logManager, e);
