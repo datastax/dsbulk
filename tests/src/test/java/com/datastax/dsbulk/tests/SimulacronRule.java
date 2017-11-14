@@ -39,10 +39,6 @@ public class SimulacronRule extends CassandraResourceRule {
     return boundCluster;
   }
 
-  public BoundCluster getBoundCluster() {
-    return boundCluster;
-  }
-
   @Override
   protected void before() {
     boundCluster = server.register(clusterSpec);
