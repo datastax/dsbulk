@@ -16,6 +16,7 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.typesafe.config.ConfigFactory;
+import java.io.File;
 import java.time.Duration;
 import org.junit.Test;
 import org.mockito.internal.util.reflection.Whitebox;
@@ -37,6 +38,7 @@ public class MonitoringSettingsTest {
     assertThat(Whitebox.getInternalState(metricsManager, "expectedWrites")).isEqualTo(-1L);
     assertThat(Whitebox.getInternalState(metricsManager, "expectedReads")).isEqualTo(-1L);
     assertThat(Whitebox.getInternalState(metricsManager, "jmx")).isEqualTo(true);
+    assertThat(Whitebox.getInternalState(metricsManager, "csvDirectory")).isEqualTo(null);
   }
 
   @Test
@@ -49,7 +51,8 @@ public class MonitoringSettingsTest {
                     + "reportRate = 30 minutes, "
                     + "expectedWrites = 1000, "
                     + "expectedReads = 50,"
-                    + "jmx = false"));
+                    + "jmx = false,"
+                    + "csvDirectory = /tmp"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true);
     assertThat(metricsManager).isNotNull();
@@ -60,5 +63,7 @@ public class MonitoringSettingsTest {
     assertThat(Whitebox.getInternalState(metricsManager, "expectedWrites")).isEqualTo(1000L);
     assertThat(Whitebox.getInternalState(metricsManager, "expectedReads")).isEqualTo(50L);
     assertThat(Whitebox.getInternalState(metricsManager, "jmx")).isEqualTo(false);
+    assertThat(Whitebox.getInternalState(metricsManager, "csvDirectory"))
+        .isEqualTo(new File("/tmp").toPath());
   }
 }
