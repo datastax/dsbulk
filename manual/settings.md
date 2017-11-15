@@ -614,11 +614,11 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 #### --batch.bufferSize _&lt;number&gt;_
 
-The buffer size to use for batching statements.
+The maximum batch size.
 
-The buffer will be flushed when this size is reached.
+The ideal batch size depends on how large is the data to be inserted: the larger the data, the smaller this value should be.
 
-It is usually not necessary to set this value higher than `maxBatchSize`, unless the dataset to load is unsorted, in which case a higher value might improve the average batch size.
+The ideal batch size also depends on the batch mode in use. When using **PARTITION_KEY**, it is usually better to use larger batch sizes. When using **REPLICA_SET** however, batches sizes should remain small (below 10).
 
 Default: **32**.
 
@@ -1083,8 +1083,6 @@ Valid values are:
 - **OpenSSL**: uses Netty's native support for OpenSSL
 
 Using OpenSSL provides better performance and generates less garbage. This is the recommended provider when using SSL.
-
-Follow these instructions to find out how to add this dependency: http://netty.io/wiki/forked-tomcat-native.html
 
 Default: **"None"**.
 
