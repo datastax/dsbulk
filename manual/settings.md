@@ -1275,6 +1275,12 @@ Durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 
+#### --monitoring.csvDirectory _&lt;string&gt;_
+
+If not None, enables CSV reporting to the directory specified.
+
+Default: **"None"**.
+
 #### --monitoring.durationUnit _&lt;string&gt;_
 
 The time unit to use when printing latency durations.

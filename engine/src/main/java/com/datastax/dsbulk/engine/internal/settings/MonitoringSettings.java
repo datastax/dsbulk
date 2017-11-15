@@ -46,7 +46,11 @@ public class MonitoringSettings {
       expectedWrites = config.getLong(EXPECTED_WRITES);
       expectedReads = config.getLong(EXPECTED_READS);
       jmx = config.getBoolean(JMX);
-      csvDirectory = config.getPath(CSV_DIRECTORY);
+      if (config.getString(CSV_DIRECTORY).equals("None")) {
+        csvDirectory = null;
+      } else {
+        csvDirectory = config.getPath(CSV_DIRECTORY);
+      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "monitoring");
     }
