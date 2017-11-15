@@ -7,13 +7,8 @@ Two providers are available:
 - `JDK`: uses JDK's standard SSLContext.
 - `OpenSSL`: uses Netty's native support for OpenSSL.
 
-Using `OpenSSL` provides better performance and generates less garbage.
-A disadvantage of using the OpenSSL provider is that, unlike the `JDK` provider,
-it requires a platform-specific dependency, named "netty-tcnative",
-which must be added manually to the loader's classpath
-(typically by dropping its jar in the lib subdirectory of the DSBulk archive).
-Follow [these instructions](http://netty.io/wiki/forked-tomcat-native.html) 
-to find out how to add this dependency.
+Using `OpenSSL` provides better performance and generates less garbage. This is the recommended
+provider when using SSL.
 
 All the available configuration options are listed in the [Settings page].
         
