@@ -9,6 +9,7 @@ package com.datastax.dsbulk.engine.internal.metrics;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.codahale.metrics.CsvReporter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.JmxReporter;
 import com.codahale.metrics.Meter;
@@ -24,6 +25,7 @@ import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListe
 import com.datastax.dsbulk.executor.api.listener.MetricsReportingExecutionListener;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
@@ -52,6 +54,7 @@ public class MetricsManager implements AutoCloseable {
   private final long expectedWrites;
   private final long expectedReads;
   private final boolean jmx;
+  private Path csvDirectory;
   private final Duration reportInterval;
   private final boolean batchingEnabled;
 
@@ -69,6 +72,7 @@ public class MetricsManager implements AutoCloseable {
   private MetricsReportingExecutionListener writesReporter;
   private MetricsReportingExecutionListener readsReporter;
   private JmxReporter jmxReporter;
+  private CsvReporter csvReporter;
 
   public MetricsManager(
       WorkflowType workflowType,
@@ -79,6 +83,7 @@ public class MetricsManager implements AutoCloseable {
       long expectedWrites,
       long expectedReads,
       boolean jmx,
+      Path csvDirectory,
       Duration reportInterval,
       boolean batchingEnabled) {
     this.workflowType = workflowType;
@@ -89,6 +94,7 @@ public class MetricsManager implements AutoCloseable {
     this.expectedWrites = expectedWrites;
     this.expectedReads = expectedReads;
     this.jmx = jmx;
+    this.csvDirectory = csvDirectory;
     this.reportInterval = reportInterval;
     this.batchingEnabled = batchingEnabled;
   }
@@ -106,6 +112,10 @@ public class MetricsManager implements AutoCloseable {
     if (jmx) {
       startJMXReporter();
     }
+    if (csvDirectory != null) {
+      startCSVReporter();
+    }
+
     startMemoryReporter();
     switch (workflowType) {
       case LOAD:
@@ -219,6 +229,15 @@ public class MetricsManager implements AutoCloseable {
     jmxReporter.start();
   }
 
+  private void startCSVReporter() {
+    csvReporter =
+        CsvReporter.forRegistry(registry)
+            .convertDurationsTo(durationUnit)
+            .convertRatesTo(rateUnit)
+            .build(csvDirectory.toFile());
+    csvReporter.start(reportInterval.getSeconds(), SECONDS);
+  }
+
   private void startResultMappingsReporter() {
     resultMappingsReporter = new RecordReporter(registry, rateUnit, scheduler, expectedWrites);
     resultMappingsReporter.start(reportInterval.getSeconds(), SECONDS);
@@ -302,6 +321,9 @@ public class MetricsManager implements AutoCloseable {
   private void closeReporters() {
     if (jmxReporter != null) {
       jmxReporter.close();
+    }
+    if (csvReporter != null) {
+      csvReporter.close();
     }
     if (resultMappingsReporter != null) {
       resultMappingsReporter.close();

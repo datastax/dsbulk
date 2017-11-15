@@ -12,6 +12,7 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
@@ -25,6 +26,7 @@ public class MonitoringSettings {
   private static final String EXPECTED_WRITES = "expectedWrites";
   private static final String EXPECTED_READS = "expectedReads";
   private static final String JMX = "jmx";
+  private static final String CSV_DIRECTORY = "csvDirectory";
 
   private final String executionId;
   private final TimeUnit rateUnit;
@@ -33,6 +35,7 @@ public class MonitoringSettings {
   private final long expectedWrites;
   private final long expectedReads;
   private final boolean jmx;
+  private final Path csvDirectory;
 
   MonitoringSettings(LoaderConfig config, String executionId) {
     this.executionId = executionId;
@@ -43,6 +46,7 @@ public class MonitoringSettings {
       expectedWrites = config.getLong(EXPECTED_WRITES);
       expectedReads = config.getLong(EXPECTED_READS);
       jmx = config.getBoolean(JMX);
+      csvDirectory = config.getPath(CSV_DIRECTORY);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "monitoring");
     }
@@ -66,6 +70,7 @@ public class MonitoringSettings {
         expectedWrites,
         expectedReads,
         jmx,
+        csvDirectory,
         reportRate,
         batchingEnabled);
   }
