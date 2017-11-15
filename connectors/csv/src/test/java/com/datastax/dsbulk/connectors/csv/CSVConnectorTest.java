@@ -322,7 +322,7 @@ class CSVConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxLines = 4",
+                        "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 4",
                         ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
@@ -379,12 +379,12 @@ class CSVConnectorTest {
   }
 
   @Test
-  void should_skip_lines() throws Exception {
+  void should_skip_records() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = \"%s\", recursive = true, skipLines = 10", url("/root")))
+                    String.format("url = \"%s\", recursive = true, skipRecords = 10", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -393,12 +393,13 @@ class CSVConnectorTest {
   }
 
   @Test
-  void should_skip_lines2() throws Exception {
+  void should_skip_records2() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = \"%s\", recursive = true, skipLines = 150", url("/root")))
+                    String.format(
+                        "url = \"%s\", recursive = true, skipRecords = 150", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -407,12 +408,12 @@ class CSVConnectorTest {
   }
 
   @Test
-  void should_honor_max_lines() throws Exception {
+  void should_honor_max_records() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = \"%s\", recursive = true, maxLines = 10", url("/root")))
+                    String.format("url = \"%s\", recursive = true, maxRecords = 10", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -421,12 +422,12 @@ class CSVConnectorTest {
   }
 
   @Test
-  void should_honor_max_lines2() throws Exception {
+  void should_honor_max_records2() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = \"%s\", recursive = true, maxLines = 1", url("/root")))
+                    String.format("url = \"%s\", recursive = true, maxRecords = 1", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -435,13 +436,13 @@ class CSVConnectorTest {
   }
 
   @Test
-  void should_honor_max_lines_and_skip_lines() throws Exception {
+  void should_honor_max_records_and_skip_records() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", recursive = true, skipLines = 95, maxLines = 10",
+                        "url = \"%s\", recursive = true, skipRecords = 95, maxRecords = 10",
                         url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -451,13 +452,13 @@ class CSVConnectorTest {
   }
 
   @Test
-  void should_honor_max_lines_and_skip_lines2() throws Exception {
+  void should_honor_max_records_and_skip_records2() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", skipLines = 10, maxLines = 1",
+                        "url = \"%s\", skipRecords = 10, maxRecords = 1",
                         url("/root/ip-by-country-sample1.csv")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);

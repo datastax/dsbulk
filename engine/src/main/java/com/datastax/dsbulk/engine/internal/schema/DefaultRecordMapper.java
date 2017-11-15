@@ -120,7 +120,7 @@ public class DefaultRecordMapper implements RecordMapper {
       BoundStatement bs, String variable, Object raw, DataType cqlType, TypeToken<?> javaType) {
     // If the raw value is one of the nullStrings, the input represents null.
     Object convertedValue = raw;
-    if (raw == null || (raw instanceof String && nullStrings.contains(raw))) {
+    if (raw != null && nullStrings.contains(raw.toString())) {
       convertedValue = null;
     }
     // Account for nullToUnset.

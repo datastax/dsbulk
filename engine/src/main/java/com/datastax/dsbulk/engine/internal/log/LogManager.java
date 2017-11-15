@@ -21,6 +21,7 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.BusyConnectionException;
 import com.datastax.driver.core.exceptions.BusyPoolException;
+import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -687,6 +688,7 @@ public class LogManager implements AutoCloseable {
 
   private static boolean isUnrecoverable(Throwable error) {
     return !(error instanceof QueryExecutionException
+        || error instanceof InvalidQueryException
         || error instanceof OperationTimedOutException
         || error instanceof BusyPoolException
         || error instanceof BusyConnectionException);

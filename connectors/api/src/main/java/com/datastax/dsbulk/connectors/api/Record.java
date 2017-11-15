@@ -9,6 +9,7 @@ package com.datastax.dsbulk.connectors.api;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Set;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * An item emitted by a {@link Connector}.
@@ -74,6 +75,7 @@ public interface Record {
    *
    * @return a collection containing all the values in this record.
    */
+  @NotNull
   Collection<Object> values();
 
   /**

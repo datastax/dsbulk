@@ -1,0 +1,45 @@
+/*
+This is a comment
+*/
+[
+  // doc1
+  {
+    "Year": 1997,
+    "Make": "Ford",
+    "Model": "E350",
+    "Description": "ac, abs, moon",
+    "Price": 3000.0
+  },
+  // doc2
+  {
+    "Year": 1999,
+    "Make": "Chevy",
+    "Model": "Venture \"Extended Edition\"",
+    "Description": null,
+    "Price": 4900.0
+  },
+  // doc3
+  {
+    "Year": 1996,
+    "Make": "Jeep",
+    "Model": "Grand Cherokee",
+    "Description": "MUST SELL!\nair, moon roof, loaded",
+    "Price": 4799.0
+  },
+  // doc4
+  {
+    "Year": 1999,
+    "Make": "Chevy",
+    "Model": "Venture \"Extended Edition, Very Large\"",
+    "Description": null,
+    "Price": 5000.0
+  },
+  // doc5
+  {
+    "Year": null,
+    "Make": null,
+    "Model": "Venture \"Extended Edition\"",
+    "Description": null,
+    "Price": 4900.0
+  }
+]

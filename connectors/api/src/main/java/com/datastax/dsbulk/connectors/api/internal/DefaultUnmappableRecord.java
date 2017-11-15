@@ -13,6 +13,7 @@ import java.net.URI;
 import java.util.Collection;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.jetbrains.annotations.NotNull;
 
 /** */
 public class DefaultUnmappableRecord implements UnmappableRecord {
@@ -56,11 +57,13 @@ public class DefaultUnmappableRecord implements UnmappableRecord {
     return location.get();
   }
 
+  @NotNull
   @Override
   public Set<String> fields() {
     return ImmutableSet.of();
   }
 
+  @NotNull
   @Override
   public Collection<Object> values() {
     return ImmutableList.of();

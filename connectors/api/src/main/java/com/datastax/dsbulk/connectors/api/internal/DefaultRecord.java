@@ -13,9 +13,11 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
+import org.jetbrains.annotations.NotNull;
 
 /** */
 public class DefaultRecord extends LinkedHashMap<String, Object> implements Record {
@@ -58,6 +60,19 @@ public class DefaultRecord extends LinkedHashMap<String, Object> implements Reco
     Streams.forEachPair(Arrays.stream(keys), Arrays.stream(values), this::put);
   }
 
+  public DefaultRecord(
+      Object source,
+      Supplier<URI> resource,
+      long position,
+      Supplier<URI> location,
+      Map<String, ?> values) {
+    this.resource = resource;
+    this.position = position;
+    this.source = source;
+    this.location = location;
+    putAll(values);
+  }
+
   @Override
   public Object getSource() {
     return source;
@@ -78,11 +93,13 @@ public class DefaultRecord extends LinkedHashMap<String, Object> implements Reco
     return location.get();
   }
 
+  @NotNull
   @Override
   public Set<String> fields() {
     return keySet();
   }
 
+  @NotNull
   @Override
   public Collection<Object> values() {
     return super.values();

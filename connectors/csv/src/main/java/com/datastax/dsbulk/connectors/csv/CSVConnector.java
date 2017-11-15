@@ -83,8 +83,8 @@ public class CSVConnector implements Connector {
   private static final String QUOTE = "quote";
   private static final String ESCAPE = "escape";
   private static final String COMMENT = "comment";
-  private static final String SKIP_LINES = "skipLines";
-  private static final String MAX_LINES = "maxLines";
+  private static final String SKIP_RECORDS = "skipRecords";
+  private static final String MAX_RECORDS = "maxRecords";
   private static final String MAX_CONCURRENT_FILES = "maxConcurrentFiles";
   private static final String RECURSIVE = "recursive";
   private static final String HEADER = "header";
@@ -100,8 +100,8 @@ public class CSVConnector implements Connector {
   private char quote;
   private char escape;
   private char comment;
-  private long skipLines;
-  private long maxLines;
+  private long skipRecords;
+  private long maxRecords;
   private int maxConcurrentFiles;
   private boolean recursive;
   private boolean header;
@@ -131,8 +131,8 @@ public class CSVConnector implements Connector {
       quote = settings.getChar(QUOTE);
       escape = settings.getChar(ESCAPE);
       comment = settings.getChar(COMMENT);
-      skipLines = settings.getLong(SKIP_LINES);
-      maxLines = settings.getLong(MAX_LINES);
+      skipRecords = settings.getLong(SKIP_RECORDS);
+      maxRecords = settings.getLong(MAX_RECORDS);
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
       recursive = settings.getBoolean(RECURSIVE);
       header = settings.getBoolean(HEADER);
@@ -159,9 +159,9 @@ public class CSVConnector implements Connector {
       parserSettings = new CsvParserSettings();
       parserSettings.setFormat(format);
       // do not use this feature as the parser throws an error if the file
-      // has fewer lines than skipLines;
+      // has fewer lines than skipRecords;
       // we'll use the skip() operator instead.
-      // parserSettings.setNumberOfRowsToSkip(skipLines);
+      // parserSettings.setNumberOfRowsToSkip(skipRecords);
       parserSettings.setHeaderExtractionEnabled(header);
       parserSettings.setLineSeparatorDetectionEnabled(true);
       parserSettings.setMaxCharsPerColumn(maxCharsPerColumn);
@@ -270,10 +270,8 @@ public class CSVConnector implements Connector {
               try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
                 parser.beginParsing(r);
                 URI resource = URIUtils.createResourceURI(url);
-                while (true) {
-                  if (sink.isCancelled()) {
-                    break;
-                  }
+                long recordNumber = 1;
+                while (!sink.isCancelled()) {
                   com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
                   ParsingContext context = parser.getContext();
                   String source = context.currentParsedContent();
@@ -281,16 +279,16 @@ public class CSVConnector implements Connector {
                     break;
                   }
                   Record record;
-                  long line = context.currentLine();
+                  long finalRecordNumber = recordNumber++;
                   Supplier<URI> location =
-                      Suppliers.memoize(() -> URIUtils.createLocationURI(url, line));
+                      Suppliers.memoize(() -> URIUtils.createLocationURI(url, finalRecordNumber));
                   try {
                     if (header) {
                       record =
                           new DefaultRecord(
                               source,
                               () -> resource,
-                              line,
+                              finalRecordNumber,
                               location,
                               context.parsedHeaders(),
                               (Object[]) row.getValues());
@@ -302,10 +300,16 @@ public class CSVConnector implements Connector {
                     } else {
                       record =
                           new DefaultRecord(
-                              source, () -> resource, line, location, (Object[]) row.getValues());
+                              source,
+                              () -> resource,
+                              finalRecordNumber,
+                              location,
+                              (Object[]) row.getValues());
                     }
                   } catch (Exception e) {
-                    record = new DefaultUnmappableRecord(source, () -> resource, line, location, e);
+                    record =
+                        new DefaultUnmappableRecord(
+                            source, () -> resource, finalRecordNumber, location, e);
                   }
                   LOGGER.trace("Emitting record {}", record);
                   controller.awaitRequested(1);
@@ -319,11 +323,11 @@ public class CSVConnector implements Connector {
               }
             },
             FluxSink.OverflowStrategy.ERROR);
-    if (skipLines > 0) {
-      records = records.skip(skipLines);
+    if (skipRecords > 0) {
+      records = records.skip(skipRecords);
     }
-    if (maxLines != -1) {
-      records = records.take(maxLines);
+    if (maxRecords != -1) {
+      records = records.take(maxRecords);
     }
     return records;
   }
@@ -375,7 +379,7 @@ public class CSVConnector implements Connector {
 
       @Override
       protected void hookOnNext(Record record) {
-        if (root != null && writer.getRecordCount() == maxLines) {
+        if (root != null && writer.getRecordCount() == maxRecords) {
           end();
           start();
         }

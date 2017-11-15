@@ -286,9 +286,9 @@ class MainTest {
               "^",
               "-header",
               "header",
-              "-skipLines",
+              "-skipRecords",
               "3",
-              "-maxLines",
+              "-maxRecords",
               "111",
               "-maxConcurrentFiles",
               "222",
@@ -326,8 +326,8 @@ class MainTest {
     assertThat(result.getString("connector.csv.encoding")).isEqualTo("enc");
     assertThat(result.getString("connector.csv.escape")).isEqualTo("^");
     assertThat(result.getString("connector.csv.header")).isEqualTo("header");
-    assertThat(result.getInt("connector.csv.skipLines")).isEqualTo(3);
-    assertThat(result.getInt("connector.csv.maxLines")).isEqualTo(111);
+    assertThat(result.getInt("connector.csv.skipRecords")).isEqualTo(3);
+    assertThat(result.getInt("connector.csv.maxRecords")).isEqualTo(111);
     assertThat(result.getInt("connector.csv.maxConcurrentFiles")).isEqualTo(222);
     assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
     assertThat(result.getString("connector.csv.url")).isEqualTo("http://findit");
@@ -643,9 +643,9 @@ class MainTest {
               "*",
               "--connector.csv.comment",
               "#",
-              "--connector.csv.skipLines",
+              "--connector.csv.skipRecords",
               "2",
-              "--connector.csv.maxLines",
+              "--connector.csv.maxRecords",
               "3"
             });
     assertThat(result.getString("connector.csv.url")).isEqualTo("url");
@@ -659,8 +659,8 @@ class MainTest {
     assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
     assertThat(result.getString("connector.csv.escape")).isEqualTo("*");
     assertThat(result.getString("connector.csv.comment")).isEqualTo("#");
-    assertThat(result.getInt("connector.csv.skipLines")).isEqualTo(2);
-    assertThat(result.getInt("connector.csv.maxLines")).isEqualTo(3);
+    assertThat(result.getInt("connector.csv.skipRecords")).isEqualTo(2);
+    assertThat(result.getInt("connector.csv.maxRecords")).isEqualTo(3);
   }
 
   @Test

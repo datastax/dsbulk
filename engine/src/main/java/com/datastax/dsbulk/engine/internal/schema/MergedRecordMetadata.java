@@ -11,6 +11,7 @@ import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecordMetadata;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
+import org.jetbrains.annotations.NotNull;
 
 public class MergedRecordMetadata extends DefaultRecordMetadata {
 
@@ -23,7 +24,7 @@ public class MergedRecordMetadata extends DefaultRecordMetadata {
   }
 
   @Override
-  public TypeToken<?> getFieldType(String field, DataType cqlType) {
+  public TypeToken<?> getFieldType(@NotNull String field, @NotNull DataType cqlType) {
     TypeToken<?> fieldType = super.getFieldType(field, cqlType);
     if (fieldType == null) {
       fieldType = fallback.getFieldType(field, cqlType);

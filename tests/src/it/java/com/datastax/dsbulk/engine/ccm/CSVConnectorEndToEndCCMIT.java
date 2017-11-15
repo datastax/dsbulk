@@ -371,9 +371,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
-    args.add("--connector.csv.skipLines");
+    args.add("--connector.csv.skipRecords");
     args.add("3");
-    args.add("--connector.csv.maxLines");
+    args.add("--connector.csv.maxRecords");
     args.add("24");
 
     int status = new Main(addContactPointAndPort(args)).run();
