@@ -88,10 +88,12 @@ public class UnloadWorkflow implements Workflow {
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
-    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD, false);
-    metricsManager.init();
     logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
     logManager.init();
+    metricsManager =
+        monitoringSettings.newMetricsManager(
+            WorkflowType.UNLOAD, false, logManager.getExecutionDirectory());
+    metricsManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);

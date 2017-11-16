@@ -1275,11 +1275,13 @@ Durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 
-#### --monitoring.csvDirectory _&lt;string&gt;_
+#### --monitoring.csv _&lt;boolean&gt;_
 
-If not None, enables CSV reporting to the directory specified.
+Whether or not to enable CSV reporting.
 
-Default: **"None"**.
+If enabled, csv files containing metrics will be generated in the designated log directory.
+
+Default: **false**.
 
 #### --monitoring.durationUnit _&lt;string&gt;_
 

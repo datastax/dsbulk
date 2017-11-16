@@ -17,6 +17,7 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.typesafe.config.ConfigFactory;
 import java.io.File;
+import java.nio.file.Path;
 import java.time.Duration;
 import org.junit.Test;
 import org.mockito.internal.util.reflection.Whitebox;
@@ -29,7 +30,7 @@ public class MonitoringSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.monitoring"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
-    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true);
+    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true, null);
     assertThat(metricsManager).isNotNull();
     assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
     assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(MILLISECONDS);
@@ -38,11 +39,12 @@ public class MonitoringSettingsTest {
     assertThat(Whitebox.getInternalState(metricsManager, "expectedWrites")).isEqualTo(-1L);
     assertThat(Whitebox.getInternalState(metricsManager, "expectedReads")).isEqualTo(-1L);
     assertThat(Whitebox.getInternalState(metricsManager, "jmx")).isEqualTo(true);
-    assertThat(Whitebox.getInternalState(metricsManager, "csvDirectory")).isEqualTo(null);
+    assertThat(Whitebox.getInternalState(metricsManager, "csv")).isEqualTo(false);
   }
 
   @Test
   public void should_create_metrics_manager_with_user_supplied_settings() throws Exception {
+    Path tmpPath = new File("/tmp").toPath();
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -52,9 +54,9 @@ public class MonitoringSettingsTest {
                     + "expectedWrites = 1000, "
                     + "expectedReads = 50,"
                     + "jmx = false,"
-                    + "csvDirectory = /tmp"));
+                    + "csv = true"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
-    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true);
+    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true, tmpPath);
     assertThat(metricsManager).isNotNull();
     assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);
     assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(SECONDS);
@@ -63,7 +65,7 @@ public class MonitoringSettingsTest {
     assertThat(Whitebox.getInternalState(metricsManager, "expectedWrites")).isEqualTo(1000L);
     assertThat(Whitebox.getInternalState(metricsManager, "expectedReads")).isEqualTo(50L);
     assertThat(Whitebox.getInternalState(metricsManager, "jmx")).isEqualTo(false);
-    assertThat(Whitebox.getInternalState(metricsManager, "csvDirectory"))
-        .isEqualTo(new File("/tmp").toPath());
+    assertThat(Whitebox.getInternalState(metricsManager, "csv")).isEqualTo(true);
+    assertThat(Whitebox.getInternalState(metricsManager, "executionDirectory")).isEqualTo(tmpPath);
   }
 }

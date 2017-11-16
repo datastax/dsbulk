@@ -54,7 +54,8 @@ public class MetricsManager implements AutoCloseable {
   private final long expectedWrites;
   private final long expectedReads;
   private final boolean jmx;
-  private Path csvDirectory;
+  private final boolean csv;
+  private final Path executionDirectory;
   private final Duration reportInterval;
   private final boolean batchingEnabled;
 
@@ -83,7 +84,8 @@ public class MetricsManager implements AutoCloseable {
       long expectedWrites,
       long expectedReads,
       boolean jmx,
-      Path csvDirectory,
+      boolean csv,
+      Path executionDirectory,
       Duration reportInterval,
       boolean batchingEnabled) {
     this.workflowType = workflowType;
@@ -94,7 +96,8 @@ public class MetricsManager implements AutoCloseable {
     this.expectedWrites = expectedWrites;
     this.expectedReads = expectedReads;
     this.jmx = jmx;
-    this.csvDirectory = csvDirectory;
+    this.csv = csv;
+    this.executionDirectory = executionDirectory;
     this.reportInterval = reportInterval;
     this.batchingEnabled = batchingEnabled;
   }
@@ -112,7 +115,7 @@ public class MetricsManager implements AutoCloseable {
     if (jmx) {
       startJMXReporter();
     }
-    if (csvDirectory != null) {
+    if (csv) {
       startCSVReporter();
     }
 
@@ -234,7 +237,7 @@ public class MetricsManager implements AutoCloseable {
         CsvReporter.forRegistry(registry)
             .convertDurationsTo(durationUnit)
             .convertRatesTo(rateUnit)
-            .build(csvDirectory.toFile());
+            .build(executionDirectory.toFile());
     csvReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 

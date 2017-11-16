@@ -107,6 +107,7 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
+            false,
             null,
             Duration.ofSeconds(5),
             false);
@@ -132,6 +133,7 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
+            false,
             null,
             Duration.ofSeconds(5),
             true);
@@ -156,6 +158,7 @@ public class MetricsManagerTest {
             MILLISECONDS,
             -1,
             -1,
+            false,
             false,
             null,
             Duration.ofSeconds(5),
