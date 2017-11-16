@@ -35,7 +35,7 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
 
   Supplier<Executor> executor = AbstractBulkExecutor.DEFAULT_EXECUTOR_SUPPLIER;
 
-  QueueFactory<ReadResult> queueFactory = AbstractBulkExecutor.DEFAULT_QUEUE_FACTORY;
+  QueueFactory<ReadResult> queueFactory = null;
 
   AbstractBulkExecutorBuilder(Session session) {
     this.session = session;
