@@ -85,7 +85,8 @@ public class BatchSettingsTest {
             ConfigFactory.parseString("maxBatchSize = 10")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
-    assertThat(settings.getBufferSize()).isEqualTo(32);
+    // buffer size should implicitly be updated when max batch size is changed and it isn't specified.
+    assertThat(settings.getBufferSize()).isEqualTo(10);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);

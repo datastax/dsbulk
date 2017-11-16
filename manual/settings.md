@@ -614,13 +614,15 @@ See `com.datastax.dsbulk.executor.api.batch.StatementBatcher` for more informati
 
 #### --batch.bufferSize _&lt;number&gt;_
 
-The maximum batch size.
+The buffer size to use for batching statements.
 
-The ideal batch size depends on how large is the data to be inserted: the larger the data, the smaller this value should be.
+The buffer will be flushed when this size is reached.
 
-The ideal batch size also depends on the batch mode in use. When using **PARTITION_KEY**, it is usually better to use larger batch sizes. When using **REPLICA_SET** however, batches sizes should remain small (below 10).
+When set to a negative value the buffer size is implicitly set to `maxBatchSize`.
 
-Default: **32**.
+It is usually not necessary to set this value higher than `maxBatchSize`, unless the dataset to load is unsorted, in which case a higher value might improve the average batch size.
+
+Default: **-1**.
 
 #### --batch.enabled _&lt;boolean&gt;_
 

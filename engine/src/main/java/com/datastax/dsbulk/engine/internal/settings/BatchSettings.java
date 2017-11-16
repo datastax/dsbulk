@@ -32,7 +32,8 @@ public class BatchSettings {
       enabled = config.getBoolean(ENABLED);
       mode = config.getEnum(StatementBatcher.BatchMode.class, MODE);
       maxBatchSize = config.getInt(MAX_BATCH_SIZE);
-      bufferSize = config.getInt(BUFFER_SIZE);
+      int bufferConfig = config.getInt(BUFFER_SIZE);
+      bufferSize = bufferConfig > -1 ? bufferConfig : maxBatchSize;
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
     }
