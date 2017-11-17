@@ -211,7 +211,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_mapped_timestamp() throws Exception {
+  public void should_bind_mapped_long_timestamp() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     when(record.getFieldValue("2")).thenReturn("123");
     when(mapping.fieldToVariable("2")).thenReturn(TIMESTAMP_VARNAME);
@@ -234,7 +234,34 @@ public class DefaultRecordMapperTest {
 
     assertParameter(0, C1, 42, TypeCodec.cint());
     assertParameter(1, C2, "NIL", TypeCodec.varchar());
-    assertParameter(2, "dsbulk_internal_timestamp", "123", TypeCodec.bigint());
+    assertParameter(2, "dsbulk_internal_timestamp", 123L, TypeCodec.bigint());
+  }
+
+  @Test
+  public void should_bind_mapped_string_timestamp() throws Exception {
+    when(record.getFieldValue("1")).thenReturn("NIL");
+    when(record.getFieldValue("2")).thenReturn("2017-01-02T00:00:02");
+    when(mapping.fieldToVariable("2")).thenReturn(TIMESTAMP_VARNAME);
+    when(mapping.variableToField(TIMESTAMP_VARNAME)).thenReturn("2");
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            mapping,
+            recordMetadata,
+            ImmutableSet.of(),
+            true,
+            -1,
+            -1,
+            (mappedRecord, statement) -> boundStatement);
+    Statement result = mapper.map(record);
+    assertThat(result).isSameAs(boundStatement);
+
+    verify(boundStatement, times(3))
+        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
+
+    assertParameter(0, C1, 42, TypeCodec.cint());
+    assertParameter(1, C2, "NIL", TypeCodec.varchar());
+    assertParameter(2, "dsbulk_internal_timestamp", 1483315202000000L, TypeCodec.bigint());
   }
 
   @Test
@@ -288,7 +315,7 @@ public class DefaultRecordMapperTest {
 
     assertParameter(0, C1, 42, TypeCodec.cint());
     assertParameter(1, C2, "NIL", TypeCodec.varchar());
-    assertParameter(2, "dsbulk_internal_timestamp", "123", TypeCodec.bigint());
+    assertParameter(2, "dsbulk_internal_timestamp", 123L, TypeCodec.bigint());
   }
 
   @Test

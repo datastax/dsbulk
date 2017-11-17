@@ -15,6 +15,10 @@ public class BulkConfigurationException extends RuntimeException {
     this.path = path;
   }
 
+  public BulkConfigurationException(Throwable cause, String path) {
+    this(cause.getMessage(), cause, path);
+  }
+
   public BulkConfigurationException(String message, Throwable cause, String path) {
     super(message, cause);
     this.path = path;

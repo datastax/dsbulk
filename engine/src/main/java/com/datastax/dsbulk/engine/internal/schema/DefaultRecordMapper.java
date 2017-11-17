@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.engine.internal.WorkflowUtils.parseTimestamp;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TTL_VARNAME;
 
@@ -158,6 +159,12 @@ public class DefaultRecordMapper implements RecordMapper {
     if (convertedValue == null) {
       bs.setToNull(Metadata.quoteIfNecessary(variable));
     } else {
+      if (variable.equals(TIMESTAMP_VARNAME)) {
+        // The input value is intended to be the timestamp of the inserted data.
+        // Parse it specially.
+        convertedValue = parseTimestamp(convertedValue.toString(), "field value");
+        javaType = TypeToken.of(Long.class);
+      }
       TypeCodec<Object> codec = mapping.codec(variable, cqlType, javaType);
       bs.set(Metadata.quoteIfNecessary(variable), convertedValue, codec);
     }

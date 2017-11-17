@@ -157,7 +157,7 @@ Mappings should be specified as a map of the following form:
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 
-To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`. Note that unlike `schema.query_timestamp`, this mapping only supports the numeric format of timestamp.
+To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`.
 
 To specify that a column should be populated with the result of a function call, specify the function call as the input field (e.g. `now() = c4`). Note, this is only relevant for load operations.
 
@@ -488,7 +488,7 @@ Mappings should be specified as a map of the following form:
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, etc. are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 
-To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`. Note that unlike `schema.query_timestamp`, this mapping only supports the numeric format of timestamp.
+To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`.
 
 To specify that a column should be populated with the result of a function call, specify the function call as the input field (e.g. `now() = c4`). Note, this is only relevant for load operations.
 
@@ -1086,8 +1086,6 @@ Valid values are:
 - **OpenSSL**: uses Netty's native support for OpenSSL
 
 Using OpenSSL provides better performance and generates less garbage. This is the recommended provider when using SSL.
-
-Follow these instructions to find out how to add this dependency: http://netty.io/wiki/forked-tomcat-native.html
 
 Default: **"None"**.
 

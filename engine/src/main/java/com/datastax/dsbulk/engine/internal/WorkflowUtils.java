@@ -7,12 +7,16 @@
 package com.datastax.dsbulk.engine.internal;
 
 import static java.util.concurrent.TimeUnit.HOURS;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
+import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
+import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.google.common.base.Throwables;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -112,5 +116,36 @@ public class WorkflowUtils {
       }
       throw new IllegalStateException("Unable to load data to non DSE cluster");
     }
+  }
+
+  public static long parseTimestamp(String timestamp, String fieldDescriptor) {
+    if (timestamp.isEmpty()) {
+      return -1;
+    }
+
+    // Try parsing as an int, and then as ISO_LOCAL_DATE_TIME (interpreted as UTC)
+
+    long timestampMicros;
+    try {
+      timestampMicros = Long.parseLong(timestamp);
+    } catch (NumberFormatException e) {
+      StringToInstantCodec codec = new StringToInstantCodec(CodecSettings.CQL_DATE_TIME_FORMAT);
+      try {
+        Instant instant = codec.convertFrom(timestamp);
+        timestampMicros = MILLISECONDS.toMicros(instant.toEpochMilli());
+      } catch (InvalidTypeException e1) {
+        e1.addSuppressed(e);
+        IllegalArgumentException e2 =
+            new IllegalArgumentException(
+                String.format(
+                    "Could not parse %s '%s'; accepted formats are numeric "
+                        + "milliseconds since epoch or ISO-8601 date-time "
+                        + "(e.g. '2017-01-02T12:34:56Z')",
+                    fieldDescriptor, timestamp));
+        e2.addSuppressed(e1);
+        throw e2;
+      }
+    }
+    return timestampMicros;
   }
 }
