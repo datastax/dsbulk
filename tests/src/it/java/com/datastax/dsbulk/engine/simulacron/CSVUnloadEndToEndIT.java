@@ -225,14 +225,15 @@ public class CSVUnloadEndToEndIT {
   private void verifyDelimiterCount(String delimiter, Path output_path, int expected)
       throws Exception {
 
-    Scanner content = new Scanner(output_path.toFile()).useDelimiter(delimiter);
-    int i = 0;
-    while (content.hasNext()) {
-      content.next();
-      i++;
+    try (Scanner content = new Scanner(output_path.toFile()).useDelimiter(delimiter)) {
+      int i = 0;
+
+      while (content.hasNext()) {
+        content.next();
+        i++;
+      }
+      Assertions.assertThat(i - 1).isEqualTo(expected);
     }
-    Assertions.assertThat(i - 1).isEqualTo(expected);
-    content.close();
   }
 
   @SuppressWarnings("ResultOfMethodCallIgnored")

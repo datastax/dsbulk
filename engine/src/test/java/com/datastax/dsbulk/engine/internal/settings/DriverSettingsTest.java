@@ -179,7 +179,6 @@ public class DriverSettingsTest {
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
     assertThat(Whitebox.getInternalState(loginConfiguration, "principal"))
         .isEqualTo("alice@DATASTAX.COM");
-    String keytabefield = (String) Whitebox.getInternalState(loginConfiguration, "keyTab");
     assertThat(Whitebox.getInternalState(loginConfiguration, "keyTab"))
         .isEqualTo("/path/to/my/keyTab");
   }

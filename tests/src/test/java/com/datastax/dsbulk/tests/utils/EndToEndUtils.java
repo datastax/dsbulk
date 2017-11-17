@@ -165,11 +165,8 @@ public class EndToEndUtils {
         Arrays.stream(outputFilePaths)
             .mapToLong(
                 path -> {
-                  try {
-                    Stream<String> stream = Files.lines(path);
-                    long lineCount = stream.count();
-                    stream.close();
-                    return lineCount;
+                  try (Stream<String> stream = Files.lines(path)) {
+                    return stream.count();
                   } catch (IOException e) {
                     // This should never happen. Emit the stack trace, but in case
                     // it's not visible in the test output, make the test fail

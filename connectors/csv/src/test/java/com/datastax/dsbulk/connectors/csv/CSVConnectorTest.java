@@ -157,11 +157,9 @@ public class CSVConnectorTest {
               .autoConnect(2);
       records.subscribe(connector.write());
       records.blockLast();
-      if (PlatformUtils.isWindows()) {
-        assertThat(new String(baos.toByteArray(), "ISO-8859-1")).isEqualTo("fóô,bàr,qïx\r\n");
-      } else {
-        assertThat(new String(baos.toByteArray(), "ISO-8859-1")).isEqualTo("fóô,bàr,qïx\n");
-      }
+      assertThat(new String(baos.toByteArray(), "ISO-8859-1"))
+          .isEqualTo("fóô,bàr,qïx" + System.lineSeparator());
+
       connector.close();
     } finally {
       System.setOut(stdout);

@@ -68,10 +68,10 @@ public class LogSettingsTest {
   @Test
   public void should_create_log_manager_when_output_directory_url_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String dirtToLoad = ConfigUtils.escapeBackSlash(dir.toString());
+    String dirToload = ConfigUtils.escapeBackSlash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + dirtToLoad + "\"")
+            ConfigFactory.parseString("directory = \"" + dirToload + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
@@ -83,10 +83,10 @@ public class LogSettingsTest {
   @Test
   public void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String dirtToLoad = ConfigUtils.escapeBackSlash(dir.toString());
+    String dirToload = ConfigUtils.escapeBackSlash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + dirtToLoad + "\"")
+            ConfigFactory.parseString("directory = \"" + dirToload + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
