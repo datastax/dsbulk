@@ -794,6 +794,9 @@ The name of the AuthProvider to use.
  - **DseGSSAPIAuthProvider**:
    Uses `com.datastax.driver.dse.auth.DseGSSAPIAuthProvider` for authentication. Supports SASL authentication to DSE clusters using the `GSSAPI` mechanism (Kerberos authentication), and also supports optional proxy authentication.
 
+   NOTE: When using this provider you may have to set the `java.security.krb5.conf` system property to point to your `krb5.conf` file (e.g. set the `DSBULK_JAVA_OPTS` environment variable to `-Djava.security.krb5.conf=/home/user/krb5.conf`).
+   See the [Oracle Java Kerberos documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/security/jgss/tutorials/KerberosReq.html) for more details.
+
 Default: **"None"**.
 
 #### --driver.auth.authorizationId _&lt;string&gt;_
