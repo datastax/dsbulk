@@ -19,6 +19,7 @@ import com.typesafe.config.ConfigFactory;
 import java.io.File;
 import java.nio.file.Path;
 import java.time.Duration;
+import org.assertj.core.util.Files;
 import org.junit.Test;
 import org.mockito.internal.util.reflection.Whitebox;
 
@@ -44,7 +45,7 @@ public class MonitoringSettingsTest {
 
   @Test
   public void should_create_metrics_manager_with_user_supplied_settings() throws Exception {
-    Path tmpPath = new File(System.getProperty("java.io.tmpdir")).toPath();
+    Path tmpPath = Files.temporaryFolder().toPath();
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
