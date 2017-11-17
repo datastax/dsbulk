@@ -44,7 +44,7 @@ public class MonitoringSettingsTest {
 
   @Test
   public void should_create_metrics_manager_with_user_supplied_settings() throws Exception {
-    Path tmpPath = new File("/tmp").toPath();
+    Path tmpPath = new File(System.getProperty("java.io.tmpdir")).toPath();
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
