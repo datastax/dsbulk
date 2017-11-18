@@ -46,60 +46,61 @@ public class PlainTextAuthEndToEndTestIT extends AbstractEndToEndTestIT {
   public void full_load_unload() throws Exception {
     InetAddress cp = ccm.getInitialContactPoints().get(0);
     PlainTextAuthProvider authProvider = new PlainTextAuthProvider("cassandra", "cassandra");
-    Cluster cluster =
+    try (Cluster cluster =
         Cluster.builder()
             .addContactPoints(cp)
             .withPort(ccm.getBinaryPort())
             .withAuthProvider(authProvider)
-            .build();
-    session = cluster.connect();
-    Host host = cluster.getMetadata().getAllHosts().iterator().next();
-    contact_point = host.getAddress().toString().replaceFirst("^/", "");
-    port = Integer.toString(host.getSocketAddress().getPort());
-    session.execute(createKeyspace);
-    session.execute(USE_KEYSPACE);
+            .build()) {
+      session = cluster.connect();
+      Host host = cluster.getMetadata().getAllHosts().iterator().next();
+      contact_point = host.getAddress().toString().replaceFirst("^/", "");
+      port = Integer.toString(host.getSocketAddress().getPort());
+      session.execute(createKeyspace);
+      session.execute(USE_KEYSPACE);
 
-    createIpByCountryTable(session);
+      createIpByCountryTable(session);
 
-    /* Simple test case which attempts to load and unload data using ccm. */
-    List<String> customLoadArgs = new LinkedList<>();
-    customLoadArgs.add("load");
-    customLoadArgs.add("--connector.csv.url");
-    customLoadArgs.add(CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm());
-    customLoadArgs.add("--schema.query");
-    customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
-    customLoadArgs.add("--schema.mapping");
-    customLoadArgs.add(
-        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
-    customLoadArgs.add("--driver.auth.provider");
-    customLoadArgs.add("PlainTextAuthProvider");
-    customLoadArgs.add("--driver.auth.username");
-    customLoadArgs.add("cassandra");
-    customLoadArgs.add("--driver.auth.password");
-    customLoadArgs.add("cassandra");
+      /* Simple test case which attempts to load and unload data using ccm. */
+      List<String> customLoadArgs = new LinkedList<>();
+      customLoadArgs.add("load");
+      customLoadArgs.add("--connector.csv.url");
+      customLoadArgs.add(CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm());
+      customLoadArgs.add("--schema.query");
+      customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
+      customLoadArgs.add("--schema.mapping");
+      customLoadArgs.add(
+          "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
+      customLoadArgs.add("--driver.auth.provider");
+      customLoadArgs.add("PlainTextAuthProvider");
+      customLoadArgs.add("--driver.auth.username");
+      customLoadArgs.add("cassandra");
+      customLoadArgs.add("--driver.auth.password");
+      customLoadArgs.add("cassandra");
 
-    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
-    validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
-    Path full_unload_dir = Paths.get("./target/full_unload_dir");
-    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
-    EndToEndUtils.deleteIfExists(full_unload_dir);
-    List<String> customUnloadArgs = new LinkedList<>();
-    customUnloadArgs.add("--connector.csv.url");
-    customUnloadArgs.add(full_unload_dir.toString());
-    customUnloadArgs.add("--connector.csv.maxConcurrentFiles");
-    customUnloadArgs.add("1");
-    customUnloadArgs.add("--schema.query");
-    customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
-    customUnloadArgs.add("--driver.auth.provider");
-    customUnloadArgs.add("PlainTextAuthProvider");
-    customUnloadArgs.add("--driver.auth.username");
-    customUnloadArgs.add("cassandra");
-    customUnloadArgs.add("--driver.auth.password");
-    customUnloadArgs.add("cassandra");
+      new Main(fetchCompleteArgs("load", customLoadArgs)).run();
+      validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
+      Path full_unload_dir = Paths.get("./target/full_unload_dir");
+      Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+      EndToEndUtils.deleteIfExists(full_unload_dir);
+      List<String> customUnloadArgs = new LinkedList<>();
+      customUnloadArgs.add("--connector.csv.url");
+      customUnloadArgs.add(full_unload_dir.toString());
+      customUnloadArgs.add("--connector.csv.maxConcurrentFiles");
+      customUnloadArgs.add("1");
+      customUnloadArgs.add("--schema.query");
+      customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
+      customUnloadArgs.add("--driver.auth.provider");
+      customUnloadArgs.add("PlainTextAuthProvider");
+      customUnloadArgs.add("--driver.auth.username");
+      customUnloadArgs.add("cassandra");
+      customUnloadArgs.add("--driver.auth.password");
+      customUnloadArgs.add("cassandra");
 
-    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
+      new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
 
-    EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
+      EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
+    }
   }
 
   private void validateResultSetSize(int numOfQueries, SimpleStatement statement) {

@@ -52,120 +52,122 @@ public class SSLEndToEndIT extends AbstractEndToEndTestIT {
   public void full_load_unload_jdk() throws Exception {
     InetAddress cp = ccm.getInitialContactPoints().get(0);
     SSLOptions sslOptions = getSSLOptions(SslImplementation.JDK, true, true);
-    Cluster cluster =
+    try (Cluster cluster =
         Cluster.builder()
             .addContactPoints(cp)
             .withPort(ccm.getBinaryPort())
             .withSSL(sslOptions)
-            .build();
-    session = cluster.connect();
-    contact_point = cp.getHostAddress().replaceFirst("^/", "");
-    port = Integer.toString(ccm.getBinaryPort());
-    session.execute(createKeyspace);
-    session.execute(USE_KEYSPACE);
+            .build()) {
+      session = cluster.connect();
+      contact_point = cp.getHostAddress().replaceFirst("^/", "");
+      port = Integer.toString(ccm.getBinaryPort());
+      session.execute(createKeyspace);
+      session.execute(USE_KEYSPACE);
 
-    createIpByCountryTable(session);
+      createIpByCountryTable(session);
 
-    /* Simple test case which attempts to load and unload data using ccm. */
-    List<String> customLoadArgs = new LinkedList<>();
-    customLoadArgs.add("--connector.csv.url");
-    customLoadArgs.add(CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm());
-    customLoadArgs.add("--schema.query");
-    customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
-    customLoadArgs.add("--driver.ssl.provider");
-    customLoadArgs.add("JDK");
-    customLoadArgs.add("--driver.ssl.keystore.path");
-    customLoadArgs.add(getAbsoluteKeystorePath());
-    customLoadArgs.add("--driver.ssl.keystore.password");
-    customLoadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD);
-    customLoadArgs.add("--driver.ssl.truststore.path");
-    customLoadArgs.add(getAbsoluteTrustStorePath());
-    customLoadArgs.add("--driver.ssl.truststore.password");
-    customLoadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
+      /* Simple test case which attempts to load and unload data using ccm. */
+      List<String> customLoadArgs = new LinkedList<>();
+      customLoadArgs.add("--connector.csv.url");
+      customLoadArgs.add(CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm());
+      customLoadArgs.add("--schema.query");
+      customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
+      customLoadArgs.add("--driver.ssl.provider");
+      customLoadArgs.add("JDK");
+      customLoadArgs.add("--driver.ssl.keystore.path");
+      customLoadArgs.add(getAbsoluteKeystorePath());
+      customLoadArgs.add("--driver.ssl.keystore.password");
+      customLoadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD);
+      customLoadArgs.add("--driver.ssl.truststore.path");
+      customLoadArgs.add(getAbsoluteTrustStorePath());
+      customLoadArgs.add("--driver.ssl.truststore.password");
+      customLoadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
-    validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
-    Path full_unload_dir = Paths.get("./target/full_unload_dir");
-    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
-    EndToEndUtils.deleteIfExists(full_unload_dir);
-    List<String> customUnloadArgs = new LinkedList<>();
-    customUnloadArgs.add("--connector.csv.url");
-    customUnloadArgs.add(full_unload_dir.toString());
-    customUnloadArgs.add("--schema.query");
-    customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
-    customUnloadArgs.add("--driver.ssl.provider");
-    customUnloadArgs.add("JDK");
-    customUnloadArgs.add("--driver.ssl.keystore.path");
-    customUnloadArgs.add(getAbsoluteKeystorePath());
-    customUnloadArgs.add("--driver.ssl.keystore.password");
-    customUnloadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD);
-    customUnloadArgs.add("--driver.ssl.truststore.path");
-    customUnloadArgs.add(getAbsoluteTrustStorePath());
-    customUnloadArgs.add("--driver.ssl.truststore.password");
-    customUnloadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
-    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
-    EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
+      new Main(fetchCompleteArgs("load", customLoadArgs)).run();
+      validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
+      Path full_unload_dir = Paths.get("./target/full_unload_dir");
+      Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+      EndToEndUtils.deleteIfExists(full_unload_dir);
+      List<String> customUnloadArgs = new LinkedList<>();
+      customUnloadArgs.add("--connector.csv.url");
+      customUnloadArgs.add(full_unload_dir.toString());
+      customUnloadArgs.add("--schema.query");
+      customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
+      customUnloadArgs.add("--driver.ssl.provider");
+      customUnloadArgs.add("JDK");
+      customUnloadArgs.add("--driver.ssl.keystore.path");
+      customUnloadArgs.add(getAbsoluteKeystorePath());
+      customUnloadArgs.add("--driver.ssl.keystore.password");
+      customUnloadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD);
+      customUnloadArgs.add("--driver.ssl.truststore.path");
+      customUnloadArgs.add(getAbsoluteTrustStorePath());
+      customUnloadArgs.add("--driver.ssl.truststore.password");
+      customUnloadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
+      new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
+      EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
+    }
   }
 
   @Test
   public void full_load_unload_openssl() throws Exception {
     InetAddress cp = ccm.getInitialContactPoints().get(0);
     SSLOptions sslOptions = getSSLOptions(SslImplementation.JDK, true, true);
-    Cluster cluster =
+    try (Cluster cluster =
         Cluster.builder()
             .addContactPoints(cp)
             .withPort(ccm.getBinaryPort())
             .withSSL(sslOptions)
-            .build();
-    session = cluster.connect();
-    contact_point = cp.getHostAddress().replaceFirst("^/", "");
-    port = Integer.toString(ccm.getBinaryPort());
-    session.execute(createKeyspace);
-    session.execute(USE_KEYSPACE);
+            .build()) {
+      session = cluster.connect();
+      contact_point = cp.getHostAddress().replaceFirst("^/", "");
+      port = Integer.toString(ccm.getBinaryPort());
+      session.execute(createKeyspace);
+      session.execute(USE_KEYSPACE);
 
-    createIpByCountryTable(session);
+      createIpByCountryTable(session);
 
-    /* Simple test case which attempts to load and unload data using ccm. */
-    List<String> customLoadArgs = new LinkedList<>();
-    customLoadArgs.add("--connector.csv.url");
-    customLoadArgs.add(CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm());
-    customLoadArgs.add("--schema.query");
-    customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
+      /* Simple test case which attempts to load and unload data using ccm. */
+      List<String> customLoadArgs = new LinkedList<>();
+      customLoadArgs.add("--connector.csv.url");
+      customLoadArgs.add(CsvUtils.CSV_RECORDS_UNIQUE.toExternalForm());
+      customLoadArgs.add("--schema.query");
+      customLoadArgs.add(INSERT_INTO_IP_BY_COUNTRY);
 
-    customLoadArgs.add("--driver.ssl.provider");
-    customLoadArgs.add("OpenSSL");
-    customLoadArgs.add("--driver.ssl.openssl.keyCertChain");
-    customLoadArgs.add(getAbsoluteClientCertPath());
-    customLoadArgs.add("--driver.ssl.openssl.privateKey");
-    customLoadArgs.add(getAbsoluteClientKeyPath());
-    customLoadArgs.add("--driver.ssl.truststore.path");
-    customLoadArgs.add(getAbsoluteTrustStorePath());
-    customLoadArgs.add("--driver.ssl.truststore.password");
-    customLoadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
+      customLoadArgs.add("--driver.ssl.provider");
+      customLoadArgs.add("OpenSSL");
+      customLoadArgs.add("--driver.ssl.openssl.keyCertChain");
+      customLoadArgs.add(getAbsoluteClientCertPath());
+      customLoadArgs.add("--driver.ssl.openssl.privateKey");
+      customLoadArgs.add(getAbsoluteClientKeyPath());
+      customLoadArgs.add("--driver.ssl.truststore.path");
+      customLoadArgs.add(getAbsoluteTrustStorePath());
+      customLoadArgs.add("--driver.ssl.truststore.password");
+      customLoadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    new Main(fetchCompleteArgs("load", customLoadArgs)).run();
-    validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
-    Path full_unload_dir = Paths.get("./target/full_unload_dir");
-    Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
-    EndToEndUtils.deleteIfExists(full_unload_dir);
-    List<String> customUnloadArgs = new LinkedList<>();
-    customUnloadArgs.add("--connector.csv.url");
-    customUnloadArgs.add(full_unload_dir.toString());
-    customUnloadArgs.add("--schema.query");
-    customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
-    customUnloadArgs.add("--driver.ssl.provider");
-    customUnloadArgs.add("OpenSSL");
-    customUnloadArgs.add("--driver.ssl.openssl.keyCertChain");
-    customUnloadArgs.add(getAbsoluteClientCertPath());
-    customUnloadArgs.add("--driver.ssl.openssl.privateKey");
-    customUnloadArgs.add(getAbsoluteClientKeyPath());
-    customUnloadArgs.add("--driver.ssl.truststore.path");
-    customUnloadArgs.add(getAbsoluteTrustStorePath());
-    customUnloadArgs.add("--driver.ssl.truststore.password");
-    customUnloadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
-    new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
+      new Main(fetchCompleteArgs("load", customLoadArgs)).run();
+      validateResultSetSize(24, READ_SUCCESSFUL_IP_BY_COUNTRY);
+      Path full_unload_dir = Paths.get("./target/full_unload_dir");
+      Path full_unload_output_file = Paths.get("./target/full_unload_dir/output-000001.csv");
+      EndToEndUtils.deleteIfExists(full_unload_dir);
+      List<String> customUnloadArgs = new LinkedList<>();
+      customUnloadArgs.add("--connector.csv.url");
+      customUnloadArgs.add(full_unload_dir.toString());
+      customUnloadArgs.add("--schema.query");
+      customUnloadArgs.add(READ_SUCCESSFUL_IP_BY_COUNTRY.toString());
+      customUnloadArgs.add("--driver.ssl.provider");
+      customUnloadArgs.add("OpenSSL");
+      customUnloadArgs.add("--driver.ssl.openssl.keyCertChain");
+      customUnloadArgs.add(getAbsoluteClientCertPath());
+      customUnloadArgs.add("--driver.ssl.openssl.privateKey");
+      customUnloadArgs.add(getAbsoluteClientKeyPath());
+      customUnloadArgs.add("--driver.ssl.truststore.path");
+      customUnloadArgs.add(getAbsoluteTrustStorePath());
+      customUnloadArgs.add("--driver.ssl.truststore.password");
+      customUnloadArgs.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
+      new Main(fetchCompleteArgs("unload", customUnloadArgs)).run();
 
-    EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
+      EndToEndUtils.validateOutputFiles(24, full_unload_output_file);
+    }
   }
 
   private void validateResultSetSize(int numOfQueries, SimpleStatement statement) {

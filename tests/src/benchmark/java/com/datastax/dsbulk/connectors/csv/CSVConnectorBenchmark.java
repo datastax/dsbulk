@@ -76,66 +76,67 @@ public class CSVConnectorBenchmark {
 
     @Setup(Level.Trial)
     public void init() throws Exception {
-      Cluster cluster = Cluster.builder().addContactPoint("127.0.0.1").build();
-      Session session = cluster.connect();
-      // fixtures for write benchmarks
-      session.execute("DROP KEYSPACE IF EXISTS csv_connector_benchmark");
-      session.execute(
-          "CREATE KEYSPACE csv_connector_benchmark WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
-      session.execute("USE csv_connector_benchmark");
-      Path dest = Files.createTempDirectory("benchmark");
-      ZipUtils.unzip("ip-by-country-all.csv.zip", dest);
-      createIpByCountryTable(session);
-      csvFile = dest.resolve("ip-by-country.csv").toUri().toURL();
-      cluster.close();
-      Path output = Files.createTempDirectory("output");
-      readArgs =
-          new String[] {
-            "unload",
-            "--log.directory",
-            "./target",
-            "--connector.csv.header",
-            "true",
-            "--connector.csv.url",
-            output.toUri().toURL().toExternalForm(),
-            "--schema.keyspace",
-            "csv_connector_benchmark",
-            "--schema.table",
-            "ip_by_country",
-            "--schema.mapping",
-            "{"
-                + "\"beginning IP Address\"=beginning_ip_address,"
-                + "\"ending IP Address\"=ending_ip_address,"
-                + "\"beginning IP Number\"=beginning_ip_number,"
-                + "\"ending IP Number\"=ending_ip_number,"
-                + "\"ISO 3166 Country Code\"=country_code,"
-                + "\"Country Name\"=country_name"
-                + "}"
-          };
-      writeArgs =
-          new String[] {
-            "load",
-            "--log.directory",
-            "./target",
-            "--connector.csv.header",
-            "true",
-            "--connector.csv.url",
-            csvFile.toExternalForm(),
-            "--schema.keyspace",
-            "csv_connector_benchmark",
-            "--schema.table",
-            "ip_by_country",
-            "--schema.mapping",
-            "{"
-                + "\"beginning IP Address\"=beginning_ip_address,"
-                + "\"ending IP Address\"=ending_ip_address,"
-                + "\"beginning IP Number\"=beginning_ip_number,"
-                + "\"ending IP Number\"=ending_ip_number,"
-                + "\"ISO 3166 Country Code\"=country_code,"
-                + "\"Country Name\"=country_name"
-                + "}"
-          };
-      new Main(writeArgs).run();
+      try (Cluster cluster = Cluster.builder().addContactPoint("127.0.0.1").build()) {
+        Session session = cluster.connect();
+        // fixtures for write benchmarks
+        session.execute("DROP KEYSPACE IF EXISTS csv_connector_benchmark");
+        session.execute(
+            "CREATE KEYSPACE csv_connector_benchmark WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+        session.execute("USE csv_connector_benchmark");
+        Path dest = Files.createTempDirectory("benchmark");
+        ZipUtils.unzip("ip-by-country-all.csv.zip", dest);
+        createIpByCountryTable(session);
+        csvFile = dest.resolve("ip-by-country.csv").toUri().toURL();
+        cluster.close();
+        Path output = Files.createTempDirectory("output");
+        readArgs =
+            new String[] {
+              "unload",
+              "--log.directory",
+              "./target",
+              "--connector.csv.header",
+              "true",
+              "--connector.csv.url",
+              output.toUri().toURL().toExternalForm(),
+              "--schema.keyspace",
+              "csv_connector_benchmark",
+              "--schema.table",
+              "ip_by_country",
+              "--schema.mapping",
+              "{"
+                  + "\"beginning IP Address\"=beginning_ip_address,"
+                  + "\"ending IP Address\"=ending_ip_address,"
+                  + "\"beginning IP Number\"=beginning_ip_number,"
+                  + "\"ending IP Number\"=ending_ip_number,"
+                  + "\"ISO 3166 Country Code\"=country_code,"
+                  + "\"Country Name\"=country_name"
+                  + "}"
+            };
+        writeArgs =
+            new String[] {
+              "load",
+              "--log.directory",
+              "./target",
+              "--connector.csv.header",
+              "true",
+              "--connector.csv.url",
+              csvFile.toExternalForm(),
+              "--schema.keyspace",
+              "csv_connector_benchmark",
+              "--schema.table",
+              "ip_by_country",
+              "--schema.mapping",
+              "{"
+                  + "\"beginning IP Address\"=beginning_ip_address,"
+                  + "\"ending IP Address\"=ending_ip_address,"
+                  + "\"beginning IP Number\"=beginning_ip_number,"
+                  + "\"ending IP Number\"=ending_ip_number,"
+                  + "\"ISO 3166 Country Code\"=country_code,"
+                  + "\"Country Name\"=country_name"
+                  + "}"
+            };
+        new Main(writeArgs).run();
+      }
     }
   }
 }
