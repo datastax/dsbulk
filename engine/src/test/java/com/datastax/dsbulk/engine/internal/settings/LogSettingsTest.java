@@ -68,7 +68,7 @@ public class LogSettingsTest {
   @Test
   public void should_create_log_manager_when_output_directory_url_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String dirToload = ConfigUtils.escapeBackSlash(dir.toString());
+    String dirToload = ConfigUtils.maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + dirToload + "\"")
@@ -83,7 +83,7 @@ public class LogSettingsTest {
   @Test
   public void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String dirToload = ConfigUtils.escapeBackSlash(dir.toString());
+    String dirToload = ConfigUtils.maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + dirToload + "\"")

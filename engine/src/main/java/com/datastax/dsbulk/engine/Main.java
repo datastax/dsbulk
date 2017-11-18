@@ -151,7 +151,7 @@ public class Main {
       if (type == ConfigValueType.STRING) {
         value = "\"" + value + "\"";
       }
-      value = ConfigUtils.escapeBackSlash(value);
+      value = ConfigUtils.maybeEscapeBackslash(value);
       userSettings = ConfigFactory.parseString(path + "=" + value).withFallback(userSettings);
     }
     return userSettings;

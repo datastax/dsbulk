@@ -8,6 +8,7 @@ package com.datastax.dsbulk.commons.internal.config;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.typesafe.config.ConfigException;
+import java.util.regex.Matcher;
 
 public class ConfigUtils {
   public static BulkConfigurationException configExceptionToBulkConfigurationException(
@@ -43,7 +44,7 @@ public class ConfigUtils {
     }
   }
 
-  public static String escapeBackSlash(String value) {
-    return value.replace("\\", "\\\\");
+  public static String maybeEscapeBackslash(String value) {
+    return value.replaceAll("\\\\{1,2}", Matcher.quoteReplacement("\\\\"));
   }
 }

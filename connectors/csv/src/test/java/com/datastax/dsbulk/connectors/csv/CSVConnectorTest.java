@@ -266,7 +266,7 @@ public class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1",
-                        ConfigUtils.escapeBackSlash(out.toString())))
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -296,7 +296,7 @@ public class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 4",
-                        ConfigUtils.escapeBackSlash(out.toString())))
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -325,7 +325,7 @@ public class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxLines = 4",
-                        ConfigUtils.escapeBackSlash(out.toString())))
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -483,7 +483,7 @@ public class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", maxConcurrentFiles = 1",
-                        ConfigUtils.escapeBackSlash(out.toString())))
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -508,7 +508,7 @@ public class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", maxConcurrentFiles = 2",
-                        ConfigUtils.escapeBackSlash(out.toString())))
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
