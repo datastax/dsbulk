@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.executor.api.ccm;
 
-import com.datastax.dsbulk.executor.api.ContinuousReactorBulkExecutor;
+import com.datastax.dsbulk.executor.reactor.ContinuousReactorBulkExecutor;
 import com.datastax.dsbulk.tests.categories.LongTests;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMTest;
 import com.datastax.dsbulk.tests.ccm.annotations.DSERequirement;

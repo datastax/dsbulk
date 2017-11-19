@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.executor.api.ccm;
 
-import com.datastax.dsbulk.executor.api.ContinuousRxJavaBulkExecutor;
+import com.datastax.dsbulk.executor.rxjava.ContinuousRxJavaBulkExecutor;
 import com.datastax.dsbulk.tests.categories.LongTests;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMTest;
 import com.datastax.dsbulk.tests.ccm.annotations.DSERequirement;

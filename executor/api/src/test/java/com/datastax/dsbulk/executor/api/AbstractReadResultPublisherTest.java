@@ -57,7 +57,7 @@ public abstract class AbstractReadResultPublisherTest
     return session;
   }
 
-  protected static Session setUpFailedSession() {
+  public static Session setUpFailedSession() {
     Session session = mock(Session.class);
     ResultSetFuture future = mock(ResultSetFuture.class);
     when(session.executeAsync(any(SimpleStatement.class))).thenReturn(future);

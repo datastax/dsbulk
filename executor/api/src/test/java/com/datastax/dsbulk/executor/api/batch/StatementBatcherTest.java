@@ -34,36 +34,36 @@ import org.mockito.Mockito;
 /** */
 public class StatementBatcherTest {
 
-  ByteBuffer key1 = Bytes.fromHexString("0x1234");
-  ByteBuffer key2 = Bytes.fromHexString("0x5678");
-  ByteBuffer key3 = Bytes.fromHexString("0x9abc");
+  protected ByteBuffer key1 = Bytes.fromHexString("0x1234");
+  protected ByteBuffer key2 = Bytes.fromHexString("0x5678");
+  protected ByteBuffer key3 = Bytes.fromHexString("0x9abc");
 
-  Token token1 = Mockito.mock(Token.class);
-  Token token2 = Mockito.mock(Token.class);
+  private final Token token1 = Mockito.mock(Token.class);
+  private final Token token2 = Mockito.mock(Token.class);
 
-  SimpleStatement stmt1 = new SimpleStatement("stmt1").setKeyspace("ks");
-  SimpleStatement stmt2 = new SimpleStatement("stmt2").setKeyspace("ks");
-  SimpleStatement stmt3 = new SimpleStatement("stmt3").setKeyspace("ks");
-  SimpleStatement stmt4 = new SimpleStatement("stmt4").setKeyspace("ks");
-  SimpleStatement stmt5 = new SimpleStatement("stmt5").setKeyspace("ks");
-  SimpleStatement stmt6 = new SimpleStatement("stmt6").setKeyspace("ks");
+  protected SimpleStatement stmt1 = new SimpleStatement("stmt1").setKeyspace("ks");
+  protected SimpleStatement stmt2 = new SimpleStatement("stmt2").setKeyspace("ks");
+  protected SimpleStatement stmt3 = new SimpleStatement("stmt3").setKeyspace("ks");
+  protected SimpleStatement stmt4 = new SimpleStatement("stmt4").setKeyspace("ks");
+  protected SimpleStatement stmt5 = new SimpleStatement("stmt5").setKeyspace("ks");
+  protected SimpleStatement stmt6 = new SimpleStatement("stmt6").setKeyspace("ks");
 
-  BatchStatement batch12 = new BatchStatement(UNLOGGED).add(stmt1).add(stmt2);
-  BatchStatement batch126 = new BatchStatement(UNLOGGED).add(stmt1).add(stmt2).add(stmt6);
-  BatchStatement batch56 = new BatchStatement(UNLOGGED).add(stmt5).add(stmt6);
-  BatchStatement batch1256 =
+  protected BatchStatement batch12 = new BatchStatement(UNLOGGED).add(stmt1).add(stmt2);
+  protected BatchStatement batch126 = new BatchStatement(UNLOGGED).add(stmt1).add(stmt2).add(stmt6);
+  protected BatchStatement batch56 = new BatchStatement(UNLOGGED).add(stmt5).add(stmt6);
+  protected BatchStatement batch1256 =
       new BatchStatement(UNLOGGED).add(stmt1).add(stmt2).add(stmt5).add(stmt6);
-  BatchStatement batch34 = new BatchStatement(UNLOGGED).add(stmt3).add(stmt4);
+  protected BatchStatement batch34 = new BatchStatement(UNLOGGED).add(stmt3).add(stmt4);
 
-  Cluster cluster;
+  protected Cluster cluster;
 
-  Host host1 = Mockito.mock(Host.class);
-  Host host2 = Mockito.mock(Host.class);
-  Host host3 = Mockito.mock(Host.class);
-  Host host4 = Mockito.mock(Host.class);
+  private final Host host1 = Mockito.mock(Host.class);
+  private final Host host2 = Mockito.mock(Host.class);
+  private final Host host3 = Mockito.mock(Host.class);
+  private final Host host4 = Mockito.mock(Host.class);
 
-  Set<Host> replicaSet1 = Sets.newHashSet(host1, host2, host3);
-  Set<Host> replicaSet2 = Sets.newHashSet(host2, host3, host4);
+  protected Set<Host> replicaSet1 = Sets.newHashSet(host1, host2, host3);
+  protected Set<Host> replicaSet2 = Sets.newHashSet(host2, host3, host4);
 
   @Before
   public void setUp() throws Exception {

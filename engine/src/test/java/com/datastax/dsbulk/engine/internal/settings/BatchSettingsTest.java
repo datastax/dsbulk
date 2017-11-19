@@ -20,7 +20,7 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.executor.api.batch.ReactorStatementBatcher;
+import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Before;
 import org.junit.Rule;

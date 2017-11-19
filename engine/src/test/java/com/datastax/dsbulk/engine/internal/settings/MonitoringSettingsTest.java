@@ -16,7 +16,6 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.typesafe.config.ConfigFactory;
-import java.io.File;
 import java.nio.file.Path;
 import java.time.Duration;
 import org.assertj.core.util.Files;

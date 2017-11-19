@@ -31,7 +31,7 @@ import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
-import com.datastax.dsbulk.executor.api.reader.ReactorBulkReader;
+import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
