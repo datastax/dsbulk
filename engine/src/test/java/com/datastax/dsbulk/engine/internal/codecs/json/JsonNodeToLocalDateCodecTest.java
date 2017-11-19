@@ -12,12 +12,12 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToLocalDateCodecTest {
+class JsonNodeToLocalDateCodecTest {
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("2016-07-24"))
@@ -37,7 +37,7 @@ public class JsonNodeToLocalDateCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec)
         .convertsTo(LocalDate.parse("2016-07-24"))
@@ -53,7 +53,7 @@ public class JsonNodeToLocalDateCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid date format"));

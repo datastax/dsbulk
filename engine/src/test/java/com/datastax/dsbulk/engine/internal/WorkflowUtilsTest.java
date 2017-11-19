@@ -8,12 +8,12 @@ package com.datastax.dsbulk.engine.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class WorkflowUtilsTest {
+class WorkflowUtilsTest {
 
   @Test
-  public void should_format_elapsed_time() throws Exception {
+  void should_format_elapsed_time() throws Exception {
     assertThat(WorkflowUtils.formatElapsed(12)).isEqualTo("12 seconds");
     assertThat(WorkflowUtils.formatElapsed(12 * 60 + 34)).isEqualTo("12 minutes and 34 seconds");
     assertThat(WorkflowUtils.formatElapsed(12 * 60 * 60 + 34 * 60 + 56))

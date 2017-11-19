@@ -36,12 +36,12 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 @SuppressWarnings("unchecked")
-public class DefaultRecordMapperTest {
+class DefaultRecordMapperTest {
 
   private static final String C1 = "col1";
   private static final String C2 = "col2";
@@ -58,8 +58,8 @@ public class DefaultRecordMapperTest {
   private final URI location = URI.create("file://file1?line=1");
   private final DateTimeFormatter timestampFormat = CodecSettings.CQL_DATE_TIME_FORMAT;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     variableCaptor = ArgumentCaptor.forClass(String.class);
     valueCaptor = ArgumentCaptor.forClass(Object.class);
     codecCaptor = ArgumentCaptor.forClass(TypeCodec.class);
@@ -116,7 +116,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_map_string_int_columns() throws Exception {
+  void should_map_string_int_columns() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -141,7 +141,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_static_ttl() throws Exception {
+  void should_bind_static_ttl() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -167,7 +167,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_static_timestamp() throws Exception {
+  void should_bind_static_timestamp() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -193,7 +193,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_mapped_ttl() throws Exception {
+  void should_bind_mapped_ttl() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     when(record.getFieldValue("2")).thenReturn("123");
     when(mapping.fieldToVariable("2")).thenReturn(TTL_VARNAME);
@@ -221,7 +221,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_mapped_long_timestamp() throws Exception {
+  void should_bind_mapped_long_timestamp() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     when(record.getFieldValue("2")).thenReturn("123");
     when(mapping.fieldToVariable("2")).thenReturn(TIMESTAMP_VARNAME);
@@ -312,7 +312,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_mapped_ttl_over_static() throws Exception {
+  void should_bind_mapped_ttl_over_static() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     when(record.getFieldValue("2")).thenReturn("123");
     when(mapping.fieldToVariable("2")).thenReturn(TTL_VARNAME);
@@ -340,7 +340,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_mapped_timestamp_over_static() throws Exception {
+  void should_bind_mapped_timestamp_over_static() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     when(record.getFieldValue("2")).thenReturn("123");
     when(mapping.fieldToVariable("2")).thenReturn(TIMESTAMP_VARNAME);
@@ -368,7 +368,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_map_null_to_unset() throws Exception {
+  void should_map_null_to_unset() throws Exception {
     when(record.getFieldValue("1")).thenReturn(null);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -392,7 +392,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_map_null_words_to_unset() throws Exception {
+  void should_map_null_words_to_unset() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -415,7 +415,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_map_null_to_null() throws Exception {
+  void should_map_null_to_null() throws Exception {
     when(record.getFieldValue("1")).thenReturn(null);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -442,7 +442,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_map_null_word_to_null() throws Exception {
+  void should_map_null_word_to_null() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -469,7 +469,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_return_unmappable_statement_when_mapping_fails() throws Exception {
+  void should_return_unmappable_statement_when_mapping_fails() throws Exception {
     //noinspection unchecked
     when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class)))
         .thenThrow(CodecNotFoundException.class);

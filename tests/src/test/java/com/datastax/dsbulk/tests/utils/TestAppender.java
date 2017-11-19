@@ -17,8 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TestAppender implements Appender<ILoggingEvent> {
-  List<ILoggingEvent> events = new ArrayList<>();
+  private final List<ILoggingEvent> events = new ArrayList<>();
 
+  @Override
   public String getName() {
     return "TestAppender";
   }

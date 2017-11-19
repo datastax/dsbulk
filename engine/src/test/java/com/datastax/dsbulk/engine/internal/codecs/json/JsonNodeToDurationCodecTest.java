@@ -10,18 +10,18 @@ import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 
 import com.datastax.driver.core.Duration;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToDurationCodecTest {
+class JsonNodeToDurationCodecTest {
 
-  static final long NANOS_PER_MINUTE = 60 * 1000L * 1000L * 1000L;
+  private static final long NANOS_PER_MINUTE = 60 * 1000L * 1000L * 1000L;
 
-  Duration duration = Duration.newInstance(15, 0, 130 * NANOS_PER_MINUTE);
+  private final Duration duration = Duration.newInstance(15, 0, 130 * NANOS_PER_MINUTE);
 
-  JsonNodeToDurationCodec codec = JsonNodeToDurationCodec.INSTANCE;
+  private final JsonNodeToDurationCodec codec = JsonNodeToDurationCodec.INSTANCE;
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("1y3mo2h10m")) // standard pattern
         .to(duration)
@@ -40,7 +40,7 @@ public class JsonNodeToDurationCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo(duration)
         .from(JsonNodeFactory.instance.textNode("1y3mo2h10m"))
@@ -49,7 +49,7 @@ public class JsonNodeToDurationCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec)
         .cannotConvertFrom(
             JsonNodeFactory.instance.textNode("1Y3M4D")) // The minutes should be after days

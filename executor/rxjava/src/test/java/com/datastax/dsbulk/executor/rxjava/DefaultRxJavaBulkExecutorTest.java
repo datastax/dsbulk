@@ -7,10 +7,10 @@
 package com.datastax.dsbulk.executor.rxjava;
 
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
-import com.datastax.dsbulk.executor.api.AbstractNonContinuousBulkExecutorTest;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
+import com.datastax.dsbulk.executor.api.NonContinuousBulkExecutorTestBase;
 
-public class DefaultRxJavaBulkExecutorTest extends AbstractNonContinuousBulkExecutorTest {
+public class DefaultRxJavaBulkExecutorTest extends NonContinuousBulkExecutorTestBase {
 
   @Override
   protected BulkExecutor newBulkExecutor(boolean failSafe) {

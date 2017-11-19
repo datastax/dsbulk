@@ -23,18 +23,18 @@ import com.datastax.dsbulk.executor.api.writer.ReactiveBulkWriter;
 import com.datastax.dsbulk.executor.reactor.ContinuousReactorBulkExecutor;
 import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
 import com.typesafe.config.ConfigFactory;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /** */
-public class ExecutorSettingsTest {
+class ExecutorSettingsTest {
 
   private Session session;
 
   private ContinuousPagingSession dseSession;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     session = mock(Session.class);
     dseSession = mock(ContinuousPagingSession.class);
     Cluster cluster = mock(Cluster.class);
@@ -47,7 +47,7 @@ public class ExecutorSettingsTest {
   }
 
   @Test
-  public void should_create_non_continuous_executor_when_write_workflow() throws Exception {
+  void should_create_non_continuous_executor_when_write_workflow() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
@@ -56,7 +56,7 @@ public class ExecutorSettingsTest {
   }
 
   @Test
-  public void should_create_non_continuous_executor_when_read_workflow_and_session_not_dse()
+  void should_create_non_continuous_executor_when_read_workflow_and_session_not_dse()
       throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
@@ -66,8 +66,7 @@ public class ExecutorSettingsTest {
   }
 
   @Test
-  public void should_create_continuous_executor_when_read_workflow_and_session_dse()
-      throws Exception {
+  void should_create_continuous_executor_when_read_workflow_and_session_dse() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
@@ -76,8 +75,7 @@ public class ExecutorSettingsTest {
   }
 
   @Test
-  public void should_create_non_continuous_executor_when_read_workflow_and_not_enabled()
-      throws Exception {
+  void should_create_non_continuous_executor_when_read_workflow_and_not_enabled() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("continuousPagingOptions.enabled = false")

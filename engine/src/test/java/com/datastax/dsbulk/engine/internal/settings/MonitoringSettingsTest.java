@@ -19,14 +19,14 @@ import com.typesafe.config.ConfigFactory;
 import java.nio.file.Path;
 import java.time.Duration;
 import org.assertj.core.util.Files;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
-public class MonitoringSettingsTest {
+class MonitoringSettingsTest {
 
   @Test
-  public void should_create_metrics_manager_with_default_settings() throws Exception {
+  void should_create_metrics_manager_with_default_settings() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.monitoring"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
@@ -43,7 +43,7 @@ public class MonitoringSettingsTest {
   }
 
   @Test
-  public void should_create_metrics_manager_with_user_supplied_settings() throws Exception {
+  void should_create_metrics_manager_with_user_supplied_settings() throws Exception {
     Path tmpPath = Files.temporaryFolder().toPath();
     LoaderConfig config =
         new DefaultLoaderConfig(

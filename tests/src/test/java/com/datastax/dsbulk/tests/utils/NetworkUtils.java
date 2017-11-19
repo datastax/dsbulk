@@ -157,11 +157,11 @@ public class NetworkUtils {
     await().atMost(5, MINUTES).until(() -> !pingPort(address));
   }
 
-  public static boolean pingPort(InetSocketAddress address) {
+  private static boolean pingPort(InetSocketAddress address) {
     return pingPort(address.getAddress(), address.getPort());
   }
 
-  public static boolean pingPort(InetAddress address, int port) {
+  private static boolean pingPort(InetAddress address, int port) {
     LOGGER.debug("Pinging {}:{}...", address, port);
     boolean connectionSuccessful = false;
     try (Socket ignored = new Socket(address, port)) {

@@ -27,8 +27,8 @@ import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /** */
@@ -65,8 +65,8 @@ public class StatementBatcherTest {
   protected Set<Host> replicaSet1 = Sets.newHashSet(host1, host2, host3);
   protected Set<Host> replicaSet2 = Sets.newHashSet(host2, host3, host4);
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     cluster = Mockito.mock(Cluster.class);
     Configuration configuration = Mockito.mock(Configuration.class);
     ProtocolOptions protocolOptions = Mockito.mock(ProtocolOptions.class);
@@ -77,7 +77,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_routing_key() throws Exception {
+  void should_batch_by_routing_key() throws Exception {
     assignRoutingKeys();
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements =
@@ -86,7 +86,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_routing_token() throws Exception {
+  void should_batch_by_routing_token() throws Exception {
     assignRoutingTokens();
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements =
@@ -95,7 +95,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_replica_set_and_routing_key() throws Exception {
+  void should_batch_by_replica_set_and_routing_key() throws Exception {
     assignRoutingKeys();
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(cluster.getMetadata()).thenReturn(metadata);
@@ -109,7 +109,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_replica_set_and_routing_token() throws Exception {
+  void should_batch_by_replica_set_and_routing_token() throws Exception {
     assignRoutingTokens();
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(cluster.getMetadata()).thenReturn(metadata);
@@ -123,7 +123,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_routing_key_when_replica_set_info_not_available() throws Exception {
+  void should_batch_by_routing_key_when_replica_set_info_not_available() throws Exception {
     assignRoutingKeys();
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(cluster.getMetadata()).thenReturn(metadata);
@@ -137,7 +137,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_routing_token_when_replica_set_info_not_available() throws Exception {
+  void should_batch_by_routing_token_when_replica_set_info_not_available() throws Exception {
     assignRoutingTokens();
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(cluster.getMetadata()).thenReturn(metadata);
@@ -151,7 +151,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_all() throws Exception {
+  void should_batch_all() throws Exception {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements).hasSize(1);
@@ -161,14 +161,14 @@ public class StatementBatcherTest {
   }
 
   @Test
-  public void should_not_batch_one_statement_when_batching_by_routing_key() throws Exception {
+  void should_not_batch_one_statement_when_batching_by_routing_key() throws Exception {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements = batcher.batchByGroupingKey(stmt1);
     assertThat(statements).containsOnly(stmt1);
   }
 
   @Test
-  public void should_not_batch_one_statement_when_batching_all() throws Exception {
+  void should_not_batch_one_statement_when_batching_all() throws Exception {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements = batcher.batchAll(stmt1);
     assertThat(statements).hasSize(1);
@@ -177,7 +177,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  public void should_honor_max_batch_size() throws Exception {
+  void should_honor_max_batch_size() throws Exception {
     assignRoutingTokens();
     StatementBatcher batcher = new StatementBatcher(2);
     List<Statement> statements =

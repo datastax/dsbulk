@@ -19,30 +19,30 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 import java.util.Set;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToSetCodecTest {
+class JsonNodeToSetCodecTest {
 
-  private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  private JsonNodeToDoubleCodec eltCodec1 =
+  private final JsonNodeToDoubleCodec eltCodec1 =
       new JsonNodeToDoubleCodec(
           ThreadLocal.withInitial(
               () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
-  private JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
 
-  private TypeCodec<Set<Double>> setCodec1 = set(cdouble());
-  private TypeCodec<Set<String>> setCodec2 = set(varchar());
+  private final TypeCodec<Set<Double>> setCodec1 = set(cdouble());
+  private final TypeCodec<Set<String>> setCodec2 = set(varchar());
 
-  private JsonNodeToSetCodec<Double> codec1 =
+  private final JsonNodeToSetCodec<Double> codec1 =
       new JsonNodeToSetCodec<>(setCodec1, eltCodec1, objectMapper);
 
-  private JsonNodeToSetCodec<String> codec2 =
+  private final JsonNodeToSetCodec<String> codec2 =
       new JsonNodeToSetCodec<>(setCodec2, eltCodec2, objectMapper);
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec1)
         .convertsFrom(objectMapper.readTree("[1,2,3]"))
         .to(newLinkedHashSet(1d, 2d, 3d))
@@ -86,7 +86,7 @@ public class JsonNodeToSetCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec1)
         .convertsTo(newLinkedHashSet(1d, 2d, 3d))
         .from(objectMapper.readTree("[1.0,2.0,3.0]"))
@@ -116,7 +116,7 @@ public class JsonNodeToSetCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec1).cannotConvertFrom(objectMapper.readTree("[1,\"not a valid double\"]"));
     assertThat(codec1).cannotConvertFrom(objectMapper.readTree("{ \"not a valid array\" : 42 }"));
     assertThat(codec1).cannotConvertFrom(objectMapper.readTree("42"));

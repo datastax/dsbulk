@@ -13,12 +13,12 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToInstantCodecTest {
+class JsonNodeToInstantCodecTest {
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     JsonNodeToInstantCodec codec = new JsonNodeToInstantCodec(CQL_DATE_TIME_FORMAT);
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("2016-07-24T20:34"))
@@ -50,7 +50,7 @@ public class JsonNodeToInstantCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     JsonNodeToInstantCodec codec = new JsonNodeToInstantCodec(CQL_DATE_TIME_FORMAT);
     assertThat(codec)
         .convertsTo(Instant.parse("2016-07-24T20:34:00Z"))
@@ -76,7 +76,7 @@ public class JsonNodeToInstantCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     JsonNodeToInstantCodec codec = new JsonNodeToInstantCodec(CQL_DATE_TIME_FORMAT);
     assertThat(codec)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid date format"));

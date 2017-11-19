@@ -7,11 +7,11 @@
 package com.datastax.dsbulk.executor.reactor;
 
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
-import com.datastax.dsbulk.executor.api.AbstractNonContinuousBulkExecutorTest;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
+import com.datastax.dsbulk.executor.api.NonContinuousBulkExecutorTestBase;
 import com.google.common.util.concurrent.MoreExecutors;
 
-public class DefaultReactorBulkExecutorTest extends AbstractNonContinuousBulkExecutorTest {
+public class DefaultReactorBulkExecutorTest extends NonContinuousBulkExecutorTestBase {
 
   @Override
   protected BulkExecutor newBulkExecutor(boolean failSafe) {

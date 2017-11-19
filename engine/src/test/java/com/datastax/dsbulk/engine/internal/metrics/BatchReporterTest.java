@@ -8,12 +8,12 @@ package com.datastax.dsbulk.engine.internal.metrics;
 
 import com.codahale.metrics.Histogram;
 import java.util.concurrent.Executors;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class BatchReporterTest extends AbstractReporterTest {
+class BatchReporterTest extends ReporterTestBase {
 
   @Test
-  public void should_report_batches() throws Exception {
+  void should_report_batches() throws Exception {
     Histogram size = registry.histogram("batches/size");
     BatchReporter reporter =
         new BatchReporter(registry, Executors.newSingleThreadScheduledExecutor());

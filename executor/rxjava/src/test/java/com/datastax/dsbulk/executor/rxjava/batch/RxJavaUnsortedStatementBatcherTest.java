@@ -11,13 +11,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datastax.driver.core.Statement;
 import io.reactivex.Flowable;
 import java.util.List;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /** */
-public class RxJavaUnsortedStatementBatcherTest extends RxJavaStatementBatcherTest {
+class RxJavaUnsortedStatementBatcherTest extends RxJavaStatementBatcherTest {
 
   @Test
-  public void should_batch_by_routing_key_as_operator() throws Exception {
+  void should_batch_by_routing_key_as_operator() throws Exception {
     assignRoutingKeys();
     RxJavaUnsortedStatementBatcher batcher = new RxJavaUnsortedStatementBatcher();
     List<Statement> statements =
@@ -29,7 +29,7 @@ public class RxJavaUnsortedStatementBatcherTest extends RxJavaStatementBatcherTe
   }
 
   @Test
-  public void should_batch_by_routing_token_as_operator() throws Exception {
+  void should_batch_by_routing_token_as_operator() throws Exception {
     assignRoutingTokens();
     RxJavaUnsortedStatementBatcher batcher = new RxJavaUnsortedStatementBatcher();
     List<Statement> statements =

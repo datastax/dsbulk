@@ -17,19 +17,19 @@ import com.typesafe.config.ConfigFactory;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class DefaultLoaderConfigTest {
+class DefaultLoaderConfigTest {
 
   @Test
-  public void should_resolve_absolute_path() throws Exception {
+  void should_resolve_absolute_path() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.parseString("path = /var/lib"));
     Path path = config.getPath("path");
     assertThat(path).isNormalized().isAbsolute();
   }
 
   @Test
-  public void should_resolve_relative_path() throws Exception {
+  void should_resolve_relative_path() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.parseString("path1 = target, path2 = ./target"));
     Path path1 = config.getPath("path1");
@@ -40,7 +40,7 @@ public class DefaultLoaderConfigTest {
   }
 
   @Test
-  public void should_resolve_absolute_URL() throws Exception {
+  void should_resolve_absolute_URL() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("url1 = \"file:///var/lib\", url2 = \"http://foo.com/bar\""));
@@ -64,7 +64,7 @@ public class DefaultLoaderConfigTest {
   }
 
   @Test
-  public void should_resolve_threads() throws Exception {
+  void should_resolve_threads() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.parseString("threads1 = 4, threads2 = 2C"));
     int threads1 = config.getThreads("threads1");
@@ -74,14 +74,14 @@ public class DefaultLoaderConfigTest {
   }
 
   @Test
-  public void should_resolve_char() throws Exception {
+  void should_resolve_char() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.parseString("char = a"));
     char c = config.getChar("char");
     assertThat(c).isEqualTo('a');
   }
 
   @Test
-  public void should_resolve_charset() throws Exception {
+  void should_resolve_charset() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.parseString("charset1 = UTF-8, charset2 = utf8"));
     Charset charset1 = config.getCharset("charset1");
@@ -91,7 +91,7 @@ public class DefaultLoaderConfigTest {
   }
 
   @Test
-  public void should_get_type_string() throws Exception {
+  void should_get_type_string() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -110,7 +110,7 @@ public class DefaultLoaderConfigTest {
   }
 
   @Test
-  public void should_resolve_class() throws Exception {
+  void should_resolve_class() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("class1 = java.lang.String, class2 = DefaultRetryPolicy"));
@@ -121,7 +121,7 @@ public class DefaultLoaderConfigTest {
   }
 
   @Test
-  public void should_resolve_instance() throws Exception {
+  void should_resolve_instance() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(

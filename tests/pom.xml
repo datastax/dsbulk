@@ -99,8 +99,14 @@
     </dependency>
 
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -135,12 +141,6 @@
     </dependency>
 
     <dependency>
-      <groupId>javax.inject</groupId>
-      <artifactId>javax.inject</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
       <groupId>com.datastax.oss.simulacron</groupId>
       <artifactId>simulacron-native-server</artifactId>
       <scope>test</scope>
@@ -151,7 +151,13 @@
       <artifactId>awaitility</artifactId>
       <scope>test</scope>
     </dependency>
-    
+
+    <dependency>
+      <groupId>org.apiguardian</groupId>
+      <artifactId>apiguardian-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -212,22 +218,18 @@
         <artifactId>maven-failsafe-plugin</artifactId>
         <executions>
           <execution>
-            <id>short-tests</id>
             <goals>
               <goal>integration-test</goal>
               <goal>verify</goal>
             </goals>
             <configuration>
-              <!-- skip long tests by default -->
-              <excludedGroups>
-                com.datastax.dsbulk.tests.categories.LongTests
-              </excludedGroups>
-              <reportNameSuffix>short</reportNameSuffix>
-              <!-- set so test can exit with rc 0 (ci will mark test failures accordingly) -->
+              <properties>
+                <excludeTags>ccm</excludeTags>
+              </properties>
+              <reportNameSuffix>simulacron</reportNameSuffix>
             </configuration>
           </execution>
         </executions>
-
       </plugin>
 
       <plugin>
@@ -279,22 +281,24 @@
   <profiles>
 
     <profile>
-      <id>long</id>
+      <id>ccm</id>
       <build>
         <plugins>
           <plugin>
             <artifactId>maven-failsafe-plugin</artifactId>
             <executions>
-              <!-- add a special execution that only runs long tests -->
+              <!-- add a special execution that only runs CCM tests -->
               <execution>
-                <id>long-tests</id>
+                <id>ccm-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                   <goal>verify</goal>
                 </goals>
                 <configuration>
-                  <groups>com.datastax.dsbulk.tests.categories.LongTests</groups>
-                  <reportNameSuffix>long</reportNameSuffix>
+                  <properties>
+                    <includeTags>ccm</includeTags>
+                  </properties>
+                  <reportNameSuffix>ccm</reportNameSuffix>
                 </configuration>
               </execution>
             </executions>

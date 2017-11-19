@@ -6,11 +6,11 @@
  */
 package com.datastax.dsbulk.executor.reactor;
 
-import com.datastax.dsbulk.executor.api.AbstractContinuousReadResultPublisherTest;
+import com.datastax.dsbulk.executor.api.ContinuousReadResultPublisherTestBase;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import org.reactivestreams.Publisher;
 
-public class ContinuousReadResultPublisherTest extends AbstractContinuousReadResultPublisherTest {
+public class ContinuousReadResultPublisherTest extends ContinuousReadResultPublisherTestBase {
 
   @Override
   public Publisher<ReadResult> createPublisher(long elements) {

@@ -44,12 +44,14 @@ public class SessionUtils {
    * @param keyspace The keyspace to USE.
    */
   public static void useKeyspace(Session session, String keyspace) {
-    final int maxTries = 3;
+    int maxTries = 3;
     for (int i = 1; i <= maxTries; i++) {
       try {
         session.execute("USE " + keyspace);
       } catch (InvalidQueryException e) {
-        if (i == maxTries) throw e;
+        if (i == maxTries) {
+          throw e;
+        }
         LOGGER.error("Could not USE keyspace, retrying");
         Uninterruptibles.sleepUninterruptibly(10, TimeUnit.SECONDS);
       }
@@ -72,7 +74,7 @@ public class SessionUtils {
    * @param session The session to use.
    * @param statements The statements to execute.
    */
-  public static void execute(Session session, Collection<String> statements) {
+  private static void execute(Session session, Collection<String> statements) {
     for (String stmt : statements) {
       session.execute(stmt);
     }

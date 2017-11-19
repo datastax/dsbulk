@@ -18,9 +18,9 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Timer;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatcher;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -28,7 +28,7 @@ import org.mockito.internal.util.reflection.Whitebox;
 import org.slf4j.LoggerFactory;
 
 /** */
-public class MetricsReportingExecutionListenerTest {
+class MetricsReportingExecutionListenerTest {
 
   @Mock private Appender<ILoggingEvent> mockAppender;
   private MetricsCollectingExecutionListener delegate;
@@ -36,8 +36,8 @@ public class MetricsReportingExecutionListenerTest {
   private Appender<ILoggingEvent> stdout;
   private Logger root;
 
-  @Before
-  public void prepareMocks() {
+  @BeforeEach
+  void prepareMocks() {
     MockitoAnnotations.initMocks(this);
     when(mockAppender.getName()).thenReturn("MOCK");
     Logger logger = (Logger) LoggerFactory.getLogger(MetricsReportingExecutionListener.class);
@@ -50,8 +50,8 @@ public class MetricsReportingExecutionListenerTest {
     root.detachAppender(stdout);
   }
 
-  @After
-  public void restoreAppenders() {
+  @AfterEach
+  void restoreAppenders() {
     Logger logger = (Logger) LoggerFactory.getLogger(MetricsReportingExecutionListener.class);
     logger.detachAppender(mockAppender);
     logger.setLevel(oldLevel);
@@ -59,7 +59,7 @@ public class MetricsReportingExecutionListenerTest {
   }
 
   @Test
-  public void should_report_reads() throws Exception {
+  void should_report_reads() throws Exception {
     MetricsReportingExecutionListener listener =
         MetricsReportingExecutionListener.builder()
             .reportingReads()
@@ -93,7 +93,7 @@ public class MetricsReportingExecutionListenerTest {
   }
 
   @Test
-  public void should_report_reads_with_expected_total() throws Exception {
+  void should_report_reads_with_expected_total() throws Exception {
     MetricsReportingExecutionListener listener =
         MetricsReportingExecutionListener.builder()
             .reportingReads()
@@ -128,7 +128,7 @@ public class MetricsReportingExecutionListenerTest {
   }
 
   @Test
-  public void should_report_writes() throws Exception {
+  void should_report_writes() throws Exception {
     MetricsReportingExecutionListener listener =
         MetricsReportingExecutionListener.builder()
             .reportingWrites()
@@ -162,7 +162,7 @@ public class MetricsReportingExecutionListenerTest {
   }
 
   @Test
-  public void should_report_writes_with_expected_total() throws Exception {
+  void should_report_writes_with_expected_total() throws Exception {
     MetricsReportingExecutionListener listener =
         MetricsReportingExecutionListener.builder()
             .reportingWrites()
@@ -197,7 +197,7 @@ public class MetricsReportingExecutionListenerTest {
   }
 
   @Test
-  public void should_report_reads_and_writes() throws Exception {
+  void should_report_reads_and_writes() throws Exception {
     MetricsReportingExecutionListener listener =
         MetricsReportingExecutionListener.builder()
             .reportingReadsAndWrites()
@@ -231,7 +231,7 @@ public class MetricsReportingExecutionListenerTest {
   }
 
   @Test
-  public void should_report_reads_and_writes_with_default_constructor() throws Exception {
+  void should_report_reads_and_writes_with_default_constructor() throws Exception {
     MetricsReportingExecutionListener listener = new MetricsReportingExecutionListener();
 
     listener.report();
@@ -261,7 +261,7 @@ public class MetricsReportingExecutionListenerTest {
   }
 
   @Test
-  public void should_report_reads_and_writes_with_expected_total() throws Exception {
+  void should_report_reads_and_writes_with_expected_total() throws Exception {
     MetricsReportingExecutionListener listener =
         MetricsReportingExecutionListener.builder()
             .reportingReadsAndWrites()
@@ -296,7 +296,7 @@ public class MetricsReportingExecutionListenerTest {
   }
 
   @Test
-  public void should_report_statements() throws Exception {
+  void should_report_statements() throws Exception {
     MetricsReportingExecutionListener listener =
         MetricsReportingExecutionListener.builder()
             .reportingStatements()
@@ -330,7 +330,7 @@ public class MetricsReportingExecutionListenerTest {
   }
 
   @Test
-  public void should_report_statements_with_expected_total() throws Exception {
+  void should_report_statements_with_expected_total() throws Exception {
     MetricsReportingExecutionListener listener =
         MetricsReportingExecutionListener.builder()
             .reportingStatements()
@@ -370,7 +370,7 @@ public class MetricsReportingExecutionListenerTest {
             argThat(
                 new ArgumentMatcher<ILoggingEvent>() {
                   @Override
-                  public boolean matches(final Object argument) {
+                  public boolean matches(Object argument) {
                     return ((ILoggingEvent) argument)
                         .getFormattedMessage()
                         .contains(expectedLogMessage);

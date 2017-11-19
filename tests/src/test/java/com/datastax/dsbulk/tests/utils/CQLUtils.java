@@ -17,7 +17,7 @@ public abstract class CQLUtils {
     return createKeyspace(keyspace, "SimpleStrategy", replicationFactor);
   }
 
-  public static String createKeyspace(String keyspace, String strategy, int replicationFactor) {
+  private static String createKeyspace(String keyspace, String strategy, int replicationFactor) {
     return String.format(
         CREATE_KEYSPACE_FORMAT, Metadata.quoteIfNecessary(keyspace), strategy, replicationFactor);
   }

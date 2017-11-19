@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.tests.ccm;
 
-import com.datastax.dsbulk.tests.utils.VersionUtils;
+import com.datastax.dsbulk.tests.utils.Version;
 import java.io.Closeable;
 import java.io.File;
 import java.net.InetAddress;
@@ -125,17 +125,8 @@ public interface CCMCluster extends Closeable {
    * Closes the cluster. This is usually a synonym of {@link #stop()} to comply with {@link
    * Closeable} interface.
    */
+  @Override
   void close();
-
-  /**
-   * Registers the given {@link Runnable} as a callback to be executed right before this cluster is
-   * closed.
-   *
-   * <p>This is useful to trigger the closing of dependent resources, such as client connections.
-   *
-   * @param onCloseCallback the callback to be executed right before this cluster is closed.
-   */
-  void registerOnCloseCallback(Runnable onCloseCallback);
 
   // Methods altering the cluster
 
@@ -247,12 +238,9 @@ public interface CCMCluster extends Closeable {
   /**
    * Returns the Cassandra or DSE version of this CCM cluster.
    *
-   * <p>By default the version is inferred from {@link VersionUtils#getBestDSEVersion(String)} or
-   * {@link VersionUtils#getBestOSSVersion(String)}.
-   *
    * @return The version of this CCM cluster.
    */
-  String getVersion();
+  Version getVersion();
 
   /**
    * Whether this cluster is a DSE cluster, or an OSS Cassandra cluster.

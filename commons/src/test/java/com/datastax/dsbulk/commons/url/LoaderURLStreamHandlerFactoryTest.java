@@ -8,12 +8,12 @@ package com.datastax.dsbulk.commons.url;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class LoaderURLStreamHandlerFactoryTest {
+class LoaderURLStreamHandlerFactoryTest {
 
   @Test
-  public void should_handle_stdin_protocol() throws Exception {
+  void should_handle_stdin_protocol() throws Exception {
     LoaderURLStreamHandlerFactory factory = new LoaderURLStreamHandlerFactory();
     assertThat(factory.createURLStreamHandler("stdin"))
         .isNotNull()
@@ -24,7 +24,7 @@ public class LoaderURLStreamHandlerFactoryTest {
   }
 
   @Test
-  public void should_handle_stdout_protocol() throws Exception {
+  void should_handle_stdout_protocol() throws Exception {
     LoaderURLStreamHandlerFactory factory = new LoaderURLStreamHandlerFactory();
     assertThat(factory.createURLStreamHandler("stdout"))
         .isNotNull()
