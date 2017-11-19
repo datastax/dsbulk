@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.executor.api.simulacron;
 
-import com.datastax.dsbulk.executor.api.ContinuousRxJavaBulkExecutor;
+import com.datastax.dsbulk.executor.rxjava.ContinuousRxJavaBulkExecutor;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 

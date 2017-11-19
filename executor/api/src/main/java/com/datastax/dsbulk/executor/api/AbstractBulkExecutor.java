@@ -28,7 +28,7 @@ import java.util.function.Supplier;
 public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseable {
 
   /** The default number of maximum in-flight requests. */
-  static final int DEFAULT_MAX_INFLIGHT_REQUESTS = 1_000;
+  static final int DEFAULT_MAX_IN_FLIGHT_REQUESTS = 1_000;
 
   /** The default maximum number of concurrent requests per second. */
   static final int DEFAULT_MAX_REQUESTS_PER_SECOND = 100_000;
@@ -44,35 +44,43 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
               new ThreadFactoryBuilder().setDaemon(true).setNameFormat("bulk-executor-%d").build(),
               new ThreadPoolExecutor.CallerRunsPolicy());
 
-  static final QueueFactory<ReadResult> DEFAULT_QUEUE_FACTORY =
-      statement -> new ArrayBlockingQueue<>(statement.getFetchSize() * 4);
+  protected final Session session;
 
-  final Session session;
+  protected final boolean failFast;
 
-  final boolean failFast;
+  protected final Optional<Semaphore> requestPermits;
 
-  final Optional<Semaphore> requestPermits;
+  protected final Optional<RateLimiter> rateLimiter;
 
-  final Optional<RateLimiter> rateLimiter;
+  protected final Optional<ExecutionListener> listener;
 
-  final Optional<ExecutionListener> listener;
+  protected final Executor executor;
 
-  final Executor executor;
+  protected final QueueFactory<ReadResult> queueFactory;
 
-  final QueueFactory<ReadResult> queueFactory;
-
-  AbstractBulkExecutor(Session session) {
+  protected AbstractBulkExecutor(Session session) {
     this(
         session,
         true,
-        DEFAULT_MAX_INFLIGHT_REQUESTS,
+        DEFAULT_MAX_IN_FLIGHT_REQUESTS,
         DEFAULT_MAX_REQUESTS_PER_SECOND,
         null,
         DEFAULT_EXECUTOR_SUPPLIER.get(),
-        DEFAULT_QUEUE_FACTORY);
+        defaultQueueFactory(session));
   }
 
-  AbstractBulkExecutor(
+  protected AbstractBulkExecutor(AbstractBulkExecutorBuilder<?> builder) {
+    this(
+        builder.session,
+        builder.failFast,
+        builder.maxInFlightRequests,
+        builder.maxRequestsPerSecond,
+        builder.listener,
+        builder.executor.get(),
+        builder.queueFactory);
+  }
+
+  private AbstractBulkExecutor(
       Session session,
       boolean failFast,
       int maxInFlightRequests,
@@ -96,6 +104,16 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
     this.listener = Optional.ofNullable(listener);
     this.executor = executor;
     this.queueFactory = queueFactory;
+  }
+
+  private static QueueFactory<ReadResult> defaultQueueFactory(Session session) {
+    return statement -> {
+      int fetchSize = statement.getFetchSize();
+      if (fetchSize <= 0) {
+        fetchSize = session.getCluster().getConfiguration().getQueryOptions().getFetchSize();
+      }
+      return new ArrayBlockingQueue<>(fetchSize * 4);
+    };
   }
 
   @Override

@@ -36,7 +36,7 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
   final Session session;
   final Optional<ExecutionListener> listener;
 
-  private final Subscriber<? super T> subscriber;
+  private Subscriber<? super T> subscriber;
   private final Queue<T> queue;
   private final Executor executor;
   private final Optional<Semaphore> requestPermits;
@@ -107,6 +107,7 @@ public abstract class ResultSubscription<T extends Result, R> implements Subscri
     if (WIP.getAndIncrement(this) == 0) {
       queue.clear();
     }
+    subscriber = null;
   }
 
   boolean isCancelled() {

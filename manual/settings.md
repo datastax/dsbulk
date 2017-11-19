@@ -618,9 +618,11 @@ The buffer size to use for batching statements.
 
 The buffer will be flushed when this size is reached.
 
+When set to a negative value the buffer size is implicitly set to `maxBatchSize`.
+
 It is usually not necessary to set this value higher than `maxBatchSize`, unless the dataset to load is unsorted, in which case a higher value might improve the average batch size.
 
-Default: **32**.
+Default: **-1**.
 
 #### --batch.enabled _&lt;boolean&gt;_
 
@@ -1087,8 +1089,6 @@ Valid values are:
 
 Using OpenSSL provides better performance and generates less garbage. This is the recommended provider when using SSL.
 
-Follow these instructions to find out how to add this dependency: http://netty.io/wiki/forked-tomcat-native.html
-
 Default: **"None"**.
 
 #### --driver.ssl.truststore.algorithm _&lt;string&gt;_
@@ -1277,6 +1277,14 @@ The console reporter will print useful metrics about the ongoing operation at th
 Durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
+
+#### --monitoring.csv _&lt;boolean&gt;_
+
+Whether or not to enable CSV reporting.
+
+If enabled, csv files containing metrics will be generated in the designated log directory.
+
+Default: **false**.
 
 #### --monitoring.durationUnit _&lt;string&gt;_
 

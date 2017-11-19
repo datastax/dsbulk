@@ -31,7 +31,7 @@ import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
-import com.datastax.dsbulk.executor.api.reader.ReactorBulkReader;
+import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -88,10 +88,12 @@ public class UnloadWorkflow implements Workflow {
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
-    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.UNLOAD, false);
-    metricsManager.init();
     logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
     logManager.init();
+    metricsManager =
+        monitoringSettings.newMetricsManager(
+            WorkflowType.UNLOAD, false, logManager.getExecutionDirectory());
+    metricsManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);

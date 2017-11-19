@@ -28,10 +28,10 @@ import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
-import com.datastax.dsbulk.executor.api.batch.ReactorStatementBatcher;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
-import com.datastax.dsbulk.executor.api.writer.ReactorBulkWriter;
+import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
+import com.datastax.dsbulk.executor.reactor.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
 import java.util.HashSet;
 import java.util.Set;
@@ -96,10 +96,12 @@ public class LoadWorkflow implements Workflow {
     DseSession session = cluster.connect(keyspace);
     batchingEnabled = batchSettings.isBatchingEnabled();
     batchBufferSize = batchSettings.getBufferSize();
-    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD, batchingEnabled);
-    metricsManager.init();
     logManager = logSettings.newLogManager(WorkflowType.LOAD, cluster);
     logManager.init();
+    metricsManager =
+        monitoringSettings.newMetricsManager(
+            WorkflowType.LOAD, batchingEnabled, logManager.getExecutionDirectory());
+    metricsManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     recordMapper =
         schemaSettings.createRecordMapper(

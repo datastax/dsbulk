@@ -274,7 +274,7 @@ public class StatementBatcher {
     }
   }
 
-  Object groupingKey(Statement statement) {
+  protected Object groupingKey(Statement statement) {
     Token routingToken = statement.getRoutingToken();
     ByteBuffer routingKey = statement.getRoutingKey(protocolVersion, codecRegistry);
     switch (batchMode) {

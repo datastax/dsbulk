@@ -50,4 +50,28 @@ abstract class DefaultResult implements Result {
   public Optional<ExecutionInfo> getExecutionInfo() {
     return Optional.ofNullable(executionInfo);
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DefaultResult that = (DefaultResult) o;
+    return statement.equals(that.statement)
+        && (executionInfo != null
+            ? executionInfo.equals(that.executionInfo)
+            : that.executionInfo == null)
+        && (error != null ? error.equals(that.error) : that.error == null);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = statement.hashCode();
+    result = 31 * result + (executionInfo != null ? executionInfo.hashCode() : 0);
+    result = 31 * result + (error != null ? error.hashCode() : 0);
+    return result;
+  }
 }

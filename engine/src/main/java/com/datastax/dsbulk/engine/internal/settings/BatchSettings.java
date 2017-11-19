@@ -8,10 +8,11 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.executor.api.batch.ReactorStatementBatcher;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
+import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigException;
 
 /** */
@@ -32,7 +33,15 @@ public class BatchSettings {
       enabled = config.getBoolean(ENABLED);
       mode = config.getEnum(StatementBatcher.BatchMode.class, MODE);
       maxBatchSize = config.getInt(MAX_BATCH_SIZE);
-      bufferSize = config.getInt(BUFFER_SIZE);
+      int bufferConfig = config.getInt(BUFFER_SIZE);
+      bufferSize = bufferConfig > -1 ? bufferConfig : maxBatchSize;
+      if (bufferSize < maxBatchSize) {
+        throw new BulkConfigurationException(
+            String.format(
+                "batch.bufferSize (%d) must be greater than or equal to buffer.maxBatchSize (%d). See settings.md for more information.",
+                bufferSize, maxBatchSize),
+            "batch");
+      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
     }

@@ -25,11 +25,33 @@ public final class DefaultReadResult extends DefaultResult implements ReadResult
 
   public DefaultReadResult(BulkExecutionException error) {
     super(error);
-    this.row = null;
+    row = null;
   }
 
   @Override
   public Optional<Row> getRow() {
     return Optional.ofNullable(row);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    DefaultReadResult that = (DefaultReadResult) o;
+    return row != null ? row.equals(that.row) : that.row == null;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = super.hashCode();
+    result = 31 * result + (row != null ? row.hashCode() : 0);
+    return result;
   }
 }

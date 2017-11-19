@@ -23,6 +23,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import org.reactivestreams.Subscriber;
 
+@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class ContinuousReadResultSubscription
     extends ResultSubscription<ReadResult, AsyncContinuousPagingResult> {
 

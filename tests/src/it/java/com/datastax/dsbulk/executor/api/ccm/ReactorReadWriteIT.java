@@ -8,8 +8,8 @@ package com.datastax.dsbulk.executor.api.ccm;
 
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
-import com.datastax.dsbulk.executor.api.DefaultReactorBulkExecutor;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
+import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
 import com.datastax.dsbulk.tests.categories.LongTests;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMTest;
 import org.junit.experimental.categories.Category;
@@ -18,6 +18,7 @@ import org.junit.experimental.categories.Category;
 @Category(LongTests.class)
 public class ReactorReadWriteIT extends AbstractReadWriteIT {
 
+  @Override
   protected BulkExecutor getBulkExecutor(ExecutionListener listener, Session session) {
     return DefaultReactorBulkExecutor.builder(session).withExecutionListener(listener).build();
   }

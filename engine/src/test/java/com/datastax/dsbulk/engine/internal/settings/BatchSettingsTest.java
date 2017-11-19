@@ -17,18 +17,23 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.executor.api.batch.ReactorStatementBatcher;
+import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
 public class BatchSettingsTest {
 
   private Cluster cluster;
+
+  public @Rule ExpectedException exception = ExpectedException.none();
 
   @SuppressWarnings("Duplicates")
   @Before
@@ -85,9 +90,22 @@ public class BatchSettingsTest {
             ConfigFactory.parseString("maxBatchSize = 10")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
-    assertThat(settings.getBufferSize()).isEqualTo(32);
+    // buffer size should implicitly be updated when max batch size is changed and it isn't specified.
+    assertThat(settings.getBufferSize()).isEqualTo(10);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
+  }
+
+  @Test
+  public void should_throw_exception_when_buffer_size_less_than_max_batch_size() throws Exception {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxBatchSize = 10, " + "bufferSize = 5")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
+    exception.expect(BulkConfigurationException.class);
+    exception.expectMessage(
+        "batch.bufferSize (5) must be greater than or equal to buffer.maxBatchSize (10). See settings.md for more information.");
+    new BatchSettings(config);
   }
 }

@@ -21,23 +21,24 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
 
 /** A builder for {@link AbstractBulkExecutor} instances. */
+@SuppressWarnings("WeakerAccess")
 public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor> {
 
-  final Session session;
+  protected final Session session;
 
-  boolean failFast = true;
+  protected boolean failFast = true;
 
-  int maxInFlightRequests = AbstractBulkExecutor.DEFAULT_MAX_INFLIGHT_REQUESTS;
+  protected int maxInFlightRequests = AbstractBulkExecutor.DEFAULT_MAX_IN_FLIGHT_REQUESTS;
 
-  int maxRequestsPerSecond = AbstractBulkExecutor.DEFAULT_MAX_REQUESTS_PER_SECOND;
+  protected int maxRequestsPerSecond = AbstractBulkExecutor.DEFAULT_MAX_REQUESTS_PER_SECOND;
 
-  ExecutionListener listener;
+  protected ExecutionListener listener;
 
-  Supplier<Executor> executor = AbstractBulkExecutor.DEFAULT_EXECUTOR_SUPPLIER;
+  protected Supplier<Executor> executor = AbstractBulkExecutor.DEFAULT_EXECUTOR_SUPPLIER;
 
-  QueueFactory<ReadResult> queueFactory = AbstractBulkExecutor.DEFAULT_QUEUE_FACTORY;
+  protected QueueFactory<ReadResult> queueFactory = null;
 
-  AbstractBulkExecutorBuilder(Session session) {
+  protected AbstractBulkExecutorBuilder(Session session) {
     this.session = session;
   }
 
@@ -74,7 +75,7 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
    * Sets the maximum number of "in-flight" requests. In other words, sets the maximum amount of
    * concurrent uncompleted futures waiting for a response from the server. This acts as a safeguard
    * against workflows that generate more requests that they can handle. The default is {@link
-   * com.datastax.dsbulk.executor.api.AbstractBulkExecutor#DEFAULT_MAX_INFLIGHT_REQUESTS}. Setting
+   * com.datastax.dsbulk.executor.api.AbstractBulkExecutor#DEFAULT_MAX_IN_FLIGHT_REQUESTS}. Setting
    * this option to any negative value will disable it.
    *
    * @param maxInFlightRequests the maximum number of "in-flight" requests.
