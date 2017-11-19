@@ -96,10 +96,12 @@ public class LoadWorkflow implements Workflow {
     DseSession session = cluster.connect(keyspace);
     batchingEnabled = batchSettings.isBatchingEnabled();
     batchBufferSize = batchSettings.getBufferSize();
-    metricsManager = monitoringSettings.newMetricsManager(WorkflowType.LOAD, batchingEnabled);
-    metricsManager.init();
     logManager = logSettings.newLogManager(WorkflowType.LOAD, cluster);
     logManager.init();
+    metricsManager =
+        monitoringSettings.newMetricsManager(
+            WorkflowType.LOAD, batchingEnabled, logManager.getExecutionDirectory());
+    metricsManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     recordMapper =
         schemaSettings.createRecordMapper(

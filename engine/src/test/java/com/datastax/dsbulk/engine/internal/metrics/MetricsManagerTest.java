@@ -107,6 +107,8 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
+            false,
+            null,
             Duration.ofSeconds(5),
             false);
     manager.init();
@@ -131,6 +133,8 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
+            false,
+            null,
             Duration.ofSeconds(5),
             true);
     manager.init();
@@ -155,6 +159,8 @@ public class MetricsManagerTest {
             -1,
             -1,
             false,
+            false,
+            null,
             Duration.ofSeconds(5),
             true);
     manager.init();
