@@ -9,6 +9,7 @@ package com.datastax.dsbulk.tests.ccm;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMTest;
 import com.datastax.dsbulk.tests.ccm.annotations.DSERequirement;
@@ -105,6 +106,16 @@ public class CCMRule implements TestRule {
         CassandraVersion.parse(VersionUtils.computeVersion(config, true));
     if (dseRequirement != null) {
       // if the configured DSE DSERequirement exceeds the one being used skip this test.
+      if (PlatformUtils.isWindows()) {
+        return new Statement() {
+
+          @Override
+          public void evaluate() throws Throwable {
+            throw new AssumptionViolatedException("Test not compatible with windows");
+          }
+        };
+      }
+
       if (!dseRequirement.min().isEmpty()) {
         CassandraVersion minVersion = CassandraVersion.parse(dseRequirement.min());
         if (minVersion.compareTo(currentVersion) > 0) {

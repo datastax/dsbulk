@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.engine.internal.HelpUtils;
 import com.datastax.dsbulk.engine.internal.OptionUtils;
 import com.typesafe.config.Config;
@@ -173,9 +174,16 @@ public class MainTest {
   public void should_error_out_for_bad_config_file() throws Exception {
     new Main(new String[] {"load", "-f", "noexist"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err)
-        .doesNotContain("First argument must be subcommand")
-        .contains("noexist (No such file or directory)");
+    if (PlatformUtils.isWindows()) {
+
+      assertThat(err)
+          .doesNotContain("First argument must be subcommand")
+          .contains("noexist (The system cannot find the file specified)");
+    } else {
+      assertThat(err)
+          .doesNotContain("First argument must be subcommand")
+          .contains("noexist (No such file or directory)");
+    }
   }
 
   @Test
