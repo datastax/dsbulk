@@ -79,8 +79,11 @@ public class ErrorUnloadIT {
     new Main(unloadArgs).run();
     List<String> errorMessages = EndToEndUtils.getErrorEventMessages(appender);
     assertThat(errorMessages).isNotEmpty();
-    assertThat(errorMessages.get(0)).contains("Could not create CSV writer for file:" + file);
-    assertThat(errorMessages.get(1)).contains("Error writing to file:" + file);
+    assertThat(errorMessages.get(0)).contains("Could not create CSV writer for file:");
+    assertThat(errorMessages.get(0)).contains("output-000001.csv");
+    assertThat(errorMessages.get(1)).contains("Error writing to file:");
+    assertThat(errorMessages.get(1)).contains("output-000001.csv");
+
     Files.delete(file);
     Files.delete(directory);
   }

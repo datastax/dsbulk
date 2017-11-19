@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
 
 @SuppressWarnings("SameParameterValue")
@@ -164,8 +165,8 @@ public class EndToEndUtils {
         Arrays.stream(outputFilePaths)
             .mapToLong(
                 path -> {
-                  try {
-                    return Files.lines(path, Charset.defaultCharset()).count();
+                  try (Stream<String> stream = Files.lines(path)) {
+                    return stream.count();
                   } catch (IOException e) {
                     // This should never happen. Emit the stack trace, but in case
                     // it's not visible in the test output, make the test fail

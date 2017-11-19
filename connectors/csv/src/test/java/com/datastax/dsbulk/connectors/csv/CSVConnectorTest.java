@@ -12,6 +12,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
@@ -156,7 +157,9 @@ public class CSVConnectorTest {
               .autoConnect(2);
       records.subscribe(connector.write());
       records.blockLast();
-      assertThat(new String(baos.toByteArray(), "ISO-8859-1")).isEqualTo("fóô,bàr,qïx\n");
+      assertThat(new String(baos.toByteArray(), "ISO-8859-1"))
+          .isEqualTo("fóô,bàr,qïx" + System.lineSeparator());
+
       connector.close();
     } finally {
       System.setOut(stdout);
@@ -261,7 +264,9 @@ public class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1", out))
+                    String.format(
+                        "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1",
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -289,7 +294,9 @@ public class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 4", out))
+                    String.format(
+                        "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 4",
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -318,7 +325,7 @@ public class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxLines = 4",
-                        out))
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -473,7 +480,10 @@ public class CSVConnectorTest {
     Files.createFile(file);
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = \"%s\", maxConcurrentFiles = 1", out))
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", maxConcurrentFiles = 1",
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -495,7 +505,10 @@ public class CSVConnectorTest {
     Files.createFile(file2);
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = \"%s\", maxConcurrentFiles = 2", out))
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", maxConcurrentFiles = 2",
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();

@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.RegularStatement;
 import com.datastax.driver.core.Statement;
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.net.URL;
@@ -156,6 +157,10 @@ public class CqlScriptReaderTest {
 
   private static String readFile(String resource) throws IOException {
     URL url = Resources.getResource(resource);
+
+    if (PlatformUtils.isWindows()) {
+      return Resources.toString(url, UTF_8).trim().replace("\r\n", "\n");
+    }
     return Resources.toString(url, UTF_8).trim();
   }
 }
