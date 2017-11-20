@@ -82,7 +82,16 @@ public class CsvUtils {
 
   public static final String SELECT_FROM_IP_BY_COUNTRY = "SELECT * FROM ip_by_country";
 
-  public static final String SELECT_FROM_WITH_SPACES = "SELECT * FROM \"MYKS\".\"WITH_SPACES\"";
+  public static final String SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES =
+      "SELECT * FROM \"MYKS\".\"WITH_SPACES\"";
+
+  public static final String SELECT_FROM_IP_BY_COUNTRY_COMPLEX = "SELECT * FROM country_complex";
+
+  public static final String IP_BY_COUNTRY_MAPPING =
+      "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name";
+
+  public static final String IP_BY_COUNTRY_COMPLEX_MAPPING =
+      "0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts";
 
   public static void createIpByCountryTable(Session session) {
     session.execute(
@@ -228,7 +237,9 @@ public class CsvUtils {
             parser.beginParsing(is, "UTF-8");
             Record row;
             while ((row = parser.parseNextRecord()) != null) {
-              if (e.isCancelled()) break;
+              if (e.isCancelled()) {
+                break;
+              }
               e.onNext(row);
             }
             e.onComplete();

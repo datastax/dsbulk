@@ -68,8 +68,8 @@ public class DefaultCCMCluster implements CCMCluster {
   public static final String DEFAULT_SERVER_TRUSTSTORE_PASSWORD = "cassandra1sfun";
   public static final String DEFAULT_SERVER_KEYSTORE_PASSWORD = "cassandra1sfun";
 
-  public static final String DEFAULT_CLIENT_KEYSTORE_PATH = "/client.keystore";
   public static final String DEFAULT_CLIENT_TRUSTSTORE_PATH = "/client.truststore";
+  public static final String DEFAULT_CLIENT_KEYSTORE_PATH = "/client.keystore";
   public static final File DEFAULT_CLIENT_TRUSTSTORE_FILE = createTempStore("/client.truststore");
   public static final File DEFAULT_CLIENT_KEYSTORE_FILE = createTempStore("/client.keystore");
 
@@ -307,19 +307,22 @@ public class DefaultCCMCluster implements CCMCluster {
   @Override
   public synchronized void start() {
     if (state.canTransitionTo(State.STARTED)) {
-      if (LOGGER.isDebugEnabled())
+      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Starting: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
+      }
       try {
         execute(CCM_COMMAND + " start --wait-other-notice " + jvmArgs);
         LOGGER.debug("Waiting for binary protocol to show up");
-        for (InetAddress node : getInitialContactPoints())
+        for (InetAddress node : getInitialContactPoints()) {
           NetworkUtils.waitUntilPortIsUp(new InetSocketAddress(node, getBinaryPort()));
+        }
       } catch (CCMException e) {
         LOGGER.error("Could not start " + this, e);
         handleCCMException(e);
       }
-      if (LOGGER.isDebugEnabled())
+      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Started: {} - Free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
+      }
       state = State.STARTED;
     }
   }
@@ -327,8 +330,9 @@ public class DefaultCCMCluster implements CCMCluster {
   @Override
   public synchronized void stop() {
     if (state.canTransitionTo(State.STOPPED)) {
-      if (LOGGER.isDebugEnabled())
+      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Stopping: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
+      }
       for (Runnable callback : closeCallbacks) {
         try {
           callback.run();
@@ -342,8 +346,9 @@ public class DefaultCCMCluster implements CCMCluster {
         LOGGER.error("Could not stop " + this, e);
         handleCCMException(e);
       }
-      if (LOGGER.isDebugEnabled())
+      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Stopped: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
+      }
       state = State.STOPPED;
     }
   }
@@ -356,9 +361,10 @@ public class DefaultCCMCluster implements CCMCluster {
   @Override
   public synchronized void forceStop() {
     if (state.canTransitionTo(State.STOPPED)) {
-      if (LOGGER.isDebugEnabled())
+      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "Force stopping: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
+      }
       for (Runnable callback : closeCallbacks) {
         try {
           callback.run();
@@ -372,8 +378,9 @@ public class DefaultCCMCluster implements CCMCluster {
         LOGGER.error("Could not force stop " + this, e);
         handleCCMException(e);
       }
-      if (LOGGER.isDebugEnabled())
+      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Stopped: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
+      }
       state = State.STOPPED;
     }
   }
@@ -429,7 +436,9 @@ public class DefaultCCMCluster implements CCMCluster {
       LOGGER.error("CCM output:\n{}", e.getOut());
       setKeepLogs();
       String errors = checkForErrors();
-      if (errors != null) LOGGER.error("CCM check errors:\n{}", errors);
+      if (errors != null) {
+        LOGGER.error("CCM check errors:\n{}", errors);
+      }
       throw e;
     }
   }
@@ -582,9 +591,9 @@ public class DefaultCCMCluster implements CCMCluster {
     StringWriter sw = new StringWriter();
     StringWriter swOut = new StringWriter();
     StringWriter swErr = new StringWriter();
-    final PrintWriter pw = new PrintWriter(sw);
-    final PrintWriter pwOut = new PrintWriter(swOut);
-    final PrintWriter pwErr = new PrintWriter(swErr);
+    PrintWriter pw = new PrintWriter(sw);
+    PrintWriter pwOut = new PrintWriter(swOut);
+    PrintWriter pwErr = new PrintWriter(swErr);
     try (Closer closer = Closer.create()) {
       closer.register(pw);
       closer.register(pwOut);
@@ -632,8 +641,9 @@ public class DefaultCCMCluster implements CCMCluster {
             swErr.toString());
       }
     } catch (IOException e) {
-      if (watchDog.killedProcess())
+      if (watchDog.killedProcess()) {
         LOGGER.error("The command {} was killed after 10 minutes", fullCommand);
+      }
       pwOut.flush();
       pwErr.flush();
       throw new CCMException(
@@ -682,7 +692,9 @@ public class DefaultCCMCluster implements CCMCluster {
     LOGGER.error("CCM output:\n{}", e.getOut());
     setKeepLogs();
     String errors = checkForErrors();
-    if (errors != null && !errors.isEmpty()) LOGGER.error("CCM check errors:\n{}", errors);
+    if (errors != null && !errors.isEmpty()) {
+      LOGGER.error("CCM check errors:\n{}", errors);
+    }
     throw e;
   }
 
@@ -865,24 +877,27 @@ public class DefaultCCMCluster implements CCMCluster {
 
     public DefaultCCMCluster build() {
       // be careful NOT to alter internal state (hashCode/equals) during build!
-      final String clusterName = StringUtils.uniqueIdentifier();
+      String clusterName = StringUtils.uniqueIdentifier();
       Map<String, Object> cassandraConfiguration = randomizePorts(this.cassandraConfiguration);
       Map<String, Object> dseConfiguration = randomizePorts(this.dseConfiguration);
       if (dse && VersionUtils.compare(version, "5.0") >= 0) {
-        if (!dseConfiguration.containsKey("lease_netty_server_port"))
+        if (!dseConfiguration.containsKey("lease_netty_server_port")) {
           dseConfiguration.put("lease_netty_server_port", NetworkUtils.findAvailablePort());
-        if (!dseConfiguration.containsKey("internode_messaging_options.port"))
+        }
+        if (!dseConfiguration.containsKey("internode_messaging_options.port")) {
           dseConfiguration.put(
               "internode_messaging_options.port", NetworkUtils.findAvailablePort());
+        }
         // only useful if at least one node has graph workload
-        if (!dseConfiguration.containsKey("graph.gremlin_server.port"))
+        if (!dseConfiguration.containsKey("graph.gremlin_server.port")) {
           dseConfiguration.put("graph.gremlin_server.port", NetworkUtils.findAvailablePort());
+        }
       }
       int storagePort = Integer.parseInt(cassandraConfiguration.get("storage_port").toString());
       int thriftPort = Integer.parseInt(cassandraConfiguration.get("rpc_port").toString());
       int binaryPort =
           Integer.parseInt(cassandraConfiguration.get("native_transport_port").toString());
-      final DefaultCCMCluster ccm =
+      DefaultCCMCluster ccm =
           new DefaultCCMCluster(
               clusterName,
               version,
@@ -903,11 +918,15 @@ public class DefaultCCMCluster implements CCMCluster {
       ccm.execute(buildCreateCommand(clusterName));
       updateNodeConf(ccm);
       ccm.updateConfig(cassandraConfiguration);
-      if (!dseConfiguration.isEmpty()) ccm.updateDSEConfig(dseConfiguration);
+      if (!dseConfiguration.isEmpty()) {
+        ccm.updateDSEConfig(dseConfiguration);
+      }
       for (Map.Entry<Integer, Workload[]> entry : workloads.entrySet()) {
         ccm.setWorkload(entry.getKey(), entry.getValue());
       }
-      if (start) ccm.start();
+      if (start) {
+        ccm.start();
+      }
       return ccm;
     }
 
@@ -938,7 +957,9 @@ public class DefaultCCMCluster implements CCMCluster {
         result.append(" -n ");
         for (int i = 0; i < nodes.length; i++) {
           int node = nodes[i];
-          if (i > 0) result.append(':');
+          if (i > 0) {
+            result.append(':');
+          }
           result.append(node);
         }
       }
@@ -1028,17 +1049,37 @@ public class DefaultCCMCluster implements CCMCluster {
     public boolean equals(Object o) {
       // do not include cluster name and start, only
       // properties relevant to the settings of the cluster
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       Builder builder = (Builder) o;
-      if (dse != builder.dse) return false;
-      if (!ipPrefix.equals(builder.ipPrefix)) return false;
-      if (!Arrays.equals(nodes, builder.nodes)) return false;
-      if (!createOptions.equals(builder.createOptions)) return false;
-      if (!jvmArgs.equals(builder.jvmArgs)) return false;
-      if (!cassandraConfiguration.equals(builder.cassandraConfiguration)) return false;
-      if (!dseConfiguration.equals(builder.dseConfiguration)) return false;
-      if (!workloads.equals(builder.workloads)) return false;
+      if (dse != builder.dse) {
+        return false;
+      }
+      if (!ipPrefix.equals(builder.ipPrefix)) {
+        return false;
+      }
+      if (!Arrays.equals(nodes, builder.nodes)) {
+        return false;
+      }
+      if (!createOptions.equals(builder.createOptions)) {
+        return false;
+      }
+      if (!jvmArgs.equals(builder.jvmArgs)) {
+        return false;
+      }
+      if (!cassandraConfiguration.equals(builder.cassandraConfiguration)) {
+        return false;
+      }
+      if (!dseConfiguration.equals(builder.dseConfiguration)) {
+        return false;
+      }
+      if (!workloads.equals(builder.workloads)) {
+        return false;
+      }
       return version.equals(builder.version);
     }
 

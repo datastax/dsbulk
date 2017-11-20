@@ -14,9 +14,12 @@ import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.QueryOptions;
+import com.datastax.driver.core.RemoteEndpointAwareJdkSSLOptions;
+import com.datastax.driver.core.SSLOptions;
 import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.graph.GraphOptions;
+import com.datastax.dsbulk.tests.ccm.DefaultCCMCluster;
 import com.datastax.dsbulk.tests.ccm.annotations.ClusterConfig;
 import com.datastax.dsbulk.tests.ccm.annotations.ClusterFactoryMethod;
 import com.datastax.dsbulk.tests.utils.ReflectionUtils;
@@ -25,9 +28,14 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.security.KeyStore;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 
 /** */
 public abstract class ClusterFactory {
@@ -63,7 +71,9 @@ public abstract class ClusterFactory {
       }
       return new ClusterMethodFactory(factoryRef, testClass);
     }
-    if (config == null) config = DEFAULT_CLUSTER_CONFIG;
+    if (config == null) {
+      config = DEFAULT_CLUSTER_CONFIG;
+    }
     return new ClusterAnnotationFactory(config);
   }
 
@@ -107,8 +117,9 @@ public abstract class ClusterFactory {
       Map<String, String> config = new HashMap<>();
       for (String aConf : conf) {
         String[] tokens = aConf.split(":");
-        if (tokens.length != 2)
+        if (tokens.length != 2) {
           throw new IllegalArgumentException("Wrong configuration option: " + aConf);
+        }
         String key = tokens[0].trim();
         String value = tokens[1].trim();
         config.put(key, value);
@@ -123,9 +134,10 @@ public abstract class ClusterFactory {
           String methodName = "set" + name.substring(0, 1).toUpperCase() + name.substring(1);
           String[] tokens = entry.getValue().split(",");
           Method method = ReflectionUtils.locateMethod(methodName, bean.getClass(), tokens.length);
-          if (method == null)
+          if (method == null) {
             throw new IllegalArgumentException(
                 String.format("Cannot locate method %s in class %s", methodName, bean.getClass()));
+          }
           Object[] parameters = new Object[tokens.length];
           Class<?>[] types = method.getParameterTypes();
           for (int i = 0; i < tokens.length; i++) {
@@ -140,30 +152,61 @@ public abstract class ClusterFactory {
 
     @SuppressWarnings("unchecked")
     private static Object convert(String value, Class<?> type) {
-      if (value == null) return null;
+      if (value == null) {
+        return null;
+      }
       value = value.trim();
-      if (type.isAssignableFrom(value.getClass())) return value;
-      if (type.equals(Boolean.class) || type.equals(Boolean.TYPE)) return Boolean.valueOf(value);
-      if (type.equals(Character.class) || type.equals(Character.TYPE)) return value.charAt(0);
-      if (type.equals(Integer.class) || type.equals(Integer.TYPE)) return Integer.valueOf(value);
-      if (type.equals(Long.class) || type.equals(Long.TYPE)) return Long.valueOf(value);
-      if (type.equals(Float.class) || type.equals(Float.TYPE)) return Float.valueOf(value);
-      if (type.equals(Double.class) || type.equals(Double.TYPE)) return Double.valueOf(value);
-      if (Enum.class.isAssignableFrom(type))
+      if (type.isAssignableFrom(value.getClass())) {
+        return value;
+      }
+      if (type.equals(Boolean.class) || type.equals(Boolean.TYPE)) {
+        return Boolean.valueOf(value);
+      }
+      if (type.equals(Character.class) || type.equals(Character.TYPE)) {
+        return value.charAt(0);
+      }
+      if (type.equals(Integer.class) || type.equals(Integer.TYPE)) {
+        return Integer.valueOf(value);
+      }
+      if (type.equals(Long.class) || type.equals(Long.TYPE)) {
+        return Long.valueOf(value);
+      }
+      if (type.equals(Float.class) || type.equals(Float.TYPE)) {
+        return Float.valueOf(value);
+      }
+      if (type.equals(Double.class) || type.equals(Double.TYPE)) {
+        return Double.valueOf(value);
+      }
+      if (Enum.class.isAssignableFrom(type)) {
         return Enum.valueOf((Class<? extends Enum>) type, value);
-      if (type.equals(BigInteger.class)) return new BigInteger(value);
-      if (type.equals(BigDecimal.class)) return new BigDecimal(value);
+      }
+      if (type.equals(BigInteger.class)) {
+        return new BigInteger(value);
+      }
+      if (type.equals(BigDecimal.class)) {
+        return new BigDecimal(value);
+      }
       return value;
     }
 
     @Override
     public Cluster.Builder createClusterBuilder() {
       DseCluster.Builder clusterBuilder = DseCluster.builder();
-      if (ssl) clusterBuilder.withSSL();
-      if (!jmx) clusterBuilder.withoutJMXReporting();
-      if (!metrics) clusterBuilder.withoutMetrics();
-      if (credentials != null) clusterBuilder.withCredentials(credentials[0], credentials[1]);
-      if (protocolVersion != null) clusterBuilder.withProtocolVersion(protocolVersion);
+      if (ssl) {
+        clusterBuilder.withSSL(createSSLOptions());
+      }
+      if (!jmx) {
+        clusterBuilder.withoutJMXReporting();
+      }
+      if (!metrics) {
+        clusterBuilder.withoutMetrics();
+      }
+      if (credentials != null) {
+        clusterBuilder.withCredentials(credentials[0], credentials[1]);
+      }
+      if (protocolVersion != null) {
+        clusterBuilder.withProtocolVersion(protocolVersion);
+      }
       SocketOptions socketOptions = new SocketOptions();
       // reduce default values
       PoolingOptions poolingOptions =
@@ -190,22 +233,67 @@ public abstract class ClusterFactory {
       return clusterBuilder;
     }
 
+    private SSLOptions createSSLOptions() {
+      try {
+        KeyStore ks = KeyStore.getInstance("JKS");
+        ks.load(
+            this.getClass().getResourceAsStream(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PATH),
+            DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD.toCharArray());
+        TrustManagerFactory tmf =
+            TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(ks);
+        ks.load(
+            this.getClass().getResourceAsStream(DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PATH),
+            DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD.toCharArray());
+        KeyManagerFactory kmf =
+            KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        kmf.init(ks, DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD.toCharArray());
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new SecureRandom());
+        return RemoteEndpointAwareJdkSSLOptions.builder().withSSLContext(sslContext).build();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+
     @SuppressWarnings("SimplifiableIfStatement")
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       ClusterAnnotationFactory that = (ClusterAnnotationFactory) o;
-      if (ssl != that.ssl) return false;
-      if (metrics != that.metrics) return false;
-      if (jmx != that.jmx) return false;
-      if (protocolVersion != that.protocolVersion) return false;
-      if (compression != that.compression) return false;
+      if (ssl != that.ssl) {
+        return false;
+      }
+      if (metrics != that.metrics) {
+        return false;
+      }
+      if (jmx != that.jmx) {
+        return false;
+      }
+      if (protocolVersion != that.protocolVersion) {
+        return false;
+      }
+      if (compression != that.compression) {
+        return false;
+      }
       // Probably incorrect - comparing Object[] arrays with Arrays.equals
-      if (!Arrays.equals(credentials, that.credentials)) return false;
-      if (!socketOptions.equals(that.socketOptions)) return false;
-      if (!poolingOptions.equals(that.poolingOptions)) return false;
-      if (!queryOptions.equals(that.queryOptions)) return false;
+      if (!Arrays.equals(credentials, that.credentials)) {
+        return false;
+      }
+      if (!socketOptions.equals(that.socketOptions)) {
+        return false;
+      }
+      if (!poolingOptions.equals(that.poolingOptions)) {
+        return false;
+      }
+      if (!queryOptions.equals(that.queryOptions)) {
+        return false;
+      }
       return graphOptions.equals(that.graphOptions);
     }
 
@@ -258,9 +346,10 @@ public abstract class ClusterFactory {
     @Override
     public Cluster.Builder createClusterBuilder() {
       Cluster.Builder clusterBuilder = newBuilderInstance();
-      if (clusterBuilder == null)
+      if (clusterBuilder == null) {
         throw new NullPointerException(
             String.format("Cluster factory method %s returned null", factoryMethod));
+      }
       return clusterBuilder;
     }
 
@@ -270,8 +359,12 @@ public abstract class ClusterFactory {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       ClusterMethodFactory that = (ClusterMethodFactory) o;
       return factoryMethod.equals(that.factoryMethod);
     }
