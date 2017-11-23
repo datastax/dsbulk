@@ -8,7 +8,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.driver.core.DataType.timestamp;
 import static com.datastax.driver.core.DataType.varchar;
-import static com.datastax.driver.core.DriverCoreTestHooks.newTupleType;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;

@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.driver.core.DriverCoreTestHooks.newPreparedId;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newPreparedId;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TTL_VARNAME;

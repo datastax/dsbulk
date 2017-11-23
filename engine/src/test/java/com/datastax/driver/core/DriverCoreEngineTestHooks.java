@@ -9,10 +9,14 @@ package com.datastax.driver.core;
 import java.util.Arrays;
 
 /** */
-public class DriverCoreTestHooks {
+public class DriverCoreEngineTestHooks {
 
   public static PreparedId newPreparedId(ColumnDefinitions cd, ProtocolVersion version) {
-    return new PreparedId(null, cd, null, null, version);
+    return new PreparedId(
+        new PreparedId.PreparedMetadata(null, null),
+        new PreparedId.PreparedMetadata(null, cd),
+        null,
+        version);
   }
 
   public static TupleType newTupleType(DataType... types) {

@@ -6,8 +6,8 @@
  */
 package com.datastax.dsbulk.commons.internal.uri;
 
-import static com.datastax.driver.core.DriverCoreTestHooks.newColumnDefinitions;
-import static com.datastax.driver.core.DriverCoreTestHooks.newDefinition;
+import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
+import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;

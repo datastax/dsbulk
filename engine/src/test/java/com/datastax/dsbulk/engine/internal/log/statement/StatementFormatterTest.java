@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.log.statement;
 
-import static com.datastax.driver.core.DriverCoreTestHooks.newPreparedId;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newPreparedId;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity.ABRIDGED;
