@@ -25,8 +25,6 @@ import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 /** */
 public class LogSettings {
@@ -78,9 +76,7 @@ public class LogSettings {
             .withMaxBoundValues(maxBoundValues)
             .withMaxInnerStatements(maxInnerStatements)
             .build();
-    Scheduler scheduler = Schedulers.newParallel("log-manager", 4);
-    return new LogManager(
-        workflowType, cluster, scheduler, executionDirectory, maxErrors, formatter, level);
+    return new LogManager(workflowType, cluster, executionDirectory, maxErrors, formatter, level);
   }
 
   private void maybeStartExecutionLogFileAppender() {
