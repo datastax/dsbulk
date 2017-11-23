@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -13,6 +13,10 @@ public class BulkConfigurationException extends RuntimeException {
   public BulkConfigurationException(String message, String path) {
     super(message);
     this.path = path;
+  }
+
+  public BulkConfigurationException(Throwable cause, String path) {
+    this(cause.getMessage(), cause, path);
   }
 
   public BulkConfigurationException(String message, Throwable cause, String path) {

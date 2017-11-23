@@ -16,6 +16,7 @@
 - [improvement] DAT-147: Support TIMESTAMP, TTL and now().
 - [improvement] DAT-142: Add DSE version validation.
 - [improvement] DAT-157: Optimize non-thread-per-core LoadWorkflow by trying to emit records to mapper threads together.
+- [improvement] DAT-168: Field mapping should support string timestamps.
 - [bug] DAT-170: Internal scheduler is not closed when LogManager is closed.
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -66,37 +66,41 @@ public class CodecSettings {
   private static final String DATE = "date";
   private static final String TIMESTAMP = "timestamp";
 
-  private final String localeString;
-  private final List<String> booleanWords;
-  private final String number;
-  private final String time;
-  private final String timeZone;
-  private final String date;
-  private final String timestamp;
+  private final Map<String, Boolean> booleanInputs;
+  private final Map<Boolean, String> booleanOutputs;
+  private final ThreadLocal<DecimalFormat> numberFormat;
+  private final DateTimeFormatter localDateFormat;
+  private final DateTimeFormatter localTimeFormat;
+  private final DateTimeFormatter timestampFormat;
+  private final ObjectMapper objectMapper;
 
   CodecSettings(LoaderConfig config) {
     try {
-      localeString = config.getString(LOCALE);
-      booleanWords = config.getStringList(BOOLEAN_WORDS);
-      number = config.getString(NUMBER);
-      timeZone = config.getString(TIME_ZONE);
-      date = config.getString(DATE);
-      time = config.getString(TIME);
-      timestamp = config.getString(TIMESTAMP);
+      String localeString = config.getString(LOCALE);
+      List<String> booleanWords = config.getStringList(BOOLEAN_WORDS);
+      String number = config.getString(NUMBER);
+      String timeZone = config.getString(TIME_ZONE);
+      String date = config.getString(DATE);
+      String time = config.getString(TIME);
+      String timestamp = config.getString(TIMESTAMP);
+      Locale locale = parseLocale(localeString);
+      booleanInputs = getBooleanInputs(booleanWords);
+      booleanOutputs = getBooleanOutputs(booleanWords);
+      numberFormat = getNumberFormat(locale, number);
+      localDateFormat = getDateFormat(date, timeZone, locale);
+      localTimeFormat = getDateFormat(time, timeZone, locale);
+      timestampFormat = getDateFormat(timestamp, timeZone, locale);
+      objectMapper = getObjectMapper();
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "codec");
     }
   }
 
+  public DateTimeFormatter getTimestampFormat() {
+    return timestampFormat;
+  }
+
   public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {
-    Locale locale = parseLocale(localeString);
-    Map<String, Boolean> booleanInputs = getBooleanInputs(booleanWords);
-    Map<Boolean, String> booleanOutputs = getBooleanOutputs(booleanWords);
-    ThreadLocal<DecimalFormat> numberFormat = getNumberFormat(locale, number);
-    DateTimeFormatter localDateFormat = getDateFormat(date, timeZone, locale);
-    DateTimeFormatter localTimeFormat = getDateFormat(time, timeZone, locale);
-    DateTimeFormatter timestampFormat = getDateFormat(timestamp, timeZone, locale);
-    ObjectMapper objectMapper = getObjectMapper();
     CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
     return new ExtendedCodecRegistry(
         codecRegistry,
@@ -132,7 +136,9 @@ public class CodecSettings {
 
   private static DateTimeFormatter getDateFormat(
       String constantOrPattern, String timeZone, Locale locale) {
-    if (constantOrPattern.equalsIgnoreCase(CQL_DATE_TIME)) return CQL_DATE_TIME_FORMAT;
+    if (constantOrPattern.equalsIgnoreCase(CQL_DATE_TIME)) {
+      return CQL_DATE_TIME_FORMAT.withZone(ZoneId.of(timeZone));
+    }
     try {
       Field field = DateTimeFormatter.class.getDeclaredField(constantOrPattern);
       DateTimeFormatter formatter = (DateTimeFormatter) field.get(null);

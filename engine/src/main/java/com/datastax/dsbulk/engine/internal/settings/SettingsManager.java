@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -47,10 +47,11 @@ public class SettingsManager {
     logSettings = new LogSettings(config.getConfig("log"), executionId);
     driverSettings = new DriverSettings(config.getConfig("driver"), executionId);
     connectorSettings = new ConnectorSettings(config.getConfig("connector"), workflowType);
-    schemaSettings = new SchemaSettings(config.getConfig("schema"));
     batchSettings = new BatchSettings(config.getConfig("batch"));
     executorSettings = new ExecutorSettings(config.getConfig("executor"));
     codecSettings = new CodecSettings(config.getConfig("codec"));
+    schemaSettings =
+        new SchemaSettings(config.getConfig("schema"), codecSettings.getTimestampFormat());
     monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), executionId);
     engineSettings = new EngineSettings(config.getConfig("engine"));
   }
