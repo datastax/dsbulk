@@ -1,0 +1,18 @@
+environment:
+  appveyor_build_worker_cloud: gce
+  test_profile: default
+  matrix:
+    - java_version: 1.8.0
+platform: x64
+init:
+  - git config --global core.autocrlf true
+install:
+  - ps: .\appveyor.ps1
+build_script:
+  - mvn install -DskipTests=true -B -V
+test_script:
+  - mvn verify -B
+on_finish:
+  - ps: .\uploadtests.ps1
+cache:
+  - C:\Users\appveyor\.m2
