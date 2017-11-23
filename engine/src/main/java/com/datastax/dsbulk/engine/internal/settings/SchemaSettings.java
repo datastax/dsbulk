@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static com.datastax.dsbulk.engine.internal.WorkflowUtils.parseTimestamp;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
@@ -18,7 +18,6 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TokenRange;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
@@ -26,7 +25,6 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
@@ -46,7 +44,7 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
-import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -79,6 +77,7 @@ public class SchemaSettings {
   private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
 
   private final LoaderConfig config;
+  private final DateTimeFormatter timestampFormat;
   private final ImmutableSet<String> nullStrings;
   private final boolean nullToUnset;
   private final Config mapping;
@@ -88,17 +87,18 @@ public class SchemaSettings {
   private String query;
   private PreparedStatement preparedStatement;
   private String keyspaceName;
-  private int ttl;
-  private long timestamp;
+  private final int ttl;
+  private final long timestamp;
 
-  SchemaSettings(LoaderConfig config) {
+  SchemaSettings(LoaderConfig config, DateTimeFormatter timestampFormat) {
     this.config = config;
+    this.timestampFormat = timestampFormat;
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       nullStrings = ImmutableSet.copyOf(config.getStringList(NULL_STRINGS));
       ttl = config.getInt(QUERY_TTL);
       String timestamp = config.getString(QUERY_TIMESTAMP);
-      this.timestamp = parseTimestamp(timestamp);
+      this.timestamp = parseTimestamp(timestamp, prettyPath(QUERY_TIMESTAMP), timestampFormat);
       this.query = config.hasPath(QUERY) ? config.getString(QUERY) : null;
 
       boolean keyspaceTablePresent = false;
@@ -207,6 +207,8 @@ public class SchemaSettings {
       }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
+    } catch (IllegalArgumentException e) {
+      throw new BulkConfigurationException(e, "schema");
     }
   }
 
@@ -223,7 +225,8 @@ public class SchemaSettings {
         nullStrings,
         nullToUnset,
         ttl,
-        timestamp);
+        timestamp,
+        timestampFormat);
   }
 
   public ReadResultMapper createReadResultMapper(
@@ -259,37 +262,6 @@ public class SchemaSettings {
 
   public String getKeyspace() {
     return keyspaceName;
-  }
-
-  private long parseTimestamp(String timestamp) {
-    if (timestamp.isEmpty()) {
-      return -1;
-    }
-
-    // Try parsing as an int, and then as ISO_LOCAL_DATE_TIME (interpreted as UTC)
-
-    long timestampMicros;
-    try {
-      timestampMicros = Long.parseLong(timestamp);
-    } catch (NumberFormatException e) {
-      StringToInstantCodec codec = new StringToInstantCodec(CodecSettings.CQL_DATE_TIME_FORMAT);
-      try {
-        Instant instant = codec.convertFrom(timestamp);
-        timestampMicros = MILLISECONDS.toMicros(instant.toEpochMilli());
-      } catch (InvalidTypeException e1) {
-        e1.addSuppressed(e);
-        BulkConfigurationException e2 =
-            new BulkConfigurationException(
-                String.format(
-                    "Could not parse %s '%s'; accepted formats are numeric "
-                        + "milliseconds since epoch or ISO-8601 date-time (e.g. '2017-01-02T12:34:56Z')",
-                    prettyPath(QUERY_TIMESTAMP), timestamp),
-                "schema");
-        e2.addSuppressed(e1);
-        throw e2;
-      }
-    }
-    return timestampMicros;
   }
 
   private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session)
@@ -538,7 +510,7 @@ public class SchemaSettings {
   }
 
   private class InferredMappingSpec {
-    private Set<String> excludes = new HashSet<>();
+    private final Set<String> excludes = new HashSet<>();
 
     InferredMappingSpec(ConfigValue spec) {
       if (spec.valueType() == ConfigValueType.STRING) {
