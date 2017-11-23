@@ -22,10 +22,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
+import org.apache.commons.cli.ParseException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +41,7 @@ public class MainTest {
   private Level oldLevel;
 
   @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
+  @Rule public ExpectedException thrown = ExpectedException.none();
 
   @Before
   public void setUp() throws Exception {
@@ -314,6 +317,18 @@ public class MainTest {
     assertThat(result.getInt("connector.csv.maxConcurrentFiles")).isEqualTo(222);
     assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
     assertThat(result.getString("connector.csv.url")).isEqualTo("http://findit");
+  }
+
+  @Test
+  public void should_reject_concatenated_option_value() throws Exception {
+    thrown.expect(ParseException.class);
+    thrown.expectMessage("Unrecognized option: -kks");
+    Main.parseCommandLine(
+        "csv",
+        "load",
+        new String[] {
+          "-kks",
+        });
   }
 
   @Test

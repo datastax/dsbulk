@@ -58,7 +58,7 @@
     <assertj.version>3.8.0</assertj.version>
     <mockito.version>1.10.19</mockito.version>
     <commons-exec.version>1.3</commons-exec.version>
-    <commons-cli.version>1.4</commons-cli.version>
+    <commons-cli.version>1.5-SNAPSHOT</commons-cli.version>
     <simulacron.version>0.6.0</simulacron.version>
     <awaitility.version>3.0.0</awaitility.version>
     <surefire.version>2.20.1</surefire.version>

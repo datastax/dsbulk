@@ -119,7 +119,11 @@ public class Main {
       throws ParseException, HelpRequestException, VersionRequestException {
     Options options = OptionUtils.createOptions(connectorName);
 
-    CommandLineParser parser = new DefaultParser();
+    CommandLineParser parser =
+        new DefaultParser.Builder()
+            .withPartialMatching(false)
+            .withConcatenatedOptions(false)
+            .build();
     CommandLine cmd = parser.parse(options, args);
 
     if (cmd.hasOption("help")) {
