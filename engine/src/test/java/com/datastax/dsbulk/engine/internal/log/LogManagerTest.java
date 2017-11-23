@@ -12,6 +12,7 @@ import static com.google.common.collect.Range.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.datastax.driver.core.BatchStatement;
@@ -508,6 +509,17 @@ public class LogManagerTest {
         .isEqualTo(ranges(closed(1L, 6L)));
     assertThat(LogManager.mergePositions(ranges(closed(5L, 7L)), ranges(closed(1L, 3L))))
         .isEqualTo(ranges(closed(1L, 3L), closed(5L, 7L)));
+  }
+
+  @Test
+  public void should_dispose_scheduler_when_closed() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    Scheduler scheduler = mock(Scheduler.class);
+    LogManager logManager =
+        new LogManager(WorkflowType.UNLOAD, cluster, scheduler, outputDir, 1, formatter, EXTENDED);
+    logManager.init();
+    logManager.close();
+    verify(scheduler).dispose();
   }
 
   @SafeVarargs
