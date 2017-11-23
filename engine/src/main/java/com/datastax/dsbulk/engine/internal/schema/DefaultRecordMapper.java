@@ -24,6 +24,7 @@ import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
+import java.time.format.DateTimeFormatter;
 import java.util.function.BiFunction;
 
 /** */
@@ -48,6 +49,7 @@ public class DefaultRecordMapper implements RecordMapper {
   private final long timestamp;
   private final boolean hasTtlInMapping;
   private final boolean hasTimestampInMapping;
+  private final DateTimeFormatter timestampFormat;
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
@@ -56,7 +58,8 @@ public class DefaultRecordMapper implements RecordMapper {
       ImmutableSet<String> nullStrings,
       boolean nullToUnset,
       int ttl,
-      long timestamp) {
+      long timestamp,
+      DateTimeFormatter timestampFormat) {
     this(
         insertStatement,
         mapping,
@@ -65,6 +68,7 @@ public class DefaultRecordMapper implements RecordMapper {
         nullToUnset,
         ttl,
         timestamp,
+        timestampFormat,
         (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
   }
 
@@ -76,6 +80,7 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean nullToUnset,
       int ttl,
       long timestamp,
+      DateTimeFormatter timestampFormat,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
     this.mapping = mapping;
@@ -84,6 +89,7 @@ public class DefaultRecordMapper implements RecordMapper {
     this.nullToUnset = nullToUnset;
     this.ttl = ttl;
     this.timestamp = timestamp;
+    this.timestampFormat = timestampFormat;
     this.boundStatementFactory = boundStatementFactory;
     hasTimestampInMapping = mapping.variableToField(TIMESTAMP_VARNAME) != null;
     hasTtlInMapping = mapping.variableToField(TTL_VARNAME) != null;
@@ -162,7 +168,7 @@ public class DefaultRecordMapper implements RecordMapper {
       if (variable.equals(TIMESTAMP_VARNAME)) {
         // The input value is intended to be the timestamp of the inserted data.
         // Parse it specially.
-        convertedValue = parseTimestamp(convertedValue.toString(), "field value");
+        convertedValue = parseTimestamp(convertedValue.toString(), "field value", timestampFormat);
         javaType = TypeToken.of(Long.class);
       }
       TypeCodec<Object> codec = mapping.codec(variable, cqlType, javaType);

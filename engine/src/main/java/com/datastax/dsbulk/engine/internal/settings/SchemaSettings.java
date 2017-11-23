@@ -44,6 +44,7 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -76,6 +77,7 @@ public class SchemaSettings {
   private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
 
   private final LoaderConfig config;
+  private final DateTimeFormatter timestampFormat;
   private final ImmutableSet<String> nullStrings;
   private final boolean nullToUnset;
   private final Config mapping;
@@ -85,17 +87,18 @@ public class SchemaSettings {
   private String query;
   private PreparedStatement preparedStatement;
   private String keyspaceName;
-  private int ttl;
-  private long timestamp;
+  private final int ttl;
+  private final long timestamp;
 
-  SchemaSettings(LoaderConfig config) {
+  SchemaSettings(LoaderConfig config, DateTimeFormatter timestampFormat) {
     this.config = config;
+    this.timestampFormat = timestampFormat;
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       nullStrings = ImmutableSet.copyOf(config.getStringList(NULL_STRINGS));
       ttl = config.getInt(QUERY_TTL);
       String timestamp = config.getString(QUERY_TIMESTAMP);
-      this.timestamp = parseTimestamp(timestamp, prettyPath(QUERY_TIMESTAMP));
+      this.timestamp = parseTimestamp(timestamp, prettyPath(QUERY_TIMESTAMP), timestampFormat);
       this.query = config.hasPath(QUERY) ? config.getString(QUERY) : null;
 
       boolean keyspaceTablePresent = false;
@@ -222,7 +225,8 @@ public class SchemaSettings {
         nullStrings,
         nullToUnset,
         ttl,
-        timestamp);
+        timestamp,
+        timestampFormat);
   }
 
   public ReadResultMapper createReadResultMapper(
@@ -506,7 +510,7 @@ public class SchemaSettings {
   }
 
   private class InferredMappingSpec {
-    private Set<String> excludes = new HashSet<>();
+    private final Set<String> excludes = new HashSet<>();
 
     InferredMappingSpec(ConfigValue spec) {
       if (spec.valueType() == ConfigValueType.STRING) {

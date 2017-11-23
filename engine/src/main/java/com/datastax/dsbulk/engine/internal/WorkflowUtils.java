@@ -16,7 +16,6 @@ import com.datastax.driver.core.Host;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
-import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.google.common.base.Throwables;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -118,32 +117,31 @@ public class WorkflowUtils {
     }
   }
 
-  public static long parseTimestamp(String timestamp, String fieldDescriptor) {
+  public static long parseTimestamp(
+      String timestamp, String fieldDescriptor, DateTimeFormatter parser) {
     if (timestamp.isEmpty()) {
       return -1;
     }
-
-    // Try parsing as an int, and then as ISO_LOCAL_DATE_TIME (interpreted as UTC)
-
+    // Try parsing as a string first, then if it fails as an integer (micros since the Epoch)
     long timestampMicros;
+    StringToInstantCodec codec = new StringToInstantCodec(parser);
     try {
-      timestampMicros = Long.parseLong(timestamp);
-    } catch (NumberFormatException e) {
-      StringToInstantCodec codec = new StringToInstantCodec(CodecSettings.CQL_DATE_TIME_FORMAT);
+      Instant instant = codec.convertFrom(timestamp);
+      timestampMicros = MILLISECONDS.toMicros(instant.toEpochMilli());
+    } catch (InvalidTypeException e1) {
       try {
-        Instant instant = codec.convertFrom(timestamp);
-        timestampMicros = MILLISECONDS.toMicros(instant.toEpochMilli());
-      } catch (InvalidTypeException e1) {
-        e1.addSuppressed(e);
-        IllegalArgumentException e2 =
+        timestampMicros = Long.parseLong(timestamp);
+      } catch (NumberFormatException e2) {
+        e2.addSuppressed(e1);
+        IllegalArgumentException e3 =
             new IllegalArgumentException(
                 String.format(
                     "Could not parse %s '%s'; accepted formats are numeric "
-                        + "milliseconds since epoch or ISO-8601 date-time "
-                        + "(e.g. '2017-01-02T12:34:56Z')",
+                        + "microseconds since epoch or string following the "
+                        + "format specified by codec.timestamp",
                     fieldDescriptor, timestamp));
-        e2.addSuppressed(e1);
-        throw e2;
+        e3.addSuppressed(e2);
+        throw e3;
       }
     }
     return timestampMicros;
