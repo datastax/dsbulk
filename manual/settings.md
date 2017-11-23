@@ -250,7 +250,7 @@ Default: **100**.
 
 The directory where all log files will be stored.
 
-Note that this must be a path pointing to a writable directory.
+Note that this must be a path pointing to a writable directory. URLs are not accepted here (not even `file:/` URLs).
 
 Log files for a specific run will be located in a sub-directory inside the directory specified here. Each run generates a sub-directory identified by an "operation ID', which is basically a timestamp in the format: `yyyy_MM_dd_HH_mm_ss_nnnnnnnnn`.
 
@@ -1214,7 +1214,7 @@ Default: **100**.
 
 The directory where all log files will be stored.
 
-Note that this must be a path pointing to a writable directory.
+Note that this must be a path pointing to a writable directory. URLs are not accepted here (not even `file:/` URLs).
 
 Log files for a specific run will be located in a sub-directory inside the directory specified here. Each run generates a sub-directory identified by an "operation ID', which is basically a timestamp in the format: `yyyy_MM_dd_HH_mm_ss_nnnnnnnnn`.
 

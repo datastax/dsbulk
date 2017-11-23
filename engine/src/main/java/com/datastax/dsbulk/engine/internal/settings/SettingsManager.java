@@ -6,9 +6,9 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.datastax.dsbulk.engine.internal.HelpUtils;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import java.util.Comparator;
@@ -24,26 +24,19 @@ public class SettingsManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(SettingsManager.class);
 
   private final LoaderConfig config;
-  private final String executionId;
-  private final WorkflowType workflowType;
 
-  private DriverSettings driverSettings;
-  private ConnectorSettings connectorSettings;
-  private SchemaSettings schemaSettings;
-  private BatchSettings batchSettings;
-  private ExecutorSettings executorSettings;
-  private LogSettings logSettings;
-  private CodecSettings codecSettings;
-  private MonitoringSettings monitoringSettings;
-  private EngineSettings engineSettings;
+  private final DriverSettings driverSettings;
+  private final ConnectorSettings connectorSettings;
+  private final SchemaSettings schemaSettings;
+  private final BatchSettings batchSettings;
+  private final ExecutorSettings executorSettings;
+  private final LogSettings logSettings;
+  private final CodecSettings codecSettings;
+  private final MonitoringSettings monitoringSettings;
+  private final EngineSettings engineSettings;
 
   public SettingsManager(LoaderConfig config, String executionId, WorkflowType workflowType) {
     this.config = config;
-    this.executionId = executionId;
-    this.workflowType = workflowType;
-  }
-
-  public void loadConfiguration() throws BulkConfigurationException {
     logSettings = new LogSettings(config.getConfig("log"), executionId);
     driverSettings = new DriverSettings(config.getConfig("driver"), executionId);
     connectorSettings = new ConnectorSettings(config.getConfig("connector"), workflowType);
@@ -57,18 +50,19 @@ public class SettingsManager {
   }
 
   public void logEffectiveSettings() {
-    LOGGER.info("Bulk Loader effective settings:");
-
-    Set<Map.Entry<String, ConfigValue>> entries =
-        new TreeSet<>(Comparator.comparing(Map.Entry::getKey));
-    entries.addAll(config.entrySet());
-
-    for (Map.Entry<String, ConfigValue> entry : entries) {
-      LOGGER.info(
-          String.format(
-              "%s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info(HelpUtils.getVersionMessage() + " effective settings:");
+      Set<Map.Entry<String, ConfigValue>> entries =
+          new TreeSet<>(Comparator.comparing(Map.Entry::getKey));
+      entries.addAll(config.entrySet());
+      for (Map.Entry<String, ConfigValue> entry : entries) {
+        LOGGER.info(
+            String.format(
+                "%s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
+      }
+      LOGGER.info("Available CPU cores: {}", Runtime.getRuntime().availableProcessors());
+      LOGGER.info("Operation output directory: {}", logSettings.getExecutionDirectory());
     }
-    LOGGER.info("Available CPU cores: " + Runtime.getRuntime().availableProcessors());
   }
 
   public DriverSettings getDriverSettings() {

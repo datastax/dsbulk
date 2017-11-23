@@ -151,6 +151,7 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.isWriteToStandardOutput()).isTrue();
       Flux<Record> records =
           Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
               .publish()
