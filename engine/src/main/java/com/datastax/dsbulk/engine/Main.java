@@ -28,6 +28,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.UnrecognizedOptionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,7 +120,7 @@ public class Main {
       throws ParseException, HelpRequestException, VersionRequestException {
     Options options = OptionUtils.createOptions(connectorName);
 
-    CommandLineParser parser = new DefaultParser();
+    CommandLineParser parser = new CmdlineParser();
     CommandLine cmd = parser.parse(options, args);
 
     if (cmd.hasOption("help")) {
@@ -264,4 +265,17 @@ public class Main {
 
   // Simple exception indicating that the user wants the main help output.
   private static class HelpRequestException extends Exception {}
+
+  /**
+   * Commons-cli parser that errors out when attempting to interpret a short option that has a value
+   * concatenated to it. We don't want to support that kind of usage.
+   *
+   * <p>Motivating example: User says `-hdr` instead of `-header`. `-h` is a valid option, so dsbulk
+   * interprets it as the `-h` option with value `dr`, which is not the user's intention.
+   */
+  private static class CmdlineParser extends DefaultParser {
+    protected void handleConcatenatedOptions(final String token) throws ParseException {
+      throw new UnrecognizedOptionException("Unrecognized option: " + token, token);
+    }
+  }
 }

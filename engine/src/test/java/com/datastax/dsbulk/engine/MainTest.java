@@ -9,6 +9,7 @@ package com.datastax.dsbulk.engine;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -25,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import org.apache.commons.cli.ParseException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -324,6 +326,20 @@ class MainTest {
     assertThat(result.getInt("connector.csv.maxConcurrentFiles")).isEqualTo(222);
     assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
     assertThat(result.getString("connector.csv.url")).isEqualTo("http://findit");
+  }
+
+  @Test
+  void should_reject_concatenated_option_value() throws Exception {
+    assertThrows(
+        ParseException.class,
+        () ->
+            Main.parseCommandLine(
+                "csv",
+                "load",
+                new String[] {
+                  "-kks",
+                }),
+        "Unrecognized option: -kks");
   }
 
   @Test
