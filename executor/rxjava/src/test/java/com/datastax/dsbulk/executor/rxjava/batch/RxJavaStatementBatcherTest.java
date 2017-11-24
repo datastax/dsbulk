@@ -17,13 +17,13 @@ import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcherTest;
 import io.reactivex.Flowable;
 import java.util.HashSet;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /** */
-public class RxJavaStatementBatcherTest extends StatementBatcherTest {
+class RxJavaStatementBatcherTest extends StatementBatcherTest {
 
   @Test
-  public void should_batch_by_routing_key_reactive() throws Exception {
+  void should_batch_by_routing_key_reactive() throws Exception {
     assignRoutingKeys();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher();
     Flowable<Statement> statements =
@@ -35,7 +35,7 @@ public class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_routing_token_reactive() throws Exception {
+  void should_batch_by_routing_token_reactive() throws Exception {
     assignRoutingTokens();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher();
     Flowable<Statement> statements =
@@ -47,7 +47,7 @@ public class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_replica_set_and_routing_key_reactive() throws Exception {
+  void should_batch_by_replica_set_and_routing_key_reactive() throws Exception {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -64,7 +64,7 @@ public class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_replica_set_and_routing_token_reactive() throws Exception {
+  void should_batch_by_replica_set_and_routing_token_reactive() throws Exception {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -81,8 +81,7 @@ public class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_routing_key_when_replica_set_info_not_available_reactive()
-      throws Exception {
+  void should_batch_by_routing_key_when_replica_set_info_not_available_reactive() throws Exception {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -99,7 +98,7 @@ public class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_routing_token_when_replica_set_info_not_available_reactive()
+  void should_batch_by_routing_token_when_replica_set_info_not_available_reactive()
       throws Exception {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
@@ -117,7 +116,7 @@ public class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_all_reactive() throws Exception {
+  void should_batch_all_reactive() throws Exception {
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher();
     Flowable<Statement> statements =
         Flowable.fromPublisher(
@@ -127,7 +126,7 @@ public class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_honor_max_batch_size_reactive() throws Exception {
+  void should_honor_max_batch_size_reactive() throws Exception {
     assignRoutingTokens();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(2);
     Flowable<Statement> statements =

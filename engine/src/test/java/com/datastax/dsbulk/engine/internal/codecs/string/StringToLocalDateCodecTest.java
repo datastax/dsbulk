@@ -11,12 +11,12 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class StringToLocalDateCodecTest {
+class StringToLocalDateCodecTest {
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     StringToLocalDateCodec codec = new StringToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec)
         .convertsFrom("2016-07-24")
@@ -30,7 +30,7 @@ public class StringToLocalDateCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     StringToLocalDateCodec codec = new StringToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec).convertsTo(LocalDate.parse("2016-07-24")).from("2016-07-24");
     codec = new StringToLocalDateCodec(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -38,7 +38,7 @@ public class StringToLocalDateCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     StringToLocalDateCodec codec = new StringToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec).cannotConvertFrom("not a valid date format");
   }

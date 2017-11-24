@@ -12,17 +12,17 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToShortCodecTest {
+class JsonNodeToShortCodecTest {
 
-  private JsonNodeToShortCodec codec =
+  private final JsonNodeToShortCodec codec =
       new JsonNodeToShortCodec(
           ThreadLocal.withInitial(
               () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.numberNode((short) 0))
         .to((short) 0)
@@ -47,7 +47,7 @@ public class JsonNodeToShortCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo((short) 0)
         .from(JsonNodeFactory.instance.numberNode((short) 0))
@@ -60,7 +60,7 @@ public class JsonNodeToShortCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid short"))
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("1.2"))

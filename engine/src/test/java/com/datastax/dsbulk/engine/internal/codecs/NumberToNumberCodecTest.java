@@ -11,12 +11,12 @@ import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 import com.datastax.driver.core.TypeCodec;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class NumberToNumberCodecTest {
+class NumberToNumberCodecTest {
 
   @Test
-  public void should_convert_when_valid_input() throws Exception {
+  void should_convert_when_valid_input() throws Exception {
 
     assertThat(new NumberToNumberCodec<>(Byte.class, TypeCodec.cdouble()))
         .convertsFrom((byte) 123)
@@ -78,7 +78,7 @@ public class NumberToNumberCodecTest {
   }
 
   @Test
-  public void should_not_convert_when_invalid_input() throws Exception {
+  void should_not_convert_when_invalid_input() throws Exception {
 
     assertThat(new NumberToNumberCodec<>(Double.class, TypeCodec.cint()))
         .cannotConvertFrom(123.45d);

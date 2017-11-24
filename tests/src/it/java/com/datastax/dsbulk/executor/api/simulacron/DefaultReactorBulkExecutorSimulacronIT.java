@@ -6,19 +6,21 @@
  */
 package com.datastax.dsbulk.executor.api.simulacron;
 
+import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
-import org.junit.BeforeClass;
+import com.datastax.oss.simulacron.server.BoundCluster;
 
-public class DefaultReactorBulkExecutorSimulacronIT extends AbstractBulkExecutorSimulacronIT {
+class DefaultReactorBulkExecutorSimulacronIT extends BulkExecutorSimulacronITBase {
 
-  @BeforeClass
-  public static void createBulkExecutors() {
-    failFastExecutor =
+  DefaultReactorBulkExecutorSimulacronIT(BoundCluster simulacron, Session session) {
+    super(
+        simulacron,
+        session,
         DefaultReactorBulkExecutor.builder(session)
             // serialize execution of statements to force results to be produced in deterministic
             // order
             .withMaxInFlightRequests(1)
-            .build();
-    failSafeExecutor = DefaultReactorBulkExecutor.builder(session).failSafe().build();
+            .build(),
+        DefaultReactorBulkExecutor.builder(session).failSafe().build());
   }
 }

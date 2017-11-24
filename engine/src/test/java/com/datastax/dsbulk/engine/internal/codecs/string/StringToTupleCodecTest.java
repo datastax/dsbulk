@@ -27,29 +27,29 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import java.time.Instant;
 import java.util.List;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class StringToTupleCodecTest {
+class StringToTupleCodecTest {
 
-  private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  private CodecRegistry codecRegistry = new CodecRegistry().register(InstantCodec.instance);
-  private TupleType tupleType = newTupleType(V4, codecRegistry, timestamp(), varchar());
+  private final CodecRegistry codecRegistry = new CodecRegistry().register(InstantCodec.instance);
+  private final TupleType tupleType = newTupleType(V4, codecRegistry, timestamp(), varchar());
 
-  private ConvertingCodec eltCodec1 = new JsonNodeToInstantCodec(CQL_DATE_TIME_FORMAT);
-  private ConvertingCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final ConvertingCodec eltCodec1 = new JsonNodeToInstantCodec(CQL_DATE_TIME_FORMAT);
+  private final ConvertingCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
 
   @SuppressWarnings("unchecked")
-  private List<ConvertingCodec<JsonNode, Object>> eltCodecs =
+  private final List<ConvertingCodec<JsonNode, Object>> eltCodecs =
       Lists.newArrayList(eltCodec1, eltCodec2);
 
-  private StringToTupleCodec codec =
+  private final StringToTupleCodec codec =
       new StringToTupleCodec(
           new JsonNodeToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, objectMapper),
           objectMapper);
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom("[\"2016-07-24T20:34:12.999\",\"+01:00\"]")
         .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
@@ -72,7 +72,7 @@ public class StringToTupleCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
         .from("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]")
@@ -83,7 +83,7 @@ public class StringToTupleCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec)
         .cannotConvertFrom("[\"not a valid tuple\"]")
         .cannotConvertFrom("{\"not a valid tuple\":42}")

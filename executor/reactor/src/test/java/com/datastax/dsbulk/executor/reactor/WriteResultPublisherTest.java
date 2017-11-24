@@ -6,13 +6,13 @@
  */
 package com.datastax.dsbulk.executor.reactor;
 
-import static com.datastax.dsbulk.executor.api.AbstractReadResultPublisherTest.setUpFailedSession;
+import static com.datastax.dsbulk.executor.api.ReadResultPublisherTestBase.setUpFailedSession;
 
-import com.datastax.dsbulk.executor.api.AbstractWriteResultPublisherTest;
+import com.datastax.dsbulk.executor.api.WriteResultPublisherTestBase;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import org.reactivestreams.Publisher;
 
-public class WriteResultPublisherTest extends AbstractWriteResultPublisherTest {
+public class WriteResultPublisherTest extends WriteResultPublisherTestBase {
 
   @Override
   public Publisher<WriteResult> createPublisher(long elements) {

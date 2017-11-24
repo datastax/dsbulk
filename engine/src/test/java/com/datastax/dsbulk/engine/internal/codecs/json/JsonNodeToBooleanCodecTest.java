@@ -11,16 +11,16 @@ import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToBooleanCodecTest {
+class JsonNodeToBooleanCodecTest {
 
-  Map<String, Boolean> inputs =
+  private final Map<String, Boolean> inputs =
       ImmutableMap.<String, Boolean>builder().put("foo", true).put("bar", false).build();
-  JsonNodeToBooleanCodec codec = new JsonNodeToBooleanCodec(inputs);
+  private final JsonNodeToBooleanCodec codec = new JsonNodeToBooleanCodec(inputs);
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.booleanNode(true))
         .to(true)
@@ -43,7 +43,7 @@ public class JsonNodeToBooleanCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo(true)
         .from(JsonNodeFactory.instance.booleanNode(true))
@@ -54,7 +54,7 @@ public class JsonNodeToBooleanCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec).cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid boolean"));
   }
 }

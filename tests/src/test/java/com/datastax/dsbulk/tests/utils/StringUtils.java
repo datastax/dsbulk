@@ -6,19 +6,22 @@
  */
 package com.datastax.dsbulk.tests.utils;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** */
 public class StringUtils {
 
-  private static final AtomicInteger SEQ = new AtomicInteger(0);
+  private static final ConcurrentMap<String, AtomicInteger> SEQS = new ConcurrentHashMap<>();
 
   /**
-   * Generates a unique CQL identifier with prefix "test".
+   * Generates a unique CQL identifier with the given prefix.
    *
    * @return a unique CQL identifier.
+   * @param prefix the prefix to use.
    */
-  public static String uniqueIdentifier() {
-    return "test" + SEQ.incrementAndGet();
+  public static String uniqueIdentifier(String prefix) {
+    return prefix + SEQS.computeIfAbsent(prefix, s -> new AtomicInteger(0)).incrementAndGet();
   }
 }

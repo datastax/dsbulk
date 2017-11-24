@@ -13,17 +13,17 @@ import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToBigIntegerCodecTest {
+class JsonNodeToBigIntegerCodecTest {
 
-  private JsonNodeToBigIntegerCodec codec =
+  private final JsonNodeToBigIntegerCodec codec =
       new JsonNodeToBigIntegerCodec(
           ThreadLocal.withInitial(
               () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.numberNode(0))
         .to(BigInteger.ZERO)
@@ -44,7 +44,7 @@ public class JsonNodeToBigIntegerCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo(BigInteger.ZERO)
         .from(JsonNodeFactory.instance.numberNode(BigInteger.ZERO))
@@ -55,7 +55,7 @@ public class JsonNodeToBigIntegerCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid biginteger"));
   }

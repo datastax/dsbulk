@@ -12,7 +12,7 @@ import com.google.common.io.Resources;
 import java.io.IOException;
 import java.net.URL;
 
-public class RxJavaCqlScriptReaderTest extends AbstractReactiveCqlScriptReaderTest {
+public class RxJavaCqlScriptReaderTest extends ReactiveCqlScriptReaderTestBase {
 
   @Override
   protected RxJavaCqlScriptReader getCqlScriptReader(String resource, boolean multiLine)

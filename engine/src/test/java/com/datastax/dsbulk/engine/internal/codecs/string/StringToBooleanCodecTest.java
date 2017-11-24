@@ -10,19 +10,19 @@ import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class StringToBooleanCodecTest {
+class StringToBooleanCodecTest {
 
-  Map<String, Boolean> inputs =
+  private final Map<String, Boolean> inputs =
       ImmutableMap.<String, Boolean>builder().put("foo", true).put("bar", false).build();
-  Map<Boolean, String> outputs =
+  private final Map<Boolean, String> outputs =
       ImmutableMap.<Boolean, String>builder().put(true, "foo").put(false, "bar").build();
 
-  StringToBooleanCodec codec = new StringToBooleanCodec(inputs, outputs);
+  private final StringToBooleanCodec codec = new StringToBooleanCodec(inputs, outputs);
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom("FOO")
         .to(true)
@@ -39,7 +39,7 @@ public class StringToBooleanCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo(true)
         .from("foo")
@@ -50,7 +50,7 @@ public class StringToBooleanCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec).cannotConvertFrom("not a valid boolean");
   }
 }

@@ -12,12 +12,12 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class StringToLocalTimeCodecTest {
+class StringToLocalTimeCodecTest {
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     StringToLocalTimeCodec codec = new StringToLocalTimeCodec(ISO_LOCAL_TIME);
     assertThat(codec)
         .convertsFrom("12:24:46")
@@ -33,7 +33,7 @@ public class StringToLocalTimeCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     StringToLocalTimeCodec codec = new StringToLocalTimeCodec(ISO_LOCAL_TIME);
     assertThat(codec).convertsTo(LocalTime.parse("12:24:46.999")).from("12:24:46.999");
     codec = new StringToLocalTimeCodec(DateTimeFormatter.ofPattern("HHmmss.SSS"));
@@ -41,7 +41,7 @@ public class StringToLocalTimeCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     StringToLocalTimeCodec codec = new StringToLocalTimeCodec(ISO_LOCAL_DATE);
     assertThat(codec).cannotConvertFrom("not a valid date format");
   }

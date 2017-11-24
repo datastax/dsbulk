@@ -9,6 +9,7 @@ package com.datastax.driver.core;
 import java.util.Arrays;
 
 /** */
+@SuppressWarnings("SameParameterValue")
 public class DriverCoreEngineTestHooks {
 
   public static PreparedId newPreparedId(ColumnDefinitions cd, ProtocolVersion version) {
@@ -37,7 +38,7 @@ public class DriverCoreEngineTestHooks {
     return newUserType("ks", "udt", ProtocolVersion.NEWEST_SUPPORTED, codecRegistry, fields);
   }
 
-  public static UserType newUserType(
+  private static UserType newUserType(
       String keyspace,
       String typeName,
       ProtocolVersion protocolVersion,
@@ -55,7 +56,7 @@ public class DriverCoreEngineTestHooks {
     return newDefinition("ks", "t", name, type);
   }
 
-  public static ColumnDefinitions.Definition newDefinition(
+  private static ColumnDefinitions.Definition newDefinition(
       String keyspace, String table, String name, DataType type) {
     return new ColumnDefinitions.Definition(keyspace, table, name, type);
   }

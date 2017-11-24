@@ -10,14 +10,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.Statement;
 import java.util.List;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 /** */
-public class ReactorSortedStatementBatcherTest extends ReactorStatementBatcherTest {
+class ReactorSortedStatementBatcherTest extends ReactorStatementBatcherTest {
 
   @Test
-  public void should_batch_by_routing_key_as_operator() throws Exception {
+  void should_batch_by_routing_key_as_operator() throws Exception {
     assignRoutingKeys();
     ReactorSortedStatementBatcher batcher = new ReactorSortedStatementBatcher();
     List<Statement> statements =
@@ -28,7 +28,7 @@ public class ReactorSortedStatementBatcherTest extends ReactorStatementBatcherTe
   }
 
   @Test
-  public void should_batch_by_routing_token_as_operator() throws Exception {
+  void should_batch_by_routing_token_as_operator() throws Exception {
     assignRoutingTokens();
     ReactorSortedStatementBatcher batcher = new ReactorSortedStatementBatcher();
     List<Statement> statements =

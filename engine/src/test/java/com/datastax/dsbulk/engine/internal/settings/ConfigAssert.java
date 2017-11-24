@@ -17,7 +17,7 @@ public class ConfigAssert extends ObjectAssert<Config> {
     super(config);
   }
 
-  public ConfigAssert hasPath(String path) {
+  private ConfigAssert hasPath(String path) {
     Assertions.assertThat(actual.hasPath(path))
         .as("Expecting %s to have path %s but it did not", actual, path)
         .isTrue();

@@ -14,12 +14,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-public class SettingsValidatorTest {
+class SettingsValidatorTest {
 
   private PrintStream originalStderr;
   private PrintStream originalStdout;
@@ -83,8 +83,8 @@ public class SettingsValidatorTest {
     "--monitoring.reportRate=NotANumber",
   };
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     originalStdout = System.out;
     originalStderr = System.err;
     stdout = new ByteArrayOutputStream();
@@ -96,15 +96,15 @@ public class SettingsValidatorTest {
     root.setLevel(Level.INFO);
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterEach
+  void tearDown() throws Exception {
     System.setOut(originalStdout);
     System.setErr(originalStderr);
     root.setLevel(oldLevel);
   }
 
   @Test
-  public void should_error_on_bad_arguments() {
+  void should_error_on_bad_arguments() {
     for (String argument : Arrays.asList(BAD_PARAMS_WRONG_TYPE)) {
       int starting_index = argument.indexOf("-", argument.indexOf("-argument") + 1) + 2;
       int ending_index = argument.indexOf("=");
@@ -160,14 +160,14 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_bad_connector() throws Exception {
+  void should_error_bad_connector() throws Exception {
     new Main(new String[] {"load", "-c", "BadConnector"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Cannot find connector");
   }
 
   @Test
-  public void should_error_on_empty_hosts() throws Exception {
+  void should_error_on_empty_hosts() throws Exception {
     new Main(new String[] {"load", "--driver.hosts", ""}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
@@ -177,7 +177,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_on_empty_url() throws Exception {
+  void should_error_on_empty_url() throws Exception {
     new Main(new String[] {"load", "--driver.hosts=hostshere", "--connector.csv.url", ""}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
@@ -187,21 +187,21 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_bad_parse_driver_option() throws Exception {
+  void should_error_bad_parse_driver_option() throws Exception {
     new Main(new String[] {"load", "--driver.socket.readTimeout", "I am not a duration"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("Invalid value at 'socket.readTimeout'");
   }
 
   @Test
-  public void should_error_invalid_auth_provider() throws Exception {
+  void should_error_invalid_auth_provider() throws Exception {
     new Main(new String[] {"load", "--driver.auth.provider", "InvalidAuthProvider"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("InvalidAuthProvider is not a valid auth provider");
   }
 
   @Test
-  public void should_error_invalid_auth_combinations_missing_principal() throws Exception {
+  void should_error_invalid_auth_combinations_missing_principal() throws Exception {
     new Main(
             new String[] {
               "load", "--driver.auth.provider=DseGSSAPIAuthProvider", "--driver.auth.principal", ""
@@ -212,7 +212,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_invalid_auth_combinations_missing_username() throws Exception {
+  void should_error_invalid_auth_combinations_missing_username() throws Exception {
     new Main(
             new String[] {
               "load", "--driver.auth.provider=PlainTextAuthProvider", "--driver.auth.username", ""
@@ -223,7 +223,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_invalid_auth_combinations_missing_password() throws Exception {
+  void should_error_invalid_auth_combinations_missing_password() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -237,14 +237,14 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_invalid_schema_settings() throws Exception {
+  void should_error_invalid_schema_settings() throws Exception {
     new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("schema.mapping, or schema.keyspace and schema.table must be defined");
   }
 
   @Test
-  public void should_error_invalid_schema_query_with_ttl() throws Exception {
+  void should_error_invalid_schema_query_with_ttl() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -263,7 +263,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_invalid_schema_query_with_timestamp() throws Exception {
+  void should_error_invalid_schema_query_with_timestamp() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -282,7 +282,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_invalid_schema_query_with_mapped_timestamp() throws Exception {
+  void should_error_invalid_schema_query_with_mapped_timestamp() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -300,7 +300,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_invalid_schema_query_with_mapped_ttl() throws Exception {
+  void should_error_invalid_schema_query_with_mapped_ttl() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -317,7 +317,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_invalid_timestamp() throws Exception {
+  void should_error_invalid_timestamp() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -332,7 +332,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_connect_error_with_schema_defined() throws Exception {
+  void should_connect_error_with_schema_defined() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -347,7 +347,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_invalid_schema_missing_keyspace() throws Exception {
+  void should_error_invalid_schema_missing_keyspace() throws Exception {
     new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "--schema.table=table"})
         .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
@@ -355,14 +355,14 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_invalid_schema_mapping_missing_keyspace_and_table() throws Exception {
+  void should_error_invalid_schema_mapping_missing_keyspace_and_table() throws Exception {
     new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "c1=c2"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("schema.query, or schema.keyspace and schema.table must be defined");
   }
 
   @Test
-  public void should_connect_error_with_schema_mapping_query_defined() throws Exception {
+  void should_connect_error_with_schema_mapping_query_defined() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -379,7 +379,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_invalid_schema_inferred_mapping_query_defined() throws Exception {
+  void should_error_invalid_schema_inferred_mapping_query_defined() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -396,7 +396,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_unknown_lbp() throws Exception {
+  void should_error_unknown_lbp() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -414,7 +414,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_lbp_bad_child_policy() throws Exception {
+  void should_error_lbp_bad_child_policy() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -434,7 +434,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_lbp_chaining_loop_self() throws Exception {
+  void should_error_lbp_chaining_loop_self() throws Exception {
     new Main(
             new String[] {
               "load",
@@ -455,7 +455,7 @@ public class SettingsValidatorTest {
   }
 
   @Test
-  public void should_error_lbp_chaining_loop() throws Exception {
+  void should_error_lbp_chaining_loop() throws Exception {
     new Main(
             new String[] {
               "load",

@@ -12,12 +12,12 @@ import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DAT
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class StringToInstantCodecTest {
+class StringToInstantCodecTest {
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     StringToInstantCodec codec = new StringToInstantCodec(CQL_DATE_TIME_FORMAT);
     assertThat(codec)
         .convertsFrom("2016-07-24T20:34")
@@ -41,7 +41,7 @@ public class StringToInstantCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     StringToInstantCodec codec = new StringToInstantCodec(CQL_DATE_TIME_FORMAT);
     assertThat(codec)
         .convertsTo(Instant.parse("2016-07-24T20:34:00Z"))
@@ -61,7 +61,7 @@ public class StringToInstantCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     StringToInstantCodec codec = new StringToInstantCodec(CQL_DATE_TIME_FORMAT);
     assertThat(codec).cannotConvertFrom("not a valid date format");
   }

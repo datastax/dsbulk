@@ -9,7 +9,6 @@ package com.datastax.dsbulk.tests.ccm.annotations;
 import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-import com.datastax.dsbulk.tests.utils.VersionUtils;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
@@ -25,9 +24,6 @@ public @interface CCMConfig {
    * @return The number of nodes to create, per data center.
    */
   int[] numberOfNodes() default {1};
-
-  /** The C* or DSE version to use; defaults to {@link VersionUtils#DEFAULT_DSE_VERSION}. */
-  String version() default "";
 
   /** Whether to create a DSE cluster or not; defaults to {@code true}. */
   boolean dse() default true;

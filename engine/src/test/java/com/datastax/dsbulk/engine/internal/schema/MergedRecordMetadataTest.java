@@ -12,15 +12,15 @@ import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecordMetadata;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class MergedRecordMetadataTest {
+class MergedRecordMetadataTest {
 
-  RecordMetadata fallback =
+  private final RecordMetadata fallback =
       new DefaultRecordMetadata(ImmutableMap.of("f1", TypeToken.of(Integer.class)));
 
   @Test
-  public void should_return_null_when_unknown_field() throws Exception {
+  void should_return_null_when_unknown_field() throws Exception {
     ImmutableMap<String, TypeToken<?>> fieldsToTypes = ImmutableMap.of();
     MergedRecordMetadata metadata = new MergedRecordMetadata(fieldsToTypes, fallback);
     TypeToken<?> type = metadata.getFieldType("nonexistent", null);
@@ -28,7 +28,7 @@ public class MergedRecordMetadataTest {
   }
 
   @Test
-  public void should_return_field_from_inner_map() throws Exception {
+  void should_return_field_from_inner_map() throws Exception {
     MergedRecordMetadata metadata =
         new MergedRecordMetadata(ImmutableMap.of("f1", TypeToken.of(String.class)), fallback);
     TypeToken<?> type = metadata.getFieldType("f1", null);
@@ -36,7 +36,7 @@ public class MergedRecordMetadataTest {
   }
 
   @Test
-  public void should_return_field_from_fallback() throws Exception {
+  void should_return_field_from_fallback() throws Exception {
     MergedRecordMetadata metadata = new MergedRecordMetadata(ImmutableMap.of(), fallback);
     TypeToken<?> type = metadata.getFieldType("f1", null);
     assertThat(type.getRawType()).isEqualTo(Integer.class);

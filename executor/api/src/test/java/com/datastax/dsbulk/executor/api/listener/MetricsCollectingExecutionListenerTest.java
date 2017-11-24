@@ -15,10 +15,10 @@ import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.listener.DefaultExecutionContext;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /** */
-public class MetricsCollectingExecutionListenerTest {
+class MetricsCollectingExecutionListenerTest {
 
   private final Statement successfulRead = new SimpleStatement("irrelevant");
   private final Statement failedRead = new SimpleStatement("irrelevant");
@@ -34,7 +34,7 @@ public class MetricsCollectingExecutionListenerTest {
   private final Row row = mock(Row.class);
 
   @Test
-  public void should_collect_metrics() throws Exception {
+  void should_collect_metrics() throws Exception {
 
     MetricsCollectingExecutionListener listener = new MetricsCollectingExecutionListener();
 

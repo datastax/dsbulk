@@ -10,12 +10,12 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.codahale.metrics.Meter;
 import java.util.concurrent.Executors;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class ConnectorReporterTest extends AbstractReporterTest {
+class ConnectorReporterTest extends ReporterTestBase {
 
   @Test
-  public void should_report_batches() throws Exception {
+  void should_report_batches() throws Exception {
     Meter totalMeter = registry.meter("records/total");
     Meter successfulMeter = registry.meter("records/successful");
     Meter failedMeter = registry.meter("records/failed");

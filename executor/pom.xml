@@ -26,8 +26,8 @@
 
   <modules>
     <module>api</module>
-    <module>rxjava</module>
     <module>reactor</module>
+    <module>rxjava</module>
   </modules>
 
 </project>

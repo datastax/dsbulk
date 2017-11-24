@@ -74,8 +74,14 @@
     </dependency>
 
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -103,6 +109,12 @@
       <scope>test</scope>
     </dependency>
 
+    <dependency>
+      <groupId>org.apiguardian</groupId>
+      <artifactId>apiguardian-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -113,18 +125,18 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <properties>
+            <!-- tell TestNG not to run jUnit tests -->
             <property>
               <name>junit</name>
               <value>false</value>
             </property>
           </properties>
-          <threadCount>1</threadCount>
         </configuration>
         <dependencies>
           <dependency>
-            <groupId>org.apache.maven.surefire</groupId>
-            <artifactId>surefire-junit47</artifactId>
-            <version>${surefire.version}</version>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-surefire-provider</artifactId>
+            <version>${junit-platform.version}</version>
           </dependency>
           <dependency>
             <groupId>org.apache.maven.surefire</groupId>
