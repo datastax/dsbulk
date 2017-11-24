@@ -6,9 +6,10 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.dsbulk.engine.internal.WorkflowUtils.parseTimestamp;
+import static com.datastax.driver.core.DataType.timestamp;
+import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
-import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TTL_VARNAME;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.DataType;
@@ -19,12 +20,16 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
+import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
-import java.time.format.DateTimeFormatter;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.function.BiFunction;
 
 /** */
@@ -45,54 +50,36 @@ public class DefaultRecordMapper implements RecordMapper {
   private final boolean nullToUnset;
 
   private final BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory;
-  private final int ttl;
-  private final long timestamp;
-  private final boolean hasTtlInMapping;
-  private final boolean hasTimestampInMapping;
-  private final DateTimeFormatter timestampFormat;
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
       Mapping mapping,
       RecordMetadata recordMetadata,
       ImmutableSet<String> nullStrings,
-      boolean nullToUnset,
-      int ttl,
-      long timestamp,
-      DateTimeFormatter timestampFormat) {
+      boolean nullToUnset) {
     this(
         insertStatement,
         mapping,
         recordMetadata,
         nullStrings,
         nullToUnset,
-        ttl,
-        timestamp,
-        timestampFormat,
         (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
   }
 
+  @VisibleForTesting
   DefaultRecordMapper(
       PreparedStatement insertStatement,
       Mapping mapping,
       RecordMetadata recordMetadata,
       ImmutableSet<String> nullStrings,
       boolean nullToUnset,
-      int ttl,
-      long timestamp,
-      DateTimeFormatter timestampFormat,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
     this.nullStrings = nullStrings;
     this.nullToUnset = nullToUnset;
-    this.ttl = ttl;
-    this.timestamp = timestamp;
-    this.timestampFormat = timestampFormat;
     this.boundStatementFactory = boundStatementFactory;
-    hasTimestampInMapping = mapping.variableToField(TIMESTAMP_VARNAME) != null;
-    hasTtlInMapping = mapping.variableToField(TTL_VARNAME) != null;
   }
 
   @Override
@@ -115,15 +102,6 @@ public class DefaultRecordMapper implements RecordMapper {
           }
         }
       }
-
-      if (ttl != -1 && !hasTtlInMapping) {
-        bindColumn(bs, TTL_VARNAME, ttl, DataType.cint(), TypeToken.of(Integer.class));
-      }
-
-      if (timestamp != -1 && !hasTimestampInMapping) {
-        bindColumn(bs, TIMESTAMP_VARNAME, timestamp, DataType.bigint(), TypeToken.of(Long.class));
-      }
-
       record.clear();
       return bs;
     } catch (Exception e) {
@@ -154,25 +132,34 @@ public class DefaultRecordMapper implements RecordMapper {
     if (raw == null || (raw instanceof String && nullStrings.contains(raw))) {
       convertedValue = null;
     }
-
     // Account for nullToUnset.
     if (convertedValue == null && nullToUnset) {
       return;
     }
-
     // the mapping provides unquoted variable names,
     // so we need to quote them now
+    String name = Metadata.quoteIfNecessary(variable);
     if (convertedValue == null) {
-      bs.setToNull(Metadata.quoteIfNecessary(variable));
-    } else {
-      if (variable.equals(TIMESTAMP_VARNAME)) {
-        // The input value is intended to be the timestamp of the inserted data.
-        // Parse it specially.
-        convertedValue = parseTimestamp(convertedValue.toString(), "field value", timestampFormat);
-        javaType = TypeToken.of(Long.class);
+      bs.setToNull(name);
+    } else if (variable.equals(TIMESTAMP_VARNAME)) {
+      // The input value is intended to be the timestamp of the inserted data.
+      // Parse it specially.
+      Instant timestamp;
+      if (convertedValue instanceof Date) {
+        timestamp = ((Date) convertedValue).toInstant();
+      } else if (convertedValue instanceof Instant) {
+        timestamp = ((Instant) convertedValue);
+      } else if (convertedValue instanceof ZonedDateTime) {
+        timestamp = ((ZonedDateTime) convertedValue).toInstant();
+      } else {
+        ConvertingCodec<Object, Instant> codec =
+            (ConvertingCodec<Object, Instant>) mapping.codec(variable, timestamp(), javaType);
+        timestamp = codec.convertFrom(convertedValue);
       }
+      bs.setLong(name, instantToTimestampSinceEpoch(timestamp, MICROSECONDS));
+    } else {
       TypeCodec<Object> codec = mapping.codec(variable, cqlType, javaType);
-      bs.set(Metadata.quoteIfNecessary(variable), convertedValue, codec);
+      bs.set(name, convertedValue, codec);
     }
   }
 }

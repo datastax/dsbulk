@@ -6,7 +6,8 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.engine.internal.WorkflowUtils.parseTimestamp;
+import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
@@ -25,6 +26,7 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
@@ -44,7 +46,7 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
-import java.time.format.DateTimeFormatter;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -77,28 +79,37 @@ public class SchemaSettings {
   private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
 
   private final LoaderConfig config;
-  private final DateTimeFormatter timestampFormat;
   private final ImmutableSet<String> nullStrings;
   private final boolean nullToUnset;
   private final Config mapping;
   private final BiMap<String, String> explicitVariables;
-  private TableMetadata table;
   private String tableName;
+  private String keyspaceName;
+  private final int ttlSeconds;
+  private final long timestampMicros;
+  private TableMetadata table;
   private String query;
   private PreparedStatement preparedStatement;
-  private String keyspaceName;
-  private final int ttl;
-  private final long timestamp;
 
-  SchemaSettings(LoaderConfig config, DateTimeFormatter timestampFormat) {
+  SchemaSettings(LoaderConfig config, StringToInstantCodec timestampCodec) {
     this.config = config;
-    this.timestampFormat = timestampFormat;
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       nullStrings = ImmutableSet.copyOf(config.getStringList(NULL_STRINGS));
-      ttl = config.getInt(QUERY_TTL);
-      String timestamp = config.getString(QUERY_TIMESTAMP);
-      this.timestamp = parseTimestamp(timestamp, prettyPath(QUERY_TIMESTAMP), timestampFormat);
+      ttlSeconds = config.getInt(QUERY_TTL);
+      String timestampStr = config.getString(QUERY_TIMESTAMP);
+      if (timestampStr.isEmpty()) {
+        this.timestampMicros = -1L;
+      } else {
+        try {
+          Instant instant = timestampCodec.convertFrom(timestampStr);
+          this.timestampMicros = instantToTimestampSinceEpoch(instant, MICROSECONDS);
+        } catch (Exception e) {
+          throw new BulkConfigurationException(
+              String.format("Could not parse %s '%s'", prettyPath(QUERY_TIMESTAMP), timestampStr),
+              prettyPath(QUERY_TIMESTAMP));
+        }
+      }
       this.query = config.hasPath(QUERY) ? config.getString(QUERY) : null;
 
       boolean keyspaceTablePresent = false;
@@ -149,7 +160,7 @@ public class SchemaSettings {
       }
 
       // If a query is provided, ttl and timestamp must not be.
-      if (query != null && (!timestamp.isEmpty() || ttl != -1)) {
+      if (query != null && (timestampMicros != -1 || ttlSeconds != -1)) {
         throw new BulkConfigurationException(
             String.format(
                 "%s must not be defined if %s or %s is defined",
@@ -219,14 +230,7 @@ public class SchemaSettings {
     PreparedStatement statement = prepareStatement(session, fieldsToVariables, WorkflowType.LOAD);
     DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
     return new DefaultRecordMapper(
-        statement,
-        mapping,
-        mergeRecordMetadata(recordMetadata),
-        nullStrings,
-        nullToUnset,
-        ttl,
-        timestamp,
-        timestampFormat);
+        statement, mapping, mergeRecordMetadata(recordMetadata), nullStrings, nullToUnset);
   }
 
   public ReadResultMapper createReadResultMapper(
@@ -429,20 +433,31 @@ public class SchemaSettings {
       }
     }
     sb.append(')');
-
-    boolean hasTtl = ttl != -1 || fieldsToVariables.containsValue(TTL_VARNAME);
-    boolean hasTimestamp = timestamp != -1 || fieldsToVariables.containsValue(TIMESTAMP_VARNAME);
+    boolean hasTtl = ttlSeconds != -1 || fieldsToVariables.containsValue(TTL_VARNAME);
+    boolean hasTimestamp =
+        timestampMicros != -1 || fieldsToVariables.containsValue(TIMESTAMP_VARNAME);
     if (hasTtl || hasTimestamp) {
       sb.append(" USING ");
-
       if (hasTtl) {
-        sb.append("TTL :" + TTL_VARNAME);
+        sb.append("TTL ");
+        if (ttlSeconds != -1) {
+          sb.append(ttlSeconds);
+        } else {
+          sb.append(':');
+          sb.append(TTL_VARNAME);
+        }
         if (hasTimestamp) {
           sb.append(" AND ");
         }
       }
       if (hasTimestamp) {
-        sb.append("TIMESTAMP :" + TIMESTAMP_VARNAME);
+        sb.append("TIMESTAMP ");
+        if (timestampMicros != -1) {
+          sb.append(timestampMicros);
+        } else {
+          sb.append(':');
+          sb.append(TIMESTAMP_VARNAME);
+        }
       }
     }
     return sb.toString();

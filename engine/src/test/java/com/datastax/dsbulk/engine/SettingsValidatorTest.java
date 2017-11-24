@@ -328,7 +328,7 @@ class SettingsValidatorTest {
             })
         .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("Could not parse schema.queryTimestamp 'junk';");
+    assertThat(err).contains("Could not parse schema.queryTimestamp 'junk'");
   }
 
   @Test

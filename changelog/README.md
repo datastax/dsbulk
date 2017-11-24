@@ -18,6 +18,7 @@
 - [improvement] DAT-157: Optimize non-thread-per-core LoadWorkflow by trying to emit records to mapper threads together.
 - [improvement] DAT-168: Field mapping should support string timestamps.
 - [bug] DAT-170: Internal scheduler is not closed when LogManager is closed.
+- [new feature] DAT-172: Support numeric-to-temporal conversions.
 
 
 ### 1.0.0-beta1

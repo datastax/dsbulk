@@ -564,13 +564,14 @@ Only applicable for load; ignored for unload.
 
 The following formats are supported:
 
-* An integer indicating number of microseconds since epoch.
-* A valid date-time format; the string will be parsed using the following settings: `codec.timestamp` and `codec.timeZone`; see the `codec` section for more information on accepted date-time formats.
+* Alphanumeric: a valid date-time format; the value will be parsed using the following settings: `codec.timestamp` and `codec.timeZone`.
+* Numeric: a numeric timestamp; the value will be parsed using the following settings: `codec.unit` and `codec.epoch`.
 
-Note that the second format has milliseconds-precision at best, not microseconds.
+See the `codec` section for more information on accepted date-time formats.
 
 If not specified, inserts/updates use current time of the system running the tool.
 
+Query timestamps for Cassandra and DSE have microsecond resolution; any sub-microsecond information specified here will be lost.
 For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
 
 Default: **&lt;unspecified&gt;**.
@@ -684,6 +685,18 @@ For more information on patterns and pre-defined formatters, see https://docs.or
 
 Default: **"ISO_LOCAL_DATE"**.
 
+#### --codec.epoch _&lt;string&gt;_
+
+The "Epoch" for all numeric temporal fields, that is, the instant that corresponds to zero.
+
+This setting only applies for CQL timestamp colums, and for `USING TIMESTAMP` clauses; it is used when the input has numerical shape (for example, a string containing only digits) and cannot be parsed using the `codec.timestamp` format. In these situations, this setting determines which point in time the parsed value is relative to.
+
+It defaults to the Unix Epoch (January 1st 1970 GMT).
+
+The value provided here must be a valid timestamp itself, as defined by the `codec.timestamp` format (and the time zone defined by `codec.timeZone`, if the format itself does not include any time zone information).
+
+Default: **"1970-01-01T00:00:00Z"**.
+
 #### -locale,--codec.locale _&lt;string&gt;_
 
 The locale to use for locale-sensitive conversions.
@@ -724,6 +737,16 @@ The temporal pattern to use for `String` to CQL timestamp conversions. This can 
 For more information on patterns and pre-defined formatters, see https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html.
 
 Default: **"CQL_DATE_TIME"**.
+
+#### --codec.unit _&lt;string&gt;_
+
+The time unit to use when converting numeric fields into CQL timestamps.
+
+This setting only applies for CQL timestamp colums, and for `USING TIMESTAMP` clauses; it is used when the input has numerical shape (for example, a string containing only digits) and cannot be parsed using the `codec.timestamp` format. In these situations, this setting determines the time unit to apply to the parsed value.
+
+Valid values: all `TimeUnit` enum constants.
+
+Default: **"MILLISECONDS"**.
 
 <a name="driver"></a>
 ## Driver Settings
