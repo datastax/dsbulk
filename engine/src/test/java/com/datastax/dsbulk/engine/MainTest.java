@@ -227,6 +227,15 @@ class MainTest {
   }
 
   @Test
+  public void should_error_out_for_bad_execution_id_template() throws Exception {
+    new Main(new String[] {"load", "--engine.executionId", "%4$s"}).run();
+    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    assertThat(err)
+        .contains("Load workflow engine execution null failed")
+        .contains("Could not generate execution ID with template: '%4$s'");
+  }
+
+  @Test
   void should_process_short_options() throws Exception {
     Config result =
         Main.parseCommandLine(
@@ -435,6 +444,8 @@ class MainTest {
               "29",
               "--engine.dryRun",
               "true",
+              "--engine.executionId",
+              "MY_EXEC_ID",
               "--batch.mode",
               "batch-mode",
               "--batch.bufferSize",
@@ -565,6 +576,7 @@ class MainTest {
     assertThat(result.getString("driver.policy.lbp.whiteList.hosts")).isEqualTo("wh1, wh2");
     assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(29);
     assertThat(result.getBoolean("engine.dryRun")).isTrue();
+    assertThat(result.getString("engine.executionId")).isEqualTo("MY_EXEC_ID");
     assertThat(result.getString("batch.mode")).isEqualTo("batch-mode");
     assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
     assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);

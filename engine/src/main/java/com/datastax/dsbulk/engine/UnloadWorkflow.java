@@ -47,10 +47,10 @@ public class UnloadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UnloadWorkflow.class);
 
-  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.UNLOAD);
-  private final LoaderConfig config;
+  private final SettingsManager settingsManager;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
+  private String executionId;
   private Connector connector;
   private Scheduler scheduler;
   private ReadResultMapper readResultMapper;
@@ -61,12 +61,14 @@ public class UnloadWorkflow implements Workflow {
   private List<Statement> readStatements;
 
   UnloadWorkflow(LoaderConfig config) {
-    this.config = config;
+    settingsManager = new SettingsManager(config, WorkflowType.UNLOAD);
   }
 
   @Override
   public void init() throws Exception {
-    SettingsManager settingsManager = new SettingsManager(config, executionId, WorkflowType.UNLOAD);
+    settingsManager.init();
+    executionId = settingsManager.getExecutionId();
+    settingsManager.logEffectiveSettings();
     LogSettings logSettings = settingsManager.getLogSettings();
     DriverSettings driverSettings = settingsManager.getDriverSettings();
     ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();

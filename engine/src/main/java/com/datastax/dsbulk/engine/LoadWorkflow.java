@@ -50,10 +50,10 @@ public class LoadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadWorkflow.class);
 
-  private final String executionId = WorkflowUtils.newExecutionId(WorkflowType.LOAD);
-  private final LoaderConfig config;
+  private final SettingsManager settingsManager;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
+  private String executionId;
   private Connector connector;
   private RecordMapper recordMapper;
   private MetricsManager metricsManager;
@@ -69,12 +69,13 @@ public class LoadWorkflow implements Workflow {
   private Set<Disposable> disposables;
 
   LoadWorkflow(LoaderConfig config) {
-    this.config = config;
+    settingsManager = new SettingsManager(config, WorkflowType.LOAD);
   }
 
   @Override
   public void init() throws Exception {
-    SettingsManager settingsManager = new SettingsManager(config, executionId, WorkflowType.LOAD);
+    settingsManager.init();
+    executionId = settingsManager.getExecutionId();
     settingsManager.logEffectiveSettings();
     LogSettings logSettings = settingsManager.getLogSettings();
     logSettings.init(false);

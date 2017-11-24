@@ -6,21 +6,23 @@
  */
 package com.datastax.dsbulk.engine.internal;
 
+import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
+import static java.time.temporal.ChronoUnit.MICROS;
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
+import com.datastax.driver.core.Native;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.google.common.base.Throwables;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -40,14 +42,44 @@ public class WorkflowUtils {
    */
   public static final int TPC_THRESHOLD = 4;
 
+  private static final DateTimeFormatter DEFAULT_TIMESTAMP_PATTERN =
+      DateTimeFormatter.ofPattern("uuuuMMdd-HHmmss-SSSSSS");
+
   public static String newExecutionId(WorkflowType workflowType) {
-    return workflowType
-        + "_"
-        + DateTimeFormatter.ofPattern("uuuu_MM_dd_HH_mm_ss_nnnnnnnnn")
-            .format(
-                ZonedDateTime.ofInstant(
-                        Instant.ofEpochMilli(System.currentTimeMillis()), ZoneId.of("UTC"))
-                    .with(ChronoField.NANO_OF_SECOND, new Random().nextInt(1_000_000_000)));
+    return workflowType + "_" + DEFAULT_TIMESTAMP_PATTERN.format(now());
+  }
+
+  public static String newCustomExecutionId(String template, WorkflowType workflowType) {
+    try {
+      // Accepted parameters:
+      // 1 : the workflow type
+      // 2 : the current time
+      // 3 : the JVM process PID, if available
+      String executionId =
+          String.format(
+              template, workflowType, now(), Native.isGetpidAvailable() ? Native.processId() : "");
+      if (executionId.isEmpty()) {
+        throw new BulkConfigurationException(
+            "Could not generate execution ID with template: '"
+                + template
+                + "': the generated ID is empty.",
+            "engine.executionId");
+      }
+      return executionId;
+    } catch (Exception e) {
+      throw new BulkConfigurationException(
+          "Could not generate execution ID with template: '" + template + "': " + e.getMessage(),
+          e,
+          "engine.executionId");
+    }
+  }
+
+  private static ZonedDateTime now() {
+    if (Native.isGettimeofdayAvailable()) {
+      return EPOCH.plus(Native.currentTimeMicros(), MICROS).atZone(UTC);
+    } else {
+      return Instant.now().atZone(UTC);
+    }
   }
 
   public static String formatElapsed(long seconds) {
