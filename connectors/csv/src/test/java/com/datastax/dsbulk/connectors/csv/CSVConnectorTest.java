@@ -15,7 +15,7 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
-import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
+import com.datastax.dsbulk.commons.internal.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.UnmappableRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -36,7 +35,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -44,17 +42,13 @@ import reactor.core.publisher.UnicastProcessor;
 
 /** */
 class CSVConnectorTest {
+
+  static {
+    URLUtils.setURLFactoryIfNeeded();
+  }
+
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
       ConfigFactory.defaultReference().getConfig("dsbulk.connector.csv");
-
-  @BeforeAll
-  static void setupURLStreamHandlerFactory() throws Exception {
-    try {
-      URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    } catch (Exception ignored) {
-      // if this happens, that's because another test already installed the factory
-    }
-  }
 
   @Test
   void should_read_single_file() throws Exception {

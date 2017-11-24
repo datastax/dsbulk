@@ -6,13 +6,13 @@
  */
 package com.datastax.dsbulk.tests.ccm.factory;
 
+import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
 import com.datastax.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.tests.ccm.DefaultCCMCluster;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMFactory;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMFactoryMethod;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMWorkload;
-import com.datastax.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.tests.utils.Version;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;

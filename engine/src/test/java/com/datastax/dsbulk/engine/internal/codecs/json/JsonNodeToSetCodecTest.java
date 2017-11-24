@@ -9,7 +9,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.driver.core.TypeCodec.cdouble;
 import static com.datastax.driver.core.TypeCodec.set;
 import static com.datastax.driver.core.TypeCodec.varchar;
-import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 import static org.assertj.core.util.Sets.newLinkedHashSet;
 
 import com.datastax.driver.core.TypeCodec;

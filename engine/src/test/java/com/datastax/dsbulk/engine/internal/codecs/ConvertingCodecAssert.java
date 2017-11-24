@@ -78,7 +78,8 @@ public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCode
 
     public ConvertingCodecAssert<FROM, TO> to(TO to) {
       assertThat(this.to)
-          .as("Expecting codec to convert to %s from %s but it was to %s", to, from, this.to)
+          .overridingErrorMessage(
+              "Expecting codec to convert to %s from %s but it was to %s", to, from, this.to)
           .isEqualTo(to);
       return this;
     }
@@ -97,7 +98,8 @@ public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCode
 
     public ConvertingCodecAssert<FROM, TO> from(FROM from) {
       assertThat(this.from)
-          .as("Expecting codec to convert to %s from %s but it was from %s", to, from, this.from)
+          .overridingErrorMessage(
+              "Expecting codec to convert to %s from %s but it was from %s", to, from, this.from)
           .isEqualTo(from);
       return this;
     }

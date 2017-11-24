@@ -93,6 +93,13 @@
     </dependency>
 
     <dependency>
+      <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-commons</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
       <groupId>org.reactivestreams</groupId>
       <artifactId>reactive-streams-tck</artifactId>
       <scope>test</scope>

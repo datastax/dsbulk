@@ -6,10 +6,10 @@
  */
 package com.datastax.dsbulk.tests.simulacron.factory;
 
+import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
 import com.datastax.dsbulk.tests.simulacron.annotations.SimulacronConfig;
 import com.datastax.dsbulk.tests.simulacron.annotations.SimulacronFactory;
 import com.datastax.dsbulk.tests.simulacron.annotations.SimulacronFactoryMethod;
-import com.datastax.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.tests.utils.Version;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import java.lang.reflect.Method;

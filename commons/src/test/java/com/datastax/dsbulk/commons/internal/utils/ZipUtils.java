@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.utils;
+package com.datastax.dsbulk.commons.internal.utils;
 
 import static java.nio.file.FileVisitResult.CONTINUE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -34,7 +34,7 @@ public class ZipUtils {
     }
     URI uri = URI.create("jar:" + ClassLoader.getSystemResource(src));
     try (FileSystem zipFileSystem = FileSystems.newFileSystem(uri, new HashMap<>())) {
-      final Path root = zipFileSystem.getPath("/");
+      Path root = zipFileSystem.getPath("/");
       Files.walkFileTree(
           root,
           new SimpleFileVisitor<Path>() {
@@ -50,7 +50,9 @@ public class ZipUtils {
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
                 throws IOException {
               Path dirToCreate = Paths.get(dest.toString(), dir.toString());
-              if (Files.notExists(dirToCreate)) Files.createDirectory(dirToCreate);
+              if (Files.notExists(dirToCreate)) {
+                Files.createDirectory(dirToCreate);
+              }
               return CONTINUE;
             }
           });

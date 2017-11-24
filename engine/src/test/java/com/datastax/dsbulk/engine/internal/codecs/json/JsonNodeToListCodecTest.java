@@ -9,7 +9,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.driver.core.TypeCodec.cdouble;
 import static com.datastax.driver.core.TypeCodec.list;
 import static com.datastax.driver.core.TypeCodec.varchar;
-import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
 import com.datastax.driver.core.TypeCodec;

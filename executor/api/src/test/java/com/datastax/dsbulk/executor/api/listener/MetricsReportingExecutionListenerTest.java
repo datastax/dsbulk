@@ -6,56 +6,29 @@
  */
 package com.datastax.dsbulk.executor.api.listener;
 
+import static com.datastax.dsbulk.commons.internal.assertions.CommonsAssertions.assertThat;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.mockito.Matchers.argThat;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Timer;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import com.datastax.dsbulk.commons.internal.logging.LogCapture;
+import com.datastax.dsbulk.commons.internal.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.internal.logging.LogInterceptor;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatcher;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.internal.util.reflection.Whitebox;
-import org.slf4j.LoggerFactory;
 
-/** */
+@ExtendWith(LogInterceptingExtension.class)
 class MetricsReportingExecutionListenerTest {
 
-  @Mock private Appender<ILoggingEvent> mockAppender;
-  private MetricsCollectingExecutionListener delegate;
-  private Level oldLevel;
-  private Appender<ILoggingEvent> stdout;
-  private Logger root;
+  private final LogInterceptor interceptor;
+  private final MetricsCollectingExecutionListener delegate;
 
-  @BeforeEach
-  void prepareMocks() {
-    MockitoAnnotations.initMocks(this);
-    when(mockAppender.getName()).thenReturn("MOCK");
-    Logger logger = (Logger) LoggerFactory.getLogger(MetricsReportingExecutionListener.class);
-    logger.addAppender(mockAppender);
-    oldLevel = logger.getLevel();
-    logger.setLevel(Level.INFO);
+  public MetricsReportingExecutionListenerTest(
+      @LogCapture(MetricsReportingExecutionListener.class) LogInterceptor interceptor) {
+    this.interceptor = interceptor;
     delegate = new MetricsCollectingExecutionListener();
-    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    stdout = root.getAppender("STDOUT");
-    root.detachAppender(stdout);
-  }
-
-  @AfterEach
-  void restoreAppenders() {
-    Logger logger = (Logger) LoggerFactory.getLogger(MetricsReportingExecutionListener.class);
-    logger.detachAppender(mockAppender);
-    logger.setLevel(oldLevel);
-    root.addAppender(stdout);
   }
 
   @Test
@@ -70,8 +43,9 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged(
-        "Reads: total: 0, successful: 0, failed: 0; 0 reads/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "Reads: total: 0, successful: 0, failed: 0; 0 reads/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
 
     // simulate 3 reads, 2 successful and 1 failed
     Timer total = delegate.getReadsTimer();
@@ -86,10 +60,11 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged("Reads: total: 3, successful: 2, failed: 1");
+    assertThat(interceptor).hasMessageContaining("Reads: total: 3, successful: 2, failed: 1");
     // cannot assert throughput in reads/second as it may vary
-    verifyEventLogged(
-        "reads/second (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "reads/second (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
   }
 
   @Test
@@ -105,8 +80,9 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged(
-        "Reads: total: 0, successful: 0, failed: 0; 0 reads/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "Reads: total: 0, successful: 0, failed: 0; 0 reads/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
 
     // simulate 3 reads, 2 successful and 1 failed
     Timer total = delegate.getReadsTimer();
@@ -121,10 +97,11 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged("Reads: total: 3, successful: 2, failed: 1");
+    assertThat(interceptor).hasMessageContaining("Reads: total: 3, successful: 2, failed: 1");
     // cannot assert throughput in reads/second as it may vary
-    verifyEventLogged(
-        "reads/second, progression: 100% (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "reads/second, progression: 100% (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
   }
 
   @Test
@@ -139,8 +116,9 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged(
-        "Writes: total: 0, successful: 0, failed: 0; 0 writes/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "Writes: total: 0, successful: 0, failed: 0; 0 writes/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
 
     // simulate 3 writes, 2 successful and 1 failed
     Timer total = delegate.getWritesTimer();
@@ -155,10 +133,11 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged("Writes: total: 3, successful: 2, failed: 1");
+    assertThat(interceptor).hasMessageContaining("Writes: total: 3, successful: 2, failed: 1");
     // cannot assert throughput in writes/second as it may vary
-    verifyEventLogged(
-        "writes/second (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "writes/second (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
   }
 
   @Test
@@ -174,8 +153,9 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged(
-        "Writes: total: 0, successful: 0, failed: 0; 0 writes/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "Writes: total: 0, successful: 0, failed: 0; 0 writes/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
 
     // simulate 3 writes, 2 successful and 1 failed
     Timer total = delegate.getWritesTimer();
@@ -190,10 +170,11 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged("Writes: total: 3, successful: 2, failed: 1");
+    assertThat(interceptor).hasMessageContaining("Writes: total: 3, successful: 2, failed: 1");
     // cannot assert throughput in writes/second as it may vary
-    verifyEventLogged(
-        "writes/second, progression: 100% (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "writes/second, progression: 100% (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
   }
 
   @Test
@@ -208,8 +189,9 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged(
-        "Reads/Writes: total: 0, successful: 0, failed: 0; 0 reads-writes/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "Reads/Writes: total: 0, successful: 0, failed: 0; 0 reads-writes/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
 
     // simulate 3 reads/writes, 2 successful and 1 failed
     Timer total = delegate.getReadsWritesTimer();
@@ -224,10 +206,12 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged("Reads/Writes: total: 3, successful: 2, failed: 1");
+    assertThat(interceptor)
+        .hasMessageContaining("Reads/Writes: total: 3, successful: 2, failed: 1");
     // cannot assert throughput in reads/writes/second as it may vary
-    verifyEventLogged(
-        "reads-writes/second (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "reads-writes/second (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
   }
 
   @Test
@@ -236,8 +220,9 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged(
-        "Reads/Writes: total: 0, successful: 0, failed: 0; 0 reads-writes/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "Reads/Writes: total: 0, successful: 0, failed: 0; 0 reads-writes/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
 
     MetricsCollectingExecutionListener delegate =
         (MetricsCollectingExecutionListener) Whitebox.getInternalState(listener, "delegate");
@@ -254,10 +239,12 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged("Reads/Writes: total: 3, successful: 2, failed: 1");
+    assertThat(interceptor)
+        .hasMessageContaining("Reads/Writes: total: 3, successful: 2, failed: 1");
     // cannot assert throughput in reads/writes/second as it may vary
-    verifyEventLogged(
-        "reads-writes/second (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "reads-writes/second (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
   }
 
   @Test
@@ -273,8 +260,9 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged(
-        "Reads/Writes: total: 0, successful: 0, failed: 0; 0 reads-writes/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "Reads/Writes: total: 0, successful: 0, failed: 0; 0 reads-writes/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
 
     // simulate 3 reads/writes, 2 successful and 1 failed
     Timer total = delegate.getReadsWritesTimer();
@@ -289,10 +277,12 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged("Reads/Writes: total: 3, successful: 2, failed: 1");
+    assertThat(interceptor)
+        .hasMessageContaining("Reads/Writes: total: 3, successful: 2, failed: 1");
     // cannot assert throughput in reads/writes/second as it may vary
-    verifyEventLogged(
-        "reads-writes/second, progression: 100% (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "reads-writes/second, progression: 100% (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
   }
 
   @Test
@@ -307,8 +297,9 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged(
-        "Statements: total: 0, successful: 0, failed: 0; 0 stmts/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "Statements: total: 0, successful: 0, failed: 0; 0 stmts/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
 
     // simulate 3 stmts, 2 successful and 1 failed
     Timer total = delegate.getStatementsTimer();
@@ -323,10 +314,11 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged("Statements: total: 3, successful: 2, failed: 1");
+    assertThat(interceptor).hasMessageContaining("Statements: total: 3, successful: 2, failed: 1");
     // cannot assert throughput in stmts/second as it may vary
-    verifyEventLogged(
-        "stmts/second (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "stmts/second (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
   }
 
   @Test
@@ -342,8 +334,9 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged(
-        "Statements: total: 0, successful: 0, failed: 0; 0 stmts/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "Statements: total: 0, successful: 0, failed: 0; 0 stmts/second, progression: 0% (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
 
     // simulate 3 stmts, 2 successful and 1 failed
     Timer total = delegate.getStatementsTimer();
@@ -358,23 +351,10 @@ class MetricsReportingExecutionListenerTest {
 
     listener.report();
 
-    verifyEventLogged("Statements: total: 3, successful: 2, failed: 1");
+    assertThat(interceptor).hasMessageContaining("Statements: total: 3, successful: 2, failed: 1");
     // cannot assert throughput in stmts/second as it may vary
-    verifyEventLogged(
-        "stmts/second, progression: 100% (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
-  }
-
-  private void verifyEventLogged(String expectedLogMessage) {
-    verify(mockAppender)
-        .doAppend(
-            argThat(
-                new ArgumentMatcher<ILoggingEvent>() {
-                  @Override
-                  public boolean matches(Object argument) {
-                    return ((ILoggingEvent) argument)
-                        .getFormattedMessage()
-                        .contains(expectedLogMessage);
-                  }
-                }));
+    assertThat(interceptor)
+        .hasMessageContaining(
+            "stmts/second, progression: 100% (mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds, in-flight 42)");
   }
 }

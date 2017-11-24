@@ -7,10 +7,10 @@
 package com.datastax.dsbulk.tests.ccm;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
+import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
 import com.datastax.dsbulk.tests.RemoteClusterExtension;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.tests.ccm.factory.CCMClusterFactory;
-import com.datastax.dsbulk.tests.utils.ReflectionUtils;
 import java.lang.reflect.Parameter;
 import java.net.InetAddress;
 import java.util.List;

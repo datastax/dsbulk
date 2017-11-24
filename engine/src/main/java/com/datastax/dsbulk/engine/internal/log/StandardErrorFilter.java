@@ -8,10 +8,10 @@ package com.datastax.dsbulk.engine.internal.log;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.filter.AbstractMatcherFilter;
+import ch.qos.logback.core.filter.Filter;
 import ch.qos.logback.core.spi.FilterReply;
 
-public class StandardErrorFilter extends AbstractMatcherFilter<ILoggingEvent> {
+public class StandardErrorFilter extends Filter<ILoggingEvent> {
 
   @Override
   public FilterReply decide(ILoggingEvent event) {
@@ -19,7 +19,7 @@ public class StandardErrorFilter extends AbstractMatcherFilter<ILoggingEvent> {
       return FilterReply.NEUTRAL;
     }
     if (event.getLevel().levelInt >= Level.ERROR_INT) {
-      return FilterReply.ACCEPT;
+      return FilterReply.NEUTRAL;
     } else {
       return FilterReply.DENY;
     }
