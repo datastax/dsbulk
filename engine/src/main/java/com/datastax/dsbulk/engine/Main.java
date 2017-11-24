@@ -270,7 +270,7 @@ public class Main {
    * Commons-cli parser that errors out when attempting to interpret a short option that has a value
    * concatenated to it. We don't want to support that kind of usage.
    *
-   * <p>Motivating example: Use says `-hdr` instead of `-header`. `-h` is a valid option, so dsbulk
+   * <p>Motivating example: User says `-hdr` instead of `-header`. `-h` is a valid option, so dsbulk
    * interprets it as the `-h` option with value `dr`, which is not the user's intention.
    */
   private static class CmdlineParser extends DefaultParser {
