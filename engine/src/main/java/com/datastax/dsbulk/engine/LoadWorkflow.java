@@ -91,7 +91,9 @@ public class LoadWorkflow implements Workflow {
     connector = connectorSettings.getConnector();
     connector.init();
     cluster = driverSettings.newCluster();
-    checkProductCompatibility(cluster);
+    if (System.getProperty("com.datastax.dsbulk.ALLOW_CASSANDRA") == null) {
+      checkProductCompatibility(cluster);
+    }
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);
     batchingEnabled = batchSettings.isBatchingEnabled();
