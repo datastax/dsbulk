@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -20,6 +20,7 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
 import com.google.common.base.Suppliers;
 import com.google.common.base.Throwables;
+import com.google.common.collect.Streams;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
@@ -42,10 +43,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
@@ -285,6 +288,11 @@ public class CSVConnector implements Connector {
                               location,
                               context.parsedHeaders(),
                               (Object[]) row.getValues());
+                      // also emit indexed fields
+                      Streams.forEachPair(
+                          IntStream.range(0, row.getValues().length).mapToObj(Integer::toString),
+                          Arrays.stream(row.getValues()),
+                          ((DefaultRecord) record)::setFieldValue);
                     } else {
                       record =
                           new DefaultRecord(

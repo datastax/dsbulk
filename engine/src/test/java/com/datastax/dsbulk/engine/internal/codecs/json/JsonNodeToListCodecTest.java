@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -19,30 +19,30 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.List;
 import java.util.Locale;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToListCodecTest {
+class JsonNodeToListCodecTest {
 
-  private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  private JsonNodeToDoubleCodec eltCodec1 =
+  private final JsonNodeToDoubleCodec eltCodec1 =
       new JsonNodeToDoubleCodec(
           ThreadLocal.withInitial(
               () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
-  private JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
 
-  private TypeCodec<List<Double>> listCodec1 = list(cdouble());
-  private TypeCodec<List<String>> listCodec2 = list(varchar());
+  private final TypeCodec<List<Double>> listCodec1 = list(cdouble());
+  private final TypeCodec<List<String>> listCodec2 = list(varchar());
 
-  private JsonNodeToListCodec<Double> codec1 =
+  private final JsonNodeToListCodec<Double> codec1 =
       new JsonNodeToListCodec<>(listCodec1, eltCodec1, objectMapper);
 
-  private JsonNodeToListCodec<String> codec2 =
+  private final JsonNodeToListCodec<String> codec2 =
       new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper);
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec1)
         .convertsFrom(objectMapper.readTree("[1,2,3]"))
         .to(newArrayList(1d, 2d, 3d))
@@ -86,7 +86,7 @@ public class JsonNodeToListCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec1)
         .convertsTo(newArrayList(1d, 2d, 3d))
         .from(objectMapper.readTree("[1.0,2.0,3.0]"))
@@ -116,7 +116,7 @@ public class JsonNodeToListCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec1).cannotConvertFrom(objectMapper.readTree("[1,\"not a valid double\"]"));
     assertThat(codec1).cannotConvertFrom(objectMapper.readTree("{ \"not a valid array\" : 42 }"));
     assertThat(codec1).cannotConvertFrom(objectMapper.readTree("42"));

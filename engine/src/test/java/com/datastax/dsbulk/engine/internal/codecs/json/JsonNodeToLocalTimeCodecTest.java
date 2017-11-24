@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -13,12 +13,12 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToLocalTimeCodecTest {
+class JsonNodeToLocalTimeCodecTest {
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(ISO_LOCAL_TIME);
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("12:24:46"))
@@ -40,7 +40,7 @@ public class JsonNodeToLocalTimeCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(ISO_LOCAL_TIME);
     assertThat(codec)
         .convertsTo(LocalTime.parse("12:24:46.999"))
@@ -56,7 +56,7 @@ public class JsonNodeToLocalTimeCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(ISO_LOCAL_DATE);
     assertThat(codec)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid date format"));

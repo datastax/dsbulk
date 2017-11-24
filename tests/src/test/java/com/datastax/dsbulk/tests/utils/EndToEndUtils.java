@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -10,7 +10,6 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
-import com.datastax.dsbulk.tests.SimulacronRule;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -18,6 +17,7 @@ import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.ErrorResult;
 import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
+import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -110,7 +110,7 @@ public class EndToEndUtils {
     return new RequestPrime(when, result);
   }
 
-  public static RequestPrime createParametrizedQuery(
+  public static RequestPrime createParameterizedQuery(
       String query, Map<String, Object> params, Result then) {
     Map<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("country_code", "ascii");
@@ -179,39 +179,18 @@ public class EndToEndUtils {
     Assertions.assertThat(totalLines).isEqualTo(numOfRecords);
   }
 
-  public static String[] fetchCompleteArgs(
-      String op, String contactPoint, String port, List<String> customArgs) {
-    ArrayList<String> completeArgs = new ArrayList<>();
-    completeArgs.add(op);
-    completeArgs.add("--log.directory");
-    completeArgs.add("./target");
-    completeArgs.add("-header");
-    completeArgs.add("false");
-    completeArgs.add("--driver.query.consistency");
-    completeArgs.add("ONE");
-    completeArgs.add("--driver.hosts");
-    completeArgs.add(contactPoint);
-    completeArgs.add("--driver.port");
-    completeArgs.add(port);
-    completeArgs.add("--schema.mapping");
-    completeArgs.add(
-        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name");
-    completeArgs.addAll(customArgs);
-    return completeArgs.toArray(new String[0]);
-  }
-
   public static void validateStringOutput(String output, int numOfRecords) {
     String lines[] = output.split(System.lineSeparator());
     Assertions.assertThat(lines.length).isEqualTo(numOfRecords);
   }
 
-  public static String fetchSimulacronContactPointsForArg(SimulacronRule simulacron) {
-    return simulacron.getContactPoints().iterator().next().toString().substring(1);
+  public static String fetchContactPoints(BoundCluster simulacron) {
+    return simulacron.dc(0).node(0).inet().getHostAddress();
   }
 
   public static void validateQueryCount(
-      SimulacronRule simulacron, int numOfQueries, String query, ConsistencyLevel level) {
-    List<QueryLog> logs = simulacron.cluster().getLogs().getQueryLogs();
+      BoundCluster simulacron, int numOfQueries, String query, ConsistencyLevel level) {
+    List<QueryLog> logs = simulacron.getLogs().getQueryLogs();
     List<QueryLog> ipLogs =
         logs.stream()
             .filter(l -> !l.getType().equals("PREPARE") && l.getQuery().startsWith(query))

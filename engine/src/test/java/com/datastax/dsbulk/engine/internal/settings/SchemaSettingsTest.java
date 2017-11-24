@@ -1,15 +1,16 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.driver.core.DriverCoreTestHooks.newPreparedId;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newPreparedId;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TTL_VARNAME;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Matchers.anyString;
@@ -36,19 +37,22 @@ import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
 @SuppressWarnings("unchecked")
-public class SchemaSettingsTest {
+class SchemaSettingsTest {
 
   private static final String NULL_STRINGS = "nullStrings";
   private static final String NULL_TO_UNSET = "nullToUnset";
@@ -60,9 +64,10 @@ public class SchemaSettingsTest {
   private Session session;
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
   private final RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
+  private final DateTimeFormatter parser = CodecSettings.CQL_DATE_TIME_FORMAT;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     session = mock(Session.class);
     Cluster cluster = mock(Cluster.class);
     Metadata metadata = mock(Metadata.class);
@@ -94,14 +99,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_when_mapping_keyspace_and_table_provided()
-      throws Exception {
+  void should_create_record_mapper_when_mapping_keyspace_and_table_provided() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -117,19 +121,19 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_fail_to_create_schema_settings_when_mapping_many_to_one() throws Exception {
+  void should_fail_to_create_schema_settings_when_mapping_many_to_one() throws Exception {
     LoaderConfig config =
         makeLoaderConfig("mapping = \"{ 0 = f1, 1 = f1}\", keyspace=ks, table=t1");
 
     @SuppressWarnings("ThrowableNotThrown")
-    Throwable thrown = catchThrowable(() -> new SchemaSettings(config));
+    Throwable thrown = catchThrowable(() -> new SchemaSettings(config, parser));
     assertThat(thrown)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("Multiple input values in mapping resolve to column f1");
   }
 
   @Test
-  public void should_create_record_mapper_when_mapping_ttl_and_timestamp() throws Exception {
+  void should_create_record_mapper_when_mapping_ttl_and_timestamp() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format(
@@ -137,7 +141,7 @@ public class SchemaSettingsTest {
                     C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -164,12 +168,12 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_when_mapping_function() throws Exception {
+  void should_create_record_mapper_when_mapping_function() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"{ now() = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                 + "keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -183,12 +187,12 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_with_static_ttl() throws Exception {
+  void should_create_record_mapper_with_static_ttl() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                 + "keyspace=ks, table=t1, queryTtl=30");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -205,12 +209,12 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_with_static_timestamp() throws Exception {
+  void should_create_record_mapper_with_static_timestamp() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                 + "keyspace=ks, table=t1, queryTimestamp=30");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -227,12 +231,12 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_with_static_timestamp_datetime() throws Exception {
+  void should_create_record_mapper_with_static_timestamp_datetime() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                 + "keyspace=ks, table=t1, queryTimestamp=\"2017-01-02T00:00:01\"");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -249,12 +253,38 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_with_static_timestamp_and_ttl() throws Exception {
+  public void should_create_record_mapper_with_static_timestamp_datetime_custom() throws Exception {
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+                + "keyspace=ks, table=t1, queryTimestamp=\"20171123102034\"");
+    DateTimeFormatter formatter =
+        DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneId.of("Europe/Paris"));
+    SchemaSettings schemaSettings = new SchemaSettings(config, formatter);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) USING TIMESTAMP :%3$s",
+                C1, C2, TIMESTAMP_VARNAME));
+    assertMapping(
+        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
+    ZonedDateTime zdt = ZonedDateTime.parse("20171123102034", formatter);
+    long timestampMicros = MILLISECONDS.toMicros(zdt.toInstant().toEpochMilli());
+    assertThat(Whitebox.getInternalState(recordMapper, "timestamp")).isEqualTo(timestampMicros);
+  }
+
+  @Test
+  void should_create_record_mapper_with_static_timestamp_and_ttl() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                 + "keyspace=ks, table=t1, queryTimestamp=30, queryTtl=25");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -273,14 +303,14 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_when_using_custom_query() throws Exception {
+  void should_create_record_mapper_when_using_custom_query() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             "mapping = \"{ 0 = c1var , 2 = c2var }\", "
                 + "query = \"INSERT INTO ks.t1(c2, c1) VALUES (:c2var, :c1var)\", "
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -298,13 +328,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_when_mapping_is_a_list() throws Exception {
+  void should_create_record_mapper_when_mapping_is_a_list() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -320,7 +350,7 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_when_mapping_and_statement_provided() throws Exception {
+  void should_create_record_mapper_when_mapping_and_statement_provided() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
@@ -328,13 +358,12 @@ public class SchemaSettingsTest {
                 + String.format(
                     "query=\"insert into ks.table (%1$s,\\\"%2$s\\\") values (:%1$s,:\\\"%2$s\\\")\"",
                     C1, C2));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    System.out.println(argument.getValue());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format("insert into ks.table (%1$s,\"%2$s\") values (:%1$s,:\"%2$s\")", C1, C2));
@@ -345,9 +374,9 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_when_keyspace_and_table_provided() throws Exception {
+  void should_create_record_mapper_when_keyspace_and_table_provided() throws Exception {
     LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -364,13 +393,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_with_inferred_mapping_and_override() throws Exception {
+  void should_create_record_mapper_with_inferred_mapping_and_override() throws Exception {
     // Infer mapping, but override to set c4 source field to C3 column.
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \"{ *=*, %1$s = %2$s }\"", C4, C3));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -394,13 +423,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_with_infered_mapping_and_skip() throws Exception {
+  void should_create_record_mapper_with_inferred_mapping_and_skip() throws Exception {
     // Infer mapping, but skip C2.
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \"{ *=\\\"-%1$s\\\" }\"", C2));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -415,14 +444,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_with_infered_mapping_and_skip_multiple()
-      throws Exception {
+  void should_create_record_mapper_with_infered_mapping_and_skip_multiple() throws Exception {
     // Infer mapping, but skip C2 and C3.
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \"{ *=[\\\"-%1$s\\\", -%2$s] }\"", C2, C3));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -436,9 +464,9 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_when_null_to_unset_is_false() throws Exception {
+  void should_create_record_mapper_when_null_to_unset_is_false() throws Exception {
     LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -455,11 +483,11 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_when_null_words_are_provided() throws Exception {
+  void should_create_record_mapper_when_null_words_are_provided() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = false, " + "nullStrings = \"NIL, NULL\", " + "keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -477,10 +505,10 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_settings_when_null_strings_are_specified() throws Exception {
+  void should_create_settings_when_null_strings_are_specified() throws Exception {
     {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"null\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
+      SchemaSettings schemaSettings = new SchemaSettings(config, parser);
 
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("null");
@@ -488,7 +516,7 @@ public class SchemaSettingsTest {
 
     {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"null, NULL\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
+      SchemaSettings schemaSettings = new SchemaSettings(config, parser);
 
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("null", "NULL");
@@ -497,7 +525,7 @@ public class SchemaSettingsTest {
     {
       LoaderConfig config =
           makeLoaderConfig("nullStrings = \"[NIL, NULL]\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
+      SchemaSettings schemaSettings = new SchemaSettings(config, parser);
 
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NIL", "NULL");
@@ -506,7 +534,7 @@ public class SchemaSettingsTest {
     {
       LoaderConfig config =
           makeLoaderConfig("nullStrings = \"\\\"NIL\\\", \\\"NULL\\\"\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
+      SchemaSettings schemaSettings = new SchemaSettings(config, parser);
 
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NIL", "NULL");
@@ -514,7 +542,7 @@ public class SchemaSettingsTest {
 
     {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"NIL, NULL\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
+      SchemaSettings schemaSettings = new SchemaSettings(config, parser);
 
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NIL", "NULL");
@@ -522,21 +550,21 @@ public class SchemaSettingsTest {
 
     {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"NULL\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
+      SchemaSettings schemaSettings = new SchemaSettings(config, parser);
 
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
     }
     {
       LoaderConfig config = makeLoaderConfig("nullStrings = NULL, keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
+      SchemaSettings schemaSettings = new SchemaSettings(config, parser);
 
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
     }
     {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"[NULL]\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
+      SchemaSettings schemaSettings = new SchemaSettings(config, parser);
 
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
@@ -544,7 +572,7 @@ public class SchemaSettingsTest {
     {
       LoaderConfig config =
           makeLoaderConfig("nullStrings = \"[\\\"NULL\\\"]\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
+      SchemaSettings schemaSettings = new SchemaSettings(config, parser);
 
       assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
@@ -552,13 +580,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_row_mapper_when_mapping_keyspace_and_table_provided() throws Exception {
+  void should_create_row_mapper_when_mapping_keyspace_and_table_provided() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -575,13 +603,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_row_mapper_when_mapping_is_a_list() throws Exception {
+  void should_create_row_mapper_when_mapping_is_a_list() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -598,13 +626,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_row_mapper_with_inferred_mapping_and_override() throws Exception {
+  void should_create_row_mapper_with_inferred_mapping_and_override() throws Exception {
     // Infer mapping, but override to set c4 source field to C3 column.
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \"{ *=*, %1$s = %2$s }\"", C4, C3));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -627,13 +655,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_row_mapper_with_infered_mapping_and_skip() throws Exception {
+  void should_create_row_mapper_with_infered_mapping_and_skip() throws Exception {
     // Infer mapping, but skip C2.
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \"{ *=\\\"-%1$s\\\" }\"", C2));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -649,13 +677,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_row_mapper_with_infered_mapping_and_skip_multiple() throws Exception {
+  void should_create_row_mapper_with_infered_mapping_and_skip_multiple() throws Exception {
     // Infer mapping, but skip C2 and C3.
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \"{ *=[\\\"-%1$s\\\", -%2$s] }\"", C2, C3));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -669,13 +697,13 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_row_mapper_when_mapping_and_statement_provided() throws Exception {
+  void should_create_row_mapper_when_mapping_and_statement_provided() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
                 + "nullToUnset = true, "
                 + String.format("query=\"select \\\"%2$s\\\",%1$s from ks.t1\"", C1, C2));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -689,9 +717,9 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_row_mapper_when_keyspace_and_table_provided() throws Exception {
+  void should_create_row_mapper_when_keyspace_and_table_provided() throws Exception {
     LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -707,9 +735,9 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_row_mapper_when_null_to_unset_is_false() throws Exception {
+  void should_create_row_mapper_when_null_to_unset_is_false() throws Exception {
     LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -725,11 +753,11 @@ public class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_row_mapper_when_null_words_are_provided() throws Exception {
+  void should_create_row_mapper_when_null_words_are_provided() throws Exception {
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = false, " + "nullStrings = \"NIL, NULL\", " + "keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
+    SchemaSettings schemaSettings = new SchemaSettings(config, parser);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();

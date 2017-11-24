@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -26,17 +26,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /** */
-public class LogSettingsTest {
+class LogSettingsTest {
 
   private Cluster cluster;
 
   @SuppressWarnings("Duplicates")
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     cluster = mock(Cluster.class);
     Configuration configuration = mock(Configuration.class);
     ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
@@ -47,7 +47,7 @@ public class LogSettingsTest {
   }
 
   @Test
-  public void should_create_log_manager_with_default_output_directory() throws Exception {
+  void should_create_log_manager_with_default_output_directory() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.log"));
     LogSettings settings = new LogSettings(config, "test");
     LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
@@ -66,7 +66,7 @@ public class LogSettingsTest {
   }
 
   @Test
-  public void should_create_log_manager_when_output_directory_url_provided() throws Exception {
+  void should_create_log_manager_when_output_directory_url_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
     String dirToload = ConfigUtils.maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
@@ -81,7 +81,7 @@ public class LogSettingsTest {
   }
 
   @Test
-  public void should_create_log_manager_when_output_directory_path_provided() throws Exception {
+  void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
     String dirToload = ConfigUtils.maybeEscapeBackslash(dir.toString());
     LoaderConfig config =

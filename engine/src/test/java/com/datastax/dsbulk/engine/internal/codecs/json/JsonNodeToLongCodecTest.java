@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -12,17 +12,17 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToLongCodecTest {
+class JsonNodeToLongCodecTest {
 
-  private JsonNodeToLongCodec codec =
+  private final JsonNodeToLongCodec codec =
       new JsonNodeToLongCodec(
           ThreadLocal.withInitial(
               () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.numberNode(0L))
         .to(0L)
@@ -47,7 +47,7 @@ public class JsonNodeToLongCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo(0L)
         .from(JsonNodeFactory.instance.numberNode(0L))
@@ -60,7 +60,7 @@ public class JsonNodeToLongCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid long"))
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("1.2"))

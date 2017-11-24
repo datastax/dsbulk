@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -36,19 +36,19 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.UnicastProcessor;
 
 /** */
-public class CSVConnectorTest {
+class CSVConnectorTest {
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
       ConfigFactory.defaultReference().getConfig("dsbulk.connector.csv");
 
-  @BeforeClass
-  public static void setupURLStreamHandlerFactory() throws Exception {
+  @BeforeAll
+  static void setupURLStreamHandlerFactory() throws Exception {
     try {
       URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
     } catch (Exception ignored) {
@@ -57,7 +57,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_read_single_file() throws Exception {
+  void should_read_single_file() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -84,7 +84,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_read_single_file_by_resource() throws Exception {
+  void should_read_single_file_by_resource() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -111,7 +111,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_read_from_stdin_with_special_encoding() throws Exception {
+  void should_read_from_stdin_with_special_encoding() throws Exception {
     InputStream stdin = System.in;
     try {
       String line = "fóô,bàr,qïx\n";
@@ -135,7 +135,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_write_to_stdout_with_special_encoding() throws Exception {
+  void should_write_to_stdout_with_special_encoding() throws Exception {
     PrintStream stdout = System.out;
     Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
     Appender<ILoggingEvent> stdoutAppender = root.getAppender("STDOUT");
@@ -168,7 +168,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_read_all_resources_in_directory() throws Exception {
+  void should_read_all_resources_in_directory() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -182,7 +182,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_read_all_resources_in_directory_by_resource() throws Exception {
+  void should_read_all_resources_in_directory_by_resource() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -196,7 +196,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_read_all_resources_in_directory_with_path() throws Exception {
+  void should_read_all_resources_in_directory_with_path() throws Exception {
     CSVConnector connector = new CSVConnector();
     String rootPath = CSVConnectorTest.class.getResource("/root").getPath();
     if (PlatformUtils.isWindows()) {
@@ -215,7 +215,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_read_all_resources_in_directory_recursively() throws Exception {
+  void should_read_all_resources_in_directory_recursively() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -228,7 +228,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_read_all_resources_in_directory_recursively_by_resource() throws Exception {
+  void should_read_all_resources_in_directory_recursively_by_resource() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -241,7 +241,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_scan_directory_recursively_with_custom_file_name_format() throws Exception {
+  void should_scan_directory_recursively_with_custom_file_name_format() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -257,7 +257,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_write_single_file() throws Exception {
+  void should_write_single_file() throws Exception {
     CSVConnector connector = new CSVConnector();
     // test directory creation
     Path out = Files.createTempDirectory("test").resolve("nonexistent");
@@ -288,7 +288,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_write_multiple_files() throws Exception {
+  void should_write_multiple_files() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
     LoaderConfig settings =
@@ -317,7 +317,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_roll_file_when_max_lines_reached() throws Exception {
+  void should_roll_file_when_max_lines_reached() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
     LoaderConfig settings =
@@ -353,7 +353,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_return_unmappable_record_when_line_malformed() throws Exception {
+  void should_return_unmappable_record_when_line_malformed() throws Exception {
     InputStream stdin = System.in;
     try {
       String lines = "header1,header2\n" + "value1,value2,value3";
@@ -380,7 +380,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_skip_lines() throws Exception {
+  void should_skip_lines() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -394,7 +394,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_skip_lines2() throws Exception {
+  void should_skip_lines2() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -408,7 +408,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_honor_max_lines() throws Exception {
+  void should_honor_max_lines() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -422,7 +422,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_honor_max_lines2() throws Exception {
+  void should_honor_max_lines2() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -436,7 +436,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_honor_max_lines_and_skip_lines() throws Exception {
+  void should_honor_max_lines_and_skip_lines() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -452,7 +452,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_honor_max_lines_and_skip_lines2() throws Exception {
+  void should_honor_max_lines_and_skip_lines2() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -472,7 +472,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_cancel_write_single_file_when_io_error() throws Exception {
+  void should_cancel_write_single_file_when_io_error() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
     Path file = out.resolve("output-000001.csv");
@@ -495,7 +495,7 @@ public class CSVConnectorTest {
   }
 
   @Test
-  public void should_cancel_write_multiple_files_when_io_error() throws Exception {
+  void should_cancel_write_multiple_files_when_io_error() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
     Path file1 = out.resolve("output-000001.csv");

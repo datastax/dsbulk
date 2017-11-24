@@ -1,12 +1,12 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
 package com.datastax.dsbulk.engine.internal.log.statement;
 
-import static com.datastax.driver.core.DriverCoreTestHooks.newPreparedId;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newPreparedId;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity.ABRIDGED;
@@ -52,9 +52,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class StatementFormatterTest {
+class StatementFormatterTest {
 
   private static final List<DataType> dataTypes =
       new ArrayList<>(
@@ -67,7 +67,7 @@ public class StatementFormatterTest {
   // Basic Tests
 
   @Test
-  public void should_format_simple_statement() throws Exception {
+  void should_format_simple_statement() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().build();
     Statement statement =
         new SimpleStatement("SELECT * FROM t WHERE c1 = ? AND c2 = ?", "foo", 42)
@@ -88,7 +88,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_format_simple_statement_with_named_values() throws Exception {
+  void should_format_simple_statement_with_named_values() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().build();
     Statement statement =
         new SimpleStatement(
@@ -103,7 +103,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_format_statement_without_values() throws Exception {
+  void should_format_statement_without_values() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().build();
     Statement statement = new SimpleStatement("SELECT * FROM t WHERE c1 = 42");
     String s = formatter.format(statement, EXTENDED, version, codecRegistry);
@@ -115,7 +115,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_format_built_statement() throws Exception {
+  void should_format_built_statement() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().build();
     Statement statement =
         select().from("t").where(eq("c1", "foo")).and(eq("c2", 42)).and(eq("c3", false));
@@ -129,7 +129,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_format_bound_statement() throws Exception {
+  void should_format_bound_statement() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().build();
     BoundStatement statement = newBoundStatementMock();
     String s = formatter.format(statement, EXTENDED, version, codecRegistry);
@@ -143,7 +143,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_format_batch_statement() throws Exception {
+  void should_format_batch_statement() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().build();
     BatchStatement statement = new BatchStatement(BatchStatement.Type.UNLOGGED);
     Statement inner1 = newBoundStatementMock();
@@ -166,7 +166,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_format_wrapped_statement() throws Exception {
+  void should_format_wrapped_statement() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().build();
     Statement statement =
         new StatementWrapper(new SimpleStatement("SELECT * FROM t WHERE c1 = 42")) {};
@@ -181,7 +181,7 @@ public class StatementFormatterTest {
   // Verbosity
 
   @Test
-  public void should_format_with_abridged_verbosity() throws Exception {
+  void should_format_with_abridged_verbosity() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().build();
     Statement statement = new SimpleStatement("SELECT * FROM t WHERE c1 = ? AND c2 = ?", "foo", 42);
     String s = formatter.format(statement, ABRIDGED, version, codecRegistry);
@@ -198,7 +198,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_format_with_normal_verbosity() throws Exception {
+  void should_format_with_normal_verbosity() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().build();
     Statement statement = new SimpleStatement("SELECT * FROM t WHERE c1 = ? AND c2 = ?", "foo", 42);
     String s = formatter.format(statement, NORMAL, version, codecRegistry);
@@ -218,7 +218,7 @@ public class StatementFormatterTest {
   // Limits
 
   @Test
-  public void should_truncate_query_string() throws Exception {
+  void should_truncate_query_string() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().withMaxQueryStringLength(7).build();
     SimpleStatement statement = new SimpleStatement("123456789");
     String s = formatter.format(statement, EXTENDED, version, codecRegistry);
@@ -226,7 +226,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_not_truncate_query_string_when_unlimited() throws Exception {
+  void should_not_truncate_query_string_when_unlimited() throws Exception {
     StatementFormatter formatter =
         StatementFormatter.builder().withMaxQueryStringLength(UNLIMITED).build();
     String query = repeat("a", 5000);
@@ -236,7 +236,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_not_print_more_bound_values_than_max() throws Exception {
+  void should_not_print_more_bound_values_than_max() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().withMaxBoundValues(2).build();
     SimpleStatement statement = new SimpleStatement("query", 0, 1, 2, 3);
     String s = formatter.format(statement, EXTENDED, version, codecRegistry);
@@ -244,7 +244,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_truncate_bound_value() throws Exception {
+  void should_truncate_bound_value() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().withMaxBoundValueLength(4).build();
     SimpleStatement statement = new SimpleStatement("query", "12345");
     String s = formatter.format(statement, EXTENDED, version, codecRegistry);
@@ -252,7 +252,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_truncate_bound_value_byte_buffer() throws Exception {
+  void should_truncate_bound_value_byte_buffer() throws Exception {
     StatementFormatter formatter = StatementFormatter.builder().withMaxBoundValueLength(4).build();
     SimpleStatement statement = new SimpleStatement("query", Bytes.fromHexString("0xCAFEBABE"));
     String s = formatter.format(statement, EXTENDED, version, codecRegistry);
@@ -260,7 +260,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_truncate_inner_statements() throws Exception {
+  void should_truncate_inner_statements() throws Exception {
     StatementFormatter formatter =
         StatementFormatter.builder().withMaxInnerStatements(2).withMaxBoundValues(2).build();
     BatchStatement statement = new BatchStatement(BatchStatement.Type.UNLOGGED);
@@ -288,9 +288,9 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_override_default_printer_with_concrete_class() throws Exception {
+  void should_override_default_printer_with_concrete_class() throws Exception {
     SimpleStatement statement = new SimpleStatement("select * from system.local");
-    final String customAppend = "Used custom simple statement formatter";
+    String customAppend = "Used custom simple statement formatter";
     StatementFormatter formatter =
         StatementFormatter.builder()
             .addStatementPrinter(
@@ -318,13 +318,13 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_override_default_printer_with_ancestor_class() throws Exception {
+  void should_override_default_printer_with_ancestor_class() throws Exception {
     SimpleStatement simpleStatement = new SimpleStatement("select * from system.local");
     BuiltStatement builtStatement = QueryBuilder.select().from("system", "peers");
     SchemaStatement schemaStatement =
         SchemaBuilder.createTable("x", "y").addPartitionKey("z", DataType.cint());
     BatchStatement batchStatement = new BatchStatement();
-    final String customAppend = "Used custom statement formatter";
+    String customAppend = "Used custom statement formatter";
     StatementFormatter formatter =
         StatementFormatter.builder()
             .addStatementPrinter(
@@ -362,7 +362,7 @@ public class StatementFormatterTest {
   // Data types
 
   @Test
-  public void should_log_all_parameter_types_simple_statements() throws Exception {
+  void should_log_all_parameter_types_simple_statements() throws Exception {
     String query = "UPDATE test SET c1 = ? WHERE pk = 42";
     StatementFormatter formatter =
         StatementFormatter.builder().withMaxBoundValueLength(UNLIMITED).build();
@@ -378,7 +378,7 @@ public class StatementFormatterTest {
   }
 
   @Test
-  public void should_log_all_parameter_types_bound_statements() throws Exception {
+  void should_log_all_parameter_types_bound_statements() throws Exception {
     String query = "UPDATE test SET c1 = ? WHERE pk = 42";
     StatementFormatter formatter =
         StatementFormatter.builder().withMaxBoundValueLength(UNLIMITED).build();
@@ -427,7 +427,7 @@ public class StatementFormatterTest {
     return new BoundStatement(ps);
   }
 
-  private static Object getFixedValue(final DataType type) {
+  private static Object getFixedValue(DataType type) {
     try {
       switch (type.getName()) {
         case ASCII:

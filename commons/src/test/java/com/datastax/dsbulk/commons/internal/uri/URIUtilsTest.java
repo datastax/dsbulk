@@ -1,13 +1,13 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
 package com.datastax.dsbulk.commons.internal.uri;
 
-import static com.datastax.driver.core.DriverCoreTestHooks.newColumnDefinitions;
-import static com.datastax.driver.core.DriverCoreTestHooks.newDefinition;
+import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
+import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -21,16 +21,16 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class URIUtilsTest {
+class URIUtilsTest {
   private BoundStatement boundStatement;
   private Row row;
   private ExecutionInfo executionInfo;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     row = mock(Row.class);
     executionInfo = mock(ExecutionInfo.class);
     boundStatement = mock(BoundStatement.class);
@@ -66,7 +66,7 @@ public class URIUtilsTest {
   }
 
   @Test
-  public void should_create_location_for_bound_statement() throws Exception {
+  void should_create_location_for_bound_statement() throws Exception {
     URI location = URIUtils.getRowLocation(row, executionInfo, boundStatement);
     assertThat(location)
         .hasScheme("cql")

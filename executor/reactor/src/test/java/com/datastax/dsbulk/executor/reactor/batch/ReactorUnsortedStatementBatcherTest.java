@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -10,14 +10,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.Statement;
 import java.util.List;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 /** */
-public class ReactorUnsortedStatementBatcherTest extends ReactorStatementBatcherTest {
+class ReactorUnsortedStatementBatcherTest extends ReactorStatementBatcherTest {
 
   @Test
-  public void should_batch_by_routing_key_as_operator() throws Exception {
+  void should_batch_by_routing_key_as_operator() throws Exception {
     assignRoutingKeys();
     ReactorUnsortedStatementBatcher batcher = new ReactorUnsortedStatementBatcher();
     List<Statement> statements =
@@ -29,7 +29,7 @@ public class ReactorUnsortedStatementBatcherTest extends ReactorStatementBatcher
   }
 
   @Test
-  public void should_batch_by_routing_token_as_operator() throws Exception {
+  void should_batch_by_routing_token_as_operator() throws Exception {
     assignRoutingTokens();
     ReactorUnsortedStatementBatcher batcher = new ReactorUnsortedStatementBatcher();
     List<Statement> statements =

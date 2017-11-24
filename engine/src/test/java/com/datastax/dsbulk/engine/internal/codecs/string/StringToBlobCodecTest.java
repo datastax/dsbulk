@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -11,9 +11,9 @@ import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 import com.datastax.driver.core.utils.Bytes;
 import java.nio.ByteBuffer;
 import java.util.Base64;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class StringToBlobCodecTest {
+class StringToBlobCodecTest {
 
   private static final byte[] DATA = {1, 2, 3, 4, 5, 6};
   private static final byte[] EMPTY = {};
@@ -26,10 +26,10 @@ public class StringToBlobCodecTest {
 
   private static final String EMPTY_HEX = "0x";
 
-  StringToBlobCodec codec = StringToBlobCodec.INSTANCE;
+  private final StringToBlobCodec codec = StringToBlobCodec.INSTANCE;
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom(DATA_64)
         .to(DATA_BB)
@@ -44,7 +44,7 @@ public class StringToBlobCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo(DATA_BB)
         .from(DATA_64)
@@ -55,7 +55,7 @@ public class StringToBlobCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec).cannotConvertFrom("not a valid binary");
   }
 }

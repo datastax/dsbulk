@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -27,16 +27,16 @@ import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import java.net.URI;
 import java.time.Duration;
 import java.util.concurrent.Executors;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.internal.util.reflection.Whitebox;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
-public class MetricsManagerTest {
+class MetricsManagerTest {
 
   @Mock private Appender<ILoggingEvent> mockAppender;
   private Appender<ILoggingEvent> stdout;
@@ -53,8 +53,8 @@ public class MetricsManagerTest {
 
   private BatchStatement batch;
 
-  @Before
-  public void prepareMocks() {
+  @BeforeEach
+  void prepareMocks() {
     MockitoAnnotations.initMocks(this);
     when(mockAppender.getName()).thenReturn("MOCK");
     Logger logger = (Logger) LoggerFactory.getLogger("com.datastax.dsbulk.engine.internal.metrics");
@@ -66,16 +66,16 @@ public class MetricsManagerTest {
     root.detachAppender(stdout);
   }
 
-  @After
-  public void restoreAppenders() {
+  @AfterEach
+  void restoreAppenders() {
     Logger logger = (Logger) LoggerFactory.getLogger("com.datastax.dsbulk.engine.internal.metrics");
     logger.detachAppender(mockAppender);
     logger.setLevel(oldLevel);
     root.addAppender(stdout);
   }
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     URI location1 = new URI("file:///file1.csv?line=1");
     URI location2 = new URI("file:///file2.csv?line=2");
     URI location3 = new URI("file:///file3.csv?line=3");
@@ -96,7 +96,7 @@ public class MetricsManagerTest {
   }
 
   @Test
-  public void should_increment_records() throws Exception {
+  void should_increment_records() throws Exception {
     MetricsManager manager =
         new MetricsManager(
             WorkflowType.UNLOAD,
@@ -122,7 +122,7 @@ public class MetricsManagerTest {
   }
 
   @Test
-  public void should_increment_mappings() throws Exception {
+  void should_increment_mappings() throws Exception {
     MetricsManager manager =
         new MetricsManager(
             WorkflowType.LOAD,
@@ -148,7 +148,7 @@ public class MetricsManagerTest {
   }
 
   @Test
-  public void should_increment_batches() throws Exception {
+  void should_increment_batches() throws Exception {
     MetricsManager manager =
         new MetricsManager(
             WorkflowType.LOAD,

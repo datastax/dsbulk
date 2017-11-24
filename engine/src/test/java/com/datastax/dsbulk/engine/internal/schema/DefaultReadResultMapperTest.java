@@ -1,13 +1,13 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.driver.core.DriverCoreTestHooks.newColumnDefinitions;
-import static com.datastax.driver.core.DriverCoreTestHooks.newDefinition;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newColumnDefinitions;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newDefinition;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -30,10 +30,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import java.net.InetSocketAddress;
 import java.util.Optional;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class DefaultReadResultMapperTest {
+class DefaultReadResultMapperTest {
 
   private static final String C1 = "col1";
   private static final String C2 = "col2";
@@ -43,9 +43,9 @@ public class DefaultReadResultMapperTest {
   private RecordMetadata recordMetadata;
   private ReadResult result;
 
-  @Before
+  @BeforeEach
   @SuppressWarnings("unchecked")
-  public void setUp() throws Exception {
+  void setUp() throws Exception {
     recordMetadata =
         new DefaultRecordMetadata(
             ImmutableMap.of(
@@ -99,7 +99,7 @@ public class DefaultReadResultMapperTest {
   }
 
   @Test
-  public void should_map_result_to_mapped_record_when_mapping_succeeds() throws Exception {
+  void should_map_result_to_mapped_record_when_mapping_succeeds() throws Exception {
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata, null);
     Record record = mapper.map(result);
     assertThat(record.fields()).containsOnly("f0", "f1", "f2");
@@ -109,7 +109,7 @@ public class DefaultReadResultMapperTest {
   }
 
   @Test
-  public void should_map_result_to_error_record_when_mapping_fails() throws Exception {
+  void should_map_result_to_error_record_when_mapping_fails() throws Exception {
     CodecNotFoundException exception =
         new CodecNotFoundException("not really", DataType.varchar(), TypeToken.of(String.class));
     when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenThrow(exception);

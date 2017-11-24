@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -11,14 +11,14 @@ import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 import com.datastax.driver.core.TypeCodec;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.util.UUID;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToUUIDCodecTest {
+class JsonNodeToUUIDCodecTest {
 
-  JsonNodeToUUIDCodec codec = new JsonNodeToUUIDCodec(TypeCodec.uuid());
+  private final JsonNodeToUUIDCodec codec = new JsonNodeToUUIDCodec(TypeCodec.uuid());
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .to(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
@@ -29,7 +29,7 @@ public class JsonNodeToUUIDCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .from(JsonNodeFactory.instance.textNode("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
@@ -38,7 +38,7 @@ public class JsonNodeToUUIDCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec).cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid UUID"));
   }
 }

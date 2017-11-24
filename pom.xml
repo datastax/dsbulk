@@ -1,6 +1,6 @@
 <!--
 
-    Copyright (C) 2017 DataStax Inc.
+    Copyright DataStax Inc.
 
     This software can be used solely with DataStax Enterprise. Please consult the license at
     http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -36,7 +36,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <driver.version>1.4.1</driver.version>
+    <driver.version>1.4.2</driver.version>
     <reactive-streams.version>1.0.1</reactive-streams.version>
     <rx-java.version>2.1.5</rx-java.version>
     <reactor.version>Bismuth-SR3</reactor.version>
@@ -53,7 +53,8 @@
     <snappy.version>1.1.2.6</snappy.version>
     <hdr.version>2.1.10</hdr.version>
     <jackson.version>2.9.2</jackson.version>
-    <junit.version>4.12</junit.version>
+    <junit.version>5.0.2</junit.version>
+    <junit-platform.version>1.0.2</junit-platform.version>
     <univocity.version>2.5.8</univocity.version>
     <assertj.version>3.8.0</assertj.version>
     <mockito.version>1.10.19</mockito.version>
@@ -61,7 +62,7 @@
     <commons-cli.version>1.4</commons-cli.version>
     <simulacron.version>0.6.0</simulacron.version>
     <awaitility.version>3.0.0</awaitility.version>
-    <surefire.version>2.20.1</surefire.version>
+    <surefire.version>2.19.1</surefire.version>
   </properties>
 
   <dependencyManagement>
@@ -292,8 +293,14 @@
       </dependency>
 
       <dependency>
-        <groupId>junit</groupId>
-        <artifactId>junit</artifactId>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-api</artifactId>
+        <version>${junit.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-engine</artifactId>
         <version>${junit.version}</version>
       </dependency>
 
@@ -319,12 +326,6 @@
         <groupId>org.openjdk.jmh</groupId>
         <artifactId>jmh-generator-annprocess</artifactId>
         <version>1.19</version>
-      </dependency>
-
-      <dependency>
-        <groupId>javax.inject</groupId>
-        <artifactId>javax.inject</artifactId>
-        <version>1</version>
       </dependency>
 
       <dependency>
@@ -393,6 +394,12 @@
         <version>${awaitility.version}</version>
       </dependency>
 
+      <dependency>
+        <groupId>org.apiguardian</groupId>
+        <artifactId>apiguardian-api</artifactId>
+        <version>1.0.0</version>
+      </dependency>
+
     </dependencies>
 
   </dependencyManagement>
@@ -451,7 +458,7 @@
           <configuration>
             <inlineHeader><![CDATA[
 
-Copyright (C) 2017 DataStax Inc.
+Copyright DataStax Inc.
 
 This software can be used solely with DataStax Enterprise. Please consult the license at
 http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -505,11 +512,49 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>${surefire.version}</version>
+          <configuration>
+            <forkCount>8</forkCount>
+          </configuration>
+          <dependencies>
+            <dependency>
+              <groupId>org.junit.platform</groupId>
+              <artifactId>junit-platform-surefire-provider</artifactId>
+              <version>${junit-platform.version}</version>
+            </dependency>
+            <dependency>
+              <groupId>org.junit.jupiter</groupId>
+              <artifactId>junit-jupiter-engine</artifactId>
+              <version>${junit.version}</version>
+            </dependency>
+          </dependencies>
         </plugin>
 
         <plugin>
           <artifactId>maven-failsafe-plugin</artifactId>
           <version>${surefire.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.junit.platform</groupId>
+              <artifactId>junit-platform-surefire-provider</artifactId>
+              <version>${junit-platform.version}</version>
+            </dependency>
+            <dependency>
+              <groupId>org.junit.jupiter</groupId>
+              <artifactId>junit-jupiter-engine</artifactId>
+              <version>${junit.version}</version>
+            </dependency>
+            <dependency>
+              <groupId>org.apache.maven.surefire</groupId>
+              <artifactId>maven-surefire-common</artifactId>
+              <version>${surefire.version}</version>
+              <exclusions>
+                <exclusion>
+                  <groupId>org.slf4j</groupId>
+                  <artifactId>slf4j-jdk14</artifactId>
+                </exclusion>
+              </exclusions>
+            </dependency>
+          </dependencies>
         </plugin>
 
         <plugin>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -60,6 +60,7 @@ import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Signal;
 import reactor.core.publisher.UnicastProcessor;
 import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.concurrent.Queues;
 
 /** */
@@ -99,6 +100,24 @@ public class LogManager implements AutoCloseable {
   private PrintWriter positionsPrinter;
 
   public LogManager(
+      WorkflowType workflowType,
+      Cluster cluster,
+      Path executionDirectory,
+      int maxErrors,
+      StatementFormatter formatter,
+      StatementFormatVerbosity verbosity) {
+    this(
+        workflowType,
+        cluster,
+        Schedulers.newParallel("log-manager", 4),
+        executionDirectory,
+        maxErrors,
+        formatter,
+        verbosity);
+  }
+
+  @VisibleForTesting
+  LogManager(
       WorkflowType workflowType,
       Cluster cluster,
       Scheduler scheduler,
@@ -150,7 +169,6 @@ public class LogManager implements AutoCloseable {
     Hooks.onErrorDropped(t -> {});
   }
 
-  @VisibleForTesting
   public Path getExecutionDirectory() {
     return executionDirectory;
   }
@@ -164,6 +182,7 @@ public class LogManager implements AutoCloseable {
       positionsPrinter.flush();
       positionsPrinter.close();
     }
+    scheduler.dispose();
   }
 
   public void reportLastLocations() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -12,7 +12,7 @@ import com.google.common.io.Resources;
 import java.io.IOException;
 import java.net.URL;
 
-public class RxJavaCqlScriptReaderTest extends AbstractReactiveCqlScriptReaderTest {
+public class RxJavaCqlScriptReaderTest extends ReactiveCqlScriptReaderTestBase {
 
   @Override
   protected RxJavaCqlScriptReader getCqlScriptReader(String resource, boolean multiLine)

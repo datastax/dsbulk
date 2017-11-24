@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -20,31 +20,31 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToMapCodecTest {
+class JsonNodeToMapCodecTest {
 
-  private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  private ConvertingCodec<String, Double> keyCodec =
+  private final ConvertingCodec<String, Double> keyCodec =
       new StringToDoubleCodec(
           ThreadLocal.withInitial(
               () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
-  private TypeCodec<List<String>> stringListCodec = TypeCodec.list(TypeCodec.varchar());
+  private final TypeCodec<List<String>> stringListCodec = TypeCodec.list(TypeCodec.varchar());
 
-  private JsonNodeToListCodec<String> valueCodec =
+  private final JsonNodeToListCodec<String> valueCodec =
       new JsonNodeToListCodec<>(
           stringListCodec, new JsonNodeToStringCodec(TypeCodec.varchar()), objectMapper);
 
-  private TypeCodec<Map<Double, List<String>>> mapCodec =
+  private final TypeCodec<Map<Double, List<String>>> mapCodec =
       TypeCodec.map(TypeCodec.cdouble(), stringListCodec);
 
-  private JsonNodeToMapCodec<Double, List<String>> codec =
+  private final JsonNodeToMapCodec<Double, List<String>> codec =
       new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper);
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom(objectMapper.readTree("{1 : [\"foo\", \"bar\"], 2:[\"qix\"]}"))
         .to(map(1d, list("foo", "bar"), 2d, list("qix")))
@@ -63,7 +63,7 @@ public class JsonNodeToMapCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec)
         .convertsTo(map(1d, list("foo", "bar"), 2d, list("qix")))
         .from(objectMapper.readTree("{\"1\":[\"foo\",\"bar\"],\"2\":[\"qix\"]}"))
@@ -76,7 +76,7 @@ public class JsonNodeToMapCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec).cannotConvertFrom(objectMapper.readTree("{\"not a valid input\":\"foo\"}"));
     assertThat(codec).cannotConvertFrom(objectMapper.readTree("[1,\"not a valid object\"]"));
     assertThat(codec).cannotConvertFrom(objectMapper.readTree("42"));

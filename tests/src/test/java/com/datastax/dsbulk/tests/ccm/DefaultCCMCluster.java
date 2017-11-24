@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -7,18 +7,19 @@
 package com.datastax.dsbulk.tests.ccm;
 
 import static com.datastax.dsbulk.tests.utils.NetworkUtils.findAvailablePort;
-import static com.datastax.dsbulk.tests.utils.VersionUtils.DEFAULT_DSE_VERSION;
-import static com.datastax.dsbulk.tests.utils.VersionUtils.getOSSVersionForDSEVersion;
+import static com.datastax.dsbulk.tests.utils.Version.DEFAULT_DSE_VERSION;
+import static com.google.common.io.MoreFiles.deleteRecursively;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.tests.utils.MemoryUtils;
 import com.datastax.dsbulk.tests.utils.NetworkUtils;
 import com.datastax.dsbulk.tests.utils.StringUtils;
-import com.datastax.dsbulk.tests.utils.VersionUtils;
+import com.datastax.dsbulk.tests.utils.Version;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Closer;
 import com.google.common.io.Files;
+import com.google.common.io.RecursiveDeleteOption;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -40,7 +41,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -65,8 +65,8 @@ public class DefaultCCMCluster implements CCMCluster {
 
   public static final String DEFAULT_CLIENT_TRUSTSTORE_PASSWORD = "cassandra1sfun";
   public static final String DEFAULT_CLIENT_KEYSTORE_PASSWORD = "cassandra1sfun";
-  public static final String DEFAULT_SERVER_TRUSTSTORE_PASSWORD = "cassandra1sfun";
-  public static final String DEFAULT_SERVER_KEYSTORE_PASSWORD = "cassandra1sfun";
+  private static final String DEFAULT_SERVER_TRUSTSTORE_PASSWORD = "cassandra1sfun";
+  private static final String DEFAULT_SERVER_KEYSTORE_PASSWORD = "cassandra1sfun";
 
   public static final String DEFAULT_CLIENT_TRUSTSTORE_PATH = "/client.truststore";
   public static final String DEFAULT_CLIENT_KEYSTORE_PATH = "/client.keystore";
@@ -78,8 +78,8 @@ public class DefaultCCMCluster implements CCMCluster {
   public static final String DEFAULT_CLIENT_PRIVATE_KEY_PATH = "/client.key";
   public static final File DEFAULT_CLIENT_PRIVATE_KEY_FILE = createTempStore("/client.key");
   public static final File DEFAULT_CLIENT_CERT_CHAIN_FILE = createTempStore("/client.crt");
-  public static final File DEFAULT_SERVER_TRUSTSTORE_FILE = createTempStore("/server.truststore");
-  public static final File DEFAULT_SERVER_KEYSTORE_FILE = createTempStore("/server.keystore");
+  private static final File DEFAULT_SERVER_TRUSTSTORE_FILE = createTempStore("/server.truststore");
+  private static final File DEFAULT_SERVER_KEYSTORE_FILE = createTempStore("/server.keystore");
 
   private static final Set<String> DEFAULT_CREATE_OPTIONS;
 
@@ -131,17 +131,11 @@ public class DefaultCCMCluster implements CCMCluster {
     } else {
       CCM_COMMAND = "ccm";
     }
-
-    LOGGER.info(
-        "Tests requiring CCM will by use DSE version {} (C* {}), unless specified otherwise",
-        DEFAULT_DSE_VERSION,
-        getOSSVersionForDSEVersion(DEFAULT_DSE_VERSION),
-        getDefaultCreateOptions());
   }
 
   private final String clusterName;
   private final int[] nodesPerDC;
-  private final String version;
+  private final Version version;
   private final String ipPrefix;
   private final int storagePort;
   private final int thriftPort;
@@ -149,14 +143,13 @@ public class DefaultCCMCluster implements CCMCluster {
   private final File ccmDir;
   private final boolean dse;
   private final String jvmArgs;
-  private final List<Runnable> closeCallbacks = new CopyOnWriteArrayList<>();
   private volatile boolean keepLogs = false;
 
   private volatile State state = State.CREATED;
 
   private DefaultCCMCluster(
       String clusterName,
-      String version,
+      Version version,
       int[] nodesPerDC,
       String ipPrefix,
       boolean dse,
@@ -177,7 +170,7 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   /** @return The install arguments to pass to CCM when creating the cluster. */
-  public static Set<String> getDefaultCreateOptions() {
+  private static Set<String> getDefaultCreateOptions() {
     return DEFAULT_CREATE_OPTIONS;
   }
 
@@ -188,21 +181,6 @@ public class DefaultCCMCluster implements CCMCluster {
    */
   public static Builder builder() {
     return new Builder();
-  }
-
-  @SuppressWarnings("ResultOfMethodCallIgnored")
-  private static void delete(File file) {
-    if (file.isFile()) {
-      file.delete();
-    } else if (file.isDirectory()) {
-      File[] existingFiles = file.listFiles();
-      if (existingFiles != null && existingFiles.length > 0) {
-        for (File f : existingFiles) {
-          delete(f);
-        }
-      }
-      file.delete();
-    }
   }
 
   private static File createTempStore(String storePath) {
@@ -245,7 +223,7 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public String getVersion() {
+  public Version getVersion() {
     return version;
   }
 
@@ -333,13 +311,6 @@ public class DefaultCCMCluster implements CCMCluster {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Stopping: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
       }
-      for (Runnable callback : closeCallbacks) {
-        try {
-          callback.run();
-        } catch (Exception e) {
-          LOGGER.error("Close callback threw exception", e);
-        }
-      }
       try {
         execute(CCM_COMMAND + " stop");
       } catch (CCMException e) {
@@ -364,13 +335,6 @@ public class DefaultCCMCluster implements CCMCluster {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "Force stopping: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
-      }
-      for (Runnable callback : closeCallbacks) {
-        try {
-          callback.run();
-        } catch (Exception e) {
-          LOGGER.error("Close callback threw exception", e);
-        }
       }
       try {
         execute(CCM_COMMAND + " stop --not-gently");
@@ -399,7 +363,7 @@ public class DefaultCCMCluster implements CCMCluster {
           handleCCMException(e);
         } finally {
           try {
-            delete(getCcmDir());
+            deleteRecursively(getCcmDir().toPath(), RecursiveDeleteOption.ALLOW_INSECURE);
           } catch (Exception e) {
             LOGGER.error("Could not delete directory: " + getCcmDir(), e);
           }
@@ -679,11 +643,6 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public void registerOnCloseCallback(Runnable onCloseCallback) {
-    closeCallbacks.add(onCloseCallback);
-  }
-
-  @Override
   public String toString() {
     return String.format("CCM cluster %s @ %s", clusterName, System.identityHashCode(this));
   }
@@ -734,7 +693,7 @@ public class DefaultCCMCluster implements CCMCluster {
   @SuppressWarnings("UnusedReturnValue")
   public static class Builder {
 
-    public static final String RANDOM_PORT = "__RANDOM_PORT__";
+    static final String RANDOM_PORT = "__RANDOM_PORT__";
 
     private static final Pattern RANDOM_PORT_PATTERN = Pattern.compile(RANDOM_PORT);
     private final Set<String> createOptions = new LinkedHashSet<>(getDefaultCreateOptions());
@@ -746,7 +705,7 @@ public class DefaultCCMCluster implements CCMCluster {
     private String ipPrefix = NetworkUtils.DEFAULT_IP_PREFIX;
     private boolean start = true;
     private boolean dse = true;
-    private String version = DEFAULT_DSE_VERSION;
+    private Version version = DEFAULT_DSE_VERSION;
 
     private Builder() {
       cassandraConfiguration.put("start_rpc", false);
@@ -805,8 +764,8 @@ public class DefaultCCMCluster implements CCMCluster {
     }
 
     /**
-     * The Cassandra or DSE version to use (defaults to {@link VersionUtils#DEFAULT_DSE_VERSION} if
-     * this is never called).
+     * The Cassandra or DSE version to use (defaults to {@link Version#DEFAULT_DSE_VERSION} if this
+     * is never called).
      */
     public Builder withVersion(String version) {
       // remove any version previously set and
@@ -814,7 +773,7 @@ public class DefaultCCMCluster implements CCMCluster {
       createOptions.removeIf(
           option -> option.startsWith("-v ") || option.startsWith("--install-dir"));
       this.createOptions.add("-v " + version);
-      this.version = version;
+      this.version = Version.parse(version);
       return this;
     }
 
@@ -877,10 +836,10 @@ public class DefaultCCMCluster implements CCMCluster {
 
     public DefaultCCMCluster build() {
       // be careful NOT to alter internal state (hashCode/equals) during build!
-      String clusterName = StringUtils.uniqueIdentifier();
+      String clusterName = StringUtils.uniqueIdentifier("ccm");
       Map<String, Object> cassandraConfiguration = randomizePorts(this.cassandraConfiguration);
       Map<String, Object> dseConfiguration = randomizePorts(this.dseConfiguration);
-      if (dse && VersionUtils.compare(version, "5.0") >= 0) {
+      if (dse && version.compareTo(Version.parse("5.0")) >= 0) {
         if (!dseConfiguration.containsKey("lease_netty_server_port")) {
           dseConfiguration.put("lease_netty_server_port", NetworkUtils.findAvailablePort());
         }

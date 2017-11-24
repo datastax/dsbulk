@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -22,32 +22,32 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.List;
 import java.util.Locale;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class StringToListCodecTest {
+class StringToListCodecTest {
 
-  private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  private JsonNodeToDoubleCodec eltCodec1 =
+  private final JsonNodeToDoubleCodec eltCodec1 =
       new JsonNodeToDoubleCodec(
           ThreadLocal.withInitial(
               () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
 
-  private JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
 
   private final TypeCodec<List<Double>> listCodec1 = list(cdouble());
   private final TypeCodec<List<String>> listCodec2 = list(varchar());
 
-  private StringToListCodec<Double> codec1 =
+  private final StringToListCodec<Double> codec1 =
       new StringToListCodec<>(
           new JsonNodeToListCodec<>(listCodec1, eltCodec1, objectMapper), objectMapper);
 
-  private StringToListCodec<String> codec2 =
+  private final StringToListCodec<String> codec2 =
       new StringToListCodec<>(
           new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper), objectMapper);
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(codec1)
         .convertsFrom("[1,2,3]")
         .to(newArrayList(1d, 2d, 3d))
@@ -91,7 +91,7 @@ public class StringToListCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(codec1)
         .convertsTo(newArrayList(1d, 2d, 3d))
         .from("[1.0,2.0,3.0]")
@@ -121,7 +121,7 @@ public class StringToListCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(codec1).cannotConvertFrom("[1,\"not a valid double\"]");
   }
 }

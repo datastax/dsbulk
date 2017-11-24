@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -17,14 +17,14 @@ import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcherTest;
 import io.reactivex.Flowable;
 import java.util.HashSet;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 /** */
-public class ReactorStatementBatcherTest extends StatementBatcherTest {
+class ReactorStatementBatcherTest extends StatementBatcherTest {
 
   @Test
-  public void should_batch_by_routing_key_reactive() throws Exception {
+  void should_batch_by_routing_key_reactive() throws Exception {
     assignRoutingKeys();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher();
     Flux<Statement> statements =
@@ -35,7 +35,7 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_routing_token_reactive() throws Exception {
+  void should_batch_by_routing_token_reactive() throws Exception {
     assignRoutingTokens();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher();
     Flux<Statement> statements =
@@ -46,7 +46,7 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_replica_set_and_routing_key_reactive() throws Exception {
+  void should_batch_by_replica_set_and_routing_key_reactive() throws Exception {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -62,7 +62,7 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_replica_set_and_routing_token_reactive() throws Exception {
+  void should_batch_by_replica_set_and_routing_token_reactive() throws Exception {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -78,8 +78,7 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_routing_key_when_replica_set_info_not_available_reactive()
-      throws Exception {
+  void should_batch_by_routing_key_when_replica_set_info_not_available_reactive() throws Exception {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -95,7 +94,7 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_by_routing_token_when_replica_set_info_not_available_reactive()
+  void should_batch_by_routing_token_when_replica_set_info_not_available_reactive()
       throws Exception {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
@@ -112,7 +111,7 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_batch_all_reactive() throws Exception {
+  void should_batch_all_reactive() throws Exception {
     ReactorStatementBatcher batcher = new ReactorStatementBatcher();
     Flux<Statement> statements =
         Flux.from(batcher.batchAll(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
@@ -121,7 +120,7 @@ public class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  public void should_honor_max_batch_size_reactive() throws Exception {
+  void should_honor_max_batch_size_reactive() throws Exception {
     assignRoutingTokens();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(2);
     Flowable<Statement> statements =

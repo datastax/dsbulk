@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -17,8 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TestAppender implements Appender<ILoggingEvent> {
-  List<ILoggingEvent> events = new ArrayList<>();
+  private final List<ILoggingEvent> events = new ArrayList<>();
 
+  @Override
   public String getName() {
     return "TestAppender";
   }

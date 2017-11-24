@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -10,12 +10,12 @@ import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.net.InetAddress;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToInetAddressCodecTest {
+class JsonNodeToInetAddressCodecTest {
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(JsonNodeToInetAddressCodec.INSTANCE)
         .convertsFrom(JsonNodeFactory.instance.textNode("1.2.3.4"))
         .to(InetAddress.getByName("1.2.3.4"))
@@ -28,7 +28,7 @@ public class JsonNodeToInetAddressCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(JsonNodeToInetAddressCodec.INSTANCE)
         .convertsTo(InetAddress.getByName("1.2.3.4"))
         .from(JsonNodeFactory.instance.textNode("1.2.3.4"))
@@ -39,7 +39,7 @@ public class JsonNodeToInetAddressCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(JsonNodeToInetAddressCodec.INSTANCE)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid inet address"));
   }

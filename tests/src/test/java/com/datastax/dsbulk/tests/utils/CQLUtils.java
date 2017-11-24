@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -17,7 +17,7 @@ public abstract class CQLUtils {
     return createKeyspace(keyspace, "SimpleStrategy", replicationFactor);
   }
 
-  public static String createKeyspace(String keyspace, String strategy, int replicationFactor) {
+  private static String createKeyspace(String keyspace, String strategy, int replicationFactor) {
     return String.format(
         CREATE_KEYSPACE_FORMAT, Metadata.quoteIfNecessary(keyspace), strategy, replicationFactor);
   }

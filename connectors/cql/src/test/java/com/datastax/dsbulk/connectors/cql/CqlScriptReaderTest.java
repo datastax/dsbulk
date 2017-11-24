@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -19,10 +19,10 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 import org.assertj.core.api.Assertions;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
-public class CqlScriptReaderTest {
+class CqlScriptReaderTest {
 
   static String multiline1a;
   static String multiline1b;
@@ -41,8 +41,8 @@ public class CqlScriptReaderTest {
   static String ddl2;
   static String ddl3;
 
-  @BeforeClass
-  public static void readStatements() throws Exception {
+  @BeforeAll
+  static void readStatements() throws Exception {
     multiline1a = readFile("multiline1a.cql");
     multiline1b = readFile("multiline1b.cql");
     multiline2 = readFile("multiline2.cql");
@@ -60,7 +60,7 @@ public class CqlScriptReaderTest {
   }
 
   @Test
-  public void should_read_singleline_cql_script() throws Exception {
+  void should_read_singleline_cql_script() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("singleline.cql", false);
     Statement statement;
     statement = reader.readStatement();
@@ -77,7 +77,7 @@ public class CqlScriptReaderTest {
   }
 
   @Test
-  public void should_stream_singleline_cql_script() throws Exception {
+  void should_stream_singleline_cql_script() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("singleline.cql", false);
     List<Statement> statements = reader.readStream().collect(toList());
     assertThat(statements)
@@ -87,7 +87,7 @@ public class CqlScriptReaderTest {
   }
 
   @Test
-  public void should_read_multiline_cql_script() throws Exception {
+  void should_read_multiline_cql_script() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("multiline.cql", true);
     Statement statement;
     statement = reader.readStatement();
@@ -106,7 +106,7 @@ public class CqlScriptReaderTest {
   }
 
   @Test
-  public void should_stream_multiline_cql_script() throws Exception {
+  void should_stream_multiline_cql_script() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("multiline.cql", true);
     List<Statement> statements = reader.readStream().collect(toList());
     assertThat(statements).hasSize(5);
@@ -126,7 +126,7 @@ public class CqlScriptReaderTest {
   }
 
   @Test
-  public void should_read_ddl_statements() throws Exception {
+  void should_read_ddl_statements() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("ddl.cql", true);
     List<Statement> statements = reader.readStream().collect(toList());
     Assertions.assertThat(statements)
@@ -136,14 +136,14 @@ public class CqlScriptReaderTest {
   }
 
   @Test
-  public void should_read_singleline_cql_script_2() throws Exception {
+  void should_read_singleline_cql_script_2() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("ip-by-country-sample.cql", false);
     List<Statement> statements = reader.readStream().collect(toList());
     Assertions.assertThat(statements).hasSize(500);
   }
 
   @Test
-  public void should_read_multiline_cql_script_2() throws Exception {
+  void should_read_multiline_cql_script_2() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("ip-by-country-sample.cql", true);
     List<Statement> statements = reader.readStream().collect(toList());
     Assertions.assertThat(statements).hasSize(500);

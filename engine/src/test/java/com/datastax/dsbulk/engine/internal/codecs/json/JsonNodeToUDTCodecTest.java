@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -12,8 +12,8 @@ import static com.datastax.driver.core.DataType.date;
 import static com.datastax.driver.core.DataType.list;
 import static com.datastax.driver.core.DataType.map;
 import static com.datastax.driver.core.DataType.varchar;
-import static com.datastax.driver.core.DriverCoreTestHooks.newField;
-import static com.datastax.driver.core.DriverCoreTestHooks.newUserType;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newField;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
 import static com.datastax.driver.core.TypeCodec.userType;
 import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
@@ -36,21 +36,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JsonNodeToUDTCodecTest {
+class JsonNodeToUDTCodecTest {
 
-  private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  CodecRegistry codecRegistry = new CodecRegistry().register(LocalDateCodec.instance);
+  private final CodecRegistry codecRegistry = new CodecRegistry().register(LocalDateCodec.instance);
 
-  private ThreadLocal<DecimalFormat> formatter =
+  private final ThreadLocal<DecimalFormat> formatter =
       ThreadLocal.withInitial(
           () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US)));
 
   // UDT 1
 
-  private UserType udt1 =
+  private final UserType udt1 =
       newUserType(
           codecRegistry, newField("f1a", cint()), newField("f1b", map(varchar(), cdouble())));
 
@@ -58,8 +58,8 @@ public class JsonNodeToUDTCodecTest {
   private final UDTValue udt1Value =
       udt1.newValue().setInt("f1a", 42).setMap("f1b", newMap("foo", 1234.56d, "bar", 0.12d));
 
-  private ConvertingCodec f1aCodec = new JsonNodeToIntegerCodec(formatter);
-  private ConvertingCodec f1bCodec =
+  private final ConvertingCodec f1aCodec = new JsonNodeToIntegerCodec(formatter);
+  private final ConvertingCodec f1bCodec =
       new JsonNodeToMapCodec<>(
           TypeCodec.map(TypeCodec.varchar(), TypeCodec.cdouble()),
           new StringToStringCodec(TypeCodec.varchar()),
@@ -67,13 +67,13 @@ public class JsonNodeToUDTCodecTest {
           objectMapper);
 
   @SuppressWarnings("unchecked")
-  private JsonNodeToUDTCodec udtCodec1 =
+  private final JsonNodeToUDTCodec udtCodec1 =
       new JsonNodeToUDTCodec(
           userType(udt1), ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec), objectMapper);
 
   // UDT 2
 
-  private UserType udt2 =
+  private final UserType udt2 =
       newUserType(codecRegistry, newField("f2a", udt1), newField("f2b", list(date())));
 
   private final UDTValue udt2Empty = udt2.newValue().setToNull("f2a").setToNull("f2b");
@@ -83,23 +83,23 @@ public class JsonNodeToUDTCodecTest {
           .set("f2b", newList(LocalDate.of(2017, 9, 22)), TypeCodec.list(LocalDateCodec.instance));
 
   @SuppressWarnings("unchecked")
-  private ConvertingCodec f2aCodec =
+  private final ConvertingCodec f2aCodec =
       new JsonNodeToUDTCodec(
           userType(udt1), ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec), objectMapper);
 
-  private ConvertingCodec f2bCodec =
+  private final ConvertingCodec f2bCodec =
       new JsonNodeToListCodec<>(
           TypeCodec.list(LocalDateCodec.instance),
           new JsonNodeToLocalDateCodec(CQL_DATE_TIME_FORMAT),
           objectMapper);
 
   @SuppressWarnings("unchecked")
-  private JsonNodeToUDTCodec udtCodec2 =
+  private final JsonNodeToUDTCodec udtCodec2 =
       new JsonNodeToUDTCodec(
           userType(udt2), ImmutableMap.of("f2a", f2aCodec, "f2b", f2bCodec), objectMapper);
 
   @Test
-  public void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() throws Exception {
     assertThat(udtCodec1)
         .convertsFrom(objectMapper.readTree("{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}}"))
         .to(udt1Value)
@@ -143,7 +143,7 @@ public class JsonNodeToUDTCodecTest {
   }
 
   @Test
-  public void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() throws Exception {
     assertThat(udtCodec1)
         .convertsTo(
             udt1.newValue().setInt("f1a", 42).setMap("f1b", newMap("foo", 1234.56d, "bar", 0.12d)))
@@ -155,7 +155,7 @@ public class JsonNodeToUDTCodecTest {
   }
 
   @Test
-  public void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() throws Exception {
     assertThat(udtCodec1)
         .cannotConvertFrom(objectMapper.readTree("{\"f1a\":42}"))
         .cannotConvertFrom(objectMapper.readTree("[42]"))

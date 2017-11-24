@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -24,9 +24,9 @@ import static com.datastax.driver.core.DataType.tinyint;
 import static com.datastax.driver.core.DataType.uuid;
 import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.driver.core.DataType.varint;
-import static com.datastax.driver.core.DriverCoreTestHooks.newField;
-import static com.datastax.driver.core.DriverCoreTestHooks.newTupleType;
-import static com.datastax.driver.core.DriverCoreTestHooks.newUserType;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newField;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
 import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -67,16 +67,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /** */
-public class CodecSettingsTest {
+class CodecSettingsTest {
 
   private Cluster cluster;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     cluster = mock(Cluster.class);
     Configuration configuration = mock(Configuration.class);
     when(cluster.getConfiguration()).thenReturn(configuration);
@@ -84,7 +84,7 @@ public class CodecSettingsTest {
   }
 
   @Test
-  public void should_return_string_converting_codecs() throws Exception {
+  void should_return_string_converting_codecs() throws Exception {
 
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
@@ -135,7 +135,7 @@ public class CodecSettingsTest {
   }
 
   @Test
-  public void should_return_number_converting_codecs() throws Exception {
+  void should_return_number_converting_codecs() throws Exception {
 
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
@@ -168,7 +168,7 @@ public class CodecSettingsTest {
   }
 
   @Test
-  public void should_return_temporal_converting_codecs() throws Exception {
+  void should_return_temporal_converting_codecs() throws Exception {
 
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
@@ -207,7 +207,7 @@ public class CodecSettingsTest {
   }
 
   @Test
-  public void should_return_codecs_for_tokenizable_fields() throws Exception {
+  void should_return_codecs_for_tokenizable_fields() throws Exception {
 
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);

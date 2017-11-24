@@ -1,13 +1,15 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-
 package com.datastax.dsbulk.engine;
 
+import static com.google.common.io.MoreFiles.deleteRecursively;
+import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -17,22 +19,20 @@ import com.datastax.dsbulk.engine.internal.OptionUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import org.apache.commons.cli.ParseException;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-public class MainTest {
+class MainTest {
 
   private PrintStream originalStderr;
   private PrintStream originalStdout;
@@ -40,12 +40,10 @@ public class MainTest {
   private ByteArrayOutputStream stdout;
   private Logger root;
   private Level oldLevel;
+  private Path tempFolder;
 
-  @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
-  @Rule public ExpectedException thrown = ExpectedException.none();
-
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     originalStdout = System.out;
     originalStderr = System.err;
     stdout = new ByteArrayOutputStream();
@@ -57,8 +55,8 @@ public class MainTest {
     root.setLevel(Level.INFO);
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterEach
+  void tearDown() throws Exception {
     System.setOut(originalStdout);
     System.setErr(originalStderr);
     root.setLevel(oldLevel);
@@ -67,33 +65,43 @@ public class MainTest {
     OptionUtils.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
   }
 
+  @BeforeEach
+  void createTempFolder() throws IOException {
+    tempFolder = Files.createTempDirectory("test");
+  }
+
+  @AfterEach
+  void deleteTempFolder() throws IOException {
+    deleteRecursively(tempFolder, ALLOW_INSECURE);
+  }
+
   @Test
-  public void should_show_help_when_no_args() throws Exception {
+  void should_show_help_when_no_args() throws Exception {
     new Main(new String[] {}).run();
     assertGlobalHelp();
   }
 
   @Test
-  public void should_show_help_when_help_opt_arg() throws Exception {
+  void should_show_help_when_help_opt_arg() throws Exception {
     new Main(new String[] {"--help"}).run();
     assertGlobalHelp();
   }
 
   @Test
-  public void should_show_help_when_help_subcommand() throws Exception {
+  void should_show_help_when_help_subcommand() throws Exception {
     new Main(new String[] {"help"}).run();
     assertGlobalHelp();
   }
 
   @Test
-  public void should_show_error_when_junk_subcommand() throws Exception {
+  void should_show_error_when_junk_subcommand() throws Exception {
     new Main(new String[] {"junk"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).contains("First argument must be subcommand \"load\", \"unload\", or \"help\"");
   }
 
   @Test
-  public void should_show_help_without_error_when_junk_subcommand_and_help() throws Exception {
+  void should_show_help_without_error_when_junk_subcommand_and_help() throws Exception {
     new Main(new String[] {"junk", "--help"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
@@ -101,7 +109,7 @@ public class MainTest {
   }
 
   @Test
-  public void should_show_help_without_error_when_good_subcommand_and_help() throws Exception {
+  void should_show_help_without_error_when_good_subcommand_and_help() throws Exception {
     new Main(new String[] {"load", "--help"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
@@ -109,7 +117,7 @@ public class MainTest {
   }
 
   @Test
-  public void should_show_error_for_help_bad_section() throws Exception {
+  void should_show_error_for_help_bad_section() throws Exception {
     new Main(new String[] {"help", "noexist"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
@@ -118,7 +126,7 @@ public class MainTest {
   }
 
   @Test
-  public void should_show_section_help() throws Exception {
+  void should_show_section_help() throws Exception {
     new Main(new String[] {"help", "batch"}).run();
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
     assertThat(out)
@@ -127,7 +135,7 @@ public class MainTest {
   }
 
   @Test
-  public void should_show_section_help_with_subsection_pointers() throws Exception {
+  void should_show_section_help_with_subsection_pointers() throws Exception {
     new Main(new String[] {"help", "driver"}).run();
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
     assertThat(out)
@@ -137,14 +145,14 @@ public class MainTest {
   }
 
   @Test
-  public void should_show_section_help_with_connector_shortcuts() throws Exception {
+  void should_show_section_help_with_connector_shortcuts() throws Exception {
     new Main(new String[] {"help", "connector.csv"}).run();
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
     assertThat(out).contains("-url, --connector.csv.url");
   }
 
   @Test
-  public void should_show_help_without_error_when_no_subcommand_and_help() throws Exception {
+  void should_show_help_without_error_when_no_subcommand_and_help() throws Exception {
     new Main(new String[] {"-k", "k1", "--help"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err).doesNotContain("First argument must be subcommand");
@@ -152,20 +160,20 @@ public class MainTest {
   }
 
   @Test
-  public void should_respect_custom_config_file() throws Exception {
+  void should_respect_custom_config_file() throws Exception {
     {
-      File f = tempFolder.newFile("myapp.conf");
-      Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
-      new Main(new String[] {"load", "-f", f.getPath()}).run();
+      Path f = Files.createTempFile(tempFolder, "myapp", ".conf");
+      Files.write(f, "dsbulk.connector.name=junk".getBytes("UTF-8"));
+      new Main(new String[] {"load", "-f", f.toString()}).run();
       String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
       assertThat(err)
           .doesNotContain("First argument must be subcommand")
           .contains("Cannot find connector 'junk'");
     }
     {
-      File f = tempFolder.newFile("myapp3.conf");
-      Files.write(f.toPath(), "dsbulk.driver.socket.readTimeout=wonky".getBytes("UTF-8"));
-      new Main(new String[] {"load", "-f", f.getPath()}).run();
+      Path f = Files.createTempFile(tempFolder, "myapp3", ".conf");
+      Files.write(f, "dsbulk.driver.socket.readTimeout=wonky".getBytes("UTF-8"));
+      new Main(new String[] {"load", "-f", f.toString()}).run();
       String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
       assertThat(err)
           .doesNotContain("First argument must be subcommand")
@@ -174,7 +182,7 @@ public class MainTest {
   }
 
   @Test
-  public void should_error_out_for_bad_config_file() throws Exception {
+  void should_error_out_for_bad_config_file() throws Exception {
     new Main(new String[] {"load", "-f", "noexist"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     if (PlatformUtils.isWindows()) {
@@ -190,10 +198,10 @@ public class MainTest {
   }
 
   @Test
-  public void should_accept_connector_name_in_args_over_config_file() throws Exception {
-    File f = tempFolder.newFile("myapp.conf");
-    Files.write(f.toPath(), "dsbulk.connector.name=junk".getBytes("UTF-8"));
-    new Main(new String[] {"load", "-c", "fromargs", "-f", f.getPath()}).run();
+  void should_accept_connector_name_in_args_over_config_file() throws Exception {
+    Path f = Files.createTempFile(tempFolder, "myapp", ".conf");
+    Files.write(f, "dsbulk.connector.name=junk".getBytes("UTF-8"));
+    new Main(new String[] {"load", "-c", "fromargs", "-f", f.toString()}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
         .doesNotContain("First argument must be subcommand")
@@ -201,7 +209,7 @@ public class MainTest {
   }
 
   @Test
-  public void should_handle_connector_name_long_option() throws Exception {
+  void should_handle_connector_name_long_option() throws Exception {
     new Main(new String[] {"load", "--connector.name", "fromargs"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
@@ -210,7 +218,7 @@ public class MainTest {
   }
 
   @Test
-  public void should_handle_connector_name_long_option_with_equal() throws Exception {
+  void should_handle_connector_name_long_option_with_equal() throws Exception {
     new Main(new String[] {"load", "--connector.name=fromargs"}).run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
     assertThat(err)
@@ -219,7 +227,7 @@ public class MainTest {
   }
 
   @Test
-  public void should_process_short_options() throws Exception {
+  void should_process_short_options() throws Exception {
     Config result =
         Main.parseCommandLine(
             "csv",
@@ -321,19 +329,21 @@ public class MainTest {
   }
 
   @Test
-  public void should_reject_concatenated_option_value() throws Exception {
-    thrown.expect(ParseException.class);
-    thrown.expectMessage("Unrecognized option: -kks");
-    Main.parseCommandLine(
-        "csv",
-        "load",
-        new String[] {
-          "-kks",
-        });
+  void should_reject_concatenated_option_value() throws Exception {
+    assertThrows(
+        ParseException.class,
+        () ->
+            Main.parseCommandLine(
+                "csv",
+                "load",
+                new String[] {
+                  "-kks",
+                }),
+        "Unrecognized option: -kks");
   }
 
   @Test
-  public void should_process_core_long_options() throws Exception {
+  void should_process_core_long_options() throws Exception {
     Config result =
         Main.parseCommandLine(
             "csv",
@@ -597,7 +607,7 @@ public class MainTest {
   }
 
   @Test
-  public void should_process_csv_long_options() throws Exception {
+  void should_process_csv_long_options() throws Exception {
     Config result =
         Main.parseCommandLine(
             "csv",
@@ -646,14 +656,14 @@ public class MainTest {
   }
 
   @Test
-  public void should_show_version_message_when_asked() throws Exception {
+  void should_show_version_message_when_asked() throws Exception {
     new Main(new String[] {"--version"}).run();
     String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
     assertThat(out).isEqualTo(String.format("%s%n", HelpUtils.getVersionMessage()));
   }
 
   @Test
-  public void should_show_error_when_unload_and_dryRun() throws Exception {
+  void should_show_error_when_unload_and_dryRun() throws Exception {
     new Main(new String[] {"unload", "-dryRun", "true", "-url", "/foo/bar", "-k", "k1", "-t", "t1"})
         .run();
     String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);

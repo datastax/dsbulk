@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -10,12 +10,12 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.codahale.metrics.Meter;
 import java.util.concurrent.Executors;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class MappingReporterTest extends AbstractReporterTest {
+class MappingReporterTest extends ReporterTestBase {
 
   @Test
-  public void should_report_batches() throws Exception {
+  void should_report_batches() throws Exception {
     Meter totalMeter = registry.meter("mappings/total");
     Meter successfulMeter = registry.meter("mappings/successful");
     Meter failedMeter = registry.meter("mappings/failed");

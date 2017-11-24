@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -15,12 +15,12 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.reflect.TypeToken;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class DefaultMappingTest {
+class DefaultMappingTest {
 
   @Test
-  public void should_create_mapping() throws Exception {
+  void should_create_mapping() throws Exception {
     ImmutableBiMap<String, String> fieldsToVariables =
         ImmutableBiMap.<String, String>builder().put("f1", "c1").build();
     ExtendedCodecRegistry extendedCodecRegistry = mock(ExtendedCodecRegistry.class);

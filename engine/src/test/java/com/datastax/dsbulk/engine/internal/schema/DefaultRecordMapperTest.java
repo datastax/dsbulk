@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -25,18 +25,23 @@ import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecordMetadata;
+import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.reflect.TypeToken;
 import java.net.URI;
-import org.junit.Before;
-import org.junit.Test;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 @SuppressWarnings("unchecked")
-public class DefaultRecordMapperTest {
+class DefaultRecordMapperTest {
 
   private static final String C1 = "col1";
   private static final String C2 = "col2";
@@ -50,10 +55,11 @@ public class DefaultRecordMapperTest {
   private ArgumentCaptor<Object> valueCaptor;
   private ArgumentCaptor<TypeCodec> codecCaptor;
   private RecordMetadata recordMetadata;
-  private URI location = URI.create("file://file1?line=1");
+  private final URI location = URI.create("file://file1?line=1");
+  private final DateTimeFormatter timestampFormat = CodecSettings.CQL_DATE_TIME_FORMAT;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     variableCaptor = ArgumentCaptor.forClass(String.class);
     valueCaptor = ArgumentCaptor.forClass(Object.class);
     codecCaptor = ArgumentCaptor.forClass(TypeCodec.class);
@@ -110,7 +116,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_map_string_int_columns() throws Exception {
+  void should_map_string_int_columns() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -121,6 +127,7 @@ public class DefaultRecordMapperTest {
             true,
             -1,
             -1,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -134,7 +141,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_static_ttl() throws Exception {
+  void should_bind_static_ttl() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -145,6 +152,7 @@ public class DefaultRecordMapperTest {
             true,
             30,
             -1,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -159,7 +167,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_static_timestamp() throws Exception {
+  void should_bind_static_timestamp() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -170,6 +178,7 @@ public class DefaultRecordMapperTest {
             true,
             -1,
             123987,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -184,7 +193,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_mapped_ttl() throws Exception {
+  void should_bind_mapped_ttl() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     when(record.getFieldValue("2")).thenReturn("123");
     when(mapping.fieldToVariable("2")).thenReturn(TTL_VARNAME);
@@ -198,6 +207,7 @@ public class DefaultRecordMapperTest {
             true,
             -1,
             -1,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -211,7 +221,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_mapped_timestamp() throws Exception {
+  void should_bind_mapped_long_timestamp() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     when(record.getFieldValue("2")).thenReturn("123");
     when(mapping.fieldToVariable("2")).thenReturn(TIMESTAMP_VARNAME);
@@ -225,6 +235,7 @@ public class DefaultRecordMapperTest {
             true,
             -1,
             -1,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -234,11 +245,74 @@ public class DefaultRecordMapperTest {
 
     assertParameter(0, C1, 42, TypeCodec.cint());
     assertParameter(1, C2, "NIL", TypeCodec.varchar());
-    assertParameter(2, "dsbulk_internal_timestamp", "123", TypeCodec.bigint());
+    assertParameter(2, "dsbulk_internal_timestamp", 123L, TypeCodec.bigint());
   }
 
   @Test
-  public void should_bind_mapped_ttl_over_static() throws Exception {
+  public void should_bind_mapped_string_timestamp() throws Exception {
+    when(record.getFieldValue("1")).thenReturn("NIL");
+    when(record.getFieldValue("2")).thenReturn("2017-01-02T00:00:02");
+    when(mapping.fieldToVariable("2")).thenReturn(TIMESTAMP_VARNAME);
+    when(mapping.variableToField(TIMESTAMP_VARNAME)).thenReturn("2");
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            mapping,
+            recordMetadata,
+            ImmutableSet.of(),
+            true,
+            -1,
+            -1,
+            timestampFormat,
+            (mappedRecord, statement) -> boundStatement);
+    Statement result = mapper.map(record);
+    assertThat(result).isSameAs(boundStatement);
+
+    verify(boundStatement, times(3))
+        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
+
+    assertParameter(0, C1, 42, TypeCodec.cint());
+    assertParameter(1, C2, "NIL", TypeCodec.varchar());
+    assertParameter(2, "dsbulk_internal_timestamp", 1483315202000000L, TypeCodec.bigint());
+  }
+
+  @Test
+  public void should_bind_mapped_custom_string_timestamp() throws Exception {
+    when(record.getFieldValue("1")).thenReturn("NIL");
+    when(record.getFieldValue("2")).thenReturn("20171123123456");
+    when(mapping.fieldToVariable("2")).thenReturn(TIMESTAMP_VARNAME);
+    when(mapping.variableToField(TIMESTAMP_VARNAME)).thenReturn("20171123123456");
+    DateTimeFormatter timestampFormat =
+        DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneOffset.UTC);
+    ZonedDateTime zonedDateTime = ZonedDateTime.parse("20171123123456", timestampFormat);
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            mapping,
+            recordMetadata,
+            ImmutableSet.of(),
+            true,
+            -1,
+            -1,
+            timestampFormat,
+            (mappedRecord, statement) -> boundStatement);
+    Statement result = mapper.map(record);
+    assertThat(result).isSameAs(boundStatement);
+
+    verify(boundStatement, times(3))
+        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
+
+    assertParameter(0, C1, 42, TypeCodec.cint());
+    assertParameter(1, C2, "NIL", TypeCodec.varchar());
+    assertParameter(
+        2,
+        "dsbulk_internal_timestamp",
+        TimeUnit.SECONDS.toMicros(zonedDateTime.toEpochSecond()),
+        TypeCodec.bigint());
+  }
+
+  @Test
+  void should_bind_mapped_ttl_over_static() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     when(record.getFieldValue("2")).thenReturn("123");
     when(mapping.fieldToVariable("2")).thenReturn(TTL_VARNAME);
@@ -252,6 +326,7 @@ public class DefaultRecordMapperTest {
             true,
             30,
             -1,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -265,7 +340,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_bind_mapped_timestamp_over_static() throws Exception {
+  void should_bind_mapped_timestamp_over_static() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     when(record.getFieldValue("2")).thenReturn("123");
     when(mapping.fieldToVariable("2")).thenReturn(TIMESTAMP_VARNAME);
@@ -279,6 +354,7 @@ public class DefaultRecordMapperTest {
             true,
             -1,
             30,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -288,11 +364,11 @@ public class DefaultRecordMapperTest {
 
     assertParameter(0, C1, 42, TypeCodec.cint());
     assertParameter(1, C2, "NIL", TypeCodec.varchar());
-    assertParameter(2, "dsbulk_internal_timestamp", "123", TypeCodec.bigint());
+    assertParameter(2, "dsbulk_internal_timestamp", 123L, TypeCodec.bigint());
   }
 
   @Test
-  public void should_map_null_to_unset() throws Exception {
+  void should_map_null_to_unset() throws Exception {
     when(record.getFieldValue("1")).thenReturn(null);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -303,6 +379,7 @@ public class DefaultRecordMapperTest {
             true,
             -1,
             -1,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -315,7 +392,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_map_null_words_to_unset() throws Exception {
+  void should_map_null_words_to_unset() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -326,6 +403,7 @@ public class DefaultRecordMapperTest {
             true,
             -1,
             -1,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -337,7 +415,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_map_null_to_null() throws Exception {
+  void should_map_null_to_null() throws Exception {
     when(record.getFieldValue("1")).thenReturn(null);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -348,6 +426,7 @@ public class DefaultRecordMapperTest {
             false,
             -1,
             -1,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -363,7 +442,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_map_null_word_to_null() throws Exception {
+  void should_map_null_word_to_null() throws Exception {
     when(record.getFieldValue("1")).thenReturn("NIL");
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -374,6 +453,7 @@ public class DefaultRecordMapperTest {
             false,
             -1,
             -1,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -389,7 +469,7 @@ public class DefaultRecordMapperTest {
   }
 
   @Test
-  public void should_return_unmappable_statement_when_mapping_fails() throws Exception {
+  void should_return_unmappable_statement_when_mapping_fails() throws Exception {
     //noinspection unchecked
     when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class)))
         .thenThrow(CodecNotFoundException.class);
@@ -402,6 +482,7 @@ public class DefaultRecordMapperTest {
             false,
             -1,
             -1,
+            timestampFormat,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);

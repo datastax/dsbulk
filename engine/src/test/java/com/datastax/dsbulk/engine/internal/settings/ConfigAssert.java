@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -17,7 +17,7 @@ public class ConfigAssert extends ObjectAssert<Config> {
     super(config);
   }
 
-  public ConfigAssert hasPath(String path) {
+  private ConfigAssert hasPath(String path) {
     Assertions.assertThat(actual.hasPath(path))
         .as("Expecting %s to have path %s but it did not", actual, path)
         .isTrue();

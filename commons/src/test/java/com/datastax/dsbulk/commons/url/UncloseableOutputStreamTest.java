@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -11,12 +11,12 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import java.io.ByteArrayOutputStream;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class UncloseableOutputStreamTest {
+class UncloseableOutputStreamTest {
 
   @Test
-  public void should_not_close_output_stream() throws Exception {
+  void should_not_close_output_stream() throws Exception {
     ByteArrayOutputStream delegate = spy(new ByteArrayOutputStream());
     UncloseableOutputStream is = new UncloseableOutputStream(delegate);
     is.close();

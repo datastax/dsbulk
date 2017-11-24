@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -12,6 +12,7 @@ import static com.google.common.collect.Range.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.datastax.driver.core.BatchStatement;
@@ -46,15 +47,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.LongStream;
 import org.assertj.core.util.Lists;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.internal.util.reflection.Whitebox;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 /** */
-public class LogManagerTest {
+class LogManagerTest {
 
   private final String source1 = "line1\n";
   private final String source2 = "line2\n";
@@ -97,8 +98,8 @@ public class LogManagerTest {
 
   private final Scheduler scheduler = Schedulers.immediate();
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeEach
+  void setUp() throws Exception {
     cluster = mock(Cluster.class);
     Configuration configuration = mock(Configuration.class);
     ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
@@ -164,7 +165,7 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_stop_when_max_record_mapping_errors_reached() throws Exception {
+  void should_stop_when_max_record_mapping_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
         new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 2, formatter, EXTENDED);
@@ -206,7 +207,7 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_stop_when_max_result_mapping_errors_reached() throws Exception {
+  void should_stop_when_max_result_mapping_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
         new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 2, formatter, EXTENDED);
@@ -240,7 +241,7 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_stop_when_max_write_errors_reached() throws Exception {
+  void should_stop_when_max_write_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
         new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 2, formatter, EXTENDED);
@@ -293,7 +294,7 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_stop_when_max_write_errors_reached_and_statements_batched() throws Exception {
+  void should_stop_when_max_write_errors_reached_and_statements_batched() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
         new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 1, formatter, EXTENDED);
@@ -343,7 +344,7 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_stop_when_max_read_errors_reached() throws Exception {
+  void should_stop_when_max_read_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
         new LogManager(WorkflowType.UNLOAD, cluster, scheduler, outputDir, 2, formatter, EXTENDED);
@@ -376,7 +377,7 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_stop_when_unrecoverable_error_writing() throws Exception {
+  void should_stop_when_unrecoverable_error_writing() throws Exception {
     Path outputDir = Files.createTempDirectory("test4");
     LogManager logManager =
         new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 1000, formatter, EXTENDED);
@@ -418,7 +419,7 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_stop_when_unrecoverable_error_reading() throws Exception {
+  void should_stop_when_unrecoverable_error_reading() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
         new LogManager(WorkflowType.UNLOAD, cluster, scheduler, outputDir, 2, formatter, EXTENDED);
@@ -450,7 +451,7 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_record_positions() throws Exception {
+  void should_record_positions() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
         new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 1, formatter, EXTENDED);
@@ -468,7 +469,7 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_add_position() throws Exception {
+  void should_add_position() throws Exception {
     List<Range<Long>> positions = new ArrayList<>();
     positions = LogManager.addPosition(positions, 3);
     assertThat(positions).containsExactly(singleton(3L));
@@ -487,7 +488,7 @@ public class LogManagerTest {
   }
 
   @Test
-  public void should_merge_positions() throws Exception {
+  void should_merge_positions() throws Exception {
     assertThat(LogManager.mergePositions(ranges(), ranges())).isEmpty();
     assertThat(LogManager.mergePositions(ranges(), ranges(closed(1L, 3L))))
         .isEqualTo(ranges(closed(1L, 3L)));
@@ -508,6 +509,17 @@ public class LogManagerTest {
         .isEqualTo(ranges(closed(1L, 6L)));
     assertThat(LogManager.mergePositions(ranges(closed(5L, 7L)), ranges(closed(1L, 3L))))
         .isEqualTo(ranges(closed(1L, 3L), closed(5L, 7L)));
+  }
+
+  @Test
+  public void should_dispose_scheduler_when_closed() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    Scheduler scheduler = mock(Scheduler.class);
+    LogManager logManager =
+        new LogManager(WorkflowType.UNLOAD, cluster, scheduler, outputDir, 1, formatter, EXTENDED);
+    logManager.init();
+    logManager.close();
+    verify(scheduler).dispose();
   }
 
   @SafeVarargs

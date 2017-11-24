@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -12,6 +12,8 @@ import static com.datastax.driver.core.HostDistance.LOCAL;
 import static com.datastax.driver.core.HostDistance.REMOTE;
 import static com.datastax.driver.core.ProtocolOptions.Compression.NONE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumingThat;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.AuthProvider;
@@ -48,25 +50,28 @@ import java.net.InetSocketAddress;
 import java.net.URL;
 import java.util.List;
 import javax.security.auth.login.Configuration;
-import org.junit.AssumptionViolatedException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
-public class DriverSettingsTest {
+class DriverSettingsTest {
 
-  @Test(expected = BulkConfigurationException.class)
-  public void should_not_create_mapper_when_contact_points_not_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
-    driverSettings.newCluster();
+  @Test
+  void should_not_create_mapper_when_contact_points_not_provided() throws Exception {
+    assertThrows(
+        BulkConfigurationException.class,
+        () -> {
+          LoaderConfig config =
+              new DefaultLoaderConfig(
+                  new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch")));
+          DriverSettings driverSettings = new DriverSettings(config, "test");
+          driverSettings.newCluster();
+        });
   }
 
   @Test
-  public void should_create_mapper_when_hosts_provided() throws Exception {
+  void should_create_mapper_when_hosts_provided() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("port = 9876, hosts = \"1.2.3.4:9042, 2.3.4.5,9.8.7.6\"")
@@ -118,7 +123,7 @@ public class DriverSettingsTest {
   }
 
   @Test
-  public void should_configure_authentication_with_PlainTextAuthProvider() throws Exception {
+  void should_configure_authentication_with_PlainTextAuthProvider() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -135,7 +140,7 @@ public class DriverSettingsTest {
   }
 
   @Test
-  public void should_configure_authentication_with_DsePlainTextAuthProvider() throws Exception {
+  void should_configure_authentication_with_DsePlainTextAuthProvider() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -153,8 +158,7 @@ public class DriverSettingsTest {
   }
 
   @Test
-  public void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab()
-      throws Exception {
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -184,7 +188,7 @@ public class DriverSettingsTest {
   }
 
   @Test
-  public void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache()
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache()
       throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
@@ -212,7 +216,7 @@ public class DriverSettingsTest {
   }
 
   @Test
-  public void should_configure_encryption_with_SSLContext() throws Exception {
+  void should_configure_encryption_with_SSLContext() throws Exception {
     URL keystore = getClass().getResource("/client.keystore");
     URL truststore = getClass().getResource("/client.truststore");
     LoaderConfig config =
@@ -244,44 +248,45 @@ public class DriverSettingsTest {
   }
 
   @Test
-  public void should_configure_encryption_with_OpenSSL() throws Exception {
-    if (PlatformUtils.isWindows()) {
-      throw new AssumptionViolatedException("Test not compatible with windows");
-    }
-    URL keyCertChain = getClass().getResource("/client.crt");
-    URL privateKey = getClass().getResource("/client.key");
-    URL truststore = getClass().getResource("/client.truststore");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        " ssl { "
-                            + "provider = OpenSSL, "
-                            + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
-                            + "openssl { "
-                            + "   keyCertChain = \"%s\","
-                            + "   privateKey = \"%s\""
-                            + "}, "
-                            + "truststore { "
-                            + "   path = \"%s\","
-                            + "   password = cassandra1sfun "
-                            + "}"
-                            + "}",
-                        keyCertChain, privateKey, truststore))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
-    DseCluster cluster = driverSettings.newCluster();
-    assertThat(cluster).isNotNull();
-    DseConfiguration configuration = cluster.getConfiguration();
-    SSLOptions sslOptions = configuration.getProtocolOptions().getSSLOptions();
-    assertThat(sslOptions).isInstanceOf(RemoteEndpointAwareNettySSLOptions.class);
-    SslContext sslContext = (SslContext) Whitebox.getInternalState(sslOptions, "context");
-    assertThat(sslContext.cipherSuites())
-        .containsExactly("TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA");
+  void should_configure_encryption_with_OpenSSL() throws Exception {
+    assumingThat(
+        PlatformUtils.isWindows(),
+        () -> {
+          URL keyCertChain = getClass().getResource("/client.crt");
+          URL privateKey = getClass().getResource("/client.key");
+          URL truststore = getClass().getResource("/client.truststore");
+          LoaderConfig config =
+              new DefaultLoaderConfig(
+                  ConfigFactory.parseString(
+                          String.format(
+                              " ssl { "
+                                  + "provider = OpenSSL, "
+                                  + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
+                                  + "openssl { "
+                                  + "   keyCertChain = \"%s\","
+                                  + "   privateKey = \"%s\""
+                                  + "}, "
+                                  + "truststore { "
+                                  + "   path = \"%s\","
+                                  + "   password = cassandra1sfun "
+                                  + "}"
+                                  + "}",
+                              keyCertChain, privateKey, truststore))
+                      .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+          DriverSettings driverSettings = new DriverSettings(config, "test");
+          DseCluster cluster = driverSettings.newCluster();
+          assertThat(cluster).isNotNull();
+          DseConfiguration configuration = cluster.getConfiguration();
+          SSLOptions sslOptions = configuration.getProtocolOptions().getSSLOptions();
+          assertThat(sslOptions).isInstanceOf(RemoteEndpointAwareNettySSLOptions.class);
+          SslContext sslContext = (SslContext) Whitebox.getInternalState(sslOptions, "context");
+          assertThat(sslContext.cipherSuites())
+              .containsExactly("TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA");
+        });
   }
 
   @Test
-  public void should_configure_lbp() throws Exception {
+  void should_configure_lbp() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(

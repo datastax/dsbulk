@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 DataStax Inc.
+ * Copyright DataStax Inc.
  *
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
@@ -16,12 +16,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class TemporalToTemporalCodecTest {
+class TemporalToTemporalCodecTest {
 
   @Test
-  public void should_convert_when_valid_input() throws Exception {
+  void should_convert_when_valid_input() throws Exception {
 
     assertThat(new TemporalToTemporalCodec<>(ZonedDateTime.class, LocalDateCodec.instance))
         .convertsFrom(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
@@ -105,7 +105,7 @@ public class TemporalToTemporalCodecTest {
   }
 
   @Test
-  public void should_not_convert_when_invalid_input() throws Exception {
+  void should_not_convert_when_invalid_input() throws Exception {
 
     // LocalDate <-> LocalTime is not supported
     assertThat(new TemporalToTemporalCodec<>(LocalDate.class, LocalTimeCodec.instance))
