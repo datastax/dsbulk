@@ -489,7 +489,7 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
               <id>check-license</id>
               <phase>initialize</phase>
               <goals>
-                <goal>check</goal>
+                <goal>format</goal>
               </goals>
             </execution>
           </executions>
