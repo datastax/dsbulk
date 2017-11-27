@@ -4,10 +4,11 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.engine.internal.settings;
+package com.datastax.dsbulk.commons.internal.assertions;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.typesafe.config.Config;
-import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ObjectAssert;
 
 @SuppressWarnings("UnusedReturnValue")
@@ -18,15 +19,15 @@ public class ConfigAssert extends ObjectAssert<Config> {
   }
 
   private ConfigAssert hasPath(String path) {
-    Assertions.assertThat(actual.hasPath(path))
-        .as("Expecting %s to have path %s but it did not", actual, path)
+    assertThat(actual.hasPath(path))
+        .overridingErrorMessage("Expecting %s to have path %s but it did not", actual, path)
         .isTrue();
     return this;
   }
 
   public ConfigAssert doesNotHavePath(String path) {
-    Assertions.assertThat(actual.hasPath(path))
-        .as("Expecting %s to not have path %s but it did", actual, path)
+    assertThat(actual.hasPath(path))
+        .overridingErrorMessage("Expecting %s to not have path %s but it did", actual, path)
         .isFalse();
     return this;
   }

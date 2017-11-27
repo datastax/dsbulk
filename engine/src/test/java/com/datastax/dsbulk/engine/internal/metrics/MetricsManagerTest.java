@@ -9,12 +9,7 @@ package com.datastax.dsbulk.engine.internal.metrics;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
@@ -27,21 +22,12 @@ import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import java.net.URI;
 import java.time.Duration;
 import java.util.concurrent.Executors;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.internal.util.reflection.Whitebox;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 class MetricsManagerTest {
-
-  @Mock private Appender<ILoggingEvent> mockAppender;
-  private Appender<ILoggingEvent> stdout;
-  private Level oldLevel;
-  private Logger root;
 
   private Record record1;
   private Record record2;
@@ -52,27 +38,6 @@ class MetricsManagerTest {
   private Statement stmt3;
 
   private BatchStatement batch;
-
-  @BeforeEach
-  void prepareMocks() {
-    MockitoAnnotations.initMocks(this);
-    when(mockAppender.getName()).thenReturn("MOCK");
-    Logger logger = (Logger) LoggerFactory.getLogger("com.datastax.dsbulk.engine.internal.metrics");
-    logger.addAppender(mockAppender);
-    oldLevel = logger.getLevel();
-    logger.setLevel(Level.INFO);
-    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    stdout = root.getAppender("STDOUT");
-    root.detachAppender(stdout);
-  }
-
-  @AfterEach
-  void restoreAppenders() {
-    Logger logger = (Logger) LoggerFactory.getLogger("com.datastax.dsbulk.engine.internal.metrics");
-    logger.detachAppender(mockAppender);
-    logger.setLevel(oldLevel);
-    root.addAppender(stdout);
-  }
 
   @BeforeEach
   void setUp() throws Exception {

@@ -6,14 +6,14 @@
  */
 package com.datastax.dsbulk.tests.ccm;
 
-import static com.datastax.dsbulk.tests.utils.NetworkUtils.findAvailablePort;
+import static com.datastax.dsbulk.commons.internal.utils.NetworkUtils.findAvailablePort;
 import static com.datastax.dsbulk.tests.utils.Version.DEFAULT_DSE_VERSION;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
-import com.datastax.dsbulk.tests.utils.MemoryUtils;
-import com.datastax.dsbulk.tests.utils.NetworkUtils;
-import com.datastax.dsbulk.tests.utils.StringUtils;
+import com.datastax.dsbulk.commons.internal.utils.MemoryUtils;
+import com.datastax.dsbulk.commons.internal.utils.NetworkUtils;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.tests.utils.Version;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;

@@ -47,7 +47,7 @@ abstract class CSVUnloadLoadCCMITBase {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVUnloadLoadCCMITBase.class);
 
-  private static final Conversion<String, InetAddress> inetConverter =
+  private static final Conversion<String, InetAddress> INET_CONVERTER =
       new Conversion<String, InetAddress>() {
 
         @Override
@@ -144,8 +144,8 @@ abstract class CSVUnloadLoadCCMITBase {
                     .bind(
                         record.getString("ISO 3166 Country Code"),
                         record.getString("Country Name"),
-                        record.getValue("beginning IP Address", InetAddress.class, inetConverter),
-                        record.getValue("ending IP Address", InetAddress.class, inetConverter),
+                        record.getValue("beginning IP Address", InetAddress.class, INET_CONVERTER),
+                        record.getValue("ending IP Address", InetAddress.class, INET_CONVERTER),
                         record.getLong("beginning IP Number"),
                         record.getLong("ending IP Number"))
                     .setIdempotent(true))

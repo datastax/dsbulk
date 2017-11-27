@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import static com.datastax.dsbulk.engine.internal.Assertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 
 import com.datastax.driver.core.TypeCodec;
 import java.util.UUID;

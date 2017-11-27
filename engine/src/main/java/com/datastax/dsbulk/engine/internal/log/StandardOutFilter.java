@@ -19,7 +19,7 @@ public class StandardOutFilter extends AbstractMatcherFilter<ILoggingEvent> {
       return FilterReply.NEUTRAL;
     }
     if (event.getLevel().levelInt < Level.ERROR_INT) {
-      return FilterReply.ACCEPT;
+      return FilterReply.NEUTRAL;
     } else {
       return FilterReply.DENY;
     }

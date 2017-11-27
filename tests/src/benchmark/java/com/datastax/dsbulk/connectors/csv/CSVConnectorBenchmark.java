@@ -11,8 +11,8 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.internal.utils.ZipUtils;
 import com.datastax.dsbulk.engine.Main;
-import com.datastax.dsbulk.tests.utils.ZipUtils;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;

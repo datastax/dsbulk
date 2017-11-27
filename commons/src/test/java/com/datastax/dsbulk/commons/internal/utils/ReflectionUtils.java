@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.utils;
+package com.datastax.dsbulk.commons.internal.utils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -17,7 +17,7 @@ public class ReflectionUtils {
 
   public static Set<Field> locateFieldsAnnotatedWith(
       Class<?> clazz, Class<? extends Annotation> annotationClass) {
-    Set<Field> fields = new LinkedHashSet<Field>();
+    Set<Field> fields = new LinkedHashSet<>();
     while (!clazz.equals(Object.class)) {
       for (Field field : clazz.getDeclaredFields()) {
         if (!field.isSynthetic() && field.getAnnotation(annotationClass) != null) {
@@ -33,7 +33,9 @@ public class ReflectionUtils {
       Class<?> clazz, Class<A> annotationClass) {
     while (!clazz.equals(Object.class)) {
       A annotation = clazz.getAnnotation(annotationClass);
-      if (annotation != null) return annotation;
+      if (annotation != null) {
+        return annotation;
+      }
       clazz = clazz.getSuperclass();
     }
     return null;
@@ -55,7 +57,9 @@ public class ReflectionUtils {
   public static <T> T invokeMethod(
       Method method, Object receiver, Class<T> returnType, Object... parameters) {
     try {
-      if (method == null) return null;
+      if (method == null) {
+        return null;
+      }
       method.setAccessible(true);
 
       // Void.isAssignableFrom always returns false it seems.

@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.connectors.cql;
 
-import com.datastax.dsbulk.tests.utils.ZipUtils;
+import com.datastax.dsbulk.commons.internal.utils.ZipUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;

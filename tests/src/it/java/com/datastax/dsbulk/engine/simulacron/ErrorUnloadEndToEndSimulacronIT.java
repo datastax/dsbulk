@@ -6,52 +6,49 @@
  */
 package com.datastax.dsbulk.engine.simulacron;
 
+import static com.datastax.dsbulk.commons.internal.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.createQueryWithResultSet;
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.fetchContactPoints;
-import static com.datastax.dsbulk.tests.utils.EndToEndUtils.getErrorEventMessages;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.file.Files.createTempDirectory;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.slf4j.event.Level.ERROR;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
+import com.datastax.dsbulk.commons.internal.logging.LogCapture;
+import com.datastax.dsbulk.commons.internal.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.internal.logging.LogInterceptor;
+import com.datastax.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.tests.simulacron.SimulacronExtension;
-import com.datastax.dsbulk.tests.utils.TestAppender;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.slf4j.LoggerFactory;
 
 @ExtendWith(SimulacronExtension.class)
+@ExtendWith(LogInterceptingExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ErrorUnloadEndToEndSimulacronIT {
 
   private final BoundCluster simulacron;
-
-  private Logger root;
-  private TestAppender appender;
-  private Level oldLevel;
-  private Appender<ILoggingEvent> stdout;
+  private final LogInterceptor interceptor;
 
   private Path unloadDir;
 
-  ErrorUnloadEndToEndSimulacronIT(BoundCluster simulacron) {
+  ErrorUnloadEndToEndSimulacronIT(
+      BoundCluster simulacron,
+      @LogCapture(value = CSVConnector.class, level = ERROR) LogInterceptor interceptor) {
     this.simulacron = simulacron;
+    this.interceptor = interceptor;
   }
 
   @BeforeEach
@@ -62,25 +59,6 @@ class ErrorUnloadEndToEndSimulacronIT {
   @AfterEach
   void deleteDirs() throws IOException {
     deleteRecursively(unloadDir, ALLOW_INSECURE);
-  }
-
-  @SuppressWarnings("Duplicates")
-  @BeforeEach
-  void setUpLogging() throws Exception {
-    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    appender = new TestAppender();
-    root.addAppender(appender);
-    oldLevel = root.getLevel();
-    root.setLevel(Level.INFO);
-    stdout = root.getAppender("STDOUT");
-    root.detachAppender(stdout);
-  }
-
-  @AfterEach
-  void tearDown() throws Exception {
-    root.detachAppender(appender);
-    root.setLevel(oldLevel);
-    root.addAppender(stdout);
   }
 
   @Test
@@ -116,11 +94,10 @@ class ErrorUnloadEndToEndSimulacronIT {
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
 
-    List<String> errorMessages = getErrorEventMessages(appender);
-    assertThat(errorMessages).isNotEmpty();
-    assertThat(errorMessages.get(0)).contains("Could not create CSV writer for file:");
-    assertThat(errorMessages.get(0)).contains("output-000001.csv");
-    assertThat(errorMessages.get(1)).contains("Error writing to file:");
-    assertThat(errorMessages.get(1)).contains("output-000001.csv");
+    assertThat(interceptor)
+        .hasMessageContaining("Could not create CSV writer for file:")
+        .hasMessageContaining("output-000001.csv")
+        .hasMessageContaining("Error writing to file:")
+        .hasMessageContaining("output-000001.csv");
   }
 }

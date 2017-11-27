@@ -6,65 +6,41 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.dsbulk.commons.internal.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.tests.utils.CsvUtils.CSV_RECORDS_HEADER;
 import static com.datastax.dsbulk.tests.utils.CsvUtils.createIpByCountryTable;
-import static com.datastax.dsbulk.tests.utils.EndToEndUtils.getErrorEventMessages;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.slf4j.event.Level.ERROR;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.internal.logging.LogCapture;
+import com.datastax.dsbulk.commons.internal.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.internal.logging.LogInterceptor;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.tests.ccm.CCMCluster;
-import com.datastax.dsbulk.tests.utils.TestAppender;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(LogInterceptingExtension.class)
 @Tag("ccm")
 class MappingValidationEndToEndCCMIT extends EndToEndCCMITBase {
 
-  private Logger root;
-  private TestAppender appender;
-  private Level oldLevel;
+  private final LogInterceptor interceptor;
 
-  private Appender<ILoggingEvent> stdout;
-
-  MappingValidationEndToEndCCMIT(CCMCluster ccm, Session session) {
+  MappingValidationEndToEndCCMIT(
+      CCMCluster ccm, Session session, @LogCapture(level = ERROR) LogInterceptor interceptor) {
     super(ccm, session);
+    this.interceptor = interceptor;
   }
 
   @BeforeAll
   void createTables() {
     createIpByCountryTable(session);
-  }
-
-  @SuppressWarnings("Duplicates")
-  @BeforeEach
-  void setUp() throws Exception {
-    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    appender = new TestAppender();
-    root.addAppender(appender);
-    oldLevel = root.getLevel();
-    root.setLevel(Level.INFO);
-    stdout = root.getAppender("STDOUT");
-    root.detachAppender(stdout);
-  }
-
-  @AfterEach
-  void tearDown() throws Exception {
-    root.detachAppender(appender);
-    root.setLevel(oldLevel);
-    root.addAppender(stdout);
   }
 
   @Test
@@ -140,10 +116,11 @@ class MappingValidationEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   private void validateErrorMessageLogged(String... msg) {
-    List<String> errorMessages = getErrorEventMessages(appender);
-    assertThat(errorMessages).isNotEmpty();
-    assertThat(errorMessages.get(0)).contains("Load workflow engine execution");
-    assertThat(errorMessages.get(0)).contains("failed");
-    assertThat(errorMessages.get(0)).contains(msg);
+    assertThat(interceptor)
+        .hasMessageContaining("Load workflow engine execution")
+        .hasMessageContaining("failed");
+    for (String s : msg) {
+      assertThat(interceptor).hasMessageContaining(s);
+    }
   }
 }

@@ -77,6 +77,13 @@
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
+        <artifactId>dsbulk-commons</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+      </dependency>
+
+      <dependency>
+        <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-executor-api</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -514,6 +521,9 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
           <version>${surefire.version}</version>
           <configuration>
             <forkCount>8</forkCount>
+            <systemPropertyVariables>
+              <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
+            </systemPropertyVariables>
           </configuration>
           <dependencies>
             <dependency>
@@ -532,6 +542,11 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
         <plugin>
           <artifactId>maven-failsafe-plugin</artifactId>
           <version>${surefire.version}</version>
+          <configuration>
+            <systemPropertyVariables>
+              <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
+            </systemPropertyVariables>
+          </configuration>
           <dependencies>
             <dependency>
               <groupId>org.junit.platform</groupId>

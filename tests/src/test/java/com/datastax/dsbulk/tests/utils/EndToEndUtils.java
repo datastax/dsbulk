@@ -6,9 +6,6 @@
  */
 package com.datastax.dsbulk.tests.utils;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -19,14 +16,11 @@ import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
-import java.net.URL;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,7 +29,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
 
 @SuppressWarnings("SameParameterValue")
@@ -163,19 +156,15 @@ public class EndToEndUtils {
     // Sum the number of lines in each file and assert that the total matches the expected value.
     long totalLines =
         Arrays.stream(outputFilePaths)
-            .mapToLong(
+            .flatMap(
                 path -> {
-                  try (Stream<String> stream = Files.lines(path)) {
-                    return stream.count();
+                  try {
+                    return Files.lines(path);
                   } catch (IOException e) {
-                    // This should never happen. Emit the stack trace, but in case
-                    // it's not visible in the test output, make the test fail
-                    // in an extremely blatant way -- make the total line count negative.
-                    e.printStackTrace();
-                    return -100000;
+                    throw new UncheckedIOException(e);
                   }
                 })
-            .sum();
+            .count();
     Assertions.assertThat(totalLines).isEqualTo(numOfRecords);
   }
 
@@ -199,48 +188,5 @@ public class EndToEndUtils {
     for (QueryLog log : ipLogs) {
       Assertions.assertThat(log.getConsistency()).isEqualTo(level);
     }
-  }
-
-  public static void setURLFactoryIfNeeded() {
-    try {
-      URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    } catch (Exception e) {
-      //URL.setURLStreamHandlerFactory throws an exception if it's been set more then once
-      //Ignore that and keep going.
-    }
-  }
-
-  @SuppressWarnings("ResultOfMethodCallIgnored")
-  public static void deleteIfExists(Path filepath) throws IOException {
-    if (Files.exists(filepath)) {
-      Files.walkFileTree(
-          filepath,
-          new SimpleFileVisitor<Path>() {
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                throws IOException {
-              Files.delete(file);
-              return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc)
-                throws IOException {
-              Files.delete(dir);
-              return FileVisitResult.CONTINUE;
-            }
-          });
-    }
-  }
-
-  public static List<String> getErrorEventMessages(TestAppender appender) {
-    List<String> errorMessages = new ArrayList<>();
-    List<ILoggingEvent> events = appender.getEvents();
-    for (ILoggingEvent event : events) {
-      if (event.getLevel().equals(Level.ERROR)) {
-        errorMessages.add(event.getMessage());
-      }
-    }
-    return errorMessages;
   }
 }

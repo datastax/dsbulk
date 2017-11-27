@@ -7,9 +7,9 @@
 package com.datastax.dsbulk.tests.driver.factory;
 
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.internal.utils.SessionUtils;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.tests.driver.annotations.SessionConfig;
-import com.datastax.dsbulk.tests.utils.SessionUtils;
-import com.datastax.dsbulk.tests.utils.StringUtils;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 
