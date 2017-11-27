@@ -8,9 +8,11 @@ package com.datastax.dsbulk.executor.api.ccm;
 
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.dsbulk.executor.reactor.ContinuousReactorBulkExecutor;
+import com.datastax.dsbulk.tests.utils.VersionRequirement;
 import org.junit.jupiter.api.Tag;
 
 @Tag("ccm")
+@VersionRequirement(min = "5.1")
 class ContinuousReactorBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 
   ContinuousReactorBulkExecutorCCMIT(ContinuousPagingSession session) {

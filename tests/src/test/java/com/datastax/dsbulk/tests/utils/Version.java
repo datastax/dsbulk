@@ -32,19 +32,7 @@ public class Version implements Comparable<Version> {
         parse(System.getProperty("com.datastax.dsbulk.tests.ccm.CASSANDRA_VERSION", "3.10"));
 
     DEFAULT_DSE_VERSION =
-        parse(System.getProperty("com.datastax.dsbulk.tests.ccm.DSE_VERSION", "5.1.2"));
-  }
-
-  final int major;
-  final int minor;
-  final int patch;
-  final int hotfix;
-
-  public Version(int major, int minor, int patch, int hotfix) {
-    this.major = major;
-    this.minor = minor;
-    this.patch = patch;
-    this.hotfix = hotfix;
+        parse(System.getProperty("com.datastax.dsbulk.tests.ccm.DSE_VERSION", "5.1.4"));
   }
 
   public static Version parse(String versionStr) {
@@ -60,6 +48,23 @@ public class Version implements Comparable<Version> {
       return new Version(major, minor, patch, hotfix);
     }
     throw new IllegalArgumentException("Invalid version number: " + versionStr);
+  }
+
+  public static boolean isWithinRange(Version min, Version max, @NotNull Version def) {
+    return min == null && max == null
+        || (min == null || min.compareTo(def) <= 0) && (max == null || max.compareTo(def) > 0);
+  }
+
+  private final int major;
+  private final int minor;
+  private final int patch;
+  private final int hotfix;
+
+  private Version(int major, int minor, int patch, int hotfix) {
+    this.major = major;
+    this.minor = minor;
+    this.patch = patch;
+    this.hotfix = hotfix;
   }
 
   @Override

@@ -6,11 +6,16 @@
  */
 package com.datastax.dsbulk.tests.ccm;
 
+import static com.datastax.dsbulk.tests.utils.Version.DEFAULT_DSE_VERSION;
+import static com.datastax.dsbulk.tests.utils.Version.DEFAULT_OSS_VERSION;
+
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
 import com.datastax.dsbulk.tests.RemoteClusterExtension;
 import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.tests.ccm.factory.CCMClusterFactory;
+import com.datastax.dsbulk.tests.utils.Version;
+import com.datastax.dsbulk.tests.utils.VersionRequirement;
 import java.lang.reflect.Parameter;
 import java.net.InetAddress;
 import java.util.List;
@@ -32,9 +37,22 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
   public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
     Class<?> testClass = context.getRequiredTestClass();
     CCMConfig config = ReflectionUtils.locateClassAnnotation(testClass, CCMConfig.class);
+    VersionRequirement requirement =
+        ReflectionUtils.locateClassAnnotation(testClass, VersionRequirement.class);
     if (config != null) {
       if (config.dse() && PlatformUtils.isWindows()) {
         return ConditionEvaluationResult.disabled("Test not compatible with windows");
+      }
+    }
+    if (requirement != null) {
+      Version min = Version.parse(requirement.min());
+      Version max = Version.parse(requirement.max());
+      Version def = config == null || config.dse() ? DEFAULT_DSE_VERSION : DEFAULT_OSS_VERSION;
+      if (!Version.isWithinRange(min, max, def)) {
+        return ConditionEvaluationResult.disabled(
+            String.format(
+                "Test requires version in range [%s,%s[ but %s is configured.",
+                requirement.min(), requirement.max(), def));
       }
     }
     return ConditionEvaluationResult.enabled("OK");
