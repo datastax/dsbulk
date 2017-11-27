@@ -7,6 +7,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
+import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 import com.datastax.driver.core.Cluster;
@@ -103,7 +104,7 @@ public class SchemaSettings {
       } else {
         try {
           Instant instant = timestampCodec.convertFrom(timestampStr);
-          this.timestampMicros = instantToTimestampSinceEpoch(instant, MICROSECONDS);
+          this.timestampMicros = instantToTimestampSinceEpoch(instant, MICROSECONDS, EPOCH);
         } catch (Exception e) {
           throw new BulkConfigurationException(
               String.format("Could not parse %s '%s'", prettyPath(QUERY_TIMESTAMP), timestampStr),

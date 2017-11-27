@@ -6,14 +6,13 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.driver.core.DataType.timestamp;
+import static com.datastax.driver.core.DataType.bigint;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TTL_VARNAME;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -33,7 +32,6 @@ import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecordMetadata;
-import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToIntegerCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToLongCodec;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
@@ -41,11 +39,12 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import java.net.URI;
-import java.time.Duration;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Set;
 import org.assertj.core.util.Sets;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,8 +63,8 @@ class DefaultRecordMapperTest {
   private static final String C3 = "My Fancy Column Name";
 
   private final URI location = URI.create("file://file1?line=1");
-  private final TypeCodec codec1 = new StringToIntegerCodec(null);
-  private final TypeCodec codec2 = new StringToLongCodec(null);
+  private final TypeCodec codec1 = new StringToIntegerCodec(null, null, null, null);
+  private final TypeCodec codec2 = new StringToLongCodec(null, null, null, null);
   private final TypeCodec codec3 = TypeCodec.varchar();
 
   private Mapping mapping;
@@ -76,6 +75,9 @@ class DefaultRecordMapperTest {
   private ArgumentCaptor<Object> valueCaptor;
   private ArgumentCaptor<TypeCodec> codecCaptor;
   private RecordMetadata recordMetadata;
+  private ThreadLocal<DecimalFormat> formatter =
+      ThreadLocal.withInitial(
+          () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US)));
 
   @BeforeEach
   void setUp() throws Exception {
@@ -174,13 +176,11 @@ class DefaultRecordMapperTest {
   void should_bind_mapped_numeric_timestamp() throws Exception {
     when(record.fields()).thenReturn(set(F2));
     when(mapping.fieldToVariable(F2)).thenReturn(TIMESTAMP_VARNAME);
-    when(record.getFieldValue(F2)).thenReturn("-123456");
-    StringToInstantCodec codec =
-        spy(new StringToInstantCodec(CQL_DATE_TIME_FORMAT, MINUTES, EPOCH));
     // timestamp is 123456 minutes before unix epoch
-    long timestampMicros =
-        MILLISECONDS.toMicros(EPOCH.minus(Duration.ofMinutes(123456)).toEpochMilli());
-    when(mapping.codec(TIMESTAMP_VARNAME, timestamp(), TypeToken.of(String.class)))
+    when(record.getFieldValue(F2)).thenReturn("-123456");
+    StringToLongCodec codec =
+        spy(new StringToLongCodec(formatter, CQL_DATE_TIME_FORMAT, MINUTES, EPOCH));
+    when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
         .thenReturn((TypeCodec) codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -192,21 +192,19 @@ class DefaultRecordMapperTest {
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).setLong(TIMESTAMP_VARNAME, timestampMicros);
-    verify(codec).convertFrom("-123456");
+    verify(boundStatement).set(TIMESTAMP_VARNAME, "-123456", codec);
   }
 
   @Test
   void should_bind_mapped_numeric_timestamp_with_custom_unit_and_epoch() throws Exception {
     when(record.fields()).thenReturn(set(F2));
     when(mapping.fieldToVariable(F2)).thenReturn(TIMESTAMP_VARNAME);
+    // timestamp is one minute before year 2000
     when(record.getFieldValue(F2)).thenReturn("-1");
     Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
-    StringToInstantCodec codec =
-        spy(new StringToInstantCodec(CQL_DATE_TIME_FORMAT, MINUTES, millennium));
-    // timestamp is one minute before year 2000
-    long timestampMicros = MILLISECONDS.toMicros(millennium.minusSeconds(60).toEpochMilli());
-    when(mapping.codec(TIMESTAMP_VARNAME, timestamp(), TypeToken.of(String.class)))
+    StringToLongCodec codec =
+        spy(new StringToLongCodec(formatter, CQL_DATE_TIME_FORMAT, MINUTES, millennium));
+    when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
         .thenReturn((TypeCodec) codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -218,8 +216,7 @@ class DefaultRecordMapperTest {
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).setLong(TIMESTAMP_VARNAME, timestampMicros);
-    verify(codec).convertFrom("-1");
+    verify(boundStatement).set(TIMESTAMP_VARNAME, "-1", codec);
   }
 
   @Test
@@ -227,11 +224,9 @@ class DefaultRecordMapperTest {
     when(record.fields()).thenReturn(set(F2));
     when(mapping.fieldToVariable(F2)).thenReturn(TIMESTAMP_VARNAME);
     when(record.getFieldValue(F2)).thenReturn("2017-01-02T00:00:02");
-    StringToInstantCodec codec =
-        spy(new StringToInstantCodec(CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH));
-    long timestampMicros =
-        MILLISECONDS.toMicros(Instant.parse("2017-01-02T00:00:02Z").toEpochMilli());
-    when(mapping.codec(TIMESTAMP_VARNAME, timestamp(), TypeToken.of(String.class)))
+    StringToLongCodec codec =
+        spy(new StringToLongCodec(formatter, CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH));
+    when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
         .thenReturn((TypeCodec) codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -243,22 +238,19 @@ class DefaultRecordMapperTest {
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).setLong(TIMESTAMP_VARNAME, timestampMicros);
-    verify(codec).convertFrom("2017-01-02T00:00:02");
+    verify(boundStatement).set(TIMESTAMP_VARNAME, "2017-01-02T00:00:02", codec);
   }
 
   @Test
-  public void should_bind_mapped_alphanumeric_timestamp_with_custom_pattern() throws Exception {
+  void should_bind_mapped_alphanumeric_timestamp_with_custom_pattern() throws Exception {
     when(record.fields()).thenReturn(set(F2));
     when(mapping.fieldToVariable(F2)).thenReturn(TIMESTAMP_VARNAME);
-    when(record.getFieldValue(F2)).thenReturn("20171123123456");
+    when(record.getFieldValue(F2)).thenReturn("20171123-123456");
     DateTimeFormatter timestampFormat =
-        DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneOffset.UTC);
-    ZonedDateTime zonedDateTime = ZonedDateTime.parse("20171123123456", timestampFormat);
-    long timestampMicros = SECONDS.toMicros(zonedDateTime.toEpochSecond());
-    StringToInstantCodec codec =
-        spy(new StringToInstantCodec(timestampFormat, MILLISECONDS, EPOCH));
-    when(mapping.codec(TIMESTAMP_VARNAME, timestamp(), TypeToken.of(String.class)))
+        DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
+    StringToLongCodec codec =
+        spy(new StringToLongCodec(formatter, timestampFormat, MILLISECONDS, EPOCH));
+    when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
         .thenReturn((TypeCodec) codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -270,35 +262,7 @@ class DefaultRecordMapperTest {
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).setLong(TIMESTAMP_VARNAME, timestampMicros);
-    verify(codec).convertFrom("20171123123456");
-  }
-
-  @Test
-  void should_bind_mapped_alphanumeric_timestamp_with_custom_pattern_ambiguous() throws Exception {
-    // ambiguous format: it is alphanumeric-ish, but contains only digits;
-    // it shouldn't be able to parse 123456 as alphanumeric, but should succeed to parse it
-    // as a numeric timestamp
-    when(record.fields()).thenReturn(set(F2));
-    when(mapping.fieldToVariable(F2)).thenReturn(TIMESTAMP_VARNAME);
-    when(record.getFieldValue(F2)).thenReturn("123456");
-    DateTimeFormatter timestampFormat =
-        DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneOffset.UTC);
-    StringToInstantCodec codec = spy(new StringToInstantCodec(timestampFormat, MINUTES, EPOCH));
-    when(mapping.codec(TIMESTAMP_VARNAME, timestamp(), TypeToken.of(String.class)))
-        .thenReturn((TypeCodec) codec);
-    RecordMapper mapper =
-        new DefaultRecordMapper(
-            insertStatement,
-            mapping,
-            recordMetadata,
-            ImmutableSet.of(),
-            true,
-            (mappedRecord, statement) -> boundStatement);
-    Statement result = mapper.map(record);
-    assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).setLong(TIMESTAMP_VARNAME, MINUTES.toMicros(123456));
-    verify(codec).convertFrom("123456");
+    verify(boundStatement).set(TIMESTAMP_VARNAME, "20171123-123456", codec);
   }
 
   @Test

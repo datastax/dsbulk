@@ -178,21 +178,29 @@ public class ExtendedCodecRegistry {
       case BOOLEAN:
         return new StringToBooleanCodec(booleanInputs, booleanOutputs);
       case TINYINT:
-        return new StringToByteCodec(numberFormat);
+        return new StringToByteCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case SMALLINT:
-        return new StringToShortCodec(numberFormat);
+        return new StringToShortCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case INT:
-        return new StringToIntegerCodec(numberFormat);
+        return new StringToIntegerCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case BIGINT:
-        return new StringToLongCodec(numberFormat);
+        return new StringToLongCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case FLOAT:
-        return new StringToFloatCodec(numberFormat);
+        return new StringToFloatCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case DOUBLE:
-        return new StringToDoubleCodec(numberFormat);
+        return new StringToDoubleCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case VARINT:
-        return new StringToBigIntegerCodec(numberFormat);
+        return new StringToBigIntegerCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case DECIMAL:
-        return new StringToBigDecimalCodec(numberFormat);
+        return new StringToBigDecimalCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case DATE:
         return new StringToLocalDateCodec(localDateFormat);
       case TIME:
@@ -263,21 +271,29 @@ public class ExtendedCodecRegistry {
       case BOOLEAN:
         return new JsonNodeToBooleanCodec(booleanInputs);
       case TINYINT:
-        return new JsonNodeToByteCodec(numberFormat);
+        return new JsonNodeToByteCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case SMALLINT:
-        return new JsonNodeToShortCodec(numberFormat);
+        return new JsonNodeToShortCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case INT:
-        return new JsonNodeToIntegerCodec(numberFormat);
+        return new JsonNodeToIntegerCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case BIGINT:
-        return new JsonNodeToLongCodec(numberFormat);
+        return new JsonNodeToLongCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case FLOAT:
-        return new JsonNodeToFloatCodec(numberFormat);
+        return new JsonNodeToFloatCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case DOUBLE:
-        return new JsonNodeToDoubleCodec(numberFormat);
+        return new JsonNodeToDoubleCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case VARINT:
-        return new JsonNodeToBigIntegerCodec(numberFormat);
+        return new JsonNodeToBigIntegerCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case DECIMAL:
-        return new JsonNodeToBigDecimalCodec(numberFormat);
+        return new JsonNodeToBigDecimalCodec(
+            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case DATE:
         return new JsonNodeToLocalDateCodec(localDateFormat);
       case TIME:

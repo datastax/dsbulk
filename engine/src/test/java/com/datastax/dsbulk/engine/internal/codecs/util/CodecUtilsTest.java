@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 class CodecUtilsTest {
 
   private final Instant i = parse("2017-11-23T12:24:59Z");
+  private final Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
 
   @SuppressWarnings("ConstantConditions")
   @Test
@@ -106,12 +107,22 @@ class CodecUtilsTest {
 
   @Test
   void should_convert_temporal_to_timestamp_since_epoch() throws Exception {
-    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, MILLISECONDS))
+    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, MILLISECONDS, EPOCH))
         .isEqualTo(i.toEpochMilli());
-    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, NANOSECONDS))
+    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, NANOSECONDS, EPOCH))
         .isEqualTo(i.toEpochMilli() * 1_000_000);
-    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, SECONDS)).isEqualTo(i.getEpochSecond());
-    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, MINUTES))
+    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, SECONDS, EPOCH))
+        .isEqualTo(i.getEpochSecond());
+    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, MINUTES, EPOCH))
         .isEqualTo(i.getEpochSecond() / 60);
+
+    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, MILLISECONDS, millennium))
+        .isEqualTo(i.toEpochMilli() - millennium.toEpochMilli());
+    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, NANOSECONDS, millennium))
+        .isEqualTo(i.toEpochMilli() * 1_000_000 - millennium.toEpochMilli() * 1_000_000);
+    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, SECONDS, millennium))
+        .isEqualTo(i.getEpochSecond() - millennium.getEpochSecond());
+    assertThat(CodecUtils.instantToTimestampSinceEpoch(i, MINUTES, millennium))
+        .isEqualTo(i.getEpochSecond() / 60 - millennium.getEpochSecond() / 60);
   }
 }

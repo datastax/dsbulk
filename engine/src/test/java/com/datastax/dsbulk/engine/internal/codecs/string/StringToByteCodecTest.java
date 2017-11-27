@@ -7,6 +7,9 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.time.Instant.EPOCH;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -18,7 +21,10 @@ class StringToByteCodecTest {
   private final StringToByteCodec codec =
       new StringToByteCodec(
           ThreadLocal.withInitial(
-              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          CQL_DATE_TIME_FORMAT,
+          MILLISECONDS,
+          EPOCH);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -29,6 +35,14 @@ class StringToByteCodecTest {
         .to((byte) 127)
         .convertsFrom("-128")
         .to((byte) -128)
+        .convertsFrom("0")
+        .to((byte) 0)
+        .convertsFrom("127")
+        .to((byte) 127)
+        .convertsFrom("-128")
+        .to((byte) -128)
+        .convertsFrom("1970-01-01T00:00:00Z")
+        .to((byte) 0)
         .convertsFrom(null)
         .to(null)
         .convertsFrom("")
@@ -54,6 +68,8 @@ class StringToByteCodecTest {
         .cannotConvertFrom("not a valid byte")
         .cannotConvertFrom("1.2")
         .cannotConvertFrom("128")
-        .cannotConvertFrom("-129");
+        .cannotConvertFrom("-129")
+        .cannotConvertFrom("2000-01-01T00:00:00Z") // overflow
+    ;
   }
 }

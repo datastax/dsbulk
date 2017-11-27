@@ -7,21 +7,35 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.TypeCodec;
-import java.math.BigDecimal;
+import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.text.DecimalFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.TimeUnit;
 
 public class StringToByteCodec extends StringToNumberCodec<Byte> {
 
-  public StringToByteCodec(ThreadLocal<DecimalFormat> formatter) {
-    super(TypeCodec.tinyInt(), formatter);
+  public StringToByteCodec(
+      ThreadLocal<DecimalFormat> formatter,
+      DateTimeFormatter temporalParser,
+      TimeUnit numericTimestampUnit,
+      Instant numericTimestampEpoch) {
+    super(
+        TypeCodec.tinyInt(),
+        formatter,
+        temporalParser,
+        numericTimestampUnit,
+        numericTimestampEpoch);
   }
 
   @Override
   public Byte convertFrom(String s) {
-    BigDecimal number = parseAsBigDecimal(s);
+    Number number =
+        CodecUtils.parseNumber(
+            s, getNumberFormat(), temporalParser, numericTimestampUnit, numericTimestampEpoch);
     if (number == null) {
       return null;
     }
-    return number.byteValueExact();
+    return CodecUtils.toByteValueExact(number);
   }
 }

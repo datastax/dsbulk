@@ -6,15 +6,22 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import java.math.BigDecimal;
 import java.text.DecimalFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.TimeUnit;
 
 public class JsonNodeToByteCodec extends JsonNodeToNumberCodec<Byte> {
 
-  public JsonNodeToByteCodec(ThreadLocal<DecimalFormat> formatter) {
-    super(tinyInt(), formatter);
+  public JsonNodeToByteCodec(
+      ThreadLocal<DecimalFormat> formatter,
+      DateTimeFormatter temporalParser,
+      TimeUnit numericTimestampUnit,
+      Instant numericTimestampEpoch) {
+    super(tinyInt(), formatter, temporalParser, numericTimestampUnit, numericTimestampEpoch);
   }
 
   @Override
@@ -30,11 +37,17 @@ public class JsonNodeToByteCodec extends JsonNodeToNumberCodec<Byte> {
       }
       return b;
     }
-    BigDecimal number = parseAsBigDecimal(node.asText());
+    Number number =
+        CodecUtils.parseNumber(
+            node.asText(),
+            getNumberFormat(),
+            temporalParser,
+            numericTimestampUnit,
+            numericTimestampEpoch);
     if (number == null) {
       return null;
     }
-    return number.byteValueExact();
+    return CodecUtils.toByteValueExact(number);
   }
 
   @Override

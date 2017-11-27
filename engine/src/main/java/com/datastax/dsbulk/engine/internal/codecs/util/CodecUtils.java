@@ -9,6 +9,10 @@ package com.datastax.dsbulk.engine.internal.codecs.util;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.driver.core.exceptions.InvalidTypeException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.ParsePosition;
 import java.time.Duration;
@@ -70,6 +74,59 @@ public class CodecUtils {
   }
 
   /**
+   * Parses the given string as a number.
+   *
+   * <p>This method tries first to parse the string as a numeric value, using the given decimal
+   * formatter; then, if that fails, it tries to parse it as an alphanumeric temporal, using the
+   * given parser, and converts it to a numeric timestamp using the given time unit and the given
+   * epoch.
+   *
+   * @param s the string to parse, may be {@code null}.
+   * @param formatter the {@link DecimalFormat} to use to parse numbers; cannot be {@code null}.
+   * @param parser the parser to use if the string is an alphanumeric temporal; cannot be {@code
+   *     null}.
+   * @param numericTimestampUnit the time unit to use to convert the alphanumeric temporal to a
+   *     numeric timestamp; cannot be {@code null}.
+   * @param numericTimestampEpoch the epoch to use to convert the alphanumeric temporal to a numeric
+   *     timestamp; cannot be {@code null}.
+   * @return a {@link TemporalAccessor} or {@code null} if the string was {@code null} or empty.
+   * @throws IllegalArgumentException if the string cannot be parsed.
+   */
+  public static Number parseNumber(
+      String s,
+      @NotNull DecimalFormat formatter,
+      @NotNull DateTimeFormatter parser,
+      @NotNull TimeUnit numericTimestampUnit,
+      @NotNull Instant numericTimestampEpoch) {
+    Objects.requireNonNull(formatter);
+    Objects.requireNonNull(parser);
+    Objects.requireNonNull(numericTimestampUnit);
+    Objects.requireNonNull(numericTimestampEpoch);
+    if (s == null || s.isEmpty()) {
+      return null;
+    }
+    try {
+      return parseBigDecimal(s, formatter);
+    } catch (Exception e1) {
+      try {
+        TemporalAccessor temporal = parseTemporal(s, parser);
+        assert temporal != null;
+        Instant instant = Instant.from(temporal);
+        return instantToTimestampSinceEpoch(instant, numericTimestampUnit, numericTimestampEpoch);
+      } catch (Exception e2) {
+        e2.addSuppressed(e1);
+        IllegalArgumentException e3 =
+            new IllegalArgumentException(
+                String.format(
+                    "Could not parse '%s'; accepted formats are: a valid number (e.g. '%s') or a valid date-time pattern (e.g. '%s')",
+                    s, 1234.56, Instant.now()));
+        e3.addSuppressed(e2);
+        throw e3;
+      }
+    }
+  }
+
+  /**
    * Parses the given string as an alphanumeric temporal, using the given parser.
    *
    * @param s the string to parse, may be {@code null}.
@@ -121,14 +178,118 @@ public class CodecUtils {
    *
    * @param instant the instant to convert; cannot be {@code null}.
    * @param timeUnit the time unit to use; cannot be {@code null}.
-   * @return a long representing the number of time units since the Epoch.
+   * @param epoch the epoch to use; cannot be {@code null}.
+   * @return a long representing the number of time units since the given epoch.
    */
-  @NotNull
   public static long instantToTimestampSinceEpoch(
-      @NotNull Instant instant, @NotNull TimeUnit timeUnit) {
+      @NotNull Instant instant, @NotNull TimeUnit timeUnit, @NotNull Instant epoch) {
     Objects.requireNonNull(instant);
     Objects.requireNonNull(timeUnit);
-    return timeUnit.convert(instant.getEpochSecond(), SECONDS)
-        + timeUnit.convert(instant.getNano(), NANOSECONDS);
+    Objects.requireNonNull(epoch);
+    long t1 =
+        timeUnit.convert(instant.getEpochSecond(), SECONDS)
+            + timeUnit.convert(instant.getNano(), NANOSECONDS);
+    long t0 =
+        timeUnit.convert(epoch.getEpochSecond(), SECONDS)
+            + timeUnit.convert(epoch.getNano(), NANOSECONDS);
+    return t1 - t0;
+  }
+
+  /**
+   * Parses the given string into a {@link BigDecimal} using the given {@link DecimalFormat}.
+   *
+   * @param s the string to parse, may be {@code null}.
+   * @param formatter the formatter to use; cannot be {@code null}.
+   * @return a {@link BigDecimal}, or {@code null} if the input was {@code null} or empty.
+   */
+  public static BigDecimal parseBigDecimal(String s, @NotNull DecimalFormat formatter) {
+    if (s == null || s.isEmpty()) {
+      return null;
+    }
+    ParsePosition pos = new ParsePosition(0);
+    BigDecimal number = (BigDecimal) formatter.parse(s.trim(), pos);
+    if (number == null) {
+      throw new InvalidTypeException(
+          "Invalid number format: " + s, new ParseException(s, pos.getErrorIndex()));
+    }
+    if (pos.getIndex() != s.length()) {
+      throw new InvalidTypeException(
+          "Invalid number format: " + s, new ParseException(s, pos.getIndex()));
+    }
+    return number;
+  }
+
+  public static byte toByteValueExact(Number value) {
+    if (value instanceof Byte) {
+      return (byte) value;
+    } else if (value instanceof BigDecimal) {
+      return ((BigDecimal) value).byteValueExact();
+    } else {
+      return new BigDecimal(value.toString()).byteValueExact();
+    }
+  }
+
+  public static short toShortValueExact(Number value) {
+    if (value instanceof Short) {
+      return (short) value;
+    } else if (value instanceof BigDecimal) {
+      return ((BigDecimal) value).shortValueExact();
+    } else {
+      return new BigDecimal(value.toString()).shortValueExact();
+    }
+  }
+
+  public static int toIntValueExact(Number value) {
+    if (value instanceof Integer) {
+      return (int) value;
+    } else if (value instanceof BigDecimal) {
+      return ((BigDecimal) value).intValueExact();
+    } else {
+      return new BigDecimal(value.toString()).intValueExact();
+    }
+  }
+
+  public static long toLongValueExact(Number value) {
+    if (value instanceof Long) {
+      return (long) value;
+    } else if (value instanceof BigDecimal) {
+      return ((BigDecimal) value).longValueExact();
+    } else {
+      return new BigDecimal(value.toString()).longValueExact();
+    }
+  }
+
+  public static float toFloatValue(Number value) {
+    if (value instanceof Float) {
+      return (float) value;
+    } else {
+      return value.floatValue();
+    }
+  }
+
+  public static double toDoubleValue(Number value) {
+    if (value instanceof Double) {
+      return (double) value;
+    } else {
+      return value.doubleValue();
+    }
+  }
+
+  public static BigInteger toBigIntegerExact(Number value) {
+    if (value instanceof BigInteger) {
+      return (BigInteger) value;
+    } else if (value instanceof BigDecimal) {
+      return ((BigDecimal) value).toBigIntegerExact();
+    } else {
+      return new BigDecimal(value.toString()).toBigIntegerExact();
+    }
+  }
+
+  public static BigDecimal toBigDecimal(Number value) {
+    if (value instanceof BigDecimal) {
+      return (BigDecimal) value;
+    } else {
+      return new BigDecimal(value.toString());
+    }
   }
 }

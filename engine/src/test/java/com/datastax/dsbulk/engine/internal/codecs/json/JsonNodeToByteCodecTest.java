@@ -7,6 +7,9 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.time.Instant.EPOCH;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.text.DecimalFormat;
@@ -19,7 +22,10 @@ class JsonNodeToByteCodecTest {
   private final JsonNodeToByteCodec codec =
       new JsonNodeToByteCodec(
           ThreadLocal.withInitial(
-              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          CQL_DATE_TIME_FORMAT,
+          MILLISECONDS,
+          EPOCH);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -36,6 +42,8 @@ class JsonNodeToByteCodecTest {
         .to((byte) 127)
         .convertsFrom(JsonNodeFactory.instance.textNode("-128"))
         .to((byte) -128)
+        .convertsFrom(JsonNodeFactory.instance.textNode("1970-01-01T00:00:00Z"))
+        .to((byte) 0)
         .convertsFrom(null)
         .to(null)
         .convertsFrom(JsonNodeFactory.instance.textNode(""))
@@ -61,6 +69,8 @@ class JsonNodeToByteCodecTest {
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid byte"))
         .cannotConvertFrom(JsonNodeFactory.instance.numberNode(1.2))
         .cannotConvertFrom(JsonNodeFactory.instance.numberNode(128))
-        .cannotConvertFrom(JsonNodeFactory.instance.numberNode(-129));
+        .cannotConvertFrom(JsonNodeFactory.instance.numberNode(-129))
+        .cannotConvertFrom(JsonNodeFactory.instance.textNode("2000-01-01T00:00:00Z")) // overflow
+    ;
   }
 }

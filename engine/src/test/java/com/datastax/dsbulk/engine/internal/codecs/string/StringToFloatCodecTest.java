@@ -7,6 +7,9 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.time.Instant.EPOCH;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -18,7 +21,10 @@ class StringToFloatCodecTest {
   private final StringToFloatCodec codec =
       new StringToFloatCodec(
           ThreadLocal.withInitial(
-              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          CQL_DATE_TIME_FORMAT,
+          MILLISECONDS,
+          EPOCH);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -37,6 +43,10 @@ class StringToFloatCodecTest {
         .to(Float.MAX_VALUE)
         .convertsFrom("0.0000000000000000000000000000000000000000000014")
         .to(Float.MIN_VALUE)
+        .convertsFrom("1970-01-01T00:00:00Z")
+        .to(0f)
+        .convertsFrom("2000-01-01T00:00:00Z")
+        .to(946684800000f)
         .convertsFrom(null)
         .to(null)
         .convertsFrom("")
