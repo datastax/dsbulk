@@ -44,7 +44,7 @@ public class SettingsManager {
     executorSettings = new ExecutorSettings(config.getConfig("executor"));
     codecSettings = new CodecSettings(config.getConfig("codec"));
     schemaSettings =
-        new SchemaSettings(config.getConfig("schema"), codecSettings.getTimestampFormat());
+        new SchemaSettings(config.getConfig("schema"), codecSettings.getTimestampCodec());
     monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), executionId);
     engineSettings = new EngineSettings(config.getConfig("engine"));
   }

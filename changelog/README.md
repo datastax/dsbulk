@@ -22,6 +22,7 @@
 - [improvement] DAT-168: Field mapping should support string timestamps.
 - [bug] DAT-170: Internal scheduler is not closed when LogManager is closed.
 - [bug] DAT-165: Messages should not be logged to standard output when it is being used for unloading.
+- [new feature] DAT-172: Support numeric-to-temporal conversions.
 
 
 ### 1.0.0-beta1

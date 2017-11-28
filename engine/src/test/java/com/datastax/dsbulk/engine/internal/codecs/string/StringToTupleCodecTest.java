@@ -12,6 +12,8 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.time.Instant.EPOCH;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.TupleType;
@@ -36,7 +38,8 @@ class StringToTupleCodecTest {
   private final CodecRegistry codecRegistry = new CodecRegistry().register(InstantCodec.instance);
   private final TupleType tupleType = newTupleType(V4, codecRegistry, timestamp(), varchar());
 
-  private final ConvertingCodec eltCodec1 = new JsonNodeToInstantCodec(CQL_DATE_TIME_FORMAT);
+  private final ConvertingCodec eltCodec1 =
+      new JsonNodeToInstantCodec(CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH);
   private final ConvertingCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
 
   @SuppressWarnings("unchecked")

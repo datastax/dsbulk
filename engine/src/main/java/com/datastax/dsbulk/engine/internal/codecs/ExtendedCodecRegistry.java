@@ -74,6 +74,7 @@ import java.time.temporal.Temporal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -95,6 +96,8 @@ public class ExtendedCodecRegistry {
   private final DateTimeFormatter localDateFormat;
   private final DateTimeFormatter localTimeFormat;
   private final DateTimeFormatter timestampFormat;
+  private final TimeUnit numericTimestampUnit;
+  private final Instant numericTimestampEpoch;
   private final ObjectMapper objectMapper;
 
   public ExtendedCodecRegistry(
@@ -105,6 +108,8 @@ public class ExtendedCodecRegistry {
       DateTimeFormatter localDateFormat,
       DateTimeFormatter localTimeFormat,
       DateTimeFormatter timestampFormat,
+      TimeUnit numericTimestampUnit,
+      Instant numericTimestampEpoch,
       ObjectMapper objectMapper) {
     this.codecRegistry = codecRegistry;
     this.booleanInputs = booleanInputs;
@@ -113,6 +118,8 @@ public class ExtendedCodecRegistry {
     this.localDateFormat = localDateFormat;
     this.localTimeFormat = localTimeFormat;
     this.timestampFormat = timestampFormat;
+    this.numericTimestampUnit = numericTimestampUnit;
+    this.numericTimestampEpoch = numericTimestampEpoch;
     this.objectMapper = objectMapper;
   }
 
@@ -191,7 +198,8 @@ public class ExtendedCodecRegistry {
       case TIME:
         return new StringToLocalTimeCodec(localTimeFormat);
       case TIMESTAMP:
-        return new StringToInstantCodec(timestampFormat);
+        return new StringToInstantCodec(
+            timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case INET:
         return StringToInetAddressCodec.INSTANCE;
       case UUID:
@@ -275,7 +283,8 @@ public class ExtendedCodecRegistry {
       case TIME:
         return new JsonNodeToLocalTimeCodec(localTimeFormat);
       case TIMESTAMP:
-        return new JsonNodeToInstantCodec(timestampFormat);
+        return new JsonNodeToInstantCodec(
+            timestampFormat, numericTimestampUnit, numericTimestampEpoch);
       case INET:
         return JsonNodeToInetAddressCodec.INSTANCE;
       case UUID:

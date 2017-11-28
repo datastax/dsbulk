@@ -11,6 +11,8 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
@@ -19,15 +21,18 @@ import com.typesafe.config.ConfigException;
 import java.lang.reflect.Field;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.concurrent.TimeUnit;
 
 /** */
 public class CodecSettings {
@@ -65,6 +70,8 @@ public class CodecSettings {
   private static final String TIME_ZONE = "timeZone";
   private static final String DATE = "date";
   private static final String TIMESTAMP = "timestamp";
+  private static final String NUMERIC_TIMESTAMP_UNIT = "unit";
+  private static final String NUMERIC_TIMESTAMP_EPOCH = "epoch";
 
   private final Map<String, Boolean> booleanInputs;
   private final Map<Boolean, String> booleanOutputs;
@@ -73,6 +80,8 @@ public class CodecSettings {
   private final DateTimeFormatter localTimeFormat;
   private final DateTimeFormatter timestampFormat;
   private final ObjectMapper objectMapper;
+  private final TimeUnit numericTimestampUnit;
+  private final Instant numericTimestampEpoch;
 
   CodecSettings(LoaderConfig config) {
     try {
@@ -90,14 +99,19 @@ public class CodecSettings {
       localDateFormat = getDateFormat(date, timeZone, locale);
       localTimeFormat = getDateFormat(time, timeZone, locale);
       timestampFormat = getDateFormat(timestamp, timeZone, locale);
+      numericTimestampUnit = config.getEnum(TimeUnit.class, NUMERIC_TIMESTAMP_UNIT);
+      TemporalAccessor temporal =
+          CodecUtils.parseTemporal(config.getString(NUMERIC_TIMESTAMP_EPOCH), timestampFormat);
+      assert temporal != null;
+      this.numericTimestampEpoch = Instant.from(temporal);
       objectMapper = getObjectMapper();
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "codec");
     }
   }
 
-  public DateTimeFormatter getTimestampFormat() {
-    return timestampFormat;
+  public StringToInstantCodec getTimestampCodec() {
+    return new StringToInstantCodec(timestampFormat, numericTimestampUnit, numericTimestampEpoch);
   }
 
   public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {
@@ -110,6 +124,8 @@ public class CodecSettings {
         localDateFormat,
         localTimeFormat,
         timestampFormat,
+        numericTimestampUnit,
+        numericTimestampEpoch,
         objectMapper);
   }
 
