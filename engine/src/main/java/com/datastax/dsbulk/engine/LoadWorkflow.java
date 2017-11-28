@@ -75,9 +75,9 @@ public class LoadWorkflow implements Workflow {
   @Override
   public void init() throws Exception {
     SettingsManager settingsManager = new SettingsManager(config, executionId, WorkflowType.LOAD);
-    settingsManager.loadConfiguration();
     settingsManager.logEffectiveSettings();
     LogSettings logSettings = settingsManager.getLogSettings();
+    logSettings.init(false);
     DriverSettings driverSettings = settingsManager.getDriverSettings();
     ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
     SchemaSettings schemaSettings = settingsManager.getSchemaSettings();

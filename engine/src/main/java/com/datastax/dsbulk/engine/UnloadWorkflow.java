@@ -67,8 +67,6 @@ public class UnloadWorkflow implements Workflow {
   @Override
   public void init() throws Exception {
     SettingsManager settingsManager = new SettingsManager(config, executionId, WorkflowType.UNLOAD);
-    settingsManager.loadConfiguration();
-    settingsManager.logEffectiveSettings();
     LogSettings logSettings = settingsManager.getLogSettings();
     DriverSettings driverSettings = settingsManager.getDriverSettings();
     ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
@@ -85,6 +83,8 @@ public class UnloadWorkflow implements Workflow {
     scheduler = Schedulers.newParallel("workflow");
     connector = connectorSettings.getConnector();
     connector.init();
+    logSettings.init(connector.isWriteToStandardOutput());
+    settingsManager.logEffectiveSettings();
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);

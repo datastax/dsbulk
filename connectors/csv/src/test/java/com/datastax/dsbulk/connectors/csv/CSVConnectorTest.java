@@ -118,6 +118,7 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
+      assertThat(connector.isWriteToStandardOutput()).isFalse();
       List<Record> actual = Flux.from(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
@@ -145,6 +146,7 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.isWriteToStandardOutput()).isTrue();
       Flux<Record> records =
           Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
               .publish()
@@ -264,6 +266,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
+    assertThat(connector.isWriteToStandardOutput()).isFalse();
     Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
     records.subscribe(connector.write());
     records.blockLast();
@@ -294,6 +297,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
+    assertThat(connector.isWriteToStandardOutput()).isFalse();
     Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
     records.subscribe(connector.write());
     records.blockLast();
@@ -323,6 +327,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
+    assertThat(connector.isWriteToStandardOutput()).isFalse();
     Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
     records.subscribe(connector.write());
     records.blockLast();

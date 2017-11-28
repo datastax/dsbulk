@@ -14,6 +14,7 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
+import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -187,6 +188,11 @@ public class CSVConnector implements Connector {
   @Override
   public int estimatedResourceCount() {
     return resourceCount;
+  }
+
+  @Override
+  public boolean isWriteToStandardOutput() {
+    return url.getProtocol().equalsIgnoreCase(LoaderURLStreamHandlerFactory.STDOUT);
   }
 
   @Override
