@@ -2,6 +2,9 @@
 
 ### 1.0.0 (in progress)
 
+
+### 1.0.0-beta2
+
 - [improvement] DAT-81: Surface setup errors better.
 - [improvement] DAT-145: Use HdrHistogram as reservoir for latency measurement.
 - [improvement] DAT-104: Add dry-run feature to try out load without writing to DSE.

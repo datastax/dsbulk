@@ -79,9 +79,15 @@ See examples for details.
 
   `dsbulk load -url https://svr/data/export.csv -k ks1 -t table1 -h '10.200.1.3, 10.200.1.4' -port 9876`
 
-* Load all csv files from a directory. The files do not have a header row. Map field indices of the input to table columns:
+* Load all csv files from a directory. The files do not have header rows. Map field indices
+  of the input to table columns:
 
-  `dsbulk load -url ~/export-dir -k ks1 -t table1 -m '0=col1,1=col3'`
+  `dsbulk load -url ~/export-dir -k ks1 -t table1 -m '0=col1,1=col3' -header false`
+
+* Load a file containing three fields per row. The file has no header row. Map all fields to
+  table columns in field order. Note that field indices need not be provided.
+
+  `dsbulk load -url ~/export-dir -k ks1 -t table1 -m 'col1, col2, col3' -header false`
 
 * With default port for cluster hosts, keyspace, table, and mapping set in
   `conf/application.conf`:
