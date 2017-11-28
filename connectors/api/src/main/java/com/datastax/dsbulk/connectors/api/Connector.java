@@ -17,6 +17,9 @@ public interface Connector extends AutoCloseable {
   /**
    * Reads all records from the datasource in one single flow.
    *
+   * <p>This method is called after the connector is properly {@link #configure(LoaderConfig,
+   * boolean) configured} and {@link #init() initialized}.
+   *
    * @return a {@link Publisher} of records read from the datasource.
    */
   Publisher<Record> read();
@@ -27,12 +30,18 @@ public interface Connector extends AutoCloseable {
    * <p>This method might yield better performance when the number of resources to read is high
    * (that is, higher than the number of available CPU cores).
    *
+   * <p>This method is called after the connector is properly {@link #configure(LoaderConfig,
+   * boolean) configured} and {@link #init() initialized}.
+   *
    * @return a {@link Publisher} of records read from the datasource, grouped by resources.
    */
   Publisher<Publisher<Record>> readByResource();
 
   /**
    * Writes records to the datasource.
+   *
+   * <p>This method is called after the connector is properly {@link #configure(LoaderConfig,
+   * boolean) configured} and {@link #init() initialized}.
    *
    * @return A {@link Subscriber} of records to write to the datasource.
    */
@@ -49,6 +58,9 @@ public interface Connector extends AutoCloseable {
 
   /**
    * Initializes the connector.
+   *
+   * <p>This method is called after the connector is properly {@link #configure(LoaderConfig,
+   * boolean) configured}.
    *
    * @throws Exception if the connector fails to initialize properly.
    */
@@ -71,6 +83,9 @@ public interface Connector extends AutoCloseable {
    * <p>If this connector cannot gather metadata, or if the metadata is inaccurate, then it should
    * signal this situation by returning {@link RecordMetadata#DEFAULT}.
    *
+   * <p>This method is called after the connector is properly {@link #configure(LoaderConfig,
+   * boolean) configured} and {@link #init() initialized}.
+   *
    * @return the metadata about the records that this connector can read or write.
    */
   default RecordMetadata getRecordMetadata() {
@@ -83,9 +98,27 @@ public interface Connector extends AutoCloseable {
    * <p>This method should return {@code -1} if the number of resources to read is unknown, or if
    * the connector cannot read, or if the connector has not been configured to read but to write.
    *
+   * <p>This method is called after the connector is properly {@link #configure(LoaderConfig,
+   * boolean) configured} and {@link #init() initialized}.
+   *
    * @return an estimation of the total number of resources to read.
    */
   default int estimatedResourceCount() {
     return -1;
+  }
+
+  /**
+   * Returns whether this connector is configured to use {@link System#out Standard Output} for
+   * writes or not.
+   *
+   * <p>This method is ignored when the connector is configured for reads.
+   *
+   * <p>This method is called after the connector is properly {@link #configure(LoaderConfig,
+   * boolean) configured} and {@link #init() initialized}.
+   *
+   * @return {@code true} if the standard output is configured for writes, {@code false} otherwise.
+   */
+  default boolean isWriteToStandardOutput() {
+    return false;
   }
 }

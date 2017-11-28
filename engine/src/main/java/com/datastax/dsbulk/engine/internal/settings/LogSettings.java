@@ -8,10 +8,10 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.engine.internal.settings.StringUtils.DELIMITER;
 
-import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.FileAppender;
 import com.datastax.driver.core.Cluster;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -20,6 +20,7 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.google.common.annotations.VisibleForTesting;
 import com.typesafe.config.ConfigException;
 import java.nio.file.Path;
 import org.slf4j.Logger;
@@ -30,10 +31,10 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 public class LogSettings {
 
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
-  private static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
+  @VisibleForTesting static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
 
-  //Path Constants
+  // Path Constants
   private static final String STMT = "stmt";
   private static final String MAX_QUERY_STRING_LENGTH = STMT + DELIMITER + "maxQueryStringLength";
   private static final String MAX_BOUND_VALUE_LENGTH = STMT + DELIMITER + "maxBoundValueLength";
@@ -51,12 +52,9 @@ public class LogSettings {
   private final int maxErrors;
 
   LogSettings(LoaderConfig config, String executionId) {
-    executionDirectory = config.getPath("directory").resolve(executionId);
-    LOGGER.info("Operation output directory: {}", executionDirectory);
-    System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
-    maybeStartExecutionLogFileAppender();
-    installJavaLoggingToSLF4JBridge();
     try {
+      executionDirectory = config.getPath("directory").resolve(executionId);
+      System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
       maxQueryStringLength = config.getInt(MAX_QUERY_STRING_LENGTH);
       maxBoundValueLength = config.getInt(MAX_BOUND_VALUE_LENGTH);
       maxBoundValues = config.getInt(MAX_BOUND_VALUES);
@@ -66,6 +64,18 @@ public class LogSettings {
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "log");
     }
+  }
+
+  public Path getExecutionDirectory() {
+    return executionDirectory;
+  }
+
+  public void init(boolean writeToStandardOutput) {
+    if (writeToStandardOutput) {
+      redirectStandardOutputToStandardError();
+    }
+    maybeStartExecutionLogFileAppender();
+    installJavaLoggingToSLF4JBridge();
   }
 
   public LogManager newLogManager(WorkflowType workflowType, Cluster cluster) {
@@ -79,8 +89,23 @@ public class LogSettings {
     return new LogManager(workflowType, cluster, executionDirectory, maxErrors, formatter, level);
   }
 
+  private void redirectStandardOutputToStandardError() {
+    ch.qos.logback.classic.Logger root =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    LoggerContext lc = root.getLoggerContext();
+    String production = lc.getProperty(PRODUCTION_KEY);
+    if (production != null && production.equalsIgnoreCase("true")) {
+      root.detachAppender("STDOUT");
+      Appender<ILoggingEvent> stderr = root.getAppender("STDERR");
+      stderr.clearAllFilters();
+    }
+    LOGGER.info("Standard output is reserved, log messages are redirected to standard error.");
+  }
+
   private void maybeStartExecutionLogFileAppender() {
-    LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
+    ch.qos.logback.classic.Logger root =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    LoggerContext lc = root.getLoggerContext();
     String production = lc.getProperty(PRODUCTION_KEY);
     if (production != null && production.equalsIgnoreCase("true")) {
       PatternLayoutEncoder ple = new PatternLayoutEncoder();
@@ -93,10 +118,7 @@ public class LogSettings {
       fileAppender.setContext(lc);
       fileAppender.setAppend(false);
       fileAppender.start();
-      ch.qos.logback.classic.Logger logger =
-          (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-      logger.addAppender(fileAppender);
-      logger.setLevel(Level.INFO);
+      root.addAppender(fileAppender);
     }
   }
 

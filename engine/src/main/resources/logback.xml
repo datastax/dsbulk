@@ -8,6 +8,12 @@
 -->
 <configuration>
 
+  <!--
+  When editing this file, check that com.datastax.dsbulk.engine.internal.settings.LogSettings
+  is still working as expected, since it modifies the Logback configuration
+  programmatically.
+  -->
+
   <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
   
   <property scope="context" name="com.datastax.dsbulk.PRODUCTION" value="true"/>
@@ -17,6 +23,7 @@
     <filter class="com.datastax.dsbulk.engine.internal.log.StandardOutFilter"/>
     <encoder>
       <pattern>%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg%n%nopex</pattern>
+      <charset>UTF-8</charset>
     </encoder>
   </appender>
 
@@ -25,6 +32,7 @@
     <filter class="com.datastax.dsbulk.engine.internal.log.StandardErrorFilter"/>
     <encoder>
       <pattern>%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg%n%nopex</pattern>
+      <charset>UTF-8</charset>
     </encoder>
   </appender>
 

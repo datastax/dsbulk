@@ -2,6 +2,9 @@
 
 ### 1.0.0 (in progress)
 
+
+### 1.0.0-beta2
+
 - [improvement] DAT-81: Surface setup errors better.
 - [improvement] DAT-145: Use HdrHistogram as reservoir for latency measurement.
 - [improvement] DAT-104: Add dry-run feature to try out load without writing to DSE.
@@ -18,6 +21,7 @@
 - [improvement] DAT-157: Optimize non-thread-per-core LoadWorkflow by trying to emit records to mapper threads together.
 - [improvement] DAT-168: Field mapping should support string timestamps.
 - [bug] DAT-170: Internal scheduler is not closed when LogManager is closed.
+- [bug] DAT-165: Messages should not be logged to standard output when it is being used for unloading.
 - [new feature] DAT-172: Support numeric-to-temporal conversions.
 
 

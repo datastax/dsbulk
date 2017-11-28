@@ -20,11 +20,16 @@ import java.net.URLStreamHandlerFactory;
  */
 public class LoaderURLStreamHandlerFactory implements URLStreamHandlerFactory {
 
-  /** The scheme for standard input URLs. The only supported URL with such scheme is "stdin:/". */
-  private static final String STDIN = "stdin";
+  /**
+   * The scheme for standard input URLs. The only supported URL with such scheme is {@code stdin:/}.
+   */
+  public static final String STDIN = "stdin";
 
-  /** The scheme for standard output URLs. The only supported URL with such scheme is "stdout:/". */
-  private static final String STDOUT = "stdout";
+  /**
+   * The scheme for standard output URLs. The only supported URL with such scheme is {@code
+   * stdout:/}.
+   */
+  public static final String STDOUT = "stdout";
 
   @Override
   public URLStreamHandler createURLStreamHandler(String protocol) {
