@@ -7,6 +7,9 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.time.Instant.EPOCH;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
@@ -32,7 +35,10 @@ class StringToMapCodecTest {
   private final StringToDoubleCodec keyCodec =
       new StringToDoubleCodec(
           ThreadLocal.withInitial(
-              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          CQL_DATE_TIME_FORMAT,
+          MILLISECONDS,
+          EPOCH);
 
   private final TypeCodec<List<String>> stringListCodec = TypeCodec.list(TypeCodec.varchar());
 

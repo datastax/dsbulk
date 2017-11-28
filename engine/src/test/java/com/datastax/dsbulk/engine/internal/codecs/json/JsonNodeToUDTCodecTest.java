@@ -17,6 +17,8 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
 import static com.datastax.driver.core.TypeCodec.userType;
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.time.Instant.EPOCH;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.TypeCodec;
@@ -58,12 +60,13 @@ class JsonNodeToUDTCodecTest {
   private final UDTValue udt1Value =
       udt1.newValue().setInt("f1a", 42).setMap("f1b", newMap("foo", 1234.56d, "bar", 0.12d));
 
-  private final ConvertingCodec f1aCodec = new JsonNodeToIntegerCodec(formatter);
+  private final ConvertingCodec f1aCodec =
+      new JsonNodeToIntegerCodec(formatter, CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH);
   private final ConvertingCodec f1bCodec =
       new JsonNodeToMapCodec<>(
           TypeCodec.map(TypeCodec.varchar(), TypeCodec.cdouble()),
           new StringToStringCodec(TypeCodec.varchar()),
-          new JsonNodeToDoubleCodec(formatter),
+          new JsonNodeToDoubleCodec(formatter, CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH),
           objectMapper);
 
   @SuppressWarnings("unchecked")

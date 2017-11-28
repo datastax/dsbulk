@@ -242,7 +242,8 @@ class SchemaSettingsTest {
                 "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) USING TIMESTAMP %3$s",
                 C1,
                 C2,
-                instantToTimestampSinceEpoch(Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS)));
+                instantToTimestampSinceEpoch(
+                    Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS, EPOCH)));
   }
 
   @Test
@@ -265,7 +266,7 @@ class SchemaSettingsTest {
                 C1,
                 C2,
                 instantToTimestampSinceEpoch(
-                    Instant.from(formatter.parse("20171123102034")), MICROSECONDS)));
+                    Instant.from(formatter.parse("20171123102034")), MICROSECONDS, EPOCH)));
   }
 
   @Test

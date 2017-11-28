@@ -6,11 +6,6 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.driver.core.DataType.timestamp;
-import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
-import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
-import static java.util.concurrent.TimeUnit.MICROSECONDS;
-
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Metadata;
@@ -20,16 +15,12 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
-import java.time.Instant;
-import java.time.ZonedDateTime;
-import java.util.Date;
 import java.util.function.BiFunction;
 
 /** */
@@ -141,22 +132,6 @@ public class DefaultRecordMapper implements RecordMapper {
     String name = Metadata.quoteIfNecessary(variable);
     if (convertedValue == null) {
       bs.setToNull(name);
-    } else if (variable.equals(TIMESTAMP_VARNAME)) {
-      // The input value is intended to be the timestamp of the inserted data.
-      // Parse it specially.
-      Instant timestamp;
-      if (convertedValue instanceof Date) {
-        timestamp = ((Date) convertedValue).toInstant();
-      } else if (convertedValue instanceof Instant) {
-        timestamp = ((Instant) convertedValue);
-      } else if (convertedValue instanceof ZonedDateTime) {
-        timestamp = ((ZonedDateTime) convertedValue).toInstant();
-      } else {
-        ConvertingCodec<Object, Instant> codec =
-            (ConvertingCodec<Object, Instant>) mapping.codec(variable, timestamp(), javaType);
-        timestamp = codec.convertFrom(convertedValue);
-      }
-      bs.setLong(name, instantToTimestampSinceEpoch(timestamp, MICROSECONDS));
     } else {
       TypeCodec<Object> codec = mapping.codec(variable, cqlType, javaType);
       bs.set(name, convertedValue, codec);

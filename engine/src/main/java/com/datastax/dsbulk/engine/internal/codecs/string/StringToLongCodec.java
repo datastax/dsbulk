@@ -7,21 +7,31 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.TypeCodec;
-import java.math.BigDecimal;
+import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.text.DecimalFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.TimeUnit;
 
 public class StringToLongCodec extends StringToNumberCodec<Long> {
 
-  public StringToLongCodec(ThreadLocal<DecimalFormat> formatter) {
-    super(TypeCodec.bigint(), formatter);
+  public StringToLongCodec(
+      ThreadLocal<DecimalFormat> formatter,
+      DateTimeFormatter temporalParser,
+      TimeUnit numericTimestampUnit,
+      Instant numericTimestampEpoch) {
+    super(
+        TypeCodec.bigint(), formatter, temporalParser, numericTimestampUnit, numericTimestampEpoch);
   }
 
   @Override
   public Long convertFrom(String s) {
-    BigDecimal number = parseAsBigDecimal(s);
+    Number number =
+        CodecUtils.parseNumber(
+            s, getNumberFormat(), temporalParser, numericTimestampUnit, numericTimestampEpoch);
     if (number == null) {
       return null;
     }
-    return number.longValueExact();
+    return CodecUtils.toLongValueExact(number);
   }
 }

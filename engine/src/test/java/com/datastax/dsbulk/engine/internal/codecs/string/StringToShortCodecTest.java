@@ -7,6 +7,9 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.time.Instant.EPOCH;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -18,7 +21,10 @@ class StringToShortCodecTest {
   private final StringToShortCodec codec =
       new StringToShortCodec(
           ThreadLocal.withInitial(
-              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          CQL_DATE_TIME_FORMAT,
+          MILLISECONDS,
+          EPOCH);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -33,6 +39,8 @@ class StringToShortCodecTest {
         .to((short) 32767)
         .convertsFrom("-32,768")
         .to((short) -32768)
+        .convertsFrom("1970-01-01T00:00:00Z")
+        .to((short) 0)
         .convertsFrom(null)
         .to(null)
         .convertsFrom("")
@@ -58,6 +66,8 @@ class StringToShortCodecTest {
         .cannotConvertFrom("not a valid short")
         .cannotConvertFrom("1.2")
         .cannotConvertFrom("32768")
-        .cannotConvertFrom("-32769");
+        .cannotConvertFrom("-32769")
+        .cannotConvertFrom("2000-01-01T00:00:00Z") // overflow
+    ;
   }
 }

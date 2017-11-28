@@ -7,6 +7,9 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.time.Instant.EPOCH;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.text.DecimalFormat;
@@ -19,7 +22,10 @@ class JsonNodeToLongCodecTest {
   private final JsonNodeToLongCodec codec =
       new JsonNodeToLongCodec(
           ThreadLocal.withInitial(
-              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          CQL_DATE_TIME_FORMAT,
+          MILLISECONDS,
+          EPOCH);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -40,6 +46,10 @@ class JsonNodeToLongCodecTest {
         .to(Long.MAX_VALUE)
         .convertsFrom(JsonNodeFactory.instance.textNode("-9,223,372,036,854,775,808"))
         .to(Long.MIN_VALUE)
+        .convertsFrom(JsonNodeFactory.instance.textNode("1970-01-01T00:00:00Z"))
+        .to(0L)
+        .convertsFrom(JsonNodeFactory.instance.textNode("2000-01-01T00:00:00Z"))
+        .to(946684800000L)
         .convertsFrom(null)
         .to(null)
         .convertsFrom(JsonNodeFactory.instance.textNode(""))

@@ -7,6 +7,9 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.time.Instant.EPOCH;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.math.BigDecimal;
@@ -20,7 +23,10 @@ class JsonNodeToBigDecimalCodecTest {
   private final JsonNodeToBigDecimalCodec codec =
       new JsonNodeToBigDecimalCodec(
           ThreadLocal.withInitial(
-              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))));
+              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          CQL_DATE_TIME_FORMAT,
+          MILLISECONDS,
+          EPOCH);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -35,6 +41,10 @@ class JsonNodeToBigDecimalCodecTest {
         .to(new BigDecimal("-1234.56"))
         .convertsFrom(JsonNodeFactory.instance.textNode("-1,234.56"))
         .to(new BigDecimal("-1234.56"))
+        .convertsFrom(JsonNodeFactory.instance.textNode("1970-01-01T00:00:00Z"))
+        .to(new BigDecimal("0"))
+        .convertsFrom(JsonNodeFactory.instance.textNode("2000-01-01T00:00:00Z"))
+        .to(new BigDecimal("946684800000"))
         .convertsFrom(null)
         .to(null)
         .convertsFrom(JsonNodeFactory.instance.textNode(""))

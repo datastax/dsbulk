@@ -6,16 +6,23 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.TimeUnit;
 
 public class JsonNodeToBigIntegerCodec extends JsonNodeToNumberCodec<BigInteger> {
 
-  public JsonNodeToBigIntegerCodec(ThreadLocal<DecimalFormat> formatter) {
-    super(varint(), formatter);
+  public JsonNodeToBigIntegerCodec(
+      ThreadLocal<DecimalFormat> formatter,
+      DateTimeFormatter temporalParser,
+      TimeUnit numericTimestampUnit,
+      Instant numericTimestampEpoch) {
+    super(varint(), formatter, temporalParser, numericTimestampUnit, numericTimestampEpoch);
   }
 
   @Override
@@ -26,11 +33,17 @@ public class JsonNodeToBigIntegerCodec extends JsonNodeToNumberCodec<BigInteger>
     if (node.isNumber()) {
       return node.bigIntegerValue();
     }
-    BigDecimal number = parseAsBigDecimal(node.asText());
+    Number number =
+        CodecUtils.parseNumber(
+            node.asText(),
+            getNumberFormat(),
+            temporalParser,
+            numericTimestampUnit,
+            numericTimestampEpoch);
     if (number == null) {
       return null;
     }
-    return number.toBigIntegerExact();
+    return CodecUtils.toBigIntegerExact(number);
   }
 
   @Override
