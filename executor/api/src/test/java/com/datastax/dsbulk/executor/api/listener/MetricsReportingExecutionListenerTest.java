@@ -15,9 +15,9 @@ import com.codahale.metrics.Timer;
 import com.datastax.dsbulk.commons.internal.logging.LogCapture;
 import com.datastax.dsbulk.commons.internal.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.internal.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.internal.util.reflection.Whitebox;
 
 @ExtendWith(LogInterceptingExtension.class)
 class MetricsReportingExecutionListenerTest {
@@ -225,7 +225,7 @@ class MetricsReportingExecutionListenerTest {
             "Reads/Writes: total: 0, successful: 0, failed: 0; 0 reads-writes/second (mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds, in-flight 0)");
 
     MetricsCollectingExecutionListener delegate =
-        (MetricsCollectingExecutionListener) Whitebox.getInternalState(listener, "delegate");
+        (MetricsCollectingExecutionListener) ReflectionUtils.getInternalState(listener, "delegate");
     // simulate 3 reads/writes, 2 successful and 1 failed
     Timer total = delegate.getReadsWritesTimer();
     total.update(10, MILLISECONDS);

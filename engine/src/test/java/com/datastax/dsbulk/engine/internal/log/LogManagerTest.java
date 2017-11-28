@@ -24,6 +24,7 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.DriverInternalError;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
+import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
@@ -49,7 +50,6 @@ import java.util.stream.LongStream;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.internal.util.reflection.Whitebox;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -543,7 +543,7 @@ class LogManagerTest {
         .blockLast();
     @SuppressWarnings("unchecked")
     Map<URI, List<Range<Long>>> positions =
-        (Map<URI, List<Range<Long>>>) Whitebox.getInternalState(logManager, "positions");
+        (Map<URI, List<Range<Long>>>) ReflectionUtils.getInternalState(logManager, "positions");
     assertThat(positions)
         .hasEntrySatisfying(new URI("file1"), l -> assertThat(l).containsExactly(ranges));
     positions.clear();

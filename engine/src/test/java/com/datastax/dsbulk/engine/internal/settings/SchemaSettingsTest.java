@@ -17,7 +17,7 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,6 +33,7 @@ import com.datastax.driver.core.TableMetadata;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.SchemaFreeRecordMetadata;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
@@ -53,7 +54,6 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
 @SuppressWarnings("unchecked")
@@ -122,9 +122,13 @@ class SchemaSettingsTest {
         .isEqualTo(
             String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s)", C1, C2));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"),
+        "0",
+        C2,
+        "2",
+        C1);
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -161,7 +165,7 @@ class SchemaSettingsTest {
                     + "USING TTL :%3$s AND TIMESTAMP :%4$s",
                 C1, C2, TTL_VARNAME, TIMESTAMP_VARNAME));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"),
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"),
         "0",
         C2,
         "2",
@@ -170,8 +174,8 @@ class SchemaSettingsTest {
         TTL_VARNAME,
         "3",
         TIMESTAMP_VARNAME);
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -189,8 +193,12 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(String.format("INSERT INTO ks.t1(%1$s,\"%2$s\") VALUES (:%1$s,now())", C1, C2));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "now()", C2, "2", C1);
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"),
+        "now()",
+        C2,
+        "2",
+        C1);
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -303,13 +311,13 @@ class SchemaSettingsTest {
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c2, c1) VALUES (:c2var, :c1var)");
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"),
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"),
         "0",
         "c1var",
         "2",
         "c2var");
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -329,9 +337,13 @@ class SchemaSettingsTest {
         .isEqualTo(
             String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s)", C1, C2));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "0", C2, "1", C1);
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"),
+        "0",
+        C2,
+        "1",
+        C1);
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -353,9 +365,13 @@ class SchemaSettingsTest {
         .isEqualTo(
             String.format("insert into ks.table (%1$s,\"%2$s\") values (:%1$s,:\"%2$s\")", C1, C2));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"),
+        "0",
+        C2,
+        "2",
+        C1);
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -372,9 +388,9 @@ class SchemaSettingsTest {
             String.format(
                 "INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (:%1$s,:\"%2$s\",:%3$s)",
                 C1, C2, C3));
-    assertMapping((DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"));
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+    assertMapping((DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"));
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -396,15 +412,15 @@ class SchemaSettingsTest {
                 "INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (:%1$s,:\"%2$s\",:%3$s)",
                 C1, C2, C3));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"),
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"),
         C1,
         C1,
         C2,
         C2,
         C4,
         C3);
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -423,9 +439,9 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(String.format("INSERT INTO ks.t1(%1$s,%2$s) VALUES (:%1$s,:%2$s)", C1, C3));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), C1, C1, C3, C3);
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"), C1, C1, C3, C3);
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -443,9 +459,10 @@ class SchemaSettingsTest {
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(String.format("INSERT INTO ks.t1(%1$s) VALUES (:%1$s)", C1));
-    assertMapping((DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"), C1, C1);
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+    assertMapping(
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"), C1, C1);
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -462,9 +479,9 @@ class SchemaSettingsTest {
             String.format(
                 "INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (:%1$s,:\"%2$s\",:%3$s)",
                 C1, C2, C3));
-    assertMapping((DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"));
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
-    assertThat((Set) Whitebox.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
+    assertMapping((DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"));
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -483,9 +500,10 @@ class SchemaSettingsTest {
             String.format(
                 "INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (:%1$s,:\"%2$s\",:%3$s)",
                 C1, C2, C3));
-    assertMapping((DefaultMapping) Whitebox.getInternalState(recordMapper, "mapping"));
-    assertThat((Boolean) Whitebox.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
-    Set<String> nullStrings = (Set<String>) Whitebox.getInternalState(recordMapper, NULL_STRINGS);
+    assertMapping((DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"));
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    Set<String> nullStrings =
+        (Set<String>) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS);
     assertThat(nullStrings).containsOnly("NIL", "NULL");
   }
 
@@ -495,7 +513,7 @@ class SchemaSettingsTest {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"null\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config, codec);
 
-      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("null");
     }
 
@@ -503,7 +521,7 @@ class SchemaSettingsTest {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"null, NULL\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config, codec);
 
-      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("null", "NULL");
     }
 
@@ -512,7 +530,7 @@ class SchemaSettingsTest {
           makeLoaderConfig("nullStrings = \"[NIL, NULL]\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config, codec);
 
-      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NIL", "NULL");
     }
 
@@ -521,7 +539,7 @@ class SchemaSettingsTest {
           makeLoaderConfig("nullStrings = \"\\\"NIL\\\", \\\"NULL\\\"\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config, codec);
 
-      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NIL", "NULL");
     }
 
@@ -529,7 +547,7 @@ class SchemaSettingsTest {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"NIL, NULL\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config, codec);
 
-      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NIL", "NULL");
     }
 
@@ -537,21 +555,21 @@ class SchemaSettingsTest {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"NULL\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config, codec);
 
-      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
     }
     {
       LoaderConfig config = makeLoaderConfig("nullStrings = NULL, keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config, codec);
 
-      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
     }
     {
       LoaderConfig config = makeLoaderConfig("nullStrings = \"[NULL]\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config, codec);
 
-      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
     }
     {
@@ -559,7 +577,7 @@ class SchemaSettingsTest {
           makeLoaderConfig("nullStrings = \"[\\\"NULL\\\"]\", keyspace=ks, table=t1");
       SchemaSettings schemaSettings = new SchemaSettings(config, codec);
 
-      assertThat((Set<String>) Whitebox.getInternalState(schemaSettings, NULL_STRINGS))
+      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
           .containsOnly("NULL");
     }
   }
@@ -583,8 +601,12 @@ class SchemaSettingsTest {
                 "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
                 C1, C2));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"), "0", C2, "2", C1);
-    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
+        (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
+        "0",
+        C2,
+        "2",
+        C1);
+    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -606,8 +628,12 @@ class SchemaSettingsTest {
                 "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
                 C1, C2));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"), "0", C2, "1", C1);
-    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
+        (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
+        "0",
+        C2,
+        "1",
+        C1);
+    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -629,14 +655,14 @@ class SchemaSettingsTest {
                 "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
                 C1, C2, C3));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"),
+        (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
         C1,
         C1,
         C2,
         C2,
         C4,
         C3);
-    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
+    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -657,8 +683,12 @@ class SchemaSettingsTest {
             String.format(
                 "SELECT %1$s,%2$s FROM ks.t1 WHERE token() > :start AND token() <= :end", C1, C3));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"), C1, C1, C3, C3);
-    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
+        (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
+        C1,
+        C1,
+        C3,
+        C3);
+    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -677,8 +707,9 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format("SELECT %1$s FROM ks.t1 WHERE token() > :start AND token() <= :end", C1));
-    assertMapping((DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"), C1, C1);
-    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
+    assertMapping(
+        (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"), C1, C1);
+    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -697,8 +728,12 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(String.format("select \"%2$s\",%1$s from ks.t1", C1, C2));
     assertMapping(
-        (DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"), "0", C2, "2", C1);
-    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
+        (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
+        "0",
+        C2,
+        "2",
+        C1);
+    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -715,8 +750,8 @@ class SchemaSettingsTest {
             String.format(
                 "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
                 C1, C2, C3));
-    assertMapping((DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"));
-    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
+    assertMapping((DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"));
+    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -733,8 +768,8 @@ class SchemaSettingsTest {
             String.format(
                 "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
                 C1, C2, C3));
-    assertMapping((DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"));
-    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isNull();
+    assertMapping((DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"));
+    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -753,8 +788,8 @@ class SchemaSettingsTest {
             String.format(
                 "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
                 C1, C2, C3));
-    assertMapping((DefaultMapping) Whitebox.getInternalState(readResultMapper, "mapping"));
-    assertThat(Whitebox.getInternalState(readResultMapper, "nullWord")).isEqualTo("NIL");
+    assertMapping((DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"));
+    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isEqualTo("NIL");
   }
 
   @NotNull
@@ -776,7 +811,7 @@ class SchemaSettingsTest {
       expected.put(first, second);
     }
     Map<String, String> fieldsToVariables =
-        (Map<String, String>) Whitebox.getInternalState(mapping, "fieldsToVariables");
+        (Map<String, String>) ReflectionUtils.getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).isEqualTo(expected);
   }
 }

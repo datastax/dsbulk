@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.typesafe.config.ConfigFactory;
@@ -20,7 +21,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 import org.assertj.core.util.Files;
 import org.junit.jupiter.api.Test;
-import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
 class MonitoringSettingsTest {
@@ -32,14 +32,15 @@ class MonitoringSettingsTest {
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true, null);
     assertThat(metricsManager).isNotNull();
-    assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
-    assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(MILLISECONDS);
-    assertThat(Whitebox.getInternalState(metricsManager, "reportInterval"))
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "durationUnit"))
+        .isEqualTo(MILLISECONDS);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "reportInterval"))
         .isEqualTo(Duration.ofSeconds(5));
-    assertThat(Whitebox.getInternalState(metricsManager, "expectedWrites")).isEqualTo(-1L);
-    assertThat(Whitebox.getInternalState(metricsManager, "expectedReads")).isEqualTo(-1L);
-    assertThat(Whitebox.getInternalState(metricsManager, "jmx")).isEqualTo(true);
-    assertThat(Whitebox.getInternalState(metricsManager, "csv")).isEqualTo(false);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "expectedWrites")).isEqualTo(-1L);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "expectedReads")).isEqualTo(-1L);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "jmx")).isEqualTo(true);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "csv")).isEqualTo(false);
   }
 
   @Test
@@ -58,14 +59,15 @@ class MonitoringSettingsTest {
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true, tmpPath);
     assertThat(metricsManager).isNotNull();
-    assertThat(Whitebox.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);
-    assertThat(Whitebox.getInternalState(metricsManager, "durationUnit")).isEqualTo(SECONDS);
-    assertThat(Whitebox.getInternalState(metricsManager, "reportInterval"))
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "durationUnit")).isEqualTo(SECONDS);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "reportInterval"))
         .isEqualTo(Duration.ofMinutes(30));
-    assertThat(Whitebox.getInternalState(metricsManager, "expectedWrites")).isEqualTo(1000L);
-    assertThat(Whitebox.getInternalState(metricsManager, "expectedReads")).isEqualTo(50L);
-    assertThat(Whitebox.getInternalState(metricsManager, "jmx")).isEqualTo(false);
-    assertThat(Whitebox.getInternalState(metricsManager, "csv")).isEqualTo(true);
-    assertThat(Whitebox.getInternalState(metricsManager, "executionDirectory")).isEqualTo(tmpPath);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "expectedWrites")).isEqualTo(1000L);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "expectedReads")).isEqualTo(50L);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "jmx")).isEqualTo(false);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "csv")).isEqualTo(true);
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "executionDirectory"))
+        .isEqualTo(tmpPath);
   }
 }

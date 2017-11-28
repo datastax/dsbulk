@@ -8,7 +8,7 @@ package com.datastax.dsbulk.executor.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -33,12 +33,11 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import org.hamcrest.BaseMatcher;
-import org.hamcrest.Description;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatcher;
 
 @SuppressWarnings("Duplicates")
 public abstract class BulkExecutorTestBase {
@@ -1270,7 +1269,7 @@ public abstract class BulkExecutorTestBase {
         : ((BoundStatement) statement).preparedStatement().getQueryString();
   }
 
-  private static class StatementMatcher extends BaseMatcher<Statement> {
+  private static class StatementMatcher implements ArgumentMatcher<Statement> {
 
     private final SimpleStatement stmt;
 
@@ -1279,7 +1278,7 @@ public abstract class BulkExecutorTestBase {
     }
 
     @Override
-    public boolean matches(Object item) {
+    public boolean matches(Statement item) {
       return item instanceof SimpleStatement
               && ((SimpleStatement) item).getQueryString().equals(stmt.getQueryString())
           || item instanceof BoundStatement
@@ -1288,12 +1287,10 @@ public abstract class BulkExecutorTestBase {
                   .getQueryString()
                   .equals(stmt.getQueryString());
     }
-
-    @Override
-    public void describeTo(Description description) {}
   }
 
-  private static class BulkExecutionExceptionMatcher extends BaseMatcher<BulkExecutionException> {
+  private static class BulkExecutionExceptionMatcher
+      implements ArgumentMatcher<BulkExecutionException> {
 
     private final SimpleStatement stmt;
     private final Class<? extends Exception> clazz;
@@ -1308,10 +1305,9 @@ public abstract class BulkExecutorTestBase {
     }
 
     @Override
-    public boolean matches(Object item) {
-      if (item instanceof BulkExecutionException) {
-        BulkExecutionException bee = (BulkExecutionException) item;
-        Statement stmt = bee.getStatement();
+    public boolean matches(BulkExecutionException item) {
+      if (item != null) {
+        Statement stmt = item.getStatement();
         if (stmt instanceof SimpleStatement
                 && ((SimpleStatement) stmt).getQueryString().equals(this.stmt.getQueryString())
             || stmt instanceof BoundStatement
@@ -1322,7 +1318,7 @@ public abstract class BulkExecutorTestBase {
           if (clazz == null) {
             return true;
           }
-          Throwable cause = bee.getCause();
+          Throwable cause = item.getCause();
           if (cause.getClass().equals(clazz)) {
             return true;
           }
@@ -1330,8 +1326,5 @@ public abstract class BulkExecutorTestBase {
       }
       return false;
     }
-
-    @Override
-    public void describeTo(Description description) {}
   }
 }

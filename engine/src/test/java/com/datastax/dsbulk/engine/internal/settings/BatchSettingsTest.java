@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.commons.internal.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode.PARTITION_KEY;
 import static com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode.REPLICA_SET;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -21,11 +21,11 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.internal.util.reflection.Whitebox;
 
 /** */
 class BatchSettingsTest {
@@ -50,8 +50,8 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     assertThat(settings.getBufferSize()).isEqualTo(32);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
-    assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
+    assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
+    assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
   @Test
@@ -63,8 +63,8 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     assertThat(settings.getBufferSize()).isEqualTo(32);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
-    assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
-    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
+    assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
+    assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
   @Test
@@ -76,8 +76,8 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     assertThat(settings.getBufferSize()).isEqualTo(5000);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
-    assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
+    assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
+    assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
   }
 
   @Test
@@ -91,8 +91,8 @@ class BatchSettingsTest {
     // specified.
     assertThat(settings.getBufferSize()).isEqualTo(10);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
-    assertThat(Whitebox.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(Whitebox.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
+    assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
+    assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
   }
 
   @Test

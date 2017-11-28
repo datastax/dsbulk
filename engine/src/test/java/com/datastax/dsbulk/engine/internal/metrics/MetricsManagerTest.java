@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
+import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
@@ -24,7 +25,6 @@ import java.time.Duration;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.internal.util.reflection.Whitebox;
 import reactor.core.publisher.Flux;
 
 class MetricsManagerTest {
@@ -80,7 +80,8 @@ class MetricsManagerTest {
     Flux<Record> records = Flux.just(record1, record2, record3);
     records.transform(manager.newUnmappableRecordMonitor()).blockLast();
     manager.close();
-    MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
+    MetricRegistry registry =
+        (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
     assertThat(registry.meter("records/total").getCount()).isEqualTo(3);
     assertThat(registry.meter("records/successful").getCount()).isEqualTo(2);
     assertThat(registry.meter("records/failed").getCount()).isEqualTo(1);
@@ -106,7 +107,8 @@ class MetricsManagerTest {
     Flux<Statement> statements = Flux.just(stmt1, stmt2, stmt3);
     statements.transform(manager.newUnmappableStatementMonitor()).blockLast();
     manager.close();
-    MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
+    MetricRegistry registry =
+        (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
     assertThat(registry.meter("mappings/total").getCount()).isEqualTo(3);
     assertThat(registry.meter("mappings/successful").getCount()).isEqualTo(2);
     assertThat(registry.meter("mappings/failed").getCount()).isEqualTo(1);
@@ -132,7 +134,8 @@ class MetricsManagerTest {
     Flux<Statement> statements = Flux.just(batch, stmt3);
     statements.transform(manager.newBatcherMonitor()).blockLast();
     manager.close();
-    MetricRegistry registry = (MetricRegistry) Whitebox.getInternalState(manager, "registry");
+    MetricRegistry registry =
+        (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
     assertThat(registry.histogram("batches/size").getCount()).isEqualTo(2);
     assertThat(registry.histogram("batches/size").getSnapshot().getMean())
         .isEqualTo((2f + 1f) / 2f);

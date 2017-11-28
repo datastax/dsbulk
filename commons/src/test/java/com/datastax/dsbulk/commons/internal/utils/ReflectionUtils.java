@@ -71,4 +71,46 @@ public class ReflectionUtils {
       throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e);
     }
   }
+
+  public static Field locateField(String fieldName, Class<?> clazz) {
+    while (!clazz.equals(Object.class)) {
+      for (Field f : clazz.getDeclaredFields()) {
+        // this won't work with overloaded methods
+        if (f.getName().equals(fieldName)) {
+          return f;
+        }
+      }
+      clazz = clazz.getSuperclass();
+    }
+    return null;
+  }
+
+  @SuppressWarnings("unchecked")
+  public static Object getInternalState(Object target, String field) {
+    Class<?> c = target.getClass();
+    try {
+      Field f = locateField(field, c);
+      assert f != null;
+      f.setAccessible(true);
+      return f.get(target);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Unable to get internal state on a private field. Please report to mockito mailing list.",
+          e);
+    }
+  }
+
+  public static void setInternalState(Object target, String field, Object value) {
+    Class<?> c = target.getClass();
+    try {
+      Field f = locateField(field, c);
+      assert f != null;
+      f.setAccessible(true);
+      f.set(target, value);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Unable to set internal state on a private field. Please report to mockito mailing list.",
+          e);
+    }
+  }
 }

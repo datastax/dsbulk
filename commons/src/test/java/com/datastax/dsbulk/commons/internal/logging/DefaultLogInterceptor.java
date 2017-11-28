@@ -8,7 +8,7 @@ package com.datastax.dsbulk.commons.internal.logging;
 
 import static ch.qos.logback.core.spi.FilterReply.DENY;
 import static ch.qos.logback.core.spi.FilterReply.NEUTRAL;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.slf4j.Logger.ROOT_LOGGER_NAME;
@@ -92,7 +92,7 @@ class DefaultLogInterceptor implements LogInterceptor {
     logger.addAppender(appender);
     doAnswer(
             invocation -> {
-              events.add(invocation.getArgumentAt(0, ILoggingEvent.class));
+              events.add(invocation.getArgument(0));
               return null;
             })
         .when(appender)

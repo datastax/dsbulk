@@ -19,6 +19,8 @@ import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
 import java.time.Duration;
+import java.time.Period;
+import java.time.temporal.TemporalAmount;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -195,6 +197,16 @@ public class DefaultLoaderConfig implements LoaderConfig {
   @Override
   public Duration getDuration(String path) {
     return delegate.getDuration(path);
+  }
+
+  @Override
+  public Period getPeriod(String path) {
+    return delegate.getPeriod(path);
+  }
+
+  @Override
+  public TemporalAmount getTemporal(String path) {
+    return delegate.getTemporal(path);
   }
 
   @Override
