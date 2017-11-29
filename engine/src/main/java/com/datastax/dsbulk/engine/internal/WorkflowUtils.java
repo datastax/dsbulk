@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
@@ -49,7 +50,7 @@ public class WorkflowUtils {
     return workflowType + "_" + DEFAULT_TIMESTAMP_PATTERN.format(now());
   }
 
-  public static String newCustomExecutionId(String template, WorkflowType workflowType) {
+  public static String newCustomExecutionId(@NotNull String template, @NotNull WorkflowType workflowType) {
     try {
       // Accepted parameters:
       // 1 : the workflow type
@@ -75,6 +76,8 @@ public class WorkflowUtils {
   }
 
   private static ZonedDateTime now() {
+    // Try a native call to gettimeofday first since it has microsecond resolution,
+    // and fall back to System.currentTimeMillis() if that fails
     if (Native.isGettimeofdayAvailable()) {
       return EPOCH.plus(Native.currentTimeMicros(), MICROS).atZone(UTC);
     } else {
