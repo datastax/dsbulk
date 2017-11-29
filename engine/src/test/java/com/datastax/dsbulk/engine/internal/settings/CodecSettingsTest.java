@@ -27,7 +27,7 @@ import static com.datastax.driver.core.DataType.varint;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newField;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
-import static com.datastax.dsbulk.commons.internal.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -39,8 +39,7 @@ import com.datastax.driver.core.UserType;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.NumberToNumberCodec;
-import com.datastax.dsbulk.engine.internal.codecs.TemporalToTemporalCodec;
+import com.datastax.dsbulk.engine.internal.codecs.number.NumberToNumberCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigDecimalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigIntegerCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBooleanCodec;
@@ -59,14 +58,18 @@ import com.datastax.dsbulk.engine.internal.codecs.string.StringToShortCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToTupleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUDTCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToTemporalCodec;
+import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCodec;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
+import java.util.Date;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -177,36 +180,76 @@ class CodecSettingsTest {
     settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
-    assertThat(codecRegistry.codecFor(date(), TypeToken.of(ZonedDateTime.class)))
+    assertThat(codecRegistry.convertingCodecFor(date(), TypeToken.of(ZonedDateTime.class)))
+        .convertsFrom(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
+        .to(LocalDate.parse("2017-11-29"))
+        .isInstanceOf(TemporalToTemporalCodec.class);
+    assertThat(codecRegistry.convertingCodecFor(time(), TypeToken.of(ZonedDateTime.class)))
+        .convertsFrom(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
+        .to(LocalTime.parse("23:00:00"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(time(), TypeToken.of(ZonedDateTime.class)))
+    assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(ZonedDateTime.class)))
+        .convertsFrom(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
+        .to(Instant.parse("2017-11-29T23:00:00Z"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(timestamp(), TypeToken.of(ZonedDateTime.class)))
+    assertThat(codecRegistry.convertingCodecFor(date(), TypeToken.of(Instant.class)))
+        .convertsFrom(Instant.parse("2017-11-29T23:00:00Z"))
+        .to(LocalDate.parse("2017-11-29"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(date(), TypeToken.of(Instant.class)))
+    assertThat(codecRegistry.convertingCodecFor(time(), TypeToken.of(Instant.class)))
+        .convertsFrom(Instant.parse("2017-11-29T23:00:00Z"))
+        .to(LocalTime.parse("23:00:00"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(time(), TypeToken.of(Instant.class)))
+    assertThat(codecRegistry.convertingCodecFor(date(), TypeToken.of(LocalDateTime.class)))
+        .convertsFrom(LocalDateTime.parse("2017-11-30T00:00:00"))
+        .to(LocalDate.parse("2017-11-30"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(date(), TypeToken.of(LocalDateTime.class)))
+    assertThat(codecRegistry.convertingCodecFor(time(), TypeToken.of(LocalDateTime.class)))
+        .convertsFrom(LocalDateTime.parse("2017-11-30T23:00:00"))
+        .to(LocalTime.parse("23:00:00"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(time(), TypeToken.of(LocalDateTime.class)))
+    assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(LocalDateTime.class)))
+        .convertsFrom(LocalDateTime.parse("2017-11-30T00:00:00"))
+        .to(Instant.parse("2017-11-30T00:00:00Z"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(timestamp(), TypeToken.of(LocalDateTime.class)))
+    assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(LocalDate.class)))
+        .convertsFrom(LocalDate.parse("2017-11-30"))
+        .to(Instant.parse("2017-11-30T00:00:00Z"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(timestamp(), TypeToken.of(LocalDate.class)))
+    assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(LocalTime.class)))
+        .convertsFrom(LocalTime.parse("23:00:00"))
+        .to(Instant.parse("1970-01-01T23:00:00Z"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.codecFor(timestamp(), TypeToken.of(LocalTime.class)))
+    assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(java.util.Date.class)))
+        .convertsFrom(Date.from(Instant.parse("2017-11-29T23:00:00Z")))
+        .to(Instant.parse("2017-11-29T23:00:00Z"))
         .isNotNull()
-        .isInstanceOf(TemporalToTemporalCodec.class);
+        .isInstanceOf(DateToTemporalCodec.class);
+    assertThat(codecRegistry.convertingCodecFor(date(), TypeToken.of(java.sql.Date.class)))
+        .convertsFrom(java.sql.Date.valueOf(LocalDate.parse("2017-11-29")))
+        .to(LocalDate.parse("2017-11-29"))
+        .isNotNull()
+        .isInstanceOf(DateToTemporalCodec.class);
+    assertThat(codecRegistry.convertingCodecFor(time(), TypeToken.of(java.sql.Time.class)))
+        .convertsFrom(java.sql.Time.valueOf(LocalTime.parse("23:00:00")))
+        .to(LocalTime.parse("23:00:00"))
+        .isNotNull()
+        .isInstanceOf(DateToTemporalCodec.class);
+    assertThat(
+            codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(java.sql.Timestamp.class)))
+        .convertsFrom(Timestamp.from(Instant.parse("2017-11-29T23:00:00Z")))
+        .to(Instant.parse("2017-11-29T23:00:00Z"))
+        .isNotNull()
+        .isInstanceOf(DateToTemporalCodec.class);
   }
 
   @Test

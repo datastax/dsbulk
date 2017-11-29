@@ -6,6 +6,7 @@
 - [new feature] DAT-172: Support numeric-to-temporal conversions.
 - [new feature] DAT-175: Support temporal-to-numeric conversions.
 - [enhancement] DAT-167: Add support for user-supplied execution ids.
+- [improvement] DAT-174: Support TTL and TIMESTAMP clauses with custom queries.
 
 
 ### 1.0.0-beta2

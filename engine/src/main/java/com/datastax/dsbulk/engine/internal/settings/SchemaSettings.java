@@ -6,6 +6,9 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.driver.core.DriverCoreHooks.resultSetVariables;
+import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
+import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -13,6 +16,7 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
@@ -57,11 +61,17 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+import org.jetbrains.annotations.NotNull;
 
 public class SchemaSettings {
 
-  public static final String TTL_VARNAME = "dsbulk_internal_ttl";
-  public static final String TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
+  private static final String TTL_VARNAME = "dsbulk_internal_ttl";
+  private static final String TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
 
   private static final String INFERRED_MAPPING_TOKEN = "__INFERRED_MAPPING";
   private static final String NULL_TO_UNSET = "nullToUnset";
@@ -80,6 +90,11 @@ public class SchemaSettings {
   private static final String EXTERNAL_TTL_VARNAME = "__ttl";
   private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
 
+  private static final Pattern WRITETIME_PATTERN =
+      Pattern.compile(
+          "(?:USING|AND)\\s+TIMESTAMP\\s+:([a-zA-Z][a-zA-Z0-9_]*|\".+(?:(?<![\"])[\"]))",
+          Pattern.CASE_INSENSITIVE);
+
   private final LoaderConfig config;
 
   private ImmutableSet<String> nullStrings;
@@ -93,6 +108,7 @@ public class SchemaSettings {
   private TableMetadata table;
   private String query;
   private PreparedStatement preparedStatement;
+  private String writeTimeVariable;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
@@ -136,23 +152,23 @@ public class SchemaSettings {
       // If mapping is present, make sure it is parseable as a map.
       if (config.hasPath(MAPPING)) {
         mapping = getMapping();
-        if (mapping.hasPath(INFERRED_MAPPING_TOKEN) && !keyspaceTablePresent) {
+        if (mapping.hasPath(INFERRED_MAPPING_TOKEN) && !(keyspaceTablePresent || query != null)) {
           throw new BulkConfigurationException(
               String.format(
-                  "%s and %s must be defined when using inferred mapping",
-                  prettyPath(KEYSPACE), prettyPath(TABLE)),
+                  "%s or %s and %s must be defined when using inferred mapping",
+                  prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)),
               "schema");
         }
       } else {
         mapping = null;
       }
 
-      // Either the keyspace and table must be present, or the mapping must be present.
-      if (!config.hasPath(MAPPING) && !keyspaceTablePresent) {
+      // Either the keyspace and table must be present, or the mapping, or the query must be present.
+      if (!config.hasPath(MAPPING) && !config.hasPath(QUERY) && !keyspaceTablePresent) {
         throw new BulkConfigurationException(
             String.format(
-                "%s, or %s and %s must be defined",
-                prettyPath(MAPPING), prettyPath(KEYSPACE), prettyPath(TABLE)),
+                "%s, %s, or %s and %s must be defined",
+                prettyPath(MAPPING), prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)),
             "schema");
       }
 
@@ -174,6 +190,14 @@ public class SchemaSettings {
             "schema");
       }
 
+      if (query != null && (keyspaceName != null || tableName != null)) {
+        throw new BulkConfigurationException(
+            String.format(
+                "%s must not be defined if %s and %s are defined",
+                prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)),
+            "schema");
+      }
+
       if (mapping != null) {
         explicitVariables = HashBiMap.create();
         for (String fieldName : mapping.withoutPath(INFERRED_MAPPING_TOKEN).root().keySet()) {
@@ -185,6 +209,8 @@ public class SchemaSettings {
             variableName = TTL_VARNAME;
           } else if (variableName.equals(EXTERNAL_TIMESTAMP_VARNAME)) {
             variableName = TIMESTAMP_VARNAME;
+            // store the write time variable name for later
+            writeTimeVariable = TIMESTAMP_VARNAME;
           }
 
           if (explicitVariables.containsValue(variableName)) {
@@ -218,10 +244,24 @@ public class SchemaSettings {
                     "%s must not be defined when mapping a field to query-ttl", prettyPath(QUERY)),
                 "schema");
           }
+          if (explicitVariables.keySet().stream().anyMatch(SchemaSettings::isFunction)) {
+            throw new BulkConfigurationException(
+                String.format(
+                    "%s must not be defined when mapping a function to a column",
+                    prettyPath(QUERY)),
+                "schema");
+          }
         }
       } else {
         explicitVariables = null;
       }
+
+      // If a query is provided, check now if it contains a USING TIMESTAMP variable,
+      // and get its name
+      if (query != null) {
+        writeTimeVariable = inferWriteTimeVariable();
+      }
+
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
     } catch (IllegalArgumentException e) {
@@ -232,19 +272,15 @@ public class SchemaSettings {
   public RecordMapper createRecordMapper(
       Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
-    ImmutableBiMap<String, String> fieldsToVariables = createFieldsToVariablesMap(session);
-    PreparedStatement statement = prepareStatement(session, fieldsToVariables, WorkflowType.LOAD);
-    DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
+    DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, LOAD);
     return new DefaultRecordMapper(
-        statement, mapping, mergeRecordMetadata(recordMetadata), nullStrings, nullToUnset);
+        preparedStatement, mapping, mergeRecordMetadata(recordMetadata), nullStrings, nullToUnset);
   }
 
   public ReadResultMapper createReadResultMapper(
       Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
-    ImmutableBiMap<String, String> fieldsToVariables = createFieldsToVariablesMap(session);
-    preparedStatement = prepareStatement(session, fieldsToVariables, WorkflowType.UNLOAD);
-    DefaultMapping mapping = new DefaultMapping(fieldsToVariables, codecRegistry);
+    DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, UNLOAD);
     return new DefaultReadResultMapper(
         mapping,
         mergeRecordMetadata(recordMetadata),
@@ -274,8 +310,55 @@ public class SchemaSettings {
     return keyspaceName;
   }
 
-  private ImmutableBiMap<String, String> createFieldsToVariablesMap(Session session)
-      throws BulkConfigurationException {
+  @NotNull
+  private DefaultMapping prepareStatementAndCreateMapping(
+      Session session, ExtendedCodecRegistry codecRegistry, WorkflowType workflowType) {
+    BiMap<String, String> fieldsToVariables = null;
+    if (query == null) {
+      fieldsToVariables =
+          createFieldsToVariablesMap(
+              session,
+              () ->
+                  table
+                      .getColumns()
+                      .stream()
+                      .map(ColumnMetadata::getName)
+                      .collect(Collectors.toList()));
+      query =
+          workflowType == WorkflowType.LOAD
+              ? inferWriteQuery(fieldsToVariables)
+              : inferReadQuery(fieldsToVariables);
+      fieldsToVariables.keySet().removeIf(SchemaSettings::isFunction);
+    }
+    preparedStatement = session.prepare(query);
+    if (fieldsToVariables == null) {
+      fieldsToVariables =
+          createFieldsToVariablesMap(
+              session,
+              () -> {
+                switch (workflowType) {
+                  case LOAD:
+                    return StreamSupport.stream(
+                            preparedStatement.getVariables().spliterator(), false)
+                        .map(ColumnDefinitions.Definition::getName)
+                        .collect(Collectors.toList());
+                  case UNLOAD:
+                    return StreamSupport.stream(
+                            resultSetVariables(preparedStatement).spliterator(), false)
+                        .map(ColumnDefinitions.Definition::getName)
+                        .collect(Collectors.toList());
+                  default:
+                    throw new AssertionError();
+                }
+              });
+    }
+    return new DefaultMapping(
+        ImmutableBiMap.copyOf(fieldsToVariables), codecRegistry, writeTimeVariable);
+  }
+
+  @NotNull
+  private BiMap<String, String> createFieldsToVariablesMap(
+      Session session, Supplier<List<String>> columns) throws BulkConfigurationException {
     BiMap<String, String> fieldsToVariables = null;
 
     if (keyspaceName != null && tableName != null) {
@@ -287,12 +370,12 @@ public class SchemaSettings {
     }
 
     if (mapping == null) {
-      fieldsToVariables = inferFieldsToVariablesMap();
+      fieldsToVariables = inferFieldsToVariablesMap(columns);
     } else {
       if (mapping.hasPath(INFERRED_MAPPING_TOKEN)) {
         fieldsToVariables =
             inferFieldsToVariablesMap(
-                new InferredMappingSpec(mapping.getValue(INFERRED_MAPPING_TOKEN)));
+                new InferredMappingSpec(mapping.getValue(INFERRED_MAPPING_TOKEN)), columns);
       }
       if (fieldsToVariables == null) {
         fieldsToVariables = HashBiMap.create();
@@ -303,6 +386,8 @@ public class SchemaSettings {
       }
     }
 
+    validateAllFieldsPresent(fieldsToVariables, columns);
+
     // It's tempting to change this check to simply check the query data member.
     // At the time of this writing, that would be totally safe; however, that
     // member is not final, which leaves the possibility of it being initialized
@@ -311,46 +396,53 @@ public class SchemaSettings {
     // We really want to know if the *user* provided a query, and only validate
     // if he didn't. So, we go to the source: the config object.
     if (!config.hasPath(QUERY)) {
-      validateAllFieldsPresent(fieldsToVariables);
       validateAllKeysPresent(fieldsToVariables);
     }
+
     Preconditions.checkNotNull(
         fieldsToVariables,
         "Mapping was absent and could not be inferred, please provide an explicit mapping");
 
-    return ImmutableBiMap.copyOf(fieldsToVariables);
+    return fieldsToVariables;
   }
 
-  private void validateAllFieldsPresent(BiMap<String, String> fieldsToVariables) {
-    if (table != null) {
-      fieldsToVariables.forEach(
-          (key, value) -> {
-            if (!isPseudoColumn(value) && table.getColumn(value) == null) {
+  private void validateAllFieldsPresent(
+      BiMap<String, String> fieldsToVariables, Supplier<List<String>> columns) {
+    List<String> colNames = columns.get();
+    fieldsToVariables.forEach(
+        (key, value) -> {
+          if (!isPseudoColumn(value) && !colNames.contains(value)) {
+            if (table != null) {
               throw new BulkConfigurationException(
-                  "Schema mapping "
-                      + value
-                      + " doesn't match any column found in table "
-                      + table.getName(),
+                  String.format(
+                      "Schema mapping %s doesn't match any column found in table %s",
+                      value, table.getName()),
+                  "schema.mapping");
+            } else {
+              assert query != null;
+              throw new BulkConfigurationException(
+                  String.format(
+                      "Schema mapping %s doesn't match any bound variable found in query: '%s'",
+                      value, query),
                   "schema.mapping");
             }
-          });
-    }
+          }
+        });
   }
 
   private void validateAllKeysPresent(BiMap<String, String> fieldsToVariables) {
-    if (table != null) {
-      List<ColumnMetadata> primaryKeys = table.getPrimaryKey();
-      primaryKeys.forEach(
-          key -> {
-            if (!fieldsToVariables.containsValue(key.getName())) {
-              throw new BulkConfigurationException(
-                  "Missing required key column of "
-                      + key.getName()
-                      + " from header or schema.mapping. Please ensure it's included in the header or mapping",
-                  "schema.mapping");
-            }
-          });
-    }
+    assert table != null;
+    List<ColumnMetadata> primaryKeys = table.getPrimaryKey();
+    primaryKeys.forEach(
+        key -> {
+          if (!fieldsToVariables.containsValue(key.getName())) {
+            throw new BulkConfigurationException(
+                "Missing required key column of "
+                    + key.getName()
+                    + " from header or schema.mapping. Please ensure it's included in the header or mapping",
+                "schema.mapping");
+          }
+        });
   }
 
   private Config getMapping() throws BulkConfigurationException {
@@ -381,36 +473,23 @@ public class SchemaSettings {
     return fallback;
   }
 
-  private PreparedStatement prepareStatement(
-      Session session,
-      ImmutableBiMap<String, String> fieldsToVariables,
-      WorkflowType workflowType) {
-    if (query == null) {
-      query =
-          workflowType == WorkflowType.LOAD
-              ? inferWriteQuery(fieldsToVariables)
-              : inferReadQuery(fieldsToVariables);
-    }
-    return session.prepare(query);
+  private BiMap<String, String> inferFieldsToVariablesMap(Supplier<List<String>> columns) {
+    return inferFieldsToVariablesMap(null, columns);
   }
 
-  private BiMap<String, String> inferFieldsToVariablesMap() {
-    return inferFieldsToVariablesMap(null);
-  }
-
-  private BiMap<String, String> inferFieldsToVariablesMap(InferredMappingSpec spec) {
+  private BiMap<String, String> inferFieldsToVariablesMap(
+      InferredMappingSpec spec, Supplier<List<String>> columns) {
     HashBiMap<String, String> fieldsToVariables = HashBiMap.create();
-    for (int i = 0; i < table.getColumns().size(); i++) {
-      ColumnMetadata col = table.getColumns().get(i);
-      if (spec == null || spec.allow(col.getName())) {
+    for (String colName : columns.get()) {
+      if (spec == null || spec.allow(colName)) {
         // don't quote column names here, it will be done later on if required
-        fieldsToVariables.put(col.getName(), col.getName());
+        fieldsToVariables.put(colName, colName);
       }
     }
     return fieldsToVariables;
   }
 
-  private String inferWriteQuery(ImmutableBiMap<String, String> fieldsToVariables) {
+  private String inferWriteQuery(BiMap<String, String> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
     appendColumnNames(fieldsToVariables, sb);
@@ -469,7 +548,7 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private String inferReadQuery(ImmutableBiMap<String, String> fieldsToVariables) {
+  private String inferReadQuery(BiMap<String, String> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("SELECT ");
     appendColumnNames(fieldsToVariables, sb);
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
@@ -480,8 +559,15 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private static void appendColumnNames(
-      ImmutableBiMap<String, String> fieldsToVariables, StringBuilder sb) {
+  private String inferWriteTimeVariable() {
+    Matcher matcher = WRITETIME_PATTERN.matcher(query);
+    if (matcher.find()) {
+      return DriverCoreHooks.handleId(matcher.group(1));
+    }
+    return null;
+  }
+
+  private static void appendColumnNames(BiMap<String, String> fieldsToVariables, StringBuilder sb) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
     Set<String> cols = new LinkedHashSet<>(fieldsToVariables.values());
