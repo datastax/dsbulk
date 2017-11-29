@@ -621,6 +621,8 @@ Default: **true**.
 
 The query to use. Optional.
 
+The table name *must* be qualified with a keyspace name.
+
 If not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns.
 
 In load worflows, the statement can be any `INSERT` or `UPDATE` statement, but **must** use named bound variables exclusively; positional bound variables will not work.
@@ -653,7 +655,7 @@ See the `codec` section for more information on accepted date-time formats.
 If not specified, inserts/updates use current time of the system running the tool.
 
 Query timestamps for Cassandra and DSE have microsecond resolution; any sub-microsecond information specified here will be lost.
-For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
+For more information, see the [CQL INSERT INTO Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
 
 Default: **&lt;unspecified&gt;**.
 
@@ -665,7 +667,7 @@ Only applicable for load; ignored for unload.
 
 A value of -1 means there is no ttl.
 
-For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value).
+For more information, see the [CQL INSERT INTO Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/5.1/cql/cql/cql_using/useTTL.html?hl=ttl) and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/5.1/cql/cql/cql_using/useExpire.html).
 
 Default: **-1**.
 

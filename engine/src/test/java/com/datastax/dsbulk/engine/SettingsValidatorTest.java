@@ -271,7 +271,9 @@ class SettingsValidatorTest {
   void should_error_invalid_schema_settings() {
     new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file"}).run();
     String err = logs.getAllMessagesAsString();
-    assertThat(err).contains("schema.mapping, or schema.keyspace and schema.table must be defined");
+    assertThat(err)
+        .contains(
+            "schema.mapping, schema.query, or schema.keyspace and schema.table must be defined");
   }
 
   @Test
@@ -320,9 +322,7 @@ class SettingsValidatorTest {
               "--connector.csv.url=/path/to/my/file",
               "--schema.query=xyz",
               "--schema.mapping",
-              "f1=__timestamp",
-              "--schema.keyspace=keyspace",
-              "--schema.table=table"
+              "f1=__timestamp"
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -338,9 +338,26 @@ class SettingsValidatorTest {
               "--connector.csv.url=/path/to/my/file",
               "--schema.query=xyz",
               "--schema.mapping",
-              "f1=__ttl",
+              "f1=__timestamp",
               "--schema.keyspace=keyspace",
               "--schema.table=table"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err)
+        .contains(
+            "schema.query must not be defined if schema.keyspace and schema.table are defined");
+  }
+
+  @Test
+  void should_error_invalid_schema_query_with_mapped_ttl() {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "--schema.query=xyz",
+              "--schema.mapping",
+              "f1=__ttl"
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -411,19 +428,24 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_inferred_mapping_query_defined() {
+    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "*=*, c1=c2"})
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err)
+        .contains(
+            "schema.query or schema.keyspace and schema.table must be defined when using inferred mapping");
+  }
+
+  @Test
+  void should_error_invalid_schema_query_present_and_function_present() {
     new Main(
             new String[] {
-              "load",
-              "--connector.csv.url=/path/to/my/file",
-              "-m",
-              "*=*, c1=c2",
-              "--schema.query",
-              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+              "load", "--connector.csv.url=/path/to/my/file", "-m", "now() = c1", "-query", "INSERT"
             })
         .run();
     String err = logs.getAllMessagesAsString();
     assertThat(err)
-        .contains("schema.keyspace and schema.table must be defined when using inferred mapping");
+        .contains("schema.query must not be defined when mapping a function to a column");
   }
 
   @Test

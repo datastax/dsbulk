@@ -33,7 +33,9 @@ class MappingValidationEndToEndCCMIT extends EndToEndCCMITBase {
   private final LogInterceptor interceptor;
 
   MappingValidationEndToEndCCMIT(
-      CCMCluster ccm, Session session, @LogCapture(level = ERROR) LogInterceptor interceptor) {
+      CCMCluster ccm,
+      Session session,
+      @LogCapture(value = Main.class, level = ERROR) LogInterceptor interceptor) {
     super(ccm, session);
     this.interceptor = interceptor;
   }

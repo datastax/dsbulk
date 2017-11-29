@@ -63,9 +63,7 @@ public class ReflectionUtils {
       method.setAccessible(true);
 
       // Void.isAssignableFrom always returns false it seems.
-      if (returnType != Void.class) {
-        assert returnType.isAssignableFrom(method.getReturnType());
-      }
+      assert returnType == Void.class || returnType.isAssignableFrom(method.getReturnType());
       return returnType.cast(method.invoke(receiver, parameters));
     } catch (Exception e) {
       throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e);
@@ -85,7 +83,6 @@ public class ReflectionUtils {
     return null;
   }
 
-  @SuppressWarnings("unchecked")
   public static Object getInternalState(Object target, String field) {
     Class<?> c = target.getClass();
     try {
@@ -93,6 +90,19 @@ public class ReflectionUtils {
       assert f != null;
       f.setAccessible(true);
       return f.get(target);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Unable to get internal state on a private field. Please report to mockito mailing list.",
+          e);
+    }
+  }
+
+  public static Object getInternalState(Class<?> c, String field) {
+    try {
+      Field f = locateField(field, c);
+      assert f != null;
+      f.setAccessible(true);
+      return f.get(null);
     } catch (Exception e) {
       throw new RuntimeException(
           "Unable to get internal state on a private field. Please report to mockito mailing list.",
