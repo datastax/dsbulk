@@ -6,8 +6,13 @@
  */
 package com.datastax.dsbulk.engine.internal;
 
+import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
+import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.driver.core.Native;
+import java.time.ZonedDateTime;
 import org.junit.jupiter.api.Test;
 
 class WorkflowUtilsTest {
@@ -20,5 +25,17 @@ class WorkflowUtilsTest {
         .isEqualTo("12 hours, 34 minutes and 56 seconds");
     assertThat(WorkflowUtils.formatElapsed(48 * 60 * 60 + 34 * 60 + 56))
         .isEqualTo("48 hours, 34 minutes and 56 seconds");
+  }
+
+  @Test
+  public void should_format_custom_execution_id() throws Exception {
+    assertThat(WorkflowUtils.newCustomExecutionId("foo", LOAD)).isEqualTo("foo");
+    assertThat(WorkflowUtils.newCustomExecutionId("%1$s", LOAD)).isEqualTo("LOAD");
+    assertThat(WorkflowUtils.newCustomExecutionId("%1$s", UNLOAD)).isEqualTo("UNLOAD");
+    assertThat(WorkflowUtils.newCustomExecutionId("%2$tY-%2$tm-%2$td", LOAD))
+        .isEqualTo(ISO_LOCAL_DATE.format(ZonedDateTime.now()));
+    if (Native.isGetpidAvailable()) {
+      assertThat(WorkflowUtils.newCustomExecutionId("%3$s", LOAD)).matches("\\d+");
+    }
   }
 }

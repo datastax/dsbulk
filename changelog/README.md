@@ -5,6 +5,7 @@
 - [bug] DAT-165: Messages should not be logged to standard output when it is being used for unloading.
 - [new feature] DAT-172: Support numeric-to-temporal conversions.
 - [new feature] DAT-175: Support temporal-to-numeric conversions.
+- [enhancement] DAT-167: Add support for user-supplied execution ids.
 
 
 ### 1.0.0-beta2

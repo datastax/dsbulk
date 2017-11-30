@@ -14,12 +14,15 @@ import com.typesafe.config.ConfigException;
 public class EngineSettings {
 
   private static final String DRY_RUN = "dryRun";
+  private static final String EXECUTION_ID = "executionId";
 
   private final boolean dryRun;
+  private final String executionId;
 
   EngineSettings(LoaderConfig config) {
     try {
       dryRun = config.getBoolean(DRY_RUN);
+      executionId = config.getString(EXECUTION_ID);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
     }
@@ -27,5 +30,9 @@ public class EngineSettings {
 
   public boolean isDryRun() {
     return dryRun;
+  }
+
+  public String getCustomExecutionIdTemplate() {
+    return executionId;
   }
 }

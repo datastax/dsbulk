@@ -9,6 +9,7 @@ package com.datastax.dsbulk.engine.internal.settings;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.HelpUtils;
+import com.datastax.dsbulk.engine.internal.WorkflowUtils;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import java.util.Comparator;
@@ -24,29 +25,46 @@ public class SettingsManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(SettingsManager.class);
 
   private final LoaderConfig config;
+  private final WorkflowType workflowType;
 
-  private final DriverSettings driverSettings;
-  private final ConnectorSettings connectorSettings;
-  private final SchemaSettings schemaSettings;
-  private final BatchSettings batchSettings;
-  private final ExecutorSettings executorSettings;
-  private final LogSettings logSettings;
-  private final CodecSettings codecSettings;
-  private final MonitoringSettings monitoringSettings;
-  private final EngineSettings engineSettings;
+  private String executionId;
 
-  public SettingsManager(LoaderConfig config, String executionId, WorkflowType workflowType) {
+  private DriverSettings driverSettings;
+  private ConnectorSettings connectorSettings;
+  private SchemaSettings schemaSettings;
+  private BatchSettings batchSettings;
+  private ExecutorSettings executorSettings;
+  private LogSettings logSettings;
+  private CodecSettings codecSettings;
+  private MonitoringSettings monitoringSettings;
+  private EngineSettings engineSettings;
+
+  public SettingsManager(LoaderConfig config, WorkflowType workflowType) {
     this.config = config;
-    logSettings = new LogSettings(config.getConfig("log"), executionId);
-    driverSettings = new DriverSettings(config.getConfig("driver"), executionId);
+    this.workflowType = workflowType;
+  }
+
+  public void init() {
+    engineSettings = new EngineSettings(config.getConfig("engine"));
+    String executionIdTemplate = engineSettings.getCustomExecutionIdTemplate();
+    if (executionIdTemplate != null && !executionIdTemplate.isEmpty()) {
+      this.executionId = WorkflowUtils.newCustomExecutionId(executionIdTemplate, workflowType);
+    } else {
+      this.executionId = WorkflowUtils.newExecutionId(workflowType);
+    }
+    logSettings = new LogSettings(config.getConfig("log"), this.executionId);
+    driverSettings = new DriverSettings(config.getConfig("driver"), this.executionId);
     connectorSettings = new ConnectorSettings(config.getConfig("connector"), workflowType);
     batchSettings = new BatchSettings(config.getConfig("batch"));
     executorSettings = new ExecutorSettings(config.getConfig("executor"));
     codecSettings = new CodecSettings(config.getConfig("codec"));
     schemaSettings =
         new SchemaSettings(config.getConfig("schema"), codecSettings.getTimestampCodec());
-    monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), executionId);
-    engineSettings = new EngineSettings(config.getConfig("engine"));
+    monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), this.executionId);
+  }
+
+  public String getExecutionId() {
+    return executionId;
   }
 
   public void logEffectiveSettings() {
