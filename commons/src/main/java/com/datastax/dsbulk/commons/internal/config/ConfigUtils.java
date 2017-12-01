@@ -47,4 +47,11 @@ public class ConfigUtils {
   public static String maybeEscapeBackslash(String value) {
     return value.replaceAll("\\\\{1,2}", Matcher.quoteReplacement("\\\\"));
   }
+
+  public static boolean containsBackslashError(ConfigException exception) {
+    if (exception.getMessage().contains("backslash")) {
+      return true;
+    }
+    return false;
+  }
 }
