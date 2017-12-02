@@ -50,7 +50,8 @@ public class WorkflowUtils {
     return workflowType + "_" + DEFAULT_TIMESTAMP_PATTERN.format(now());
   }
 
-  public static String newCustomExecutionId(@NotNull String template, @NotNull WorkflowType workflowType) {
+  public static String newCustomExecutionId(
+      @NotNull String template, @NotNull WorkflowType workflowType) {
     try {
       // Accepted parameters:
       // 1 : the workflow type
