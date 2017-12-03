@@ -76,7 +76,7 @@ class CodecSettingsTest {
   private Cluster cluster;
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
     cluster = mock(Cluster.class);
     Configuration configuration = mock(Configuration.class);
     when(cluster.getConfiguration()).thenReturn(configuration);
@@ -84,10 +84,11 @@ class CodecSettingsTest {
   }
 
   @Test
-  void should_return_string_converting_codecs() throws Exception {
+  void should_return_string_converting_codecs() {
 
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
+    settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
     assertThat(codecRegistry.codecFor(cboolean(), TypeToken.of(String.class)))
@@ -135,10 +136,11 @@ class CodecSettingsTest {
   }
 
   @Test
-  void should_return_number_converting_codecs() throws Exception {
+  void should_return_number_converting_codecs() {
 
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
+    settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
     assertThat(codecRegistry.codecFor(tinyint(), TypeToken.of(Short.class)))
@@ -168,10 +170,11 @@ class CodecSettingsTest {
   }
 
   @Test
-  void should_return_temporal_converting_codecs() throws Exception {
+  void should_return_temporal_converting_codecs() {
 
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
+    settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
     assertThat(codecRegistry.codecFor(date(), TypeToken.of(ZonedDateTime.class)))
@@ -207,10 +210,11 @@ class CodecSettingsTest {
   }
 
   @Test
-  void should_return_codecs_for_tokenizable_fields() throws Exception {
+  void should_return_codecs_for_tokenizable_fields() {
 
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
+    settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
     assertThat(codecRegistry.codecFor(list(cint()), TypeToken.of(String.class)))

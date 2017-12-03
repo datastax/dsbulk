@@ -43,15 +43,21 @@ public class ExecutorSettings {
   private static final String MAX_PAGES = "maxPages";
   private static final String MAX_PAGES_PER_SECOND = "maxPagesPerSecond";
 
-  private final int maxPerSecond;
-  private final int maxInFlight;
-  private final boolean continuousPagingEnabled;
+  private final LoaderConfig config;
+
+  private int maxPerSecond;
+  private int maxInFlight;
+  private boolean continuousPagingEnabled;
   private int pageSize;
   private int maxPages;
   private int maxPagesPerSecond;
   private ContinuousPagingOptions.PageUnit pageUnit;
 
   ExecutorSettings(LoaderConfig config) {
+    this.config = config;
+  }
+
+  public void init() {
     try {
       maxPerSecond = config.getInt(MAX_PER_SECOND);
       maxInFlight = config.getInt(MAX_IN_FLIGHT);

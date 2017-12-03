@@ -8,7 +8,6 @@ package com.datastax.dsbulk.engine;
 
 import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDOUT;
-import static com.datastax.dsbulk.engine.internal.utils.HelpUtils.getVersionMessage;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,6 +21,7 @@ import com.datastax.dsbulk.commons.internal.logging.StreamCapture;
 import com.datastax.dsbulk.commons.internal.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.internal.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
+import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.typesafe.config.Config;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -667,7 +667,7 @@ class MainTest {
   void should_show_version_message_when_asked() {
     new Main(new String[] {"--version"}).run();
     String out = stdOut.getStreamAsString();
-    assertThat(out).isEqualTo(String.format("%s%n", getVersionMessage()));
+    assertThat(out).isEqualTo(String.format("%s%n", HelpUtils.getVersionMessage()));
   }
 
   @Test
@@ -681,7 +681,7 @@ class MainTest {
 
   private void assertGlobalHelp() {
     String out = stdOut.getStreamAsString();
-    assertThat(out).contains(getVersionMessage());
+    assertThat(out).contains(HelpUtils.getVersionMessage());
     assertThat(out).doesNotContain("First argument must be subcommand");
     assertThat(out).containsPattern("-f <string>\\s+Load settings from the given file");
   }

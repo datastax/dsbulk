@@ -34,6 +34,7 @@ import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
 import com.datastax.dsbulk.engine.internal.schema.MergedRecordMetadata;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
+import com.datastax.dsbulk.engine.internal.utils.StringUtils;
 import com.datastax.dsbulk.executor.api.statement.TableScanner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
@@ -80,20 +81,24 @@ public class SchemaSettings {
   private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
 
   private final LoaderConfig config;
-  private final ImmutableSet<String> nullStrings;
-  private final boolean nullToUnset;
-  private final Config mapping;
-  private final BiMap<String, String> explicitVariables;
+
+  private ImmutableSet<String> nullStrings;
+  private boolean nullToUnset;
+  private Config mapping;
+  private BiMap<String, String> explicitVariables;
   private String tableName;
   private String keyspaceName;
-  private final int ttlSeconds;
-  private final long timestampMicros;
+  private int ttlSeconds;
+  private long timestampMicros;
   private TableMetadata table;
   private String query;
   private PreparedStatement preparedStatement;
 
-  SchemaSettings(LoaderConfig config, StringToInstantCodec timestampCodec) {
+  SchemaSettings(LoaderConfig config) {
     this.config = config;
+  }
+
+  public void init(StringToInstantCodec timestampCodec) {
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       nullStrings = ImmutableSet.copyOf(config.getStringList(NULL_STRINGS));

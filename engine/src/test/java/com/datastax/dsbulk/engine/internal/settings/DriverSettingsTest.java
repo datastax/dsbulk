@@ -58,7 +58,7 @@ import org.mockito.Mockito;
 class DriverSettingsTest {
 
   @Test
-  void should_not_create_mapper_when_contact_points_not_provided() throws Exception {
+  void should_not_create_mapper_when_contact_points_not_provided() {
     assertThrows(
         BulkConfigurationException.class,
         () -> {
@@ -66,17 +66,19 @@ class DriverSettingsTest {
               new DefaultLoaderConfig(
                   new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch")));
           DriverSettings driverSettings = new DriverSettings(config, "test");
+          driverSettings.init();
           driverSettings.newCluster();
         });
   }
 
   @Test
-  void should_create_mapper_when_hosts_provided() throws Exception {
+  void should_create_mapper_when_hosts_provided() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("port = 9876, hosts = \"1.2.3.4:9042, 2.3.4.5,9.8.7.6\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
     Cluster delegate = (Cluster) ReflectionUtils.getInternalState(cluster, "delegate");
@@ -125,13 +127,14 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_configure_authentication_with_PlainTextAuthProvider() throws Exception {
+  void should_configure_authentication_with_PlainTextAuthProvider() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     " auth { provider = PlainTextAuthProvider, username = alice, password = s3cr3t }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
     DseConfiguration configuration = cluster.getConfiguration();
@@ -142,13 +145,14 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_configure_authentication_with_DsePlainTextAuthProvider() throws Exception {
+  void should_configure_authentication_with_DsePlainTextAuthProvider() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     " auth { provider = DsePlainTextAuthProvider, username = alice, password = s3cr3t, authorizationId = bob }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
     DseConfiguration configuration = cluster.getConfiguration();
@@ -160,7 +164,7 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab() throws Exception {
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -172,6 +176,7 @@ class DriverSettingsTest {
                         + "saslProtocol = foo }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
     DseConfiguration configuration = cluster.getConfiguration();
@@ -190,8 +195,7 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache()
-      throws Exception {
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -202,6 +206,7 @@ class DriverSettingsTest {
                         + "saslProtocol = foo }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
     DseConfiguration configuration = cluster.getConfiguration();
@@ -218,7 +223,7 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_configure_encryption_with_SSLContext() throws Exception {
+  void should_configure_encryption_with_SSLContext() {
     URL keystore = getClass().getResource("/client.keystore");
     URL truststore = getClass().getResource("/client.truststore");
     LoaderConfig config =
@@ -240,6 +245,7 @@ class DriverSettingsTest {
                         keystore, truststore))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
     DseConfiguration configuration = cluster.getConfiguration();
@@ -250,7 +256,7 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_configure_encryption_with_OpenSSL() throws Exception {
+  void should_configure_encryption_with_OpenSSL() {
     assumingThat(
         PlatformUtils.isWindows(),
         () -> {
@@ -276,6 +282,7 @@ class DriverSettingsTest {
                               keyCertChain, privateKey, truststore))
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
           DriverSettings driverSettings = new DriverSettings(config, "test");
+          driverSettings.init();
           DseCluster cluster = driverSettings.newCluster();
           assertThat(cluster).isNotNull();
           DseConfiguration configuration = cluster.getConfiguration();
@@ -289,7 +296,7 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_configure_lbp() throws Exception {
+  void should_configure_lbp() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -317,6 +324,7 @@ class DriverSettingsTest {
                         + "}")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
     DseConfiguration configuration = cluster.getConfiguration();

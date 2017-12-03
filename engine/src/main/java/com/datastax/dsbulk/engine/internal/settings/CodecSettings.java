@@ -73,17 +73,23 @@ public class CodecSettings {
   private static final String NUMERIC_TIMESTAMP_UNIT = "unit";
   private static final String NUMERIC_TIMESTAMP_EPOCH = "epoch";
 
-  private final Map<String, Boolean> booleanInputs;
-  private final Map<Boolean, String> booleanOutputs;
-  private final ThreadLocal<DecimalFormat> numberFormat;
-  private final DateTimeFormatter localDateFormat;
-  private final DateTimeFormatter localTimeFormat;
-  private final DateTimeFormatter timestampFormat;
-  private final ObjectMapper objectMapper;
-  private final TimeUnit numericTimestampUnit;
-  private final Instant numericTimestampEpoch;
+  private final LoaderConfig config;
+
+  private Map<String, Boolean> booleanInputs;
+  private Map<Boolean, String> booleanOutputs;
+  private ThreadLocal<DecimalFormat> numberFormat;
+  private DateTimeFormatter localDateFormat;
+  private DateTimeFormatter localTimeFormat;
+  private DateTimeFormatter timestampFormat;
+  private ObjectMapper objectMapper;
+  private TimeUnit numericTimestampUnit;
+  private Instant numericTimestampEpoch;
 
   CodecSettings(LoaderConfig config) {
+    this.config = config;
+  }
+
+  public void init() {
     try {
       String localeString = config.getString(LOCALE);
       List<String> booleanWords = config.getStringList(BOOLEAN_WORDS);

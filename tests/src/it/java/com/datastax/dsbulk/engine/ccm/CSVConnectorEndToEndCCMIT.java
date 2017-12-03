@@ -318,8 +318,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(Files.createTempDirectory("test").toString());
     args.add("-url");
     args.add(CSV_RECORDS_WITH_SPACES.toExternalForm());
-    args.add("--connector.csv.header");
-    args.add("false");
     args.add("--schema.mapping");
     args.add("key=key,my source=my destination");
     args.add("-header");
@@ -339,8 +337,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(Files.createTempDirectory("test").toString());
     args.add("-url");
     args.add(unloadDir.toString());
-    args.add("--connector.csv.header");
-    args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.mapping");

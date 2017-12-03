@@ -34,7 +34,7 @@ class BatchSettingsTest {
 
   @SuppressWarnings("Duplicates")
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
     cluster = mock(Cluster.class);
     Configuration configuration = mock(Configuration.class);
     ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
@@ -45,9 +45,10 @@ class BatchSettingsTest {
   }
 
   @Test
-  void should_create_batcher_when_mode_is_default() throws Exception {
+  void should_create_batcher_when_mode_is_default() {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch"));
     BatchSettings settings = new BatchSettings(config);
+    settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(32);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
@@ -55,12 +56,13 @@ class BatchSettingsTest {
   }
 
   @Test
-  void should_create_batcher_when_batch_mode_provided() throws Exception {
+  void should_create_batcher_when_batch_mode_provided() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("mode = REPLICA_SET")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
+    settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(32);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
@@ -68,12 +70,13 @@ class BatchSettingsTest {
   }
 
   @Test
-  void should_create_batcher_when_buffer_size_provided() throws Exception {
+  void should_create_batcher_when_buffer_size_provided() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("bufferSize = 5000")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
+    settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(5000);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
@@ -81,12 +84,13 @@ class BatchSettingsTest {
   }
 
   @Test
-  void should_create_batcher_when_max_batch_size_mode_provided() throws Exception {
+  void should_create_batcher_when_max_batch_size_mode_provided() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("maxBatchSize = 10")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
+    settings.init();
     // buffer size should implicitly be updated when max batch size is changed and it isn't
     // specified.
     assertThat(settings.getBufferSize()).isEqualTo(10);
@@ -96,7 +100,7 @@ class BatchSettingsTest {
   }
 
   @Test
-  void should_throw_exception_when_buffer_size_less_than_max_batch_size() throws Exception {
+  void should_throw_exception_when_buffer_size_less_than_max_batch_size() {
     assertThrows(
         BulkConfigurationException.class,
         () -> {
@@ -104,7 +108,8 @@ class BatchSettingsTest {
               new DefaultLoaderConfig(
                   ConfigFactory.parseString("maxBatchSize = 10, " + "bufferSize = 5")
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
-          new BatchSettings(config);
+          BatchSettings settings = new BatchSettings(config);
+          settings.init();
         },
         "batch.bufferSize (5) must be greater than or equal to buffer.maxBatchSize (10). See settings.md for more information.");
   }

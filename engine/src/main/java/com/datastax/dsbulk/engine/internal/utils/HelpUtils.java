@@ -206,7 +206,7 @@ public class HelpUtils {
       }
 
       // all lines must be padded with indent space characters
-      String padding = com.datastax.dsbulk.engine.internal.utils.StringUtils.nCopies(" ", indent);
+      String padding = StringUtils.nCopies(" ", indent);
       text = padding + text.trim();
 
       int pos = 0;

@@ -26,10 +26,11 @@ import org.junit.jupiter.api.Test;
 class MonitoringSettingsTest {
 
   @Test
-  void should_create_metrics_manager_with_default_settings() throws Exception {
+  void should_create_metrics_manager_with_default_settings() {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.monitoring"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
+    settings.init();
     MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true, null);
     assertThat(metricsManager).isNotNull();
     assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
@@ -44,7 +45,7 @@ class MonitoringSettingsTest {
   }
 
   @Test
-  void should_create_metrics_manager_with_user_supplied_settings() throws Exception {
+  void should_create_metrics_manager_with_user_supplied_settings() {
     Path tmpPath = Files.temporaryFolder().toPath();
     LoaderConfig config =
         new DefaultLoaderConfig(
@@ -57,6 +58,7 @@ class MonitoringSettingsTest {
                     + "jmx = false,"
                     + "csv = true"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
+    settings.init();
     MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true, tmpPath);
     assertThat(metricsManager).isNotNull();
     assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);

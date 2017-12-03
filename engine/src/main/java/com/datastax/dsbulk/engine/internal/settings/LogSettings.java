@@ -43,15 +43,23 @@ public class LogSettings {
   private static final String LEVEL = STMT + DELIMITER + "level";
   private static final String MAX_ERRORS = "maxErrors";
 
-  private final Path executionDirectory;
-  private final int maxQueryStringLength;
-  private final int maxBoundValueLength;
-  private final int maxBoundValues;
-  private final int maxInnerStatements;
-  private final StatementFormatVerbosity level;
-  private final int maxErrors;
+  private final LoaderConfig config;
+  private final String executionId;
+
+  private Path executionDirectory;
+  private int maxQueryStringLength;
+  private int maxBoundValueLength;
+  private int maxBoundValues;
+  private int maxInnerStatements;
+  private StatementFormatVerbosity level;
+  private int maxErrors;
 
   LogSettings(LoaderConfig config, String executionId) {
+    this.config = config;
+    this.executionId = executionId;
+  }
+
+  public void init(boolean writeToStandardOutput) {
     try {
       executionDirectory = config.getPath("directory").resolve(executionId);
       System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
@@ -61,21 +69,14 @@ public class LogSettings {
       maxInnerStatements = config.getInt(MAX_INNER_STATEMENTS);
       level = config.getEnum(StatementFormatVerbosity.class, LEVEL);
       maxErrors = config.getInt(MAX_ERRORS);
+      if (writeToStandardOutput) {
+        redirectStandardOutputToStandardError();
+      }
+      maybeStartExecutionLogFileAppender();
+      installJavaLoggingToSLF4JBridge();
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "log");
     }
-  }
-
-  public Path getExecutionDirectory() {
-    return executionDirectory;
-  }
-
-  public void init(boolean writeToStandardOutput) {
-    if (writeToStandardOutput) {
-      redirectStandardOutputToStandardError();
-    }
-    maybeStartExecutionLogFileAppender();
-    installJavaLoggingToSLF4JBridge();
   }
 
   public LogManager newLogManager(WorkflowType workflowType, Cluster cluster) {
@@ -87,6 +88,10 @@ public class LogSettings {
             .withMaxInnerStatements(maxInnerStatements)
             .build();
     return new LogManager(workflowType, cluster, executionDirectory, maxErrors, formatter, level);
+  }
+
+  Path getExecutionDirectory() {
+    return executionDirectory;
   }
 
   private void redirectStandardOutputToStandardError() {

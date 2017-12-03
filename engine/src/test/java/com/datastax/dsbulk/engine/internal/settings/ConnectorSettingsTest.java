@@ -25,9 +25,88 @@ class ConnectorSettingsTest {
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
       ConfigFactory.defaultReference().getConfig("dsbulk.connector");
 
+  @Test
+  void should_find_csv_connector_simple_name() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+                ConfigFactory.parseString(
+                    "name: csvConnector,  csvConnector: { url:\"file:///a/b.csv\"}"))
+            .withFallback(replaceDefaultConnectorPathWithName("csvConnector"));
+    ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
+    connectorSettings.init();
+    assertCSVConnectorSettings(connectorSettings, config, "csvConnector");
+  }
+
+  @Test
+  void should_find_csv_connector_short_name() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+                ConfigFactory.parseString("name: csv, csv{url:\"file:///a/b.csv\"}"))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
+    connectorSettings.init();
+    assertCSVConnectorSettings(connectorSettings, config, "csv");
+  }
+
+  @Test
+  void should_find_json_connector_full_path() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                "name: com.datastax.dsbulk.connectors.json.JsonConnector,  com.datastax.dsbulk.connectors.json.JsonConnector{ url:\"file:///a/b.json\"}"));
+    ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
+    connectorSettings.init();
+    Connector connector = connectorSettings.getConnector();
+    assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
+  }
+
+  @Test
+  void should_find_json_connector_simple_name() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                "name: jsonConnector, jsonConnector{ url:\"file:///a/b.json\"}"));
+    ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
+    connectorSettings.init();
+    Connector connector = connectorSettings.getConnector();
+    assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
+  }
+
+  @Test
+  void should_find_json_connector_short_name() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("name: json, json{ url:\"file:///a/b.json\"}"));
+    ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
+    connectorSettings.init();
+    Connector connector = connectorSettings.getConnector();
+    assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
+  }
+
+  @Test
+  void should_fail_for_nonexistent_connector() {
+    assertThrows(
+        BulkConfigurationException.class,
+        () -> {
+          LoaderConfig config =
+              new DefaultLoaderConfig(
+                  ConfigFactory.parseString("name: foo, foo {url:\"file:///a/b.txt\"}"));
+          ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
+          connectorSettings.init();
+          //noinspection ResultOfMethodCallIgnored
+          connectorSettings.getConnector();
+        },
+        "Cannot find connector 'foo'; available connectors are");
+  }
+
+  private Config replaceDefaultConnectorPathWithName(
+      @SuppressWarnings("SameParameterValue") String name) {
+    ConfigValue value = CONNECTOR_DEFAULT_SETTINGS.getValue("csv");
+    return CONNECTOR_DEFAULT_SETTINGS.withValue(name, value);
+  }
+
   private static void assertCSVConnectorSettings(
-      ConnectorSettings connectorSettings, LoaderConfig config, String connectorName)
-      throws Exception {
+      ConnectorSettings connectorSettings, LoaderConfig config, String connectorName) {
     Connector connector = connectorSettings.getConnector();
     assertThat(connector).isNotNull().isInstanceOf(CSVConnector.class);
     assertThat(config.getConfig(connectorName))
@@ -45,76 +124,5 @@ class ConnectorSettingsTest {
             "skipLines",
             "maxLines")
         .doesNotHavePath(connectorName);
-  }
-
-  @Test
-  void should_find_csv_connector_simple_name() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString(
-                    "name: csvConnector,  csvConnector: { url:\"file:///a/b.csv\"}"))
-            .withFallback(replaceDefaultConnectorPathWithName("csvConnector"));
-    ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
-    assertCSVConnectorSettings(connectorSettings, config, "csvConnector");
-  }
-
-  @Test
-  void should_find_csv_connector_short_name() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString("name: csv, csv{url:\"file:///a/b.csv\"}"))
-            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
-    ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
-    assertCSVConnectorSettings(connectorSettings, config, "csv");
-  }
-
-  @Test
-  void should_find_json_connector_full_path() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "name: com.datastax.dsbulk.connectors.json.JsonConnector,  com.datastax.dsbulk.connectors.json.JsonConnector{ url:\"file:///a/b.json\"}"));
-    Connector connector = new ConnectorSettings(config, WorkflowType.LOAD).getConnector();
-    assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
-  }
-
-  @Test
-  void should_find_json_connector_simple_name() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "name: jsonConnector, jsonConnector{ url:\"file:///a/b.json\"}"));
-    Connector connector = new ConnectorSettings(config, WorkflowType.LOAD).getConnector();
-    assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
-  }
-
-  @Test
-  void should_find_json_connector_short_name() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("name: json, json{ url:\"file:///a/b.json\"}"));
-    Connector connector = new ConnectorSettings(config, WorkflowType.LOAD).getConnector();
-    assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
-  }
-
-  @Test
-  void should_fail_for_nonexistent_connector() throws Exception {
-    assertThrows(
-        BulkConfigurationException.class,
-        () -> {
-          LoaderConfig config =
-              new DefaultLoaderConfig(
-                  ConfigFactory.parseString("name: foo, foo {url:\"file:///a/b.txt\"}"));
-          ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
-          //noinspection ResultOfMethodCallIgnored
-          connectorSettings.getConnector();
-        },
-        "Cannot find connector 'foo'; available connectors are");
-  }
-
-  private Config replaceDefaultConnectorPathWithName(
-      @SuppressWarnings("SameParameterValue") String name) {
-    ConfigValue value = CONNECTOR_DEFAULT_SETTINGS.getValue("csv");
-    return CONNECTOR_DEFAULT_SETTINGS.withValue(name, value);
   }
 }

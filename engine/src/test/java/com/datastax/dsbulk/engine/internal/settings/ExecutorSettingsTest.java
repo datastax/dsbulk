@@ -34,7 +34,7 @@ class ExecutorSettingsTest {
   private ContinuousPagingSession dseSession;
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
     session = mock(Session.class);
     dseSession = mock(ContinuousPagingSession.class);
     Cluster cluster = mock(Cluster.class);
@@ -47,40 +47,43 @@ class ExecutorSettingsTest {
   }
 
   @Test
-  void should_create_non_continuous_executor_when_write_workflow() throws Exception {
+  void should_create_non_continuous_executor_when_write_workflow() {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
     ReactiveBulkWriter executor = settings.newWriteExecutor(session, null);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
   }
 
   @Test
-  void should_create_non_continuous_executor_when_read_workflow_and_session_not_dse()
-      throws Exception {
+  void should_create_non_continuous_executor_when_read_workflow_and_session_not_dse() {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
   }
 
   @Test
-  void should_create_continuous_executor_when_read_workflow_and_session_dse() throws Exception {
+  void should_create_continuous_executor_when_read_workflow_and_session_dse() {
     LoaderConfig config =
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null);
     assertThat(executor).isNotNull().isInstanceOf(ContinuousReactorBulkExecutor.class);
   }
 
   @Test
-  void should_create_non_continuous_executor_when_read_workflow_and_not_enabled() throws Exception {
+  void should_create_non_continuous_executor_when_read_workflow_and_not_enabled() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("continuousPagingOptions.enabled = false")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
     ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
   }

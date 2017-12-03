@@ -16,10 +16,16 @@ public class EngineSettings {
   private static final String DRY_RUN = "dryRun";
   private static final String EXECUTION_ID = "executionId";
 
-  private final boolean dryRun;
-  private final String executionId;
+  private final LoaderConfig config;
+
+  private boolean dryRun;
+  private String executionId;
 
   EngineSettings(LoaderConfig config) {
+    this.config = config;
+  }
+
+  public void init() {
     try {
       dryRun = config.getBoolean(DRY_RUN);
       executionId = config.getString(EXECUTION_ID);
@@ -32,7 +38,7 @@ public class EngineSettings {
     return dryRun;
   }
 
-  public String getCustomExecutionIdTemplate() {
+  String getCustomExecutionIdTemplate() {
     return executionId;
   }
 }

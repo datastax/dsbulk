@@ -28,17 +28,23 @@ public class MonitoringSettings {
   private static final String JMX = "jmx";
   private static final String CSV = "csv";
 
+  private final LoaderConfig config;
   private final String executionId;
-  private final TimeUnit rateUnit;
-  private final TimeUnit durationUnit;
-  private final Duration reportRate;
-  private final long expectedWrites;
-  private final long expectedReads;
-  private final boolean jmx;
-  private final boolean csv;
+
+  private TimeUnit rateUnit;
+  private TimeUnit durationUnit;
+  private Duration reportRate;
+  private long expectedWrites;
+  private long expectedReads;
+  private boolean jmx;
+  private boolean csv;
 
   MonitoringSettings(LoaderConfig config, String executionId) {
+    this.config = config;
     this.executionId = executionId;
+  }
+
+  public void init() {
     try {
       rateUnit = config.getEnum(TimeUnit.class, RATE_UNIT);
       durationUnit = config.getEnum(TimeUnit.class, DURATION_UNIT);

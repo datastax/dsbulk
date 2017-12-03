@@ -8,6 +8,10 @@ package com.datastax.driver.core;
 
 public class DriverCoreCommonsTestHooks {
 
+  public static ColumnDefinitions.Definition newDefinition(String name, DataType type) {
+    return newDefinition("ks", "t", name, type);
+  }
+
   public static ColumnDefinitions.Definition newDefinition(
       String keyspace, String table, String name, DataType type) {
     return new ColumnDefinitions.Definition(keyspace, table, name, type);

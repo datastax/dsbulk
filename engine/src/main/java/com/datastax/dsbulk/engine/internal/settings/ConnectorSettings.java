@@ -16,9 +16,17 @@ import java.util.stream.StreamSupport;
 
 public class ConnectorSettings {
 
-  private final Connector connector;
+  private final LoaderConfig config;
+  private final WorkflowType type;
+
+  private Connector connector;
 
   ConnectorSettings(LoaderConfig config, WorkflowType type) {
+    this.config = config;
+    this.type = type;
+  }
+
+  public void init() {
     // Attempting to fetch the connector will run through all the validation logic we have for parsing the configuration
     String connectorName = config.getString("name");
     connector = locateConnector(connectorName);
@@ -41,10 +49,13 @@ public class ConnectorSettings {
     ServiceLoader<Connector> connectors = ServiceLoader.load(Connector.class);
     for (Connector connector : connectors) {
       // matches fully qualified class name
-      if (connector.getClass().getName().equals(name)) return connector;
-      // matches short names, i.e. "csv" will match "CSVConnector"
-      if (connector.getClass().getSimpleName().toLowerCase().startsWith(name.toLowerCase()))
+      if (connector.getClass().getName().equals(name)) {
         return connector;
+      }
+      // matches short names, i.e. "csv" will match "CSVConnector"
+      if (connector.getClass().getSimpleName().toLowerCase().startsWith(name.toLowerCase())) {
+        return connector;
+      }
     }
     throw new BulkConfigurationException(
         String.format(

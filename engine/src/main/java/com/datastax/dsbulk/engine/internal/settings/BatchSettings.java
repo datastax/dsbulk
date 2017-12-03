@@ -23,12 +23,18 @@ public class BatchSettings {
   private static final String BUFFER_SIZE = "bufferSize";
   private static final String ENABLED = "enabled";
 
-  private final StatementBatcher.BatchMode mode;
-  private final int maxBatchSize;
-  private final int bufferSize;
-  private final boolean enabled;
+  private final LoaderConfig config;
+
+  private StatementBatcher.BatchMode mode;
+  private int maxBatchSize;
+  private int bufferSize;
+  private boolean enabled;
 
   BatchSettings(LoaderConfig config) {
+    this.config = config;
+  }
+
+  public void init() {
     try {
       enabled = config.getBoolean(ENABLED);
       mode = config.getEnum(StatementBatcher.BatchMode.class, MODE);

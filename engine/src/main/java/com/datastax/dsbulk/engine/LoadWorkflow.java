@@ -87,8 +87,14 @@ public class LoadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    maxInFlight = executorSettings.getMaxInFlight();
-    dryRun = engineSettings.isDryRun();
+    connectorSettings.init();
+    monitoringSettings.init();
+    codecSettings.init();
+    batchSettings.init();
+    driverSettings.init();
+    schemaSettings.init(codecSettings.getTimestampCodec());
+    executorSettings.init();
+    engineSettings.init();
     connector = connectorSettings.getConnector();
     connector.init();
     cluster = driverSettings.newCluster();
@@ -110,6 +116,8 @@ public class LoadWorkflow implements Workflow {
     if (batchingEnabled) {
       batcher = batchSettings.newStatementBatcher(cluster);
     }
+    maxInFlight = executorSettings.getMaxInFlight();
+    dryRun = engineSettings.isDryRun();
     closed.set(false);
     resourceCount = connector.estimatedResourceCount();
     disposables = new HashSet<>();

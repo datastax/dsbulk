@@ -130,23 +130,23 @@ public class DriverSettings {
 
   private final LoaderConfig config;
   private final String executionId;
-  private final String hosts;
-  private final int port;
-  private final int poolingLocalConnections;
-  private final int poolingRemoteConnections;
-  private final int poolingLocalRequests;
-  private final int poolingRemoteRequests;
-  private final Duration poolingHeartbeat;
-  private final ConsistencyLevel queryConsistency;
-  private final ConsistencyLevel querySerialConsistency;
-  private final int queryFetchSize;
-  private final boolean queryIdempotence;
-  private final Duration socketReadTimeout;
-  private final TimestampGenerator timestampGenerator;
-  private final AddressTranslator addressTranslator;
-  private final String authProvider;
-  private final int policyMaxRetries;
-  private final ProtocolOptions.Compression compression;
+  private String hosts;
+  private int port;
+  private int poolingLocalConnections;
+  private int poolingRemoteConnections;
+  private int poolingLocalRequests;
+  private int poolingRemoteRequests;
+  private Duration poolingHeartbeat;
+  private ConsistencyLevel queryConsistency;
+  private ConsistencyLevel querySerialConsistency;
+  private int queryFetchSize;
+  private boolean queryIdempotence;
+  private Duration socketReadTimeout;
+  private TimestampGenerator timestampGenerator;
+  private AddressTranslator addressTranslator;
+  private String authProvider;
+  private int policyMaxRetries;
+  private ProtocolOptions.Compression compression;
   private String authUsername;
   private String authPrincipal;
   private String authPassword;
@@ -166,8 +166,10 @@ public class DriverSettings {
   DriverSettings(LoaderConfig config, String executionId) {
     this.config = config;
     this.executionId = executionId;
-    try {
+  }
 
+  public void init() {
+    try {
       if (!config.hasPath("hosts")) {
         throw new BulkConfigurationException(
             "driver.hosts is mandatory. Please set driver.hosts "

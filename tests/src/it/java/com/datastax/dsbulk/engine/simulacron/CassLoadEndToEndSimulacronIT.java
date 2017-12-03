@@ -17,7 +17,7 @@ import com.datastax.dsbulk.commons.internal.logging.LogCapture;
 import com.datastax.dsbulk.commons.internal.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.internal.logging.LogInterceptor;
 import com.datastax.dsbulk.engine.Main;
-import com.datastax.dsbulk.engine.internal.WorkflowUtils;
+import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.tests.simulacron.annotations.SimulacronConfig;
 import com.datastax.oss.simulacron.server.BoundCluster;

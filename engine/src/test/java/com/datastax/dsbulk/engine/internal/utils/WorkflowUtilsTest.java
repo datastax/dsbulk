@@ -28,7 +28,7 @@ class WorkflowUtilsTest {
   }
 
   @Test
-  public void should_format_custom_execution_id() throws Exception {
+  void should_format_custom_execution_id() throws Exception {
     assertThat(WorkflowUtils.newCustomExecutionId("foo", LOAD)).isEqualTo("foo");
     assertThat(WorkflowUtils.newCustomExecutionId("%1$s", LOAD)).isEqualTo("LOAD");
     assertThat(WorkflowUtils.newCustomExecutionId("%1$s", UNLOAD)).isEqualTo("UNLOAD");

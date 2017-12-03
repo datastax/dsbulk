@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
+import static com.datastax.dsbulk.tests.utils.EndToEndUtils.createParameterizedQuery;
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.createSimpleParametrizedQuery;
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.fetchContactPoints;
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.validateBadOps;
@@ -182,7 +183,7 @@ class CSVLoadEndToEndSimulacronIT {
     HashMap<String, Object> params = new HashMap<>();
     params.put("country_name", "Sweden");
     RequestPrime prime1 =
-        EndToEndUtils.createParameterizedQuery(
+        createParameterizedQuery(
             INSERT_INTO_IP_BY_COUNTRY,
             params,
             new SuccessResult(new ArrayList<>(), new HashMap<>()));
@@ -192,13 +193,13 @@ class CSVLoadEndToEndSimulacronIT {
 
     params.put("country_name", "France");
     prime1 =
-        EndToEndUtils.createParameterizedQuery(
+        createParameterizedQuery(
             INSERT_INTO_IP_BY_COUNTRY, params, new UnavailableResult(LOCAL_ONE, 1, 0));
     boundCluster.prime(new Prime(prime1));
 
     params.put("country_name", "Gregistan");
     prime1 =
-        EndToEndUtils.createParameterizedQuery(
+        createParameterizedQuery(
             INSERT_INTO_IP_BY_COUNTRY,
             params,
             new WriteTimeoutResult(ConsistencyLevel.ONE, 0, 0, WriteType.BATCH));
@@ -206,7 +207,7 @@ class CSVLoadEndToEndSimulacronIT {
 
     params.put("country_name", "Andybaijan");
     prime1 =
-        EndToEndUtils.createParameterizedQuery(
+        createParameterizedQuery(
             INSERT_INTO_IP_BY_COUNTRY,
             params,
             new WriteFailureResult(ConsistencyLevel.ONE, 0, 0, new HashMap<>(), WriteType.BATCH));
@@ -215,7 +216,7 @@ class CSVLoadEndToEndSimulacronIT {
     params = new HashMap<>();
     params.put("country_name", "United States");
     prime1 =
-        EndToEndUtils.createParameterizedQuery(
+        createParameterizedQuery(
             INSERT_INTO_IP_BY_COUNTRY,
             params,
             new FunctionFailureResult(

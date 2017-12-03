@@ -46,6 +46,7 @@ public class SettingsManager {
 
   public void init() {
     engineSettings = new EngineSettings(config.getConfig("engine"));
+    engineSettings.init();
     String executionIdTemplate = engineSettings.getCustomExecutionIdTemplate();
     if (executionIdTemplate != null && !executionIdTemplate.isEmpty()) {
       this.executionId = WorkflowUtils.newCustomExecutionId(executionIdTemplate, workflowType);
@@ -58,8 +59,7 @@ public class SettingsManager {
     batchSettings = new BatchSettings(config.getConfig("batch"));
     executorSettings = new ExecutorSettings(config.getConfig("executor"));
     codecSettings = new CodecSettings(config.getConfig("codec"));
-    schemaSettings =
-        new SchemaSettings(config.getConfig("schema"), codecSettings.getTimestampCodec());
+    schemaSettings = new SchemaSettings(config.getConfig("schema"));
     monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), this.executionId);
   }
 
