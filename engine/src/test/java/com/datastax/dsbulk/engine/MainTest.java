@@ -8,7 +8,7 @@ package com.datastax.dsbulk.engine;
 
 import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDOUT;
-import static com.datastax.dsbulk.engine.internal.HelpUtils.getVersionMessage;
+import static com.datastax.dsbulk.engine.internal.utils.HelpUtils.getVersionMessage;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static org.assertj.core.api.Assertions.assertThat;

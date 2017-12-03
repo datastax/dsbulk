@@ -6,14 +6,12 @@
  */
 package com.datastax.dsbulk.engine;
 
-import static com.datastax.dsbulk.engine.internal.OptionUtils.DEFAULT;
-
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
-import com.datastax.dsbulk.engine.internal.HelpUtils;
-import com.datastax.dsbulk.engine.internal.OptionUtils;
+import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
+import com.datastax.dsbulk.engine.internal.utils.OptionUtils;
 import com.google.common.base.Throwables;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -37,6 +35,9 @@ public class Main {
 
   private static final Config REFERENCE = ConfigFactory.defaultReference().getConfig("dsbulk");
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+
+  // Maybe be overridden to handle the "-f" override for application.conf.
+  public static Config DEFAULT = ConfigFactory.load().getConfig("dsbulk");
 
   private final String[] args;
 
@@ -164,9 +165,9 @@ public class Main {
     String appConfigPath = getAppConfigPath(optionArgs);
     if (appConfigPath != null) {
       System.setProperty("config.file", appConfigPath);
-      ConfigFactory.invalidateCaches();
-      DEFAULT = ConfigFactory.load().getConfig("dsbulk");
     }
+    ConfigFactory.invalidateCaches();
+    DEFAULT = ConfigFactory.load().getConfig("dsbulk");
   }
 
   private static String getAppConfigPath(String[] optionArgs) {
@@ -274,7 +275,8 @@ public class Main {
    * interprets it as the `-h` option with value `dr`, which is not the user's intention.
    */
   private static class CmdlineParser extends DefaultParser {
-    protected void handleConcatenatedOptions(final String token) throws ParseException {
+    @Override
+    protected void handleConcatenatedOptions(String token) throws ParseException {
       throw new UnrecognizedOptionException("Unrecognized option: " + token, token);
     }
   }

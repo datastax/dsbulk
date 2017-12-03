@@ -4,10 +4,12 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.engine.internal;
+package com.datastax.dsbulk.engine.internal.utils;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.engine.Main;
+import com.datastax.dsbulk.engine.internal.docs.SettingsDocumentor;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
@@ -22,20 +24,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class OptionUtils {
+
   private static final Config SHORTCUTS = ConfigFactory.parseResourcesAnySyntax("shortcuts.conf");
   private static final Logger LOGGER = LoggerFactory.getLogger(OptionUtils.class);
-
-  // Maybe be overridden by Main, to handle the "-f" override for application.conf.
-  public static Config DEFAULT = ConfigFactory.load().getConfig("dsbulk");
 
   public static Options createOptions(String connectorName) {
     Map<String, String> longToShortOptions = getLongToShortMap(connectorName);
 
     Options options = new Options();
 
-    LoaderConfig config = new DefaultLoaderConfig(DEFAULT);
+    LoaderConfig config = new DefaultLoaderConfig(Main.DEFAULT);
 
-    for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
+    for (Map.Entry<String, ConfigValue> entry : Main.DEFAULT.entrySet()) {
       String longName = entry.getKey();
       Option option = createOption(config, longToShortOptions, longName, entry.getValue());
       options.addOption(option);
@@ -105,7 +105,12 @@ public class OptionUtils {
 
   private static String getSanitizedDescription(String longName, ConfigValue value) {
     String desc =
-        DEFAULT.getValue(longName).origin().comments().stream().collect(Collectors.joining("\n"));
+        Main.DEFAULT
+            .getValue(longName)
+            .origin()
+            .comments()
+            .stream()
+            .collect(Collectors.joining("\n"));
 
     // The description is a little dirty.
     // * Replace consecutive spaces with a single space.

@@ -199,7 +199,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>com.datastax.dsbulk.engine.internal.SettingsDocumentor</mainClass>
+              <mainClass>com.datastax.dsbulk.engine.internal.docs.SettingsDocumentor</mainClass>
               <arguments>
                 <argument>${project.basedir}/../manual/settings.md</argument>
               </arguments>
@@ -212,7 +212,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>com.datastax.dsbulk.engine.internal.settings.ConfigurationFileCreator</mainClass>
+              <mainClass>com.datastax.dsbulk.engine.internal.docs.ConfigurationFileCreator</mainClass>
               <arguments>
                 <argument>${project.basedir}/../manual/application.template.conf</argument>
                 <argument>true</argument>

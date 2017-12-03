@@ -8,8 +8,8 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
-import com.datastax.dsbulk.engine.internal.HelpUtils;
-import com.datastax.dsbulk.engine.internal.WorkflowUtils;
+import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
+import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import java.util.Comparator;

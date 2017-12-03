@@ -4,12 +4,14 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.engine.internal;
+package com.datastax.dsbulk.engine.internal.utils;
+
+import static com.datastax.dsbulk.engine.internal.docs.SettingsDocumentor.PREFERRED_SETTINGS;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.Main;
-import com.datastax.dsbulk.engine.internal.settings.StringUtils;
+import com.datastax.dsbulk.engine.internal.docs.SettingsDocumentor;
 import com.google.common.base.CharMatcher;
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -28,6 +30,7 @@ import org.apache.commons.cli.Options;
 import org.jetbrains.annotations.NotNull;
 
 public class HelpUtils {
+
   public static void emitSectionHelp(String sectionName) {
     if (!SettingsDocumentor.GROUPS.containsKey(sectionName)) {
       // Write error message, available group names, raise as error.
@@ -104,7 +107,7 @@ public class HelpUtils {
       Collection<String> settings, Map<String, String> longToShortOptions) {
     Options options = new Options();
 
-    LoaderConfig config = new DefaultLoaderConfig(OptionUtils.DEFAULT);
+    LoaderConfig config = new DefaultLoaderConfig(Main.DEFAULT);
     for (String setting : settings) {
       options.addOption(
           OptionUtils.createOption(config, longToShortOptions, setting, config.getValue(setting)));
@@ -120,8 +123,7 @@ public class HelpUtils {
     private static final int LINE_LENGTH = getLineLength();
     private static final int INDENT = 4;
 
-    private final Set<Option> options =
-        new TreeSet<>(new PriorityComparator(SettingsDocumentor.PREFERRED_SETTINGS));
+    private final Set<Option> options = new TreeSet<>(new PriorityComparator(PREFERRED_SETTINGS));
 
     private static int getLineLength() {
       String columns = System.getenv("COLUMNS");
@@ -180,7 +182,7 @@ public class HelpUtils {
 
       // Look for the last whitespace character before startPos + LINE_LENGTH
       for (pos = lineLength; pos >= 0; --pos) {
-        final char c = description.charAt(pos);
+        char c = description.charAt(pos);
         if (c == ' ' || c == '\n' || c == '\r') {
           break;
         }
@@ -204,7 +206,7 @@ public class HelpUtils {
       }
 
       // all lines must be padded with indent space characters
-      final String padding = StringUtils.nCopies(" ", indent);
+      String padding = com.datastax.dsbulk.engine.internal.utils.StringUtils.nCopies(" ", indent);
       text = padding + text.trim();
 
       int pos = 0;

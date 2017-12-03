@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.engine.internal.settings.StringUtils.DELIMITER;
+import static com.datastax.dsbulk.engine.internal.utils.StringUtils.DELIMITER;
 
 import com.datastax.driver.core.AuthProvider;
 import com.datastax.driver.core.ConsistencyLevel;

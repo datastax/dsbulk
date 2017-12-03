@@ -4,11 +4,11 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.engine.internal;
+package com.datastax.dsbulk.engine.internal.docs;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.engine.internal.settings.StringUtils;
+import com.datastax.dsbulk.engine.internal.utils.StringUtils;
 import com.google.common.base.CharMatcher;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -36,11 +36,13 @@ import java.util.stream.Collectors;
 import org.apache.commons.cli.Option;
 
 public class SettingsDocumentor {
+
   private static final LoaderConfig DEFAULT =
       new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
+
   private static final Map<String, String> LONG_TO_SHORT_OPTIONS;
 
-  static final Option CONFIG_FILE_OPTION =
+  public static final Option CONFIG_FILE_OPTION =
       Option.builder("f")
           .hasArg()
           .argName("string")
@@ -51,7 +53,7 @@ public class SettingsDocumentor {
    * Settings that should be displayed in a "common" section as well as the appropriate place in the
    * hierarchy.
    */
-  static final List<String> COMMON_SETTINGS =
+  public static final List<String> COMMON_SETTINGS =
       Arrays.asList(
           "connector.csv.url",
           "connector.name",
@@ -77,7 +79,7 @@ public class SettingsDocumentor {
    * Settings that should be placed near the top within their setting groups. It is a super-set of
    * COMMON_SETTINGS.
    */
-  static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
+  public static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
 
   public static final Map<String, Group> GROUPS =
       new TreeMap<>(new PriorityComparator("Common", "connector", "connector.csv", "schema"));

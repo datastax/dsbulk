@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.engine.internal.settings.StringUtils.DELIMITER;
+import static com.datastax.dsbulk.engine.internal.utils.StringUtils.DELIMITER;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;

@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine;
 
-import static com.datastax.dsbulk.engine.internal.WorkflowUtils.checkProductCompatibility;
+import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkProductCompatibility;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Statement;
@@ -14,7 +14,6 @@ import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
-import com.datastax.dsbulk.engine.internal.WorkflowUtils;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
@@ -28,6 +27,7 @@ import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
+import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;

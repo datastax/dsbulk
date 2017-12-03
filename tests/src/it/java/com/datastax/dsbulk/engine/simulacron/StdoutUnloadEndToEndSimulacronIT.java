@@ -87,25 +87,25 @@ class StdoutUnloadEndToEndSimulacronIT {
   void validate_stdout() throws Exception {
 
     String[] args = {
-        "unload",
-        "--log.directory",
-        Files.createTempDirectory("test").toString(),
-        "-header",
-        "false",
-        "--connector.csv.url",
-        "stdout:/",
-        "--connector.csv.maxConcurrentFiles",
-        "1 ",
-        "--driver.query.consistency",
-        "ONE",
-        "--driver.hosts",
-        fetchContactPoints(simulacron),
-        "--driver.pooling.local.connections",
-        "1",
-        "--schema.query",
-        SELECT_FROM_IP_BY_COUNTRY,
-        "--schema.mapping",
-        IP_BY_COUNTRY_MAPPING
+      "unload",
+      "--log.directory",
+      Files.createTempDirectory("test").toString(),
+      "-header",
+      "false",
+      "--connector.csv.url",
+      "stdout:/",
+      "--connector.csv.maxConcurrentFiles",
+      "1 ",
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      fetchContactPoints(simulacron),
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.query",
+      SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING
     };
 
     int status = new Main(args).run();

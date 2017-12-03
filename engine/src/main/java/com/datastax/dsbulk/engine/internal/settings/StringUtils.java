@@ -4,13 +4,15 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.engine.internal.settings;
+package com.datastax.dsbulk.engine.internal.utils;
 
 import java.util.Collections;
 
 /** */
 public class StringUtils {
+
   public static final String DELIMITER = ".";
+
   /**
    * Upper-cases the first letter of the given string
    *

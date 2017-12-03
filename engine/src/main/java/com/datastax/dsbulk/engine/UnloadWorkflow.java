@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine;
 
-import static com.datastax.dsbulk.engine.internal.WorkflowUtils.TPC_THRESHOLD;
+import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.TPC_THRESHOLD;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Statement;
@@ -17,7 +17,6 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
-import com.datastax.dsbulk.engine.internal.WorkflowUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
@@ -31,6 +30,7 @@ import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
+import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
 import java.util.List;
