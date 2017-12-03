@@ -6,6 +6,9 @@
  */
 package com.datastax.dsbulk.tests.utils;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.datastax.dsbulk.commons.internal.utils.FileUtils;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -15,21 +18,17 @@ import com.datastax.oss.simulacron.common.result.ErrorResult;
 import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.assertj.core.api.Assertions;
 
 @SuppressWarnings("SameParameterValue")
 public class EndToEndUtils {
@@ -48,8 +47,7 @@ public class EndToEndUtils {
   }
 
   public static RequestPrime createQueryWithResultSet(String query, int numOfResults) {
-    Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
-
+    Query when = new Query(query);
     Map<String, String> columnTypes = new LinkedHashMap<>();
 
     columnTypes.put("country_name", "ascii");
@@ -73,8 +71,7 @@ public class EndToEndUtils {
   }
 
   public static RequestPrime createQueryWithResultSetWithQuotes(String query, int numOfResults) {
-    Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
-
+    Query when = new Query(query);
     Map<String, String> columnTypes = new LinkedHashMap<>();
 
     columnTypes.put("country_name", "ascii");
@@ -98,8 +95,7 @@ public class EndToEndUtils {
   }
 
   public static RequestPrime createQueryWithError(String query, ErrorResult result) {
-    Query when = new Query(query, Collections.emptyList(), new HashMap<>(), new HashMap<>());
-
+    Query when = new Query(query);
     return new RequestPrime(when, result);
   }
 
@@ -130,14 +126,12 @@ public class EndToEndUtils {
     return new RequestPrime(when, then);
   }
 
-  public static void validateExceptionsLog(int size, String keyword, String file_name)
+  public static void validateExceptionsLog(int size, String keyword, String fileName)
       throws Exception {
     Path logPath = getLogDirectory();
-    Path exceptionFile = logPath.resolve(file_name);
-    List<String> exceptionLines =
-        Files.lines(exceptionFile, Charset.defaultCharset()).collect(Collectors.toList());
-    long numErrors = exceptionLines.stream().filter(l -> l.startsWith(keyword)).count();
-    Assertions.assertThat(numErrors).isEqualTo(size);
+    Path exceptionFile = logPath.resolve(fileName);
+    long numErrors = Files.lines(exceptionFile).filter(l -> l.startsWith(keyword)).count();
+    assertThat(numErrors).isEqualTo(size);
   }
 
   private static Path getLogDirectory() {
@@ -149,28 +143,13 @@ public class EndToEndUtils {
     Path logPath = getLogDirectory();
     Path badOps = logPath.resolve("operation.bad");
     long numBadOps = Files.lines(badOps, Charset.defaultCharset()).count();
-    Assertions.assertThat(numBadOps).isEqualTo(size);
+    assertThat(numBadOps).isEqualTo(size);
   }
 
   public static void validateOutputFiles(int numOfRecords, Path... outputFilePaths) {
     // Sum the number of lines in each file and assert that the total matches the expected value.
-    long totalLines =
-        Arrays.stream(outputFilePaths)
-            .flatMap(
-                path -> {
-                  try {
-                    return Files.lines(path);
-                  } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                  }
-                })
-            .count();
-    Assertions.assertThat(totalLines).isEqualTo(numOfRecords);
-  }
-
-  public static void validateStringOutput(String output, int numOfRecords) {
-    String lines[] = output.split(System.lineSeparator());
-    Assertions.assertThat(lines.length).isEqualTo(numOfRecords);
+    long totalLines = FileUtils.readLines(outputFilePaths).size();
+    assertThat(totalLines).isEqualTo(numOfRecords);
   }
 
   public static String fetchContactPoints(BoundCluster simulacron) {
@@ -184,9 +163,9 @@ public class EndToEndUtils {
         logs.stream()
             .filter(l -> !l.getType().equals("PREPARE") && l.getQuery().startsWith(query))
             .collect(Collectors.toList());
-    Assertions.assertThat(ipLogs.size()).isEqualTo(numOfQueries);
+    assertThat(ipLogs.size()).isEqualTo(numOfQueries);
     for (QueryLog log : ipLogs) {
-      Assertions.assertThat(log.getConsistency()).isEqualTo(level);
+      assertThat(log.getConsistency()).isEqualTo(level);
     }
   }
 }

@@ -17,9 +17,12 @@ import static com.datastax.dsbulk.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.validateQueryCount;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.dsbulk.commons.internal.utils.FileUtils;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.tests.simulacron.SimulacronExtension;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -30,7 +33,6 @@ import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Scanner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -120,8 +122,6 @@ class CSVUnloadEndToEndSimulacronIT {
       ";",
       "--connector.csv.quote",
       "<",
-      "--connector.csv.skipLines",
-      "2",
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -137,8 +137,8 @@ class CSVUnloadEndToEndSimulacronIT {
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
 
-    verifyDelimiterCount(";", 120);
-    verifyDelimiterCount("<", 48);
+    verifyDelimiterCount(';', 120);
+    verifyDelimiterCount('<', 48);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.ONE);
     validateOutputFiles(24, outputFile);
   }
@@ -259,14 +259,8 @@ class CSVUnloadEndToEndSimulacronIT {
     validateOutputFiles(0, outputFile);
   }
 
-  private void verifyDelimiterCount(String delimiter, int expected) throws Exception {
-    try (Scanner content = new Scanner(outputFile.toFile()).useDelimiter(delimiter)) {
-      int i = 0;
-      while (content.hasNext()) {
-        content.next();
-        i++;
-      }
-      assertThat(i - 1).isEqualTo(expected);
-    }
+  private void verifyDelimiterCount(char delimiter, int expected) throws Exception {
+    String contents = FileUtils.readFile(outputFile, UTF_8);
+    assertThat(StringUtils.countOccurrences(delimiter, contents)).isEqualTo(expected);
   }
 }

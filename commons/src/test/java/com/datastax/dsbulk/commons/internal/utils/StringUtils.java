@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.commons.internal.utils;
 
+import com.google.common.base.CharMatcher;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,5 +24,9 @@ public class StringUtils {
    */
   public static String uniqueIdentifier(String prefix) {
     return prefix + SEQS.computeIfAbsent(prefix, s -> new AtomicInteger(0)).incrementAndGet();
+  }
+
+  public static int countOccurrences(char c, String s) {
+    return CharMatcher.is(c).countIn(s);
   }
 }

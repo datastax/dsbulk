@@ -27,6 +27,7 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.logging.StreamCapture;
 import com.datastax.dsbulk.commons.internal.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.internal.logging.StreamInterceptor;
+import com.datastax.dsbulk.commons.internal.utils.FileUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.typesafe.config.ConfigFactory;
@@ -167,7 +168,7 @@ class LogSettingsTest {
       assertThat(stdErr.getStreamAsString()).contains("你好");
       Path logFile = dir.resolve("TEST_EXECUTION_ID").resolve("operation.log");
       assertThat(logFile).exists();
-      String contents = Files.readAllLines(logFile, UTF_8).stream().collect(Collectors.joining());
+      String contents = FileUtils.readFile(logFile, UTF_8);
       assertThat(contents).contains("你好");
     } finally {
       lc.putProperty(PRODUCTION_KEY, "false");
