@@ -80,7 +80,8 @@ public class CsvUtils {
           + "(country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
           + "VALUES (?,?,?,?,?,?)";
 
-  public static final String SELECT_FROM_IP_BY_COUNTRY = "SELECT * FROM ip_by_country";
+  public static final String SELECT_FROM_IP_BY_COUNTRY =
+      "SELECT country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number FROM ip_by_country";
 
   public static final String SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES =
       "SELECT * FROM \"MYKS\".\"WITH_SPACES\"";

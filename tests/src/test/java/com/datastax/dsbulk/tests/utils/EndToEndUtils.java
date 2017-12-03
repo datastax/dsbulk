@@ -49,7 +49,7 @@ public class EndToEndUtils {
   public static RequestPrime createQueryWithResultSet(String query, int numOfResults) {
     Query when = new Query(query);
     Map<String, String> columnTypes = new LinkedHashMap<>();
-
+    columnTypes.put("country_code", "ascii");
     columnTypes.put("country_name", "ascii");
     columnTypes.put("beginning_ip_address", "inet");
     columnTypes.put("ending_ip_address", "inet");
@@ -58,6 +58,7 @@ public class EndToEndUtils {
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < numOfResults; i++) {
       HashMap<String, Object> row = new HashMap<>();
+      row.put("country_code", "country" + Integer.toString(i));
       row.put("country_name", "country" + Integer.toString(i));
       row.put("beginning_ip_address", "127.0.0." + Integer.toString(i));
       row.put("ending_ip_address", "127.2.0." + Integer.toString(i));
@@ -65,7 +66,6 @@ public class EndToEndUtils {
       row.put("ending_ip_number", Integer.toString(i));
       rows.add(row);
     }
-
     SuccessResult then = new SuccessResult(rows, columnTypes);
     return new RequestPrime(when, then);
   }
@@ -73,7 +73,7 @@ public class EndToEndUtils {
   public static RequestPrime createQueryWithResultSetWithQuotes(String query, int numOfResults) {
     Query when = new Query(query);
     Map<String, String> columnTypes = new LinkedHashMap<>();
-
+    columnTypes.put("country_code", "ascii");
     columnTypes.put("country_name", "ascii");
     columnTypes.put("beginning_ip_address", "inet");
     columnTypes.put("ending_ip_address", "inet");
@@ -82,6 +82,7 @@ public class EndToEndUtils {
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < numOfResults; i++) {
       HashMap<String, Object> row = new HashMap<>();
+      row.put("country_code", "country" + ";" + Integer.toString(i));
       row.put("country_name", "country" + ";" + Integer.toString(i));
       row.put("beginning_ip_address", "127.0.0." + Integer.toString(i));
       row.put("ending_ip_address", "127.2.0." + Integer.toString(i));
@@ -89,7 +90,6 @@ public class EndToEndUtils {
       row.put("ending_ip_number", Integer.toString(i));
       rows.add(row);
     }
-
     SuccessResult then = new SuccessResult(rows, columnTypes);
     return new RequestPrime(when, then);
   }
@@ -167,5 +167,14 @@ public class EndToEndUtils {
     for (QueryLog log : ipLogs) {
       assertThat(log.getConsistency()).isEqualTo(level);
     }
+  }
+
+  public static void validatePrepare(BoundCluster simulacron, String query) {
+    List<QueryLog> logs = simulacron.getLogs().getQueryLogs();
+    List<QueryLog> ipLogs =
+        logs.stream()
+            .filter(l -> l.getType().equals("PREPARE") && l.getQuery().startsWith(query))
+            .collect(Collectors.toList());
+    assertThat(ipLogs.size()).isEqualTo(1);
   }
 }

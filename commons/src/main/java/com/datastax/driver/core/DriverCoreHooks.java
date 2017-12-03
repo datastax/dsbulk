@@ -15,18 +15,24 @@ public class DriverCoreHooks {
   public static int valuesCount(
       RegularStatement statement, ProtocolVersion protocolVersion, CodecRegistry codecRegistry) {
     ByteBuffer[] values = statement.getValues(protocolVersion, codecRegistry);
-    if (values != null) return values.length;
+    if (values != null) {
+      return values.length;
+    }
     Map<String, ByteBuffer> namedValues = statement.getNamedValues(protocolVersion, codecRegistry);
-    if (namedValues != null) return namedValues.size();
-    else return 0;
+    if (namedValues != null) {
+      return namedValues.size();
+    } else {
+      return 0;
+    }
   }
 
   public static int valuesCount(
       BatchStatement batchStatement, ProtocolVersion protocolVersion, CodecRegistry codecRegistry) {
     int count = 0;
     for (Statement statement : batchStatement.getStatements()) {
-      if (statement instanceof StatementWrapper)
+      if (statement instanceof StatementWrapper) {
         statement = ((StatementWrapper) statement).getWrappedStatement();
+      }
       if (statement instanceof RegularStatement) {
         count += valuesCount((RegularStatement) statement, protocolVersion, codecRegistry);
       } else {
@@ -48,5 +54,13 @@ public class DriverCoreHooks {
 
   public static CodecRegistry getCodecRegistry(ColumnDefinitions variables) {
     return variables.codecRegistry;
+  }
+
+  public static String handleId(String id) {
+    return Metadata.handleId(id);
+  }
+
+  public static ColumnDefinitions resultSetVariables(PreparedStatement ps) {
+    return ps.getPreparedId().resultSetMetadata.variables;
   }
 }
