@@ -6,14 +6,8 @@
  */
 package com.datastax.dsbulk.commons.internal.logging;
 
-import java.nio.charset.Charset;
-
 /** */
-public interface StdoutInterceptor {
-
-  String getStdout();
-
-  String getStdout(Charset charset);
-
-  void clear();
+public enum StreamType {
+  STDOUT,
+  STDERR
 }

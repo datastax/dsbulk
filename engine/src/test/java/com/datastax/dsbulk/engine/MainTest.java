@@ -6,22 +6,24 @@
  */
 package com.datastax.dsbulk.engine;
 
+import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDERR;
+import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDOUT;
+import static com.datastax.dsbulk.engine.internal.HelpUtils.getVersionMessage;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.slf4j.event.Level.ERROR;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
+import com.datastax.dsbulk.commons.internal.logging.LogCapture;
+import com.datastax.dsbulk.commons.internal.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.internal.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.internal.logging.StreamCapture;
+import com.datastax.dsbulk.commons.internal.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.internal.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
-import com.datastax.dsbulk.engine.internal.HelpUtils;
-import com.datastax.dsbulk.engine.internal.OptionUtils;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -30,39 +32,24 @@ import org.apache.commons.cli.ParseException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(StreamInterceptingExtension.class)
+@ExtendWith(LogInterceptingExtension.class)
 class MainTest {
 
-  private PrintStream originalStderr;
-  private PrintStream originalStdout;
-  private ByteArrayOutputStream stderr;
-  private ByteArrayOutputStream stdout;
-  private Logger root;
-  private Level oldLevel;
+  private final StreamInterceptor stdOut;
+  private final StreamInterceptor stdErr;
+  private final LogInterceptor logs;
   private Path tempFolder;
 
-  @BeforeEach
-  void setUp() throws Exception {
-    originalStdout = System.out;
-    originalStderr = System.err;
-    stdout = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(stdout));
-    stderr = new ByteArrayOutputStream();
-    System.setErr(new PrintStream(stderr));
-    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    oldLevel = root.getLevel();
-    root.setLevel(Level.INFO);
-  }
-
-  @AfterEach
-  void tearDown() throws Exception {
-    System.setOut(originalStdout);
-    System.setErr(originalStderr);
-    root.setLevel(oldLevel);
-    System.clearProperty("config.file");
-    ConfigFactory.invalidateCaches();
-    OptionUtils.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+  MainTest(
+      @StreamCapture(STDOUT) StreamInterceptor stdOut,
+      @StreamCapture(STDERR) StreamInterceptor stdErr,
+      @LogCapture(level = ERROR) LogInterceptor logs) {
+    this.stdOut = stdOut;
+    this.stdErr = stdErr;
+    this.logs = logs;
   }
 
   @BeforeEach
@@ -75,69 +62,73 @@ class MainTest {
     deleteRecursively(tempFolder, ALLOW_INSECURE);
   }
 
+  @AfterEach
+  void clearConfigFileProperty() {
+    System.clearProperty("config.file");
+  }
+
   @Test
-  void should_show_help_when_no_args() throws Exception {
+  void should_show_help_when_no_args() {
     new Main(new String[] {}).run();
     assertGlobalHelp();
   }
 
   @Test
-  void should_show_help_when_help_opt_arg() throws Exception {
+  void should_show_help_when_help_opt_arg() {
     new Main(new String[] {"--help"}).run();
     assertGlobalHelp();
   }
 
   @Test
-  void should_show_help_when_help_subcommand() throws Exception {
+  void should_show_help_when_help_subcommand() {
     new Main(new String[] {"help"}).run();
     assertGlobalHelp();
   }
 
   @Test
-  void should_show_error_when_junk_subcommand() throws Exception {
+  void should_show_error_when_junk_subcommand() {
     new Main(new String[] {"junk"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("First argument must be subcommand \"load\", \"unload\", or \"help\"");
+    assertThat(stdErr.getStreamAsString())
+        .contains(logs.getLoggedMessages())
+        .contains("First argument must be subcommand \"load\", \"unload\", or \"help\"");
   }
 
   @Test
-  void should_show_help_without_error_when_junk_subcommand_and_help() throws Exception {
+  void should_show_help_without_error_when_junk_subcommand_and_help() {
     new Main(new String[] {"junk", "--help"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).doesNotContain("First argument must be subcommand");
+    assertThat(stdOut.getStreamAsString()).doesNotContain("First argument must be subcommand");
     assertGlobalHelp();
   }
 
   @Test
-  void should_show_help_without_error_when_good_subcommand_and_help() throws Exception {
+  void should_show_help_without_error_when_good_subcommand_and_help() {
     new Main(new String[] {"load", "--help"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).doesNotContain("First argument must be subcommand");
+    assertThat(stdOut.getStreamAsString()).doesNotContain("First argument must be subcommand");
     assertGlobalHelp();
   }
 
   @Test
-  void should_show_error_for_help_bad_section() throws Exception {
+  void should_show_error_for_help_bad_section() {
     new Main(new String[] {"help", "noexist"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err)
+    assertThat(stdErr.getStreamAsString())
+        .contains(logs.getLoggedMessages())
         .contains("noexist is not a valid section. Available sections include")
         .contains("driver.auth");
   }
 
   @Test
-  void should_show_section_help() throws Exception {
+  void should_show_section_help() {
     new Main(new String[] {"help", "batch"}).run();
-    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    String out = stdOut.getStreamAsString();
     assertThat(out)
         .contains("--batch.mode")
         .doesNotContain("This section has the following subsections");
   }
 
   @Test
-  void should_show_section_help_with_subsection_pointers() throws Exception {
+  void should_show_section_help_with_subsection_pointers() {
     new Main(new String[] {"help", "driver"}).run();
-    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    String out = stdOut.getStreamAsString();
     assertThat(out)
         .contains("--driver.hosts")
         .contains("This section has the following subsections")
@@ -145,17 +136,16 @@ class MainTest {
   }
 
   @Test
-  void should_show_section_help_with_connector_shortcuts() throws Exception {
+  void should_show_section_help_with_connector_shortcuts() {
     new Main(new String[] {"help", "connector.csv"}).run();
-    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
+    String out = stdOut.getStreamAsString();
     assertThat(out).contains("-url, --connector.csv.url");
   }
 
   @Test
-  void should_show_help_without_error_when_no_subcommand_and_help() throws Exception {
+  void should_show_help_without_error_when_no_subcommand_and_help() {
     new Main(new String[] {"-k", "k1", "--help"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).doesNotContain("First argument must be subcommand");
+    assertThat(stdOut.getStreamAsString()).doesNotContain("First argument must be subcommand");
     assertGlobalHelp();
   }
 
@@ -165,16 +155,22 @@ class MainTest {
       Path f = Files.createTempFile(tempFolder, "myapp", ".conf");
       Files.write(f, "dsbulk.connector.name=junk".getBytes("UTF-8"));
       new Main(new String[] {"load", "-f", f.toString()}).run();
-      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      String err = logs.getAllMessagesAsString();
       assertThat(err)
           .doesNotContain("First argument must be subcommand")
           .contains("Cannot find connector 'junk'");
     }
+    logs.clear();
     {
       Path f = Files.createTempFile(tempFolder, "myapp3", ".conf");
-      Files.write(f, "dsbulk.driver.socket.readTimeout=wonky".getBytes("UTF-8"));
+      Files.write(
+          f,
+          ("dsbulk.connector.csv.url=/path/to/my/file\n"
+                  + "dsbulk.schema.query=INSERT\n"
+                  + "dsbulk.driver.socket.readTimeout=wonky")
+              .getBytes("UTF-8"));
       new Main(new String[] {"load", "-f", f.toString()}).run();
-      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      String err = logs.getAllMessagesAsString();
       assertThat(err)
           .doesNotContain("First argument must be subcommand")
           .contains("Invalid value at 'socket.readTimeout'");
@@ -182,9 +178,9 @@ class MainTest {
   }
 
   @Test
-  void should_error_out_for_bad_config_file() throws Exception {
+  void should_error_out_for_bad_config_file() {
     new Main(new String[] {"load", "-f", "noexist"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     if (PlatformUtils.isWindows()) {
 
       assertThat(err)
@@ -202,35 +198,35 @@ class MainTest {
     Path f = Files.createTempFile(tempFolder, "myapp", ".conf");
     Files.write(f, "dsbulk.connector.name=junk".getBytes("UTF-8"));
     new Main(new String[] {"load", "-c", "fromargs", "-f", f.toString()}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err)
+    assertThat(stdErr.getStreamAsString())
+        .contains(logs.getLoggedMessages())
         .doesNotContain("First argument must be subcommand")
         .contains("Cannot find connector 'fromargs'");
   }
 
   @Test
-  void should_handle_connector_name_long_option() throws Exception {
+  void should_handle_connector_name_long_option() {
     new Main(new String[] {"load", "--connector.name", "fromargs"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err)
+    assertThat(stdErr.getStreamAsString())
+        .contains(logs.getLoggedMessages())
         .doesNotContain("First argument must be subcommand")
         .contains("Cannot find connector 'fromargs'");
   }
 
   @Test
-  void should_handle_connector_name_long_option_with_equal() throws Exception {
+  void should_handle_connector_name_long_option_with_equal() {
     new Main(new String[] {"load", "--connector.name=fromargs"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err)
+    assertThat(stdErr.getStreamAsString())
+        .contains(logs.getLoggedMessages())
         .doesNotContain("First argument must be subcommand")
         .contains("Cannot find connector 'fromargs'");
   }
 
   @Test
-  public void should_error_out_for_bad_execution_id_template() throws Exception {
+  void should_error_out_for_bad_execution_id_template() {
     new Main(new String[] {"load", "--engine.executionId", "%4$s"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err)
+    assertThat(stdErr.getStreamAsString())
+        .contains(logs.getLoggedMessages())
         .contains("Load workflow engine execution null failed")
         .contains("Could not generate execution ID with template: '%4$s'");
   }
@@ -338,7 +334,7 @@ class MainTest {
   }
 
   @Test
-  void should_reject_concatenated_option_value() throws Exception {
+  void should_reject_concatenated_option_value() {
     assertThrows(
         ParseException.class,
         () ->
@@ -668,23 +664,24 @@ class MainTest {
   }
 
   @Test
-  void should_show_version_message_when_asked() throws Exception {
+  void should_show_version_message_when_asked() {
     new Main(new String[] {"--version"}).run();
-    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(out).isEqualTo(String.format("%s%n", HelpUtils.getVersionMessage()));
+    String out = stdOut.getStreamAsString();
+    assertThat(out).isEqualTo(String.format("%s%n", getVersionMessage()));
   }
 
   @Test
-  void should_show_error_when_unload_and_dryRun() throws Exception {
+  void should_show_error_when_unload_and_dryRun() {
     new Main(new String[] {"unload", "-dryRun", "true", "-url", "/foo/bar", "-k", "k1", "-t", "t1"})
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("Dry-run is not supported for unload");
+    assertThat(stdErr.getStreamAsString())
+        .contains(logs.getLoggedMessages())
+        .contains("Dry-run is not supported for unload");
   }
 
   private void assertGlobalHelp() {
-    String out = new String(stdout.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(out).contains(HelpUtils.getVersionMessage());
+    String out = stdOut.getStreamAsString();
+    assertThat(out).contains(getVersionMessage());
     assertThat(out).doesNotContain("First argument must be subcommand");
     assertThat(out).containsPattern("-f <string>\\s+Load settings from the given file");
   }

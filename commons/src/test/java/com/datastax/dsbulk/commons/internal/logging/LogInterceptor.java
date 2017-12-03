@@ -22,5 +22,9 @@ public interface LogInterceptor {
         .collect(Collectors.toList());
   }
 
+  default String getAllMessagesAsString() {
+    return getLoggedMessages().stream().collect(Collectors.joining(System.lineSeparator()));
+  }
+
   void clear();
 }

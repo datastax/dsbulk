@@ -31,7 +31,7 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 public class LogSettings {
 
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
-  @VisibleForTesting static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
+  @VisibleForTesting public static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
 
   // Path Constants

@@ -6,30 +6,23 @@
  */
 package com.datastax.dsbulk.engine;
 
+import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDERR;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.slf4j.event.Level.ERROR;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
+import com.datastax.dsbulk.commons.internal.logging.LogCapture;
+import com.datastax.dsbulk.commons.internal.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.internal.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.internal.logging.StreamCapture;
+import com.datastax.dsbulk.commons.internal.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.internal.logging.StreamInterceptor;
 import java.util.Arrays;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(LogInterceptingExtension.class)
+@ExtendWith(StreamInterceptingExtension.class)
 class SettingsValidatorTest {
-
-  private PrintStream originalStderr;
-  private PrintStream originalStdout;
-  private ByteArrayOutputStream stderr;
-
-  @SuppressWarnings("FieldCanBeLocal")
-  private ByteArrayOutputStream stdout;
-
-  private Logger root;
-  private Level oldLevel;
 
   private static final String[] BAD_PARAMS_WRONG_TYPE = {
     "--connector.csv.recursive=tralse",
@@ -83,24 +76,14 @@ class SettingsValidatorTest {
     "--monitoring.reportRate=NotANumber",
   };
 
-  @BeforeEach
-  void setUp() throws Exception {
-    originalStdout = System.out;
-    originalStderr = System.err;
-    stdout = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(stdout));
-    stderr = new ByteArrayOutputStream();
-    System.setErr(new PrintStream(stderr));
-    root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    oldLevel = root.getLevel();
-    root.setLevel(Level.INFO);
-  }
+  private final LogInterceptor logs;
+  private final StreamInterceptor stdErr;
 
-  @AfterEach
-  void tearDown() throws Exception {
-    System.setOut(originalStdout);
-    System.setErr(originalStderr);
-    root.setLevel(oldLevel);
+  public SettingsValidatorTest(
+      @LogCapture(value = Main.class, level = ERROR) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stdErr) {
+    this.logs = logs;
+    this.stdErr = stdErr;
   }
 
   @Test
@@ -114,13 +97,14 @@ class SettingsValidatorTest {
                 "load",
                 "--schema.keyspace=keyspace",
                 "--schema.table=table",
-                "--connector.csv.url=127.0.1.1",
+                "--connector.csv.url=/path/to/file",
                 argument
               })
           .run();
-      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      String err = logs.getAllMessagesAsString();
       assertThat(err).contains(argPrefix + " has type");
       assertThat(err).contains(" rather than");
+      logs.clear();
     }
 
     // These errors will look like this; String: 1: Invalid value at 'protocol.compression':
@@ -136,9 +120,10 @@ class SettingsValidatorTest {
                 argument
               })
           .run();
-      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      String err = logs.getAllMessagesAsString();
       assertThat(err).contains("Invalid value at");
       assertThat(err).contains("The enum class");
+      logs.clear();
     }
 
     // These errors will look like this; String: 1: Invalid value at 'socket.readTimeout': No number
@@ -153,23 +138,34 @@ class SettingsValidatorTest {
                 argument
               })
           .run();
-      String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+      String err = logs.getAllMessagesAsString();
       assertThat(err).contains("Invalid value at");
       assertThat(err).contains(" No number in duration value");
+      logs.clear();
     }
   }
 
   @Test
-  void should_error_bad_connector() throws Exception {
+  void should_error_bad_connector() {
     new Main(new String[] {"load", "-c", "BadConnector"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
-    assertThat(err).contains("Cannot find connector");
+    assertThat(stdErr.getStreamAsString())
+        .contains(logs.getLoggedMessages())
+        .contains("Cannot find connector");
   }
 
   @Test
-  void should_error_on_empty_hosts() throws Exception {
-    new Main(new String[] {"load", "--driver.hosts", ""}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+  void should_error_on_empty_hosts() {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "--schema.query",
+              "INSERT",
+              "--driver.hosts",
+              ""
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains(
             "driver.hosts is mandatory. Please set driver.hosts and try again. "
@@ -177,9 +173,9 @@ class SettingsValidatorTest {
   }
 
   @Test
-  void should_error_on_empty_url() throws Exception {
+  void should_error_on_empty_url() {
     new Main(new String[] {"load", "--driver.hosts=hostshere", "--connector.csv.url", ""}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains(
             "url is mandatory when using the csv connector. Please set connector.csv.url and "
@@ -187,64 +183,99 @@ class SettingsValidatorTest {
   }
 
   @Test
-  void should_error_bad_parse_driver_option() throws Exception {
-    new Main(new String[] {"load", "--driver.socket.readTimeout", "I am not a duration"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+  void should_error_bad_parse_driver_option() {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url",
+              "/path/to/file",
+              "--schema.query",
+              "INSERT",
+              "--driver.socket.readTimeout",
+              "I am not a duration"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("Invalid value at 'socket.readTimeout'");
   }
 
   @Test
-  void should_error_invalid_auth_provider() throws Exception {
-    new Main(new String[] {"load", "--driver.auth.provider", "InvalidAuthProvider"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+  void should_error_invalid_auth_provider() {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url",
+              "/path/to/file",
+              "--schema.query",
+              "INSERT",
+              "--driver.auth.provider",
+              "InvalidAuthProvider"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("InvalidAuthProvider is not a valid auth provider");
   }
 
   @Test
-  void should_error_invalid_auth_combinations_missing_principal() throws Exception {
+  void should_error_invalid_auth_combinations_missing_principal() {
     new Main(
             new String[] {
-              "load", "--driver.auth.provider=DseGSSAPIAuthProvider", "--driver.auth.principal", ""
+              "load",
+              "--connector.csv.url",
+              "/path/to/file",
+              "--schema.query",
+              "INSERT",
+              "--driver.auth.provider=DseGSSAPIAuthProvider",
+              "--driver.auth.principal",
+              ""
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("must be provided with auth.principal");
   }
 
   @Test
-  void should_error_invalid_auth_combinations_missing_username() throws Exception {
+  void should_error_invalid_auth_combinations_missing_username() {
     new Main(
             new String[] {
-              "load", "--driver.auth.provider=PlainTextAuthProvider", "--driver.auth.username", ""
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "--schema.query",
+              "INSERT",
+              "--driver.auth.provider=PlainTextAuthProvider",
+              "--driver.auth.username",
+              ""
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("must be provided with both auth.username and auth.password");
   }
 
   @Test
-  void should_error_invalid_auth_combinations_missing_password() throws Exception {
+  void should_error_invalid_auth_combinations_missing_password() {
     new Main(
             new String[] {
               "load",
+              "--connector.csv.url=/path/to/my/file",
+              "--schema.query=INSERT",
               "--driver.auth.provider=DsePlainTextAuthProvider",
               "--driver.auth.password",
               ""
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("must be provided with both auth.username and auth.password");
   }
 
   @Test
-  void should_error_invalid_schema_settings() throws Exception {
+  void should_error_invalid_schema_settings() {
     new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("schema.mapping, or schema.keyspace and schema.table must be defined");
   }
 
   @Test
-  void should_error_invalid_schema_query_with_ttl() throws Exception {
+  void should_error_invalid_schema_query_with_ttl() {
     new Main(
             new String[] {
               "load",
@@ -255,7 +286,7 @@ class SettingsValidatorTest {
               "--schema.table=table"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains(
             "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp "
@@ -263,7 +294,7 @@ class SettingsValidatorTest {
   }
 
   @Test
-  void should_error_invalid_schema_query_with_timestamp() throws Exception {
+  void should_error_invalid_schema_query_with_timestamp() {
     new Main(
             new String[] {
               "load",
@@ -274,7 +305,7 @@ class SettingsValidatorTest {
               "--schema.table=table"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains(
             "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp "
@@ -282,7 +313,7 @@ class SettingsValidatorTest {
   }
 
   @Test
-  void should_error_invalid_schema_query_with_mapped_timestamp() throws Exception {
+  void should_error_invalid_schema_query_with_mapped_timestamp() {
     new Main(
             new String[] {
               "load",
@@ -294,13 +325,13 @@ class SettingsValidatorTest {
               "--schema.table=table"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains("schema.query must not be defined when mapping a field to query-timestamp");
   }
 
   @Test
-  void should_error_invalid_schema_query_with_mapped_ttl() throws Exception {
+  void should_error_invalid_schema_query_with_keyspace_and_table() {
     new Main(
             new String[] {
               "load",
@@ -312,12 +343,12 @@ class SettingsValidatorTest {
               "--schema.table=table"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("schema.query must not be defined when mapping a field to query-ttl");
   }
 
   @Test
-  void should_error_invalid_timestamp() throws Exception {
+  void should_error_invalid_timestamp() {
     new Main(
             new String[] {
               "load",
@@ -327,12 +358,12 @@ class SettingsValidatorTest {
               "--schema.table=table"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("Could not parse schema.queryTimestamp 'junk'");
   }
 
   @Test
-  void should_connect_error_with_schema_defined() throws Exception {
+  void should_connect_error_with_schema_defined() {
     new Main(
             new String[] {
               "load",
@@ -342,27 +373,27 @@ class SettingsValidatorTest {
               "--schema.table=table"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains(" All host(s) tried for query");
   }
 
   @Test
-  void should_error_invalid_schema_missing_keyspace() throws Exception {
+  void should_error_invalid_schema_missing_keyspace() {
     new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "--schema.table=table"})
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("schema.keyspace must accompany schema.table in the configuration");
   }
 
   @Test
-  void should_error_invalid_schema_mapping_missing_keyspace_and_table() throws Exception {
+  void should_error_invalid_schema_mapping_missing_keyspace_and_table() {
     new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "c1=c2"}).run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("schema.query, or schema.keyspace and schema.table must be defined");
   }
 
   @Test
-  void should_connect_error_with_schema_mapping_query_defined() throws Exception {
+  void should_connect_error_with_schema_mapping_query_defined() {
     new Main(
             new String[] {
               "load",
@@ -374,12 +405,12 @@ class SettingsValidatorTest {
               "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains(" All host(s) tried for query");
   }
 
   @Test
-  void should_error_invalid_schema_inferred_mapping_query_defined() throws Exception {
+  void should_error_invalid_schema_inferred_mapping_query_defined() {
     new Main(
             new String[] {
               "load",
@@ -390,13 +421,13 @@ class SettingsValidatorTest {
               "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains("schema.keyspace and schema.table must be defined when using inferred mapping");
   }
 
   @Test
-  void should_error_unknown_lbp() throws Exception {
+  void should_error_unknown_lbp() {
     new Main(
             new String[] {
               "load",
@@ -409,12 +440,12 @@ class SettingsValidatorTest {
               "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("Invalid value at 'policy.lbp.name'");
   }
 
   @Test
-  void should_error_lbp_bad_child_policy() throws Exception {
+  void should_error_lbp_bad_child_policy() {
     new Main(
             new String[] {
               "load",
@@ -429,12 +460,12 @@ class SettingsValidatorTest {
               "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("Invalid value at 'dse.childPolicy'");
   }
 
   @Test
-  void should_error_lbp_chaining_loop_self() throws Exception {
+  void should_error_lbp_chaining_loop_self() {
     new Main(
             new String[] {
               "load",
@@ -450,12 +481,12 @@ class SettingsValidatorTest {
             })
         .run();
 
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err).contains("Load balancing policy chaining loop detected: dse,dse");
   }
 
   @Test
-  void should_error_lbp_chaining_loop() throws Exception {
+  void should_error_lbp_chaining_loop() {
     new Main(
             new String[] {
               "load",
@@ -474,7 +505,7 @@ class SettingsValidatorTest {
               "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
             })
         .run();
-    String err = new String(stderr.toByteArray(), StandardCharsets.UTF_8);
+    String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains(
             "Load balancing policy chaining loop detected: dse,whiteList,tokenAware,whiteList");

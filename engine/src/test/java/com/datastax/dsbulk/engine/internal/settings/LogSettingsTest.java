@@ -6,7 +6,10 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDERR;
+import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -21,13 +24,13 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.logging.StreamCapture;
+import com.datastax.dsbulk.commons.internal.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.internal.logging.StreamInterceptor;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
-import com.google.common.base.Charsets;
 import com.typesafe.config.ConfigFactory;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,10 +38,11 @@ import java.util.Comparator;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** */
+@ExtendWith(StreamInterceptingExtension.class)
 class LogSettingsTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettingsTest.class);
@@ -47,7 +51,7 @@ class LogSettingsTest {
 
   @SuppressWarnings("Duplicates")
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
     cluster = mock(Cluster.class);
     Configuration configuration = mock(Configuration.class);
     ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
@@ -122,7 +126,7 @@ class LogSettingsTest {
   }
 
   @Test
-  public void should_not_create_log_file_when_not_in_production() throws Exception {
+  void should_not_create_log_file_when_not_in_production() throws Exception {
     Path dir = Files.createTempDirectory("test");
     String logDir = ConfigUtils.maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
@@ -137,7 +141,10 @@ class LogSettingsTest {
   }
 
   @Test
-  public void should_redirect_standard_output_when_in_production() throws Exception {
+  void should_redirect_standard_output_when_in_production(
+      @StreamCapture(STDOUT) StreamInterceptor stdOut,
+      @StreamCapture(STDERR) StreamInterceptor stdErr)
+      throws Exception {
     Path dir = Files.createTempDirectory("test");
     String logDir = ConfigUtils.maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
@@ -149,29 +156,20 @@ class LogSettingsTest {
     LoggerContext lc = root.getLoggerContext();
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     lc.putProperty(PRODUCTION_KEY, "true");
-    PrintStream originalStdout = System.out;
-    PrintStream originalStderr = System.err;
-    ByteArrayOutputStream baosOut = new ByteArrayOutputStream();
-    ByteArrayOutputStream baosErr = new ByteArrayOutputStream();
     Level oldLevel = root.getLevel();
     try {
-      System.setOut(new PrintStream(baosOut));
-      System.setErr(new PrintStream(baosErr));
       settings.init(true);
       // info level would normally be printed to stdout, but has been redirected to
       // stderr
       root.setLevel(Level.INFO);
       LOGGER.info("你好");
-      assertThat(baosOut.size()).isZero();
-      assertThat(new String(baosErr.toByteArray(), "UTF-8")).contains("你好");
+      assertThat(stdOut.getStreamAsString()).isEmpty();
+      assertThat(stdErr.getStreamAsString()).contains("你好");
       Path logFile = dir.resolve("TEST_EXECUTION_ID").resolve("operation.log");
       assertThat(logFile).exists();
-      String contents =
-          Files.readAllLines(logFile, Charsets.UTF_8).stream().collect(Collectors.joining());
+      String contents = Files.readAllLines(logFile, UTF_8).stream().collect(Collectors.joining());
       assertThat(contents).contains("你好");
     } finally {
-      System.setOut(originalStdout);
-      System.setErr(originalStderr);
       lc.putProperty(PRODUCTION_KEY, "false");
       root.setLevel(oldLevel);
     }
