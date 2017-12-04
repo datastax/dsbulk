@@ -10,11 +10,11 @@ import static java.nio.file.StandardOpenOption.CREATE_NEW;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.LineNumberReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.URISyntaxException;
@@ -53,8 +53,8 @@ public final class IOUtils {
         : new BufferedOutputStream(out, BUFFER_SIZE);
   }
 
-  public static BufferedReader newBufferedReader(URL url, Charset charset) throws IOException {
-    return new BufferedReader(
+  public static LineNumberReader newBufferedReader(URL url, Charset charset) throws IOException {
+    return new LineNumberReader(
         new InputStreamReader(newBufferedInputStream(url), charset), BUFFER_SIZE);
   }
 

@@ -55,12 +55,7 @@ public class SettingsDocumentor {
    */
   public static final List<String> COMMON_SETTINGS =
       Arrays.asList(
-          "connector.csv.url",
           "connector.name",
-          "connector.csv.delimiter",
-          "connector.csv.header",
-          "connector.csv.skipLines",
-          "connector.csv.maxLines",
           "schema.keyspace",
           "schema.table",
           "schema.mapping",
@@ -82,7 +77,7 @@ public class SettingsDocumentor {
   public static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
 
   public static final Map<String, Group> GROUPS =
-      new TreeMap<>(new PriorityComparator("Common", "connector", "connector.csv", "schema"));
+      new TreeMap<>(new PriorityComparator("Common", "connector", "schema"));
 
   private static final String TITLE = "DataStax Bulk Loader Options";
 
@@ -355,8 +350,16 @@ public class SettingsDocumentor {
 
     @Override
     public int compare(String left, String right) {
-      Integer leftInd = this.prioritizedValues.getOrDefault(left, Integer.MAX_VALUE);
-      Integer rightInd = this.prioritizedValues.getOrDefault(right, Integer.MAX_VALUE);
+      Integer leftInd = Integer.MAX_VALUE;
+      Integer rightInd = Integer.MAX_VALUE;
+      for (String value : prioritizedValues.keySet()) {
+        if (left.startsWith(value)) {
+          leftInd = prioritizedValues.get(value);
+        }
+        if (right.startsWith(value)) {
+          rightInd = prioritizedValues.get(value);
+        }
+      }
       int indCompare = leftInd.compareTo(rightInd);
       return indCompare != 0 ? indCompare : left.compareTo(right);
     }

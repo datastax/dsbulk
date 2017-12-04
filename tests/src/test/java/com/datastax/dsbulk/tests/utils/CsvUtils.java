@@ -116,20 +116,6 @@ public class CsvUtils {
             + "country_contacts frozen<contacts>)");
   }
 
-  public static void createIpByCountryTable(Session session, String keyspace) {
-    session.execute(
-        "CREATE TABLE IF NOT EXISTS "
-            + keyspace
-            + ".ip_by_country ("
-            + "country_code varchar,"
-            + "country_name varchar static,"
-            + "beginning_ip_address inet,"
-            + "ending_ip_address inet,"
-            + "beginning_ip_number bigint,"
-            + "ending_ip_number bigint,"
-            + "PRIMARY KEY(country_code, beginning_ip_address))");
-  }
-
   public static void createWithSpacesTable(Session session) {
     session.execute(
         "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "

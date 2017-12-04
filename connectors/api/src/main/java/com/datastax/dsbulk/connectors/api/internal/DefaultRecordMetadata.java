@@ -10,6 +10,7 @@ import com.datastax.driver.core.DataType;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
+import org.jetbrains.annotations.NotNull;
 
 public class DefaultRecordMetadata implements RecordMetadata {
 
@@ -20,7 +21,7 @@ public class DefaultRecordMetadata implements RecordMetadata {
   }
 
   @Override
-  public TypeToken<?> getFieldType(String field, DataType cqlType) {
+  public TypeToken<?> getFieldType(@NotNull String field, @NotNull DataType cqlType) {
     return fieldsToTypes.get(field);
   }
 }
