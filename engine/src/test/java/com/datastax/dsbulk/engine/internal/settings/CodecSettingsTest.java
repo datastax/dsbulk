@@ -28,6 +28,7 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newField;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static java.time.ZoneOffset.UTC;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -39,7 +40,9 @@ import com.datastax.driver.core.UserType;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.NumberToNumberCodec;
+import com.datastax.dsbulk.engine.internal.codecs.number.NumberToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigDecimalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigIntegerCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBooleanCodec;
@@ -59,7 +62,12 @@ import com.datastax.dsbulk.engine.internal.codecs.string.StringToTupleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUDTCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToTemporalCodec;
+import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCodec;
+import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.math.BigDecimal;
@@ -277,5 +285,53 @@ class CodecSettingsTest {
     assertThat(codecRegistry.codecFor(udtType, TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToUDTCodec.class);
+  }
+
+  @Test
+  void should_return_uuid_converting_codecs() {
+
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("uuidStrategy = MIN")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.codec")));
+    CodecSettings settings = new CodecSettings(config);
+    settings.init();
+    ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
+
+    assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(Long.class)))
+        .isNotNull()
+        .isInstanceOf(NumberToUUIDCodec.class)
+        .convertsFrom(123456L)
+        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+    assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(Instant.class)))
+        .isNotNull()
+        .isInstanceOf(TemporalToUUIDCodec.class)
+        .convertsFrom(Instant.ofEpochMilli(123456L))
+        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+    assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(ZonedDateTime.class)))
+        .isNotNull()
+        .isInstanceOf(TemporalToUUIDCodec.class)
+        .convertsFrom(Instant.ofEpochMilli(123456L).atZone(UTC))
+        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+    assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(Date.class)))
+        .isNotNull()
+        .isInstanceOf(DateToUUIDCodec.class)
+        .convertsFrom(Date.from(Instant.ofEpochMilli(123456L)))
+        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+    assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(java.sql.Timestamp.class)))
+        .isNotNull()
+        .isInstanceOf(DateToUUIDCodec.class)
+        .convertsFrom(Timestamp.from(Instant.ofEpochMilli(123456L)))
+        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+    assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(String.class)))
+        .isNotNull()
+        .isInstanceOf(StringToUUIDCodec.class)
+        .convertsFrom("123456")
+        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+    assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(JsonNode.class)))
+        .isNotNull()
+        .isInstanceOf(JsonNodeToUUIDCodec.class)
+        .convertsFrom(JsonNodeFactory.instance.textNode("123456"))
+        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
   }
 }

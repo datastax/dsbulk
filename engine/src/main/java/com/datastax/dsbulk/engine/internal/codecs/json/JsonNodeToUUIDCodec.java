@@ -7,16 +7,26 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import java.time.Instant;
 import java.util.UUID;
 
 public class JsonNodeToUUIDCodec extends ConvertingCodec<JsonNode, UUID> {
 
-  public JsonNodeToUUIDCodec(TypeCodec<UUID> targetCodec) {
+  private final ConvertingCodec<String, Instant> instantCodec;
+  private final TimeUUIDGenerator generator;
+
+  public JsonNodeToUUIDCodec(
+      TypeCodec<UUID> targetCodec,
+      ConvertingCodec<String, Instant> instantCodec,
+      TimeUUIDGenerator generator) {
     super(targetCodec, JsonNode.class);
+    this.instantCodec = instantCodec;
+    this.generator = generator;
   }
 
   @Override
@@ -24,15 +34,7 @@ public class JsonNodeToUUIDCodec extends ConvertingCodec<JsonNode, UUID> {
     if (node == null || node.isNull()) {
       return null;
     }
-    String s = node.asText();
-    if (s == null || s.isEmpty()) {
-      return null;
-    }
-    try {
-      return UUID.fromString(s);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidTypeException("Invalid UUID String: " + s);
-    }
+    return CodecUtils.parseUUID(node.asText(), instantCodec, generator);
   }
 
   @Override

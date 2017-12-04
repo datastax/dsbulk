@@ -8,6 +8,7 @@
 - [enhancement] DAT-167: Add support for user-supplied execution ids.
 - [new feature] DAT-22: Implement JSON connector.
 - [improvement] DAT-163: Improve error message for invalid JSON paths.
+- [new feature] DAT-181: Support temporal-to-timeuuid conversions.
 
 
 ### 1.0.0-beta2

@@ -13,6 +13,7 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
@@ -72,6 +73,7 @@ public class CodecSettings {
   private static final String TIMESTAMP = "timestamp";
   private static final String NUMERIC_TIMESTAMP_UNIT = "unit";
   private static final String NUMERIC_TIMESTAMP_EPOCH = "epoch";
+  private static final String TIME_UUID_GENERATOR = "uuidStrategy";
 
   private final LoaderConfig config;
 
@@ -84,6 +86,7 @@ public class CodecSettings {
   private ObjectMapper objectMapper;
   private TimeUnit numericTimestampUnit;
   private Instant numericTimestampEpoch;
+  private TimeUUIDGenerator generator;
 
   CodecSettings(LoaderConfig config) {
     this.config = config;
@@ -110,6 +113,7 @@ public class CodecSettings {
           CodecUtils.parseTemporal(config.getString(NUMERIC_TIMESTAMP_EPOCH), timestampFormat);
       assert temporal != null;
       this.numericTimestampEpoch = Instant.from(temporal);
+      generator = config.getEnum(TimeUUIDGenerator.class, TIME_UUID_GENERATOR);
       objectMapper = getObjectMapper();
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "codec");
@@ -132,6 +136,7 @@ public class CodecSettings {
         timestampFormat,
         numericTimestampUnit,
         numericTimestampEpoch,
+        generator,
         objectMapper);
   }
 
