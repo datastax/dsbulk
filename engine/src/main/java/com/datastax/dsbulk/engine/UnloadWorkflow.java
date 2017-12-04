@@ -68,7 +68,6 @@ public class UnloadWorkflow implements Workflow {
   public void init() throws Exception {
     settingsManager.init();
     executionId = settingsManager.getExecutionId();
-    settingsManager.logEffectiveSettings();
     LogSettings logSettings = settingsManager.getLogSettings();
     DriverSettings driverSettings = settingsManager.getDriverSettings();
     ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
