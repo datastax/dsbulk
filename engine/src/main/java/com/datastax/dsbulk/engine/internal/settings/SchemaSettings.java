@@ -155,7 +155,7 @@ public class SchemaSettings {
         if (mapping.hasPath(INFERRED_MAPPING_TOKEN) && !(keyspaceTablePresent || query != null)) {
           throw new BulkConfigurationException(
               String.format(
-                  "%s or %s and %s must be defined when using inferred mapping",
+                  "%s, or %s and %s must be defined when using inferred mapping",
                   prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)),
               "schema");
         }
@@ -190,7 +190,7 @@ public class SchemaSettings {
             "schema");
       }
 
-      if (query != null && (keyspaceName != null || tableName != null)) {
+      if (query != null && keyspaceTablePresent) {
         throw new BulkConfigurationException(
             String.format(
                 "%s must not be defined if %s and %s are defined",
@@ -328,6 +328,7 @@ public class SchemaSettings {
           workflowType == WorkflowType.LOAD
               ? inferWriteQuery(fieldsToVariables)
               : inferReadQuery(fieldsToVariables);
+      // remove function mappings as we won't need them anymore from now on
       fieldsToVariables.keySet().removeIf(SchemaSettings::isFunction);
     }
     preparedStatement = session.prepare(query);

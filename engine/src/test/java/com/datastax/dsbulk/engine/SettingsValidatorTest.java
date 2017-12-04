@@ -433,7 +433,7 @@ class SettingsValidatorTest {
     String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains(
-            "schema.query or schema.keyspace and schema.table must be defined when using inferred mapping");
+            "schema.query, or schema.keyspace and schema.table must be defined when using inferred mapping");
   }
 
   @Test

@@ -433,7 +433,87 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
+    assertTtlAndTimestamp();
+  }
 
+  @Test
+  void load_ttl_timestamp_now_in_query() throws Exception {
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            Files.createTempDirectory("test").toString(),
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.query",
+            "insert into "
+                + session.getLoggedKeyspace()
+                + ".table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :time_to_live and timestamp :created_at");
+
+    int status = new Main(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTtlAndTimestamp();
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_query_and_mapping() throws Exception {
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            Files.createTempDirectory("test").toString(),
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.query",
+            "insert into "
+                + session.getLoggedKeyspace()
+                + ".table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :t1 and timestamp :t2",
+            "--schema.mapping",
+            "*=*, created_at = t2, time_to_live = t1");
+
+    int status = new Main(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTtlAndTimestamp();
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_query_and_mapping_with_keyspace_provided_separately()
+      throws Exception {
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            Files.createTempDirectory("test").toString(),
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "insert into table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :t1 and timestamp :t2",
+            "--schema.mapping",
+            "*=*, created_at = t2, time_to_live = t1");
+
+    int status = new Main(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTtlAndTimestamp();
+  }
+
+  private void assertTtlAndTimestamp() {
     assertThat(session.execute("SELECT COUNT(*) FROM table_ttl_timestamp").one().getLong(0))
         .isEqualTo(3L);
 
@@ -468,124 +548,5 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             instantToTimestampSinceEpoch(
                 ZonedDateTime.parse("2017-11-29T14:32:15+02:00").toInstant(), MICROSECONDS, EPOCH));
     assertThat(row.getUUID(2)).isNotNull();
-  }
-
-  @Test
-  void load_ttl_timestamp_now_in_query() throws Exception {
-    session.execute(
-        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp_query (key int PRIMARY KEY, value text, loaded_at timeuuid)");
-
-    List<String> args =
-        Lists.newArrayList(
-            "load",
-            "--log.directory",
-            Files.createTempDirectory("test").toString(),
-            "--connector.csv.url",
-            ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
-            "--driver.pooling.local.connections",
-            "1",
-            "--schema.query",
-            "insert into "
-                + session.getLoggedKeyspace()
-                + ".table_ttl_timestamp_query (key, value, loaded_at) values (:key, :value, now()) using ttl :time_to_live and timestamp :created_at");
-
-    int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
-
-    assertThat(session.execute("SELECT COUNT(*) FROM table_ttl_timestamp_query").one().getLong(0))
-        .isEqualTo(3L);
-
-    Row row;
-
-    row =
-        session
-            .execute(
-                "SELECT TTL(value), WRITETIME(value), loaded_at FROM table_ttl_timestamp_query WHERE key = 1")
-            .one();
-    assertThat(row.getInt(0)).isZero();
-    assertThat(row.getLong(1)).isNotZero(); // cannot assert its true value
-    assertThat(row.getUUID(2)).isNotNull();
-
-    row =
-        session
-            .execute(
-                "SELECT TTL(value), WRITETIME(value), loaded_at FROM table_ttl_timestamp_query WHERE key = 2")
-            .one();
-    assertThat(row.getInt(0)).isNotZero().isLessThanOrEqualTo(200);
-    assertThat(row.getLong(1)).isEqualTo(123456000L);
-    assertThat(row.getUUID(2)).isNotNull();
-
-    row =
-        session
-            .execute(
-                "SELECT TTL(value), WRITETIME(value), loaded_at FROM table_ttl_timestamp_query WHERE key = 3")
-            .one();
-    assertThat(row.getInt(0)).isNotZero().isLessThanOrEqualTo(300);
-    assertThat(row.getLong(1))
-        .isEqualTo(
-            instantToTimestampSinceEpoch(
-                ZonedDateTime.parse("2017-11-29T14:32:15+02:00").toInstant(), MICROSECONDS, EPOCH));
-    assertThat(row.getUUID(2)).isNotNull();
-  }
-
-  @Test
-  void load_ttl_timestamp_now_in_query_and_mapping() throws Exception {
-    session.execute(
-        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp_query_mapping (key int PRIMARY KEY, value text)");
-
-    List<String> args =
-        Lists.newArrayList(
-            "load",
-            "--log.directory",
-            Files.createTempDirectory("test").toString(),
-            "--connector.csv.url",
-            ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
-            "--driver.pooling.local.connections",
-            "1",
-            "--schema.query",
-            "insert into "
-                + session.getLoggedKeyspace()
-                + ".table_ttl_timestamp_query_mapping (key, value) values (:key, :value) using ttl :t1 and timestamp :t2",
-            "--schema.mapping",
-            "*=*, created_at = t2, time_to_live = t1");
-
-    int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
-
-    assertThat(
-            session
-                .execute("SELECT COUNT(*) FROM table_ttl_timestamp_query_mapping")
-                .one()
-                .getLong(0))
-        .isEqualTo(3L);
-
-    Row row;
-
-    row =
-        session
-            .execute(
-                "SELECT TTL(value), WRITETIME(value) FROM table_ttl_timestamp_query_mapping WHERE key = 1")
-            .one();
-    assertThat(row.getInt(0)).isZero();
-    assertThat(row.getLong(1)).isNotZero(); // cannot assert its true value
-
-    row =
-        session
-            .execute(
-                "SELECT TTL(value), WRITETIME(value) FROM table_ttl_timestamp_query_mapping WHERE key = 2")
-            .one();
-    assertThat(row.getInt(0)).isNotZero().isLessThanOrEqualTo(200);
-    assertThat(row.getLong(1)).isEqualTo(123456000L);
-
-    row =
-        session
-            .execute(
-                "SELECT TTL(value), WRITETIME(value) FROM table_ttl_timestamp_query_mapping WHERE key = 3")
-            .one();
-    assertThat(row.getInt(0)).isNotZero().isLessThanOrEqualTo(300);
-    assertThat(row.getLong(1))
-        .isEqualTo(
-            instantToTimestampSinceEpoch(
-                ZonedDateTime.parse("2017-11-29T14:32:15+02:00").toInstant(), MICROSECONDS, EPOCH));
   }
 }
