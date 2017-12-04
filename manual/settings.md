@@ -669,26 +669,6 @@ For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/5
 
 Default: **-1**.
 
-#### --schema.recordMetadata _&lt;string&gt;_
-
-Record metadata.
-
-Applies within both load and unload workflows to records being respectively read from or written to the connector.
-
-This information is optional, and rarely needed.
-
-If not specified:
-
-- If the connector is capable of reporting the record metadata accurately (for example, some database connectors might be able to inspect the target table's metadata), then this section is only required if you want to override some field types as reported by the connector.
-- If the connector is not capable of reporting the record metadata accurately (for example, file connectors usually cannot report such information), then all fields are assumed to be of type `String`. If this is not correct, then you need to provide the correct type information here.
-
-Field metadata should be specified as a HOCON map (https://github.com/typesafehub/config/blob/master/HOCON.md) of the following form:
-
-- Indexed data sources: `0 = java.lang.String, 1 = java.lang.Double`, where `0`, `1`, etc. are the zero-based indices of fields in the source data; and the values are the expected types for each field.
-- Mapped data sources: `fieldA = java.lang.String, fieldB = java.lang.Double`, where `fieldA`, `fieldB`, etc. are field names in the source data; and the values are the expected types for each field.
-
-Default: **&lt;unspecified&gt;**.
-
 <a name="batch"></a>
 ## Batch Settings
 
