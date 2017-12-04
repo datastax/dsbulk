@@ -516,8 +516,6 @@ class MainTest {
               "false",
               "--schema.mapping",
               "{0:\"f1\", 1:\"f2\"}",
-              "--schema.recordMetadata",
-              "{0:\"f3\", 1:\"f4\"}",
               "--connector.name",
               "conn"
             });
@@ -610,7 +608,6 @@ class MainTest {
     assertThat(result.getString("schema.nullStrings")).isEqualTo("NIL, NADA");
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
-    assertThat(result.getString("schema.recordMetadata")).isEqualTo("{0:f3, 1:f4}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");
   }
 
