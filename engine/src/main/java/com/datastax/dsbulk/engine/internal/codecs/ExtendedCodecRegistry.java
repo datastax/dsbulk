@@ -39,6 +39,7 @@ import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToStringCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToTupleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUDTCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.number.NumberToNumberCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigDecimalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigIntegerCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBlobCodec;
@@ -61,6 +62,8 @@ import com.datastax.dsbulk.engine.internal.codecs.string.StringToStringCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToTupleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUDTCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToTemporalCodec;
+import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
@@ -68,9 +71,9 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import java.text.DecimalFormat;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.Temporal;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -121,6 +124,8 @@ public class ExtendedCodecRegistry {
     this.numericTimestampUnit = numericTimestampUnit;
     this.numericTimestampEpoch = numericTimestampEpoch;
     this.objectMapper = objectMapper;
+    // register Java Time API codecs
+    codecRegistry.register(LocalDateCodec.instance, LocalTimeCodec.instance, InstantCodec.instance);
   }
 
   @SuppressWarnings("unchecked")
@@ -129,26 +134,32 @@ public class ExtendedCodecRegistry {
     try {
       return (TypeCodec<T>) codecRegistry.codecFor(cqlType, javaType);
     } catch (CodecNotFoundException e) {
-      TypeCodec<T> codec = (TypeCodec<T>) maybeCreateCodec(cqlType, javaType);
+      TypeCodec<T> codec = (TypeCodec<T>) maybeCreateConvertingCodec(cqlType, javaType);
       if (codec != null) {
-        codecRegistry.register(codec);
         return codec;
       }
       throw e;
     }
   }
 
+  @SuppressWarnings("unchecked")
+  public <FROM, TO> ConvertingCodec<FROM, TO> convertingCodecFor(
+      @NotNull DataType cqlType, @NotNull TypeToken<FROM> javaType) {
+    ConvertingCodec<FROM, TO> codec =
+        (ConvertingCodec<FROM, TO>) maybeCreateConvertingCodec(cqlType, javaType);
+    if (codec != null) {
+      return codec;
+    }
+    throw new CodecNotFoundException(
+        String.format(
+            "ConvertingCodec not found for requested operation: [%s <-> %s]", cqlType, javaType),
+        cqlType,
+        javaType);
+  }
+
   @Nullable
-  private TypeCodec<?> maybeCreateCodec(@NotNull DataType cqlType, @NotNull TypeToken<?> javaType) {
-    if (cqlType == DataType.date() && javaType.getRawType().equals(LocalDate.class)) {
-      return LocalDateCodec.instance;
-    }
-    if (cqlType == DataType.time() && javaType.getRawType().equals(LocalTimeCodec.class)) {
-      return LocalTimeCodec.instance;
-    }
-    if (cqlType == DataType.timestamp() && javaType.getRawType().equals(Instant.class)) {
-      return InstantCodec.instance;
-    }
+  private ConvertingCodec<?, ?> maybeCreateConvertingCodec(
+      @NotNull DataType cqlType, @NotNull TypeToken<?> javaType) {
     if (String.class.equals(javaType.getRawType())) {
       return createStringConvertingCodec(cqlType);
     }
@@ -162,8 +173,33 @@ public class ExtendedCodecRegistry {
     }
     if (Temporal.class.isAssignableFrom(javaType.getRawType()) && isTemporal(cqlType)) {
       @SuppressWarnings("unchecked")
-      Class<Temporal> temporalType = (Class<Temporal>) javaType.getRawType();
-      return new TemporalToTemporalCodec<>(temporalType, codecRegistry.codecFor(cqlType));
+      Class<Temporal> fromTemporalType = (Class<Temporal>) javaType.getRawType();
+      if (cqlType == DataType.date()) {
+        return new TemporalToTemporalCodec<>(
+            fromTemporalType, LocalDateCodec.instance, timestampFormat.getZone());
+      }
+      if (cqlType == DataType.time()) {
+        return new TemporalToTemporalCodec<>(
+            fromTemporalType, LocalTimeCodec.instance, timestampFormat.getZone());
+      }
+      if (cqlType == DataType.timestamp()) {
+        return new TemporalToTemporalCodec<>(
+            fromTemporalType, InstantCodec.instance, timestampFormat.getZone());
+      }
+    }
+    if (Date.class.isAssignableFrom(javaType.getRawType())) {
+      if (cqlType == DataType.date()) {
+        return new DateToTemporalCodec<>(
+            Date.class, LocalDateCodec.instance, timestampFormat.getZone());
+      }
+      if (cqlType == DataType.time()) {
+        return new DateToTemporalCodec<>(
+            Date.class, LocalTimeCodec.instance, timestampFormat.getZone());
+      }
+      if (cqlType == DataType.timestamp()) {
+        return new DateToTemporalCodec<>(
+            Date.class, InstantCodec.instance, timestampFormat.getZone());
+      }
     }
     return null;
   }
@@ -317,7 +353,7 @@ public class ExtendedCodecRegistry {
           TypeCodec<List<Object>> collectionCodec = codecRegistry.codecFor(cqlType);
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> eltCodec =
-              (ConvertingCodec<JsonNode, Object>) codecFor(elementType, JSON_NODE_TYPE_TOKEN);
+              (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(elementType);
           return new JsonNodeToListCodec<>(collectionCodec, eltCodec, objectMapper);
         }
       case SET:
@@ -326,7 +362,7 @@ public class ExtendedCodecRegistry {
           TypeCodec<Set<Object>> collectionCodec = codecRegistry.codecFor(cqlType);
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> eltCodec =
-              (ConvertingCodec<JsonNode, Object>) codecFor(elementType, JSON_NODE_TYPE_TOKEN);
+              (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(elementType);
           return new JsonNodeToSetCodec<>(collectionCodec, eltCodec, objectMapper);
         }
       case MAP:
@@ -339,7 +375,7 @@ public class ExtendedCodecRegistry {
               (ConvertingCodec<String, Object>) createStringConvertingCodec(keyType);
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> valueCodec =
-              (ConvertingCodec<JsonNode, Object>) codecFor(valueType, JSON_NODE_TYPE_TOKEN);
+              (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(valueType);
           return new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper);
         }
       case TUPLE:
@@ -350,7 +386,7 @@ public class ExtendedCodecRegistry {
           for (DataType eltType : ((TupleType) cqlType).getComponentTypes()) {
             @SuppressWarnings("unchecked")
             ConvertingCodec<JsonNode, Object> eltCodec =
-                (ConvertingCodec<JsonNode, Object>) codecFor(eltType, JSON_NODE_TYPE_TOKEN);
+                (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(eltType);
             eltCodecs.add(eltCodec);
           }
           return new JsonNodeToTupleCodec(tupleCodec, eltCodecs.build(), objectMapper);
@@ -363,7 +399,7 @@ public class ExtendedCodecRegistry {
           for (UserType.Field field : ((UserType) cqlType)) {
             @SuppressWarnings("unchecked")
             ConvertingCodec<JsonNode, Object> fieldCodec =
-                (ConvertingCodec<JsonNode, Object>) codecFor(field.getType(), JSON_NODE_TYPE_TOKEN);
+                (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(field.getType());
             fieldCodecs.put(field.getName(), fieldCodec);
           }
           return new JsonNodeToUDTCodec(udtCodec, fieldCodecs.build(), objectMapper);

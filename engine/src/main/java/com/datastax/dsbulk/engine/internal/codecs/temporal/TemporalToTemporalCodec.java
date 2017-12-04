@@ -4,24 +4,28 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.engine.internal.codecs;
+package com.datastax.dsbulk.engine.internal.codecs.temporal;
 
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.google.common.reflect.TypeToken;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
 
 public class TemporalToTemporalCodec<FROM extends TemporalAccessor, TO extends TemporalAccessor>
     extends ConvertingCodec<FROM, TO> {
 
-  public TemporalToTemporalCodec(Class<FROM> javaType, TypeCodec<TO> targetCodec) {
+  private final ZoneId timeZone;
+
+  public TemporalToTemporalCodec(Class<FROM> javaType, TypeCodec<TO> targetCodec, ZoneId timeZone) {
     super(targetCodec, javaType);
+    this.timeZone = timeZone;
   }
 
   @SuppressWarnings("unchecked")
@@ -50,10 +54,10 @@ public class TemporalToTemporalCodec<FROM extends TemporalAccessor, TO extends T
         return ((LocalDateTime) value).toLocalDate();
       }
       if (value instanceof Instant) {
-        return ((Instant) value).atZone(ZoneOffset.UTC).toLocalDate();
+        return ((Instant) value).atZone(timeZone).toLocalDate();
       }
       if (value instanceof ZonedDateTime) {
-        return ((ZonedDateTime) value).toLocalDate();
+        return ((ZonedDateTime) value).withZoneSameInstant(timeZone).toLocalDate();
       }
     }
     if (rawType.equals(LocalTime.class)) {
@@ -64,10 +68,10 @@ public class TemporalToTemporalCodec<FROM extends TemporalAccessor, TO extends T
         return ((LocalDateTime) value).toLocalTime();
       }
       if (value instanceof Instant) {
-        return ((Instant) value).atZone(ZoneOffset.UTC).toLocalTime();
+        return ((Instant) value).atZone(timeZone).toLocalTime();
       }
       if (value instanceof ZonedDateTime) {
-        return ((ZonedDateTime) value).toLocalTime();
+        return ((ZonedDateTime) value).withZoneSameInstant(timeZone).toLocalTime();
       }
     }
     if (rawType.equals(LocalDateTime.class)) {
@@ -81,24 +85,21 @@ public class TemporalToTemporalCodec<FROM extends TemporalAccessor, TO extends T
         return value;
       }
       if (value instanceof Instant) {
-        return ((Instant) value).atZone(ZoneOffset.UTC).toLocalDateTime();
+        return ((Instant) value).atZone(timeZone).toLocalDateTime();
       }
       if (value instanceof ZonedDateTime) {
-        return ((ZonedDateTime) value).toLocalDateTime();
+        return ((ZonedDateTime) value).withZoneSameInstant(timeZone).toLocalDateTime();
       }
     }
     if (rawType.equals(Instant.class)) {
       if (value instanceof LocalDate) {
-        return ((LocalDate) value).atStartOfDay(ZoneOffset.UTC).toInstant();
+        return ((LocalDate) value).atStartOfDay(timeZone).toInstant();
       }
       if (value instanceof LocalTime) {
-        return ((LocalTime) value)
-            .atDate(LocalDate.ofEpochDay(0))
-            .atZone(ZoneOffset.UTC)
-            .toInstant();
+        return ((LocalTime) value).atDate(LocalDate.ofEpochDay(0)).atZone(timeZone).toInstant();
       }
       if (value instanceof LocalDateTime) {
-        return ((LocalDateTime) value).atZone(ZoneOffset.UTC).toInstant();
+        return ((LocalDateTime) value).atZone(timeZone).toInstant();
       }
       if (value instanceof Instant) {
         return value;
@@ -109,16 +110,16 @@ public class TemporalToTemporalCodec<FROM extends TemporalAccessor, TO extends T
     }
     if (rawType.equals(ZonedDateTime.class)) {
       if (value instanceof LocalDate) {
-        return ((LocalDate) value).atStartOfDay(ZoneOffset.UTC);
+        return ((LocalDate) value).atStartOfDay(timeZone);
       }
       if (value instanceof LocalTime) {
-        return ((LocalTime) value).atDate(LocalDate.ofEpochDay(0)).atZone(ZoneOffset.UTC);
+        return ((LocalTime) value).atDate(LocalDate.ofEpochDay(0)).atZone(timeZone);
       }
       if (value instanceof LocalDateTime) {
-        return ((LocalDateTime) value).atZone(ZoneOffset.UTC);
+        return ((LocalDateTime) value).atZone(timeZone);
       }
       if (value instanceof Instant) {
-        return ((Instant) value).atZone(ZoneOffset.UTC);
+        return ((Instant) value).atZone(timeZone);
       }
       if (value instanceof ZonedDateTime) {
         return value;
