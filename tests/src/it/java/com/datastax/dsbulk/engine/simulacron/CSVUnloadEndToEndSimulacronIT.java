@@ -12,8 +12,8 @@ import static com.datastax.dsbulk.tests.utils.EndToEndUtils.createQueryWithError
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.createQueryWithResultSet;
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.createQueryWithResultSetWithQuotes;
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.fetchContactPoints;
-import static com.datastax.dsbulk.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.validateOutputFiles;
+import static com.datastax.dsbulk.tests.utils.EndToEndUtils.validatePrepare;
 import static com.datastax.dsbulk.tests.utils.EndToEndUtils.validateQueryCount;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
@@ -137,8 +137,8 @@ class CSVUnloadEndToEndSimulacronIT {
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
 
-    verifyDelimiterCount(';', 120);
-    verifyDelimiterCount('<', 48);
+    verifyDelimiterCount(';', 168);
+    verifyDelimiterCount('<', 96);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.ONE);
     validateOutputFiles(24, outputFile);
   }
@@ -188,7 +188,7 @@ class CSVUnloadEndToEndSimulacronIT {
 
     RequestPrime prime =
         createQueryWithError(
-            SELECT_FROM_IP_BY_COUNTRY, new SyntaxErrorResult("Invalid table", 0L, true));
+            SELECT_FROM_IP_BY_COUNTRY, new SyntaxErrorResult("Invalid table", 0L, false));
     simulacron.prime(new Prime(prime));
 
     String[] unloadArgs = {
@@ -216,9 +216,8 @@ class CSVUnloadEndToEndSimulacronIT {
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
 
-    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.ONE);
-    validateExceptionsLog(1, "Statement:", "unload-errors.log");
-    validateOutputFiles(0, outputFile);
+    validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.ONE);
+    validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
 
   @Test
@@ -226,7 +225,7 @@ class CSVUnloadEndToEndSimulacronIT {
 
     RequestPrime prime =
         createQueryWithError(
-            SELECT_FROM_IP_BY_COUNTRY, new SyntaxErrorResult("Invalid table", 0L, true));
+            SELECT_FROM_IP_BY_COUNTRY, new SyntaxErrorResult("Invalid table", 0L, false));
     simulacron.prime(new Prime(prime));
 
     String[] unloadArgs = {
@@ -254,9 +253,8 @@ class CSVUnloadEndToEndSimulacronIT {
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
 
-    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.ONE);
-    validateExceptionsLog(1, "Statement:", "unload-errors.log");
-    validateOutputFiles(0, outputFile);
+    validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.ONE);
+    validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
 
   private void verifyDelimiterCount(char delimiter, int expected) throws Exception {
