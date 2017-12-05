@@ -26,7 +26,7 @@ cassandra:
 build:
   - type: maven
     version: 3.2.5
-    goals: verify -Pccm -fae
+    goals: verify -Pccm -fae -B
     properties: |
       com.datastax.dsbulk.tests.ccm.DSE_VERSION=$CCM_CASSANDRA_VERSION
       com.datastax.dsbulk.tests.ccm.JAVA_HOME=$CCM_JAVA_HOME
