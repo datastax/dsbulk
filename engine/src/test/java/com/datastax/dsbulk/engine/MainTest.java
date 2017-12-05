@@ -676,6 +676,21 @@ class MainTest {
         .contains("Dry-run is not supported for unload");
   }
 
+  @Test
+  void should_error_on_backslash() throws Exception {
+    String badJson = ClassLoader.getSystemResource("bad-json.conf").getPath();
+    new Main(
+            new String[] {
+              "load", "-dryRun", "true", "-url", "/foo/bar", "-k", "k1", "-t", "t1", "-f", badJson
+            })
+        .run();
+    assertThat(stdErr.getStreamAsString())
+        .contains(
+            "Error parsing configuration file "
+                + badJson
+                + " if you are using \\ (backslash) to define a path, use / instead.");
+  }
+
   private void assertGlobalHelp() {
     String out = stdOut.getStreamAsString();
     assertThat(out).contains(HelpUtils.getVersionMessage());

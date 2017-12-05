@@ -14,6 +14,7 @@ import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.datastax.dsbulk.engine.internal.utils.OptionUtils;
 import com.google.common.base.Throwables;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueType;
 import java.io.PrintWriter;
@@ -165,6 +166,20 @@ public class Main {
     String appConfigPath = getAppConfigPath(optionArgs);
     if (appConfigPath != null) {
       System.setProperty("config.file", appConfigPath);
+      ConfigFactory.invalidateCaches();
+
+      try {
+        DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+      } catch (ConfigException.Parse e) {
+        // This should only be an issue for user provided configuration files. Command line options are escaped
+        if (ConfigUtils.containsBackslashError(e)) {
+          LOGGER.error(
+              "Error parsing configuration file "
+                  + appConfigPath
+                  + " if you are using \\ (backslash) to define a path, use / instead.");
+        }
+        throw e;
+      }
     }
     ConfigFactory.invalidateCaches();
     DEFAULT = ConfigFactory.load().getConfig("dsbulk");
