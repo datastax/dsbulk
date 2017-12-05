@@ -22,6 +22,7 @@ import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosit
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
 import com.google.common.annotations.VisibleForTesting;
 import com.typesafe.config.ConfigException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,6 +117,7 @@ public class LogSettings {
       PatternLayoutEncoder ple = new PatternLayoutEncoder();
       ple.setPattern("%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg%n");
       ple.setContext(lc);
+      ple.setCharset(StandardCharsets.UTF_8);
       ple.start();
       FileAppender<ILoggingEvent> fileAppender = new FileAppender<>();
       fileAppender.setFile(executionDirectory.resolve("operation.log").toFile().getAbsolutePath());

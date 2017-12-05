@@ -315,12 +315,13 @@ class JsonConnectorTest {
   void should_roll_file_when_max_records_reached() throws Exception {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
+    String escapedPath = ConfigUtils.maybeEscapeBackslash(out.toString());
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 3",
-                        out))
+                        escapedPath))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
