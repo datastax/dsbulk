@@ -9,6 +9,7 @@
 - [new feature] DAT-22: Implement JSON connector.
 - [improvement] DAT-163: Improve error message for invalid JSON paths.
 - [new feature] DAT-181: Support temporal-to-timeuuid conversions.
+- [improvement] DAT-183: Add code coverage to DSBulk builds.
 
 
 ### 1.0.0-beta2
