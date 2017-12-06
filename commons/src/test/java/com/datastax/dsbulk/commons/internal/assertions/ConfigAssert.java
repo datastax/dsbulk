@@ -9,13 +9,13 @@ package com.datastax.dsbulk.commons.internal.assertions;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.typesafe.config.Config;
-import org.assertj.core.api.ObjectAssert;
+import org.assertj.core.api.AbstractObjectAssert;
 
 @SuppressWarnings("UnusedReturnValue")
-public class ConfigAssert extends ObjectAssert<Config> {
+public class ConfigAssert extends AbstractObjectAssert<ConfigAssert, Config> {
 
-  public ConfigAssert(Config config) {
-    super(config);
+  ConfigAssert(Config config) {
+    super(config, ConfigAssert.class);
   }
 
   private ConfigAssert hasPath(String path) {

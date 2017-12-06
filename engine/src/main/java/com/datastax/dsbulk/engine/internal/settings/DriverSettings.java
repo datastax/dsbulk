@@ -9,6 +9,7 @@ package com.datastax.dsbulk.engine.internal.settings;
 import static com.datastax.dsbulk.engine.internal.utils.StringUtils.DELIMITER;
 
 import com.datastax.driver.core.AuthProvider;
+import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.HostDistance;
 import com.datastax.driver.core.PlainTextAuthProvider;
@@ -293,6 +294,7 @@ public class DriverSettings {
     DseCluster.Builder builder = DseCluster.builder().withClusterName(executionId + "-driver");
     getHostsStream(hosts).forEach(builder::addContactPointsWithPorts);
     builder
+        .withCodecRegistry(new CodecRegistry())
         .withCompression(compression)
         .withPoolingOptions(
             new PoolingOptions()

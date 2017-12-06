@@ -1,0 +1,95 @@
+/*
+ * Copyright DataStax Inc.
+ *
+ * This software can be used solely with DataStax Enterprise. Please consult the license at
+ * http://www.datastax.com/terms/datastax-dse-driver-license-terms
+ */
+package com.datastax.dsbulk.engine.internal.codecs.util;
+
+import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.FIXED;
+import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MAX;
+import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MIN;
+import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.datastax.driver.core.utils.UUIDs;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import org.junit.jupiter.api.Test;
+
+/** */
+class TImeUUIDGeneratorTest {
+
+  @Test
+  void should_convert_to_uuid_timestamp() {
+
+    assertThat(TimeUUIDGenerator.toUUIDTimestamp(Instant.EPOCH))
+        .isEqualTo(TimeUUIDGenerator.EPOCH_OFFSET);
+
+    assertThat(TimeUUIDGenerator.toUUIDTimestamp(Instant.ofEpochMilli(123456)))
+        .isEqualTo(TimeUUIDGenerator.EPOCH_OFFSET + 123456L * 10000L);
+
+    assertThat(TimeUUIDGenerator.toUUIDTimestamp(Instant.ofEpochMilli(-123456)))
+        .isEqualTo(TimeUUIDGenerator.EPOCH_OFFSET - 123456L * 10000L);
+
+    assertThat(TimeUUIDGenerator.toUUIDTimestamp(Instant.ofEpochSecond(123, 100)))
+        .isEqualTo(TimeUUIDGenerator.EPOCH_OFFSET + 1230000000L + 1L);
+  }
+
+  @Test
+  void should_convert_from_uuid_timestamp() {
+
+    assertThat(TimeUUIDGenerator.fromUUIDTimestamp(TimeUUIDGenerator.EPOCH_OFFSET))
+        .isEqualTo(Instant.EPOCH);
+
+    assertThat(
+            TimeUUIDGenerator.fromUUIDTimestamp(TimeUUIDGenerator.EPOCH_OFFSET + 123456L * 10000L))
+        .isEqualTo(Instant.ofEpochMilli(123456));
+
+    assertThat(
+            TimeUUIDGenerator.fromUUIDTimestamp(TimeUUIDGenerator.EPOCH_OFFSET - 123456L * 10000L))
+        .isEqualTo(Instant.ofEpochMilli(-123456));
+
+    assertThat(
+            TimeUUIDGenerator.fromUUIDTimestamp(TimeUUIDGenerator.EPOCH_OFFSET + 1230000000L + 1L))
+        .isEqualTo(Instant.ofEpochSecond(123, 100));
+  }
+
+  @Test
+  void should_generate_uuid() {
+
+    // time UUIDs with MIN strategy
+    assertThat(MIN.generate(ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant()))
+        .isEqualTo(
+            UUIDs.startOf(
+                ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
+
+    // time UUIDs with MAX strategy
+    // the driver's endOf method takes milliseconds and sets all the sub-millisecond digits to their max,
+    // that's why we add .000999999
+    assertThat(MAX.generate(ZonedDateTime.parse("2017-12-05T12:44:36.000999999+01:00").toInstant()))
+        .isEqualTo(
+            UUIDs.endOf(
+                ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
+
+    // time UUIDs with FIXED strategy
+    assertThat(
+            FIXED
+                .generate(ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant())
+                .timestamp())
+        .isEqualTo(
+            UUIDs.startOf(
+                    ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
+                .timestamp());
+
+    // time UUIDs with RANDOM strategy
+    assertThat(
+            RANDOM
+                .generate(ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant())
+                .timestamp())
+        .isEqualTo(
+            UUIDs.startOf(
+                    ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
+                .timestamp());
+  }
+}

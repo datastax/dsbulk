@@ -10,6 +10,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
@@ -20,6 +21,7 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 
@@ -164,11 +166,31 @@ public class CodecUtils {
     if (s == null || s.isEmpty()) {
       return null;
     }
+    return numberToInstant(Long.parseLong(s), timeUnit, epoch);
+  }
+
+  /**
+   * Parses the given string as a numeric temporal, expressed in the given time unit, and relative
+   * to the given epoch.
+   *
+   * @param n the number to parse, may be {@code null}.
+   * @param timeUnit the time unit to use if the string is numeric; cannot be {@code null}.
+   * @param epoch the epoch to use if the string is numeric; cannot be {@code null}.
+   * @return an {@link Instant} or {@code null} if the string was {@code null} or empty.
+   * @throws IllegalArgumentException if the string cannot be parsed.
+   */
+  public static Instant numberToInstant(
+      Number n, @NotNull TimeUnit timeUnit, @NotNull Instant epoch) {
+    Objects.requireNonNull(timeUnit);
+    Objects.requireNonNull(epoch);
+    if (n == null) {
+      return null;
+    }
     try {
-      Duration duration = Duration.ofNanos(NANOSECONDS.convert(Long.parseLong(s), timeUnit));
+      Duration duration = Duration.ofNanos(NANOSECONDS.convert(n.longValue(), timeUnit));
       return epoch.plus(duration);
     } catch (NumberFormatException e) {
-      throw new IllegalArgumentException("Cannot parse numeric temporal: " + s, e);
+      throw new IllegalArgumentException("Cannot parse numeric temporal: " + n, e);
     }
   }
 
@@ -217,6 +239,44 @@ public class CodecUtils {
           "Invalid number format: " + s, new ParseException(s, pos.getIndex()));
     }
     return number;
+  }
+
+  public static Number convertNumberExact(Number value, Class<?> targetClass) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      if (targetClass.equals(Byte.class)) {
+        return toByteValueExact(value);
+      }
+      if (targetClass.equals(Short.class)) {
+        return toShortValueExact(value);
+      }
+      if (targetClass.equals(Integer.class)) {
+        return toIntValueExact(value);
+      }
+      if (targetClass.equals(Long.class)) {
+        return toLongValueExact(value);
+      }
+      if (targetClass.equals(Float.class)) {
+        return toFloatValue(value);
+      }
+      if (targetClass.equals(Double.class)) {
+        return toDoubleValue(value);
+      }
+      if (targetClass.equals(BigInteger.class)) {
+        return toBigIntegerExact(value);
+      }
+      if (targetClass.equals(BigDecimal.class)) {
+        return toBigDecimal(value);
+      }
+    } catch (ArithmeticException e) {
+      throw new InvalidTypeException(
+          String.format("Cannot convert %s of type %s to %s", value, value.getClass(), targetClass),
+          e);
+    }
+    throw new InvalidTypeException(
+        String.format("Cannot convert %s of type %s to %s", value, value.getClass(), targetClass));
   }
 
   public static byte toByteValueExact(Number value) {
@@ -290,6 +350,25 @@ public class CodecUtils {
       return (BigDecimal) value;
     } else {
       return new BigDecimal(value.toString());
+    }
+  }
+
+  public static UUID parseUUID(
+      String s, ConvertingCodec<String, Instant> instantCodec, TimeUUIDGenerator generator) {
+    if (s == null || s.isEmpty()) {
+      return null;
+    }
+    try {
+      return UUID.fromString(s);
+    } catch (IllegalArgumentException e1) {
+      Instant instant;
+      try {
+        instant = instantCodec.convertFrom(s);
+      } catch (Exception e2) {
+        e2.addSuppressed(e1);
+        throw new InvalidTypeException("Invalid UUID string: " + s, e2);
+      }
+      return generator.generate(instant);
     }
   }
 }
