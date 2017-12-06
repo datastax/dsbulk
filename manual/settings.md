@@ -725,6 +725,14 @@ When writing, these settings determine how record fields emitted by connectors a
 
 When unloading, these settings determine how row cells emitted by DSE are formatted.
 
+#### --codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
+
+How numbers should be mapped to booleans and vice versa.
+
+This list should contain exactly two elements; the first element will be mapped to `true`, the second one to `false`. Note that when mapping from numbers to booleans, all other numbers will be rejected.
+
+Default: **[1,0]**.
+
 #### --codec.booleanWords _&lt;list&lt;string&gt;&gt;_
 
 All representations of true and false supported by dsbulk. Each representation is of the form `true-value:false-value`, case-insensitive.

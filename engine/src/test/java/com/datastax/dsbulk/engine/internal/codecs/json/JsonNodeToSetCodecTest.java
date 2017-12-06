@@ -11,6 +11,9 @@ import static com.datastax.driver.core.TypeCodec.set;
 import static com.datastax.driver.core.TypeCodec.varchar;
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.google.common.collect.Lists.newArrayList;
+import static java.math.BigDecimal.ONE;
+import static java.math.BigDecimal.ZERO;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.util.Sets.newLinkedHashSet;
@@ -18,6 +21,7 @@ import static org.assertj.core.util.Sets.newLinkedHashSet;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableMap;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -34,7 +38,9 @@ class JsonNodeToSetCodecTest {
               () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
           CQL_DATE_TIME_FORMAT,
           MILLISECONDS,
-          EPOCH);
+          EPOCH,
+          ImmutableMap.of("true", true, "false", false),
+          newArrayList(ONE, ZERO));
 
   private final JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
 

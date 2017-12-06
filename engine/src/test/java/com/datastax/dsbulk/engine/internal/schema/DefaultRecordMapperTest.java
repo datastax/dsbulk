@@ -10,6 +10,9 @@ import static com.datastax.driver.core.DataType.bigint;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TTL_VARNAME;
+import static com.google.common.collect.Lists.newArrayList;
+import static java.math.BigDecimal.ONE;
+import static java.math.BigDecimal.ZERO;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -63,8 +66,9 @@ class DefaultRecordMapperTest {
   private static final String C3 = "My Fancy Column Name";
 
   private final URI location = URI.create("file://file1?line=1");
-  private final TypeCodec codec1 = new StringToIntegerCodec(null, null, null, null);
-  private final TypeCodec codec2 = new StringToLongCodec(null, null, null, null);
+
+  private final TypeCodec codec1 = mock(StringToIntegerCodec.class);
+  private final TypeCodec codec2 = mock(StringToLongCodec.class);
   private final TypeCodec codec3 = TypeCodec.varchar();
 
   private Mapping mapping;
@@ -179,7 +183,14 @@ class DefaultRecordMapperTest {
     // timestamp is 123456 minutes before unix epoch
     when(record.getFieldValue(F2)).thenReturn("-123456");
     StringToLongCodec codec =
-        spy(new StringToLongCodec(formatter, CQL_DATE_TIME_FORMAT, MINUTES, EPOCH));
+        spy(
+            new StringToLongCodec(
+                formatter,
+                CQL_DATE_TIME_FORMAT,
+                MINUTES,
+                EPOCH,
+                ImmutableMap.of("true", true, "false", false),
+                newArrayList(ONE, ZERO)));
     when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
         .thenReturn((TypeCodec) codec);
     RecordMapper mapper =
@@ -203,7 +214,14 @@ class DefaultRecordMapperTest {
     when(record.getFieldValue(F2)).thenReturn("-1");
     Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
     StringToLongCodec codec =
-        spy(new StringToLongCodec(formatter, CQL_DATE_TIME_FORMAT, MINUTES, millennium));
+        spy(
+            new StringToLongCodec(
+                formatter,
+                CQL_DATE_TIME_FORMAT,
+                MINUTES,
+                millennium,
+                ImmutableMap.of("true", true, "false", false),
+                newArrayList(ONE, ZERO)));
     when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
         .thenReturn((TypeCodec) codec);
     RecordMapper mapper =
@@ -225,7 +243,14 @@ class DefaultRecordMapperTest {
     when(mapping.fieldToVariable(F2)).thenReturn(TIMESTAMP_VARNAME);
     when(record.getFieldValue(F2)).thenReturn("2017-01-02T00:00:02");
     StringToLongCodec codec =
-        spy(new StringToLongCodec(formatter, CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH));
+        spy(
+            new StringToLongCodec(
+                formatter,
+                CQL_DATE_TIME_FORMAT,
+                MILLISECONDS,
+                EPOCH,
+                ImmutableMap.of("true", true, "false", false),
+                newArrayList(ONE, ZERO)));
     when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
         .thenReturn((TypeCodec) codec);
     RecordMapper mapper =
@@ -249,7 +274,14 @@ class DefaultRecordMapperTest {
     DateTimeFormatter timestampFormat =
         DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
     StringToLongCodec codec =
-        spy(new StringToLongCodec(formatter, timestampFormat, MILLISECONDS, EPOCH));
+        spy(
+            new StringToLongCodec(
+                formatter,
+                timestampFormat,
+                MILLISECONDS,
+                EPOCH,
+                ImmutableMap.of("true", true, "false", false),
+                newArrayList(ONE, ZERO)));
     when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
         .thenReturn((TypeCodec) codec);
     RecordMapper mapper =

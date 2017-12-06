@@ -13,6 +13,9 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MIN;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.google.common.collect.Lists.newArrayList;
+import static java.math.BigDecimal.ONE;
+import static java.math.BigDecimal.ZERO;
 import static java.time.Instant.EPOCH;
 import static java.time.Instant.ofEpochMilli;
 import static java.time.Instant.ofEpochSecond;
@@ -27,10 +30,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.driver.core.utils.Bytes;
 import com.datastax.driver.core.utils.UUIDs;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
+import com.google.common.collect.ImmutableMap;
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.util.Base64;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -179,5 +192,96 @@ class CodecUtilsTest {
     assertThrows(
         InvalidTypeException.class,
         () -> CodecUtils.parseUUID("not a valid UUID", instantCodec, MIN));
+  }
+
+  @Test
+  void should_parse_number() {
+    DecimalFormat formatter =
+        new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US));
+    formatter.setParseBigDecimal(true);
+    Map<String, Boolean> booleanWords = ImmutableMap.of("true", true, "false", false);
+    List<BigDecimal> booleanNumbers = newArrayList(ONE, ZERO);
+    assertThat(
+            CodecUtils.parseNumber(
+                null,
+                formatter,
+                CQL_DATE_TIME_FORMAT,
+                MILLISECONDS,
+                EPOCH,
+                booleanWords,
+                booleanNumbers))
+        .isNull();
+    assertThat(
+            CodecUtils.parseNumber(
+                "",
+                formatter,
+                CQL_DATE_TIME_FORMAT,
+                MILLISECONDS,
+                EPOCH,
+                booleanWords,
+                booleanNumbers))
+        .isNull();
+    assertThat(
+            CodecUtils.parseNumber(
+                "-123456.78",
+                formatter,
+                CQL_DATE_TIME_FORMAT,
+                MILLISECONDS,
+                EPOCH,
+                booleanWords,
+                booleanNumbers))
+        .isEqualTo(new BigDecimal("-123456.78"));
+    assertThat(
+            CodecUtils.parseNumber(
+                "-123,456.78",
+                formatter,
+                CQL_DATE_TIME_FORMAT,
+                MILLISECONDS,
+                EPOCH,
+                booleanWords,
+                booleanNumbers))
+        .isEqualTo(new BigDecimal("-123456.78"));
+    assertThat(
+            CodecUtils.parseNumber(
+                "2017-12-05T12:44:36+01:00",
+                formatter,
+                CQL_DATE_TIME_FORMAT,
+                MILLISECONDS,
+                EPOCH,
+                booleanWords,
+                booleanNumbers))
+        .isEqualTo(ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli());
+    assertThat(
+            CodecUtils.parseNumber(
+                "TRUE",
+                formatter,
+                CQL_DATE_TIME_FORMAT,
+                MILLISECONDS,
+                EPOCH,
+                booleanWords,
+                booleanNumbers))
+        .isEqualTo(ONE);
+    assertThat(
+            CodecUtils.parseNumber(
+                "FALSE",
+                formatter,
+                CQL_DATE_TIME_FORMAT,
+                MILLISECONDS,
+                EPOCH,
+                booleanWords,
+                booleanNumbers))
+        .isEqualTo(ZERO);
+  }
+
+  @Test
+  void should_parse_byte_buffer() {
+    byte[] data = {1, 2, 3, 4, 5, 6};
+    String data64 = Base64.getEncoder().encodeToString(data);
+    String dataHex = Bytes.toHexString(data);
+    assertThat(CodecUtils.parseByteBuffer(null)).isNull();
+    assertThat(CodecUtils.parseByteBuffer("")).isNull();
+    assertThat(CodecUtils.parseByteBuffer("0x")).isEqualTo(ByteBuffer.wrap(new byte[] {}));
+    assertThat(CodecUtils.parseByteBuffer(data64)).isEqualTo(ByteBuffer.wrap(data));
+    assertThat(CodecUtils.parseByteBuffer(dataHex)).isEqualTo(ByteBuffer.wrap(data));
   }
 }

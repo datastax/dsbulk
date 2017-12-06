@@ -10,9 +10,11 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.driver.core.utils.Bytes;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.ParsePosition;
@@ -20,6 +22,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -81,7 +86,7 @@ public class CodecUtils {
    * <p>This method tries first to parse the string as a numeric value, using the given decimal
    * formatter; then, if that fails, it tries to parse it as an alphanumeric temporal, using the
    * given parser, and converts it to a numeric timestamp using the given time unit and the given
-   * epoch.
+   * epoch; and if that fails too, it tries to convert it to a boolean number.
    *
    * @param s the string to parse, may be {@code null}.
    * @param formatter the {@link DecimalFormat} to use to parse numbers; cannot be {@code null}.
@@ -91,6 +96,8 @@ public class CodecUtils {
    *     numeric timestamp; cannot be {@code null}.
    * @param numericTimestampEpoch the epoch to use to convert the alphanumeric temporal to a numeric
    *     timestamp; cannot be {@code null}.
+   * @param booleanWords A mapping between booleans and words.
+   * @param booleanNumbers A mapping between booleans and numbers.
    * @return a {@link TemporalAccessor} or {@code null} if the string was {@code null} or empty.
    * @throws IllegalArgumentException if the string cannot be parsed.
    */
@@ -99,11 +106,15 @@ public class CodecUtils {
       @NotNull DecimalFormat formatter,
       @NotNull DateTimeFormatter parser,
       @NotNull TimeUnit numericTimestampUnit,
-      @NotNull Instant numericTimestampEpoch) {
+      @NotNull Instant numericTimestampEpoch,
+      @NotNull Map<String, Boolean> booleanWords,
+      @NotNull List<? extends Number> booleanNumbers) {
     Objects.requireNonNull(formatter);
     Objects.requireNonNull(parser);
     Objects.requireNonNull(numericTimestampUnit);
     Objects.requireNonNull(numericTimestampEpoch);
+    Objects.requireNonNull(booleanWords);
+    Objects.requireNonNull(booleanNumbers);
     if (s == null || s.isEmpty()) {
       return null;
     }
@@ -116,12 +127,19 @@ public class CodecUtils {
         Instant instant = Instant.from(temporal);
         return instantToTimestampSinceEpoch(instant, numericTimestampUnit, numericTimestampEpoch);
       } catch (Exception e2) {
+        Boolean b = booleanWords.get(s.toLowerCase());
+        if (b != null) {
+          return booleanNumbers.get(b ? 0 : 1);
+        }
         e2.addSuppressed(e1);
         IllegalArgumentException e3 =
             new IllegalArgumentException(
                 String.format(
-                    "Could not parse '%s'; accepted formats are: a valid number (e.g. '%s') or a valid date-time pattern (e.g. '%s')",
-                    s, 1234.56, Instant.now()));
+                    "Could not parse '%s'; accepted formats are: "
+                        + "a valid number (e.g. '%s'), "
+                        + "a valid date-time pattern (e.g. '%s'), "
+                        + "or a valid boolean word",
+                    s, formatter.format(1234.56), Instant.now()));
         e3.addSuppressed(e2);
         throw e3;
       }
@@ -219,6 +237,9 @@ public class CodecUtils {
 
   /**
    * Parses the given string into a {@link BigDecimal} using the given {@link DecimalFormat}.
+   *
+   * <p>The given formatter must be configured to parse {@link BigDecimal}s, see {@link
+   * DecimalFormat#setParseBigDecimal(boolean)}.
    *
    * @param s the string to parse, may be {@code null}.
    * @param formatter the formatter to use; cannot be {@code null}.
@@ -369,6 +390,22 @@ public class CodecUtils {
         throw new InvalidTypeException("Invalid UUID string: " + s, e2);
       }
       return generator.generate(instant);
+    }
+  }
+
+  public static ByteBuffer parseByteBuffer(String s) {
+    if (s == null || s.isEmpty()) {
+      return null;
+    }
+    try {
+      return Bytes.fromHexString(s);
+    } catch (IllegalArgumentException e) {
+      try {
+        return ByteBuffer.wrap(Base64.getDecoder().decode(s));
+      } catch (IllegalArgumentException e1) {
+        e1.addSuppressed(e);
+        throw new InvalidTypeException("Invalid binary string: " + s, e1);
+      }
     }
   }
 }
