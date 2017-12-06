@@ -274,17 +274,11 @@ public class JsonConnector implements Connector {
               URI resource = URIUtils.createResourceURI(url);
               SimpleBackpressureController controller = new SimpleBackpressureController();
               sink.onRequest(controller::signalRequested);
+              // DAT-177: Do not call sink.onDispose nor sink.onCancel,
+              // as doing so seems to prevent the flow from completing in rare occasions.
               JsonFactory factory = objectMapper.getFactory();
               try (BufferedReader r = IOUtils.newBufferedReader(url, encoding);
                   JsonParser parser = factory.createParser(r)) {
-                sink.onDispose(
-                    () -> {
-                      try {
-                        parser.close();
-                      } catch (IOException e) {
-                        LOGGER.error("Could not close Json parser: " + e.getMessage(), e);
-                      }
-                    });
                 if (mode == DocumentMode.SINGLE_DOCUMENT) {
                   while (parser.currentToken() != JsonToken.START_ARRAY) {
                     parser.nextToken();
