@@ -13,6 +13,8 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class JsonNodeToBigDecimalCodec extends JsonNodeToNumberCodec<BigDecimal> {
@@ -21,8 +23,17 @@ public class JsonNodeToBigDecimalCodec extends JsonNodeToNumberCodec<BigDecimal>
       ThreadLocal<DecimalFormat> formatter,
       DateTimeFormatter temporalParser,
       TimeUnit numericTimestampUnit,
-      Instant numericTimestampEpoch) {
-    super(decimal(), formatter, temporalParser, numericTimestampUnit, numericTimestampEpoch);
+      Instant numericTimestampEpoch,
+      Map<String, Boolean> booleanWords,
+      List<BigDecimal> booleanNumbers) {
+    super(
+        decimal(),
+        formatter,
+        temporalParser,
+        numericTimestampUnit,
+        numericTimestampEpoch,
+        booleanWords,
+        booleanNumbers);
   }
 
   @Override
@@ -33,13 +44,7 @@ public class JsonNodeToBigDecimalCodec extends JsonNodeToNumberCodec<BigDecimal>
     if (node.isNumber()) {
       return node.decimalValue();
     }
-    Number number =
-        CodecUtils.parseNumber(
-            node.asText(),
-            getNumberFormat(),
-            temporalParser,
-            numericTimestampUnit,
-            numericTimestampEpoch);
+    Number number = parseNumber(node);
     if (number == null) {
       return null;
     }

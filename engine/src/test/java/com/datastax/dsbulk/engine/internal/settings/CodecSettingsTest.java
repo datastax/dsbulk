@@ -41,6 +41,8 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.number.BooleanToNumberCodec;
+import com.datastax.dsbulk.engine.internal.codecs.number.NumberToBooleanCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.NumberToNumberCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.NumberToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigDecimalCodec;
@@ -333,5 +335,25 @@ class CodecSettingsTest {
         .isInstanceOf(JsonNodeToUUIDCodec.class)
         .convertsFrom(JsonNodeFactory.instance.textNode("123456"))
         .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+  }
+
+  @Test
+  void should_return_boolean_converting_codecs() {
+
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
+    CodecSettings settings = new CodecSettings(config);
+    settings.init();
+    ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
+
+    assertThat(codecRegistry.convertingCodecFor(tinyint(), TypeToken.of(Boolean.class)))
+        .isNotNull()
+        .isInstanceOf(BooleanToNumberCodec.class)
+        .convertsFrom(true)
+        .to((byte) 1);
+    assertThat(codecRegistry.convertingCodecFor(cboolean(), TypeToken.of(Byte.class)))
+        .isNotNull()
+        .isInstanceOf(NumberToBooleanCodec.class)
+        .convertsFrom((byte) 1)
+        .to(true);
   }
 }

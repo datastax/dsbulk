@@ -8,6 +8,7 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
@@ -20,6 +21,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.Instant;
@@ -34,6 +36,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /** */
 public class CodecSettings {
@@ -66,6 +69,7 @@ public class CodecSettings {
   private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
   private static final String LOCALE = "locale";
   private static final String BOOLEAN_WORDS = "booleanWords";
+  private static final String BOOLEAN_NUMBERS = "booleanNumbers";
   private static final String NUMBER = "number";
   private static final String TIME = "time";
   private static final String TIME_ZONE = "timeZone";
@@ -77,8 +81,9 @@ public class CodecSettings {
 
   private final LoaderConfig config;
 
-  private Map<String, Boolean> booleanInputs;
-  private Map<Boolean, String> booleanOutputs;
+  private Map<String, Boolean> booleanInputWords;
+  private Map<Boolean, String> booleanOutputWords;
+  private List<BigDecimal> booleanNumbers;
   private ThreadLocal<DecimalFormat> numberFormat;
   private DateTimeFormatter localDateFormat;
   private DateTimeFormatter localTimeFormat;
@@ -96,14 +101,25 @@ public class CodecSettings {
     try {
       String localeString = config.getString(LOCALE);
       List<String> booleanWords = config.getStringList(BOOLEAN_WORDS);
+      booleanNumbers =
+          config
+              .getStringList(BOOLEAN_NUMBERS)
+              .stream()
+              .map(BigDecimal::new)
+              .collect(Collectors.toList());
+      if (booleanNumbers.size() != 2) {
+        throw new BulkConfigurationException(
+            "Invalid boolean numbers list, expecting two elements, got " + booleanNumbers,
+            "codec." + BOOLEAN_NUMBERS);
+      }
       String number = config.getString(NUMBER);
       String timeZone = config.getString(TIME_ZONE);
       String date = config.getString(DATE);
       String time = config.getString(TIME);
       String timestamp = config.getString(TIMESTAMP);
       Locale locale = parseLocale(localeString);
-      booleanInputs = getBooleanInputs(booleanWords);
-      booleanOutputs = getBooleanOutputs(booleanWords);
+      booleanInputWords = getBooleanInputWords(booleanWords);
+      booleanOutputWords = getBooleanOutputWords(booleanWords);
       numberFormat = getNumberFormat(locale, number);
       localDateFormat = getDateFormat(date, timeZone, locale);
       localTimeFormat = getDateFormat(time, timeZone, locale);
@@ -128,8 +144,9 @@ public class CodecSettings {
     CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
     return new ExtendedCodecRegistry(
         codecRegistry,
-        booleanInputs,
-        booleanOutputs,
+        booleanInputWords,
+        booleanOutputWords,
+        booleanNumbers,
         numberFormat,
         localDateFormat,
         localTimeFormat,
@@ -194,7 +211,7 @@ public class CodecSettings {
     return objectMapper;
   }
 
-  private static Map<String, Boolean> getBooleanInputs(List<String> list) {
+  private static Map<String, Boolean> getBooleanInputWords(List<String> list) {
     ImmutableMap.Builder<String, Boolean> builder = ImmutableMap.builder();
     list.stream()
         .map(str -> new StringTokenizer(str, ":"))
@@ -206,7 +223,7 @@ public class CodecSettings {
     return builder.build();
   }
 
-  private static Map<Boolean, String> getBooleanOutputs(List<String> list) {
+  private static Map<Boolean, String> getBooleanOutputWords(List<String> list) {
     StringTokenizer tokenizer = new StringTokenizer(list.get(0), ":");
     ImmutableMap.Builder<Boolean, String> builder = ImmutableMap.builder();
     builder.put(true, tokenizer.nextToken().toLowerCase());

@@ -6,13 +6,12 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.driver.core.utils.Bytes;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.nio.ByteBuffer;
-import java.util.Base64;
 
 public class JsonNodeToBlobCodec extends ConvertingCodec<JsonNode, ByteBuffer> {
 
@@ -28,19 +27,7 @@ public class JsonNodeToBlobCodec extends ConvertingCodec<JsonNode, ByteBuffer> {
       return null;
     }
     String s = node.asText();
-    if (s == null || s.isEmpty()) {
-      return null;
-    }
-    try {
-      return Bytes.fromHexString(s);
-    } catch (IllegalArgumentException e) {
-      try {
-        return ByteBuffer.wrap(Base64.getDecoder().decode(s));
-      } catch (IllegalArgumentException e1) {
-        e1.addSuppressed(e);
-        throw new InvalidTypeException("Invalid binary string: " + s, e1);
-      }
-    }
+    return CodecUtils.parseByteBuffer(s);
   }
 
   @Override

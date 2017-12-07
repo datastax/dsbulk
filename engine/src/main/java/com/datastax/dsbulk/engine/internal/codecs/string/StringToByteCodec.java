@@ -6,11 +6,16 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
+import static java.util.stream.Collectors.toList;
+
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class StringToByteCodec extends StringToNumberCodec<Byte> {
@@ -19,20 +24,22 @@ public class StringToByteCodec extends StringToNumberCodec<Byte> {
       ThreadLocal<DecimalFormat> formatter,
       DateTimeFormatter temporalParser,
       TimeUnit numericTimestampUnit,
-      Instant numericTimestampEpoch) {
+      Instant numericTimestampEpoch,
+      Map<String, Boolean> booleanWords,
+      List<BigDecimal> booleanNumbers) {
     super(
         TypeCodec.tinyInt(),
         formatter,
         temporalParser,
         numericTimestampUnit,
-        numericTimestampEpoch);
+        numericTimestampEpoch,
+        booleanWords,
+        booleanNumbers.stream().map(BigDecimal::byteValueExact).collect(toList()));
   }
 
   @Override
   public Byte convertFrom(String s) {
-    Number number =
-        CodecUtils.parseNumber(
-            s, getNumberFormat(), temporalParser, numericTimestampUnit, numericTimestampEpoch);
+    Number number = parseNumber(s);
     if (number == null) {
       return null;
     }

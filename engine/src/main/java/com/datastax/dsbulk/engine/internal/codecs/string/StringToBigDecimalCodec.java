@@ -12,6 +12,8 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class StringToBigDecimalCodec extends StringToNumberCodec<BigDecimal> {
@@ -20,20 +22,22 @@ public class StringToBigDecimalCodec extends StringToNumberCodec<BigDecimal> {
       ThreadLocal<DecimalFormat> formatter,
       DateTimeFormatter temporalParser,
       TimeUnit numericTimestampUnit,
-      Instant numericTimestampEpoch) {
+      Instant numericTimestampEpoch,
+      Map<String, Boolean> booleanWords,
+      List<BigDecimal> booleanNumbers) {
     super(
         TypeCodec.decimal(),
         formatter,
         temporalParser,
         numericTimestampUnit,
-        numericTimestampEpoch);
+        numericTimestampEpoch,
+        booleanWords,
+        booleanNumbers);
   }
 
   @Override
   public BigDecimal convertFrom(String s) {
-    Number number =
-        CodecUtils.parseNumber(
-            s, getNumberFormat(), temporalParser, numericTimestampUnit, numericTimestampEpoch);
+    Number number = parseNumber(s);
     if (number == null) {
       return null;
     }
