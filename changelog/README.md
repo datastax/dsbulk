@@ -11,6 +11,7 @@
 - [new feature] DAT-181: Support temporal-to-timeuuid conversions.
 - [new feature] DAT-184: Support boolean-to-number conversions.
 - [improvement] DAT-183: Add code coverage to DSBulk builds.
+- [bug] DAT-188: JSON connector does not terminate in SINGLE_DOCUMENT mode with an empty file.
 
 
 ### 1.0.0-beta2

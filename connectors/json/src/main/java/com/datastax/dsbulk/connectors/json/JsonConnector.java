@@ -280,9 +280,10 @@ public class JsonConnector implements Connector {
               try (BufferedReader r = IOUtils.newBufferedReader(url, encoding);
                   JsonParser parser = factory.createParser(r)) {
                 if (mode == DocumentMode.SINGLE_DOCUMENT) {
-                  while (parser.currentToken() != JsonToken.START_ARRAY) {
+                  do {
                     parser.nextToken();
-                  }
+                  } while (parser.currentToken() != JsonToken.START_ARRAY
+                      && parser.currentToken() != null);
                   parser.nextToken();
                 }
                 MappingIterator<JsonNode> it = objectMapper.readValues(parser, JsonNode.class);
