@@ -17,6 +17,9 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
 import static com.datastax.driver.core.TypeCodec.userType;
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.google.common.collect.Lists.newArrayList;
+import static java.math.BigDecimal.ONE;
+import static java.math.BigDecimal.ZERO;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -66,12 +69,24 @@ class StringToUDTCodecTest {
       udt1.newValue().setInt("f1a", 42).setMap("f1b", newMap("foo", 1234.56d, "bar", 0.12d));
 
   private final ConvertingCodec f1aCodec =
-      new JsonNodeToIntegerCodec(formatter, CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH);
+      new JsonNodeToIntegerCodec(
+          formatter,
+          CQL_DATE_TIME_FORMAT,
+          MILLISECONDS,
+          EPOCH,
+          ImmutableMap.of("true", true, "false", false),
+          newArrayList(ONE, ZERO));
   private final ConvertingCodec f1bCodec =
       new JsonNodeToMapCodec<>(
           TypeCodec.map(TypeCodec.varchar(), TypeCodec.cdouble()),
           new StringToStringCodec(TypeCodec.varchar()),
-          new JsonNodeToDoubleCodec(formatter, CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH),
+          new JsonNodeToDoubleCodec(
+              formatter,
+              CQL_DATE_TIME_FORMAT,
+              MILLISECONDS,
+              EPOCH,
+              ImmutableMap.of("true", true, "false", false),
+              newArrayList(ONE, ZERO)),
           objectMapper);
 
   @SuppressWarnings("unchecked")

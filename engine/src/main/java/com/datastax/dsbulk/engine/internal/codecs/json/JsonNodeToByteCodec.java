@@ -6,12 +6,17 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static java.util.stream.Collectors.toList;
+
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class JsonNodeToByteCodec extends JsonNodeToNumberCodec<Byte> {
@@ -20,8 +25,17 @@ public class JsonNodeToByteCodec extends JsonNodeToNumberCodec<Byte> {
       ThreadLocal<DecimalFormat> formatter,
       DateTimeFormatter temporalParser,
       TimeUnit numericTimestampUnit,
-      Instant numericTimestampEpoch) {
-    super(tinyInt(), formatter, temporalParser, numericTimestampUnit, numericTimestampEpoch);
+      Instant numericTimestampEpoch,
+      Map<String, Boolean> booleanWords,
+      List<BigDecimal> booleanNumbers) {
+    super(
+        tinyInt(),
+        formatter,
+        temporalParser,
+        numericTimestampUnit,
+        numericTimestampEpoch,
+        booleanWords,
+        booleanNumbers.stream().map(BigDecimal::byteValueExact).collect(toList()));
   }
 
   @Override
@@ -37,13 +51,7 @@ public class JsonNodeToByteCodec extends JsonNodeToNumberCodec<Byte> {
       }
       return b;
     }
-    Number number =
-        CodecUtils.parseNumber(
-            node.asText(),
-            getNumberFormat(),
-            temporalParser,
-            numericTimestampUnit,
-            numericTimestampEpoch);
+    Number number = parseNumber(node);
     if (number == null) {
       return null;
     }
