@@ -7,6 +7,7 @@
 - [new feature] DAT-175: Support temporal-to-numeric conversions.
 - [enhancement] DAT-167: Add support for user-supplied execution ids.
 - [new feature] DAT-22: Implement JSON connector.
+- [bug] DAT-188: JSON connector does not terminate in SINGLE_DOCUMENT mode with an empty file.
 
 
 ### 1.0.0-beta2
