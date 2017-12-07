@@ -36,4 +36,5 @@ build:
       maven.javadoc.skip=true
   - xunit:
     - "**/target/surefire-reports/TEST-*.xml"
-    - "**/target/failsafe-reports/TEST-*.xml" 
+    - "**/target/failsafe-reports/TEST-*.xml"
+  - jacoco: true
