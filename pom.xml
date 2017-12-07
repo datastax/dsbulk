@@ -28,7 +28,6 @@
     <module>connectors</module>
     <module>executor</module>
     <module>engine</module>
-    <module>tests</module>
     <module>dist</module>
   </modules>
 
@@ -321,12 +320,6 @@
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-exec</artifactId>
         <version>${commons-exec.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>org.openjdk.jmh</groupId>
-        <artifactId>jmh-generator-annprocess</artifactId>
-        <version>1.19</version>
       </dependency>
 
       <dependency>
@@ -684,6 +677,45 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
       <plugin>
         <groupId>com.coveo</groupId>
         <artifactId>fmt-maven-plugin</artifactId>
+        <configuration>
+          <additionalSourceDirectories>
+            <additionalSourceDirectory>src/it/java</additionalSourceDirectory>
+          </additionalSourceDirectories>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>add-integration-test-sources</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/it/java</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-integration-test-resources</id>
+            <phase>generate-test-resources</phase>
+            <goals>
+              <goal>add-test-resource</goal>
+            </goals>
+            <configuration>
+              <resources>
+                <resource>
+                  <filtering>false</filtering>
+                  <directory>src/it/resources</directory>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>
@@ -703,6 +735,24 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <properties>
+                <excludeTags>ccm</excludeTags>
+              </properties>
+              <reportNameSuffix>simulacron</reportNameSuffix>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
     </plugins>
@@ -750,6 +800,33 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
                 <goals>
                   <goal>sign</goal>
                 </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <profile>
+      <id>ccm</id>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <executions>
+              <!-- add a special execution that only runs CCM tests -->
+              <execution>
+                <id>ccm-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <properties>
+                    <includeTags>ccm</includeTags>
+                  </properties>
+                  <reportNameSuffix>ccm</reportNameSuffix>
+                </configuration>
               </execution>
             </executions>
           </plugin>

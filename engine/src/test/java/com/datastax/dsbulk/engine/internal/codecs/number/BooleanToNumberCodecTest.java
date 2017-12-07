@@ -7,7 +7,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.number;
 
 import static com.datastax.driver.core.TypeCodec.tinyInt;
-import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 

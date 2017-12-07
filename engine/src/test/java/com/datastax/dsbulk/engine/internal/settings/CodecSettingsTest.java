@@ -27,7 +27,7 @@ import static com.datastax.driver.core.DataType.varint;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newField;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
-import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.time.ZoneOffset.UTC;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;

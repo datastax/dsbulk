@@ -6,13 +6,13 @@
  */
 package com.datastax.dsbulk.engine.internal.metrics;
 
-import static com.datastax.dsbulk.commons.internal.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
-import com.datastax.dsbulk.commons.internal.logging.LogCapture;
-import com.datastax.dsbulk.commons.internal.logging.LogInterceptingExtension;
-import com.datastax.dsbulk.commons.internal.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

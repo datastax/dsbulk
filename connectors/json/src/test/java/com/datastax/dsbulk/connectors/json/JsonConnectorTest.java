@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Logger;
@@ -15,7 +16,8 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
-import com.datastax.dsbulk.commons.internal.utils.URLUtils;
+import com.datastax.dsbulk.commons.tests.utils.FileUtils;
+import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,18 +26,14 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -337,7 +335,7 @@ class JsonConnectorTest {
     records.subscribe(connector.write());
     records.blockLast();
     connector.close();
-    List<String> actual = collectLines(out);
+    List<String> actual = FileUtils.readAllLinesInDirectory(out, UTF_8);
     assertThat(actual)
         .containsOnly(
             "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0}",
@@ -635,19 +633,4 @@ class JsonConnectorTest {
     return JsonConnectorTest.class.getResource(resource).toExternalForm();
   }
 
-  private static List<String> collectLines(Path out) throws IOException {
-    try (Stream<Path> paths = Files.walk(out)) {
-      return paths
-          .filter(Files::isRegularFile)
-          .flatMap(
-              path -> {
-                try {
-                  return Files.readAllLines(path).stream();
-                } catch (IOException e) {
-                  throw new UncheckedIOException(e);
-                }
-              })
-          .collect(Collectors.toList());
-    }
-  }
 }

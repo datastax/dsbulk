@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
 import com.datastax.driver.core.Duration;
 import org.junit.jupiter.api.Test;
