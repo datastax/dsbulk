@@ -68,21 +68,62 @@ class MainTest {
   }
 
   @Test
-  void should_show_help_when_no_args() {
+  void should_show_global_help_when_no_args() {
+    // global help, no shortcuts, has both json and csv settings.
     new Main(new String[] {}).run();
-    assertGlobalHelp();
+    assertGlobalHelp(false);
   }
 
   @Test
-  void should_show_help_when_help_opt_arg() {
+  void should_show_global_help_when_help_opt_arg() {
+    // global help, no shortcuts, has both json and csv settings.
     new Main(new String[] {"--help"}).run();
-    assertGlobalHelp();
+    assertGlobalHelp(false);
   }
 
   @Test
-  void should_show_help_when_help_subcommand() {
+  void should_show_global_help_when_help_subcommand() {
+    // global help, no shortcuts, has both json and csv settings.
     new Main(new String[] {"help"}).run();
-    assertGlobalHelp();
+    assertGlobalHelp(false);
+  }
+
+  @Test
+  void should_show_section_help_when_help_opt_arg() {
+    new Main(new String[] {"--help", "driver.auth"}).run();
+    assertSectionHelp();
+  }
+
+  @Test
+  void should_show_section_help_when_help_subcommand() {
+    new Main(new String[] {"help", "driver.auth"}).run();
+    assertSectionHelp();
+  }
+
+  @Test
+  void should_show_global_help_filtered_when_help_opt_arg() {
+    // global help, with shortcuts, has only json common settings.
+    new Main(new String[] {"--help", "-c", "json"}).run();
+    assertGlobalHelp(true);
+  }
+
+  @Test
+  void should_show_global_help_filtered_when_help_subcommand() {
+    // global help, with shortcuts, has only json common settings.
+    new Main(new String[] {"help", "-c", "json"}).run();
+    assertGlobalHelp(true);
+  }
+
+  @Test
+  void should_show_section_help_when_help_opt_arg_with_connector() {
+    new Main(new String[] {"--help", "-c", "json", "driver.auth"}).run();
+    assertSectionHelp();
+  }
+
+  @Test
+  void should_show_section_help_when_help_subcommand_with_connector() {
+    new Main(new String[] {"help", "-c", "json", "driver.auth"}).run();
+    assertSectionHelp();
   }
 
   @Test
@@ -97,14 +138,14 @@ class MainTest {
   void should_show_help_without_error_when_junk_subcommand_and_help() {
     new Main(new String[] {"junk", "--help"}).run();
     assertThat(stdOut.getStreamAsString()).doesNotContain("First argument must be subcommand");
-    assertGlobalHelp();
+    assertGlobalHelp(false);
   }
 
   @Test
   void should_show_help_without_error_when_good_subcommand_and_help() {
     new Main(new String[] {"load", "--help"}).run();
     assertThat(stdOut.getStreamAsString()).doesNotContain("First argument must be subcommand");
-    assertGlobalHelp();
+    assertGlobalHelp(false);
   }
 
   @Test
@@ -140,13 +181,6 @@ class MainTest {
     new Main(new String[] {"help", "connector.csv"}).run();
     String out = stdOut.getStreamAsString();
     assertThat(out).contains("-url, --connector.csv.url");
-  }
-
-  @Test
-  void should_show_help_without_error_when_no_subcommand_and_help() {
-    new Main(new String[] {"-k", "k1", "--help"}).run();
-    assertThat(stdOut.getStreamAsString()).doesNotContain("First argument must be subcommand");
-    assertGlobalHelp();
   }
 
   @Test
@@ -235,7 +269,6 @@ class MainTest {
   void should_process_short_options() throws Exception {
     Config result =
         Main.parseCommandLine(
-            "csv",
             "load",
             new String[] {
               "-locale",
@@ -243,7 +276,7 @@ class MainTest {
               "-timeZone",
               "tz",
               "-c",
-              "conn",
+              "csv",
               "-p",
               "pass",
               "-u",
@@ -276,6 +309,9 @@ class MainTest {
               "INSERT INTO foo",
               "-t",
               "table",
+              "-dryRun",
+              "true",
+              // CSV-specific options
               "-comment",
               "comment",
               "-delim",
@@ -295,13 +331,11 @@ class MainTest {
               "-quote",
               "'",
               "-url",
-              "http://findit",
-              "-dryRun",
-              "true"
+              "http://findit"
             });
     assertThat(result.getString("codec.locale")).isEqualTo("locale");
     assertThat(result.getString("codec.timeZone")).isEqualTo("tz");
-    assertThat(result.getString("connector.name")).isEqualTo("conn");
+    assertThat(result.getString("connector.name")).isEqualTo("csv");
     assertThat(result.getString("driver.auth.password")).isEqualTo("pass");
     assertThat(result.getString("driver.auth.username")).isEqualTo("user");
     assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
@@ -334,12 +368,51 @@ class MainTest {
   }
 
   @Test
+  void should_process_csv_short_options_by_default() throws Exception {
+    Config result =
+        Main.parseCommandLine(
+            "load",
+            new String[] {
+              "-comment",
+              "comment",
+              "-delim",
+              "|",
+              "-encoding",
+              "enc",
+              "-escape",
+              "^",
+              "-header",
+              "header",
+              "-skipRecords",
+              "3",
+              "-maxRecords",
+              "111",
+              "-maxConcurrentFiles",
+              "222",
+              "-quote",
+              "'",
+              "-url",
+              "http://findit"
+            });
+
+    assertThat(result.getString("connector.csv.comment")).isEqualTo("comment");
+    assertThat(result.getString("connector.csv.delimiter")).isEqualTo("|");
+    assertThat(result.getString("connector.csv.encoding")).isEqualTo("enc");
+    assertThat(result.getString("connector.csv.escape")).isEqualTo("^");
+    assertThat(result.getString("connector.csv.header")).isEqualTo("header");
+    assertThat(result.getInt("connector.csv.skipRecords")).isEqualTo(3);
+    assertThat(result.getInt("connector.csv.maxRecords")).isEqualTo(111);
+    assertThat(result.getInt("connector.csv.maxConcurrentFiles")).isEqualTo(222);
+    assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
+    assertThat(result.getString("connector.csv.url")).isEqualTo("http://findit");
+  }
+
+  @Test
   void should_reject_concatenated_option_value() {
     assertThrows(
         ParseException.class,
         () ->
             Main.parseCommandLine(
-                "csv",
                 "load",
                 new String[] {
                   "-kks",
@@ -351,7 +424,6 @@ class MainTest {
   void should_process_core_long_options() throws Exception {
     Config result =
         Main.parseCommandLine(
-            "csv",
             "load",
             new String[] {
               "--driver.hosts",
@@ -615,7 +687,6 @@ class MainTest {
   void should_process_csv_long_options() throws Exception {
     Config result =
         Main.parseCommandLine(
-            "csv",
             "load",
             new String[] {
               "--connector.csv.url",
@@ -677,7 +748,7 @@ class MainTest {
   }
 
   @Test
-  void should_error_on_backslash() throws Exception {
+  void should_error_on_backslash() {
     String badJson = ClassLoader.getSystemResource("bad-json.conf").getPath();
     new Main(
             new String[] {
@@ -691,10 +762,37 @@ class MainTest {
                 + " if you are using \\ (backslash) to define a path, use / instead.");
   }
 
-  private void assertGlobalHelp() {
+  private void assertGlobalHelp(boolean jsonOnly) {
     String out = stdOut.getStreamAsString();
     assertThat(out).contains(HelpUtils.getVersionMessage());
+
+    // The following assures us that we're looking at global help, not section help.
+    assertThat(out).contains("GETTING MORE HELP");
+
+    // The tests try restricting global help to json connector, or show all connectors.
+    // If all, shortcut options for connector settings should not be shown.
+    // If restricted to json, show the shorcut options for common json settings.
+    assertThat(out).contains("--connector.json.url");
+    if (jsonOnly) {
+      assertThat(out).contains("-url, --connector.json.url");
+      assertThat(out).doesNotContain("--connector.csv.url");
+    } else {
+      assertThat(out).contains("--connector.csv.url");
+      assertThat(out).doesNotContain("-url, --connector.csv.url");
+    }
     assertThat(out).doesNotContain("First argument must be subcommand");
     assertThat(out).containsPattern("-f <string>\\s+Load settings from the given file");
+  }
+
+  private void assertSectionHelp() {
+    String out = stdOut.getStreamAsString();
+    assertThat(out).contains(HelpUtils.getVersionMessage());
+
+    // The following assures us that we're looking at section help, not global help.
+    assertThat(out).doesNotContain("GETTING MORE HELP");
+    assertThat(out).doesNotContain("--connector.json.url");
+    assertThat(out).doesNotContain("--connector.csv.url");
+
+    assertThat(out).contains("-p, --driver.auth.password");
   }
 }

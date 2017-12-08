@@ -8,7 +8,7 @@
 - [enhancement] DAT-167: Add support for user-supplied execution ids.
 - [new feature] DAT-22: Implement JSON connector.
 - [improvement] DAT-163: Improve error message for invalid JSON paths.
-
+- [improvement] DAT-179: Add ability for connectors to promote some settings to the common help section
 
 ### 1.0.0-beta2
 

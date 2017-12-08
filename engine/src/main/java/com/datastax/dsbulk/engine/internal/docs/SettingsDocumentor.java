@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import org.apache.commons.cli.Option;
 
@@ -51,11 +52,11 @@ public class SettingsDocumentor {
 
   /**
    * Settings that should be displayed in a "common" section as well as the appropriate place in the
-   * hierarchy.
+   * hierarchy. Add/remove settings here. NOTE: No connector-related settings should be added here.
+   * Those are added to COMMON_SETTINGS below.
    */
-  public static final List<String> COMMON_SETTINGS =
+  private static final List<String> COMMON_SETTINGS_BASE =
       Arrays.asList(
-          "connector.name",
           "schema.keyspace",
           "schema.table",
           "schema.mapping",
@@ -70,11 +71,14 @@ public class SettingsDocumentor {
           "log.directory",
           "monitoring.reportRate");
 
+  /** This is the fully specified list of common settings, computed from COMMON_SETTINGS_BASE. */
+  public static final List<String> COMMON_SETTINGS = new ArrayList<>();
+
   /**
    * Settings that should be placed near the top within their setting groups. It is a super-set of
    * COMMON_SETTINGS.
    */
-  public static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
+  public static final List<String> PREFERRED_SETTINGS;
 
   public static final Map<String, Group> GROUPS =
       new TreeMap<>(new PriorityComparator("Common", "connector", "schema"));
@@ -82,8 +86,35 @@ public class SettingsDocumentor {
   private static final String TITLE = "DataStax Bulk Loader Options";
 
   static {
+    // Add connector-specific common settings, after connector.name.
+    COMMON_SETTINGS.add("connector.name");
+    visitConnectors(
+        (config, connectorName) -> {
+          if (config.hasPath("docHints.commonSettings")) {
+            config
+                .getStringList("docHints.commonSettings")
+                .stream()
+                .map(s -> String.format("connector.%s.%s", connectorName, s))
+                .forEach(COMMON_SETTINGS::add);
+          }
+        });
+    COMMON_SETTINGS.addAll(COMMON_SETTINGS_BASE);
+
+    PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
     PREFERRED_SETTINGS.add("driver.auth.provider");
     PREFERRED_SETTINGS.add("driver.policy.lbp.name");
+
+    // Add connector-specific preferred settings.
+    visitConnectors(
+        (config, connectorName) -> {
+          if (config.hasPath("docHints.preferredSettings")) {
+            config
+                .getStringList("docHints.preferredSettings")
+                .stream()
+                .map(s -> String.format("connector.%s.%s", connectorName, s))
+                .forEach(PREFERRED_SETTINGS::add);
+          }
+        });
 
     Config shortcutsConf =
         ConfigFactory.parseResourcesAnySyntax("shortcuts.conf").getConfig("dsbulk");
@@ -187,11 +218,32 @@ public class SettingsDocumentor {
     for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
       // Add the setting name to each group (and which groups want the setting will
       // take it).
+
+      // Never add a setting under "docHints".
+      if (entry.getKey().contains(".docHints.")) {
+        continue;
+      }
+
       for (Group group : GROUPS.values()) {
         if (group.addSetting(entry.getKey())) {
           // The setting was added to a group. Don't try adding to other groups.
           break;
         }
+      }
+    }
+  }
+
+  /**
+   * Walk through the setting sections for each connector and perform an action on the section.
+   *
+   * @param action the action to execute
+   */
+  private static void visitConnectors(BiConsumer<Config, String> action) {
+    for (Map.Entry<String, ConfigValue> nonLeafEntry : DEFAULT.getObject("connector").entrySet()) {
+      if (nonLeafEntry.getValue().valueType() == ConfigValueType.OBJECT) {
+        String connectorName = nonLeafEntry.getKey();
+        Config connectorConfig = ((ConfigObject) nonLeafEntry.getValue()).toConfig();
+        action.accept(connectorConfig, connectorName);
       }
     }
   }
@@ -353,10 +405,11 @@ public class SettingsDocumentor {
       Integer leftInd = Integer.MAX_VALUE;
       Integer rightInd = Integer.MAX_VALUE;
       for (String value : prioritizedValues.keySet()) {
-        if (left.startsWith(value)) {
+        String valueWithDot = value + ".";
+        if (left.startsWith(valueWithDot) || left.equals(value)) {
           leftInd = prioritizedValues.get(value);
         }
-        if (right.startsWith(value)) {
+        if (right.startsWith(valueWithDot) || right.equals(value)) {
           rightInd = prioritizedValues.get(value);
         }
       }

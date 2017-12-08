@@ -21,6 +21,7 @@ import java.io.PrintWriter;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -28,6 +29,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.UnrecognizedOptionException;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,27 +55,29 @@ public class Main {
   }
 
   public int run() {
-    String connectorName;
     try {
-      if (args.length == 0 || (args[0].equals("help") && args.length == 1)) {
-        HelpUtils.emitGlobalHelp();
-        return args.length == 0 ? 1 : 0;
+      // The first arg can be a subcommand or option...or no arg. We want to treat these
+      // cases as follows:
+      // no arg: same as help subcommand with no connectorName name.
+      // first arg that is a short/long option: all args are short/long options (no subcommand).
+      // first arg is not a short/long option: first arg is a subcommand, rest are options.
+
+      String[] optionArgs;
+      String subCommand = null;
+      if (args.length == 0) {
+        subCommand = "help";
+        optionArgs = new String[] {};
+      } else if (args[0].startsWith("-")) {
+        optionArgs = args;
+      } else {
+        subCommand = args[0];
+        optionArgs = Arrays.copyOfRange(args, 1, args.length);
       }
 
-      if (args[0].equals("help")) {
-        HelpUtils.emitSectionHelp(args[1]);
-        return 0;
-      }
-
-      String[] optionArgs =
-          (args[0].startsWith("-")) ? args : Arrays.copyOfRange(args, 1, args.length);
       initDefaultConfig(optionArgs);
 
-      // Figure out connector-name from config + command line.
-      connectorName = resolveConnectorName(optionArgs);
-
       // Parse command line args fully, integrate with default config, and run.
-      Config cmdLineConfig = parseCommandLine(connectorName, args[0], optionArgs);
+      Config cmdLineConfig = parseCommandLine(subCommand, optionArgs);
       DefaultLoaderConfig config = new DefaultLoaderConfig(cmdLineConfig.withFallback(DEFAULT));
       config.checkValid(REFERENCE);
       WorkflowType workflowType = WorkflowType.valueOf(args[0].toUpperCase());
@@ -82,9 +86,17 @@ public class Main {
       workflowThread.start();
       workflowThread.join();
       return 0;
-    } catch (HelpRequestException e) {
-      HelpUtils.emitGlobalHelp();
+    } catch (GlobalHelpRequestException e) {
+      HelpUtils.emitGlobalHelp(e.getConnectorName());
       return 0;
+    } catch (SectionHelpRequestException e) {
+      try {
+        HelpUtils.emitSectionHelp(e.getSectionName());
+        return 0;
+      } catch (Exception e2) {
+        LOGGER.error(e2.getMessage(), e2);
+        return 1;
+      }
     } catch (VersionRequestException e) {
       PrintWriter pw = new PrintWriter(System.out);
       pw.println(HelpUtils.getVersionMessage());
@@ -118,24 +130,32 @@ public class Main {
     return connectorName;
   }
 
-  static Config parseCommandLine(String connectorName, String subcommand, String[] args)
-      throws ParseException, HelpRequestException, VersionRequestException {
+  static Config parseCommandLine(String subCommand, @NotNull String[] args)
+      throws ParseException, GlobalHelpRequestException, SectionHelpRequestException,
+          VersionRequestException {
+    // Figure out connector-name from config + command line.
+    String connectorName = resolveConnectorName(args);
     Options options = OptionUtils.createOptions(connectorName);
 
     CommandLineParser parser = new CmdlineParser();
     CommandLine cmd = parser.parse(options, args);
+    List<String> remainingArgs = cmd.getArgList();
+    String maybeSection = remainingArgs.isEmpty() ? null : remainingArgs.get(0);
 
-    if (cmd.hasOption("help")) {
-      // User is asking for help. No real error here, but raising an empty
-      // exception gets the job done.
-      throw new HelpRequestException();
+    if (cmd.hasOption("help") || "help".equals(subCommand)) {
+      // User is asking for help.
+      if (maybeSection != null) {
+        throw new SectionHelpRequestException(maybeSection);
+      } else {
+        throw new GlobalHelpRequestException(cmd.getOptionValue('c'));
+      }
     }
 
     if (cmd.hasOption("version")) {
       throw new VersionRequestException();
     }
 
-    if (!Arrays.asList("load", "unload").contains(subcommand)) {
+    if (!Arrays.asList("load", "unload").contains(subCommand)) {
       throw new ParseException(
           "First argument must be subcommand \"load\", \"unload\", or \"help\"");
     }
@@ -200,7 +220,7 @@ public class Main {
     return appConfigPath;
   }
 
-  private static String resolveConnectorName(String[] optionArgs) throws ParseException {
+  private static String resolveConnectorName(String[] optionArgs) {
     String connectorName = DEFAULT.getString("connector.name");
     if (connectorName.isEmpty()) {
       connectorName = null;
@@ -280,7 +300,30 @@ public class Main {
   private static class VersionRequestException extends Exception {}
 
   // Simple exception indicating that the user wants the main help output.
-  private static class HelpRequestException extends Exception {}
+  private static class GlobalHelpRequestException extends Exception {
+    private final String connectorName;
+
+    GlobalHelpRequestException(String connectorName) {
+      this.connectorName = connectorName;
+    }
+
+    String getConnectorName() {
+      return connectorName;
+    }
+  }
+
+  // Simple exception indicating that the user wants the help for a particular section.
+  private static class SectionHelpRequestException extends Exception {
+    private final String sectionName;
+
+    SectionHelpRequestException(String sectionName) {
+      this.sectionName = sectionName;
+    }
+
+    String getSectionName() {
+      return sectionName;
+    }
+  }
 
   /**
    * Commons-cli parser that errors out when attempting to interpret a short option that has a value
