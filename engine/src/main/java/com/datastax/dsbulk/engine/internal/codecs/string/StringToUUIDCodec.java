@@ -7,26 +7,29 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
+import java.time.Instant;
 import java.util.UUID;
 
 public class StringToUUIDCodec extends ConvertingCodec<String, UUID> {
 
-  public StringToUUIDCodec(TypeCodec<UUID> targetCodec) {
+  private final ConvertingCodec<String, Instant> instantCodec;
+  private final TimeUUIDGenerator generator;
+
+  public StringToUUIDCodec(
+      TypeCodec<UUID> targetCodec,
+      ConvertingCodec<String, Instant> instantCodec,
+      TimeUUIDGenerator generator) {
     super(targetCodec, String.class);
+    this.instantCodec = instantCodec;
+    this.generator = generator;
   }
 
   @Override
   public UUID convertFrom(String s) {
-    if (s == null || s.isEmpty()) {
-      return null;
-    }
-    try {
-      return UUID.fromString(s);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidTypeException("Invalid UUID string: " + s);
-    }
+    return CodecUtils.parseUUID(s, instantCodec, generator);
   }
 
   @Override

@@ -90,6 +90,42 @@ class JsonConnectorTest {
   }
 
   @Test
+  void should_read_single_empty_file_single_doc() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS], mode = SINGLE_DOCUMENT",
+                        url("/empty.json")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    // should complete with 0 records.
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assertThat(actual).hasSize(0);
+    connector.close();
+  }
+
+  @Test
+  void should_read_single_empty_file_multi_doc() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS], mode = MULTI_DOCUMENT",
+                        url("/empty.json")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    // should complete with 0 records.
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assertThat(actual).hasSize(0);
+    connector.close();
+  }
+
+  @Test
   void should_read_single_file_by_resource() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =

@@ -264,7 +264,8 @@ public class CSVConnector implements Connector {
             sink -> {
               CsvParser parser = new CsvParser(parserSettings);
               SimpleBackpressureController controller = new SimpleBackpressureController();
-              sink.onDispose(parser::stopParsing);
+              // DAT-177: Do not call sink.onDispose nor sink.onCancel,
+              // as doing so seems to prevent the flow from completing in rare occasions.
               sink.onRequest(controller::signalRequested);
               LOGGER.debug("Reading {}", url);
               try (Reader r = IOUtils.newBufferedReader(url, encoding)) {

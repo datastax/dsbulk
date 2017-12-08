@@ -14,14 +14,15 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.assertj.core.api.ObjectAssert;
+import org.assertj.core.api.AbstractObjectAssert;
 
 /** */
 @SuppressWarnings("UnusedReturnValue")
-public class LogInterceptorAssert extends ObjectAssert<LogInterceptor> {
+public class LogInterceptorAssert
+    extends AbstractObjectAssert<LogInterceptorAssert, LogInterceptor> {
 
   LogInterceptorAssert(LogInterceptor logInterceptor) {
-    super(logInterceptor);
+    super(logInterceptor, LogInterceptorAssert.class);
   }
 
   public LogInterceptorAssert hasMessageContaining(String fragment) {

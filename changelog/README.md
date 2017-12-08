@@ -8,6 +8,10 @@
 - [enhancement] DAT-167: Add support for user-supplied execution ids.
 - [new feature] DAT-22: Implement JSON connector.
 - [improvement] DAT-163: Improve error message for invalid JSON paths.
+- [new feature] DAT-181: Support temporal-to-timeuuid conversions.
+- [new feature] DAT-184: Support boolean-to-number conversions.
+- [improvement] DAT-183: Add code coverage to DSBulk builds.
+- [bug] DAT-188: JSON connector does not terminate in SINGLE_DOCUMENT mode with an empty file.
 - [improvement] DAT-179: Add ability for connectors to promote some settings to the common help section
 
 ### 1.0.0-beta2

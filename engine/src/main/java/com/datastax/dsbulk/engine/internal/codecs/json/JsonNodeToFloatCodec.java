@@ -6,12 +6,17 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static java.util.stream.Collectors.toList;
+
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
@@ -20,8 +25,17 @@ public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
       ThreadLocal<DecimalFormat> formatter,
       DateTimeFormatter temporalParser,
       TimeUnit numericTimestampUnit,
-      Instant numericTimestampEpoch) {
-    super(cfloat(), formatter, temporalParser, numericTimestampUnit, numericTimestampEpoch);
+      Instant numericTimestampEpoch,
+      Map<String, Boolean> booleanWords,
+      List<BigDecimal> booleanNumbers) {
+    super(
+        cfloat(),
+        formatter,
+        temporalParser,
+        numericTimestampUnit,
+        numericTimestampEpoch,
+        booleanWords,
+        booleanNumbers.stream().map(BigDecimal::floatValue).collect(toList()));
   }
 
   @Override
@@ -32,13 +46,7 @@ public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
     if (node.isFloat()) {
       return node.floatValue();
     }
-    Number number =
-        CodecUtils.parseNumber(
-            node.asText(),
-            getNumberFormat(),
-            temporalParser,
-            numericTimestampUnit,
-            numericTimestampEpoch);
+    Number number = parseNumber(node);
     if (number == null) {
       return null;
     }

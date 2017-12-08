@@ -865,6 +865,14 @@ When writing, these settings determine how record fields emitted by connectors a
 
 When unloading, these settings determine how row cells emitted by DSE are formatted.
 
+#### --codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
+
+How numbers should be mapped to booleans and vice versa.
+
+This list should contain exactly two elements; the first element will be mapped to `true`, the second one to `false`. Note that when mapping from numbers to booleans, all other numbers will be rejected.
+
+Default: **[1,0]**.
+
 #### --codec.booleanWords _&lt;list&lt;string&gt;&gt;_
 
 All representations of true and false supported by dsbulk. Each representation is of the form `true-value:false-value`, case-insensitive.
@@ -948,6 +956,21 @@ This setting only applies for CQL timestamp colums, and for `USING TIMESTAMP` cl
 Valid values: all `TimeUnit` enum constants.
 
 Default: **"MILLISECONDS"**.
+
+#### --codec.uuidStrategy _&lt;string&gt;_
+
+The strategy to use when generating time-based (version 1) UUIDs from timestamps.
+
+Valid values are:
+
+* `RANDOM`: Default value. Generates UUIDs using a random number in lieu of the local clock sequence and node ID. If you can guarantee that the original timestamps are unique, then you should prefer the `FIXED` strategy, which is faster. If you can't guarantee this however, this strategy will ensure that the generated UUIDs are unique.
+* `FIXED`: Generates UUIDs using a fixed local clock sequence and node ID. Note that this strategy is generally only safe to use if you can guarantee that the original timestamps are unique.
+* `MIN`: Generates the smallest possible type 1 UUID for a given timestamp. Warning: this strategy doesn't guarantee the uniqueness of the generated UUIDs and should be used with caution.
+* `MAX`: Generates the biggest possible type 1 UUID for a given timestamp. Warning: this strategy doesn't guarantee the uniqueness of the generated UUIDs and should be used with caution.
+
+Also please note that, for all strategies outlined above, the clock sequence and the node ID parts of the generated UUIDs are determined on a best-effort basis and are not fully compliant with RFC 4122.
+
+Default: **"RANDOM"**.
 
 <a name="driver"></a>
 ## Driver Settings
@@ -1372,7 +1395,7 @@ It is also possible to provide templates here. Any format compliant with the for
 
 - `%1$s` : the workflow type (`LOAD`, `UNLOAD`, etc.);
 - `%2$t` : the current time (with microsecond precision if available, and millisecond precision otherwise);
-- `%3$s` : the JVM process PID (this parameter might not be available on some operating systems; if its value cannot be determined, a blank will be inserted instead).
+- `%3$s` : the JVM process PID (this parameter might not be available on some operating systems; if its value cannot be determined, a random integer will be inserted instead).
 
 Default: **&lt;unspecified&gt;**.
 

@@ -8,10 +8,14 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.google.common.collect.Lists.newArrayList;
+import static java.math.BigDecimal.ONE;
+import static java.math.BigDecimal.ZERO;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.google.common.collect.ImmutableMap;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -25,7 +29,9 @@ class JsonNodeToShortCodecTest {
               () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
           CQL_DATE_TIME_FORMAT,
           MILLISECONDS,
-          EPOCH);
+          EPOCH,
+          ImmutableMap.of("true", true, "false", false),
+          newArrayList(ONE, ZERO));
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -47,6 +53,10 @@ class JsonNodeToShortCodecTest {
         .convertsFrom(JsonNodeFactory.instance.textNode("-32,768"))
         .to((short) -32768)
         .convertsFrom(JsonNodeFactory.instance.textNode("1970-01-01T00:00:00Z"))
+        .to((short) 0)
+        .convertsFrom(JsonNodeFactory.instance.textNode("TRUE"))
+        .to((short) 1)
+        .convertsFrom(JsonNodeFactory.instance.textNode("FALSE"))
         .to((short) 0)
         .convertsFrom(null)
         .to(null)
