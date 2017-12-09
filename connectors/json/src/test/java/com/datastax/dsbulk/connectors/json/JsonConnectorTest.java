@@ -90,6 +90,42 @@ class JsonConnectorTest {
   }
 
   @Test
+  void should_read_single_empty_file_single_doc() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS], mode = SINGLE_DOCUMENT",
+                        url("/empty.json")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    // should complete with 0 records.
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assertThat(actual).hasSize(0);
+    connector.close();
+  }
+
+  @Test
+  void should_read_single_empty_file_multi_doc() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS], mode = MULTI_DOCUMENT",
+                        url("/empty.json")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    // should complete with 0 records.
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assertThat(actual).hasSize(0);
+    connector.close();
+  }
+
+  @Test
   void should_read_single_file_by_resource() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
@@ -315,12 +351,13 @@ class JsonConnectorTest {
   void should_roll_file_when_max_records_reached() throws Exception {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
+    String escapedPath = ConfigUtils.maybeEscapeBackslash(out.toString());
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 3",
-                        out))
+                        escapedPath))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();

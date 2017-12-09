@@ -72,7 +72,7 @@ public class JsonUtils {
             + "country_map map<text, text>,"
             + "country_list list<int>,"
             + "country_set set<float>,"
-            + "country_contacts contacts)");
+            + "country_contacts frozen<contacts>)");
   }
 
   public static void createIpByCountryTable(Session session, String keyspace) {

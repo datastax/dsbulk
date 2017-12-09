@@ -9,12 +9,13 @@ package com.datastax.dsbulk.engine.internal.codecs;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
-import org.assertj.core.api.ObjectAssert;
+import org.assertj.core.api.AbstractObjectAssert;
 
-public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCodec<FROM, TO>> {
+public class ConvertingCodecAssert<FROM, TO>
+    extends AbstractObjectAssert<ConvertingCodecAssert<FROM, TO>, ConvertingCodec<FROM, TO>> {
 
   public ConvertingCodecAssert(ConvertingCodec<FROM, TO> actual) {
-    super(actual);
+    super(actual, ConvertingCodecAssert.class);
   }
 
   public ConvertsFromAssert convertsFrom(FROM from) {
@@ -99,7 +100,7 @@ public class ConvertingCodecAssert<FROM, TO> extends ObjectAssert<ConvertingCode
     public ConvertingCodecAssert<FROM, TO> from(FROM from) {
       assertThat(this.from)
           .overridingErrorMessage(
-              "Expecting codec to convert to %s from %s but it was from %s", to, from, this.from)
+              "Expecting codec to convert back from %s to %s but it was to %s", to, from, this.from)
           .isEqualTo(from);
       return this;
     }

@@ -516,8 +516,6 @@ class MainTest {
               "false",
               "--schema.mapping",
               "{0:\"f1\", 1:\"f2\"}",
-              "--schema.recordMetadata",
-              "{0:\"f3\", 1:\"f4\"}",
               "--connector.name",
               "conn"
             });
@@ -610,7 +608,6 @@ class MainTest {
     assertThat(result.getString("schema.nullStrings")).isEqualTo("NIL, NADA");
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
-    assertThat(result.getString("schema.recordMetadata")).isEqualTo("{0:f3, 1:f4}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");
   }
 
@@ -677,6 +674,21 @@ class MainTest {
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("Dry-run is not supported for unload");
+  }
+
+  @Test
+  void should_error_on_backslash() throws Exception {
+    String badJson = ClassLoader.getSystemResource("bad-json.conf").getPath();
+    new Main(
+            new String[] {
+              "load", "-dryRun", "true", "-url", "/foo/bar", "-k", "k1", "-t", "t1", "-f", badJson
+            })
+        .run();
+    assertThat(stdErr.getStreamAsString())
+        .contains(
+            "Error parsing configuration file "
+                + badJson
+                + " if you are using \\ (backslash) to define a path, use / instead.");
   }
 
   private void assertGlobalHelp() {

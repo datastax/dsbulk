@@ -27,7 +27,6 @@ import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
@@ -35,7 +34,6 @@ import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
-import com.datastax.dsbulk.engine.internal.schema.MergedRecordMetadata;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dsbulk.engine.internal.utils.StringUtils;
@@ -44,9 +42,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.reflect.TypeToken;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
@@ -80,7 +76,6 @@ public class SchemaSettings {
   private static final String TABLE = "table";
   private static final String MAPPING = "mapping";
   private static final String QUERY = "query";
-  private static final String RECORD_METADATA = "recordMetadata";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
 
@@ -274,7 +269,7 @@ public class SchemaSettings {
       throws BulkConfigurationException {
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, LOAD);
     return new DefaultRecordMapper(
-        preparedStatement, mapping, mergeRecordMetadata(recordMetadata), nullStrings, nullToUnset);
+        preparedStatement, mapping, recordMetadata, nullStrings, nullToUnset);
   }
 
   public ReadResultMapper createReadResultMapper(
@@ -282,9 +277,7 @@ public class SchemaSettings {
       throws BulkConfigurationException {
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, UNLOAD);
     return new DefaultReadResultMapper(
-        mapping,
-        mergeRecordMetadata(recordMetadata),
-        nullStrings.isEmpty() ? null : nullStrings.iterator().next());
+        mapping, recordMetadata, nullStrings.isEmpty() ? null : nullStrings.iterator().next());
   }
 
   public List<Statement> createReadStatements(Cluster cluster) {
@@ -459,19 +452,6 @@ public class SchemaSettings {
       }
       return ConfigFactory.parseMap(indexMap);
     }
-  }
-
-  private RecordMetadata mergeRecordMetadata(RecordMetadata fallback) {
-    if (config.hasPath(RECORD_METADATA)) {
-      ImmutableMap.Builder<String, TypeToken<?>> fieldsToTypes = new ImmutableMap.Builder<>();
-      LoaderConfig recordMetadata =
-          new DefaultLoaderConfig(ConfigFactory.parseString(config.getString(RECORD_METADATA)));
-      for (String path : recordMetadata.root().keySet()) {
-        fieldsToTypes.put(path, TypeToken.of(recordMetadata.getClass(path)));
-      }
-      return new MergedRecordMetadata(fieldsToTypes.build(), fallback);
-    }
-    return fallback;
   }
 
   private BiMap<String, String> inferFieldsToVariablesMap(Supplier<List<String>> columns) {

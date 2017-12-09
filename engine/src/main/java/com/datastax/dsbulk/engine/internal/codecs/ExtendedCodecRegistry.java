@@ -39,7 +39,11 @@ import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToStringCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToTupleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUDTCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.number.BooleanToNumberCodec;
+import com.datastax.dsbulk.engine.internal.codecs.number.NumberToBooleanCodec;
+import com.datastax.dsbulk.engine.internal.codecs.number.NumberToInstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.NumberToNumberCodec;
+import com.datastax.dsbulk.engine.internal.codecs.number.NumberToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigDecimalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBigIntegerCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToBlobCodec;
@@ -63,20 +67,26 @@ import com.datastax.dsbulk.engine.internal.codecs.string.StringToTupleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUDTCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToTemporalCodec;
+import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCodec;
+import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.Temporal;
+import java.time.temporal.TemporalAccessor;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -93,8 +103,9 @@ public class ExtendedCodecRegistry {
   private static final TypeToken<JsonNode> JSON_NODE_TYPE_TOKEN = TypeToken.of(JsonNode.class);
 
   private final CodecRegistry codecRegistry;
-  private final Map<String, Boolean> booleanInputs;
-  private final Map<Boolean, String> booleanOutputs;
+  private final Map<String, Boolean> booleanInputWords;
+  private final Map<Boolean, String> booleanOutputWords;
+  private final List<BigDecimal> booleanNumbers;
   private final ThreadLocal<DecimalFormat> numberFormat;
   private final DateTimeFormatter localDateFormat;
   private final DateTimeFormatter localTimeFormat;
@@ -102,27 +113,32 @@ public class ExtendedCodecRegistry {
   private final TimeUnit numericTimestampUnit;
   private final Instant numericTimestampEpoch;
   private final ObjectMapper objectMapper;
+  private final TimeUUIDGenerator generator;
 
   public ExtendedCodecRegistry(
       CodecRegistry codecRegistry,
-      Map<String, Boolean> booleanInputs,
-      Map<Boolean, String> booleanOutputs,
+      Map<String, Boolean> booleanInputWords,
+      Map<Boolean, String> booleanOutputWords,
+      List<BigDecimal> booleanNumbers,
       ThreadLocal<DecimalFormat> numberFormat,
       DateTimeFormatter localDateFormat,
       DateTimeFormatter localTimeFormat,
       DateTimeFormatter timestampFormat,
       TimeUnit numericTimestampUnit,
       Instant numericTimestampEpoch,
+      TimeUUIDGenerator generator,
       ObjectMapper objectMapper) {
     this.codecRegistry = codecRegistry;
-    this.booleanInputs = booleanInputs;
-    this.booleanOutputs = booleanOutputs;
+    this.booleanInputWords = booleanInputWords;
+    this.booleanOutputWords = booleanOutputWords;
+    this.booleanNumbers = booleanNumbers;
     this.numberFormat = numberFormat;
     this.localDateFormat = localDateFormat;
     this.localTimeFormat = localTimeFormat;
     this.timestampFormat = timestampFormat;
     this.numericTimestampUnit = numericTimestampUnit;
     this.numericTimestampEpoch = numericTimestampEpoch;
+    this.generator = generator;
     this.objectMapper = objectMapper;
     // register Java Time API codecs
     codecRegistry.register(LocalDateCodec.instance, LocalTimeCodec.instance, InstantCodec.instance);
@@ -171,6 +187,24 @@ public class ExtendedCodecRegistry {
       Class<Number> numberType = (Class<Number>) javaType.getRawType();
       return new NumberToNumberCodec<>(numberType, codecRegistry.codecFor(cqlType));
     }
+    if (Number.class.isAssignableFrom(javaType.getRawType()) && cqlType == DataType.timestamp()) {
+      @SuppressWarnings("unchecked")
+      Class<Number> numberType = (Class<Number>) javaType.getRawType();
+      return new NumberToInstantCodec<>(numberType, numericTimestampUnit, numericTimestampEpoch);
+    }
+    if (Number.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
+      TypeCodec<UUID> uuidCodec = codecRegistry.codecFor(cqlType);
+      @SuppressWarnings("unchecked")
+      Class<Number> numberType = (Class<Number>) javaType.getRawType();
+      NumberToInstantCodec<Number> instantCodec =
+          new NumberToInstantCodec<>(numberType, numericTimestampUnit, numericTimestampEpoch);
+      return new NumberToUUIDCodec<>(uuidCodec, instantCodec, generator);
+    }
+    if (Number.class.isAssignableFrom(javaType.getRawType()) && cqlType == DataType.cboolean()) {
+      @SuppressWarnings("unchecked")
+      Class<Number> numberType = (Class<Number>) javaType.getRawType();
+      return new NumberToBooleanCodec<>(numberType, booleanNumbers);
+    }
     if (Temporal.class.isAssignableFrom(javaType.getRawType()) && isTemporal(cqlType)) {
       @SuppressWarnings("unchecked")
       Class<Temporal> fromTemporalType = (Class<Temporal>) javaType.getRawType();
@@ -187,7 +221,16 @@ public class ExtendedCodecRegistry {
             fromTemporalType, InstantCodec.instance, timestampFormat.getZone());
       }
     }
-    if (Date.class.isAssignableFrom(javaType.getRawType())) {
+    if (Temporal.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
+      TypeCodec<UUID> uuidCodec = codecRegistry.codecFor(cqlType);
+      @SuppressWarnings("unchecked")
+      TemporalToTemporalCodec<TemporalAccessor, Instant> instantCodec =
+          (TemporalToTemporalCodec<TemporalAccessor, Instant>)
+              maybeCreateConvertingCodec(DataType.timestamp(), javaType);
+      assert instantCodec != null;
+      return new TemporalToUUIDCodec<>(uuidCodec, instantCodec, generator);
+    }
+    if (Date.class.isAssignableFrom(javaType.getRawType()) && isTemporal(cqlType)) {
       if (cqlType == DataType.date()) {
         return new DateToTemporalCodec<>(
             Date.class, LocalDateCodec.instance, timestampFormat.getZone());
@@ -201,6 +244,18 @@ public class ExtendedCodecRegistry {
             Date.class, InstantCodec.instance, timestampFormat.getZone());
       }
     }
+    if (Date.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
+      TypeCodec<UUID> uuidCodec = codecRegistry.codecFor(cqlType);
+      @SuppressWarnings("unchecked")
+      DateToTemporalCodec<Date, Instant> instantCodec =
+          (DateToTemporalCodec<Date, Instant>)
+              maybeCreateConvertingCodec(DataType.timestamp(), javaType);
+      assert instantCodec != null;
+      return new DateToUUIDCodec<>(uuidCodec, instantCodec, generator);
+    }
+    if (Boolean.class.isAssignableFrom(javaType.getRawType()) && isNumeric(cqlType)) {
+      return new BooleanToNumberCodec<>(codecRegistry.codecFor(cqlType), booleanNumbers);
+    }
     return null;
   }
 
@@ -212,31 +267,71 @@ public class ExtendedCodecRegistry {
       case VARCHAR:
         return new StringToStringCodec(codecRegistry.codecFor(cqlType));
       case BOOLEAN:
-        return new StringToBooleanCodec(booleanInputs, booleanOutputs);
+        return new StringToBooleanCodec(booleanInputWords, booleanOutputWords);
       case TINYINT:
         return new StringToByteCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case SMALLINT:
         return new StringToShortCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case INT:
         return new StringToIntegerCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case BIGINT:
         return new StringToLongCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case FLOAT:
         return new StringToFloatCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case DOUBLE:
         return new StringToDoubleCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case VARINT:
         return new StringToBigIntegerCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case DECIMAL:
         return new StringToBigDecimalCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case DATE:
         return new StringToLocalDateCodec(localDateFormat);
       case TIME:
@@ -247,9 +342,19 @@ public class ExtendedCodecRegistry {
       case INET:
         return StringToInetAddressCodec.INSTANCE;
       case UUID:
-        return new StringToUUIDCodec(TypeCodec.uuid());
+        {
+          @SuppressWarnings("unchecked")
+          ConvertingCodec<String, Instant> instantCodec =
+              (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
+          return new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, generator);
+        }
       case TIMEUUID:
-        return new StringToUUIDCodec(TypeCodec.timeUUID());
+        {
+          @SuppressWarnings("unchecked")
+          ConvertingCodec<String, Instant> instantCodec =
+              (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
+          return new StringToUUIDCodec(TypeCodec.timeUUID(), instantCodec, generator);
+        }
       case BLOB:
         return StringToBlobCodec.INSTANCE;
       case DURATION:
@@ -305,31 +410,71 @@ public class ExtendedCodecRegistry {
       case VARCHAR:
         return new JsonNodeToStringCodec(codecRegistry.codecFor(cqlType));
       case BOOLEAN:
-        return new JsonNodeToBooleanCodec(booleanInputs);
+        return new JsonNodeToBooleanCodec(booleanInputWords);
       case TINYINT:
         return new JsonNodeToByteCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case SMALLINT:
         return new JsonNodeToShortCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case INT:
         return new JsonNodeToIntegerCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case BIGINT:
         return new JsonNodeToLongCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case FLOAT:
         return new JsonNodeToFloatCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case DOUBLE:
         return new JsonNodeToDoubleCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case VARINT:
         return new JsonNodeToBigIntegerCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case DECIMAL:
         return new JsonNodeToBigDecimalCodec(
-            numberFormat, timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+            numberFormat,
+            timestampFormat,
+            numericTimestampUnit,
+            numericTimestampEpoch,
+            booleanInputWords,
+            booleanNumbers);
       case DATE:
         return new JsonNodeToLocalDateCodec(localDateFormat);
       case TIME:
@@ -340,9 +485,19 @@ public class ExtendedCodecRegistry {
       case INET:
         return JsonNodeToInetAddressCodec.INSTANCE;
       case UUID:
-        return new JsonNodeToUUIDCodec(TypeCodec.uuid());
+        {
+          @SuppressWarnings("unchecked")
+          ConvertingCodec<String, Instant> instantCodec =
+              (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
+          return new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, generator);
+        }
       case TIMEUUID:
-        return new JsonNodeToUUIDCodec(TypeCodec.timeUUID());
+        {
+          @SuppressWarnings("unchecked")
+          ConvertingCodec<String, Instant> instantCodec =
+              (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
+          return new JsonNodeToUUIDCodec(TypeCodec.timeUUID(), instantCodec, generator);
+        }
       case BLOB:
         return JsonNodeToBlobCodec.INSTANCE;
       case DURATION:
@@ -429,5 +584,9 @@ public class ExtendedCodecRegistry {
     return cqlType == DataType.date()
         || cqlType == DataType.time()
         || cqlType == DataType.timestamp();
+  }
+
+  private static boolean isUUID(@NotNull DataType cqlType) {
+    return cqlType == DataType.uuid() || cqlType == DataType.timeuuid();
   }
 }

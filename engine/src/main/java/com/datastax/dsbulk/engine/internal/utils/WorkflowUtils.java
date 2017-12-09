@@ -19,6 +19,7 @@ import com.datastax.driver.core.Native;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.google.common.base.Throwables;
+import java.lang.management.ManagementFactory;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -57,9 +58,7 @@ public class WorkflowUtils {
       // 1 : the workflow type
       // 2 : the current time
       // 3 : the JVM process PID, if available
-      String executionId =
-          String.format(
-              template, workflowType, now(), Native.isGetpidAvailable() ? Native.processId() : "");
+      String executionId = String.format(template, workflowType, now(), pid());
       if (executionId.isEmpty()) {
         throw new BulkConfigurationException(
             "Could not generate execution ID with template: '"
@@ -76,7 +75,22 @@ public class WorkflowUtils {
     }
   }
 
-  private static ZonedDateTime now() {
+  @NotNull
+  public static int pid() {
+    if (Native.isGetpidAvailable()) {
+      return Native.processId();
+    } else {
+      try {
+        String pidJmx = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
+        return Integer.parseInt(pidJmx);
+      } catch (Exception ignored) {
+        return new java.util.Random(System.currentTimeMillis()).nextInt();
+      }
+    }
+  }
+
+  @NotNull
+  public static ZonedDateTime now() {
     // Try a native call to gettimeofday first since it has microsecond resolution,
     // and fall back to System.currentTimeMillis() if that fails
     if (Native.isGettimeofdayAvailable()) {

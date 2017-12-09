@@ -621,9 +621,9 @@ Default: **true**.
 
 The query to use. Optional.
 
-The table name *must* be qualified with a keyspace name.
+It is not required to qualify the table with a keyspace name. If the keyspace is _not_ provided however, then `schema.keyspace` _must_ be provided.
 
-If not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns.
+If this setting is not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns.
 
 In load worflows, the statement can be any `INSERT` or `UPDATE` statement, but **must** use named bound variables exclusively; positional bound variables will not work.
 
@@ -636,6 +636,8 @@ In unload worflows, the statement can be any regular `SELECT` statement; it can 
 If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas.
 
 The column names in the SELECT clause will be used to match column names specified in the mapping. See "mapping" setting for more information.
+
+Important: the query will be parsed because DSBulk needs to knwow which bound variables are present in order to correctly map them to fields. Because the CQL gammar is complex, the parser used internally is not infaillible; please avoid using complex queries and in particular, avoid using complex CQL identifiers; if DSBulk fails to correctly identify bound variables in the query, some fields might be incorrectly mapped.
 
 Default: **&lt;unspecified&gt;**.
 
@@ -670,26 +672,6 @@ A value of -1 means there is no ttl.
 For more information, see the [CQL INSERT INTO Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/5.1/cql/cql/cql_using/useTTL.html?hl=ttl) and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/5.1/cql/cql/cql_using/useExpire.html).
 
 Default: **-1**.
-
-#### --schema.recordMetadata _&lt;string&gt;_
-
-Record metadata.
-
-Applies within both load and unload workflows to records being respectively read from or written to the connector.
-
-This information is optional, and rarely needed.
-
-If not specified:
-
-- If the connector is capable of reporting the record metadata accurately (for example, some database connectors might be able to inspect the target table's metadata), then this section is only required if you want to override some field types as reported by the connector.
-- If the connector is not capable of reporting the record metadata accurately (for example, file connectors usually cannot report such information), then all fields are assumed to be of type `String`. If this is not correct, then you need to provide the correct type information here.
-
-Field metadata should be specified as a HOCON map (https://github.com/typesafehub/config/blob/master/HOCON.md) of the following form:
-
-- Indexed data sources: `0 = java.lang.String, 1 = java.lang.Double`, where `0`, `1`, etc. are the zero-based indices of fields in the source data; and the values are the expected types for each field.
-- Mapped data sources: `fieldA = java.lang.String, fieldB = java.lang.Double`, where `fieldA`, `fieldB`, etc. are field names in the source data; and the values are the expected types for each field.
-
-Default: **&lt;unspecified&gt;**.
 
 <a name="batch"></a>
 ## Batch Settings
@@ -746,6 +728,14 @@ Conversion-specific settings. These settings apply for both load and unload work
 When writing, these settings determine how record fields emitted by connectors are parsed.
 
 When unloading, these settings determine how row cells emitted by DSE are formatted.
+
+#### --codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
+
+How numbers should be mapped to booleans and vice versa.
+
+This list should contain exactly two elements; the first element will be mapped to `true`, the second one to `false`. Note that when mapping from numbers to booleans, all other numbers will be rejected.
+
+Default: **[1,0]**.
 
 #### --codec.booleanWords _&lt;list&lt;string&gt;&gt;_
 
@@ -830,6 +820,21 @@ This setting only applies for CQL timestamp colums, and for `USING TIMESTAMP` cl
 Valid values: all `TimeUnit` enum constants.
 
 Default: **"MILLISECONDS"**.
+
+#### --codec.uuidStrategy _&lt;string&gt;_
+
+The strategy to use when generating time-based (version 1) UUIDs from timestamps.
+
+Valid values are:
+
+* `RANDOM`: Default value. Generates UUIDs using a random number in lieu of the local clock sequence and node ID. If you can guarantee that the original timestamps are unique, then you should prefer the `FIXED` strategy, which is faster. If you can't guarantee this however, this strategy will ensure that the generated UUIDs are unique.
+* `FIXED`: Generates UUIDs using a fixed local clock sequence and node ID. Note that this strategy is generally only safe to use if you can guarantee that the original timestamps are unique.
+* `MIN`: Generates the smallest possible type 1 UUID for a given timestamp. Warning: this strategy doesn't guarantee the uniqueness of the generated UUIDs and should be used with caution.
+* `MAX`: Generates the biggest possible type 1 UUID for a given timestamp. Warning: this strategy doesn't guarantee the uniqueness of the generated UUIDs and should be used with caution.
+
+Also please note that, for all strategies outlined above, the clock sequence and the node ID parts of the generated UUIDs are determined on a best-effort basis and are not fully compliant with RFC 4122.
+
+Default: **"RANDOM"**.
 
 <a name="driver"></a>
 ## Driver Settings
@@ -1254,7 +1259,7 @@ It is also possible to provide templates here. Any format compliant with the for
 
 - `%1$s` : the workflow type (`LOAD`, `UNLOAD`, etc.);
 - `%2$t` : the current time (with microsecond precision if available, and millisecond precision otherwise);
-- `%3$s` : the JVM process PID (this parameter might not be available on some operating systems; if its value cannot be determined, a blank will be inserted instead).
+- `%3$s` : the JVM process PID (this parameter might not be available on some operating systems; if its value cannot be determined, a random integer will be inserted instead).
 
 Default: **&lt;unspecified&gt;**.
 
