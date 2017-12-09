@@ -562,7 +562,7 @@ public class SchemaSettings {
 
   private String inferWriteTimeVariable() {
     Matcher matcher = WRITETIME_PATTERN.matcher(query);
-    if (matcher.find()) {
+    if (matcher.find() && matcher.groupCount() > 0) {
       return DriverCoreHooks.handleId(matcher.group(1));
     }
     return null;
