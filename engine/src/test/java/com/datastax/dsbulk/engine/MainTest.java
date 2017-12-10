@@ -408,6 +408,33 @@ class MainTest {
   }
 
   @Test
+  void should_process_json_short_options() throws Exception {
+    Config result =
+        Main.parseCommandLine(
+            "load",
+            new String[] {
+              "-c",
+              "json",
+              "-encoding",
+              "enc",
+              "-skipRecords",
+              "3",
+              "-maxRecords",
+              "111",
+              "-maxConcurrentFiles",
+              "222",
+              "-url",
+              "http://findit"
+            });
+
+    assertThat(result.getString("connector.json.encoding")).isEqualTo("enc");
+    assertThat(result.getInt("connector.json.skipRecords")).isEqualTo(3);
+    assertThat(result.getInt("connector.json.maxRecords")).isEqualTo(111);
+    assertThat(result.getInt("connector.json.maxConcurrentFiles")).isEqualTo(222);
+    assertThat(result.getString("connector.json.url")).isEqualTo("http://findit");
+  }
+
+  @Test
   void should_reject_concatenated_option_value() {
     assertThrows(
         ParseException.class,
