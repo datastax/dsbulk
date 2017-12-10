@@ -47,28 +47,7 @@ public class SettingsUtils {
   public static final Map<String, Group> GROUPS =
       new TreeMap<>(new PriorityComparator("Common", "connector", "schema"));
 
-  /**
-   * Settings that should be displayed in a "common" section as well as the appropriate place in the
-   * hierarchy. Add/remove settings here. NOTE: No connector-related settings should be added here.
-   * Those are added to COMMON_SETTINGS below.
-   */
-  private static final List<String> COMMON_SETTINGS_BASE =
-      Arrays.asList(
-          "schema.keyspace",
-          "schema.table",
-          "schema.mapping",
-          "engine.dryRun",
-          "driver.hosts",
-          "driver.port",
-          "driver.auth.password",
-          "driver.auth.username",
-          "driver.query.consistency",
-          "executor.maxPerSecond",
-          "log.maxErrors",
-          "log.directory",
-          "monitoring.reportRate");
-
-  /** This is the fully specified list of common settings, computed from COMMON_SETTINGS_BASE. */
+  /** Common settings (both global and those from connectors). */
   static final List<String> COMMON_SETTINGS = new ArrayList<>();
 
   /**
@@ -94,11 +73,10 @@ public class SettingsUtils {
                 .forEach(COMMON_SETTINGS::add);
           }
         });
-    COMMON_SETTINGS.addAll(COMMON_SETTINGS_BASE);
+    COMMON_SETTINGS.addAll(DEFAULT.getStringList("metaSettings.docHints.commonSettings"));
 
     PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
-    PREFERRED_SETTINGS.add("driver.auth.provider");
-    PREFERRED_SETTINGS.add("driver.policy.lbp.name");
+    PREFERRED_SETTINGS.addAll(DEFAULT.getStringList("metaSettings.docHints.preferredSettings"));
 
     // Add connector-specific preferred settings.
     visitConnectors(

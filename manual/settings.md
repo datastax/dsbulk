@@ -258,9 +258,9 @@ Note that all nodes in a cluster must accept connections on the same port number
 
 Default: **9042**.
 
-#### -p,--driver.auth.password _&lt;string&gt;_
+#### -u,--driver.auth.username _&lt;string&gt;_
 
-The password to use. Required.
+The username to use. Required.
 
 Providers that accept this setting:
  - `PlainTextAuthProvider`
@@ -268,9 +268,9 @@ Providers that accept this setting:
 
 Default: **"cassandra"**.
 
-#### -u,--driver.auth.username _&lt;string&gt;_
+#### -p,--driver.auth.password _&lt;string&gt;_
 
-The username to use. Required.
+The password to use. Required.
 
 Providers that accept this setting:
  - `PlainTextAuthProvider`
@@ -1018,9 +1018,9 @@ Default: **"AtomicMonotonicTimestampGenerator"**.
 
 Authentication settings.
 
-#### -p,--driver.auth.password _&lt;string&gt;_
+#### -u,--driver.auth.username _&lt;string&gt;_
 
-The password to use. Required.
+The username to use. Required.
 
 Providers that accept this setting:
  - `PlainTextAuthProvider`
@@ -1028,9 +1028,9 @@ Providers that accept this setting:
 
 Default: **"cassandra"**.
 
-#### -u,--driver.auth.username _&lt;string&gt;_
+#### -p,--driver.auth.password _&lt;string&gt;_
 
-The username to use. Required.
+The password to use. Required.
 
 Providers that accept this setting:
  - `PlainTextAuthProvider`
