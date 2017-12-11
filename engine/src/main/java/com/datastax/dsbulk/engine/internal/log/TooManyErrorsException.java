@@ -16,7 +16,12 @@ public class TooManyErrorsException extends RuntimeException {
     this.maxErrors = maxErrors;
   }
 
-  public int getMaxErrors() {
+  public TooManyErrorsException(float maxErrorPercentage) {
+    super("Too many errors, the maximum percentage allowed is " + maxErrorPercentage + "%");
+    maxErrors = 0;
+  }
+
+  public float getMaxErrors() {
     return maxErrors;
   }
 }

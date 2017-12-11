@@ -11,6 +11,7 @@ import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -80,6 +81,32 @@ class LogSettingsTest {
           .map(Path::toFile)
           .forEach(File::delete);
     }
+  }
+
+  @Test()
+  void should_error_when_Percentage_is_out_of_bounds() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = 112 %")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    assertThatThrownBy(
+            () -> {
+              settings.init(false);
+            })
+        .hasMessage("maxErrors must either be a number, or percentage between 0 and 100.");
+
+    config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = -1%")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+
+    LogSettings settings2 = new LogSettings(config, "test");
+    assertThatThrownBy(
+            () -> {
+              settings2.init(false);
+            })
+        .hasMessage("maxErrors must either be a number, or percentage between 0 and 100.");
   }
 
   @Test

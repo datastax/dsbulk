@@ -14,6 +14,8 @@
 - [bug] DAT-188: JSON connector does not terminate in SINGLE_DOCUMENT mode with an empty file.
 - [improvement] DAT-179: Add ability for connectors to promote some settings to the common help section.
 - [improvement] DAT-174: Support TTL and TIMESTAMP clauses with custom queries.
+- [improvement] DAT-173: Ability to specify an error threshold as a percentage.
+
 
 
 ### 1.0.0-beta2

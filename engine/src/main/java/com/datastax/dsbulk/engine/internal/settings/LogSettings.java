@@ -14,6 +14,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.FileAppender;
 import com.datastax.driver.core.Cluster;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -54,6 +55,7 @@ public class LogSettings {
   private int maxInnerStatements;
   private StatementFormatVerbosity level;
   private int maxErrors;
+  private float maxErrorsRatio;
 
   LogSettings(LoaderConfig config, String executionId) {
     this.config = config;
@@ -69,7 +71,15 @@ public class LogSettings {
       maxBoundValues = config.getInt(MAX_BOUND_VALUES);
       maxInnerStatements = config.getInt(MAX_INNER_STATEMENTS);
       level = config.getEnum(StatementFormatVerbosity.class, LEVEL);
-      maxErrors = config.getInt(MAX_ERRORS);
+      String maxErrorString = config.getString(MAX_ERRORS);
+      if (isPercent(maxErrorString)) {
+        maxErrorsRatio = Float.parseFloat(maxErrorString.replaceAll("\\s*%", "")) / 100f;
+        validatePercentageRange(maxErrorsRatio);
+        maxErrors = 0;
+      } else {
+        maxErrors = config.getInt(MAX_ERRORS);
+        maxErrorsRatio = 0;
+      }
       if (writeToStandardOutput) {
         redirectStandardOutputToStandardError();
       }
@@ -88,7 +98,8 @@ public class LogSettings {
             .withMaxBoundValues(maxBoundValues)
             .withMaxInnerStatements(maxInnerStatements)
             .build();
-    return new LogManager(workflowType, cluster, executionDirectory, maxErrors, formatter, level);
+    return new LogManager(
+        workflowType, cluster, executionDirectory, maxErrors, maxErrorsRatio, formatter, level);
   }
 
   Path getExecutionDirectory() {
@@ -106,6 +117,10 @@ public class LogSettings {
       stderr.clearAllFilters();
     }
     LOGGER.info("Standard output is reserved, log messages are redirected to standard error.");
+  }
+
+  private boolean isPercent(String maxErrors) {
+    return maxErrors.contains("%");
   }
 
   private void maybeStartExecutionLogFileAppender() {
@@ -126,6 +141,13 @@ public class LogSettings {
       fileAppender.setAppend(false);
       fileAppender.start();
       root.addAppender(fileAppender);
+    }
+  }
+
+  private void validatePercentageRange(float maxErrorsPercent) {
+    if (maxErrorsPercent <= 0 || maxErrorsPercent >= 1) {
+      throw new BulkConfigurationException(
+          "maxErrors must either be a number, or percentage between 0 and 100.", "maxErrors");
     }
   }
 
