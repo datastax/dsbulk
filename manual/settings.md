@@ -45,6 +45,146 @@ Example: `csv` for class `CSVConnector`, with settings located under `connector.
 
 Default: **"csv"**.
 
+#### -url,--connector.csv.url _&lt;string&gt;_
+
+The URL or path of the resource(s) to read from or write to.
+
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+
+- **stdin**:  the stdin protocol can be used to read from standard input; the only valid URL for this protocol is: `stdin:/`.
+
+  This protocol cannot be used for writing.
+
+- **stdout**: the stdout protocol can be used to write to standard output; the only valid URL for this protocol is: `stdout:/`.
+
+  This protocol cannot be used for reading.
+
+- **file**: the file protocol can be used with all supported file systems, local or not.
+    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+
+Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
+
+Examples:
+
+    url = /path/to/dir/or/file           # without protocol
+    url = "file:///path/to/dir/or/file"  # with protocol
+    url = "stdin:/"                      # to read csv data from stdin
+    url = "stdout:/"                     # to write csv data to stdout
+
+For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
+
+This setting has no default value and must be supplied by the user.
+
+Default: **&lt;unspecified&gt;**.
+
+#### -delim,--connector.csv.delimiter _&lt;string&gt;_
+
+The character to use as field delimiter.
+
+Only one character can be specified. Note that this setting applies to all files to be read or written.
+
+Default: **","**.
+
+#### -header,--connector.csv.header _&lt;boolean&gt;_
+
+Whether the files to read or write begin with a header line or not.
+
+When reading:
+
+ - if set to true, the first non-empty line in every file will be used to assign field names to each record, thus allowing mappings by field name such as `{myFieldName1 = myColumnName1, myFieldName2 = myColumnName2}`.
+ - if set to false, records will not contain field names, only (zero-based) field indexes; in this case, the mapping should be index-based, such as in `{0 = myColumnName1, 1 = myColumnName2}`.
+
+When writing:
+
+ - if set to true: each file will begin with a header line;
+ - if set to false, files will not contain header lines.
+
+Note that this setting applies to all files to be read or written.
+
+Default: **true**.
+
+#### -skipRecords,--connector.csv.skipRecords _&lt;number&gt;_
+
+Defines a number of records to skip from each input file before the parser can begin to execute.
+
+Note that if the file contains a header line, that line is not counted as a valid record.
+
+Ignored when writing.
+
+Default: **0**.
+
+#### -maxRecords,--connector.csv.maxRecords _&lt;number&gt;_
+
+Defines the maximum number of records to read from or write to each file.
+
+When reading, all records past this number will be discarded.
+
+When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting.
+
+Note that when writing to anything other than a directory, this setting is ignored.
+
+Note that if the file contains a header line, that line is not counted as a valid record.
+
+This feature is disabled by default (indicated by its `-1` value).
+
+Default: **-1**.
+
+#### -url,--connector.json.url _&lt;string&gt;_
+
+The URL or path of the resource(s) to read from or write to.
+
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+
+- **stdin**:  the stdin protocol can be used to read from standard input; the only valid URL for this protocol is: `stdin:/`.
+
+  This protocol cannot be used for writing.
+
+- **stdout**: the stdout protocol can be used to write to standard output; the only valid URL for this protocol is: `stdout:/`.
+
+  This protocol cannot be used for reading.
+
+- **file**: the file protocol can be used with all supported file systems, local or not.
+    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; Json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+
+Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
+
+Examples:
+
+    url = /path/to/dir/or/file           # without protocol
+    url = "file:///path/to/dir/or/file"  # with protocol
+    url = "stdin:/"                      # to read json data from stdin
+    url = "stdout:/"                     # to write json data to stdout
+
+For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
+
+This setting has no default value and must be supplied by the user.
+
+Default: **&lt;unspecified&gt;**.
+
+#### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
+
+Defines a number of Json records to skip from each input file before the parser can begin to execute.
+
+Ignored when writing.
+
+Default: **0**.
+
+#### -maxRecords,--connector.json.maxRecords _&lt;number&gt;_
+
+Defines the maximum number of Json records to read from or write to each file.
+
+When reading, all records past this number will be discarded.
+
+When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting.
+
+Note that when writing to anything other than a directory, this setting is ignored.
+
+This feature is disabled by default (indicated by its `-1` value).
+
+Default: **-1**.
+
 #### -k,--schema.keyspace _&lt;string&gt;_
 
 The keyspace to connect to. Optional.
@@ -118,9 +258,9 @@ Note that all nodes in a cluster must accept connections on the same port number
 
 Default: **9042**.
 
-#### -p,--driver.auth.password _&lt;string&gt;_
+#### -u,--driver.auth.username _&lt;string&gt;_
 
-The password to use. Required.
+The username to use. Required.
 
 Providers that accept this setting:
  - `PlainTextAuthProvider`
@@ -128,9 +268,9 @@ Providers that accept this setting:
 
 Default: **"cassandra"**.
 
-#### -u,--driver.auth.username _&lt;string&gt;_
+#### -p,--driver.auth.password _&lt;string&gt;_
 
-The username to use. Required.
+The password to use. Required.
 
 Providers that accept this setting:
  - `PlainTextAuthProvider`
@@ -209,6 +349,99 @@ Default: **"csv"**.
 
 CSV Connector configuration.
 
+#### -url,--connector.csv.url _&lt;string&gt;_
+
+The URL or path of the resource(s) to read from or write to.
+
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+
+- **stdin**:  the stdin protocol can be used to read from standard input; the only valid URL for this protocol is: `stdin:/`.
+
+  This protocol cannot be used for writing.
+
+- **stdout**: the stdout protocol can be used to write to standard output; the only valid URL for this protocol is: `stdout:/`.
+
+  This protocol cannot be used for reading.
+
+- **file**: the file protocol can be used with all supported file systems, local or not.
+    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+
+Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
+
+Examples:
+
+    url = /path/to/dir/or/file           # without protocol
+    url = "file:///path/to/dir/or/file"  # with protocol
+    url = "stdin:/"                      # to read csv data from stdin
+    url = "stdout:/"                     # to write csv data to stdout
+
+For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
+
+This setting has no default value and must be supplied by the user.
+
+Default: **&lt;unspecified&gt;**.
+
+#### -delim,--connector.csv.delimiter _&lt;string&gt;_
+
+The character to use as field delimiter.
+
+Only one character can be specified. Note that this setting applies to all files to be read or written.
+
+Default: **","**.
+
+#### -header,--connector.csv.header _&lt;boolean&gt;_
+
+Whether the files to read or write begin with a header line or not.
+
+When reading:
+
+ - if set to true, the first non-empty line in every file will be used to assign field names to each record, thus allowing mappings by field name such as `{myFieldName1 = myColumnName1, myFieldName2 = myColumnName2}`.
+ - if set to false, records will not contain field names, only (zero-based) field indexes; in this case, the mapping should be index-based, such as in `{0 = myColumnName1, 1 = myColumnName2}`.
+
+When writing:
+
+ - if set to true: each file will begin with a header line;
+ - if set to false, files will not contain header lines.
+
+Note that this setting applies to all files to be read or written.
+
+Default: **true**.
+
+#### -skipRecords,--connector.csv.skipRecords _&lt;number&gt;_
+
+Defines a number of records to skip from each input file before the parser can begin to execute.
+
+Note that if the file contains a header line, that line is not counted as a valid record.
+
+Ignored when writing.
+
+Default: **0**.
+
+#### -maxRecords,--connector.csv.maxRecords _&lt;number&gt;_
+
+Defines the maximum number of records to read from or write to each file.
+
+When reading, all records past this number will be discarded.
+
+When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting.
+
+Note that when writing to anything other than a directory, this setting is ignored.
+
+Note that if the file contains a header line, that line is not counted as a valid record.
+
+This feature is disabled by default (indicated by its `-1` value).
+
+Default: **-1**.
+
+#### -quote,--connector.csv.quote _&lt;string&gt;_
+
+The character used for quoting fields when the field delimiter is part of the field value.
+
+Only one character can be specified. Note that this setting applies to all files to be read or written.
+
+Default: **"\""**.
+
 #### -comment,--connector.csv.comment _&lt;string&gt;_
 
 The character that represents a line comment when found in the beginning of a line of text.
@@ -218,14 +451,6 @@ Only one character can be specified. Note that this setting applies to all files
 This feature is disabled by default (indicated by its `null` character value).
 
 Default: **"\u0000"**.
-
-#### -delim,--connector.csv.delimiter _&lt;string&gt;_
-
-The character to use as field delimiter.
-
-Only one character can be specified. Note that this setting applies to all files to be read or written.
-
-Default: **","**.
 
 #### -encoding,--connector.csv.encoding _&lt;string&gt;_
 
@@ -263,24 +488,6 @@ Only applicable when the *url* setting points to a directory on a known filesyst
 
 Default: **"\*\*/\*.csv"**.
 
-#### -header,--connector.csv.header _&lt;boolean&gt;_
-
-Whether the files to read or write begin with a header line or not.
-
-When reading:
-
- - if set to true, the first non-empty line in every file will be used to assign field names to each record, thus allowing mappings by field name such as `{myFieldName1 = myColumnName1, myFieldName2 = myColumnName2}`.
- - if set to false, records will not contain field names, only (zero-based) field indexes; in this case, the mapping should be index-based, such as in `{0 = myColumnName1, 1 = myColumnName2}`.
-
-When writing:
-
- - if set to true: each file will begin with a header line;
- - if set to false, files will not contain header lines.
-
-Note that this setting applies to all files to be read or written.
-
-Default: **true**.
-
 #### --connector.csv.maxCharsPerColumn _&lt;number&gt;_
 
 The maximum number of characters that a field can contain.
@@ -301,30 +508,6 @@ The special syntax `NC` can be used to specify a number of threads that is a mul
 
 Default: **"0.25C"**.
 
-#### -maxRecords,--connector.csv.maxRecords _&lt;number&gt;_
-
-Defines the maximum number of records to read from or write to each file.
-
-When reading, all records past this number will be discarded.
-
-When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting.
-
-Note that when writing to anything other than a directory, this setting is ignored.
-
-Note that if the file contains a header line, that line is not counted as a valid record.
-
-This feature is disabled by default (indicated by its `-1` value).
-
-Default: **-1**.
-
-#### -quote,--connector.csv.quote _&lt;string&gt;_
-
-The character used for quoting fields when the field delimiter is part of the field value.
-
-Only one character can be specified. Note that this setting applies to all files to be read or written.
-
-Default: **"\""**.
-
 #### --connector.csv.recursive _&lt;boolean&gt;_
 
 Whether to scan for files in subdirectories of the root directory.
@@ -333,17 +516,12 @@ Only applicable when the *url* setting points to a directory on a known filesyst
 
 Default: **false**.
 
-#### -skipRecords,--connector.csv.skipRecords _&lt;number&gt;_
+<a name="connector.json"></a>
+### Connector Json Settings
 
-Defines a number of records to skip from each input file before the parser can begin to execute.
+Json Connector configuration.
 
-Note that if the file contains a header line, that line is not counted as a valid record.
-
-Ignored when writing.
-
-Default: **0**.
-
-#### -url,--connector.csv.url _&lt;string&gt;_
+#### -url,--connector.json.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
 
@@ -359,7 +537,7 @@ Which URL protocols are available depend on which URL stream handlers have been 
 
 - **file**: the file protocol can be used with all supported file systems, local or not.
     - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
-    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; Json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
 Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
 
@@ -367,8 +545,8 @@ Examples:
 
     url = /path/to/dir/or/file           # without protocol
     url = "file:///path/to/dir/or/file"  # with protocol
-    url = "stdin:/"                      # to read csv data from stdin
-    url = "stdout:/"                     # to write csv data to stdout
+    url = "stdin:/"                      # to read json data from stdin
+    url = "stdout:/"                     # to write json data to stdout
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
@@ -376,10 +554,52 @@ This setting has no default value and must be supplied by the user.
 
 Default: **&lt;unspecified&gt;**.
 
-<a name="connector.json"></a>
-### Connector Json Settings
+#### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
 
-Json Connector configuration.
+Defines a number of Json records to skip from each input file before the parser can begin to execute.
+
+Ignored when writing.
+
+Default: **0**.
+
+#### -maxRecords,--connector.json.maxRecords _&lt;number&gt;_
+
+Defines the maximum number of Json records to read from or write to each file.
+
+When reading, all records past this number will be discarded.
+
+When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting.
+
+Note that when writing to anything other than a directory, this setting is ignored.
+
+This feature is disabled by default (indicated by its `-1` value).
+
+Default: **-1**.
+
+#### --connector.json.mode _&lt;string&gt;_
+
+The Json document mode.
+
+Valid values are:
+
+* *MULTI_DOCUMENT*: each resource may contain an arbitrary number of successive Json documents to be mapped to records, e.g.:
+```json
+{/*doc1*/}
+{/*doc2*/}
+{/*doc3*/}
+...
+```
+* *SINGLE_DOCUMENT*: each resource contains a root array whose elements are Json documents to be mapped to records, e.g.:
+```json
+[
+{/*doc1*/}
+{/*doc2*/}
+{/*doc3*/}
+...
+]
+```
+
+Default: **"MULTI_DOCUMENT"**.
 
 #### -encoding,--connector.json.encoding _&lt;string&gt;_
 
@@ -429,45 +649,6 @@ The special syntax `NC` can be used to specify a number of threads that is a mul
 
 Default: **"0.25C"**.
 
-#### -maxRecords,--connector.json.maxRecords _&lt;number&gt;_
-
-Defines the maximum number of Json records to read from or write to each file.
-
-When reading, all records past this number will be discarded.
-
-When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting.
-
-Note that when writing to anything other than a directory, this setting is ignored.
-
-This feature is disabled by default (indicated by its `-1` value).
-
-Default: **-1**.
-
-#### --connector.json.mode _&lt;string&gt;_
-
-The Json document mode.
-
-Valid values are:
-
-* *MULTI_DOCUMENT*: each resource may contain an arbitrary number of successive Json documents to be mapped to records, e.g.:
-```json
-{/*doc1*/}
-{/*doc2*/}
-{/*doc3*/}
-...
-```
-* *SINGLE_DOCUMENT*: each resource contains a root array whose elements are Json documents to be mapped to records, e.g.:
-```json
-[
-{/*doc1*/}
-{/*doc2*/}
-{/*doc3*/}
-...
-]
-```
-
-Default: **"MULTI_DOCUMENT"**.
-
 #### --connector.json.parserFeatures _&lt;list&gt;_
 
 Json parser features to enable.
@@ -495,47 +676,6 @@ Whether to scan for files in subdirectories of the root directory.
 Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise. Ignored when writing.
 
 Default: **false**.
-
-#### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
-
-Defines a number of Json records to skip from each input file before the parser can begin to execute.
-
-Ignored when writing.
-
-Default: **0**.
-
-#### -url,--connector.json.url _&lt;string&gt;_
-
-The URL or path of the resource(s) to read from or write to.
-
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
-
-- **stdin**:  the stdin protocol can be used to read from standard input; the only valid URL for this protocol is: `stdin:/`.
-
-  This protocol cannot be used for writing.
-
-- **stdout**: the stdout protocol can be used to write to standard output; the only valid URL for this protocol is: `stdout:/`.
-
-  This protocol cannot be used for reading.
-
-- **file**: the file protocol can be used with all supported file systems, local or not.
-    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
-    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; Json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
-
-Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
-
-Examples:
-
-    url = /path/to/dir/or/file           # without protocol
-    url = "file:///path/to/dir/or/file"  # with protocol
-    url = "stdin:/"                      # to read json data from stdin
-    url = "stdout:/"                     # to write json data to stdout
-
-For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
-
-This setting has no default value and must be supplied by the user.
-
-Default: **&lt;unspecified&gt;**.
 
 <a name="schema"></a>
 ## Schema Settings
@@ -878,9 +1018,9 @@ Default: **"AtomicMonotonicTimestampGenerator"**.
 
 Authentication settings.
 
-#### -p,--driver.auth.password _&lt;string&gt;_
+#### -u,--driver.auth.username _&lt;string&gt;_
 
-The password to use. Required.
+The username to use. Required.
 
 Providers that accept this setting:
  - `PlainTextAuthProvider`
@@ -888,9 +1028,9 @@ Providers that accept this setting:
 
 Default: **"cassandra"**.
 
-#### -u,--driver.auth.username _&lt;string&gt;_
+#### -p,--driver.auth.password _&lt;string&gt;_
 
-The username to use. Required.
+The password to use. Required.
 
 Providers that accept this setting:
  - `PlainTextAuthProvider`

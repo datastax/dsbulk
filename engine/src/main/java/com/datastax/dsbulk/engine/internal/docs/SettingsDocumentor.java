@@ -6,13 +6,14 @@
  */
 package com.datastax.dsbulk.engine.internal.docs;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.CONFIG_FILE_OPTION;
+import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.DEFAULT;
+import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
+import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.LONG_TO_SHORT_OPTIONS;
+
+import com.datastax.dsbulk.engine.internal.utils.SettingsUtils.Group;
 import com.datastax.dsbulk.engine.internal.utils.StringUtils;
 import com.google.common.base.CharMatcher;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
-import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
@@ -22,84 +23,12 @@ import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.stream.Collectors;
-import org.apache.commons.cli.Option;
 
 public class SettingsDocumentor {
-
-  private static final LoaderConfig DEFAULT =
-      new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
-
-  private static final Map<String, String> LONG_TO_SHORT_OPTIONS;
-
-  public static final Option CONFIG_FILE_OPTION =
-      Option.builder("f")
-          .hasArg()
-          .argName("string")
-          .desc("Load settings from the given file rather than `conf/application.conf`.")
-          .build();
-
-  /**
-   * Settings that should be displayed in a "common" section as well as the appropriate place in the
-   * hierarchy.
-   */
-  public static final List<String> COMMON_SETTINGS =
-      Arrays.asList(
-          "connector.name",
-          "schema.keyspace",
-          "schema.table",
-          "schema.mapping",
-          "engine.dryRun",
-          "driver.hosts",
-          "driver.port",
-          "driver.auth.password",
-          "driver.auth.username",
-          "driver.query.consistency",
-          "executor.maxPerSecond",
-          "log.maxErrors",
-          "log.directory",
-          "monitoring.reportRate");
-
-  /**
-   * Settings that should be placed near the top within their setting groups. It is a super-set of
-   * COMMON_SETTINGS.
-   */
-  public static final List<String> PREFERRED_SETTINGS = new ArrayList<>(COMMON_SETTINGS);
-
-  public static final Map<String, Group> GROUPS =
-      new TreeMap<>(new PriorityComparator("Common", "connector", "schema"));
-
   private static final String TITLE = "DataStax Bulk Loader Options";
-
-  static {
-    PREFERRED_SETTINGS.add("driver.auth.provider");
-    PREFERRED_SETTINGS.add("driver.policy.lbp.name");
-
-    Config shortcutsConf =
-        ConfigFactory.parseResourcesAnySyntax("shortcuts.conf").getConfig("dsbulk");
-    LONG_TO_SHORT_OPTIONS = new HashMap<>();
-
-    // Process shortcut definitions in config to make a map of "long-setting" to "shortcut".
-    for (Map.Entry<String, ConfigValue> entry : shortcutsConf.root().entrySet()) {
-      for (Map.Entry<String, ConfigValue> shortcutEntry :
-          ((ConfigObject) entry.getValue()).entrySet()) {
-        LONG_TO_SHORT_OPTIONS.put(
-            shortcutEntry.getValue().unwrapped().toString(), shortcutEntry.getKey());
-      }
-    }
-
-    initGroups();
-  }
 
   public static void main(String[] args) throws FileNotFoundException {
     new SettingsDocumentor(Paths.get(args[0]));
@@ -152,45 +81,6 @@ public class SettingsDocumentor {
               settingName,
               StringUtils.htmlEscape(DEFAULT.getTypeString(settingName)),
               getSanitizedDescription(settingValue));
-        }
-      }
-    }
-  }
-
-  private static void initGroups() {
-    // First add a group for the "commonly used settings". Want to show that first in our
-    // doc.
-    GROUPS.put("Common", new FixedGroup());
-
-    // Now add groups for every top-level setting section + driver.*.
-    for (Map.Entry<String, ConfigValue> entry : DEFAULT.root().entrySet()) {
-      String key = entry.getKey();
-      if (key.equals("driver") || key.equals("connector")) {
-        // "driver" group is special because it's really large;
-        // "connector" group is special because we want a sub-section for each
-        // particular connector.
-        // We subdivide each one level further.
-        GROUPS.put(key, new ContainerGroup(key, false));
-        for (Map.Entry<String, ConfigValue> nonLeafEntry :
-            ((ConfigObject) entry.getValue()).entrySet()) {
-          if (nonLeafEntry.getValue().valueType() == ConfigValueType.OBJECT) {
-            GROUPS.put(
-                key + "." + nonLeafEntry.getKey(),
-                new ContainerGroup(key + "." + nonLeafEntry.getKey(), true));
-          }
-        }
-      } else {
-        GROUPS.put(key, new ContainerGroup(key, true));
-      }
-    }
-
-    for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
-      // Add the setting name to each group (and which groups want the setting will
-      // take it).
-      for (Group group : GROUPS.values()) {
-        if (group.addSetting(entry.getKey())) {
-          // The setting was added to a group. Don't try adding to other groups.
-          break;
         }
       }
     }
@@ -254,114 +144,5 @@ public class SettingsDocumentor {
       desc += String.format("%n%nDefault: **%s**.", defaultValue);
     }
     return desc;
-  }
-
-  /**
-   * Encapsulates a group of settings that should be rendered together. When adding a setting to a
-   * group, the add may be rejected because the given setting doesn't fit the criteria of settings
-   * that belong to the group. This allows groups to act as listeners for settings and accept only
-   * those that they are interested in.
-   */
-  public interface Group {
-    boolean addSetting(String settingName);
-
-    Set<String> getSettings();
-  }
-
-  /**
-   * A Group that contains settings at a particular level in the hierarchy, and possibly includes
-   * all settings below that level.
-   */
-  static class ContainerGroup implements Group {
-    private final Set<String> settings;
-    private final String prefix;
-
-    // Indicates whether this group should include settings that are descendants,
-    // as opposed to just immediate children.
-    private final boolean includeDescendants;
-
-    ContainerGroup(String path, boolean includeDescendants) {
-      this.prefix = path + ".";
-      this.includeDescendants = includeDescendants;
-      settings = new TreeSet<>(new PriorityComparator(SettingsDocumentor.PREFERRED_SETTINGS));
-    }
-
-    @Override
-    public boolean addSetting(String settingName) {
-      if (settingName.startsWith(prefix)
-          && (includeDescendants || settingName.lastIndexOf(".") + 1 == prefix.length())) {
-        settings.add(settingName);
-      }
-      return false;
-    }
-
-    @Override
-    public Set<String> getSettings() {
-      return settings;
-    }
-  }
-
-  /** A group of particular settings. */
-  static class FixedGroup implements Group {
-    private final Set<String> desiredSettings;
-    private final Set<String> settings;
-
-    FixedGroup() {
-      desiredSettings = new HashSet<>(SettingsDocumentor.COMMON_SETTINGS);
-      settings = new TreeSet<>(new PriorityComparator(SettingsDocumentor.COMMON_SETTINGS));
-    }
-
-    @Override
-    public boolean addSetting(String settingName) {
-      if (desiredSettings.contains(settingName)) {
-        settings.add(settingName);
-      }
-
-      // Always return false because we want other groups to have a chance to add this
-      // setting as well.
-      return false;
-    }
-
-    @Override
-    public Set<String> getSettings() {
-      return settings;
-    }
-  }
-
-  /**
-   * String comparator that supports placing "high priority" values first. This allows a setting
-   * group to have "mostly" alpha-sorted settings, but with certain settings promoted to be first
-   * (and thus emitted first when generating documentation).
-   */
-  static class PriorityComparator implements Comparator<String> {
-    private final Map<String, Integer> prioritizedValues;
-
-    PriorityComparator(String... highPriorityValues) {
-      this(Arrays.asList(highPriorityValues));
-    }
-
-    PriorityComparator(List<String> highPriorityValues) {
-      prioritizedValues = new HashMap<>();
-      int counter = 0;
-      for (String s : highPriorityValues) {
-        prioritizedValues.put(s, counter++);
-      }
-    }
-
-    @Override
-    public int compare(String left, String right) {
-      Integer leftInd = Integer.MAX_VALUE;
-      Integer rightInd = Integer.MAX_VALUE;
-      for (String value : prioritizedValues.keySet()) {
-        if (left.startsWith(value)) {
-          leftInd = prioritizedValues.get(value);
-        }
-        if (right.startsWith(value)) {
-          rightInd = prioritizedValues.get(value);
-        }
-      }
-      int indCompare = leftInd.compareTo(rightInd);
-      return indCompare != 0 ? indCompare : left.compareTo(right);
-    }
   }
 }

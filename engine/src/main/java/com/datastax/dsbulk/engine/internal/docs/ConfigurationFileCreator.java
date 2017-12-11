@@ -6,8 +6,11 @@
  */
 package com.datastax.dsbulk.engine.internal.docs;
 
+import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
+
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.engine.internal.utils.SettingsUtils.Group;
 import com.datastax.dsbulk.engine.internal.utils.StringUtils;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
@@ -49,8 +52,7 @@ public class ConfigurationFileCreator {
       pw.println(rowOfHashes);
       pw.println("");
 
-      for (Map.Entry<String, SettingsDocumentor.Group> groupEntry :
-          SettingsDocumentor.GROUPS.entrySet()) {
+      for (Map.Entry<String, Group> groupEntry : GROUPS.entrySet()) {
         String section = groupEntry.getKey();
         if (section.equals("Common")) {
           // In this context, we don't care about the "Common" pseudo-section.
