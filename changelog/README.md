@@ -12,7 +12,9 @@
 - [new feature] DAT-184: Support boolean-to-number conversions.
 - [improvement] DAT-183: Add code coverage to DSBulk builds.
 - [bug] DAT-188: JSON connector does not terminate in SINGLE_DOCUMENT mode with an empty file.
-- [improvement] DAT-179: Add ability for connectors to promote some settings to the common help section
+- [improvement] DAT-179: Add ability for connectors to promote some settings to the common help section.
+- [improvement] DAT-174: Support TTL and TIMESTAMP clauses with custom queries.
+
 
 ### 1.0.0-beta2
 

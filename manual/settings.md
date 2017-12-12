@@ -761,7 +761,9 @@ Default: **true**.
 
 The query to use. Optional.
 
-If not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns.
+It is not required to qualify the table with a keyspace name. If the keyspace is _not_ provided however, then `schema.keyspace` _must_ be provided.
+
+If this setting is not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns.
 
 In load worflows, the statement can be any `INSERT` or `UPDATE` statement, but **must** use named bound variables exclusively; positional bound variables will not work.
 
@@ -774,6 +776,8 @@ In unload worflows, the statement can be any regular `SELECT` statement; it can 
 If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas.
 
 The column names in the SELECT clause will be used to match column names specified in the mapping. See "mapping" setting for more information.
+
+Important: the query will be parsed because DSBulk needs to knwow which bound variables are present in order to correctly map them to fields. Because the CQL gammar is complex, the parser used internally is not infaillible; please avoid using complex queries and in particular, avoid using complex CQL identifiers; if DSBulk fails to correctly identify bound variables in the query, some fields might be incorrectly mapped.
 
 Default: **&lt;unspecified&gt;**.
 
@@ -793,7 +797,7 @@ See the `codec` section for more information on accepted date-time formats.
 If not specified, inserts/updates use current time of the system running the tool.
 
 Query timestamps for Cassandra and DSE have microsecond resolution; any sub-microsecond information specified here will be lost.
-For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
+For more information, see the [CQL INSERT INTO Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
 
 Default: **&lt;unspecified&gt;**.
 
@@ -805,7 +809,7 @@ Only applicable for load; ignored for unload.
 
 A value of -1 means there is no ttl.
 
-For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value).
+For more information, see the [CQL INSERT INTO Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/5.1/cql/cql/cql_using/useTTL.html?hl=ttl) and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/5.1/cql/cql/cql_using/useExpire.html).
 
 Default: **-1**.
 

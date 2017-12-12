@@ -8,8 +8,6 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.driver.core.DataType.bigint;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
-import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
-import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TTL_VARNAME;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
@@ -75,6 +73,7 @@ class DefaultRecordMapperTest {
   private Record record;
   private PreparedStatement insertStatement;
   private BoundStatement boundStatement;
+  private ColumnDefinitions variables;
   private ArgumentCaptor<String> variableCaptor;
   private ArgumentCaptor<Object> valueCaptor;
   private ArgumentCaptor<TypeCodec> codecCaptor;
@@ -103,7 +102,7 @@ class DefaultRecordMapperTest {
     mapping = mock(Mapping.class);
     record = mock(Record.class);
     insertStatement = mock(PreparedStatement.class);
-    ColumnDefinitions variables = mock(ColumnDefinitions.class);
+    variables = mock(ColumnDefinitions.class);
 
     when(boundStatement.preparedStatement()).thenReturn(insertStatement);
     when(insertStatement.getVariables()).thenReturn(variables);
@@ -111,9 +110,6 @@ class DefaultRecordMapperTest {
     when(variables.getType(C1)).thenReturn(DataType.cint());
     when(variables.getType(C2)).thenReturn(DataType.bigint());
     when(variables.getType(C3)).thenReturn(DataType.varchar());
-
-    when(variables.getType(TTL_VARNAME)).thenReturn(DataType.cint());
-    when(variables.getType(TIMESTAMP_VARNAME)).thenReturn(DataType.bigint());
 
     when(record.getFieldValue(F1)).thenReturn("42");
     when(record.getFieldValue(F2)).thenReturn("4242");
@@ -129,12 +125,6 @@ class DefaultRecordMapperTest {
     when(mapping.codec(C1, DataType.cint(), TypeToken.of(String.class))).thenReturn(codec1);
     when(mapping.codec(C2, DataType.bigint(), TypeToken.of(String.class))).thenReturn(codec2);
     when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec3);
-
-    when(mapping.codec(TTL_VARNAME, DataType.cint(), TypeToken.of(String.class)))
-        .thenReturn(codec1);
-
-    when(mapping.codec(TIMESTAMP_VARNAME, DataType.bigint(), TypeToken.of(String.class)))
-        .thenReturn(codec2);
   }
 
   @Test
@@ -158,30 +148,11 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_bind_mapped_ttl() throws Exception {
-    when(record.fields()).thenReturn(set(F1));
-    when(mapping.fieldToVariable(F1)).thenReturn(TTL_VARNAME);
-    RecordMapper mapper =
-        new DefaultRecordMapper(
-            insertStatement,
-            mapping,
-            recordMetadata,
-            ImmutableSet.of(),
-            true,
-            (mappedRecord, statement) -> boundStatement);
-    Statement result = mapper.map(record);
-    assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement)
-        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
-    assertParameter(0, TTL_VARNAME, "42", codec1);
-  }
-
-  @Test
   void should_bind_mapped_numeric_timestamp() throws Exception {
-    when(record.fields()).thenReturn(set(F2));
-    when(mapping.fieldToVariable(F2)).thenReturn(TIMESTAMP_VARNAME);
+    when(record.fields()).thenReturn(set(F1));
+    when(variables.getType(C1)).thenReturn(bigint());
     // timestamp is 123456 minutes before unix epoch
-    when(record.getFieldValue(F2)).thenReturn("-123456");
+    when(record.getFieldValue(F1)).thenReturn("-123456");
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
@@ -191,8 +162,7 @@ class DefaultRecordMapperTest {
                 EPOCH,
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO)));
-    when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
-        .thenReturn((TypeCodec) codec);
+    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
@@ -203,15 +173,15 @@ class DefaultRecordMapperTest {
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).set(TIMESTAMP_VARNAME, "-123456", codec);
+    verify(boundStatement).set(C1, "-123456", codec);
   }
 
   @Test
   void should_bind_mapped_numeric_timestamp_with_custom_unit_and_epoch() throws Exception {
-    when(record.fields()).thenReturn(set(F2));
-    when(mapping.fieldToVariable(F2)).thenReturn(TIMESTAMP_VARNAME);
+    when(record.fields()).thenReturn(set(F1));
+    when(variables.getType(C1)).thenReturn(bigint());
     // timestamp is one minute before year 2000
-    when(record.getFieldValue(F2)).thenReturn("-1");
+    when(record.getFieldValue(F1)).thenReturn("-1");
     Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
     StringToLongCodec codec =
         spy(
@@ -222,8 +192,7 @@ class DefaultRecordMapperTest {
                 millennium,
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO)));
-    when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
-        .thenReturn((TypeCodec) codec);
+    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
@@ -234,14 +203,14 @@ class DefaultRecordMapperTest {
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).set(TIMESTAMP_VARNAME, "-1", codec);
+    verify(boundStatement).set(C1, "-1", codec);
   }
 
   @Test
   void should_bind_mapped_alphanumeric_timestamp() throws Exception {
-    when(record.fields()).thenReturn(set(F2));
-    when(mapping.fieldToVariable(F2)).thenReturn(TIMESTAMP_VARNAME);
-    when(record.getFieldValue(F2)).thenReturn("2017-01-02T00:00:02");
+    when(record.fields()).thenReturn(set(F1));
+    when(variables.getType(C1)).thenReturn(bigint());
+    when(record.getFieldValue(F1)).thenReturn("2017-01-02T00:00:02");
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
@@ -251,8 +220,7 @@ class DefaultRecordMapperTest {
                 EPOCH,
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO)));
-    when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
-        .thenReturn((TypeCodec) codec);
+    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
@@ -263,14 +231,14 @@ class DefaultRecordMapperTest {
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).set(TIMESTAMP_VARNAME, "2017-01-02T00:00:02", codec);
+    verify(boundStatement).set(C1, "2017-01-02T00:00:02", codec);
   }
 
   @Test
   void should_bind_mapped_alphanumeric_timestamp_with_custom_pattern() throws Exception {
-    when(record.fields()).thenReturn(set(F2));
-    when(mapping.fieldToVariable(F2)).thenReturn(TIMESTAMP_VARNAME);
-    when(record.getFieldValue(F2)).thenReturn("20171123-123456");
+    when(record.fields()).thenReturn(set(F1));
+    when(variables.getType(C1)).thenReturn(bigint());
+    when(record.getFieldValue(F1)).thenReturn("20171123-123456");
     DateTimeFormatter timestampFormat =
         DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
     StringToLongCodec codec =
@@ -282,8 +250,7 @@ class DefaultRecordMapperTest {
                 EPOCH,
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO)));
-    when(mapping.codec(TIMESTAMP_VARNAME, bigint(), TypeToken.of(String.class)))
-        .thenReturn((TypeCodec) codec);
+    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
@@ -294,7 +261,7 @@ class DefaultRecordMapperTest {
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).set(TIMESTAMP_VARNAME, "20171123-123456", codec);
+    verify(boundStatement).set(C1, "20171123-123456", codec);
   }
 
   @Test

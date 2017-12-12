@@ -6,12 +6,13 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.driver.core.DataType.varchar;
+import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
+import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newPreparedId;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
-import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TIMESTAMP_VARNAME;
-import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.TTL_VARNAME;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -65,8 +66,13 @@ class SchemaSettingsTest {
   private static final String C2 = "This is column 2, and its name desperately needs quoting";
   private static final String C3 = "c3";
   private static final String C4 = "c4";
+  private static final String TTL_VARNAME =
+      (String) ReflectionUtils.getInternalState(SchemaSettings.class, "TTL_VARNAME");
+  private static final String TIMESTAMP_VARNAME =
+      (String) ReflectionUtils.getInternalState(SchemaSettings.class, "TIMESTAMP_VARNAME");
 
   private Session session;
+  private PreparedStatement ps;
 
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
   private final RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
@@ -80,7 +86,7 @@ class SchemaSettingsTest {
     Metadata metadata = mock(Metadata.class);
     KeyspaceMetadata keyspace = mock(KeyspaceMetadata.class);
     TableMetadata table = mock(TableMetadata.class);
-    PreparedStatement ps = mock(PreparedStatement.class);
+    ps = mock(PreparedStatement.class);
     ColumnMetadata col1 = mock(ColumnMetadata.class);
     ColumnMetadata col2 = mock(ColumnMetadata.class);
     ColumnMetadata col3 = mock(ColumnMetadata.class);
@@ -97,11 +103,12 @@ class SchemaSettingsTest {
     when(col1.getName()).thenReturn(C1);
     when(col2.getName()).thenReturn(C2);
     when(col3.getName()).thenReturn(C3);
-    ColumnDefinitions definitions = mock(ColumnDefinitions.class);
+    ColumnDefinitions definitions =
+        newColumnDefinitions(
+            newDefinition(C1, varchar()),
+            newDefinition(C2, varchar()),
+            newDefinition(C3, varchar()));
     when(ps.getVariables()).thenReturn(definitions);
-    when(definitions.size()).thenReturn(2);
-    when(definitions.getIndexOf("start")).thenReturn(0);
-    when(definitions.getIndexOf("end")).thenReturn(1);
     when(ps.getPreparedId()).thenReturn(newPreparedId(definitions, V4));
   }
 
@@ -197,11 +204,7 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(String.format("INSERT INTO ks.t1(%1$s,\"%2$s\") VALUES (:%1$s,now())", C1, C2));
     assertMapping(
-        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"),
-        "now()",
-        C2,
-        "2",
-        C1);
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"), "2", C1);
     assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
@@ -262,7 +265,7 @@ class SchemaSettingsTest {
   }
 
   @Test
-  public void should_create_record_mapper_with_static_timestamp_datetime_custom() {
+  void should_create_record_mapper_with_static_timestamp_datetime_custom() {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
@@ -305,12 +308,14 @@ class SchemaSettingsTest {
 
   @Test
   void should_create_record_mapper_when_using_custom_query() {
+    ColumnDefinitions definitions =
+        newColumnDefinitions(newDefinition("c1var", varchar()), newDefinition("c2var", varchar()));
+    when(ps.getVariables()).thenReturn(definitions);
     LoaderConfig config =
         makeLoaderConfig(
             "mapping = \"{ 0 = c1var , 2 = c2var }\", "
                 + "query = \"INSERT INTO ks.t1(c2, c1) VALUES (:c2var, :c1var)\", "
-                + "nullToUnset = true, "
-                + "keyspace=ks, table=t1");
+                + "nullToUnset = true");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(codec);
     RecordMapper recordMapper =
@@ -823,6 +828,59 @@ class SchemaSettingsTest {
                 C1, C2, C3));
     assertMapping((DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"));
     assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isEqualTo("NIL");
+  }
+
+  @Test
+  void should_use_default_writetime_var_name() {
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, table = t1, mapping = \"{ *=*, f1 = __timestamp }\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(codec);
+    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
+    assertThat(mapping).isNotNull();
+    assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable"))
+        .isEqualTo(TIMESTAMP_VARNAME);
+  }
+
+  @Test
+  void should_detect_writetime_var_in_query() {
+    ColumnDefinitions definitions =
+        newColumnDefinitions(
+            newDefinition("c1", varchar()),
+            newDefinition("c2", varchar()),
+            newDefinition("c3", varchar()));
+    when(ps.getVariables()).thenReturn(definitions);
+    LoaderConfig config =
+        makeLoaderConfig(
+            "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1,:c2) USING TIMESTAMP :c3\","
+                + "mapping = \"{ f1 = c1 , f2 = c2 , f3 = c3 }\" ");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(codec);
+    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
+    assertThat(mapping).isNotNull();
+    assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable")).isEqualTo("c3");
+  }
+
+  @Test
+  void should_detect_quoted_writetime_var_in_query() {
+    ColumnDefinitions definitions =
+        newColumnDefinitions(
+            newDefinition("k", varchar()),
+            newDefinition("c", varchar()),
+            newDefinition("\"This is a quoted \\\" variable name\"", varchar()));
+    when(ps.getVariables()).thenReturn(definitions);
+    LoaderConfig config =
+        makeLoaderConfig(
+            "query = \"INSERT INTO ks.t1 (k,c) VALUES (:k,:c) USING TTL 123 AND tImEsTaMp     :\\\"This is a quoted \\\"\\\" variable name\\\"\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(codec);
+    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
+    assertThat(mapping).isNotNull();
+    assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable"))
+        .isEqualTo("This is a quoted \" variable name");
   }
 
   @NotNull
