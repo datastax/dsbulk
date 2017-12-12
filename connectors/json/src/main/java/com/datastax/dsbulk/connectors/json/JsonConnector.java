@@ -121,7 +121,6 @@ public class JsonConnector implements Connector {
   private JavaType jsonNodeMapType;
   private List<JsonParser.Feature> parserFeatures;
   private List<JsonGenerator.Feature> generatorFeatures;
-  private String lineSeparator;
   private boolean prettyPrint;
 
   @Override
@@ -173,10 +172,9 @@ public class JsonConnector implements Connector {
       for (JsonGenerator.Feature generatorFeature : generatorFeatures) {
         objectMapper.configure(generatorFeature, true);
       }
-      lineSeparator = System.getProperty("line.separator");
       counter = new AtomicInteger(0);
       if (prettyPrint) {
-        objectMapper.setDefaultPrettyPrinter(new DefaultPrettyPrinter(lineSeparator));
+        objectMapper.setDefaultPrettyPrinter(new DefaultPrettyPrinter(System.lineSeparator()));
       }
     }
   }
@@ -405,7 +403,7 @@ public class JsonConnector implements Connector {
           try {
             if (type == SignalType.ON_COMPLETE) {
               // add one last EOL if the file completed successfully; the writer doesn't do it by default
-              writer.writeRaw(lineSeparator);
+              writer.writeRaw(System.lineSeparator());
             }
             writer.close();
           } catch (IOException e) {
@@ -432,7 +430,7 @@ public class JsonConnector implements Connector {
     try {
       JsonFactory factory = objectMapper.getFactory();
       JsonGenerator writer = factory.createGenerator(IOUtils.newBufferedWriter(url, encoding));
-      writer.setRootValueSeparator(new SerializedString(lineSeparator));
+      writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
       return writer;
     } catch (Exception e) {
       LOGGER.error(
