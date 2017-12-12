@@ -6,12 +6,14 @@
  */
 package com.datastax.dsbulk.engine.internal.utils;
 
-import static com.datastax.dsbulk.engine.internal.docs.SettingsDocumentor.PREFERRED_SETTINGS;
+import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.COMMON_SETTINGS;
+import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.CONFIG_FILE_OPTION;
+import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
+import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.PREFERRED_SETTINGS;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.Main;
-import com.datastax.dsbulk.engine.internal.docs.SettingsDocumentor;
 import com.google.common.base.CharMatcher;
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -31,8 +34,10 @@ import org.jetbrains.annotations.NotNull;
 
 public class HelpUtils {
 
+  private static final Pattern CONNECTOR_SETTINGS_PAT = Pattern.compile("connector\\.[^.]+\\..+");
+
   public static void emitSectionHelp(String sectionName) {
-    if (!SettingsDocumentor.GROUPS.containsKey(sectionName)) {
+    if (!GROUPS.containsKey(sectionName)) {
       // Write error message, available group names, raise as error.
       throw new IllegalArgumentException(
           String.format(
@@ -46,10 +51,10 @@ public class HelpUtils {
     }
     Options options =
         createOptions(
-            SettingsDocumentor.GROUPS.get(sectionName).getSettings(),
-            OptionUtils.getLongToShortMap(connectorName));
+            GROUPS.get(sectionName).getSettings(),
+            SettingsUtils.getLongToShortOptionsMap(connectorName));
     Set<String> subSections =
-        SettingsDocumentor.GROUPS
+        GROUPS
             .keySet()
             .stream()
             .filter(s -> s.startsWith(sectionName + "."))
@@ -63,10 +68,23 @@ public class HelpUtils {
     emitHelp(options, footer);
   }
 
-  public static void emitGlobalHelp() {
+  public static void emitGlobalHelp(String connectorName) {
+    List<String> commonSettings = COMMON_SETTINGS;
+    if (connectorName != null) {
+      // Filter common settings to exclude settings for connectors other than connectorName.
+      final String settingPrefix = "connector." + connectorName + ".";
+      commonSettings =
+          commonSettings
+              .stream()
+              .filter(
+                  name ->
+                      name.startsWith(settingPrefix)
+                          || !CONNECTOR_SETTINGS_PAT.matcher(name).matches())
+              .collect(Collectors.toList());
+    }
     Options options =
-        createOptions(SettingsDocumentor.COMMON_SETTINGS, OptionUtils.getLongToShortMap(null));
-    options.addOption(SettingsDocumentor.CONFIG_FILE_OPTION);
+        createOptions(commonSettings, SettingsUtils.getLongToShortOptionsMap(connectorName));
+    options.addOption(CONFIG_FILE_OPTION);
     String footer =
         "GETTING MORE HELP\n\nThere are many more settings/options that may be used to "
             + "customize behavior. Run the `help` command with one of the following section "
@@ -98,7 +116,7 @@ public class HelpUtils {
 
   @NotNull
   private static Set<String> getGroupNames() {
-    Set<String> groupNames = SettingsDocumentor.GROUPS.keySet();
+    Set<String> groupNames = GROUPS.keySet();
     groupNames.remove("Common");
     return groupNames;
   }

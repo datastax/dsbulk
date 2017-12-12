@@ -6,30 +6,21 @@
  */
 package com.datastax.dsbulk.engine.internal.utils;
 
+import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.CONFIG_FILE_OPTION;
+
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.Main;
-import com.datastax.dsbulk.engine.internal.docs.SettingsDocumentor;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class OptionUtils {
-
-  private static final Config SHORTCUTS = ConfigFactory.parseResourcesAnySyntax("shortcuts.conf");
-  private static final Logger LOGGER = LoggerFactory.getLogger(OptionUtils.class);
-
   public static Options createOptions(String connectorName) {
-    Map<String, String> longToShortOptions = getLongToShortMap(connectorName);
+    Map<String, String> longToShortOptions = SettingsUtils.getLongToShortOptionsMap(connectorName);
 
     Options options = new Options();
 
@@ -49,7 +40,7 @@ public class OptionUtils {
         "This help text. May be combined with -c <connectorName> to see short options for a "
             + "particular connector");
     options.addOption(null, "version", false, "Print out the version of this tool.");
-    options.addOption(SettingsDocumentor.CONFIG_FILE_OPTION);
+    options.addOption(CONFIG_FILE_OPTION);
     return options;
   }
 
@@ -71,36 +62,6 @@ public class OptionUtils {
         .argName(config.getTypeString(longName))
         .desc(getSanitizedDescription(longName, value));
     return option.build();
-  }
-
-  @NotNull
-  static Map<String, String> getLongToShortMap(String connectorName) {
-    Map<String, String> longToShortOptions = new HashMap<>();
-
-    // Add global shortcuts first
-    for (Map.Entry<String, ConfigValue> entry :
-        SHORTCUTS.getConfig("dsbulk.shortcuts").entrySet()) {
-      longToShortOptions.put(entry.getValue().unwrapped().toString(), entry.getKey());
-    }
-
-    // Add connector-specific entries next. If there's overlap of shortcuts, log a warning.
-    if (connectorName != null && SHORTCUTS.hasPath("dsbulk." + connectorName + "-shortcuts")) {
-      for (Map.Entry<String, ConfigValue> entry :
-          SHORTCUTS.getConfig("dsbulk." + connectorName + "-shortcuts").entrySet()) {
-        String longOption = entry.getValue().unwrapped().toString();
-        String shortOption = entry.getKey();
-        if (longToShortOptions.containsKey(longOption)
-            || longToShortOptions.containsValue(shortOption)) {
-          LOGGER.warn(
-              String.format(
-                  "Shortcut %s => %s in %s shortcuts overlaps with global shortcuts and will be ignored",
-                  shortOption, longOption, connectorName));
-          continue;
-        }
-        longToShortOptions.put(longOption, shortOption);
-      }
-    }
-    return longToShortOptions;
   }
 
   private static String getSanitizedDescription(String longName, ConfigValue value) {

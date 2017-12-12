@@ -9,7 +9,7 @@ package com.datastax.dsbulk.engine.internal.log.statement;
 /** */
 public class StatementFormatterSymbols {
 
-  public static final String lineSeparator = System.getProperty("line.separator");
+  public static final String lineSeparator = System.lineSeparator();
   public static final String summaryStart = " [";
   public static final String summaryEnd = "]";
   public static final String boundValuesCount = "%s values";
