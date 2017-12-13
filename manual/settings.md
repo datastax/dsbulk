@@ -1088,7 +1088,9 @@ The Kerberos principal to use. Required.
 Providers that accept this setting:
  - `DseGSSAPIAuthProvider`
 
-Default: **"user@DATASTAX.COM"**.
+This is typically of the form `user@DOMAIN.COM`.
+
+Default: **&lt;unspecified&gt;**.
 
 #### --driver.auth.saslProtocol _&lt;string&gt;_
 
@@ -1120,19 +1122,19 @@ Default: **&lt;unspecified&gt;**.
 
 #### --driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel _&lt;boolean&gt;_
 
-
+Allows the policy to return remote hosts when building query plans for queries having consistency level `LOCAL_ONE` or `LOCAL_QUORUM`.
 
 Default: **false**.
 
 #### --driver.policy.lbp.dcAwareRoundRobin.localDc _&lt;string&gt;_
 
-
+The name of the DC that is "local" to this client. Requests are sent to nodes in the local data center whenever possible, since the network distance is minimal.
 
 Default: **&lt;unspecified&gt;**.
 
 #### --driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc _&lt;number&gt;_
 
-
+Sets the number of hosts per remote datacenter that the policy should consider.
 
 Default: **0**.
 
@@ -1154,7 +1156,7 @@ Default: **"roundRobin"**.
 
 #### --driver.policy.lbp.tokenAware.shuffleReplicas _&lt;boolean&gt;_
 
-
+Whether or not to shuffle the list of replicas that can process a request. For loads, this has the benefit of distributing writes across nodes.
 
 Default: **true**.
 
