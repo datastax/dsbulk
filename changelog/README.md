@@ -17,7 +17,6 @@
 - [improvement] DAT-173: Ability to specify an error threshold as a percentage.
 
 
-
 ### 1.0.0-beta2
 
 - [improvement] DAT-81: Surface setup errors better.

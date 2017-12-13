@@ -84,7 +84,7 @@ class LogSettingsTest {
   }
 
   @Test()
-  void should_error_when_Percentage_is_out_of_bounds() {
+  void should_error_when_percentage_is_out_of_bounds() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("maxErrors = 112 %")
@@ -94,7 +94,8 @@ class LogSettingsTest {
             () -> {
               settings.init(false);
             })
-        .hasMessage("maxErrors must either be a number, or percentage between 0 and 100.");
+        .hasMessage(
+            "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
 
     config =
         new DefaultLoaderConfig(
@@ -106,7 +107,8 @@ class LogSettingsTest {
             () -> {
               settings2.init(false);
             })
-        .hasMessage("maxErrors must either be a number, or percentage between 0 and 100.");
+        .hasMessage(
+            "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
   }
 
   @Test

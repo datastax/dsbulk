@@ -144,10 +144,11 @@ public class LogSettings {
     }
   }
 
-  private void validatePercentageRange(float maxErrorsPercent) {
-    if (maxErrorsPercent <= 0 || maxErrorsPercent >= 1) {
+  private void validatePercentageRange(float maxErrorRatio) {
+    if (maxErrorRatio <= 0 || maxErrorRatio >= 1) {
       throw new BulkConfigurationException(
-          "maxErrors must either be a number, or percentage between 0 and 100.", "maxErrors");
+          "maxErrors must either be a number, or percentage between 0 and 100 exclusive.",
+          "maxErrors");
     }
   }
 

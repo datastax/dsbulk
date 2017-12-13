@@ -727,8 +727,8 @@ public class LogManager implements AutoCloseable {
 
   private TooManyErrorsException maxPercentageExceeded(int errorCount) {
     long attemptedTemp = attempted.longValue();
-    float currentPercentage = (float) errorCount / attemptedTemp;
-    if (attemptedTemp > MIN_SAMPLE && currentPercentage > maxErrorRatio) {
+    float currentRatio = (float) errorCount / attemptedTemp;
+    if (attemptedTemp > MIN_SAMPLE && currentRatio > maxErrorRatio) {
       return new TooManyErrorsException(maxErrorRatio * 100f);
     }
     return null;
