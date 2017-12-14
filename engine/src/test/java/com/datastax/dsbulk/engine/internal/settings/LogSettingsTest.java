@@ -6,8 +6,8 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDERR;
-import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDOUT;
+import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
+import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,10 +25,10 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.internal.logging.StreamCapture;
-import com.datastax.dsbulk.commons.internal.logging.StreamInterceptingExtension;
-import com.datastax.dsbulk.commons.internal.logging.StreamInterceptor;
-import com.datastax.dsbulk.commons.internal.utils.FileUtils;
+import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.typesafe.config.ConfigFactory;

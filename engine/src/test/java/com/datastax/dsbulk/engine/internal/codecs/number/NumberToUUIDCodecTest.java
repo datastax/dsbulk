@@ -7,16 +7,16 @@
 package com.datastax.dsbulk.engine.internal.codecs.number;
 
 import static com.datastax.driver.core.TypeCodec.timeUUID;
-import static com.datastax.dsbulk.engine.internal.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.FIXED;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MAX;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MIN;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
+import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.driver.core.utils.UUIDs;
-import com.datastax.dsbulk.engine.internal.EngineAssertions;
+import com.datastax.dsbulk.engine.tests.EngineAssertions;
 import java.time.ZonedDateTime;
 import org.junit.jupiter.api.Test;
 

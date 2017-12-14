@@ -18,6 +18,7 @@
 - [improvement] DAT-187: Change default for driver.auth.principal from user@DATASTAX.COM to unspecified.
 - [improvement] DAT-192: Add descriptions for load balancing policy settings.
 
+
 ### 1.0.0-beta2
 
 - [improvement] DAT-81: Surface setup errors better.

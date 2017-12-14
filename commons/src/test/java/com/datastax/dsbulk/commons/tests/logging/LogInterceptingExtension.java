@@ -1,0 +1,113 @@
+/*
+ * Copyright DataStax Inc.
+ *
+ * This software can be used solely with DataStax Enterprise. Please consult the license at
+ * http://www.datastax.com/terms/datastax-dse-driver-license-terms
+ */
+package com.datastax.dsbulk.commons.tests.logging;
+
+import static org.slf4j.Logger.ROOT_LOGGER_NAME;
+
+import java.lang.reflect.Parameter;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
+import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
+import org.junit.jupiter.api.extension.ParameterContext;
+import org.junit.jupiter.api.extension.ParameterResolutionException;
+import org.junit.jupiter.api.extension.ParameterResolver;
+import org.slf4j.event.Level;
+
+public class LogInterceptingExtension
+    implements ParameterResolver, BeforeTestExecutionCallback, AfterTestExecutionCallback {
+
+  private static final Namespace LOG_INTERCEPTOR = Namespace.create(LogInterceptingExtension.class);
+
+  private static final String INTERCEPTORS = "INTERCEPTORS";
+
+  @Override
+  public boolean supportsParameter(
+      ParameterContext parameterContext, ExtensionContext extensionContext)
+      throws ParameterResolutionException {
+    Parameter parameter = parameterContext.getParameter();
+    return parameter.getType().equals(LogInterceptor.class);
+  }
+
+  @Override
+  public Object resolveParameter(
+      ParameterContext parameterContext, ExtensionContext extensionContext)
+      throws ParameterResolutionException {
+    LogCapture annotation = parameterContext.getParameter().getAnnotation(LogCapture.class);
+    @SuppressWarnings("unchecked")
+    ConcurrentMap<LogInterceptorKey, DefaultLogInterceptor> interceptors =
+        extensionContext
+            .getStore(LOG_INTERCEPTOR)
+            .getOrComputeIfAbsent(
+                INTERCEPTORS,
+                k -> new ConcurrentHashMap<StreamType, DefaultLogInterceptor>(),
+                ConcurrentMap.class);
+    return interceptors.computeIfAbsent(
+        new LogInterceptorKey(annotation),
+        key -> {
+          DefaultLogInterceptor interceptor =
+              new DefaultLogInterceptor(key.loggerName, key.level.toInt());
+          interceptor.start();
+          return interceptor;
+        });
+  }
+
+  @Override
+  public void beforeTestExecution(ExtensionContext context) {
+    @SuppressWarnings("unchecked")
+    ConcurrentMap<StreamType, DefaultLogInterceptor> interceptors =
+        context.getStore(LOG_INTERCEPTOR).get(INTERCEPTORS, ConcurrentMap.class);
+    if (interceptors != null) {
+      interceptors.values().forEach(DefaultLogInterceptor::start);
+    }
+  }
+
+  @Override
+  public void afterTestExecution(ExtensionContext context) {
+    @SuppressWarnings("unchecked")
+    ConcurrentMap<StreamType, DefaultLogInterceptor> interceptors =
+        context.getStore(LOG_INTERCEPTOR).get(INTERCEPTORS, ConcurrentMap.class);
+    if (interceptors != null) {
+      interceptors.values().forEach(DefaultLogInterceptor::stop);
+    }
+  }
+
+  private static class LogInterceptorKey {
+
+    private final String loggerName;
+    private final Level level;
+
+    private LogInterceptorKey(LogCapture annotation) {
+      this.loggerName =
+          annotation == null || annotation.value().equals(LogCapture.Root.class)
+              ? ROOT_LOGGER_NAME
+              : annotation.value().getName();
+      this.level = annotation == null ? Level.INFO : annotation.level();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      LogInterceptorKey that = (LogInterceptorKey) o;
+      return loggerName.equals(that.loggerName) && level == that.level;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = loggerName.hashCode();
+      result = 31 * result + level.hashCode();
+      return result;
+    }
+  }
+}

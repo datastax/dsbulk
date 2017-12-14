@@ -6,16 +6,16 @@
  */
 package com.datastax.dsbulk.engine;
 
-import static com.datastax.dsbulk.commons.internal.logging.StreamType.STDERR;
+import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.slf4j.event.Level.ERROR;
 
-import com.datastax.dsbulk.commons.internal.logging.LogCapture;
-import com.datastax.dsbulk.commons.internal.logging.LogInterceptingExtension;
-import com.datastax.dsbulk.commons.internal.logging.LogInterceptor;
-import com.datastax.dsbulk.commons.internal.logging.StreamCapture;
-import com.datastax.dsbulk.commons.internal.logging.StreamInterceptingExtension;
-import com.datastax.dsbulk.commons.internal.logging.StreamInterceptor;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

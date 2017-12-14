@@ -34,7 +34,7 @@ import com.datastax.driver.core.TableMetadata;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
+import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.SchemaFreeRecordMetadata;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;

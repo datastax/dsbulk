@@ -42,7 +42,7 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
-import com.datastax.dsbulk.commons.internal.utils.ReflectionUtils;
+import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
 import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigFactory;

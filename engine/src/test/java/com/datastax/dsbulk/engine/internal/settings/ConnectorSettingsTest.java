@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.commons.internal.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;

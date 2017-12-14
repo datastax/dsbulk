@@ -298,9 +298,12 @@ Default: **-1**.
 
 #### -maxErrors,--log.maxErrors _&lt;number&gt;_
 
-The maximum number of errors to tolerate before aborting the entire operation.
+The maximum number of errors or error % to tolerate before aborting the entire operation.
 
 Setting this value to `-1` disables this feature (not recommended).
+
+This can be set to a fixed number like 100, or a percentage like 2%.
+
 
 Default: **100**.
 
@@ -1477,9 +1480,12 @@ Log and error management settings.
 
 #### -maxErrors,--log.maxErrors _&lt;number&gt;_
 
-The maximum number of errors to tolerate before aborting the entire operation.
+The maximum number of errors or error % to tolerate before aborting the entire operation.
 
 Setting this value to `-1` disables this feature (not recommended).
+
+This can be set to a fixed number like 100, or a percentage like 2%.
+
 
 Default: **100**.
 
