@@ -8,9 +8,11 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.truncateIpByCountryTable;
 
+import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.tests.utils.EndToEndUtils;
 import com.datastax.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.tests.ccm.CCMExtension;
 import java.util.List;
@@ -34,6 +36,11 @@ abstract class EndToEndCCMITBase {
   @AfterEach
   void truncateTable() {
     truncateIpByCountryTable(session);
+  }
+
+  @AfterEach
+  void resetLogbackConfiguration() throws JoranException {
+    EndToEndUtils.resetLogbackConfiguration();
   }
 
   void validateResultSetSize(int numOfQueries, String statement) {

@@ -21,6 +21,7 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQ
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.tests.utils.EndToEndUtils;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
@@ -40,6 +41,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -59,6 +61,11 @@ class JsonLoadEndToEndSimulacronIT {
   void primeQueries() {
     RequestPrime prime = createSimpleParametrizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     boundCluster.prime(new Prime(prime));
+  }
+
+  @AfterEach
+  void resetLogbackConfiguration() throws JoranException {
+    EndToEndUtils.resetLogbackConfiguration();
   }
 
   @Test

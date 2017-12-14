@@ -19,6 +19,8 @@ import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.core.joran.spi.JoranException;
+import com.datastax.dsbulk.commons.tests.utils.EndToEndUtils;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.tests.simulacron.SimulacronExtension;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -57,6 +59,11 @@ class JsonUnloadEndToEndSimulacronIT {
   @AfterEach
   void deleteDirs() throws IOException {
     deleteRecursively(unloadDir, ALLOW_INSECURE);
+  }
+
+  @AfterEach
+  void resetLogbackConfiguration() throws JoranException {
+    EndToEndUtils.resetLogbackConfiguration();
   }
 
   @Test

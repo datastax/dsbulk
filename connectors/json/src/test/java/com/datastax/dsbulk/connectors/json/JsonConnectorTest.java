@@ -632,5 +632,4 @@ class JsonConnectorTest {
   private static String url(String resource) {
     return JsonConnectorTest.class.getResource(resource).toExternalForm();
   }
-
 }

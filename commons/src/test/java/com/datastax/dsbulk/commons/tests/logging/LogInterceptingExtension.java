@@ -59,7 +59,7 @@ public class LogInterceptingExtension
   }
 
   @Override
-  public void beforeTestExecution(ExtensionContext context) throws Exception {
+  public void beforeTestExecution(ExtensionContext context) {
     @SuppressWarnings("unchecked")
     ConcurrentMap<StreamType, DefaultLogInterceptor> interceptors =
         context.getStore(LOG_INTERCEPTOR).get(INTERCEPTORS, ConcurrentMap.class);
@@ -69,7 +69,7 @@ public class LogInterceptingExtension
   }
 
   @Override
-  public void afterTestExecution(ExtensionContext context) throws Exception {
+  public void afterTestExecution(ExtensionContext context) {
     @SuppressWarnings("unchecked")
     ConcurrentMap<StreamType, DefaultLogInterceptor> interceptors =
         context.getStore(LOG_INTERCEPTOR).get(INTERCEPTORS, ConcurrentMap.class);

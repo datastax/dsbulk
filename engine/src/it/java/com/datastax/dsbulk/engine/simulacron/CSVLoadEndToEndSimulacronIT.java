@@ -17,11 +17,17 @@ import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_CRLF;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_ERROR;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_LONG;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_PARTIAL_BAD;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_PARTIAL_BAD_LONG;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.slf4j.event.Level.ERROR;
 
+import ch.qos.logback.core.joran.spi.JoranException;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.EndToEndUtils;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
@@ -41,6 +47,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -48,6 +55,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(SimulacronExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(LogInterceptingExtension.class)
 class CSVLoadEndToEndSimulacronIT {
 
   private final BoundCluster boundCluster;
@@ -60,6 +68,11 @@ class CSVLoadEndToEndSimulacronIT {
   void primeQueries() {
     RequestPrime prime = createSimpleParametrizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     boundCluster.prime(new Prime(prime));
+  }
+
+  @AfterEach
+  void resetLogbackConfiguration() throws JoranException {
+    EndToEndUtils.resetLogbackConfiguration();
   }
 
   @Test
@@ -325,6 +338,38 @@ class CSVLoadEndToEndSimulacronIT {
     assertThat(status).isZero();
 
     validateQueryCount(1, LOCAL_ONE);
+  }
+
+  @Test
+  void error_load_percentage(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs)
+      throws Exception {
+    String[] args = {
+      "load",
+      "--log.directory",
+      Files.createTempDirectory("test").toString(),
+      "--log.maxErrors",
+      "1%",
+      "-header",
+      "false",
+      "--connector.csv.url",
+      CSV_RECORDS_PARTIAL_BAD_LONG.toExternalForm(),
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      fetchContactPoints(boundCluster),
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING,
+      "--batch.enabled",
+      "false"
+    };
+    int status = new Main(args).run();
+    assertThat(status).isZero();
+    assertThat(logs.getAllMessagesAsString())
+        .contains("failed: Too many errors, the maximum percentage allowed is 1.0%");
   }
 
   private void validateQueryCount(int numOfQueries, ConsistencyLevel level) {

@@ -581,5 +581,4 @@ class CSVConnectorTest {
   private static String url(String resource) {
     return CSVConnectorTest.class.getResource(resource).toExternalForm();
   }
-
 }

@@ -13,15 +13,18 @@ import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.fetchContact
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static org.slf4j.event.Level.ERROR;
 
+import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.EndToEndUtils;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.tests.simulacron.annotations.SimulacronConfig;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.nio.file.Files;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
@@ -41,6 +44,11 @@ class CassLoadEndToEndSimulacronIT {
       @LogCapture(value = WorkflowUtils.class, level = ERROR) LogInterceptor interceptor) {
     this.simulacron = simulacron;
     this.interceptor = interceptor;
+  }
+
+  @AfterEach
+  void resetLogbackConfiguration() throws JoranException {
+    EndToEndUtils.resetLogbackConfiguration();
   }
 
   @Test

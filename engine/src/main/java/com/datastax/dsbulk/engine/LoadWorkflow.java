@@ -151,6 +151,7 @@ public class LoadWorkflow implements Workflow {
             records -> {
               Flux<Statement> stmts =
                   Flux.from(records)
+                      .transform(logManager.newAttemptedRecordCounter())
                       .transform(metricsManager.newUnmappableRecordMonitor())
                       .transform(logManager.newUnmappableRecordErrorHandler())
                       .map(recordMapper::map)
@@ -182,6 +183,7 @@ public class LoadWorkflow implements Workflow {
         .flatMap(
             records ->
                 records
+                    .transform(logManager.newAttemptedRecordCounter())
                     .transform(metricsManager.newUnmappableRecordMonitor())
                     .transform(logManager.newUnmappableRecordErrorHandler())
                     .map(recordMapper::map)
@@ -203,6 +205,7 @@ public class LoadWorkflow implements Workflow {
         .publishOn(scheduler1, Queues.SMALL_BUFFER_SIZE * 4)
         .parallel()
         .runOn(scheduler2)
+        .composeGroup(logManager.newAttemptedRecordCounter())
         .composeGroup(metricsManager.newUnmappableRecordMonitor())
         .composeGroup(logManager.newUnmappableRecordErrorHandler())
         .map(recordMapper::map)

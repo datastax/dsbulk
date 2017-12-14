@@ -29,4 +29,6 @@ public class CsvUtils {
       ClassLoader.getSystemResource("ip-by-country-error.csv");
   public static final URL CSV_RECORDS_WITH_SPACES =
       ClassLoader.getSystemResource("with-spaces.csv");
+  public static final URL CSV_RECORDS_PARTIAL_BAD_LONG =
+      ClassLoader.getSystemResource("ip-by-country-bad-long.csv");
 }

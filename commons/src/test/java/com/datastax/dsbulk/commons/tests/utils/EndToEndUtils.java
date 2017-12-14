@@ -8,6 +8,9 @@ package com.datastax.dsbulk.commons.tests.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -27,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
+import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("SameParameterValue")
 public class EndToEndUtils {
@@ -167,5 +171,13 @@ public class EndToEndUtils {
             .filter(l -> l.getType().equals("PREPARE") && l.getQuery().startsWith(query))
             .collect(Collectors.toList());
     assertThat(ipLogs.size()).isEqualTo(1);
+  }
+
+  public static void resetLogbackConfiguration() throws JoranException {
+    LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+    JoranConfigurator configurator = new JoranConfigurator();
+    configurator.setContext(context);
+    context.reset();
+    configurator.doConfigure(ClassLoader.getSystemResource("logback-test.xml"));
   }
 }

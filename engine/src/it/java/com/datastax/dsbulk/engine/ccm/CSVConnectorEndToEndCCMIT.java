@@ -20,6 +20,7 @@ import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.validateExce
 import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_COMPLEX;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_HEADER;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_WITH_SPACES;
@@ -29,9 +30,14 @@ import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.slf4j.event.Level.ERROR;
 
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.tests.ccm.CCMCluster;
@@ -49,7 +55,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(LogInterceptingExtension.class)
 @CCMConfig(numberOfNodes = 1)
 @Tag("ccm")
 class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
@@ -551,5 +559,89 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             instantToTimestampSinceEpoch(
                 ZonedDateTime.parse("2017-11-29T14:32:15+02:00").toInstant(), MICROSECONDS, EPOCH));
     assertThat(row.getUUID(2)).isNotNull();
+  }
+
+  @Test
+  void duplicate_values(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs)
+      throws IOException {
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(Files.createTempDirectory("test").toString());
+    args.add("--connector.csv.url");
+    args.add(CSV_RECORDS_HEADER.toExternalForm());
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_code");
+
+    int status = new Main(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateErrorMessageLogged(
+        logs, "Multiple input values in mapping resolve to column", "country_code");
+  }
+
+  @Test
+  void missing_key(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs)
+      throws Exception {
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(Files.createTempDirectory("test").toString());
+    args.add("--connector.csv.url");
+    args.add(CSV_RECORDS_HEADER.toExternalForm());
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number, 5=country_name");
+
+    int status = new Main(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateErrorMessageLogged(logs, "Missing required key column of", "country_code");
+  }
+
+  @Test
+  void extra_mapping(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs)
+      throws Exception {
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(Files.createTempDirectory("test").toString());
+    args.add("--connector.csv.url");
+    args.add(CSV_RECORDS_HEADER.toExternalForm());
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code, 5=country_name, 6=extra");
+
+    int status = new Main(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateErrorMessageLogged(logs, "doesn't match any column found in table", "extra");
+  }
+
+  private void validateErrorMessageLogged(LogInterceptor logs, String... msg) {
+    CommonsAssertions.assertThat(logs)
+        .hasMessageContaining("Load workflow engine execution")
+        .hasMessageContaining("failed");
+    for (String s : msg) {
+      CommonsAssertions.assertThat(logs).hasMessageContaining(s);
+    }
   }
 }

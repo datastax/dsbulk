@@ -51,6 +51,7 @@ import java.util.ListIterator;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -68,16 +69,19 @@ import reactor.util.concurrent.Queues;
 public class LogManager implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogManager.class);
+  private static final int MIN_SAMPLE = 100;
 
   private final WorkflowType workflowType;
   private final Cluster cluster;
   private final Path executionDirectory;
   private final Scheduler scheduler;
   private final int maxErrors;
+  private final float maxErrorRatio;
   private final StatementFormatter formatter;
   private final StatementFormatVerbosity verbosity;
 
   private final AtomicInteger errors = new AtomicInteger(0);
+  private final LongAdder attempted = new LongAdder();
 
   private final LoadingCache<Path, PrintWriter> openFiles =
       Caffeine.newBuilder()
@@ -105,6 +109,7 @@ public class LogManager implements AutoCloseable {
       Cluster cluster,
       Path executionDirectory,
       int maxErrors,
+      float maxErrorRatio,
       StatementFormatter formatter,
       StatementFormatVerbosity verbosity) {
     this(
@@ -113,6 +118,7 @@ public class LogManager implements AutoCloseable {
         Schedulers.newParallel("log-manager", 4),
         executionDirectory,
         maxErrors,
+        maxErrorRatio,
         formatter,
         verbosity);
   }
@@ -124,6 +130,7 @@ public class LogManager implements AutoCloseable {
       Scheduler scheduler,
       Path executionDirectory,
       int maxErrors,
+      float maxErrorRatio,
       StatementFormatter formatter,
       StatementFormatVerbosity verbosity) {
     this.workflowType = workflowType;
@@ -131,6 +138,7 @@ public class LogManager implements AutoCloseable {
     this.executionDirectory = executionDirectory;
     this.scheduler = scheduler;
     this.maxErrors = maxErrors;
+    this.maxErrorRatio = maxErrorRatio;
     this.formatter = formatter;
     this.verbosity = verbosity;
   }
@@ -217,9 +225,7 @@ public class LogManager implements AutoCloseable {
                     Statement stmt = signal.get();
                     if (stmt instanceof UnmappableStatement) {
                       sink.next((UnmappableStatement) stmt);
-                      if (maxErrors >= 0 && errors.incrementAndGet() > maxErrors) {
-                        return Signal.error(new TooManyErrorsException(maxErrors));
-                      }
+                      signal = maybeTriggerOnError(signal, errors.incrementAndGet());
                     }
                   }
                   return signal;
@@ -254,9 +260,7 @@ public class LogManager implements AutoCloseable {
                     Record r = signal.get();
                     if (r instanceof UnmappableRecord) {
                       sink.next((UnmappableRecord) r);
-                      if (maxErrors >= 0 && errors.incrementAndGet() > maxErrors) {
-                        return Signal.error(new TooManyErrorsException(maxErrors));
-                      }
+                      signal = maybeTriggerOnError(signal, errors.incrementAndGet());
                     }
                   }
                   return signal;
@@ -292,9 +296,9 @@ public class LogManager implements AutoCloseable {
                       Throwable cause = r.getError().get().getCause();
                       if (isUnrecoverable(cause)) {
                         return Signal.error(cause);
-                      } else if (maxErrors >= 0
-                          && errors.addAndGet(delta(r.getStatement())) > maxErrors) {
-                        return Signal.error(new TooManyErrorsException(maxErrors));
+                      } else {
+                        signal =
+                            maybeTriggerOnError(signal, errors.addAndGet(delta(r.getStatement())));
                       }
                     }
                   }
@@ -331,8 +335,8 @@ public class LogManager implements AutoCloseable {
                       Throwable cause = r.getError().get().getCause();
                       if (isUnrecoverable(cause)) {
                         return Signal.error(cause);
-                      } else if (maxErrors >= 0 && errors.incrementAndGet() > maxErrors) {
-                        return Signal.error(new TooManyErrorsException(maxErrors));
+                      } else {
+                        signal = maybeTriggerOnError(signal, errors.incrementAndGet());
                       }
                     }
                   }
@@ -454,6 +458,14 @@ public class LogManager implements AutoCloseable {
       flux.subscribeOn(scheduler).subscribe();
     }
     return processor.sink();
+  }
+
+  public Function<Flux<Record>, Flux<Record>> newAttemptedRecordCounter() {
+    return upstream ->
+        upstream.doOnNext(
+            r -> {
+              attempted.increment();
+            });
   }
 
   /**
@@ -684,6 +696,42 @@ public class LogManager implements AutoCloseable {
     } else {
       return 1;
     }
+  }
+
+  private Signal maybeTriggerOnError(Signal signal, int errorCount) {
+    TooManyErrorsException exception;
+    if (isPercentageBased()) {
+      exception = maxPercentageExceeded(errorCount);
+    } else {
+      exception = maxErrorCountExceeded(errorCount);
+    }
+    if (exception != null) {
+      return Signal.error(exception);
+    }
+    return signal;
+  }
+
+  private boolean isPercentageBased() {
+    if (maxErrorRatio != 0) {
+      return true;
+    }
+    return false;
+  }
+
+  private TooManyErrorsException maxErrorCountExceeded(int errorCount) {
+    if (maxErrors > 0 && errorCount > maxErrors) {
+      return new TooManyErrorsException(maxErrors);
+    }
+    return null;
+  }
+
+  private TooManyErrorsException maxPercentageExceeded(int errorCount) {
+    long attemptedTemp = attempted.longValue();
+    float currentRatio = (float) errorCount / attemptedTemp;
+    if (attemptedTemp > MIN_SAMPLE && currentRatio > maxErrorRatio) {
+      return new TooManyErrorsException(maxErrorRatio * 100f);
+    }
+    return null;
   }
 
   private static boolean isUnrecoverable(Throwable error) {
