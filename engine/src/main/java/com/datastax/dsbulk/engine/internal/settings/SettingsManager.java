@@ -72,8 +72,12 @@ public class SettingsManager {
       LOGGER.info(HelpUtils.getVersionMessage() + " effective settings:");
       Set<Map.Entry<String, ConfigValue>> entries =
           new TreeSet<>(Comparator.comparing(Map.Entry::getKey));
-      entries.addAll(config.entrySet());
+      entries.addAll(config.withoutPath("metaSettings").entrySet());
       for (Map.Entry<String, ConfigValue> entry : entries) {
+        // Skip all settings that have a `metaSettings` path element.
+        if (entry.getKey().contains(".metaSettings.")) {
+          continue;
+        }
         LOGGER.info(
             String.format(
                 "%s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
