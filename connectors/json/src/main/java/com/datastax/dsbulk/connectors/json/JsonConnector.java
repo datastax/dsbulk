@@ -12,13 +12,14 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
-import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
+import com.datastax.dsbulk.commons.internal.reactive.SimpleBackPressureController;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.dsbulk.connectors.api.internal.utils.URLUtils;
 import com.datastax.dsbulk.connectors.json.internal.SchemaFreeJsonRecordMetadata;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -43,6 +44,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
 import java.nio.charset.Charset;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -270,7 +272,7 @@ public class JsonConnector implements Connector {
             sink -> {
               LOGGER.debug("Reading {}", url);
               URI resource = URIUtils.createResourceURI(url);
-              SimpleBackpressureController controller = new SimpleBackpressureController();
+              SimpleBackPressureController controller = new SimpleBackPressureController();
               sink.onRequest(controller::signalRequested);
               // DAT-177: Do not call sink.onDispose nor sink.onCancel,
               // as doing so seems to prevent the flow from completing in rare occasions.
@@ -429,9 +431,20 @@ public class JsonConnector implements Connector {
   private JsonGenerator createJsonWriter(URL url) {
     try {
       JsonFactory factory = objectMapper.getFactory();
-      JsonGenerator writer = factory.createGenerator(IOUtils.newBufferedWriter(url, encoding));
-      writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
-      return writer;
+      try {
+        JsonGenerator writer = factory.createGenerator(IOUtils.newBufferedWriter(url, encoding));
+        writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
+        return writer;
+      } catch (FileAlreadyExistsException e) {
+        URL newUrl = URLUtils.appendTimestamp(url);
+        LOGGER.error(
+            String.format(
+                "Could not create already existing JSON %s, using %s instead", url, newUrl));
+        JsonGenerator writer = factory.createGenerator(IOUtils.newBufferedWriter(url, encoding));
+        writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
+        return writer;
+      }
+
     } catch (Exception e) {
       LOGGER.error(
           String.format("Could not create Json writer for %s: %s", url, e.getMessage()), e);

@@ -319,10 +319,56 @@ class CSVUnloadEndToEndSimulacronIT {
 
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
-        .contains("Could not create CSV writer for file:")
+        .contains("Could not create already existing CSV")
         .contains("output-000001.csv")
-        .contains("Error writing to file:")
-        .contains("output-000001.csv");
+        .contains("using");
+  }
+
+  @Test
+  void unload_existing_file_multi(
+      @LogCapture(value = CSVConnector.class, level = ERROR) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stdErr)
+      throws Exception {
+    // Prior to DAT-151 this case would hang
+    Files.createFile(unloadDir.resolve("output-000001.csv"));
+    Files.createFile(unloadDir.resolve("output-000003.csv"));
+    Files.createFile(unloadDir.resolve("output-000004.csv"));
+
+    RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
+    simulacron.prime(new Prime(prime));
+
+    String[] unloadArgs = {
+      "unload",
+      "--log.directory",
+      Files.createTempDirectory("test").toString(),
+      "-header",
+      "false",
+      "--connector.csv.url",
+      unloadDir.toString(),
+      "--connector.csv.maxConcurrentFiles",
+      "4",
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      fetchContactPoints(simulacron),
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.query",
+      SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING
+    };
+
+    int status = new Main(unloadArgs).run();
+    assertThat(status).isZero();
+    assertThat(stdErr.getStreamAsString())
+        .contains(logs.getLoggedMessages())
+        .contains("Could not create already existing CSV")
+        .contains("output-000001.csv")
+        .contains("output-000003.csv")
+        .contains("output-000004.csv")
+        .doesNotContain("output-000002.csv")
+        .contains("using");
   }
 
   @Test

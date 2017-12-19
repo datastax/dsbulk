@@ -8,7 +8,7 @@ package com.datastax.dsbulk.commons.internal.reactive;
 
 import java.util.concurrent.locks.AbstractQueuedLongSynchronizer;
 
-public final class SimpleBackpressureController {
+public final class SimpleBackPressureController {
 
   private final Sync sync = new Sync();
 

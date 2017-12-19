@@ -12,13 +12,14 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
-import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
+import com.datastax.dsbulk.commons.internal.reactive.SimpleBackPressureController;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
+import com.datastax.dsbulk.connectors.api.internal.utils.URLUtils;
 import com.google.common.base.Suppliers;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Streams;
@@ -39,6 +40,7 @@ import java.net.URL;
 import java.net.URLStreamHandler;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.charset.Charset;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -263,7 +265,7 @@ public class CSVConnector implements Connector {
         Flux.create(
             sink -> {
               CsvParser parser = new CsvParser(parserSettings);
-              SimpleBackpressureController controller = new SimpleBackpressureController();
+              SimpleBackPressureController controller = new SimpleBackPressureController();
               // DAT-177: Do not call sink.onDispose nor sink.onCancel,
               // as doing so seems to prevent the flow from completing in rare occasions.
               sink.onRequest(controller::signalRequested);
@@ -436,7 +438,15 @@ public class CSVConnector implements Connector {
 
   private CsvWriter createCSVWriter(URL url) {
     try {
-      return new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
+      try {
+        return new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
+      } catch (FileAlreadyExistsException e) {
+        URL newUrl = URLUtils.appendTimestamp(url);
+        LOGGER.error(
+            String.format(
+                "Could not create already existing CSV %s, using %s instead", url, newUrl));
+        return new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
+      }
     } catch (Exception e) {
       LOGGER.error(String.format("Could not create CSV writer for %s: %s", url, e.getMessage()), e);
       throw new RuntimeException(e);
