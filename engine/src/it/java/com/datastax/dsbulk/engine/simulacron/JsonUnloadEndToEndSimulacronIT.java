@@ -29,7 +29,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.EndToEndUtils;
-import com.datastax.dsbulk.connectors.csv.CSVConnector;
+import com.datastax.dsbulk.connectors.json.JsonConnector;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.tests.simulacron.SimulacronExtension;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -228,7 +228,7 @@ class JsonUnloadEndToEndSimulacronIT {
 
   @Test
   void unload_existing_file(
-      @LogCapture(value = CSVConnector.class, level = ERROR) LogInterceptor logs,
+      @LogCapture(value = JsonConnector.class, level = ERROR) LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stdErr)
       throws Exception {
     Files.createFile(unloadDir.resolve("output-000001.json"));
