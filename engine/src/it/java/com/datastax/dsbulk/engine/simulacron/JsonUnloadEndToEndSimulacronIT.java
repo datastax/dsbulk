@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.engine.simulacron;
 
+import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.createQueryWithError;
 import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.createQueryWithResultSet;
 import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.fetchContactPoints;
@@ -18,9 +19,17 @@ import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.slf4j.event.Level.ERROR;
 
 import ch.qos.logback.core.joran.spi.JoranException;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.EndToEndUtils;
+import com.datastax.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.tests.simulacron.SimulacronExtension;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -38,6 +47,8 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(SimulacronExtension.class)
+@ExtendWith(LogInterceptingExtension.class)
+@ExtendWith(StreamInterceptingExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JsonUnloadEndToEndSimulacronIT {
 
@@ -213,5 +224,44 @@ class JsonUnloadEndToEndSimulacronIT {
 
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
+  }
+
+  @Test
+  void unload_existing_file(
+      @LogCapture(value = CSVConnector.class, level = ERROR) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stdErr)
+      throws Exception {
+    Files.createFile(unloadDir.resolve("output-000001.json"));
+    RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
+    simulacron.prime(new Prime(prime));
+
+    String[] unloadArgs = {
+      "unload",
+      "-c",
+      "json",
+      "--log.directory",
+      Files.createTempDirectory("test").toString(),
+      "--connector.json.url",
+      unloadDir.toString(),
+      "--connector.json.maxConcurrentFiles",
+      "1 ",
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      fetchContactPoints(simulacron),
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.query",
+      SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING
+    };
+
+    int status = new Main(unloadArgs).run();
+    assertThat(status).isZero();
+    assertThat(stdErr.getStreamAsString())
+        .contains("Could not create already existing JSON")
+        .contains("output-000001.json")
+        .contains("using");
   }
 }
