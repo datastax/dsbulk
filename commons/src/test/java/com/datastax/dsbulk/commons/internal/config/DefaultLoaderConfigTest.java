@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.net.URL;
@@ -20,6 +21,9 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class DefaultLoaderConfigTest {
+  static {
+    URLUtils.setURLFactoryIfNeeded();
+  }
 
   @Test
   void should_resolve_absolute_path() throws Exception {
@@ -61,6 +65,33 @@ class DefaultLoaderConfigTest {
         .hasNoUserInfo()
         .hasAuthority("foo.com")
         .hasPath("/bar");
+  }
+
+  @Test
+  void should_resolve_stdio_URL() throws Exception {
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.parseString("url1 = -"));
+    URL url1 = config.getURL("url1");
+    assertThat(url1.toExternalForm()).startsWith("file:/").endsWith("/-");
+    assertThat(url1.toURI()).hasScheme("file").hasNoPort().hasNoQuery().hasNoUserInfo();
+    assertThat(url1.toURI().getPath().endsWith("/-"));
+
+    URL stdinUrl = config.getURL("url1", true);
+    assertThat(stdinUrl.toExternalForm()).isEqualTo("stdin:/");
+    assertThat(stdinUrl.toURI())
+        .hasScheme("stdin")
+        .hasNoPort()
+        .hasNoQuery()
+        .hasNoUserInfo()
+        .hasPath("/");
+
+    URL stdoutUrl = config.getURL("url1", false);
+    assertThat(stdoutUrl.toExternalForm()).isEqualTo("stdout:/");
+    assertThat(stdoutUrl.toURI())
+        .hasScheme("stdout")
+        .hasNoPort()
+        .hasNoQuery()
+        .hasNoUserInfo()
+        .hasPath("/");
   }
 
   @Test

@@ -11,7 +11,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
@@ -35,7 +34,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Suppliers;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
-import com.typesafe.config.ConfigFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -133,21 +131,14 @@ public class JsonConnector implements Connector {
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
-      if (!settings.hasPath("url")) {
+      if (!settings.hasPath(URL)) {
         throw new BulkConfigurationException(
             "url is mandatory when using the json connector. Please set connector.json.url "
                 + "and try again. See settings.md or help for more information.",
             "connector.json");
       }
       this.read = read;
-      if (settings.getString(URL).equals("-")) {
-        // Map the special "-" url to stdin or stdout depending on if we're loading/unloading.
-        String stdioUrl = read ? "\"stdin:/\"" : "\"stdout:/\"";
-        settings =
-            new DefaultLoaderConfig(ConfigFactory.parseString(URL + "=" + stdioUrl))
-                .withFallback(settings);
-      }
-      url = settings.getURL(URL);
+      url = settings.getURL(URL, read);
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
