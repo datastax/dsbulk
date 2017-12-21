@@ -21,7 +21,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /** */
@@ -62,5 +64,13 @@ public final class IOUtils {
       throws IOException, URISyntaxException {
     return new BufferedWriter(
         new OutputStreamWriter(newBufferedOutputStream(url), charset), BUFFER_SIZE);
+  }
+
+  public static boolean isDirectoryEmpty(Path path) {
+    try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(path)) {
+      return !dirStream.iterator().hasNext();
+    } catch (Exception exception) {
+      return false;
+    }
   }
 }

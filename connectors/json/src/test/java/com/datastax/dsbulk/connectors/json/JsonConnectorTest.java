@@ -34,12 +34,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.UnicastProcessor;
 
 /** */
 @SuppressWarnings("Duplicates")
@@ -296,12 +293,12 @@ class JsonConnectorTest {
     Path out = Files.createTempDirectory("test").resolve("nonexistent");
     try {
       LoaderConfig settings =
-              new DefaultLoaderConfig(
-                      ConfigFactory.parseString(
-                              String.format(
-                                      "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1",
-                                      ConfigUtils.maybeEscapeBackslash(out.toString())))
-                              .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isFalse();
@@ -312,14 +309,13 @@ class JsonConnectorTest {
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
       assertThat(actual).hasSize(5);
       assertThat(actual)
-              .containsExactly(
-                      "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0}",
-                      "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
-                      "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0}",
-                      "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
-                      "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
-    }
-    finally {
+          .containsExactly(
+              "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0}",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
+              "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0}",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
+              "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
+    } finally {
       deleteRecursively(out, ALLOW_INSECURE);
     }
   }
@@ -330,12 +326,12 @@ class JsonConnectorTest {
     Path out = Files.createTempDirectory("test");
     try {
       LoaderConfig settings =
-              new DefaultLoaderConfig(
-                      ConfigFactory.parseString(
-                              String.format(
-                                      "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 4",
-                                      ConfigUtils.maybeEscapeBackslash(out.toString())))
-                              .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 4",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isFalse();
@@ -345,14 +341,13 @@ class JsonConnectorTest {
       connector.close();
       List<String> actual = FileUtils.readAllLinesInDirectory(out, UTF_8);
       assertThat(actual)
-              .containsOnly(
-                      "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0}",
-                      "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
-                      "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0}",
-                      "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
-                      "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
-    }
-    finally {
+          .containsOnly(
+              "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0}",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
+              "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0}",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
+              "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
+    } finally {
       deleteRecursively(out, ALLOW_INSECURE);
     }
   }
@@ -364,12 +359,12 @@ class JsonConnectorTest {
     try {
       String escapedPath = ConfigUtils.maybeEscapeBackslash(out.toString());
       LoaderConfig settings =
-              new DefaultLoaderConfig(
-                      ConfigFactory.parseString(
-                              String.format(
-                                      "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 3",
-                                      escapedPath))
-                              .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 3",
+                          escapedPath))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isFalse();
@@ -382,16 +377,15 @@ class JsonConnectorTest {
       assertThat(json1).hasSize(3);
       assertThat(json2).hasSize(2);
       assertThat(json1)
-              .containsExactly(
-                      "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0}",
-                      "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
-                      "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0}");
+          .containsExactly(
+              "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0}",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
+              "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0}");
       assertThat(json2)
-              .containsExactly(
-                      "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
-                      "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
-    }
-    finally {
+          .containsExactly(
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
+              "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
+    } finally {
       deleteRecursively(out, ALLOW_INSECURE);
     }
   }
@@ -486,58 +480,6 @@ class JsonConnectorTest {
     assertThat(records.get(0).getSource().toString().trim())
         .isEqualTo(
             "{\"beginning IP Address\":\"212.63.180.20\",\"ending IP Address\":\"212.63.180.23\",\"beginning IP Number\":3560944660,\"ending IP Number\":3560944663,\"ISO 3166 Country Code\":\"MZ\",\"Country Name\":\"Mozambique\"}");
-    connector.close();
-  }
-
-  @Test
-  void should_cancel_write_single_file_when_io_error() throws Exception {
-    JsonConnector connector = new JsonConnector();
-    Path out = Files.createTempDirectory("test");
-    Path file = out.resolve("output-000001.json");
-    // will cause the write to fail because the file already exists
-    Files.createFile(file);
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", maxConcurrentFiles = 1",
-                        ConfigUtils.maybeEscapeBackslash(out.toString())))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, false);
-    connector.init();
-    Flux<Record> records = Flux.fromIterable(createRecords());
-    CountDownLatch latch = new CountDownLatch(1);
-    records.doOnCancel(latch::countDown).subscribe(connector.write());
-    assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
-    connector.close();
-  }
-
-  @Test
-  void should_cancel_write_multiple_files_when_io_error() throws Exception {
-    JsonConnector connector = new JsonConnector();
-    Path out = Files.createTempDirectory("test");
-    Path file1 = out.resolve("output-000001.json");
-    Path file2 = out.resolve("output-000002.json");
-    // will cause the write workers to fail because the files already exist
-    Files.createFile(file1);
-    Files.createFile(file2);
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", maxConcurrentFiles = 2",
-                        ConfigUtils.maybeEscapeBackslash(out.toString())))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, false);
-    connector.init();
-    UnicastProcessor<Record> records = UnicastProcessor.create();
-    CountDownLatch latch = new CountDownLatch(1);
-    records.doOnCancel(latch::countDown).subscribe(connector.write());
-    List<Record> list = createRecords();
-    records.onNext(list.get(0));
-    // don't send a terminal event as the terminal event could cancel the upstream subscription
-    // before the write workers are created and fail to write.
-    assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
     connector.close();
   }
 

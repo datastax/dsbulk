@@ -251,6 +251,10 @@ public class CSVConnector implements Connector {
         if (!Files.isWritable(root)) {
           throw new IllegalArgumentException("Directory is not writable: " + root);
         }
+        if (!IOUtils.isDirectoryEmpty(root)) {
+          throw new IllegalArgumentException(
+              "connector.csv.url target directory:" + root + " must be empty.");
+        }
         this.root = root;
       }
     } catch (FileSystemNotFoundException ignored) {
