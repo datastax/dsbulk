@@ -48,7 +48,7 @@ public class FileUtils {
           .flatMap(
               path -> {
                 try {
-                  return Files.readAllLines(path, charset).stream();
+                  return Files.readAllLines(path, charset).stream().filter(s->!s.equals(""));
                 } catch (IOException e) {
                   throw new UncheckedIOException(e);
                 }
