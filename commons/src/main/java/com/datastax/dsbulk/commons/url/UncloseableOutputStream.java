@@ -16,6 +16,7 @@ import java.io.OutputStream;
  * <p>This is useful in rare situations where the underlying stream is being shared among consumers
  * and therefore should not be closed accidentally by one of them.
  */
+@SuppressWarnings("WeakerAccess")
 public class UncloseableOutputStream extends FilterOutputStream {
 
   public UncloseableOutputStream(OutputStream out) {

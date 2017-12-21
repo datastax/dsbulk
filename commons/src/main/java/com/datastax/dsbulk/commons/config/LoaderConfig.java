@@ -86,6 +86,9 @@ public interface LoaderConfig extends Config {
    * <p>The value will be first interpreted directly as a URL; if the parsing fails, the value will
    * be then interpreted as a path on the local filesystem, then converted to a file URL.
    *
+   * <p>If the value is "-" map it to "std:/", to indicate this url represents stdout (when
+   * unloading) and stdin (when loading).
+   *
    * <p>The returned URL is normalized and absolute.
    *
    * @param path path expression.
@@ -94,31 +97,9 @@ public interface LoaderConfig extends Config {
    * @throws ConfigException.WrongType if value is not convertible to a URL.
    */
   default URL getURL(String path) {
-    return getURL(path, null);
-  }
-
-  /**
-   * Returns the {@link URL} object at the given path.
-   *
-   * <p>The value will be first interpreted directly as a URL; if the parsing fails, the value will
-   * be then interpreted as a path on the local filesystem, then converted to a file URL.
-   *
-   * <p>If the value is "-" and a hint is provided that the intention is to read or write from the
-   * url, map the value to "stdin:/" (for read) or "stdout:/" (for write).
-   *
-   * <p>The returned URL is normalized and absolute.
-   *
-   * @param path path expression.
-   * @param read whether the url is intended to be read from or written to. null indicates no
-   *     particular direction.
-   * @return the URL object at the requested path.
-   * @throws ConfigException.Missing if value is absent or null.
-   * @throws ConfigException.WrongType if value is not convertible to a URL.
-   */
-  default URL getURL(String path, Boolean read) {
     String setting = getString(path);
-    if (setting.equals("-") && read != null) {
-      setting = read ? "stdin:/" : "stdout:/";
+    if (setting.equals("-")) {
+      setting = "std:/";
     }
     try {
       return new URI(setting).normalize().toURL();

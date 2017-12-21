@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
+import static com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory.STD;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -138,7 +139,7 @@ public class JsonConnector implements Connector {
             "connector.json");
       }
       this.read = read;
-      url = settings.getURL(URL, read);
+      url = settings.getURL(URL);
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
@@ -198,7 +199,7 @@ public class JsonConnector implements Connector {
 
   @Override
   public boolean isWriteToStandardOutput() {
-    return url.getProtocol().equalsIgnoreCase(LoaderURLStreamHandlerFactory.STDOUT);
+    return url.getProtocol().equalsIgnoreCase(STD) && !read;
   }
 
   @Override

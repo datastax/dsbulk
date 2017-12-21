@@ -70,24 +70,11 @@ class DefaultLoaderConfigTest {
   @Test
   void should_resolve_stdio_URL() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.parseString("url1 = -"));
-    URL url1 = config.getURL("url1");
-    assertThat(url1.toExternalForm()).startsWith("file:/").endsWith("/-");
-    assertThat(url1.toURI()).hasScheme("file").hasNoPort().hasNoQuery().hasNoUserInfo();
-    assertThat(url1.toURI().getPath().endsWith("/-"));
 
-    URL stdinUrl = config.getURL("url1", true);
-    assertThat(stdinUrl.toExternalForm()).isEqualTo("stdin:/");
-    assertThat(stdinUrl.toURI())
-        .hasScheme("stdin")
-        .hasNoPort()
-        .hasNoQuery()
-        .hasNoUserInfo()
-        .hasPath("/");
-
-    URL stdoutUrl = config.getURL("url1", false);
-    assertThat(stdoutUrl.toExternalForm()).isEqualTo("stdout:/");
-    assertThat(stdoutUrl.toURI())
-        .hasScheme("stdout")
+    URL stdioUrl = config.getURL("url1");
+    assertThat(stdioUrl.toExternalForm()).isEqualTo("std:/");
+    assertThat(stdioUrl.toURI())
+        .hasScheme("std")
         .hasNoPort()
         .hasNoQuery()
         .hasNoUserInfo()
