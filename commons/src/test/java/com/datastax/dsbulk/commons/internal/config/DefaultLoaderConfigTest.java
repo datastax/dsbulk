@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.net.URL;
@@ -20,6 +21,9 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class DefaultLoaderConfigTest {
+  static {
+    URLUtils.setURLFactoryIfNeeded();
+  }
 
   @Test
   void should_resolve_absolute_path() throws Exception {
@@ -61,6 +65,20 @@ class DefaultLoaderConfigTest {
         .hasNoUserInfo()
         .hasAuthority("foo.com")
         .hasPath("/bar");
+  }
+
+  @Test
+  void should_resolve_stdio_URL() throws Exception {
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.parseString("url1 = -"));
+
+    URL stdioUrl = config.getURL("url1");
+    assertThat(stdioUrl.toExternalForm()).isEqualTo("std:/");
+    assertThat(stdioUrl.toURI())
+        .hasScheme("std")
+        .hasNoPort()
+        .hasNoQuery()
+        .hasNoUserInfo()
+        .hasPath("/");
   }
 
   @Test

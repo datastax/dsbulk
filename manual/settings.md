@@ -51,26 +51,20 @@ The URL or path of the resource(s) to read from or write to.
 
 Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
 
-- **stdin**:  the stdin protocol can be used to read from standard input; the only valid URL for this protocol is: `stdin:/`.
-
-  This protocol cannot be used for writing.
-
-- **stdout**: the stdout protocol can be used to write to standard output; the only valid URL for this protocol is: `stdout:/`.
-
-  This protocol cannot be used for reading.
-
 - **file**: the file protocol can be used with all supported file systems, local or not.
     - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
     - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
 Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
 
+In addition the value `-` indicates `stdin` when loading and `stdout` when unloading. This is in line with Unix tools such as tar, which uses `-` to represent stdin/stdout when reading/writing an archive.
+
 Examples:
 
-    url = /path/to/dir/or/file           # without protocol
-    url = "file:///path/to/dir/or/file"  # with protocol
-    url = "stdin:/"                      # to read csv data from stdin
-    url = "stdout:/"                     # to write csv data to stdout
+    url = "/path/to/dir/or/file"           # without protocol
+    url = "file:///path/to/dir/or/file"    # with protocol
+    url = "-"                              # to read csv data from stdin (for load) or
+    url = "-"                              # write csv data to stdout (for unload)
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
@@ -136,26 +130,20 @@ The URL or path of the resource(s) to read from or write to.
 
 Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
 
-- **stdin**:  the stdin protocol can be used to read from standard input; the only valid URL for this protocol is: `stdin:/`.
-
-  This protocol cannot be used for writing.
-
-- **stdout**: the stdout protocol can be used to write to standard output; the only valid URL for this protocol is: `stdout:/`.
-
-  This protocol cannot be used for reading.
-
 - **file**: the file protocol can be used with all supported file systems, local or not.
     - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
     - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; Json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
 Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
 
+In addition the value `-` indicates `stdin` when loading and `stdout` when unloading. This is in line with Unix tools such as tar, which uses `-` to represent stdin/stdout when reading/writing an archive.
+
 Examples:
 
-    url = /path/to/dir/or/file           # without protocol
-    url = "file:///path/to/dir/or/file"  # with protocol
-    url = "stdin:/"                      # to read json data from stdin
-    url = "stdout:/"                     # to write json data to stdout
+    url = "/path/to/dir/or/file"           # without protocol
+    url = "file:///path/to/dir/or/file"    # with protocol
+    url = "-"                              # to read json data from stdin (for load) or
+    url = "-"                              # write json data to stdout (for unload)
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
@@ -358,26 +346,20 @@ The URL or path of the resource(s) to read from or write to.
 
 Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
 
-- **stdin**:  the stdin protocol can be used to read from standard input; the only valid URL for this protocol is: `stdin:/`.
-
-  This protocol cannot be used for writing.
-
-- **stdout**: the stdout protocol can be used to write to standard output; the only valid URL for this protocol is: `stdout:/`.
-
-  This protocol cannot be used for reading.
-
 - **file**: the file protocol can be used with all supported file systems, local or not.
     - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
     - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
 Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
 
+In addition the value `-` indicates `stdin` when loading and `stdout` when unloading. This is in line with Unix tools such as tar, which uses `-` to represent stdin/stdout when reading/writing an archive.
+
 Examples:
 
-    url = /path/to/dir/or/file           # without protocol
-    url = "file:///path/to/dir/or/file"  # with protocol
-    url = "stdin:/"                      # to read csv data from stdin
-    url = "stdout:/"                     # to write csv data to stdout
+    url = "/path/to/dir/or/file"           # without protocol
+    url = "file:///path/to/dir/or/file"    # with protocol
+    url = "-"                              # to read csv data from stdin (for load) or
+    url = "-"                              # write csv data to stdout (for unload)
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
@@ -530,26 +512,20 @@ The URL or path of the resource(s) to read from or write to.
 
 Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
 
-- **stdin**:  the stdin protocol can be used to read from standard input; the only valid URL for this protocol is: `stdin:/`.
-
-  This protocol cannot be used for writing.
-
-- **stdout**: the stdout protocol can be used to write to standard output; the only valid URL for this protocol is: `stdout:/`.
-
-  This protocol cannot be used for reading.
-
 - **file**: the file protocol can be used with all supported file systems, local or not.
     - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
     - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; Json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
 Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
 
+In addition the value `-` indicates `stdin` when loading and `stdout` when unloading. This is in line with Unix tools such as tar, which uses `-` to represent stdin/stdout when reading/writing an archive.
+
 Examples:
 
-    url = /path/to/dir/or/file           # without protocol
-    url = "file:///path/to/dir/or/file"  # with protocol
-    url = "stdin:/"                      # to read json data from stdin
-    url = "stdout:/"                     # to write json data to stdout
+    url = "/path/to/dir/or/file"           # without protocol
+    url = "file:///path/to/dir/or/file"    # with protocol
+    url = "-"                              # to read json data from stdin (for load) or
+    url = "-"                              # write json data to stdout (for unload)
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
@@ -780,7 +756,7 @@ If such a clause is present, the engine will generate as many statements as ther
 
 The column names in the SELECT clause will be used to match column names specified in the mapping. See "mapping" setting for more information.
 
-Important: the query will be parsed because DSBulk needs to knwow which bound variables are present in order to correctly map them to fields. Because the CQL gammar is complex, the parser used internally is not infaillible; please avoid using complex queries and in particular, avoid using complex CQL identifiers; if DSBulk fails to correctly identify bound variables in the query, some fields might be incorrectly mapped.
+Important: the query will be parsed because DSBulk needs to know which bound variables are present in order to correctly map them to fields. Because the CQL grammar is complex, the parser used internally is not infallible; please avoid using complex queries and in particular, avoid using complex CQL identifiers; if DSBulk fails to correctly identify bound variables in the query, some fields might be incorrectly mapped.
 
 Default: **&lt;unspecified&gt;**.
 

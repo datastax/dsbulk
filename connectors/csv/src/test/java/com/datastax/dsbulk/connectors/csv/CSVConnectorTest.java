@@ -110,7 +110,7 @@ class CSVConnectorTest {
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("header = false, url = \"stdin:/\", encoding = ISO-8859-1")
+              ConfigFactory.parseString("header = false, url = -, encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -138,7 +138,7 @@ class CSVConnectorTest {
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("header = false, url = \"stdout:/\", encoding = ISO-8859-1")
+              ConfigFactory.parseString("header = false, url = -, encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -357,7 +357,7 @@ class CSVConnectorTest {
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("header = true, url = \"stdin:/\"")
+              ConfigFactory.parseString("header = true, url = -")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();

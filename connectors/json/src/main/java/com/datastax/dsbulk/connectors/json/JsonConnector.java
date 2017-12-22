@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
+import static com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory.STD;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -131,7 +132,7 @@ public class JsonConnector implements Connector {
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
-      if (!settings.hasPath("url")) {
+      if (!settings.hasPath(URL)) {
         throw new BulkConfigurationException(
             "url is mandatory when using the json connector. Please set connector.json.url "
                 + "and try again. See settings.md or help for more information.",
@@ -198,7 +199,7 @@ public class JsonConnector implements Connector {
 
   @Override
   public boolean isWriteToStandardOutput() {
-    return url.getProtocol().equalsIgnoreCase(LoaderURLStreamHandlerFactory.STDOUT);
+    return url.getProtocol().equalsIgnoreCase(STD) && !read;
   }
 
   @Override
