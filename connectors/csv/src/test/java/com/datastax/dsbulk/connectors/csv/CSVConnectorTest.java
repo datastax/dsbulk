@@ -8,6 +8,7 @@ package com.datastax.dsbulk.connectors.csv;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -464,6 +465,24 @@ class CSVConnectorTest {
         .isEqualTo(
             "\"212.63.180.20\",\"212.63.180.23\",\"3560944660\",\"3560944663\",\"MZ\",\"Mozambique\"");
     connector.close();
+  }
+
+  @Test()
+  void should_error_when_directory_is_not_empty() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Path out = Files.createTempDirectory("test");
+    Path file = out.resolve("output-000001.csv");
+    // will cause the write to fail because the file already exists
+    Files.createFile(file);
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", maxConcurrentFiles = 1",
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    assertThrows(IllegalArgumentException.class, () -> connector.init());
   }
 
   private static List<Record> createRecords() {

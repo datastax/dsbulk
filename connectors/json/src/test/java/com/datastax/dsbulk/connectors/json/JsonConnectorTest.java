@@ -10,6 +10,7 @@ import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -481,6 +482,24 @@ class JsonConnectorTest {
         .isEqualTo(
             "{\"beginning IP Address\":\"212.63.180.20\",\"ending IP Address\":\"212.63.180.23\",\"beginning IP Number\":3560944660,\"ending IP Number\":3560944663,\"ISO 3166 Country Code\":\"MZ\",\"Country Name\":\"Mozambique\"}");
     connector.close();
+  }
+
+  @Test
+  void should_error_when_directory_is_not_empty() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Path out = Files.createTempDirectory("test");
+    Path file = out.resolve("output-000001.json");
+    // will cause the write to fail because the file already exists
+    Files.createFile(file);
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", maxConcurrentFiles = 1",
+                        ConfigUtils.maybeEscapeBackslash(out.toString())))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    assertThrows(IllegalArgumentException.class, () -> connector.init());
   }
 
   private void verifyRecords(List<Record> actual) {

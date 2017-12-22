@@ -260,7 +260,7 @@ public class JsonConnector implements Connector {
         this.root = root;
         if (!IOUtils.isDirectoryEmpty(root)) {
           throw new IllegalArgumentException(
-              "connector.json.url target directory:" + root + " must be empty.");
+              "connector.json.url target directory :" + root + " must be empty.");
         }
       }
     } catch (FileSystemNotFoundException ignored) {

@@ -253,7 +253,7 @@ public class CSVConnector implements Connector {
         }
         if (!IOUtils.isDirectoryEmpty(root)) {
           throw new IllegalArgumentException(
-              "connector.csv.url target directory:" + root + " must be empty.");
+              "connector.csv.url target directory: " + root + " must be empty.");
         }
         this.root = root;
       }
