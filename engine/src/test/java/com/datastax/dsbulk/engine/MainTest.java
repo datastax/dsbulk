@@ -10,6 +10,7 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
+import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.slf4j.event.Level.ERROR;
@@ -236,6 +237,44 @@ class MainTest {
         .contains(logs.getLoggedMessages())
         .doesNotContain("First argument must be subcommand")
         .contains("Cannot find connector 'fromargs'");
+  }
+
+  @Test
+  void should_error_on_populated_target_url_csv() throws Exception {
+    Path unloadDir = null;
+    try {
+      unloadDir = createTempDirectory("test");
+      Files.createFile(unloadDir.resolve("output-000001.csv"));
+
+      new Main(new String[] {"unload", "--connector.csv.url=" + unloadDir.toString()}).run();
+      String err = logs.getAllMessagesAsString();
+      assertThat(err).contains("connector.csv.url target directory").contains("must be empty");
+    } finally {
+      if (unloadDir != null) {
+        deleteRecursively(unloadDir, ALLOW_INSECURE);
+      }
+    }
+  }
+
+  @Test
+  void should_error_on_populated_target_url_json() throws Exception {
+    Path unloadDir = null;
+    try {
+      unloadDir = createTempDirectory("test");
+      Files.createFile(unloadDir.resolve("output-000001.json"));
+
+      new Main(
+              new String[] {
+                "unload", "--connector.name=json", "--connector.json.url=" + unloadDir.toString()
+              })
+          .run();
+      String err = logs.getAllMessagesAsString();
+      assertThat(err).contains("connector.json.url target directory").contains("must be empty");
+    } finally {
+      if (unloadDir != null) {
+        deleteRecursively(unloadDir, ALLOW_INSECURE);
+      }
+    }
   }
 
   @Test

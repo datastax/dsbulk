@@ -259,6 +259,10 @@ public class JsonConnector implements Connector {
           throw new IllegalArgumentException("Directory is not writable: " + root);
         }
         this.root = root;
+        if (!IOUtils.isDirectoryEmpty(root)) {
+          throw new IllegalArgumentException(
+              "connector.json.url target directory :" + root + " must be empty.");
+        }
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to writing to URL directly

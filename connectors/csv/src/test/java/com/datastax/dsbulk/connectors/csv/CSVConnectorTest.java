@@ -8,6 +8,7 @@ package com.datastax.dsbulk.connectors.csv;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -31,12 +32,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.UnicastProcessor;
 
 /** */
 class CSVConnectorTest {
@@ -469,8 +467,8 @@ class CSVConnectorTest {
     connector.close();
   }
 
-  @Test
-  void should_cancel_write_single_file_when_io_error() throws Exception {
+  @Test()
+  void should_error_when_directory_is_not_empty() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
     Path file = out.resolve("output-000001.csv");
@@ -484,41 +482,7 @@ class CSVConnectorTest {
                         ConfigUtils.maybeEscapeBackslash(out.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
-    connector.init();
-    Flux<Record> records = Flux.fromIterable(createRecords());
-    CountDownLatch latch = new CountDownLatch(1);
-    records.doOnCancel(latch::countDown).subscribe(connector.write());
-    assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
-    connector.close();
-  }
-
-  @Test
-  void should_cancel_write_multiple_files_when_io_error() throws Exception {
-    CSVConnector connector = new CSVConnector();
-    Path out = Files.createTempDirectory("test");
-    Path file1 = out.resolve("output-000001.csv");
-    Path file2 = out.resolve("output-000002.csv");
-    // will cause the write workers to fail because the files already exist
-    Files.createFile(file1);
-    Files.createFile(file2);
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", maxConcurrentFiles = 2",
-                        ConfigUtils.maybeEscapeBackslash(out.toString())))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, false);
-    connector.init();
-    UnicastProcessor<Record> records = UnicastProcessor.create();
-    CountDownLatch latch = new CountDownLatch(1);
-    records.doOnCancel(latch::countDown).subscribe(connector.write());
-    List<Record> list = createRecords();
-    records.onNext(list.get(0));
-    // don't send a terminal event as the terminal event could cancel the upstream subscription
-    // before the write workers are created and fail to write.
-    assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
-    connector.close();
+    assertThrows(IllegalArgumentException.class, () -> connector.init());
   }
 
   private static List<Record> createRecords() {
