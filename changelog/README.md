@@ -18,6 +18,7 @@
 - [improvement] DAT-187: Change default for driver.auth.principal from user@DATASTAX.COM to unspecified.
 - [improvement] DAT-192: Add descriptions for load balancing policy settings.
 - [bug] DAT-193: SettingsManager is printing metaSettings to the console. 
+- [improvement] DAT-194: Stdin and stdout urls should use the special "-" token, similar to unix tools.
 
 
 ### 1.0.0-beta2

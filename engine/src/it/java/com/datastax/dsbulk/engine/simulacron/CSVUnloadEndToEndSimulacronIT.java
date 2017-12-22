@@ -344,7 +344,7 @@ class CSVUnloadEndToEndSimulacronIT {
       "-header",
       "false",
       "--connector.csv.url",
-      "stdout:/",
+      "-",
       "--connector.csv.maxConcurrentFiles",
       "1 ",
       "--driver.query.consistency",

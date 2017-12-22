@@ -8,29 +8,19 @@ package com.datastax.dsbulk.commons.url;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory.StdinStdoutUrlStreamHandler;
 import org.junit.jupiter.api.Test;
 
 class LoaderURLStreamHandlerFactoryTest {
 
   @Test
-  void should_handle_stdin_protocol() throws Exception {
+  void should_handle_std_protocol() throws Exception {
     LoaderURLStreamHandlerFactory factory = new LoaderURLStreamHandlerFactory();
-    assertThat(factory.createURLStreamHandler("stdin"))
+    assertThat(factory.createURLStreamHandler("std"))
         .isNotNull()
-        .isInstanceOf(StandardInputURLStreamHandler.class);
-    assertThat(factory.createURLStreamHandler("STDIN"))
+        .isInstanceOf(StdinStdoutUrlStreamHandler.class);
+    assertThat(factory.createURLStreamHandler("STD"))
         .isNotNull()
-        .isInstanceOf(StandardInputURLStreamHandler.class);
-  }
-
-  @Test
-  void should_handle_stdout_protocol() throws Exception {
-    LoaderURLStreamHandlerFactory factory = new LoaderURLStreamHandlerFactory();
-    assertThat(factory.createURLStreamHandler("stdout"))
-        .isNotNull()
-        .isInstanceOf(StandardOutputURLStreamHandler.class);
-    assertThat(factory.createURLStreamHandler("STDOUT"))
-        .isNotNull()
-        .isInstanceOf(StandardOutputURLStreamHandler.class);
+        .isInstanceOf(StdinStdoutUrlStreamHandler.class);
   }
 }

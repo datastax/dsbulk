@@ -151,7 +151,7 @@ class JsonConnectorTest {
       JsonConnector connector = new JsonConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("url = \"stdin:/\", encoding = ISO-8859-1")
+              ConfigFactory.parseString("url = -, encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -180,7 +180,7 @@ class JsonConnectorTest {
       JsonConnector connector = new JsonConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("url = \"stdout:/\", encoding = ISO-8859-1")
+              ConfigFactory.parseString("url = -, encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();

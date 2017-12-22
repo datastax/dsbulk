@@ -63,12 +63,12 @@ Finally, a user may specify impromptu overrides via options on the command line.
 See examples for details.
 
 ## Load Examples
-* Load CSV data from `stdin` to the `ks1.table1` table in a cluster with
-  a `localhost` contact point. Field names in the data match column names in the
+* Load CSV data from `stdin` (represented by a hyphen url value) to the `ks1.table1` table in a 
+  cluster with a `localhost` contact point. Field names in the data match column names in the
   table. Field names are obtained from a *header row* in the data; by default the 
   tool presumes a header exists in each file being loaded:
 
-  `generate_data | dsbulk load -url stdin:/ -k ks1 -t table1`
+  `generate_data | dsbulk load -url - -k ks1 -t table1`
 
 * Specify a few hosts (initial contact points) that belong to the desired cluster and
   load from a local file, without headers:
@@ -98,11 +98,11 @@ See examples for details.
 Unloading is simply the inverse of loading and due to the symmetry, many settings are
 used in both load and unload.
 
-* Unload data to `stdout` from the `ks1.table1` table in a cluster with
-  a `localhost` contact point. Column names in the table map to field names 
+* Unload data to `stdout` (represented by a hyphen url value) from the `ks1.table1` table in a 
+  cluster with a `localhost` contact point. Column names in the table map to field names 
   in the data. Field names must be emitted in a *header row* in the output:
 
-  `dsbulk unload -url stdout:/ -k ks1 -t table1`
+  `dsbulk unload -url - -k ks1 -t table1`
 
 * Unload data to a local directory (which may
   not yet exist):

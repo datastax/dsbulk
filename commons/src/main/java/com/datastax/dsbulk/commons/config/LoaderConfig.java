@@ -86,6 +86,9 @@ public interface LoaderConfig extends Config {
    * <p>The value will be first interpreted directly as a URL; if the parsing fails, the value will
    * be then interpreted as a path on the local filesystem, then converted to a file URL.
    *
+   * <p>If the value is "-" map it to "std:/", to indicate this url represents stdout (when
+   * unloading) and stdin (when loading).
+   *
    * <p>The returned URL is normalized and absolute.
    *
    * @param path path expression.
@@ -95,6 +98,9 @@ public interface LoaderConfig extends Config {
    */
   default URL getURL(String path) {
     String setting = getString(path);
+    if (setting.equals("-")) {
+      setting = "std:/";
+    }
     try {
       return new URI(setting).normalize().toURL();
     } catch (Exception e) {
