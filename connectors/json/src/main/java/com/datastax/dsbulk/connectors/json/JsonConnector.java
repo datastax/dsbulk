@@ -7,7 +7,6 @@
 package com.datastax.dsbulk.connectors.json;
 
 import static com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory.STD;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -15,7 +14,6 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
-import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
@@ -33,7 +31,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Suppliers;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.common.util.concurrent.Uninterruptibles;
 import com.typesafe.config.ConfigException;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -51,22 +49,21 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
-import reactor.core.publisher.SignalType;
-import reactor.core.publisher.WorkQueueProcessor;
+import reactor.core.publisher.Signal;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.concurrent.Queues;
 
 /**
  * A connector for Json files.
@@ -116,13 +113,12 @@ public class JsonConnector implements Connector {
   private String fileNameFormat;
   private int resourceCount;
   private AtomicInteger counter;
-  private ExecutorService threadPool;
-  private WorkQueueProcessor<Record> writeQueueProcessor;
   private ObjectMapper objectMapper;
   private JavaType jsonNodeMapType;
   private List<JsonParser.Feature> parserFeatures;
   private List<JsonGenerator.Feature> generatorFeatures;
   private boolean prettyPrint;
+  private Scheduler scheduler;
 
   @Override
   public RecordMetadata getRecordMetadata() {
@@ -181,14 +177,9 @@ public class JsonConnector implements Connector {
   }
 
   @Override
-  public void close() throws Exception {
-    if (writeQueueProcessor != null) {
-      writeQueueProcessor.awaitAndShutdown(5, SECONDS);
-    }
-    if (threadPool != null) {
-      threadPool.shutdown();
-      threadPool.awaitTermination(5, SECONDS);
-      threadPool.shutdownNow();
+  public void close() {
+    if (scheduler != null) {
+      scheduler.dispose();
     }
   }
 
@@ -203,31 +194,56 @@ public class JsonConnector implements Connector {
   }
 
   @Override
-  public Publisher<Record> read() {
+  public Supplier<? extends Publisher<Record>> read() {
     assert read;
     if (root != null) {
-      return scanRootDirectory().flatMap(this::readURL);
+      return () -> scanRootDirectory().flatMap(this::readURL);
     } else {
-      return readURL(url);
+      return () -> readURL(url);
     }
   }
 
   @Override
-  public Publisher<Publisher<Record>> readByResource() {
+  public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
     if (root != null) {
-      return scanRootDirectory().map(this::readURL);
+      return () -> scanRootDirectory().map(this::readURL);
     } else {
-      return Flux.just(readURL(url));
+      return () -> Flux.just(readURL(url));
     }
   }
 
   @Override
-  public Subscriber<Record> write() {
+  public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
     assert !read;
     if (root != null && maxConcurrentFiles > 1) {
-      return multipleWriteSubscriber();
+      return upstream -> {
+        scheduler = Schedulers.newParallel("json-connector", maxConcurrentFiles);
+        BlockingQueue<PooledJsonWriter> pool = new ArrayBlockingQueue<>(maxConcurrentFiles);
+        for (int i = 0; i < maxConcurrentFiles; i++) {
+          PooledJsonWriter writer = new PooledJsonWriter();
+          pool.add(writer);
+        }
+        return Flux.from(upstream)
+            .window(Queues.SMALL_BUFFER_SIZE)
+            .parallel(maxConcurrentFiles)
+            .runOn(scheduler)
+            .flatMap(
+                records -> {
+                  PooledJsonWriter writer = Uninterruptibles.takeUninterruptibly(pool);
+                  try {
+                    return records.transform(writeRecords(writer));
+                  } finally {
+                    pool.add(writer);
+                  }
+                })
+            .sequential()
+            .doOnTerminate(() -> pool.forEach(PooledJsonWriter::close));
+      };
     } else {
-      return singleWriteSubscriber();
+      return upstream -> {
+        PooledJsonWriter writer = new PooledJsonWriter();
+        return Flux.from(upstream).transform(writeRecords(writer)).doOnTerminate(writer::close);
+      };
     }
   }
 
@@ -259,7 +275,7 @@ public class JsonConnector implements Connector {
           throw new IllegalArgumentException("Directory is not writable: " + root);
         }
         this.root = root;
-        if (!IOUtils.isDirectoryEmpty(root)) {
+        if (IOUtils.isDirectoryNonEmpty(root)) {
           throw new IllegalArgumentException(
               "connector.json.url target directory :" + root + " must be empty.");
         }
@@ -326,11 +342,12 @@ public class JsonConnector implements Connector {
     return Flux.defer(
             () -> {
               try {
-                // this stream will be closed by the flux, do not add it to a try-with-resources block
+                // this stream will be closed by the flux, do not add it to a try-with-resources
+                // block
                 Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
                 return Flux.fromStream(files);
               } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new UncheckedIOException(e);
               }
             })
         .filter(Files::isReadable)
@@ -341,107 +358,86 @@ public class JsonConnector implements Connector {
               try {
                 return file.toUri().toURL();
               } catch (MalformedURLException e) {
-                throw new RuntimeException(e);
+                throw new UncheckedIOException(e);
               }
             });
   }
 
-  @NotNull
-  private Subscriber<Record> singleWriteSubscriber() {
+  private Function<Flux<Record>, Flux<Record>> writeRecords(PooledJsonWriter writer) {
+    return upstream ->
+        upstream
+            .materialize()
+            .map(
+                signal -> {
+                  if (signal.isOnNext()) {
+                    try {
+                      writer.write(signal.get());
+                    } catch (Exception e) {
+                      signal = Signal.error(e);
+                    }
+                  }
+                  return signal;
+                })
+            .dematerialize();
+  }
 
-    return new BaseSubscriber<Record>() {
+  private class PooledJsonWriter {
 
-      private URL url;
-      private JsonGenerator writer;
-      private long currentLine;
+    private URL url;
+    private JsonGenerator writer;
+    private long currentLine;
 
-      private void start() {
-        url = getOrCreateDestinationURL();
-        writer = createJsonWriter(url);
-        currentLine = 0;
-        LOGGER.debug("Writing " + url);
-      }
-
-      @Override
-      protected void hookOnSubscribe(Subscription subscription) {
-        start();
-        subscription.request(Long.MAX_VALUE);
-      }
-
-      @Override
-      protected void hookOnNext(Record record) {
-        if (root != null && currentLine == maxRecords) {
-          end(SignalType.ON_COMPLETE);
-          start();
+    private void write(Record record) {
+      try {
+        if (writer == null) {
+          open();
+        } else if (shouldRoll()) {
+          close();
+          open();
         }
         LOGGER.trace("Writing record {}", record);
-        try {
-          writer.writeStartObject();
-          for (String field : record.fields()) {
-            writer.writeFieldName(field);
-            writer.writeObject(record.getFieldValue(field));
-          }
-          writer.writeEndObject();
-        } catch (IOException e) {
-          throw new UncheckedIOException(e.getMessage(), e);
+        writer.writeStartObject();
+        for (String field : record.fields()) {
+          writer.writeFieldName(field);
+          writer.writeObject(record.getFieldValue(field));
         }
+        writer.writeEndObject();
         currentLine++;
+      } catch (IOException e) {
+        throw new UncheckedIOException(
+            String.format("Error writing to %s: %s", url, e.getMessage()), e);
       }
+    }
 
-      @Override
-      protected void hookOnError(Throwable t) {
-        LOGGER.error(String.format("Error writing to %s: %s", url, t.getMessage()), t);
-      }
+    private boolean shouldRoll() {
+      return root != null && currentLine == maxRecords;
+    }
 
-      @Override
-      protected void hookOnComplete() {
-        LOGGER.debug("Done writing {}", url);
-      }
+    private void open() throws IOException {
+      url = getOrCreateDestinationURL();
+      writer = createJsonWriter(url);
+      currentLine = 0;
+      LOGGER.debug("Writing " + url);
+    }
 
-      @Override
-      protected void hookFinally(SignalType type) {
-        end(type);
-      }
-
-      private void end(SignalType type) {
-        if (writer != null) {
-          try {
-            if (type == SignalType.ON_COMPLETE) {
-              // add one last EOL if the file completed successfully; the writer doesn't do it by default
-              writer.writeRaw(System.lineSeparator());
-            }
-            writer.close();
-          } catch (IOException e) {
-            LOGGER.error(String.format("Could not close %s: %s", url, e.getMessage()), e);
-          }
+    private void close() {
+      if (writer != null) {
+        try {
+          writer.close();
+          LOGGER.debug("Done writing {}", url);
+        } catch (IOException e) {
+          throw new UncheckedIOException(
+              String.format("Error closing %s: %s", url, e.getMessage()), e);
         }
       }
-    };
+    }
   }
 
-  private Subscriber<Record> multipleWriteSubscriber() {
-    threadPool =
-        Executors.newFixedThreadPool(
-            maxConcurrentFiles,
-            new ThreadFactoryBuilder().setNameFormat("json-connector-%d").build());
-    writeQueueProcessor = WorkQueueProcessor.<Record>builder().executor(threadPool).build();
-    for (int i = 0; i < maxConcurrentFiles; i++) {
-      writeQueueProcessor.subscribe(singleWriteSubscriber());
-    }
-    return writeQueueProcessor;
-  }
-
-  private JsonGenerator createJsonWriter(URL url) {
-    try {
-      JsonFactory factory = objectMapper.getFactory();
-      JsonGenerator writer = factory.createGenerator(IOUtils.newBufferedWriter(url, encoding));
-      writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
-      return writer;
-    } catch (Exception e) {
-      LOGGER.error(
-          String.format("Could not create Json writer for %s: %s", url, e.getMessage()), e);
-      throw new RuntimeException(e);
-    }
+  private JsonGenerator createJsonWriter(URL url) throws IOException {
+    JsonFactory factory = objectMapper.getFactory();
+    JsonGenerator writer = factory.createGenerator(IOUtils.newBufferedWriter(url, encoding));
+    writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
+    return writer;
   }
 
   private URL getOrCreateDestinationURL() {
@@ -449,12 +445,11 @@ public class JsonConnector implements Connector {
       try {
         String next = String.format(fileNameFormat, counter.incrementAndGet());
         return root.resolve(next).toUri().toURL();
-      } catch (Exception e) {
-        LOGGER.error(
+      } catch (MalformedURLException e) {
+        throw new UncheckedIOException(
             String.format(
                 "Could not create file URL with format %s: %s", fileNameFormat, e.getMessage()),
             e);
-        throw new RuntimeException(e);
       }
     }
     // assume we are writing to a single URL and ignore fileNameFormat

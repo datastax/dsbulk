@@ -17,8 +17,8 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.UniformReservoir;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
+import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.connectors.api.UnmappableRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
@@ -137,7 +137,7 @@ public class MetricsManager implements AutoCloseable {
   }
 
   private void createMemoryGauges() {
-    final int bytesPerMeg = 1024 * 1024;
+    int bytesPerMeg = 1024 * 1024;
     registry.gauge(
         "memory/used",
         () ->
@@ -348,12 +348,12 @@ public class MetricsManager implements AutoCloseable {
     }
   }
 
-  public Function<Flux<Record>, Flux<Record>> newUnmappableRecordMonitor() {
+  public Function<Flux<Record>, Flux<Record>> newErrorRecordMonitor() {
     return upstream ->
         upstream.doOnNext(
             r -> {
               records.mark();
-              if (r instanceof UnmappableRecord) {
+              if (r instanceof ErrorRecord) {
                 failedRecords.mark();
               } else {
                 successfulRecords.mark();

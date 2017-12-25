@@ -6,8 +6,11 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
+import static com.google.common.io.MoreFiles.deleteRecursively;
+import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Logger;
@@ -19,8 +22,8 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
+import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.connectors.api.UnmappableRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -28,10 +31,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -57,19 +62,8 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.from(connector.read()).collectList().block();
-    assertThat(actual).hasSize(5);
-    assertThat(actual.get(0).values())
-        .containsOnly("1997", "Ford", "E350", "ac, abs, moon", "3000.00");
-    assertThat(actual.get(1).values())
-        .containsOnly("1999", "Chevy", "Venture \"Extended Edition\"", null, "4900.00");
-    assertThat(actual.get(2).values())
-        .containsOnly(
-            "1996", "Jeep", "Grand Cherokee", "MUST SELL!\nair, moon roof, loaded", "4799.00");
-    assertThat(actual.get(3).values())
-        .containsOnly("1999", "Chevy", "Venture \"Extended Edition, Very Large\"", null, "5000.00");
-    assertThat(actual.get(4).values())
-        .containsOnly(null, null, "Venture \"Extended Edition\"", null, "4900.00");
+    List<Record> actual = Flux.defer(connector.read()).collectList().block();
+    assertRecords(actual);
     connector.close();
   }
 
@@ -84,20 +78,73 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.merge(connector.readByResource()).collectList().block();
+    List<Record> actual = Flux.merge(connector.readByResource().get()).collectList().block();
+    assertRecords(actual);
+    connector.close();
+  }
+
+  private static void assertRecords(List<Record> actual) {
     assertThat(actual).hasSize(5);
     assertThat(actual.get(0).values())
-        .containsOnly("1997", "Ford", "E350", "ac, abs, moon", "3000.00");
+        .containsExactly(
+            "1997",
+            "Ford",
+            "E350",
+            "ac, abs, moon",
+            "3000.00", // mapped
+            "1997",
+            "Ford",
+            "E350",
+            "ac, abs, moon",
+            "3000.00"); // indexed
     assertThat(actual.get(1).values())
-        .containsOnly("1999", "Chevy", "Venture \"Extended Edition\"", null, "4900.00");
+        .containsExactly(
+            "1999",
+            "Chevy",
+            "Venture \"Extended Edition\"",
+            null,
+            "4900.00",
+            "1999",
+            "Chevy",
+            "Venture \"Extended Edition\"",
+            null,
+            "4900.00");
     assertThat(actual.get(2).values())
-        .containsOnly(
-            "1996", "Jeep", "Grand Cherokee", "MUST SELL!\nair, moon roof, loaded", "4799.00");
+        .containsExactly(
+            "1996",
+            "Jeep",
+            "Grand Cherokee",
+            "MUST SELL!\nair, moon roof, loaded",
+            "4799.00",
+            "1996",
+            "Jeep",
+            "Grand Cherokee",
+            "MUST SELL!\nair, moon roof, loaded",
+            "4799.00");
     assertThat(actual.get(3).values())
-        .containsOnly("1999", "Chevy", "Venture \"Extended Edition, Very Large\"", null, "5000.00");
+        .containsExactly(
+            "1999",
+            "Chevy",
+            "Venture \"Extended Edition, Very Large\"",
+            null,
+            "5000.00",
+            "1999",
+            "Chevy",
+            "Venture \"Extended Edition, Very Large\"",
+            null,
+            "5000.00");
     assertThat(actual.get(4).values())
-        .containsOnly(null, null, "Venture \"Extended Edition\"", null, "4900.00");
-    connector.close();
+        .containsExactly(
+            null,
+            null,
+            "Venture \"Extended Edition\"",
+            null,
+            "4900.00",
+            null,
+            null,
+            "Venture \"Extended Edition\"",
+            null,
+            "4900.00");
   }
 
   @Test
@@ -115,7 +162,7 @@ class CSVConnectorTest {
       connector.configure(settings, true);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isFalse();
-      List<Record> actual = Flux.from(connector.read()).collectList().block();
+      List<Record> actual = Flux.defer(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
       assertThat(actual.get(0).values()).containsExactly("fóô", "bàr", "qïx");
@@ -143,12 +190,9 @@ class CSVConnectorTest {
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isTrue();
-      Flux<Record> records =
-          Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
-              .publish()
-              .autoConnect(2);
-      records.subscribe(connector.write());
-      records.blockLast();
+      Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
+          .transform(connector.write())
+          .blockLast();
       assertThat(new String(baos.toByteArray(), "ISO-8859-1"))
           .isEqualTo("fóô,bàr,qïx" + System.lineSeparator());
 
@@ -169,7 +213,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -183,7 +227,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(300);
+    assertThat(Flux.merge(connector.readByResource().get()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -202,7 +246,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -215,7 +259,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -228,7 +272,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(500);
+    assertThat(Flux.merge(connector.readByResource().get()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -244,7 +288,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -252,99 +296,111 @@ class CSVConnectorTest {
   void should_write_single_file() throws Exception {
     CSVConnector connector = new CSVConnector();
     // test directory creation
-    Path out = Files.createTempDirectory("test").resolve("nonexistent");
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1",
-                        ConfigUtils.maybeEscapeBackslash(out.toString())))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, false);
-    connector.init();
-    assertThat(connector.isWriteToStandardOutput()).isFalse();
-    Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
-    records.subscribe(connector.write());
-    records.blockLast();
-    connector.close();
-    List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
-    assertThat(actual).hasSize(7);
-    assertThat(actual)
-        .containsExactly(
-            "Year,Make,Model,Description,Price",
-            "1997,Ford,E350,\"ac, abs, moon\",3000.00",
-            "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
-            "1996,Jeep,Grand Cherokee,\"MUST SELL!",
-            "air, moon roof, loaded\",4799.00",
-            "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
-            ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      assertThat(connector.isWriteToStandardOutput()).isFalse();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+          .containsExactly(
+              "Year,Make,Model,Description,Price",
+              "1997,Ford,E350,\"ac, abs, moon\",3000.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+              "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+              "air, moon roof, loaded\",4799.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+              ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    } finally {
+      deleteRecursively(dir, ALLOW_INSECURE);
+    }
   }
 
   @Test
   void should_write_multiple_files() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 4",
-                        ConfigUtils.maybeEscapeBackslash(out.toString())))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, false);
-    connector.init();
-    assertThat(connector.isWriteToStandardOutput()).isFalse();
-    Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
-    records.subscribe(connector.write());
-    records.blockLast();
-    connector.close();
-    List<String> actual = FileUtils.readAllLinesInDirectory(out, UTF_8);
-    assertThat(actual)
-        .containsOnly(
-            "Year,Make,Model,Description,Price",
-            "1997,Ford,E350,\"ac, abs, moon\",3000.00",
-            "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
-            "1996,Jeep,Grand Cherokee,\"MUST SELL!",
-            "air, moon roof, loaded\",4799.00",
-            "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
-            ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 4",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      assertThat(connector.isWriteToStandardOutput()).isFalse();
+      // repeat the records 200 times to fully exercise multiple file writing
+      Flux.fromIterable(createRecords()).repeat(200).transform(connector.write()).blockLast();
+      connector.close();
+      List<String> actual =
+          FileUtils.readAllLinesInDirectoryAsStream(out, UTF_8)
+              .sorted()
+              .distinct()
+              .collect(Collectors.toList());
+      assertThat(actual)
+          .containsExactly(
+              ",,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+              "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+              "1997,Ford,E350,\"ac, abs, moon\",3000.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+              "Year,Make,Model,Description,Price",
+              "air, moon roof, loaded\",4799.00");
+    } finally {
+      deleteRecursively(out, ALLOW_INSECURE);
+    }
   }
 
   @Test
   void should_roll_file_when_max_lines_reached() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 4",
-                        ConfigUtils.maybeEscapeBackslash(out.toString())))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, false);
-    connector.init();
-    assertThat(connector.isWriteToStandardOutput()).isFalse();
-    Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
-    records.subscribe(connector.write());
-    records.blockLast();
-    connector.close();
-    List<String> csv1 = Files.readAllLines(out.resolve("output-000001.csv"));
-    List<String> csv2 = Files.readAllLines(out.resolve("output-000002.csv"));
-    assertThat(csv1)
-        .hasSize(5); // 1 header + 4 lines (3 records actually, but one record spans over 2 lines)
-    assertThat(csv2).hasSize(3); // 1 header + 2 lines
-    assertThat(csv1)
-        .containsOnly(
-            "Year,Make,Model,Description,Price",
-            "1997,Ford,E350,\"ac, abs, moon\",3000.00",
-            "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
-            "1996,Jeep,Grand Cherokee,\"MUST SELL!",
-            "air, moon roof, loaded\",4799.00");
-    assertThat(csv2)
-        .containsOnly(
-            "Year,Make,Model,Description,Price",
-            "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
-            ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 4",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      assertThat(connector.isWriteToStandardOutput()).isFalse();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      List<String> csv1 = Files.readAllLines(out.resolve("output-000001.csv"));
+      List<String> csv2 = Files.readAllLines(out.resolve("output-000002.csv"));
+      assertThat(csv1)
+          .hasSize(5); // 1 header + 4 lines (3 records actually, but one record spans over 2 lines)
+      assertThat(csv2).hasSize(3); // 1 header + 2 lines
+      assertThat(csv1)
+          .containsExactly(
+              "Year,Make,Model,Description,Price",
+              "1997,Ford,E350,\"ac, abs, moon\",3000.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+              "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+              "air, moon roof, loaded\",4799.00");
+      assertThat(csv2)
+          .containsExactly(
+              "Year,Make,Model,Description,Price",
+              "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+              ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    } finally {
+      deleteRecursively(out, ALLOW_INSECURE);
+    }
   }
 
   @Test
@@ -361,11 +417,11 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
-      List<Record> actual = Flux.from(connector.read()).collectList().block();
+      List<Record> actual = Flux.defer(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
-      assertThat(actual.get(0)).isInstanceOf(UnmappableRecord.class);
+      assertThat(actual.get(0)).isInstanceOf(ErrorRecord.class);
       assertThat(actual.get(0).getSource()).isEqualTo("value1,value2,value3");
-      assertThat(((UnmappableRecord) actual.get(0)).getError())
+      assertThat(((ErrorRecord) actual.get(0)).getError())
           .isInstanceOf(IllegalArgumentException.class);
       assertThat(actual.get(0).values()).isEmpty();
       connector.close();
@@ -384,7 +440,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(450);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(450);
     connector.close();
   }
 
@@ -399,7 +455,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(0);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(0);
     connector.close();
   }
 
@@ -413,7 +469,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(50);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(50);
     connector.close();
   }
 
@@ -427,7 +483,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(5);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(5);
     connector.close();
   }
 
@@ -443,7 +499,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(25);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(25);
     connector.close();
   }
 
@@ -459,7 +515,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.read()).collectList().block();
+    List<Record> records = Flux.defer(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getSource().toString().trim())
         .isEqualTo(
@@ -471,18 +527,80 @@ class CSVConnectorTest {
   void should_error_when_directory_is_not_empty() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
-    Path file = out.resolve("output-000001.csv");
-    // will cause the write to fail because the file already exists
-    Files.createFile(file);
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", maxConcurrentFiles = 1",
-                        ConfigUtils.maybeEscapeBackslash(out.toString())))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, false);
-    assertThrows(IllegalArgumentException.class, () -> connector.init());
+    try {
+      Path file = out.resolve("output-000001.csv");
+      // will cause the write to fail because the file already exists
+      Files.createFile(file);
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", maxConcurrentFiles = 1",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      assertThrows(IllegalArgumentException.class, connector::init);
+    } finally {
+      deleteRecursively(out, ALLOW_INSECURE);
+    }
+  }
+
+  @Test
+  void should_abort_write_single_file_when_io_error() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Path out = Files.createTempDirectory("test");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", maxConcurrentFiles = 1",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Path file = out.resolve("output-000001.csv");
+      // will cause the write to fail because the file already exists
+      Files.createFile(file);
+      assertThatThrownBy(
+              () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
+          .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
+      connector.close();
+    } finally {
+      deleteRecursively(out, ALLOW_INSECURE);
+    }
+  }
+
+  @Test
+  void should_abort_write_multiple_files_when_io_error() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Path out = Files.createTempDirectory("test");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", maxConcurrentFiles = 2",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Path file1 = out.resolve("output-000001.csv");
+      Path file2 = out.resolve("output-000002.csv");
+      // will cause the write workers to fail because the files already exist
+      Files.createFile(file1);
+      Files.createFile(file2);
+      assertThatThrownBy(
+              () ->
+                  Flux.fromIterable(createRecords())
+                      .repeat(100)
+                      .transform(connector.write())
+                      .blockLast())
+          .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
+      connector.close();
+    } finally {
+      deleteRecursively(out, ALLOW_INSECURE);
+    }
   }
 
   private static List<Record> createRecords() {

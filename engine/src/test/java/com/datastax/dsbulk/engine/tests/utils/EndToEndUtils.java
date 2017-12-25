@@ -4,13 +4,15 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.commons.tests.utils;
+package com.datastax.dsbulk.engine.tests.utils;
 
+import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
+import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -30,9 +32,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings("SameParameterValue")
+/** */
 public class EndToEndUtils {
 
   public static RequestPrime createSimpleParametrizedQuery(String query) {
@@ -62,8 +65,8 @@ public class EndToEndUtils {
       HashMap<String, Object> row = new HashMap<>();
       row.put("country_code", "country" + Integer.toString(i));
       row.put("country_name", "country" + Integer.toString(i));
-      row.put("beginning_ip_address", "127.0.0." + Integer.toString(i));
-      row.put("ending_ip_address", "127.2.0." + Integer.toString(i));
+      row.put("beginning_ip_address", "127.0.0.1");
+      row.put("ending_ip_address", "127.2.0.1");
       row.put("beginning_ip_number", Integer.toString(i));
       row.put("ending_ip_number", Integer.toString(i));
       rows.add(row);
@@ -179,5 +182,12 @@ public class EndToEndUtils {
     configurator.setContext(context);
     context.reset();
     configurator.doConfigure(ClassLoader.getSystemResource("logback-test.xml"));
+  }
+
+  public static void setProductionKey() {
+    ch.qos.logback.classic.Logger root =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    LoggerContext lc = root.getLoggerContext();
+    lc.putProperty(PRODUCTION_KEY, "true");
   }
 }

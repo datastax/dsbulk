@@ -112,7 +112,7 @@ public class UnloadWorkflow implements Workflow {
   }
 
   @Override
-  public void execute() throws InterruptedException {
+  public void execute() {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Record> flux;
@@ -121,9 +121,10 @@ public class UnloadWorkflow implements Workflow {
     } else {
       flux = parallelFlux();
     }
-    flux = flux.publish().autoConnect(2);
-    flux.subscribe(connector.write());
-    flux.blockLast();
+    flux.compose(connector.write())
+        .transform(metricsManager.newErrorRecordMonitor())
+        .transform(logManager.newRecordErrorHandler())
+        .blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
@@ -137,10 +138,11 @@ public class UnloadWorkflow implements Workflow {
             statement ->
                 executor
                     .readReactive(statement)
+                    .transform(logManager.newAttemptedItemsCounter())
                     .transform(logManager.newReadErrorHandler())
                     .map(readResultMapper::map)
-                    .transform(metricsManager.newUnmappableRecordMonitor())
-                    .transform(logManager.newUnmappableRecordErrorHandler())
+                    .transform(metricsManager.newErrorRecordMonitor())
+                    .transform(logManager.newRecordErrorHandler())
                     .subscribeOn(scheduler),
             Runtime.getRuntime().availableProcessors());
   }
@@ -154,8 +156,8 @@ public class UnloadWorkflow implements Workflow {
         .runOn(scheduler)
         .map(readResultMapper::map)
         .sequential()
-        .transform(metricsManager.newUnmappableRecordMonitor())
-        .transform(logManager.newUnmappableRecordErrorHandler());
+        .transform(metricsManager.newErrorRecordMonitor())
+        .transform(logManager.newRecordErrorHandler());
   }
 
   @Override

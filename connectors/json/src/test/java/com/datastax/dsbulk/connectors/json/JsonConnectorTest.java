@@ -10,6 +10,7 @@ import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Logger;
@@ -31,10 +32,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -65,7 +68,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    List<Record> actual = Flux.defer(connector.read()).collectList().block();
     verifyRecords(actual);
     connector.close();
   }
@@ -82,7 +85,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    List<Record> actual = Flux.defer(connector.read()).collectList().block();
     verifyRecords(actual);
     connector.close();
   }
@@ -100,7 +103,7 @@ class JsonConnectorTest {
     connector.configure(settings, true);
     connector.init();
     // should complete with 0 records.
-    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    List<Record> actual = Flux.defer(connector.read()).collectList().block();
     assertThat(actual).hasSize(0);
     connector.close();
   }
@@ -118,7 +121,7 @@ class JsonConnectorTest {
     connector.configure(settings, true);
     connector.init();
     // should complete with 0 records.
-    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    List<Record> actual = Flux.defer(connector.read()).collectList().block();
     assertThat(actual).hasSize(0);
     connector.close();
   }
@@ -134,7 +137,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.merge(connector.readByResource()).collectList().block();
+    List<Record> actual = Flux.merge(connector.readByResource().get()).collectList().block();
     verifyRecords(actual);
     connector.close();
   }
@@ -154,7 +157,7 @@ class JsonConnectorTest {
       connector.configure(settings, true);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isFalse();
-      List<Record> actual = Flux.from(connector.read()).collectList().block();
+      List<Record> actual = Flux.defer(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(objectMapper.readTree(line));
       assertThat(actual.get(0).getFieldValue("fóô")).isEqualTo(factory.textNode("bàr"));
@@ -183,14 +186,11 @@ class JsonConnectorTest {
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isTrue();
-      Flux<Record> records =
-          Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
-              .publish()
-              .autoConnect(2);
-      records.subscribe(connector.write());
-      records.blockLast();
+      Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
+          .transform(connector.write())
+          .blockLast();
       assertThat(new String(baos.toByteArray(), "ISO-8859-1"))
-          .isEqualTo("{\"0\":\"fóô\",\"1\":\"bàr\",\"2\":\"qïx\"}" + System.lineSeparator());
+          .isEqualTo("{\"0\":\"fóô\",\"1\":\"bàr\",\"2\":\"qïx\"}");
       connector.close();
     } finally {
       System.setOut(stdout);
@@ -208,7 +208,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -222,7 +222,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(300);
+    assertThat(Flux.merge(connector.readByResource().get()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -241,7 +241,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -254,7 +254,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -267,7 +267,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(500);
+    assertThat(Flux.merge(connector.readByResource().get()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -283,7 +283,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -291,7 +291,8 @@ class JsonConnectorTest {
   void should_write_single_file() throws Exception {
     JsonConnector connector = new JsonConnector();
     // test directory creation
-    Path out = Files.createTempDirectory("test").resolve("nonexistent");
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
     try {
       LoaderConfig settings =
           new DefaultLoaderConfig(
@@ -303,9 +304,7 @@ class JsonConnectorTest {
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isFalse();
-      Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
-      records.subscribe(connector.write());
-      records.blockLast();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
       assertThat(actual).hasSize(5);
@@ -317,7 +316,7 @@ class JsonConnectorTest {
               "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteRecursively(dir, ALLOW_INSECURE);
     }
   }
 
@@ -336,11 +335,14 @@ class JsonConnectorTest {
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isFalse();
-      Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
-      records.subscribe(connector.write());
-      records.blockLast();
+      // repeat the records 200 times to fully exercise multiple file writing
+      Flux.fromIterable(createRecords()).repeat(200).transform(connector.write()).blockLast();
       connector.close();
-      List<String> actual = FileUtils.readAllLinesInDirectory(out, UTF_8);
+      List<String> actual =
+          FileUtils.readAllLinesInDirectoryAsStream(out, UTF_8)
+              .sorted()
+              .distinct()
+              .collect(Collectors.toList());
       assertThat(actual)
           .containsOnly(
               "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0}",
@@ -369,9 +371,7 @@ class JsonConnectorTest {
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isFalse();
-      Flux<Record> records = Flux.fromIterable(createRecords()).publish().autoConnect(2);
-      records.subscribe(connector.write());
-      records.blockLast();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> json1 = Files.readAllLines(out.resolve("output-000001.json"));
       List<String> json2 = Files.readAllLines(out.resolve("output-000002.json"));
@@ -401,7 +401,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(450);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(450);
     connector.close();
   }
 
@@ -416,7 +416,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(0);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(0);
     connector.close();
   }
 
@@ -430,7 +430,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(50);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(50);
     connector.close();
   }
 
@@ -444,7 +444,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(5);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(5);
     connector.close();
   }
 
@@ -460,7 +460,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(25);
+    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(25);
     connector.close();
   }
 
@@ -476,7 +476,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.read()).collectList().block();
+    List<Record> records = Flux.defer(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getSource().toString().trim())
         .isEqualTo(
@@ -488,18 +488,80 @@ class JsonConnectorTest {
   void should_error_when_directory_is_not_empty() throws Exception {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
-    Path file = out.resolve("output-000001.json");
-    // will cause the write to fail because the file already exists
-    Files.createFile(file);
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", maxConcurrentFiles = 1",
-                        ConfigUtils.maybeEscapeBackslash(out.toString())))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, false);
-    assertThrows(IllegalArgumentException.class, () -> connector.init());
+    try {
+      Path file = out.resolve("output-000001.json");
+      // will cause the write to fail because the file already exists
+      Files.createFile(file);
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", maxConcurrentFiles = 1",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      assertThrows(IllegalArgumentException.class, connector::init);
+    } finally {
+      deleteRecursively(out, ALLOW_INSECURE);
+    }
+  }
+
+  @Test
+  void should_abort_write_single_file_when_io_error() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Path out = Files.createTempDirectory("test");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", maxConcurrentFiles = 1",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Path file = out.resolve("output-000001.json");
+      // will cause the write to fail because the file already exists
+      Files.createFile(file);
+      assertThatThrownBy(
+              () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
+          .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
+      connector.close();
+    } finally {
+      deleteRecursively(out, ALLOW_INSECURE);
+    }
+  }
+
+  @Test
+  void should_abort_write_multiple_files_when_io_error() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Path out = Files.createTempDirectory("test");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", maxConcurrentFiles = 2",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Path file1 = out.resolve("output-000001.json");
+      Path file2 = out.resolve("output-000002.json");
+      // will cause the write workers to fail because the files already exist
+      Files.createFile(file1);
+      Files.createFile(file2);
+      assertThatThrownBy(
+              () ->
+                  Flux.fromIterable(createRecords())
+                      .repeat(100)
+                      .transform(connector.write())
+                      .blockLast())
+          .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
+      connector.close();
+    } finally {
+      deleteRecursively(out, ALLOW_INSECURE);
+    }
   }
 
   private void verifyRecords(List<Record> actual) {
