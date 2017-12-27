@@ -6,14 +6,12 @@
  */
 package com.datastax.dsbulk.connectors.cql;
 
-import static com.datastax.driver.core.BatchStatement.Type.COUNTER;
-import static com.datastax.driver.core.BatchStatement.Type.LOGGED;
-import static com.datastax.driver.core.BatchStatement.Type.UNLOGGED;
-import static com.google.common.base.Preconditions.checkArgument;
+import static com.datastax.dsbulk.commons.cql3.CqlLexer.WS;
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
+import com.datastax.dsbulk.commons.cql3.CqlLexer;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import java.io.Reader;
@@ -24,7 +22,15 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CommonTokenFactory;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.UnbufferedCharStream;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link LineNumberReader reader} for CQL script files.
@@ -33,16 +39,20 @@ import org.jetbrains.annotations.NotNull;
  *
  * <ol>
  *   <li>Single-line: each line is assumed to contain one single, complete statement.
- *   <li>Multi-line: statements can span accross multiple lines.
+ *   <li>Multi-line: statements can span across multiple lines.
  * </ol>
  *
- * The single-line mode is more reliable and considerably faster (about 20 times faster) then the
- * multi-line mode.
+ * The single-line mode is considerably faster (about 20 times faster) then the multi-line mode.
  *
  * <p>The multi-line mode, however, is the only suitable mode if the script contains statements
- * spanning multiple lines, because it actually performs a high-level parsing and is capable of
- * detecting statement boundaries in the file. It is compatible with all versions of the CQL
- * grammar.
+ * spanning multiple lines, because it parses the input file and is thus capable of detecting
+ * statement boundaries in the file.
+ *
+ * <p>The multi-line mode is compatible with CQL 3.4.5 (as used in Apache Cassandra 3.11.1). Future
+ * versions of CQL might introduce new grammar rules that this reader will not be able to parse; the
+ * reader will emit a warning in such situations.
+ *
+ * <p>Note that both modes discard comments found in the script.
  *
  * <p>This reader also implements {@link Iterable} and can be used in a regular for-loop block to
  * iterate over the statements contained in the underlying CQL script.
@@ -60,15 +70,10 @@ import org.jetbrains.annotations.NotNull;
  */
 public class CqlScriptReader extends LineNumberReader implements Iterable<Statement> {
 
-  private static final char SEMICOLON = ';';
+  private static final Logger LOGGER = LoggerFactory.getLogger(CqlScriptReader.class);
+
   private static final char DASH = '-';
   private static final char SLASH = '/';
-  private static final char STAR = '*';
-  private static final char SINGLE_QUOTE = '\'';
-  private static final char DOUBLE_QUOTE = '"';
-  private static final char DOLLAR = '$';
-  private static final char LINE_FEED = '\n';
-  private static final char CARRIAGE_RETURN = '\r';
 
   private final Parser parser;
 
@@ -189,235 +194,91 @@ public class CqlScriptReader extends LineNumberReader implements Iterable<Statem
     }
   }
 
-  private static class MultiLineParseContext {
-
-    private BatchStatement batch;
-  }
-
   private class MultiLineParser implements Parser {
 
+    private CqlLexer lexer;
+
+    private MultiLineParser() {
+      lexer = new CqlLexer(new UnbufferedCharStream(CqlScriptReader.this));
+      lexer.setTokenFactory(new CommonTokenFactory(true));
+      lexer.removeErrorListeners();
+      lexer.addErrorListener(
+          new BaseErrorListener() {
+            @Override
+            public void syntaxError(
+                Recognizer<?, ?> recognizer,
+                Object offendingSymbol,
+                int line,
+                int charPositionInLine,
+                String msg,
+                RecognitionException e) {
+              LOGGER.warn("{}:{}: {}", line, charPositionInLine, msg);
+            }
+          });
+    }
+
     @Override
-    public Statement parseNext() throws IOException {
-      StringBuilder sb = new StringBuilder();
-      int current;
-      MultiLineParsePhase phase = MultiLineParsePhase.WHITESPACE;
-      MultiLineParseContext ctx = new MultiLineParseContext();
-      int l = 0, col = 0;
-      while ((current = read()) != -1) {
-        char c = (char) current;
-        col = l < getLineNumber() ? 1 : col + 1;
-        l = getLineNumber();
-        phase = phase.parseAndAdvance(c, sb, l, col, ctx);
-        if (phase == MultiLineParsePhase.STATEMENT_END) {
-          break;
-        }
-      }
-      if (phase != MultiLineParsePhase.WHITESPACE && phase != MultiLineParsePhase.STATEMENT_END) {
-        throw new IllegalStateException(String.format("Premature EOF at line %d", getLineNumber()));
-      }
-      if (ctx.batch != null) {
-        return ctx.batch;
-      }
-      return sb.length() == 0 ? null : new SimpleStatement(sb.toString());
-    }
-  }
-
-  private enum MultiLineParsePhase {
-    WHITESPACE {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        switch (c) {
-          case SLASH:
-            return COMMENT_START;
-          case DASH:
-            return SINGLE_LINE_COMMENT;
+    public Statement parseNext() {
+      StringBuilder buffer = new StringBuilder();
+      StringBuilder whitespace = new StringBuilder();
+      boolean batchMode = false;
+      BatchStatement batch = null;
+      while (true) {
+        Token t = lexer.nextToken();
+        switch (t.getType()) {
+          case CqlLexer.K_BEGIN:
+            batchMode = true;
+            break;
+          case CqlLexer.K_APPLY:
+            batchMode = false;
+            break;
+          case CqlLexer.K_UNLOGGED:
+            if (batchMode) {
+              batch = new BatchStatement(BatchStatement.Type.UNLOGGED);
+            }
+            break;
+          case CqlLexer.K_COUNTER:
+            if (batchMode) {
+              batch = new BatchStatement(BatchStatement.Type.COUNTER);
+            }
+            break;
+          case CqlLexer.K_BATCH:
+            if (batchMode && batch == null) {
+              batch = new BatchStatement(BatchStatement.Type.UNLOGGED);
+            }
+            break;
+          case CqlLexer.EOS:
+            if (batchMode) {
+              assert batch != null;
+              batch.add(new SimpleStatement(buffer.toString()));
+              buffer.setLength(0);
+              break;
+            } else if (batch != null) {
+              return batch;
+            } else {
+              return new SimpleStatement(buffer.toString());
+            }
+          case CqlLexer.EOF:
+            if (buffer.length() > 0) {
+              return new SimpleStatement(buffer.toString());
+            }
+            return null;
+          case CqlLexer.COMMENT:
+          case CqlLexer.MULTILINE_COMMENT:
+            break;
+          case WS:
+            if (buffer.length() > 0) {
+              whitespace.append(t.getText());
+            }
+            break;
           default:
-            if (!Character.isWhitespace(c)) {
-              sb.append(c);
-              return STATEMENT_START;
+            if (whitespace.length() > 0) {
+              buffer.append(whitespace);
             }
-            return WHITESPACE;
+            whitespace.setLength(0);
+            buffer.append(t.getText());
         }
       }
-    },
-
-    STATEMENT_START {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        switch (c) {
-          case SINGLE_QUOTE:
-            sb.append(c);
-            return STRING_LITERAL;
-          case DOUBLE_QUOTE:
-            sb.append(c);
-            return QUOTED_IDENTIFIER;
-          case SEMICOLON:
-            sb.append(c);
-            if (ctx.batch == null) {
-              return STATEMENT_END;
-            }
-            ctx.batch.add(new SimpleStatement(sb.toString()));
-            sb.setLength(0);
-            return WHITESPACE;
-          case DOLLAR:
-            sb.append(c);
-            return DOLLAR_QUOTED_STRING_START;
-          default:
-            sb.append(c);
-            if (sb.length() == 5 && endsWithIgnoreCase(sb, "BEGIN")) {
-              return BATCH_START;
-            }
-            if (sb.length() == 5 && endsWithIgnoreCase(sb, "APPLY")) {
-              return BATCH_END;
-            }
-            return STATEMENT_START;
-        }
-      }
-    },
-
-    STATEMENT_END {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        checkArgument(c == SEMICOLON, "Expecting ';', got %s (at line %s, col %s)", c, line, col);
-        sb.append(c);
-        return WHITESPACE;
-      }
-    },
-
-    COMMENT_START {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        checkArgument(
-            c == SLASH || c == STAR,
-            "Expecting '/' or '*', got %s (at line %s, col %s)",
-            c,
-            line,
-            col);
-        return c == SLASH ? SINGLE_LINE_COMMENT : MULTI_LINE_COMMENT_START;
-      }
-    },
-
-    SINGLE_LINE_COMMENT {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        return c == LINE_FEED || c == CARRIAGE_RETURN ? WHITESPACE : SINGLE_LINE_COMMENT;
-      }
-    },
-
-    MULTI_LINE_COMMENT_START {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        return c == STAR ? MULTI_LINE_COMMENT_END : MULTI_LINE_COMMENT_START;
-      }
-    },
-
-    MULTI_LINE_COMMENT_END {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        return c == SLASH ? WHITESPACE : MULTI_LINE_COMMENT_START;
-      }
-    },
-
-    STRING_LITERAL {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        sb.append(c);
-        return c == SINGLE_QUOTE ? STATEMENT_START : STRING_LITERAL;
-      }
-    },
-
-    QUOTED_IDENTIFIER {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        sb.append(c);
-        return c == DOUBLE_QUOTE ? STATEMENT_START : QUOTED_IDENTIFIER;
-      }
-    },
-
-    DOLLAR_QUOTED_STRING_START {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        sb.append(c);
-        return c == DOLLAR ? DOLLAR_QUOTED_STRING_CONTENTS : STATEMENT_START;
-      }
-    },
-
-    DOLLAR_QUOTED_STRING_CONTENTS {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        sb.append(c);
-        return c == DOLLAR ? DOLLAR_QUOTED_STRING_END : DOLLAR_QUOTED_STRING_CONTENTS;
-      }
-    },
-
-    DOLLAR_QUOTED_STRING_END {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        sb.append(c);
-        return c == DOLLAR ? STATEMENT_START : DOLLAR_QUOTED_STRING_CONTENTS;
-      }
-    },
-
-    BATCH_START {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        sb.append(c);
-        if (endsWithIgnoreCase(sb, "UNLOGGED")) {
-          ctx.batch = new BatchStatement(UNLOGGED);
-        } else if (endsWithIgnoreCase(sb, "LOGGED")) {
-          ctx.batch = new BatchStatement(LOGGED);
-        } else if (endsWithIgnoreCase(sb, "COUNTER")) {
-          ctx.batch = new BatchStatement(COUNTER);
-        } else if (endsWithIgnoreCase(sb, "BATCH")) {
-          if (ctx.batch == null) {
-            ctx.batch = new BatchStatement();
-          }
-          sb.setLength(0);
-          return WHITESPACE;
-        }
-        return BATCH_START;
-      }
-    },
-
-    BATCH_END {
-      @Override
-      MultiLineParsePhase parseAndAdvance(
-          char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx) {
-        sb.append(c);
-        return c == SEMICOLON ? STATEMENT_END : BATCH_END;
-      }
-    };
-
-    abstract MultiLineParsePhase parseAndAdvance(
-        char c, StringBuilder sb, int line, int col, MultiLineParseContext ctx);
-  }
-
-  private static boolean endsWithIgnoreCase(StringBuilder sb, String suffix) {
-    int length = sb.length();
-    int span = suffix.length();
-    if (length >= span) {
-      for (int i = 1; i <= span; i++) {
-        char c0 = sb.charAt(length - i);
-        char c1 = suffix.charAt(span - i);
-        if (Character.toUpperCase(c0) != c1) {
-          return false;
-        }
-      }
-      return true;
     }
-    return false;
   }
 }
