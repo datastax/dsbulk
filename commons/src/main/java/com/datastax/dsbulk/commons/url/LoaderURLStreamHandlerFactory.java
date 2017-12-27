@@ -28,8 +28,8 @@ import java.net.URLStreamHandlerFactory;
 public class LoaderURLStreamHandlerFactory implements URLStreamHandlerFactory {
 
   /**
-   * The scheme for standard input and standard output URLs. The only supported URL with such
-   * scheme is {@code std:/}.
+   * The scheme for standard input and standard output URLs. The only supported URL with such scheme
+   * is {@code std:/}.
    */
   public static final String STD = "std";
 
