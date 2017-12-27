@@ -37,7 +37,7 @@
     <java.version>1.8</java.version>
     <driver.version>1.4.2</driver.version>
     <reactive-streams.version>1.0.1</reactive-streams.version>
-    <rx-java.version>2.1.7</rx-java.version>
+    <rx-java.version>2.1.8</rx-java.version>
     <reactor.version>Bismuth-SR4</reactor.version>
     <config.version>1.3.2</config.version>
     <guava.version>23.5-jre</guava.version>
