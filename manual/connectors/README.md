@@ -44,9 +44,7 @@ When reading, connectors act as publishers and emit data read from their datasou
 
 Read operations return `Suppliers` of `Publisher`s. 
 
-All publishers are guaranteed to be subscribed only once; implementors are allowed to optimize for single-subscriber use cases, whenever possible. 
-
-If possible, implementors are allowed to memoize suppliers whenever possible. If however the connector needs to open resources for reading (for example, open database connections), it is preferable to avoid memoizing them. 
+All publishers are guaranteed to be subscribed only once; implementors are allowed to optimize for single-subscriber use cases, whenever possible. Implementors are also allowed to memoize suppliers whenever possible or desirable. 
 
 Reading by resource: connectors that are able to distinguish natural boundaries when reading (e.g. when reading from more than one file, or reading from more than one database table) should implement `readByResource()` by emitting their records grouped by such resources; this allows DSBulk to optimize read operations, and is specially valuable if records in the original dataset are grouped by partition key inside each resource, because this natural grouping can thus be preserved. If, however, there is no distinguishable boundaries in the dataset, then this method can be derived from the `read()` method, for example (using Reactor Framework):
 

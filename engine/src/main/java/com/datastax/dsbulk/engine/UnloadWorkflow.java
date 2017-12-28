@@ -151,6 +151,7 @@ public class UnloadWorkflow implements Workflow {
   private Flux<Record> parallelFlux() {
     return Flux.fromIterable(readStatements)
         .flatMap(executor::readReactive)
+        .transform(logManager.newAttemptedItemsCounter())
         .transform(logManager.newReadErrorHandler())
         .parallel()
         .runOn(scheduler)

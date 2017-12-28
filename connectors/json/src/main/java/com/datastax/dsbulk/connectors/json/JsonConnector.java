@@ -237,12 +237,16 @@ public class JsonConnector implements Connector {
                   }
                 })
             .sequential()
+            .doOnComplete(() -> pool.forEach(PooledJsonWriter::appendNewLine))
             .doOnTerminate(() -> pool.forEach(PooledJsonWriter::close));
       };
     } else {
       return upstream -> {
         PooledJsonWriter writer = new PooledJsonWriter();
-        return Flux.from(upstream).transform(writeRecords(writer)).doOnTerminate(writer::close);
+        return Flux.from(upstream)
+            .transform(writeRecords(writer))
+            .doOnComplete(writer::appendNewLine)
+            .doOnTerminate(writer::close);
       };
     }
   }
@@ -392,6 +396,7 @@ public class JsonConnector implements Connector {
         if (writer == null) {
           open();
         } else if (shouldRoll()) {
+          appendNewLine();
           close();
           open();
         }
@@ -428,6 +433,18 @@ public class JsonConnector implements Connector {
         } catch (IOException e) {
           throw new UncheckedIOException(
               String.format("Error closing %s: %s", url, e.getMessage()), e);
+        }
+      }
+    }
+
+    private void appendNewLine() {
+      if (writer != null) {
+        try {
+          // add one last EOL if the file completed successfully; the writer doesn't do it by default
+          writer.writeRaw(System.lineSeparator());
+        } catch (IOException e) {
+          throw new UncheckedIOException(
+              String.format("Error writing to %s: %s", url, e.getMessage()), e);
         }
       }
     }
