@@ -190,7 +190,7 @@ class JsonConnectorTest {
           .transform(connector.write())
           .blockLast();
       assertThat(new String(baos.toByteArray(), "ISO-8859-1"))
-          .isEqualTo("{\"0\":\"fóô\",\"1\":\"bàr\",\"2\":\"qïx\"}");
+          .isEqualTo("{\"0\":\"fóô\",\"1\":\"bàr\",\"2\":\"qïx\"}" + System.lineSeparator());
       connector.close();
     } finally {
       System.setOut(stdout);
