@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  *   <li>Multi-line: statements can span across multiple lines.
  * </ol>
  *
- * The single-line mode is considerably faster (about 20 times faster) then the multi-line mode.
+ * The single-line mode is considerably faster (about 20 times faster) than the multi-line mode.
  *
  * <p>The multi-line mode, however, is the only suitable mode if the script contains statements
  * spanning multiple lines, because it parses the input file and is thus capable of detecting
