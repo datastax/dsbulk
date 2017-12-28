@@ -110,7 +110,7 @@ public abstract class CSVUnloadLoadCCMITBase {
     reporter.start(1, TimeUnit.SECONDS);
 
     try (CqlScriptReader cqlScriptReader = getReader("ip-by-country-sample.cql", false)) {
-      executor.writeSync(cqlScriptReader.readStream());
+      executor.writeSync(cqlScriptReader.statements());
     }
 
     timer.stop();

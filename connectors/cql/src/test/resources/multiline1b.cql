@@ -1,1 +1,1 @@
-INSERT INTO t1 (pk, end_batch) VALUES (1, 'a');
+INSERT INTO t1 (pk, apply_batch) VALUES (1, 'a');

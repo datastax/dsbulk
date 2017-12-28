@@ -22,8 +22,7 @@ public abstract class ReactiveCqlScriptReaderTestBase extends CqlScriptReaderTes
   @Test
   void should_publish_singleline_cql_script() throws Exception {
     AbstractReactiveCqlScriptReader reader = getCqlScriptReader("singleline.cql", false);
-    List<Statement> statements =
-        Flowable.fromPublisher(reader.readReactive()).toList().blockingGet();
+    List<Statement> statements = Flowable.fromPublisher(reader.publish()).toList().blockingGet();
     Assertions.assertThat(statements)
         .hasSize(5)
         .extracting("queryString")
@@ -33,8 +32,7 @@ public abstract class ReactiveCqlScriptReaderTestBase extends CqlScriptReaderTes
   @Test
   void should_publish_multiline_cql_script() throws Exception {
     AbstractReactiveCqlScriptReader reader = getCqlScriptReader("multiline.cql", true);
-    List<Statement> statements =
-        Flowable.fromPublisher(reader.readReactive()).toList().blockingGet();
+    List<Statement> statements = Flowable.fromPublisher(reader.publish()).toList().blockingGet();
     Assertions.assertThat(statements).hasSize(5);
     Statement statement;
     statement = statements.get(0);
@@ -54,8 +52,7 @@ public abstract class ReactiveCqlScriptReaderTestBase extends CqlScriptReaderTes
   @Test
   void should_read_ddl_statements_reactive() throws Exception {
     AbstractReactiveCqlScriptReader reader = getCqlScriptReader("ddl.cql", true);
-    List<Statement> statements =
-        Flowable.fromPublisher(reader.readReactive()).toList().blockingGet();
+    List<Statement> statements = Flowable.fromPublisher(reader.publish()).toList().blockingGet();
     Assertions.assertThat(statements)
         .hasSize(3)
         .extracting("queryString")

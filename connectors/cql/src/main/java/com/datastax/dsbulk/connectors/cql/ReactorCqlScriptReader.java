@@ -6,16 +6,15 @@
  */
 package com.datastax.dsbulk.connectors.cql;
 
-import static reactor.core.publisher.FluxSink.OverflowStrategy.BUFFER;
-
 import com.datastax.driver.core.Statement;
-import java.io.IOException;
 import java.io.Reader;
 import reactor.core.publisher.Flux;
 
 /**
  * A {@link CqlScriptReader} that exposes <a href="https://projectreactor.io">Reactor</a> types for
  * easy consumption by clients using this library.
+ *
+ * @see <a href="https://projectreactor.io">Reactor Framework</a>
  */
 public class ReactorCqlScriptReader extends AbstractReactiveCqlScriptReader {
 
@@ -50,19 +49,7 @@ public class ReactorCqlScriptReader extends AbstractReactiveCqlScriptReader {
   }
 
   @Override
-  public Flux<Statement> readReactive() {
-    return Flux.create(
-        e -> {
-          Statement nextStatement;
-          try {
-            while ((nextStatement = readStatement()) != null) {
-              e.next(nextStatement);
-            }
-            e.complete();
-          } catch (IOException ex) {
-            e.error(ex);
-          }
-        },
-        BUFFER);
+  public Flux<Statement> publish() {
+    return Flux.fromIterable(this);
   }
 }

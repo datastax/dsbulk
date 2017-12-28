@@ -6,17 +6,16 @@
  */
 package com.datastax.dsbulk.connectors.cql;
 
-import static io.reactivex.BackpressureStrategy.BUFFER;
-
 import com.datastax.driver.core.Statement;
 import io.reactivex.Flowable;
-import java.io.IOException;
 import java.io.Reader;
 
 /**
  * A {@link CqlScriptReader} that exposes <a
  * href="https://github.com/ReactiveX/RxJava/wiki">RxJava</a> types for easy consumption by clients
  * using this library.
+ *
+ * @see <a href="https://github.com/ReactiveX/RxJava/wiki">RxJava</a>
  */
 public class RxJavaCqlScriptReader extends AbstractReactiveCqlScriptReader {
 
@@ -51,19 +50,7 @@ public class RxJavaCqlScriptReader extends AbstractReactiveCqlScriptReader {
   }
 
   @Override
-  public Flowable<Statement> readReactive() {
-    return Flowable.create(
-        e -> {
-          Statement nextStatement;
-          try {
-            while ((nextStatement = readStatement()) != null) {
-              e.onNext(nextStatement);
-            }
-            e.onComplete();
-          } catch (IOException ex) {
-            e.onError(ex);
-          }
-        },
-        BUFFER);
+  public Flowable<Statement> publish() {
+    return Flowable.fromIterable(this);
   }
 }
