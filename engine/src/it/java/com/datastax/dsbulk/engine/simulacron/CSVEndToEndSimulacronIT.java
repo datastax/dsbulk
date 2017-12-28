@@ -81,6 +81,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @ExtendWith(SimulacronExtension.class)
 @ExtendWith(LogInterceptingExtension.class)
@@ -629,12 +631,11 @@ class CSVEndToEndSimulacronIT {
 
           @Override
           public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-            // Prior to DAT-151 and DAT-191 this case would hang
-            try {
-              Files.createFile(unloadDir.resolve("output-000001.csv"));
-            } catch (IOException ignored) {
-            }
-            return super.write();
+            return upstream ->
+                Flux.from(upstream)
+                    .transform(super.write())
+                    // simulate fatal write error
+                    .concatWith(Mono.error(new IOException("booo")));
           }
         });
 
@@ -664,8 +665,7 @@ class CSVEndToEndSimulacronIT {
 
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
-        .contains("Error writing to file:")
-        .contains("output-000001.csv");
+        .contains("failed: java.io.IOException: booo");
   }
 
   @Test
