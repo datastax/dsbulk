@@ -1,17 +1,26 @@
 /*
- * Copyright DataStax Inc.
+ * Copyright DataStax, Inc.
  *
- * This software can be used solely with DataStax Enterprise. Please consult the license at
- * http://www.datastax.com/terms/datastax-dse-driver-license-terms
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 grammar Cql;
 
 file
-    : cqlStatement (EOS cqlStatement)* (EOS)? EOF
+    : cqlStatement (EOS cqlStatement)* EOS? EOF
     ;
 
 query
-    : cqlStatement (EOS)? EOF
+    : cqlStatement EOS? EOF
     ;
 
 resource
@@ -1165,14 +1174,14 @@ relationType
     ;
 
 relation
-    : cident relationType term
-    | cident K_LIKE term
-    | cident K_IS K_NOT K_NULL
-    | K_TOKEN tupleOfIdentifiers relationType term
-    | cident K_IN inMarker
-    | cident K_IN singleColumnInValues
-    | cident containsOperator term
-    | cident '[' term ']' relationType term
+    : cident relationType term                     #relationCidentRelationTypeTerm
+    | cident K_LIKE term                           #relationCidentLikeTerm
+    | cident K_IS K_NOT K_NULL                     #relationCidentIsNotNull
+    | K_TOKEN tupleOfIdentifiers relationType term #relationToken
+    | cident K_IN inMarker                         #relationInMarker
+    | cident K_IN singleColumnInValues             #relationInSingle
+    | cident containsOperator term                 #relationContains
+    | cident '[' term ']' relationType term        #relationCidentArrayRelationTypeTerm
     | tupleOfIdentifiers
       ( K_IN
           ( '(' ')'
@@ -1182,8 +1191,8 @@ relation
           )
       | relationType tupleLiteral /* (a, b, c) > (1, 2, 3) or (a, b, c) > (?, ?, ?) */
       | relationType markerForTuple /* (a, b, c) >= ? */
-      )
-    | '(' relation ')'
+      )                                            #relationInMultiple
+    | '(' relation ')'                             #relationParentheses
     ;
 
 containsOperator
