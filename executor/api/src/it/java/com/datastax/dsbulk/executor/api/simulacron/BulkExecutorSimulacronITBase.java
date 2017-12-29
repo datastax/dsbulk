@@ -9,7 +9,6 @@ package com.datastax.dsbulk.executor.api.simulacron;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INET_CONVERTER;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.prepareInsertStatement;
-import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.createSimpleParametrizedQuery;
 import static java.util.stream.StreamSupport.stream;
 import static org.assertj.core.api.Assertions.fail;
 
@@ -27,6 +26,7 @@ import com.datastax.dsbulk.executor.api.result.Result;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.tests.simulacron.SimulacronExtension;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
+import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.common.stubbing.PrimeDsl;
@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -110,6 +111,19 @@ public abstract class BulkExecutorSimulacronITBase {
   @BeforeEach
   void resetMocks() {
     MockitoAnnotations.initMocks(this);
+  }
+
+  private static RequestPrime createSimpleParametrizedQuery(String query) {
+    Map<String, String> paramTypes = new LinkedHashMap<>();
+    paramTypes.put("country_code", "ascii");
+    paramTypes.put("country_name", "ascii");
+    paramTypes.put("beginning_ip_address", "inet");
+    paramTypes.put("ending_ip_address", "inet");
+    paramTypes.put("beginning_ip_number", "bigint");
+    paramTypes.put("ending_ip_number", "bigint");
+    Query when = new Query(query, Collections.emptyList(), new HashMap<>(), paramTypes);
+    SuccessResult then = new SuccessResult(new ArrayList<>(), new HashMap<>());
+    return new RequestPrime(when, then);
   }
 
   // Tests for synchronous write methods

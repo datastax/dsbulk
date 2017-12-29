@@ -7,7 +7,6 @@
 package com.datastax.dsbulk.connectors.csv;
 
 import static com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory.STD;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -17,12 +16,11 @@ import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureControlle
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
-import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
 import com.google.common.base.Suppliers;
-import com.google.common.base.Throwables;
 import com.google.common.collect.Streams;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.common.util.concurrent.Uninterruptibles;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.csv.CsvFormat;
@@ -32,12 +30,12 @@ import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
-import java.nio.channels.ClosedByInterruptException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
@@ -45,23 +43,22 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
-import reactor.core.publisher.SignalType;
-import reactor.core.publisher.WorkQueueProcessor;
+import reactor.core.publisher.Signal;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.concurrent.Queues;
 
 /**
  * A connector for CSV files.
@@ -110,8 +107,7 @@ public class CSVConnector implements Connector {
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
   private AtomicInteger counter;
-  private ExecutorService threadPool;
-  private WorkQueueProcessor<Record> writeQueueProcessor;
+  private Scheduler scheduler;
   private int maxCharsPerColumn;
 
   @Override
@@ -174,14 +170,9 @@ public class CSVConnector implements Connector {
   }
 
   @Override
-  public void close() throws Exception {
-    if (writeQueueProcessor != null) {
-      writeQueueProcessor.awaitAndShutdown(5, SECONDS);
-    }
-    if (threadPool != null) {
-      threadPool.shutdown();
-      threadPool.awaitTermination(5, SECONDS);
-      threadPool.shutdownNow();
+  public void close() {
+    if (scheduler != null) {
+      scheduler.dispose();
     }
   }
 
@@ -196,31 +187,56 @@ public class CSVConnector implements Connector {
   }
 
   @Override
-  public Publisher<Record> read() {
+  public Supplier<? extends Publisher<Record>> read() {
     assert read;
     if (root != null) {
-      return scanRootDirectory().flatMap(this::readURL);
+      return () -> scanRootDirectory().flatMap(this::readURL);
     } else {
-      return readURL(url);
+      return () -> readURL(url);
     }
   }
 
   @Override
-  public Publisher<Publisher<Record>> readByResource() {
+  public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
     if (root != null) {
-      return scanRootDirectory().map(this::readURL);
+      return () -> scanRootDirectory().map(this::readURL);
     } else {
-      return Flux.just(readURL(url));
+      return () -> Flux.just(read().get());
     }
   }
 
   @Override
-  public Subscriber<Record> write() {
+  public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
     assert !read;
     if (root != null && maxConcurrentFiles > 1) {
-      return multipleWriteSubscriber();
+      return upstream -> {
+        scheduler = Schedulers.newParallel("csv-connector", maxConcurrentFiles);
+        BlockingQueue<PooledCSVWriter> pool = new ArrayBlockingQueue<>(maxConcurrentFiles);
+        for (int i = 0; i < maxConcurrentFiles; i++) {
+          PooledCSVWriter writer = new PooledCSVWriter();
+          pool.add(writer);
+        }
+        return Flux.from(upstream)
+            .window(Queues.SMALL_BUFFER_SIZE)
+            .parallel(maxConcurrentFiles)
+            .runOn(scheduler)
+            .flatMap(
+                records -> {
+                  PooledCSVWriter writer = Uninterruptibles.takeUninterruptibly(pool);
+                  try {
+                    return records.transform(writeRecords(writer));
+                  } finally {
+                    pool.add(writer);
+                  }
+                })
+            .sequential()
+            .doOnTerminate(() -> pool.forEach(PooledCSVWriter::close));
+      };
     } else {
-      return singleWriteSubscriber();
+      return upstream -> {
+        PooledCSVWriter writer = new PooledCSVWriter();
+        return Flux.from(upstream).transform(writeRecords(writer)).doOnTerminate(writer::close);
+      };
     }
   }
 
@@ -251,7 +267,7 @@ public class CSVConnector implements Connector {
         if (!Files.isWritable(root)) {
           throw new IllegalArgumentException("Directory is not writable: " + root);
         }
-        if (!IOUtils.isDirectoryEmpty(root)) {
+        if (IOUtils.isDirectoryNonEmpty(root)) {
           throw new IllegalArgumentException(
               "connector.csv.url target directory: " + root + " must be empty.");
         }
@@ -313,7 +329,7 @@ public class CSVConnector implements Connector {
                     }
                   } catch (Exception e) {
                     record =
-                        new DefaultUnmappableRecord(
+                        new DefaultErrorRecord(
                             source, () -> resource, finalRecordNumber, location, e);
                   }
                   LOGGER.trace("Emitting record {}", record);
@@ -347,7 +363,7 @@ public class CSVConnector implements Connector {
                 Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
                 return Flux.fromStream(files);
               } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new UncheckedIOException(e);
               }
             })
         .filter(Files::isReadable)
@@ -358,93 +374,77 @@ public class CSVConnector implements Connector {
               try {
                 return file.toUri().toURL();
               } catch (MalformedURLException e) {
-                throw new RuntimeException(e);
+                throw new UncheckedIOException(e);
               }
             });
   }
 
-  @NotNull
-  private Subscriber<Record> singleWriteSubscriber() {
+  private Function<Flux<Record>, Flux<Record>> writeRecords(PooledCSVWriter writer) {
+    return upstream ->
+        upstream
+            .materialize()
+            .map(
+                signal -> {
+                  if (signal.isOnNext()) {
+                    try {
+                      writer.write(signal.get());
+                    } catch (Exception e) {
+                      signal = Signal.error(e);
+                    }
+                  }
+                  return signal;
+                })
+            .dematerialize();
+  }
 
-    return new BaseSubscriber<Record>() {
+  private class PooledCSVWriter {
 
-      private URL url;
-      private CsvWriter writer;
+    private URL url;
+    private CsvWriter writer;
 
-      private void start() {
-        url = getOrCreateDestinationURL();
-        writer = createCSVWriter(url);
-        LOGGER.debug("Writing " + url);
-      }
-
-      @Override
-      protected void hookOnSubscribe(Subscription subscription) {
-        start();
-        subscription.request(Long.MAX_VALUE);
-      }
-
-      @Override
-      protected void hookOnNext(Record record) {
-        if (root != null && writer.getRecordCount() == maxRecords) {
-          end();
-          start();
+    private void write(Record record) {
+      try {
+        if (writer == null) {
+          open();
+        } else if (shouldRoll()) {
+          close();
+          open();
         }
-        if (header && writer.getRecordCount() == 0) {
+        if (shouldWriteHeader()) {
           writer.writeHeaders(record.fields());
         }
-        LOGGER.trace("Writing record {}", record);
+        LOGGER.trace("Writing record {} to {}", record, url);
         writer.writeRow(record.values());
+      } catch (IOException e) {
+        throw new UncheckedIOException(
+            String.format("Error writing to %s: %s", url, e.getMessage()), e);
       }
+    }
 
-      @Override
-      protected void hookOnError(Throwable t) {
-        LOGGER.error(String.format("Error writing to %s: %s", url, t.getMessage()), t);
-      }
+    private boolean shouldWriteHeader() {
+      return header && writer.getRecordCount() == 0;
+    }
 
-      @Override
-      protected void hookOnComplete() {
-        LOGGER.debug("Done writing {}", url);
-      }
+    private boolean shouldRoll() {
+      return root != null && writer.getRecordCount() == maxRecords;
+    }
 
-      @Override
-      protected void hookFinally(SignalType type) {
-        end();
-      }
+    private void open() throws IOException {
+      url = getOrCreateDestinationURL();
+      writer = new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
+      LOGGER.debug("Writing {}", url);
+    }
 
-      private void end() {
-        if (writer != null) {
-          try {
-            writer.close();
-          } catch (IllegalStateException e) {
-            Throwable root = Throwables.getRootCause(e);
-            if (!(root instanceof ClosedByInterruptException)) {
-              LOGGER.error(String.format("Could not close %s: %s", url, root.getMessage()), root);
-            }
-            // else ok, happens when the workflow has been interrupted
-          }
+    private void close() {
+      if (writer != null) {
+        try {
+          writer.close();
+          LOGGER.debug("Done writing {}", url);
+        } catch (Exception e) {
+          throw new UncheckedIOException(
+              new IOException(String.format("Error closing %s: %s", url, e.getMessage()), e));
         }
       }
-    };
-  }
-
-  private Subscriber<Record> multipleWriteSubscriber() {
-    threadPool =
-        Executors.newFixedThreadPool(
-            maxConcurrentFiles,
-            new ThreadFactoryBuilder().setNameFormat("csv-connector-%d").build());
-    writeQueueProcessor = WorkQueueProcessor.<Record>builder().executor(threadPool).build();
-    for (int i = 0; i < maxConcurrentFiles; i++) {
-      writeQueueProcessor.subscribe(singleWriteSubscriber());
-    }
-    return writeQueueProcessor;
-  }
-
-  private CsvWriter createCSVWriter(URL url) {
-    try {
-      return new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
-    } catch (Exception e) {
-      LOGGER.error(String.format("Could not create CSV writer for %s: %s", url, e.getMessage()), e);
-      throw new RuntimeException(e);
     }
   }
 
@@ -453,12 +453,11 @@ public class CSVConnector implements Connector {
       try {
         String next = String.format(fileNameFormat, counter.incrementAndGet());
         return root.resolve(next).toUri().toURL();
-      } catch (Exception e) {
-        LOGGER.error(
+      } catch (MalformedURLException e) {
+        throw new UncheckedIOException(
             String.format(
                 "Could not create file URL with format %s: %s", fileNameFormat, e.getMessage()),
             e);
-        throw new RuntimeException(e);
       }
     }
     // assume we are writing to a single URL and ignore fileNameFormat

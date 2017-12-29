@@ -21,9 +21,9 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.CodecNotFoundException;
+import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
-import com.datastax.dsbulk.connectors.api.UnmappableRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecordMetadata;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.collect.ImmutableMap;
@@ -114,7 +114,7 @@ class DefaultReadResultMapperTest {
         new CodecNotFoundException("not really", DataType.varchar(), TypeToken.of(String.class));
     when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenThrow(exception);
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata, null);
-    UnmappableRecord record = (UnmappableRecord) mapper.map(result);
+    ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError()).isSameAs(exception);
     assertThat(record.getSource()).isSameAs(result);
     assertThat(record.getLocation())

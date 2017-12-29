@@ -124,7 +124,7 @@ public class LoadWorkflow implements Workflow {
   }
 
   @Override
-  public void execute() throws InterruptedException {
+  public void execute() {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Void> flux;
@@ -146,14 +146,14 @@ public class LoadWorkflow implements Workflow {
     LOGGER.info("Using thread-per-core pattern.");
     Scheduler scheduler = Schedulers.newParallel("workflow");
     disposables.add(scheduler);
-    return Flux.from(connector.readByResource())
+    return Flux.defer(connector.readByResource())
         .flatMap(
             records -> {
               Flux<Statement> stmts =
                   Flux.from(records)
-                      .transform(logManager.newAttemptedRecordCounter())
-                      .transform(metricsManager.newUnmappableRecordMonitor())
-                      .transform(logManager.newUnmappableRecordErrorHandler())
+                      .transform(logManager.newAttemptedItemsCounter())
+                      .transform(metricsManager.newErrorRecordMonitor())
+                      .transform(logManager.newRecordErrorHandler())
                       .map(recordMapper::map)
                       .transform(metricsManager.newUnmappableStatementMonitor())
                       .transform(logManager.newUnmappableStatementErrorHandler());
@@ -175,7 +175,7 @@ public class LoadWorkflow implements Workflow {
     Scheduler scheduler2 = Schedulers.newParallel("workflow2");
     disposables.add(scheduler1);
     disposables.add(scheduler2);
-    return Flux.from(connector.readByResource())
+    return Flux.defer(connector.readByResource())
         .flatMap(records -> Flux.from(records).window(batchBufferSize))
         .publishOn(scheduler1, Queues.SMALL_BUFFER_SIZE * 4)
         .parallel()
@@ -183,9 +183,9 @@ public class LoadWorkflow implements Workflow {
         .flatMap(
             records ->
                 records
-                    .transform(logManager.newAttemptedRecordCounter())
-                    .transform(metricsManager.newUnmappableRecordMonitor())
-                    .transform(logManager.newUnmappableRecordErrorHandler())
+                    .transform(logManager.newAttemptedItemsCounter())
+                    .transform(metricsManager.newErrorRecordMonitor())
+                    .transform(logManager.newRecordErrorHandler())
                     .map(recordMapper::map)
                     .transform(metricsManager.newUnmappableStatementMonitor())
                     .transform(logManager.newUnmappableStatementErrorHandler())
@@ -201,13 +201,13 @@ public class LoadWorkflow implements Workflow {
     Scheduler scheduler2 = Schedulers.newParallel("workflow2");
     disposables.add(scheduler1);
     disposables.add(scheduler2);
-    return Flux.from(connector.read())
+    return Flux.defer(connector.read())
         .publishOn(scheduler1, Queues.SMALL_BUFFER_SIZE * 4)
         .parallel()
         .runOn(scheduler2)
-        .composeGroup(logManager.newAttemptedRecordCounter())
-        .composeGroup(metricsManager.newUnmappableRecordMonitor())
-        .composeGroup(logManager.newUnmappableRecordErrorHandler())
+        .composeGroup(logManager.newAttemptedItemsCounter())
+        .composeGroup(metricsManager.newErrorRecordMonitor())
+        .composeGroup(logManager.newRecordErrorHandler())
         .map(recordMapper::map)
         .composeGroup(metricsManager.newUnmappableStatementMonitor())
         .composeGroup(logManager.newUnmappableStatementErrorHandler())
