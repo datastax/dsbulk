@@ -42,8 +42,7 @@ import org.reactivestreams.Publisher;
  * <p>Read operations return {@link Supplier}s of {@link Publisher}s.
  *
  * <p>All publishers are guaranteed to be subscribed only once; implementors are allowed to optimize
- * for single-subscriber use cases, whenever possible. Implementors are also allowed to memoize
- * suppliers whenever possible or desirable.
+ * for single-subscriber use cases. Implementors are also allowed to memoize suppliers.
  *
  * <p>Reading by resource: connectors that are able to distinguish natural boundaries when reading
  * (e.g. when reading from more than one file, or reading from more than one database table) should
@@ -79,9 +78,9 @@ import org.reactivestreams.Publisher;
  * }
  * </pre>
  *
- * Implementors are allowed to memoize functions whenever possible. If however the connector needs
- * to open resources for writing (for example, open database connections), it is preferable to avoid
- * memoizing them.
+ * <p>The transformed publisher is guaranteed to be subscribed only once; implementors are allowed
+ * to optimize for single-subscriber use cases. Implementors are also allowed to memoize the
+ * transforming functions.
  *
  * <p><strong>Error handling</strong>
  *
