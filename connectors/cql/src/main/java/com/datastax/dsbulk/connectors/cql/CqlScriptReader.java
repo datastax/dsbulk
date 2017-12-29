@@ -24,6 +24,7 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * A {@link LineNumberReader reader} for CQL script files.
@@ -43,10 +44,21 @@ import java.util.stream.StreamSupport;
  * detecting statement boundaries in the file. It is compatible with all versions of the CQL
  * grammar.
  *
- * <p>This reader also exposes methods to read the script using both Java 8 streams and Reactive
- * streams.
+ * <p>This reader also implements {@link Iterable} and can be used in a regular for-loop block to
+ * iterate over the statements contained in the underlying CQL script.
+ *
+ * <p>It also exposes a {@link #statements()} method to read the script using Java 8 streams.
+ *
+ * <p>This class has a subclass {@link AbstractReactiveCqlScriptReader} that exposes a {@link
+ * AbstractReactiveCqlScriptReader#publish() method} to consume the script in a reactive fashion.
+ *
+ * @see AbstractReactiveCqlScriptReader
+ * @see ReactorCqlScriptReader
+ * @see RxJavaCqlScriptReader
+ * @see <a href="http://cassandra.apache.org/doc/latest/cql/index.html">The Cassandra Query Language
+ *     (CQL)</a>
  */
-public class CqlScriptReader extends LineNumberReader {
+public class CqlScriptReader extends LineNumberReader implements Iterable<Statement> {
 
   private static final char SEMICOLON = ';';
   private static final char DASH = '-';
@@ -93,43 +105,48 @@ public class CqlScriptReader extends LineNumberReader {
     this.parser = multiLine ? new MultiLineParser() : new SingleLineParser();
   }
 
+  @Override
+  @NotNull
+  public Iterator<Statement> iterator() {
+    return new Iterator<Statement>() {
+      Statement nextStatement = null;
+
+      @Override
+      public boolean hasNext() {
+        if (nextStatement != null) {
+          return true;
+        } else {
+          try {
+            nextStatement = readStatement();
+            return (nextStatement != null);
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        }
+      }
+
+      @Override
+      public Statement next() {
+        if (nextStatement != null || hasNext()) {
+          Statement stmt = nextStatement;
+          nextStatement = null;
+          return stmt;
+        } else {
+          throw new NoSuchElementException();
+        }
+      }
+    };
+  }
+
   /**
    * Reads the entire script and returns a stream of {@link Statement statement}s.
    *
    * @return a stream of {@link Statement statement}s.
+   * @throws UncheckedIOException If an I/O error occurs.
    */
-  public Stream<Statement> readStream() {
-    Iterator<Statement> iter =
-        new Iterator<Statement>() {
-          Statement nextStatement = null;
-
-          @Override
-          public boolean hasNext() {
-            if (nextStatement != null) {
-              return true;
-            } else {
-              try {
-                nextStatement = readStatement();
-                return (nextStatement != null);
-              } catch (IOException e) {
-                throw new UncheckedIOException(e);
-              }
-            }
-          }
-
-          @Override
-          public Statement next() {
-            if (nextStatement != null || hasNext()) {
-              Statement stmt = nextStatement;
-              nextStatement = null;
-              return stmt;
-            } else {
-              throw new NoSuchElementException();
-            }
-          }
-        };
+  public Stream<Statement> statements() {
     return StreamSupport.stream(
-        Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED | Spliterator.NONNULL),
+        Spliterators.spliteratorUnknownSize(iterator(), Spliterator.ORDERED | Spliterator.NONNULL),
         false);
   }
 
@@ -144,6 +161,7 @@ public class CqlScriptReader extends LineNumberReader {
   }
 
   private interface Parser {
+
     Statement parseNext() throws IOException;
   }
 
@@ -153,7 +171,9 @@ public class CqlScriptReader extends LineNumberReader {
     public Statement parseNext() throws IOException {
       String line;
       while ((line = readLine()) != null) {
-        if (containsStatement(line)) break;
+        if (containsStatement(line)) {
+          break;
+        }
       }
       return line == null ? null : new SimpleStatement(line);
     }
@@ -161,7 +181,9 @@ public class CqlScriptReader extends LineNumberReader {
     private boolean containsStatement(String line) {
       for (int i = 0; i < line.length(); i++) {
         char c = line.charAt(i);
-        if (!Character.isWhitespace(c)) return c != DASH && c != SLASH;
+        if (!Character.isWhitespace(c)) {
+          return c != DASH && c != SLASH;
+        }
       }
       return false;
     }
@@ -186,11 +208,16 @@ public class CqlScriptReader extends LineNumberReader {
         col = l < getLineNumber() ? 1 : col + 1;
         l = getLineNumber();
         phase = phase.parseAndAdvance(c, sb, l, col, ctx);
-        if (phase == MultiLineParsePhase.STATEMENT_END) break;
+        if (phase == MultiLineParsePhase.STATEMENT_END) {
+          break;
+        }
       }
-      if (phase != MultiLineParsePhase.WHITESPACE && phase != MultiLineParsePhase.STATEMENT_END)
+      if (phase != MultiLineParsePhase.WHITESPACE && phase != MultiLineParsePhase.STATEMENT_END) {
         throw new IllegalStateException(String.format("Premature EOF at line %d", getLineNumber()));
-      if (ctx.batch != null) return ctx.batch;
+      }
+      if (ctx.batch != null) {
+        return ctx.batch;
+      }
       return sb.length() == 0 ? null : new SimpleStatement(sb.toString());
     }
   }
@@ -228,7 +255,9 @@ public class CqlScriptReader extends LineNumberReader {
             return QUOTED_IDENTIFIER;
           case SEMICOLON:
             sb.append(c);
-            if (ctx.batch == null) return STATEMENT_END;
+            if (ctx.batch == null) {
+              return STATEMENT_END;
+            }
             ctx.batch.add(new SimpleStatement(sb.toString()));
             sb.setLength(0);
             return WHITESPACE;
@@ -237,8 +266,12 @@ public class CqlScriptReader extends LineNumberReader {
             return DOLLAR_QUOTED_STRING_START;
           default:
             sb.append(c);
-            if (sb.length() == 5 && endsWithIgnoreCase(sb, "BEGIN")) return BATCH_START;
-            if (sb.length() == 3 && endsWithIgnoreCase(sb, "END")) return BATCH_END;
+            if (sb.length() == 5 && endsWithIgnoreCase(sb, "BEGIN")) {
+              return BATCH_START;
+            }
+            if (sb.length() == 5 && endsWithIgnoreCase(sb, "APPLY")) {
+              return BATCH_END;
+            }
             return STATEMENT_START;
         }
       }
@@ -379,7 +412,9 @@ public class CqlScriptReader extends LineNumberReader {
       for (int i = 1; i <= span; i++) {
         char c0 = sb.charAt(length - i);
         char c1 = suffix.charAt(span - i);
-        if (Character.toUpperCase(c0) != c1) return false;
+        if (Character.toUpperCase(c0) != c1) {
+          return false;
+        }
       }
       return true;
     }

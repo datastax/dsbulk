@@ -11,8 +11,16 @@ import java.io.Reader;
 import org.reactivestreams.Publisher;
 
 /**
- * A subclass of {@link CqlScriptReader} that exposes a {@link #readReactive() method} to read CQL
+ * A subclass of {@link CqlScriptReader} that exposes a {@link #publish()} method to read CQL
  * scripts in reactive mode.
+ *
+ * <p>This class has two known concrete implementations: {@link ReactorCqlScriptReader} that uses
+ * the Reactor Framework, and {@link RxJavaCqlScriptReader} that uses RxJava.
+ *
+ * @see ReactorCqlScriptReader
+ * @see RxJavaCqlScriptReader
+ * @see <a href="https://projectreactor.io">Reactor Framework</a>
+ * @see <a href="https://github.com/ReactiveX/RxJava/wiki">RxJava</a>
  */
 public abstract class AbstractReactiveCqlScriptReader extends CqlScriptReader {
 
@@ -51,5 +59,5 @@ public abstract class AbstractReactiveCqlScriptReader extends CqlScriptReader {
    *
    * @return a {@link Publisher} of {@link Statement statement}s.
    */
-  public abstract Publisher<Statement> readReactive();
+  public abstract Publisher<Statement> publish();
 }

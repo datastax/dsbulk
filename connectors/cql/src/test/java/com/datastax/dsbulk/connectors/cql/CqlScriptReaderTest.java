@@ -79,7 +79,7 @@ class CqlScriptReaderTest {
   @Test
   void should_stream_singleline_cql_script() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("singleline.cql", false);
-    List<Statement> statements = reader.readStream().collect(toList());
+    List<Statement> statements = reader.statements().collect(toList());
     assertThat(statements)
         .hasSize(5)
         .extracting("queryString")
@@ -108,7 +108,7 @@ class CqlScriptReaderTest {
   @Test
   void should_stream_multiline_cql_script() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("multiline.cql", true);
-    List<Statement> statements = reader.readStream().collect(toList());
+    List<Statement> statements = reader.statements().collect(toList());
     assertThat(statements).hasSize(5);
     Statement statement;
     statement = statements.get(0);
@@ -128,7 +128,7 @@ class CqlScriptReaderTest {
   @Test
   void should_read_ddl_statements() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("ddl.cql", true);
-    List<Statement> statements = reader.readStream().collect(toList());
+    List<Statement> statements = reader.statements().collect(toList());
     Assertions.assertThat(statements)
         .hasSize(3)
         .extracting("queryString")
@@ -138,14 +138,14 @@ class CqlScriptReaderTest {
   @Test
   void should_read_singleline_cql_script_2() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("ip-by-country-sample.cql", false);
-    List<Statement> statements = reader.readStream().collect(toList());
+    List<Statement> statements = reader.statements().collect(toList());
     Assertions.assertThat(statements).hasSize(500);
   }
 
   @Test
   void should_read_multiline_cql_script_2() throws Exception {
     CqlScriptReader reader = getCqlScriptReader("ip-by-country-sample.cql", true);
-    List<Statement> statements = reader.readStream().collect(toList());
+    List<Statement> statements = reader.statements().collect(toList());
     Assertions.assertThat(statements).hasSize(500);
   }
 

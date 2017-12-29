@@ -4,8 +4,8 @@ batch
 -- this is a single line comment -- /* */ ; '' "" $$
 // this is a single line comment -- /* */ ; '' "" $$
 INSERT INTO t1 (pk, begin_batch) VALUES (1, 'a');
-INSERT INTO t1 (pk, end_batch) VALUES (1, 'a');
-end BATCH
+INSERT INTO t1 (pk, apply_batch) VALUES (1, 'a');
+apply BATCH
 
 
 ;
