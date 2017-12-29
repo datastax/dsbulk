@@ -8,7 +8,6 @@ package com.datastax.dsbulk.commons.url;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
@@ -46,26 +45,26 @@ public class LoaderURLStreamHandlerFactory implements URLStreamHandlerFactory {
     StdinStdoutUrlStreamHandler() {}
 
     @Override
-    protected URLConnection openConnection(URL url) throws IOException {
+    protected URLConnection openConnection(URL url) {
       return new StdinStdoutConnection(url);
     }
   }
 
   private static class StdinStdoutConnection extends URLConnection {
     @Override
-    public void connect() throws IOException {}
+    public void connect() {}
 
     StdinStdoutConnection(URL url) {
       super(url);
     }
 
     @Override
-    public InputStream getInputStream() throws IOException {
+    public InputStream getInputStream() {
       return new BufferedInputStream(new UncloseableInputStream(System.in));
     }
 
     @Override
-    public OutputStream getOutputStream() throws IOException {
+    public OutputStream getOutputStream() {
       return new BufferedOutputStream(new UncloseableOutputStream(System.out));
     }
   }

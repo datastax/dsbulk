@@ -487,7 +487,7 @@ Default: **4096**.
 
 The maximum number of files that can be written simultaneously.
 
-Ignored when reading.
+Ignored when reading. Ignored when the output URL is anything other than a directory on a filesystem.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
@@ -622,7 +622,7 @@ Default: **[]**.
 
 The maximum number of files that can be written simultaneously.
 
-Ignored when reading.
+Ignored when reading. Ignored when the output URL is anything other than a directory on a filesystem.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 

@@ -26,3 +26,8 @@ If (!(Test-Path $maven_path)) {
 }
 $env:M2_HOME="$($maven_path)"
 $env:PATH="$($maven_path)\bin;$($env:PATH)"
+
+# Environment variables for Publisher Verification tests (Reactive Streams TCK)
+$env:DEFAULT_TIMEOUT_MILLIS=1000
+$env:DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS=1000
+$env:PUBLISHER_REFERENCE_GC_TIMEOUT_MILLIS=1000

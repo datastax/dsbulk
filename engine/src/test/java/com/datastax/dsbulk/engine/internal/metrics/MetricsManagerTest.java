@@ -15,8 +15,8 @@ import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
-import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
@@ -50,7 +50,7 @@ class MetricsManagerTest {
     record1 = new DefaultRecord(source1, null, -1, () -> location1, "irrelevant");
     record2 = new DefaultRecord(source2, null, -1, () -> location2, "irrelevant");
     record3 =
-        new DefaultUnmappableRecord(
+        new DefaultErrorRecord(
             source3, null, -1, () -> location3, new RuntimeException("irrelevant"));
     stmt1 = new BulkSimpleStatement<>(record1, "irrelevant");
     stmt2 = new BulkSimpleStatement<>(record2, "irrelevant");
@@ -78,7 +78,7 @@ class MetricsManagerTest {
             false);
     manager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
-    records.transform(manager.newUnmappableRecordMonitor()).blockLast();
+    records.transform(manager.newErrorRecordMonitor()).blockLast();
     manager.close();
     MetricRegistry registry =
         (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");

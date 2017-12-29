@@ -12,8 +12,8 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
+import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
-import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.base.Suppliers;
 import com.google.common.reflect.TypeToken;
@@ -70,7 +70,7 @@ public class DefaultReadResultMapper implements ReadResultMapper {
       }
       return record;
     } catch (Exception e) {
-      return new DefaultUnmappableRecord(result, resource, -1, location, e);
+      return new DefaultErrorRecord(result, resource, -1, location, e);
     }
   }
 }

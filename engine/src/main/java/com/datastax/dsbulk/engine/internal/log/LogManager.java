@@ -24,8 +24,8 @@ import com.datastax.driver.core.exceptions.BusyPoolException;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
+import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.connectors.api.UnmappableRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
@@ -183,7 +183,7 @@ public class LogManager implements AutoCloseable {
   }
 
   @Override
-  public void close() throws InterruptedException {
+  public void close() {
     openFiles.invalidateAll();
     openFiles.cleanUp();
     if (workflowType == WorkflowType.LOAD && positionsPrinter != null) {
@@ -249,8 +249,8 @@ public class LogManager implements AutoCloseable {
    * @return a handler for unmappable records.
    */
   @NotNull
-  public Function<Flux<Record>, Flux<Record>> newUnmappableRecordErrorHandler() {
-    FluxSink<UnmappableRecord> sink = newUnmappableRecordProcessor();
+  public Function<Flux<Record>, Flux<Record>> newRecordErrorHandler() {
+    FluxSink<ErrorRecord> sink = newUnmappableRecordProcessor();
     return upstream ->
         upstream
             .materialize()
@@ -258,8 +258,8 @@ public class LogManager implements AutoCloseable {
                 signal -> {
                   if (signal.isOnNext()) {
                     Record r = signal.get();
-                    if (r instanceof UnmappableRecord) {
-                      sink.next((UnmappableRecord) r);
+                    if (r instanceof ErrorRecord) {
+                      sink.next((ErrorRecord) r);
                       signal = maybeTriggerOnError(signal, errors.incrementAndGet());
                     }
                   }
@@ -267,7 +267,7 @@ public class LogManager implements AutoCloseable {
                 })
             .<Record>dematerialize()
             .doOnTerminate(sink::complete)
-            .filter(r -> !(r instanceof UnmappableRecord));
+            .filter(r -> !(r instanceof ErrorRecord));
   }
 
   /**
@@ -446,9 +446,9 @@ public class LogManager implements AutoCloseable {
    * @return A processor for unmappable records.
    */
   @NotNull
-  private FluxSink<UnmappableRecord> newUnmappableRecordProcessor() {
-    UnicastProcessor<UnmappableRecord> processor = UnicastProcessor.create();
-    Flux<UnmappableRecord> flux = processor.doOnNext(this::appendToDebugFile);
+  private FluxSink<ErrorRecord> newUnmappableRecordProcessor() {
+    UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
+    Flux<ErrorRecord> flux = processor.doOnNext(this::appendToDebugFile);
     if (workflowType == WorkflowType.LOAD) {
       flux.doOnNext(this::appendToBadFile)
           .transform(newRecordPositionTracker())
@@ -460,7 +460,7 @@ public class LogManager implements AutoCloseable {
     return processor.sink();
   }
 
-  public Function<Flux<Record>, Flux<Record>> newAttemptedRecordCounter() {
+  public <T> Function<Flux<T>, Flux<T>> newAttemptedItemsCounter() {
     return upstream ->
         upstream.doOnNext(
             r -> {
@@ -576,7 +576,7 @@ public class LogManager implements AutoCloseable {
     writer.flush();
   }
 
-  private void appendToDebugFile(UnmappableRecord record) {
+  private void appendToDebugFile(ErrorRecord record) {
     Path logFile = executionDirectory.resolve("mapping-errors.log");
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
@@ -698,7 +698,7 @@ public class LogManager implements AutoCloseable {
     }
   }
 
-  private Signal maybeTriggerOnError(Signal signal, int errorCount) {
+  private <T> Signal<T> maybeTriggerOnError(Signal<T> signal, int errorCount) {
     TooManyErrorsException exception;
     if (isPercentageBased()) {
       exception = maxPercentageExceeded(errorCount);
@@ -712,10 +712,7 @@ public class LogManager implements AutoCloseable {
   }
 
   private boolean isPercentageBased() {
-    if (maxErrorRatio != 0) {
-      return true;
-    }
-    return false;
+    return maxErrorRatio != 0;
   }
 
   private TooManyErrorsException maxErrorCountExceeded(int errorCount) {

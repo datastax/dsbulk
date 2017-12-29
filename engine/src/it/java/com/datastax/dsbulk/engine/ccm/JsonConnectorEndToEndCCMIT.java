@@ -6,9 +6,9 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
-import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.validateBadOps;
-import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.validateExceptionsLog;
-import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.validateOutputFiles;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.IP_BY_COUNTRY_COMPLEX_MAPPING;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS;

@@ -38,13 +38,17 @@ public final class IOUtils {
         : new BufferedInputStream(in, BUFFER_SIZE);
   }
 
-  public static BufferedOutputStream newBufferedOutputStream(URL url)
-      throws IOException, URISyntaxException {
+  public static BufferedOutputStream newBufferedOutputStream(URL url) throws IOException {
     OutputStream out;
     // file URLs do not support writing, only reading,
     // so we need to special-case them here
     if (url.getProtocol().equals("file")) {
-      out = Files.newOutputStream(Paths.get(url.toURI()), CREATE_NEW);
+      try {
+        out = Files.newOutputStream(Paths.get(url.toURI()), CREATE_NEW);
+      } catch (URISyntaxException e) {
+        // should not happen, URLs have been validated already
+        throw new IllegalArgumentException(e);
+      }
     } else {
       URLConnection connection = url.openConnection();
       connection.setDoOutput(true);
@@ -60,17 +64,16 @@ public final class IOUtils {
         new InputStreamReader(newBufferedInputStream(url), charset), BUFFER_SIZE);
   }
 
-  public static BufferedWriter newBufferedWriter(URL url, Charset charset)
-      throws IOException, URISyntaxException {
+  public static BufferedWriter newBufferedWriter(URL url, Charset charset) throws IOException {
     return new BufferedWriter(
         new OutputStreamWriter(newBufferedOutputStream(url), charset), BUFFER_SIZE);
   }
 
-  public static boolean isDirectoryEmpty(Path path) {
+  public static boolean isDirectoryNonEmpty(Path path) {
     try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(path)) {
-      return !dirStream.iterator().hasNext();
+      return dirStream.iterator().hasNext();
     } catch (Exception exception) {
-      return false;
+      return true;
     }
   }
 }
