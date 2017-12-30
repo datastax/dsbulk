@@ -13,7 +13,6 @@
 
   <formats>
     <format>tar.gz</format>
-    <format>tar.bz2</format>
     <format>zip</format>
   </formats>
 
@@ -30,11 +29,17 @@
     </fileSet>
 
     <fileSet>
-      <directory>../changelog</directory>
+      <directory>../manual</directory>
+      <includes>
+        <include>README.md</include>
+        <include>application.template.conf</include>
+        <include>settings.md</include>
+      </includes>
     </fileSet>
 
     <fileSet>
-      <directory>../manual</directory>
+      <directory>${project.build.directory}/webDocs</directory>
+      <outputDirectory>manual/webDocs</outputDirectory>
     </fileSet>
 
     <fileSet>
@@ -67,39 +72,6 @@
       </excludes>
     </dependencySet>
 
-    <!-- sources for DataStax-owned dependencies (driver) -->
-    <dependencySet>
-      <outputDirectory>src</outputDirectory>
-      <useProjectArtifact>false</useProjectArtifact>
-      <scope>runtime</scope>
-      <includes>
-        <include>com.datastax.*:*:jar:sources:*</include>
-      </includes>
-      <unpack>false</unpack>
-      <outputFileNameMapping>${artifact.artifactId}-${artifact.version}-src.zip</outputFileNameMapping>
-    </dependencySet>
-
   </dependencySets>
-
-  <moduleSets>
-
-    <!-- sources for project's artifacts -->
-    <moduleSet>
-      <useAllReactorProjects>true</useAllReactorProjects>
-      <excludes>
-        <exclude>com.datastax.dse:dsbulk-dist</exclude>
-      </excludes>
-      <binaries>
-        <unpack>false</unpack>
-        <attachmentClassifier>sources</attachmentClassifier>
-        <outputFileNameMapping>${module.artifactId}-${module.version}-src.zip</outputFileNameMapping>
-        <outputDirectory>src</outputDirectory>
-        <excludes>
-          <exclude>*</exclude>
-        </excludes>
-      </binaries>
-    </moduleSet>
-
-  </moduleSets>
 
 </assembly>

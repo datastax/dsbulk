@@ -20,7 +20,7 @@
 - [bug] DAT-193: SettingsManager is printing metaSettings to the console.
 - [bug] DAT-191: Prevent file collisions on unload.
 - [improvement] DAT-194: Stdin and stdout urls should use the special "-" token, similar to unix tools.
-
+- [improvement] DAT-158: Reorganize in-tree documentation.
 
 ### 1.0.0-beta2
 
