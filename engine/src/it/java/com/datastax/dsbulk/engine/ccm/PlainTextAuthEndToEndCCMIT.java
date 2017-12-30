@@ -9,8 +9,8 @@ package com.datastax.dsbulk.engine.ccm;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
-import static com.datastax.dsbulk.commons.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 

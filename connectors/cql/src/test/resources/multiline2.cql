@@ -11,8 +11,6 @@ this is a string literal '' spanning multiple lines
 $$
 This is a string literal spanning multiple lines and surrounded by dollar signs
 $$,
-'',-- this was an empty string literal
-$$$$/* this was an empty string literal*/
+'',$$$$,
+$$  $  $$
 )
-
-;

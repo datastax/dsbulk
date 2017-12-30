@@ -26,8 +26,8 @@ import com.datastax.driver.core.exceptions.DriverInternalError;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
-import com.datastax.dsbulk.connectors.api.internal.DefaultUnmappableRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
@@ -114,13 +114,13 @@ class LogManagerTest {
     location2 = new URI("file:///file2.csv?line=2");
     location3 = new URI("file:///file3.csv?line=3");
     record1 =
-        new DefaultUnmappableRecord(
+        new DefaultErrorRecord(
             source1, () -> resource1, 1, () -> location1, new RuntimeException("error 1"));
     record2 =
-        new DefaultUnmappableRecord(
+        new DefaultErrorRecord(
             source2, () -> resource2, 2, () -> location2, new RuntimeException("error 2"));
     record3 =
-        new DefaultUnmappableRecord(
+        new DefaultErrorRecord(
             source3, () -> resource3, 3, () -> location3, new RuntimeException("error 3"));
     stmt1 = new UnmappableStatement(record1, () -> location1, new RuntimeException("error 1"));
     stmt2 = new UnmappableStatement(record2, () -> location2, new RuntimeException("error 2"));
@@ -214,7 +214,7 @@ class LogManagerTest {
     logManager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
     try {
-      records.transform(logManager.newUnmappableRecordErrorHandler()).blockLast();
+      records.transform(logManager.newRecordErrorHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");

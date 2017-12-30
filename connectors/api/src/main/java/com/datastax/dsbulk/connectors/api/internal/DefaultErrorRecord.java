@@ -6,7 +6,7 @@
  */
 package com.datastax.dsbulk.connectors.api.internal;
 
-import com.datastax.dsbulk.connectors.api.UnmappableRecord;
+import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.net.URI;
@@ -16,7 +16,7 @@ import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 
 /** */
-public class DefaultUnmappableRecord implements UnmappableRecord {
+public class DefaultErrorRecord implements ErrorRecord {
 
   private final Object source;
   private final Supplier<URI> resource;
@@ -24,7 +24,7 @@ public class DefaultUnmappableRecord implements UnmappableRecord {
   private final Supplier<URI> location;
   private final Throwable error;
 
-  public DefaultUnmappableRecord(
+  public DefaultErrorRecord(
       Object source,
       Supplier<URI> resource,
       long position,

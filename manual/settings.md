@@ -487,7 +487,7 @@ Default: **4096**.
 
 The maximum number of files that can be written simultaneously.
 
-Ignored when reading.
+Ignored when reading. Ignored when the output URL is anything other than a directory on a filesystem.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
@@ -622,7 +622,7 @@ Default: **[]**.
 
 The maximum number of files that can be written simultaneously.
 
-Ignored when reading.
+Ignored when reading. Ignored when the output URL is anything other than a directory on a filesystem.
 
 The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
@@ -756,7 +756,7 @@ If such a clause is present, the engine will generate as many statements as ther
 
 The column names in the SELECT clause will be used to match column names specified in the mapping. See "mapping" setting for more information.
 
-Important: the query will be parsed because DSBulk needs to know which bound variables are present in order to correctly map them to fields. Because the CQL grammar is complex, the parser used internally is not infallible; please avoid using complex queries and in particular, avoid using complex CQL identifiers; if DSBulk fails to correctly identify bound variables in the query, some fields might be incorrectly mapped.
+Important: the query will be parsed because DSBulk needs to know which bound variables are present in order to correctly map them to fields. The parser used internally is based on CQL 3.4.5 (as used in Apache Cassandra 3.11.1) and is capable of parsing all statements defined by that specific grammar version, even complex ones. However, future versions of CQL might introduce new grammar rules that DSBulk's parser will not be able to parse; DSBulk will emit a warning in such situations.
 
 Default: **&lt;unspecified&gt;**.
 

@@ -41,19 +41,23 @@ public class FileUtils {
         .collect(Collectors.joining(System.lineSeparator()));
   }
 
+  public static Stream<String> readAllLinesInDirectoryAsStream(Path dir, Charset charset)
+      throws IOException {
+    return Files.walk(dir)
+        .filter(Files::isRegularFile)
+        .flatMap(
+            path -> {
+              try {
+                return Files.readAllLines(path, charset).stream();
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            });
+  }
+
   public static List<String> readAllLinesInDirectory(Path dir, Charset charset) throws IOException {
-    try (Stream<Path> paths = Files.walk(dir)) {
-      return paths
-          .filter(Files::isRegularFile)
-          .flatMap(
-              path -> {
-                try {
-                  return Files.readAllLines(path, charset).stream().filter(s -> !s.equals(""));
-                } catch (IOException e) {
-                  throw new UncheckedIOException(e);
-                }
-              })
-          .collect(Collectors.toList());
+    try (Stream<String> lines = readAllLinesInDirectoryAsStream(dir, charset)) {
+      return lines.collect(Collectors.toList());
     }
   }
 }

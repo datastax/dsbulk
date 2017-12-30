@@ -12,7 +12,7 @@ import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
-import com.datastax.dsbulk.commons.tests.utils.EndToEndUtils;
+import com.datastax.dsbulk.engine.tests.utils.EndToEndUtils;
 import com.datastax.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.tests.ccm.CCMExtension;
 import java.util.List;

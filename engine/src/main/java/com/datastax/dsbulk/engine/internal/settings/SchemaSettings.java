@@ -26,6 +26,9 @@ import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.cql3.CqlBaseListener;
+import com.datastax.dsbulk.commons.cql3.CqlLexer;
+import com.datastax.dsbulk.commons.cql3.CqlParser;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -58,13 +61,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CodePointCharStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SchemaSettings {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaSettings.class);
 
   private static final String TTL_VARNAME = "dsbulk_internal_ttl";
   private static final String TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
@@ -84,11 +97,6 @@ public class SchemaSettings {
 
   private static final String EXTERNAL_TTL_VARNAME = "__ttl";
   private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
-
-  private static final Pattern WRITETIME_PATTERN =
-      Pattern.compile(
-          "(?:USING|AND)\\s+TIMESTAMP\\s+:([a-zA-Z][a-zA-Z0-9_]*|\".+(?:(?<![\"])[\"]))",
-          Pattern.CASE_INSENSITIVE);
 
   private final LoaderConfig config;
 
@@ -541,11 +549,33 @@ public class SchemaSettings {
   }
 
   private String inferWriteTimeVariable() {
-    Matcher matcher = WRITETIME_PATTERN.matcher(query);
-    if (matcher.find() && matcher.groupCount() > 0) {
-      return DriverCoreHooks.handleId(matcher.group(1));
-    }
-    return null;
+    CodePointCharStream input = CharStreams.fromString(query);
+    CqlLexer lexer = new CqlLexer(input);
+    CommonTokenStream tokens = new CommonTokenStream(lexer);
+    CqlParser parser = new CqlParser(tokens);
+    parser.removeErrorListeners();
+    parser.addErrorListener(
+        new BaseErrorListener() {
+          @Override
+          public void syntaxError(
+              Recognizer<?, ?> recognizer,
+              Object offendingSymbol,
+              int line,
+              int charPositionInLine,
+              String msg,
+              RecognitionException e) {
+            LOGGER.warn(
+                "Supplied schema.query could not be parsed at line {}:{}: {}",
+                line,
+                charPositionInLine,
+                msg);
+          }
+        });
+    ParseTree query = parser.query();
+    ParseTreeWalker walker = new ParseTreeWalker();
+    UsingTimestampListener listener = new UsingTimestampListener();
+    walker.walk(listener, query);
+    return listener.writeTimeVariable;
   }
 
   private static void appendColumnNames(BiMap<String, String> fieldsToVariables, StringBuilder sb) {
@@ -597,7 +627,21 @@ public class SchemaSettings {
     return String.format("schema%s%s", StringUtils.DELIMITER, path);
   }
 
-  private class InferredMappingSpec {
+  private static class UsingTimestampListener extends CqlBaseListener {
+    private String writeTimeVariable;
+
+    @Override
+    public void enterUsingTimestamp(CqlParser.UsingTimestampContext ctx) {
+      if (ctx.getChildCount() > 1) {
+        String text = ctx.getChild(1).getText();
+        if (text.startsWith(":")) {
+          writeTimeVariable = DriverCoreHooks.handleId(text.substring(1));
+        }
+      }
+    }
+  }
+
+  private static class InferredMappingSpec {
     private final Set<String> excludes = new HashSet<>();
 
     InferredMappingSpec(ConfigValue spec) {
