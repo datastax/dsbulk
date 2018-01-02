@@ -20,7 +20,6 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Streams;
-import com.google.common.util.concurrent.Uninterruptibles;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.csv.CsvFormat;
@@ -43,8 +42,7 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -59,6 +57,12 @@ import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.concurrent.Queues;
+import stormpot.Allocator;
+import stormpot.BlazePool;
+import stormpot.Config;
+import stormpot.Poolable;
+import stormpot.Slot;
+import stormpot.Timeout;
 
 /**
  * A connector for CSV files.
@@ -103,12 +107,13 @@ public class CSVConnector implements Connector {
   private boolean recursive;
   private boolean header;
   private String fileNameFormat;
+  private int maxCharsPerColumn;
   private int resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
   private AtomicInteger counter;
   private Scheduler scheduler;
-  private int maxCharsPerColumn;
+  private BlazePool<PoolableCSVWriter> pool;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -170,9 +175,12 @@ public class CSVConnector implements Connector {
   }
 
   @Override
-  public void close() {
+  public void close() throws InterruptedException {
     if (scheduler != null) {
       scheduler.dispose();
+    }
+    if (pool != null) {
+      pool.shutdown().await(new Timeout(1, TimeUnit.MINUTES));
     }
   }
 
@@ -201,7 +209,7 @@ public class CSVConnector implements Connector {
     if (root != null) {
       return () -> scanRootDirectory().map(this::readURL);
     } else {
-      return () -> Flux.just(read().get());
+      return () -> Flux.just(readURL(url));
     }
   }
 
@@ -211,30 +219,39 @@ public class CSVConnector implements Connector {
     if (root != null && maxConcurrentFiles > 1) {
       return upstream -> {
         scheduler = Schedulers.newParallel("csv-connector", maxConcurrentFiles);
-        BlockingQueue<PooledCSVWriter> pool = new ArrayBlockingQueue<>(maxConcurrentFiles);
-        for (int i = 0; i < maxConcurrentFiles; i++) {
-          PooledCSVWriter writer = new PooledCSVWriter();
-          pool.add(writer);
-        }
+        Config<PoolableCSVWriter> config =
+            new Config<PoolableCSVWriter>()
+                .setSize(maxConcurrentFiles)
+                .setAllocator(new CSVWriterAllocator());
+        pool = new BlazePool<>(config);
+        Timeout timeout = new Timeout(1, TimeUnit.SECONDS);
         return Flux.from(upstream)
             .window(Queues.SMALL_BUFFER_SIZE)
             .parallel(maxConcurrentFiles)
             .runOn(scheduler)
             .flatMap(
                 records -> {
-                  PooledCSVWriter writer = Uninterruptibles.takeUninterruptibly(pool);
-                  try {
-                    return records.transform(writeRecords(writer));
-                  } finally {
-                    pool.add(writer);
+                  while (true) {
+                    try {
+                      PoolableCSVWriter writer = pool.claim(timeout);
+                      if (writer != null) {
+                        try {
+                          return records.transform(writeRecords(writer));
+                        } finally {
+                          writer.release();
+                        }
+                      }
+                    } catch (InterruptedException e) {
+                      Thread.currentThread().interrupt();
+                      return Flux.empty();
+                    }
                   }
                 })
-            .sequential()
-            .doOnTerminate(() -> pool.forEach(PooledCSVWriter::close));
+            .sequential();
       };
     } else {
       return upstream -> {
-        PooledCSVWriter writer = new PooledCSVWriter();
+        PoolableCSVWriter writer = new PoolableCSVWriter(null);
         return Flux.from(upstream).transform(writeRecords(writer)).doOnTerminate(writer::close);
       };
     }
@@ -379,7 +396,7 @@ public class CSVConnector implements Connector {
             });
   }
 
-  private Function<Flux<Record>, Flux<Record>> writeRecords(PooledCSVWriter writer) {
+  private Function<Flux<Record>, Flux<Record>> writeRecords(PoolableCSVWriter writer) {
     return upstream ->
         upstream
             .materialize()
@@ -397,10 +414,33 @@ public class CSVConnector implements Connector {
             .dematerialize();
   }
 
-  private class PooledCSVWriter {
+  private class CSVWriterAllocator implements Allocator<PoolableCSVWriter> {
+    @Override
+    public PoolableCSVWriter allocate(Slot slot) {
+      return new PoolableCSVWriter(slot);
+    }
+
+    @Override
+    public void deallocate(PoolableCSVWriter writer) {
+      writer.close();
+    }
+  }
+
+  private class PoolableCSVWriter implements Poolable {
+
+    private final Slot slot;
 
     private URL url;
     private CsvWriter writer;
+
+    private PoolableCSVWriter(Slot slot) {
+      this.slot = slot;
+    }
+
+    @Override
+    public void release() {
+      slot.release(this);
+    }
 
     private void write(Record record) {
       try {
@@ -440,6 +480,7 @@ public class CSVConnector implements Connector {
         try {
           writer.close();
           LOGGER.debug("Done writing {}", url);
+          writer = null;
         } catch (Exception e) {
           throw new UncheckedIOException(
               new IOException(String.format("Error closing %s: %s", url, e.getMessage()), e));
