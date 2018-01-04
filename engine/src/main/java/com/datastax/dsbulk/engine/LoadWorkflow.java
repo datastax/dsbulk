@@ -78,16 +78,17 @@ public class LoadWorkflow implements Workflow {
     executionId = settingsManager.getExecutionId();
     LogSettings logSettings = settingsManager.getLogSettings();
     logSettings.init(false);
-    settingsManager.logEffectiveSettings();
-    DriverSettings driverSettings = settingsManager.getDriverSettings();
     ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
+    connectorSettings.init();
+    settingsManager.logEffectiveSettings(
+        connectorSettings.getConnectorName(), connectorSettings.getConnectorConfig());
+    DriverSettings driverSettings = settingsManager.getDriverSettings();
     SchemaSettings schemaSettings = settingsManager.getSchemaSettings();
     BatchSettings batchSettings = settingsManager.getBatchSettings();
     ExecutorSettings executorSettings = settingsManager.getExecutorSettings();
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
-    connectorSettings.init();
     monitoringSettings.init();
     codecSettings.init();
     batchSettings.init();
