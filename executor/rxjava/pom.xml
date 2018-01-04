@@ -118,12 +118,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dsbulk-connectors-cql</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-exec</artifactId>
       <scope>test</scope>

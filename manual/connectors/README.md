@@ -15,13 +15,11 @@ The DataStax Bulk Loader ships with the following connectors:
 * [CSV Connector]: a highly-configurable connector that reads field-delimited files. 
   For more information about the CSV file format, see [RFC 4180] and the [Wikipedia article on CSV format].
 * [Json Connector]: a highly-configurable connector that reads Json documents.
-* [CQL Connector]: a connector that reads CQL files.
 
 [Connectors]: ../../connectors/api/src/main/java/com/datastax/dsbulk/connectors/api/Connector.java
 [Records]: ../../connectors/api/src/main/java/com/datastax/dsbulk/connectors/api/Record.java
 [CSV Connector]: ./csv
 [Json Connector]: ./json
-[CQL Connector]: ./cql
 [RFC 4180]: https://tools.ietf.org/html/rfc4180
 [Wikipedia article on CSV format]: https://en.wikipedia.org/wiki/Comma-separated_values
 

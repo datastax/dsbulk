@@ -29,7 +29,6 @@
     <module>api</module>
     <module>csv</module>
     <module>json</module>
-    <module>cql</module>
   </modules>
 
 </project>
