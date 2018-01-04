@@ -76,19 +76,6 @@
     </dependency>
 
     <!-- source artifacts -->
-
-    <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dse-java-driver-core</artifactId>
-      <classifier>sources</classifier>
-    </dependency>
-
-    <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dse-java-driver-extras</artifactId>
-      <classifier>sources</classifier>
-    </dependency>
-
   </dependencies>
 
   <build>
