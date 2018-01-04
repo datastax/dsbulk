@@ -76,9 +76,9 @@ public class LoadWorkflow implements Workflow {
   public void init() throws Exception {
     settingsManager.init();
     executionId = settingsManager.getExecutionId();
-    settingsManager.logEffectiveSettings();
     LogSettings logSettings = settingsManager.getLogSettings();
     logSettings.init(false);
+    settingsManager.logEffectiveSettings();
     DriverSettings driverSettings = settingsManager.getDriverSettings();
     ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
     SchemaSettings schemaSettings = settingsManager.getSchemaSettings();
