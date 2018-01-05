@@ -22,7 +22,9 @@ import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
 import com.typesafe.config.ConfigException;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,9 +65,10 @@ public class LogSettings {
     this.executionId = executionId;
   }
 
-  public void init(boolean writeToStandardOutput) {
+  public void init(boolean writeToStandardOutput) throws IOException {
     try {
       executionDirectory = config.getPath("directory").resolve(executionId);
+      checkExecutionDirectory();
       System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
       maxQueryStringLength = config.getInt(MAX_QUERY_STRING_LENGTH);
       maxBoundValueLength = config.getInt(MAX_BOUND_VALUE_LENGTH);
@@ -105,6 +108,27 @@ public class LogSettings {
 
   Path getExecutionDirectory() {
     return executionDirectory;
+  }
+
+  private void checkExecutionDirectory() throws IOException {
+    if (Files.exists(executionDirectory)) {
+      if (Files.isDirectory(executionDirectory)) {
+        if (Files.isWritable(executionDirectory)) {
+          if (Files.list(executionDirectory).count() > 0) {
+            throw new IllegalArgumentException(
+                "Execution directory exists but is not empty: " + executionDirectory);
+          }
+        } else {
+          throw new IllegalArgumentException(
+              "Execution directory exists but is not writable: " + executionDirectory);
+        }
+      } else {
+        throw new IllegalArgumentException(
+            "Execution directory exists but is not a directory: " + executionDirectory);
+      }
+    } else {
+      Files.createDirectories(executionDirectory);
+    }
   }
 
   private void redirectStandardOutputToStandardError() {

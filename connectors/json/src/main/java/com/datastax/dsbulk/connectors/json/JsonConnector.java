@@ -21,6 +21,7 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.json.internal.SchemaFreeJsonRecordMetadata;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.io.SerializedString;
@@ -322,6 +323,13 @@ public class JsonConnector implements Connector {
                 MappingIterator<JsonNode> it = objectMapper.readValues(parser, JsonNode.class);
                 long recordNumber = 1;
                 while (!sink.isCancelled() && it.hasNext()) {
+                  if (parser.currentToken() != JsonToken.START_OBJECT) {
+                    throw new JsonParseException(
+                        parser,
+                        String.format(
+                            "Expecting START_OBJECT, got %s. Did you forget to set connector.json.mode to SINGLE_DOCUMENT?",
+                            parser.currentToken()));
+                  }
                   long finalRecordNumber = recordNumber++;
                   Supplier<URI> location =
                       Suppliers.memoize(() -> URIUtils.createLocationURI(url, finalRecordNumber));

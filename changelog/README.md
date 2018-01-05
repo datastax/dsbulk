@@ -24,6 +24,9 @@
 - [new feature] DAT-201: Use an ANTLR4-based parser to parse user-supplied statements.
 - [improvement] DAT-205: Use a pooling library for concurrent writes.
 - [improvement] DAT-210: Do not print effective settings to the console.
+- [improvement] DAT-206: Default connector.*.url to "-".
+- [improvement] DAT-200: DSBulk should fail if execution directory already exists and is not empty.
+- [improvement] DAT-189: More gracefully error out when Json document mode is wrong.
 - [improvement] DAT-190: Consider connector.json.mode for unloading.
 
 
