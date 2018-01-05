@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.maybeEscapeBackslash;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
@@ -23,7 +24,6 @@ import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
@@ -33,6 +33,7 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.typesafe.config.ConfigFactory;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -114,7 +115,7 @@ class LogSettingsTest {
   @Test
   void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = ConfigUtils.maybeEscapeBackslash(dir.toString());
+    String logDir = maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -130,7 +131,7 @@ class LogSettingsTest {
   @Test
   void should_create_log_file_when_in_production() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = ConfigUtils.maybeEscapeBackslash(dir.toString());
+    String logDir = maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -158,7 +159,7 @@ class LogSettingsTest {
   @Test
   void should_not_create_log_file_when_not_in_production() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = ConfigUtils.maybeEscapeBackslash(dir.toString());
+    String logDir = maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -176,7 +177,7 @@ class LogSettingsTest {
       @StreamCapture(STDERR) StreamInterceptor stdErr)
       throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = ConfigUtils.maybeEscapeBackslash(dir.toString());
+    String logDir = maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -203,5 +204,70 @@ class LogSettingsTest {
       lc.putProperty(PRODUCTION_KEY, "false");
       root.setLevel(oldLevel);
     }
+  }
+
+  @Test
+  void should_throw_IAE_when_execution_directory_not_empty() throws Exception {
+    Path logDir = Files.createTempDirectory("test");
+    Path executionDir = logDir.resolve("TEST_EXECUTION_ID");
+    Path foo = executionDir.resolve("foo");
+    Files.createDirectories(foo);
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(() -> settings.init(false))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Execution directory exists but is not empty: " + executionDir);
+  }
+
+  @Test
+  void should_throw_IAE_when_execution_directory_not_writable() throws Exception {
+    Path logDir = Files.createTempDirectory("test");
+    Path executionDir = logDir.resolve("TEST_EXECUTION_ID");
+    Files.createDirectories(executionDir);
+    assertThat(executionDir.toFile().setWritable(false, false)).isTrue();
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(() -> settings.init(false))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Execution directory exists but is not writable: " + executionDir);
+  }
+
+  @Test
+  void should_throw_IAE_when_execution_directory_not_directory() throws Exception {
+    Path logDir = Files.createTempDirectory("test");
+    Path executionDir = logDir.resolve("TEST_EXECUTION_ID");
+    Files.createDirectories(logDir);
+    Files.createFile(executionDir);
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(() -> settings.init(false))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Execution directory exists but is not a directory: " + executionDir);
+  }
+
+  @Test
+  void should_throw_IAE_when_execution_directory_contains_forbidden_chars() throws Exception {
+    Path logDir = Files.createTempDirectory("test");
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "/ IS FORBIDDEN");
+    assertThatThrownBy(() -> settings.init(false))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("/ IS FORBIDDEN");
   }
 }
