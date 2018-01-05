@@ -24,6 +24,7 @@
 - [new feature] DAT-201: Use an ANTLR4-based parser to parse user-supplied statements.
 - [improvement] DAT-205: Use a pooling library for concurrent writes.
 - [improvement] DAT-210: Do not print effective settings to the console.
+- [bug] DAT-196: connector.csv.url does not interpret ~ as $HOME directory.
 
 
 ### 1.0.0-beta2
