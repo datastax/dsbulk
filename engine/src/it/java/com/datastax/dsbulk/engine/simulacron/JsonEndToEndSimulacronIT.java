@@ -8,6 +8,7 @@ package com.datastax.dsbulk.engine.simulacron;
 
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createParameterizedQuery;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithError;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSet;
@@ -29,8 +30,6 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQ
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
-import static com.google.common.io.MoreFiles.deleteRecursively;
-import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.slf4j.event.Level.ERROR;
@@ -100,8 +99,8 @@ class JsonEndToEndSimulacronIT {
   }
 
   @AfterEach
-  void deleteDirs() throws IOException {
-    deleteRecursively(unloadDir, ALLOW_INSECURE);
+  void deleteDirs() {
+    deleteDirectory(unloadDir);
   }
 
   @BeforeEach

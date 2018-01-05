@@ -11,6 +11,7 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_CRLF;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_ERROR;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_LONG;
@@ -31,8 +32,6 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePrepa
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateQueryCount;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
-import static com.google.common.io.MoreFiles.deleteRecursively;
-import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -112,8 +111,8 @@ class CSVEndToEndSimulacronIT {
   }
 
   @AfterEach
-  void deleteDirs() throws IOException {
-    deleteRecursively(unloadDir, ALLOW_INSECURE);
+  void deleteDirs() {
+    deleteDirectory(unloadDir);
   }
 
   @AfterEach

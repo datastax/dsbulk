@@ -8,8 +8,8 @@ package com.datastax.dsbulk.commons.tests.ccm;
 
 import static com.datastax.dsbulk.commons.tests.utils.NetworkUtils.findAvailablePort;
 import static com.datastax.dsbulk.commons.tests.utils.Version.DEFAULT_DSE_VERSION;
-import static com.google.common.io.MoreFiles.deleteRecursively;
 
+import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.MemoryUtils;
 import com.datastax.dsbulk.commons.tests.utils.NetworkUtils;
 import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
@@ -19,7 +19,6 @@ import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Closer;
 import com.google.common.io.Files;
-import com.google.common.io.RecursiveDeleteOption;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -363,11 +362,7 @@ public class DefaultCCMCluster implements CCMCluster {
           LOGGER.error("Could not remove " + this, e);
           handleCCMException(e);
         } finally {
-          try {
-            deleteRecursively(getCcmDir().toPath(), RecursiveDeleteOption.ALLOW_INSECURE);
-          } catch (Exception e) {
-            LOGGER.error("Could not delete directory: " + getCcmDir(), e);
-          }
+          FileUtils.deleteDirectory(getCcmDir().toPath());
         }
         LOGGER.debug("Removed: {}", this);
       }
