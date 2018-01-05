@@ -49,28 +49,30 @@ Default: **"csv"**.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
 
-- **file**: the file protocol can be used with all supported file systems, local or not.
-    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
-    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+The file protocol can be used with all supported file systems, local or not.
+- **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+- **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
-Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
+Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol. Relative URLs will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory, as supplied by `System.getProperty("user.home")` (this expansion will _not_ occur when the tilde is _not_ the first character in the path).
 
 In addition the value `-` indicates `stdin` when loading and `stdout` when unloading. This is in line with Unix tools such as tar, which uses `-` to represent stdin/stdout when reading/writing an archive.
 
 Examples:
 
     url = "/path/to/dir/or/file"           # without protocol
+    url = "./path/to/dir/or/file"          # without protocol, relative to working directory
+    url = "~/path/to/dir/or/file"          # without protocol, relative to the user's home directory
     url = "file:///path/to/dir/or/file"    # with protocol
     url = "-"                              # to read csv data from stdin (for load) or
     url = "-"                              # write csv data to stdout (for unload)
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
-This setting has no default value and must be supplied by the user.
+The default value is `-` (read from `stdin` / write to `stdout`).
 
-Default: **&lt;unspecified&gt;**.
+Default: **"-"**.
 
 #### -delim,--connector.csv.delimiter _&lt;string&gt;_
 
@@ -128,28 +130,30 @@ Default: **-1**.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
 
-- **file**: the file protocol can be used with all supported file systems, local or not.
-    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
-    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; Json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+The file protocol can be used with all supported file systems, local or not.
+- **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+- **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
-Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
+Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol. Relative URLs will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory, as supplied by `System.getProperty("user.home")` (this expansion will _not_ occur when the tilde is _not_ the first character in the path).
 
 In addition the value `-` indicates `stdin` when loading and `stdout` when unloading. This is in line with Unix tools such as tar, which uses `-` to represent stdin/stdout when reading/writing an archive.
 
 Examples:
 
     url = "/path/to/dir/or/file"           # without protocol
+    url = "./path/to/dir/or/file"          # without protocol, relative to working directory
+    url = "~/path/to/dir/or/file"          # without protocol, relative to the user's home directory
     url = "file:///path/to/dir/or/file"    # with protocol
     url = "-"                              # to read json data from stdin (for load) or
     url = "-"                              # write json data to stdout (for unload)
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
-This setting has no default value and must be supplied by the user.
+The default value is `-` (read from `stdin` / write to `stdout`).
 
-Default: **&lt;unspecified&gt;**.
+Default: **"-"**.
 
 #### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
 
@@ -299,11 +303,11 @@ Default: **100**.
 
 The directory where all log files will be stored.
 
-Note that this must be a path pointing to a writable directory. URLs are not accepted here (not even `file:/` URLs).
+Note that this must be a path pointing to a writable directory; this directory will be created if it does not exist. URLs are not accepted here (not even `file:/` URLs).
 
 Log files for a specific run, or execution, will be located in a sub-directory inside the directory specified here. Each execution generates a sub-directory identified by an "execution ID". See `engine.executionId` for more information about execution IDs.
 
-Setting this value to `.` denotes the current working directory.
+Relative paths will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory, as supplied by `System.getProperty("user.home")` (this expansion will _not_ occur when the tilde is _not_ the first character in the path).
 
 Default: **"./logs"**.
 
@@ -344,28 +348,30 @@ CSV Connector configuration.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
 
-- **file**: the file protocol can be used with all supported file systems, local or not.
-    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
-    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+The file protocol can be used with all supported file systems, local or not.
+- **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+- **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
-Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
+Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol. Relative URLs will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory, as supplied by `System.getProperty("user.home")` (this expansion will _not_ occur when the tilde is _not_ the first character in the path).
 
 In addition the value `-` indicates `stdin` when loading and `stdout` when unloading. This is in line with Unix tools such as tar, which uses `-` to represent stdin/stdout when reading/writing an archive.
 
 Examples:
 
     url = "/path/to/dir/or/file"           # without protocol
+    url = "./path/to/dir/or/file"          # without protocol, relative to working directory
+    url = "~/path/to/dir/or/file"          # without protocol, relative to the user's home directory
     url = "file:///path/to/dir/or/file"    # with protocol
     url = "-"                              # to read csv data from stdin (for load) or
     url = "-"                              # write csv data to stdout (for unload)
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
-This setting has no default value and must be supplied by the user.
+The default value is `-` (read from `stdin` / write to `stdout`).
 
-Default: **&lt;unspecified&gt;**.
+Default: **"-"**.
 
 #### -delim,--connector.csv.delimiter _&lt;string&gt;_
 
@@ -510,28 +516,30 @@ Json Connector configuration.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
 
-- **file**: the file protocol can be used with all supported file systems, local or not.
-    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
-    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; Json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+The file protocol can be used with all supported file systems, local or not.
+- **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+- **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
-Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
+Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol. Relative URLs will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory, as supplied by `System.getProperty("user.home")` (this expansion will _not_ occur when the tilde is _not_ the first character in the path).
 
 In addition the value `-` indicates `stdin` when loading and `stdout` when unloading. This is in line with Unix tools such as tar, which uses `-` to represent stdin/stdout when reading/writing an archive.
 
 Examples:
 
     url = "/path/to/dir/or/file"           # without protocol
+    url = "./path/to/dir/or/file"          # without protocol, relative to working directory
+    url = "~/path/to/dir/or/file"          # without protocol, relative to the user's home directory
     url = "file:///path/to/dir/or/file"    # with protocol
     url = "-"                              # to read json data from stdin (for load) or
     url = "-"                              # write json data to stdout (for unload)
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
-This setting has no default value and must be supplied by the user.
+The default value is `-` (read from `stdin` / write to `stdout`).
 
-Default: **&lt;unspecified&gt;**.
+Default: **"-"**.
 
 #### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
 
@@ -1469,11 +1477,11 @@ Default: **100**.
 
 The directory where all log files will be stored.
 
-Note that this must be a path pointing to a writable directory. URLs are not accepted here (not even `file:/` URLs).
+Note that this must be a path pointing to a writable directory; this directory will be created if it does not exist. URLs are not accepted here (not even `file:/` URLs).
 
 Log files for a specific run, or execution, will be located in a sub-directory inside the directory specified here. Each execution generates a sub-directory identified by an "execution ID". See `engine.executionId` for more information about execution IDs.
 
-Setting this value to `.` denotes the current working directory.
+Relative paths will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory, as supplied by `System.getProperty("user.home")` (this expansion will _not_ occur when the tilde is _not_ the first character in the path).
 
 Default: **"./logs"**.
 

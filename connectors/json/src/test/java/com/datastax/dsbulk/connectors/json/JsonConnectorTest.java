@@ -24,6 +24,7 @@ import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.typesafe.config.Config;
@@ -152,7 +153,7 @@ class JsonConnectorTest {
       JsonConnector connector = new JsonConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("url = -, encoding = ISO-8859-1")
+              ConfigFactory.parseString("encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -181,7 +182,7 @@ class JsonConnectorTest {
       JsonConnector connector = new JsonConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("url = -, encoding = ISO-8859-1")
+              ConfigFactory.parseString("encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -562,6 +563,25 @@ class JsonConnectorTest {
     } finally {
       deleteRecursively(out, ALLOW_INSECURE);
     }
+  }
+
+  @Test
+  void should_report_wrong_document_mode() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS], mode = MULTI_DOCUMENT",
+                        url("/single_doc.json")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.defer(connector.read()).collectList().block())
+        .hasRootCauseExactlyInstanceOf(JsonParseException.class)
+        .hasMessageContaining(
+            "Expecting START_OBJECT, got START_ARRAY. Did you forget to set connector.json.mode to SINGLE_DOCUMENT?");
+    connector.close();
   }
 
   private void verifyRecords(List<Record> actual) {
