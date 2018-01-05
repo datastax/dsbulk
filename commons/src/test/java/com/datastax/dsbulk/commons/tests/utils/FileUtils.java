@@ -6,6 +6,9 @@
  */
 package com.datastax.dsbulk.commons.tests.utils;
 
+import static com.google.common.io.MoreFiles.deleteRecursively;
+import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
@@ -58,6 +61,13 @@ public class FileUtils {
   public static List<String> readAllLinesInDirectory(Path dir, Charset charset) throws IOException {
     try (Stream<String> lines = readAllLinesInDirectoryAsStream(dir, charset)) {
       return lines.collect(Collectors.toList());
+    }
+  }
+
+  public static void deleteDirectory(Path dir) {
+    try {
+      deleteRecursively(dir, ALLOW_INSECURE);
+    } catch (IOException ignored) {
     }
   }
 }

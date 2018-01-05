@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
@@ -22,8 +23,6 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.SELECT_FROM_IP_BY
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createComplexTable;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createWithSpacesTable;
-import static com.google.common.io.MoreFiles.deleteRecursively;
-import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -69,8 +68,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @AfterEach
-  void deleteDirs() throws IOException {
-    deleteRecursively(unloadDir, ALLOW_INSECURE);
+  void deleteDirs() {
+    deleteDirectory(unloadDir);
   }
 
   /** Simple test case which attempts to load and unload data using ccm. */
