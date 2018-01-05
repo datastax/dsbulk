@@ -90,10 +90,7 @@ class LogSettingsTest {
             ConfigFactory.parseString("maxErrors = 112 %")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
-    assertThatThrownBy(
-            () -> {
-              settings.init(false);
-            })
+    assertThatThrownBy(() -> settings.init(false))
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
 
@@ -103,10 +100,7 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
 
     LogSettings settings2 = new LogSettings(config, "test");
-    assertThatThrownBy(
-            () -> {
-              settings2.init(false);
-            })
+    assertThatThrownBy(() -> settings2.init(false))
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
   }

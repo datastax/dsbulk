@@ -101,7 +101,10 @@ public class UnloadWorkflow implements Workflow {
     logManager.init();
     metricsManager =
         monitoringSettings.newMetricsManager(
-            WorkflowType.UNLOAD, false, logManager.getExecutionDirectory());
+            WorkflowType.UNLOAD,
+            false,
+            logManager.getExecutionDirectory(),
+            cluster.getMetrics().getRegistry());
     metricsManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     RecordMetadata recordMetadata = connector.getRecordMetadata();
@@ -123,8 +126,8 @@ public class UnloadWorkflow implements Workflow {
       flux = parallelFlux();
     }
     flux.compose(connector.write())
-        .transform(metricsManager.newErrorRecordMonitor())
-        .transform(logManager.newRecordErrorHandler())
+        .transform(metricsManager.newFailedItemsMonitor())
+        .transform(logManager.newFailedRecordsHandler())
         .blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
@@ -139,11 +142,13 @@ public class UnloadWorkflow implements Workflow {
             statement ->
                 executor
                     .readReactive(statement)
-                    .transform(logManager.newAttemptedItemsCounter())
-                    .transform(logManager.newReadErrorHandler())
+                    .transform(metricsManager.newTotalItemsMonitor())
+                    .transform(logManager.newTotalItemsCounter())
+                    .transform(metricsManager.newFailedItemsMonitor())
+                    .transform(logManager.newFailedReadsHandler())
                     .map(readResultMapper::map)
-                    .transform(metricsManager.newErrorRecordMonitor())
-                    .transform(logManager.newRecordErrorHandler())
+                    .transform(metricsManager.newFailedItemsMonitor())
+                    .transform(logManager.newFailedRecordsHandler())
                     .subscribeOn(scheduler),
             Runtime.getRuntime().availableProcessors());
   }
@@ -152,14 +157,16 @@ public class UnloadWorkflow implements Workflow {
   private Flux<Record> parallelFlux() {
     return Flux.fromIterable(readStatements)
         .flatMap(executor::readReactive)
-        .transform(logManager.newAttemptedItemsCounter())
-        .transform(logManager.newReadErrorHandler())
+        .transform(metricsManager.newTotalItemsMonitor())
+        .transform(logManager.newTotalItemsCounter())
+        .transform(metricsManager.newFailedItemsMonitor())
+        .transform(logManager.newFailedReadsHandler())
         .parallel()
         .runOn(scheduler)
         .map(readResultMapper::map)
         .sequential()
-        .transform(metricsManager.newErrorRecordMonitor())
-        .transform(logManager.newRecordErrorHandler());
+        .transform(metricsManager.newFailedItemsMonitor())
+        .transform(logManager.newFailedRecordsHandler());
   }
 
   @Override
