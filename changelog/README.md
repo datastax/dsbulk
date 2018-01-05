@@ -25,7 +25,7 @@
 - [improvement] DAT-205: Use a pooling library for concurrent writes.
 - [improvement] DAT-210: Do not print effective settings to the console.
 - [improvement] DAT-206: Default connector.*.url to "-".
-- [bug] DAT-196: connector.csv.url does not interpret ~ as $HOME directory.
+- [improvement] DAT-200: DSBulk should fail if execution directory already exists and is not empty.
 
 
 ### 1.0.0-beta2

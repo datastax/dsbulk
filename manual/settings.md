@@ -303,7 +303,7 @@ Default: **100**.
 
 The directory where all log files will be stored.
 
-Note that this must be a path pointing to a writable directory. URLs are not accepted here (not even `file:/` URLs).
+Note that this must be a path pointing to a writable directory; this directory will be created if it does not exist. URLs are not accepted here (not even `file:/` URLs).
 
 Log files for a specific run, or execution, will be located in a sub-directory inside the directory specified here. Each execution generates a sub-directory identified by an "execution ID". See `engine.executionId` for more information about execution IDs.
 
@@ -1477,7 +1477,7 @@ Default: **100**.
 
 The directory where all log files will be stored.
 
-Note that this must be a path pointing to a writable directory. URLs are not accepted here (not even `file:/` URLs).
+Note that this must be a path pointing to a writable directory; this directory will be created if it does not exist. URLs are not accepted here (not even `file:/` URLs).
 
 Log files for a specific run, or execution, will be located in a sub-directory inside the directory specified here. Each execution generates a sub-directory identified by an "execution ID". See `engine.executionId` for more information about execution IDs.
 
