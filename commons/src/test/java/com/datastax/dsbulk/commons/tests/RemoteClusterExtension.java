@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests;
+package com.datastax.dsbulk.commons.tests;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
@@ -12,8 +12,8 @@ import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
-import com.datastax.dsbulk.tests.driver.factory.ClusterFactory;
-import com.datastax.dsbulk.tests.driver.factory.SessionFactory;
+import com.datastax.dsbulk.commons.tests.driver.factory.ClusterFactory;
+import com.datastax.dsbulk.commons.tests.driver.factory.SessionFactory;
 import java.io.Closeable;
 import java.lang.reflect.Parameter;
 import java.net.InetAddress;

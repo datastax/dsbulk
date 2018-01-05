@@ -4,12 +4,12 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.driver.factory;
+package com.datastax.dsbulk.commons.tests.driver.factory;
 
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.commons.tests.utils.SessionUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
-import com.datastax.dsbulk.tests.driver.annotations.SessionConfig;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 

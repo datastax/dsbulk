@@ -6,25 +6,25 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_CERT_CHAIN_PATH;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PATH;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_PRIVATE_KEY_PATH;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PATH;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
-import static com.datastax.dsbulk.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_CERT_CHAIN_PATH;
-import static com.datastax.dsbulk.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD;
-import static com.datastax.dsbulk.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PATH;
-import static com.datastax.dsbulk.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_PRIVATE_KEY_PATH;
-import static com.datastax.dsbulk.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD;
-import static com.datastax.dsbulk.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PATH;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
 import com.datastax.dsbulk.engine.Main;
-import com.datastax.dsbulk.tests.ccm.CCMCluster;
-import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.tests.driver.annotations.ClusterConfig;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;

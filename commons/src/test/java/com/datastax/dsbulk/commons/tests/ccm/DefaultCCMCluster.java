@@ -4,17 +4,17 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.ccm;
+package com.datastax.dsbulk.commons.tests.ccm;
 
 import static com.datastax.dsbulk.commons.tests.utils.NetworkUtils.findAvailablePort;
-import static com.datastax.dsbulk.tests.utils.Version.DEFAULT_DSE_VERSION;
+import static com.datastax.dsbulk.commons.tests.utils.Version.DEFAULT_DSE_VERSION;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 
-import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.MemoryUtils;
 import com.datastax.dsbulk.commons.tests.utils.NetworkUtils;
+import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
-import com.datastax.dsbulk.tests.utils.Version;
+import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Closer;

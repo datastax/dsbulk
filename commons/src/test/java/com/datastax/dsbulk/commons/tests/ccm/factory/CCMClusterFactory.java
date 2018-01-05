@@ -4,16 +4,16 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.ccm.factory;
+package com.datastax.dsbulk.commons.tests.ccm.factory;
 
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMFactory;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMFactoryMethod;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMWorkload;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
-import com.datastax.dsbulk.tests.ccm.CCMCluster;
-import com.datastax.dsbulk.tests.ccm.DefaultCCMCluster;
-import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.tests.ccm.annotations.CCMFactory;
-import com.datastax.dsbulk.tests.ccm.annotations.CCMFactoryMethod;
-import com.datastax.dsbulk.tests.ccm.annotations.CCMWorkload;
-import com.datastax.dsbulk.tests.utils.Version;
+import com.datastax.dsbulk.commons.tests.utils.Version;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;

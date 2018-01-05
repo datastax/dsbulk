@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.ccm;
+package com.datastax.dsbulk.commons.tests.ccm;
 
 /** An exception wrapping all errors raised when a CCM command fails to execute properly. */
 public class CCMException extends RuntimeException {

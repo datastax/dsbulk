@@ -20,6 +20,8 @@ public class ConnectorSettings {
   private final WorkflowType type;
 
   private Connector connector;
+  private String connectorName;
+  private LoaderConfig connectorConfig;
 
   ConnectorSettings(LoaderConfig config, WorkflowType type) {
     this.config = config;
@@ -28,12 +30,13 @@ public class ConnectorSettings {
 
   public void init() {
     // Attempting to fetch the connector will run through all the validation logic we have for parsing the configuration
-    String connectorName = config.getString("name");
+    connectorName = config.getString("name");
     connector = locateConnector(connectorName);
     if (config.hasPath(connectorName)) {
       // the connector should be configured for reads when the workflow is LOAD
       boolean read = type == WorkflowType.LOAD;
-      connector.configure(config.getConfig(connectorName), read);
+      connectorConfig = config.getConfig(connectorName);
+      connector.configure(connectorConfig, read);
     } else {
       throw new BulkConfigurationException(
           String.format("Cannot find configuration entry for connector '%s'", connectorName),
@@ -43,6 +46,14 @@ public class ConnectorSettings {
 
   public Connector getConnector() throws BulkConfigurationException {
     return connector;
+  }
+
+  public String getConnectorName() {
+    return connectorName;
+  }
+
+  public LoaderConfig getConnectorConfig() {
+    return connectorConfig;
   }
 
   private static Connector locateConnector(String name) {

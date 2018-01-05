@@ -7,9 +7,9 @@
 package com.datastax.dsbulk.executor.reactor.ccm;
 
 import com.datastax.driver.core.ContinuousPagingSession;
+import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
 import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
-import com.datastax.dsbulk.tests.driver.annotations.ClusterConfig;
 import org.junit.jupiter.api.Tag;
 
 @Tag("ccm")

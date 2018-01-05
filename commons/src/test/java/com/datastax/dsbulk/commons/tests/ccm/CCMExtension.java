@@ -4,18 +4,18 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.ccm;
+package com.datastax.dsbulk.commons.tests.ccm;
 
-import static com.datastax.dsbulk.tests.utils.Version.DEFAULT_DSE_VERSION;
-import static com.datastax.dsbulk.tests.utils.Version.DEFAULT_OSS_VERSION;
+import static com.datastax.dsbulk.commons.tests.utils.Version.DEFAULT_DSE_VERSION;
+import static com.datastax.dsbulk.commons.tests.utils.Version.DEFAULT_OSS_VERSION;
 
-import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
+import com.datastax.dsbulk.commons.tests.RemoteClusterExtension;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.ccm.factory.CCMClusterFactory;
+import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
-import com.datastax.dsbulk.tests.RemoteClusterExtension;
-import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.tests.ccm.factory.CCMClusterFactory;
-import com.datastax.dsbulk.tests.utils.Version;
-import com.datastax.dsbulk.tests.utils.VersionRequirement;
+import com.datastax.dsbulk.commons.tests.utils.Version;
+import com.datastax.dsbulk.commons.tests.utils.VersionRequirement;
 import java.lang.reflect.Parameter;
 import java.net.InetAddress;
 import java.util.List;
