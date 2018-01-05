@@ -146,15 +146,6 @@ public class LogManager implements AutoCloseable {
   public void init() throws IOException {
     codecRegistry = cluster.getConfiguration().getCodecRegistry();
     protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
-    Files.createDirectories(executionDirectory);
-    if (!Files.isDirectory(executionDirectory)) {
-      throw new IllegalArgumentException(
-          String.format("File %s is not a directory", executionDirectory));
-    }
-    if (!Files.isWritable(executionDirectory)) {
-      throw new IllegalArgumentException(
-          String.format("Directory %s is not writable", executionDirectory));
-    }
     if (workflowType == WorkflowType.LOAD) {
       positionsPrinter =
           new PrintWriter(

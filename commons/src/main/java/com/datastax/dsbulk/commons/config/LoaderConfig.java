@@ -71,13 +71,21 @@ public interface LoaderConfig extends Config {
    *
    * <p>The returned Path is normalized and absolute.
    *
+   * <p>For convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the
+   * current user's home directory, as supplied by `System.getProperty("user.home")`. Note that this
+   * expansion will not occur when the tilde is not the first character in the path.
+   *
    * @param path path expression.
    * @return the Path object at the requested path.
    * @throws ConfigException.Missing if value is absent or null.
    * @throws ConfigException.WrongType if value is not convertible to a Path.
    */
   default Path getPath(String path) {
-    return Paths.get(getString(path)).normalize().toAbsolutePath();
+    String setting = getString(path);
+    if (setting.startsWith("~")) {
+      setting = System.getProperty("user.home") + setting.substring(1);
+    }
+    return Paths.get(setting).normalize().toAbsolutePath();
   }
 
   /**
