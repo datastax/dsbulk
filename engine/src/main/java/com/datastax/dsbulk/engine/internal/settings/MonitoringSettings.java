@@ -6,6 +6,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -59,7 +60,10 @@ public class MonitoringSettings {
   }
 
   public MetricsManager newMetricsManager(
-      WorkflowType workflowType, boolean batchingEnabled, Path executionDirectory) {
+      WorkflowType workflowType,
+      boolean batchingEnabled,
+      Path executionDirectory,
+      MetricRegistry registry) {
     ThreadFactory threadFactory =
         new ThreadFactoryBuilder()
             .setDaemon(true)
@@ -69,6 +73,7 @@ public class MonitoringSettings {
     ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(1, threadFactory);
 
     return new MetricsManager(
+        registry,
         workflowType,
         executionId,
         scheduler,

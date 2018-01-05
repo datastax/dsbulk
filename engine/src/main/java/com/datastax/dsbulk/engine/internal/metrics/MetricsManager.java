@@ -9,20 +9,21 @@ package com.datastax.dsbulk.engine.internal.metrics;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.CsvReporter;
 import com.codahale.metrics.Histogram;
-import com.codahale.metrics.JmxReporter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.UniformReservoir;
+import com.codahale.metrics.jmx.JmxReporter;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
-import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.MetricsReportingExecutionListener;
+import com.datastax.dsbulk.executor.api.result.Result;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
@@ -42,9 +43,8 @@ public class MetricsManager implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricsManager.class);
 
-  private final MetricRegistry registry = new MetricRegistry();
-  private final MetricsCollectingExecutionListener listener =
-      new MetricsCollectingExecutionListener(registry);
+  private final MetricRegistry registry;
+  private final MetricsCollectingExecutionListener listener;
 
   private final WorkflowType workflowType;
   private final String executionId;
@@ -59,15 +59,10 @@ public class MetricsManager implements AutoCloseable {
   private final Duration reportInterval;
   private final boolean batchingEnabled;
 
-  private Meter records;
-  private Meter failedRecords;
-  private Meter successfulRecords;
-  private Meter mappings;
-  private Meter failedMappings;
-  private Meter successfulMappings;
+  private Meter totalRecords;
+  private Counter failedRecords;
   private Histogram batchSize;
-  private RecordReporter resultMappingsReporter;
-  private MappingReporter recordMappingsReporter;
+  private RecordReporter recordReporter;
   private BatchReporter batchesReporter;
   private MemoryReporter memoryReporter;
   private MetricsReportingExecutionListener writesReporter;
@@ -76,6 +71,7 @@ public class MetricsManager implements AutoCloseable {
   private CsvReporter csvReporter;
 
   public MetricsManager(
+      MetricRegistry driverRegistry,
       WorkflowType workflowType,
       String executionId,
       ScheduledExecutorService scheduler,
@@ -88,6 +84,11 @@ public class MetricsManager implements AutoCloseable {
       Path executionDirectory,
       Duration reportInterval,
       boolean batchingEnabled) {
+    this.registry = new MetricRegistry();
+    driverRegistry
+        .getMetrics()
+        .forEach((name, metric) -> this.registry.register("driver/" + name, metric));
+    this.listener = new MetricsCollectingExecutionListener(registry);
     this.workflowType = workflowType;
     this.executionId = executionId;
     this.scheduler = scheduler;
@@ -103,12 +104,8 @@ public class MetricsManager implements AutoCloseable {
   }
 
   public void init() {
-    records = registry.meter("records/total");
-    successfulRecords = registry.meter("records/successful");
-    failedRecords = registry.meter("records/failed");
-    mappings = registry.meter("mappings/total");
-    failedMappings = registry.meter("mappings/failed");
-    successfulMappings = registry.meter("mappings/successful");
+    totalRecords = registry.meter("records/total");
+    failedRecords = registry.counter("records/failed");
     batchSize = registry.histogram("batches/size", () -> new Histogram(new UniformReservoir()));
     createMemoryGauges();
 
@@ -120,9 +117,9 @@ public class MetricsManager implements AutoCloseable {
     }
 
     startMemoryReporter();
+    startRecordReporter();
     switch (workflowType) {
       case LOAD:
-        startRecordMappingsReporter();
         if (batchingEnabled) {
           startBatchesReporter();
         }
@@ -131,7 +128,6 @@ public class MetricsManager implements AutoCloseable {
 
       case UNLOAD:
         startReadsReporter();
-        startResultMappingsReporter();
         break;
     }
   }
@@ -241,14 +237,9 @@ public class MetricsManager implements AutoCloseable {
     csvReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
-  private void startResultMappingsReporter() {
-    resultMappingsReporter = new RecordReporter(registry, rateUnit, scheduler, expectedWrites);
-    resultMappingsReporter.start(reportInterval.getSeconds(), SECONDS);
-  }
-
-  private void startRecordMappingsReporter() {
-    recordMappingsReporter = new MappingReporter(registry, rateUnit, scheduler, expectedWrites);
-    recordMappingsReporter.start(reportInterval.getSeconds(), SECONDS);
+  private void startRecordReporter() {
+    recordReporter = new RecordReporter(registry, rateUnit, scheduler, expectedWrites);
+    recordReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
   private void startBatchesReporter() {
@@ -301,11 +292,8 @@ public class MetricsManager implements AutoCloseable {
 
   public void reportFinalMetrics() {
     LOGGER.info("Final stats:");
-    if (resultMappingsReporter != null) {
-      resultMappingsReporter.report();
-    }
-    if (recordMappingsReporter != null) {
-      recordMappingsReporter.report();
+    if (recordReporter != null) {
+      recordReporter.report();
     }
     if (batchesReporter != null) {
       batchesReporter.report();
@@ -328,11 +316,8 @@ public class MetricsManager implements AutoCloseable {
     if (csvReporter != null) {
       csvReporter.close();
     }
-    if (resultMappingsReporter != null) {
-      resultMappingsReporter.close();
-    }
-    if (recordMappingsReporter != null) {
-      recordMappingsReporter.close();
+    if (recordReporter != null) {
+      recordReporter.close();
     }
     if (batchesReporter != null) {
       batchesReporter.close();
@@ -348,28 +333,18 @@ public class MetricsManager implements AutoCloseable {
     }
   }
 
-  public Function<Flux<Record>, Flux<Record>> newErrorRecordMonitor() {
-    return upstream ->
-        upstream.doOnNext(
-            r -> {
-              records.mark();
-              if (r instanceof ErrorRecord) {
-                failedRecords.mark();
-              } else {
-                successfulRecords.mark();
-              }
-            });
+  public <T> Function<Flux<T>, Flux<T>> newTotalItemsMonitor() {
+    return upstream -> upstream.doOnNext(item -> totalRecords.mark());
   }
 
-  public Function<Flux<Statement>, Flux<Statement>> newUnmappableStatementMonitor() {
+  public <T> Function<Flux<T>, Flux<T>> newFailedItemsMonitor() {
     return upstream ->
         upstream.doOnNext(
-            stmt -> {
-              mappings.mark();
-              if (stmt instanceof UnmappableStatement) {
-                failedMappings.mark();
-              } else {
-                successfulMappings.mark();
+            item -> {
+              if (item instanceof ErrorRecord
+                  || item instanceof UnmappableStatement
+                  || (item instanceof Result && !((Result) item).isSuccess())) {
+                failedRecords.inc();
               }
             });
   }

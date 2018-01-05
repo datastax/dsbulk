@@ -122,7 +122,8 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void full_load() throws Exception {
+  void full_load(@LogCapture LogInterceptor logs, @StreamCapture(STDOUT) StreamInterceptor stdOut)
+      throws Exception {
     String[] args = {
       "load",
       "--log.directory",
@@ -145,6 +146,13 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isZero();
+
+    assertThat(stdOut.getStreamAsString())
+        .contains(logs.getLoggedMessages())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
+        .contains("Writes: total: 24, successful: 24, failed: 0");
+
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
 
@@ -416,7 +424,8 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void full_unload() throws Exception {
+  void full_unload(@LogCapture LogInterceptor logs, @StreamCapture(STDOUT) StreamInterceptor stdOut)
+      throws Exception {
 
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
     simulacron.prime(new Prime(prime));
@@ -445,6 +454,11 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
+
+    assertThat(stdOut.getStreamAsString())
+        .contains(logs.getLoggedMessages())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Reads: total: 24, successful: 24, failed: 0");
 
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validateOutputFiles(24, outputFile);

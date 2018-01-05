@@ -307,7 +307,9 @@ public class DriverSettings {
         .withSocketOptions(
             new SocketOptions().setReadTimeoutMillis((int) socketReadTimeout.toMillis()))
         .withTimestampGenerator(timestampGenerator)
-        .withAddressTranslator(addressTranslator);
+        .withAddressTranslator(addressTranslator)
+        // driver metrics will be incorporated into DSBulk JMX reporting
+        .withoutJMXReporting();
 
     if (policy != null) {
       builder.withLoadBalancingPolicy(policy);
