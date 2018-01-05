@@ -433,6 +433,9 @@ public class JsonConnector implements Connector {
           open();
         }
         LOGGER.trace("Writing record {}", record);
+        if (mode == DocumentMode.SINGLE_DOCUMENT && currentLine > 0) {
+          writer.writeRaw(',');
+        }
         writer.writeStartObject();
         for (String field : record.fields()) {
           writer.writeFieldName(field);
@@ -453,6 +456,12 @@ public class JsonConnector implements Connector {
     private void open() throws IOException {
       url = getOrCreateDestinationURL();
       writer = createJsonWriter(url);
+      if (mode == DocumentMode.SINGLE_DOCUMENT) {
+        // do not use writer.writeStartArray(): we need to fool the parser into thinking it's on multi doc mode,
+        // to get a better-looking result
+        writer.writeRaw('[');
+        writer.writeRaw(System.lineSeparator());
+      }
       currentLine = 0;
       LOGGER.debug("Writing " + url);
     }
@@ -462,6 +471,10 @@ public class JsonConnector implements Connector {
         try {
           // add one last EOL before closing; the writer doesn't do it by default
           writer.writeRaw(System.lineSeparator());
+          if (mode == DocumentMode.SINGLE_DOCUMENT) {
+            writer.writeRaw(']');
+            writer.writeRaw(System.lineSeparator());
+          }
           writer.close();
           LOGGER.debug("Done writing {}", url);
           writer = null;

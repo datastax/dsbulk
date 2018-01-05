@@ -24,6 +24,7 @@
 - [new feature] DAT-201: Use an ANTLR4-based parser to parse user-supplied statements.
 - [improvement] DAT-205: Use a pooling library for concurrent writes.
 - [improvement] DAT-210: Do not print effective settings to the console.
+- [improvement] DAT-190: Consider connector.json.mode for unloading.
 
 
 ### 1.0.0-beta2
