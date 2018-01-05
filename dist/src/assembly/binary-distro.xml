@@ -30,11 +30,6 @@
 
     <fileSet>
       <directory>../manual</directory>
-      <includes>
-        <include>README.md</include>
-        <include>application.template.conf</include>
-        <include>settings.md</include>
-      </includes>
     </fileSet>
 
     <fileSet>

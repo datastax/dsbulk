@@ -8,9 +8,7 @@ Launch the tool with the appropriate script in the bin directory of
 your distribution. The help text of the tool provides summaries of all 
 supported settings.
 
-In addition, comprehensive web-based documentation is located in the [webDocs directory](webDocs) of
-this installation. The most up-to-date documentation is available 
-[here][onlineDocs]. 
+The most up-to-date documentation is available [online][onlineDocs]. 
 
 ## Basic Usage
 The `dsbulk` command takes a subcommand argument followed by options:
@@ -128,4 +126,4 @@ This information is also available on the command-line via the `help` subcommand
   `dsbulk help connector.csv`
   
 [template application config]:application.template.conf
-[onlineDocs]:https://docs.datastax.com/en/dse/1.0.0/dsbulk/.
+[onlineDocs]:https://docs.datastax.com/en/dse/1.0.0/dsbulk/
