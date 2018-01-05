@@ -173,6 +173,10 @@ public class LogManager implements AutoCloseable {
     return executionDirectory;
   }
 
+  public int getTotalErrors() {
+    return errors.get();
+  }
+
   @Override
   public void close() {
     openFiles.invalidateAll();

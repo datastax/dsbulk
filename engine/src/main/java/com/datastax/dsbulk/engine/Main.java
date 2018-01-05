@@ -10,6 +10,7 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
+import com.datastax.dsbulk.engine.internal.log.TooManyErrorsException;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.datastax.dsbulk.engine.internal.utils.OptionUtils;
 import com.google.common.base.Throwables;
@@ -38,6 +39,13 @@ public class Main {
 
   private static final Config REFERENCE = ConfigFactory.defaultReference().getConfig("dsbulk");
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+
+  public static final int STATUS_OK = 0;
+  public static final int STATUS_COMPLETED_WITH_ERRORS = 1;
+  public static final int STATUS_ABORTED_TOO_MANY_ERRORS = 2;
+  public static final int STATUS_ABORTED_FATAL_ERROR = 3;
+  public static final int STATUS_INTERRUPTED = 4;
+  public static final int STATUS_CRASHED = 5;
 
   // Maybe be overridden to handle the "-f" override for application.conf.
   public static Config DEFAULT = ConfigFactory.load().getConfig("dsbulk");
@@ -85,29 +93,26 @@ public class Main {
       Runtime.getRuntime().addShutdownHook(new CleanupThread(workflowThread));
       workflowThread.start();
       workflowThread.join();
-      return 0;
+      return workflowThread.status;
     } catch (GlobalHelpRequestException e) {
       HelpUtils.emitGlobalHelp(e.getConnectorName());
-      return 0;
+      return STATUS_OK;
     } catch (SectionHelpRequestException e) {
       try {
         HelpUtils.emitSectionHelp(e.getSectionName());
-        return 0;
+        return STATUS_OK;
       } catch (Exception e2) {
         LOGGER.error(e2.getMessage(), e2);
-        return 1;
+        return STATUS_CRASHED;
       }
     } catch (VersionRequestException e) {
       PrintWriter pw = new PrintWriter(System.out);
       pw.println(HelpUtils.getVersionMessage());
       pw.flush();
-      return 0;
-    } catch (Exception e) {
-      LOGGER.error(e.getMessage(), e);
-      return 1;
-    } catch (Error e) {
-      LOGGER.error(e.getMessage(), e);
-      throw e;
+      return STATUS_OK;
+    } catch (Throwable t) {
+      LOGGER.error(t.getMessage(), t);
+      return STATUS_CRASHED;
     }
   }
 
@@ -236,6 +241,7 @@ public class Main {
 
     private final WorkflowType workflowType;
     private final LoaderConfig config;
+    private int status = -1;
 
     private WorkflowThread(WorkflowType workflowType, LoaderConfig config) {
       super("workflow-runner");
@@ -248,22 +254,27 @@ public class Main {
       Workflow workflow = workflowType.newWorkflow(config);
       try {
         workflow.init();
-        workflow.execute();
+        status = workflow.execute() ? STATUS_OK : STATUS_COMPLETED_WITH_ERRORS;
+      } catch (TooManyErrorsException e) {
+        LOGGER.error(workflow + " aborted: " + e.getMessage(), e);
+        status = STATUS_ABORTED_TOO_MANY_ERRORS;
       } catch (Throwable t) {
         // Reactor framework often wraps InterruptedException
         Throwable root = Throwables.getRootCause(t);
         if (t instanceof InterruptedException || root instanceof InterruptedException) {
-          LOGGER.error(workflow + " aborted.", t);
+          status = STATUS_INTERRUPTED;
+          LOGGER.error(workflow + " interrupted.", t);
           // do not set the thread's interrupted status, we are going to exit anyway
+        } else if (t instanceof Exception) {
+          status = STATUS_ABORTED_FATAL_ERROR;
+          LOGGER.error(workflow + " aborted: " + t.getMessage(), t);
         } else {
-          LOGGER.error(workflow + " failed: " + t.getMessage(), t);
+          status = STATUS_CRASHED;
+          LOGGER.error(workflow + " failed unexpectedly: " + t.getMessage(), t);
         }
         // make sure the error above is printed to System.err
         // before the closing sequence is printed to System.out
         System.err.flush();
-        if (t instanceof Error) {
-          throw ((Error) t);
-        }
       } finally {
         try {
           workflow.close();

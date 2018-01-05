@@ -27,6 +27,7 @@
 - [improvement] DAT-206: Default connector.*.url to "-".
 - [improvement] DAT-200: DSBulk should fail if execution directory already exists and is not empty.
 - [improvement] DAT-189: More gracefully error out when Json document mode is wrong.
+- [improvement] DAT-180: Improve DSBulk exit statuses.
 
 
 ### 1.0.0-beta2
