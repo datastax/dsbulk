@@ -108,7 +108,10 @@ public class LoadWorkflow implements Workflow {
     logManager.init();
     metricsManager =
         monitoringSettings.newMetricsManager(
-            WorkflowType.LOAD, batchingEnabled, logManager.getExecutionDirectory());
+            WorkflowType.LOAD,
+            batchingEnabled,
+            logManager.getExecutionDirectory(),
+            cluster.getMetrics().getRegistry());
     metricsManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     recordMapper =
@@ -153,12 +156,13 @@ public class LoadWorkflow implements Workflow {
             records -> {
               Flux<Statement> stmts =
                   Flux.from(records)
-                      .transform(logManager.newAttemptedItemsCounter())
-                      .transform(metricsManager.newErrorRecordMonitor())
-                      .transform(logManager.newRecordErrorHandler())
+                      .transform(metricsManager.newTotalItemsMonitor())
+                      .transform(logManager.newTotalItemsCounter())
+                      .transform(metricsManager.newFailedItemsMonitor())
+                      .transform(logManager.newFailedRecordsHandler())
                       .map(recordMapper::map)
-                      .transform(metricsManager.newUnmappableStatementMonitor())
-                      .transform(logManager.newUnmappableStatementErrorHandler());
+                      .transform(metricsManager.newFailedItemsMonitor())
+                      .transform(logManager.newFailedStatementsHandler());
               if (batchingEnabled) {
                 stmts =
                     stmts
@@ -185,12 +189,13 @@ public class LoadWorkflow implements Workflow {
         .flatMap(
             records ->
                 records
-                    .transform(logManager.newAttemptedItemsCounter())
-                    .transform(metricsManager.newErrorRecordMonitor())
-                    .transform(logManager.newRecordErrorHandler())
+                    .transform(metricsManager.newTotalItemsMonitor())
+                    .transform(logManager.newTotalItemsCounter())
+                    .transform(metricsManager.newFailedItemsMonitor())
+                    .transform(logManager.newFailedRecordsHandler())
                     .map(recordMapper::map)
-                    .transform(metricsManager.newUnmappableStatementMonitor())
-                    .transform(logManager.newUnmappableStatementErrorHandler())
+                    .transform(metricsManager.newFailedItemsMonitor())
+                    .transform(logManager.newFailedStatementsHandler())
                     .transform(batcher::batchByGroupingKey)
                     .transform(metricsManager.newBatcherMonitor())
                     .transform(this::executeStatements))
@@ -207,12 +212,13 @@ public class LoadWorkflow implements Workflow {
         .publishOn(scheduler1, Queues.SMALL_BUFFER_SIZE * 4)
         .parallel()
         .runOn(scheduler2)
-        .composeGroup(logManager.newAttemptedItemsCounter())
-        .composeGroup(metricsManager.newErrorRecordMonitor())
-        .composeGroup(logManager.newRecordErrorHandler())
+        .composeGroup(metricsManager.newTotalItemsMonitor())
+        .composeGroup(logManager.newTotalItemsCounter())
+        .composeGroup(metricsManager.newFailedItemsMonitor())
+        .composeGroup(logManager.newFailedRecordsHandler())
         .map(recordMapper::map)
-        .composeGroup(metricsManager.newUnmappableStatementMonitor())
-        .composeGroup(logManager.newUnmappableStatementErrorHandler())
+        .composeGroup(metricsManager.newFailedItemsMonitor())
+        .composeGroup(logManager.newFailedStatementsHandler())
         .composeGroup(this::executeStatements)
         .sequential();
   }
@@ -226,7 +232,7 @@ public class LoadWorkflow implements Workflow {
       results = stmts.flatMap(executor::writeReactive, maxInFlight);
     }
     return results
-        .transform(logManager.newWriteErrorHandler())
+        .transform(logManager.newFailedWritesHandler())
         .transform(logManager.newResultPositionTracker());
   }
 

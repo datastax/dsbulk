@@ -172,7 +172,7 @@ class LogManagerTest {
     logManager.init();
     Flux<Statement> stmts = Flux.just(stmt1, stmt2, stmt3);
     try {
-      stmts.transform(logManager.newUnmappableStatementErrorHandler()).blockLast();
+      stmts.transform(logManager.newFailedStatementsHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
@@ -214,7 +214,7 @@ class LogManagerTest {
     logManager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
     try {
-      records.transform(logManager.newRecordErrorHandler()).blockLast();
+      records.transform(logManager.newFailedRecordsHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
@@ -248,7 +248,7 @@ class LogManagerTest {
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(writeResult1, writeResult2, writeResult3);
     try {
-      stmts.transform(logManager.newWriteErrorHandler()).blockLast();
+      stmts.transform(logManager.newFailedWritesHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
@@ -300,7 +300,7 @@ class LogManagerTest {
         new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 0, 2, formatter, EXTENDED);
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(writeResult1, writeResult2, writeResult3);
-    stmts.transform(logManager.newWriteErrorHandler()).blockLast();
+    stmts.transform(logManager.newFailedWritesHandler()).blockLast();
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
     Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
@@ -348,7 +348,7 @@ class LogManagerTest {
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(batchWriteResult);
     try {
-      stmts.transform(logManager.newWriteErrorHandler()).blockLast();
+      stmts.transform(logManager.newFailedWritesHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 1");
@@ -399,7 +399,7 @@ class LogManagerTest {
     logManager.init();
     Flux<ReadResult> stmts = Flux.just(readResult1, readResult2, readResult3);
     try {
-      stmts.transform(logManager.newReadErrorHandler()).blockLast();
+      stmts.transform(logManager.newFailedReadsHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
@@ -429,16 +429,13 @@ class LogManagerTest {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
         new LogManager(
-            WorkflowType.UNLOAD, cluster, scheduler, outputDir, 2, 0, formatter, EXTENDED);
+            WorkflowType.UNLOAD, cluster, scheduler, outputDir, 0, 0.01f, formatter, EXTENDED);
     logManager.init();
     Flux<ReadResult> stmts = Flux.just(readResult1, readResult2, readResult3);
-    try {
-      stmts.transform(logManager.newReadErrorHandler()).blockLast();
-      fail("Expecting TooManyErrorsException to be thrown");
-    } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
-    }
+    stmts
+        .transform(logManager.newTotalItemsCounter())
+        .transform(logManager.newFailedReadsHandler())
+        .blockLast();
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
@@ -459,6 +456,34 @@ class LogManagerTest {
   }
 
   @Test
+  void should_stop_when_sample_size_is_met_and_percentage_exceeded() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            WorkflowType.UNLOAD, cluster, scheduler, outputDir, 0, 0.01f, formatter, EXTENDED);
+    logManager.init();
+    Flux<ReadResult> stmts = Flux.just(readResult1);
+    try {
+      stmts
+          .repeat(101)
+          .transform(logManager.newTotalItemsCounter())
+          .transform(logManager.newFailedReadsHandler())
+          .blockLast();
+      fail("Expecting TooManyErrorsException to be thrown");
+    } catch (TooManyErrorsException e) {
+      assertThat(e).hasMessage("Too many errors, the maximum percentage allowed is 1.0%");
+      assertThat(e.getMaxErrorRatio()).isEqualTo(0.01f);
+    }
+    logManager.close();
+    Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
+    assertThat(errors.toFile()).exists();
+    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(errors);
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    assertThat(lines.stream().filter(l -> l.contains("BulkExecutionException")).count())
+        .isEqualTo(101);
+  }
+
+  @Test
   void should_stop_when_unrecoverable_error_writing() throws Exception {
     Path outputDir = Files.createTempDirectory("test4");
     LogManager logManager =
@@ -472,7 +497,7 @@ class LogManagerTest {
                 new BulkSimpleStatement<>(record1, "INSERT 1")));
     Flux<WriteResult> stmts = Flux.just(result);
     try {
-      stmts.transform(logManager.newWriteErrorHandler()).blockLast();
+      stmts.transform(logManager.newFailedWritesHandler()).blockLast();
       fail("Expecting DriverInternalError to be thrown");
     } catch (DriverInternalError e) {
       assertThat(e).hasMessage("error 1");
@@ -515,7 +540,7 @@ class LogManagerTest {
                 new BulkSimpleStatement<>(record1, "SELECT 1")));
     Flux<ReadResult> stmts = Flux.just(result);
     try {
-      stmts.transform(logManager.newReadErrorHandler()).blockLast();
+      stmts.transform(logManager.newFailedReadsHandler()).blockLast();
       fail("Expecting DriverInternalError to be thrown");
     } catch (DriverInternalError e) {
       assertThat(e).hasMessage("error 1");
@@ -553,7 +578,7 @@ class LogManagerTest {
   }
 
   @Test
-  void should_add_position() throws Exception {
+  void should_add_position() {
     List<Range<Long>> positions = new ArrayList<>();
     positions = LogManager.addPosition(positions, 3);
     assertThat(positions).containsExactly(singleton(3L));
@@ -572,7 +597,7 @@ class LogManagerTest {
   }
 
   @Test
-  void should_merge_positions() throws Exception {
+  void should_merge_positions() {
     assertThat(LogManager.mergePositions(ranges(), ranges())).isEmpty();
     assertThat(LogManager.mergePositions(ranges(), ranges(closed(1L, 3L))))
         .isEqualTo(ranges(closed(1L, 3L)));
@@ -596,7 +621,7 @@ class LogManagerTest {
   }
 
   @Test
-  public void should_dispose_scheduler_when_closed() throws Exception {
+  void should_dispose_scheduler_when_closed() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     Scheduler scheduler = mock(Scheduler.class);
     LogManager logManager =

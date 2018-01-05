@@ -6,22 +6,32 @@
  */
 package com.datastax.dsbulk.engine.internal.log;
 
-/** */
+/**
+ * Thrown when the engine encounters too many errors. This exception triggers the operation
+ * abortion.
+ */
 public class TooManyErrorsException extends RuntimeException {
 
   private final int maxErrors;
+  private final float maxErrorRatio;
 
-  public TooManyErrorsException(int maxErrors) {
+  TooManyErrorsException(int maxErrors) {
     super("Too many errors, the maximum allowed is " + maxErrors);
     this.maxErrors = maxErrors;
+    maxErrorRatio = -1;
   }
 
-  public TooManyErrorsException(float maxErrorPercentage) {
-    super("Too many errors, the maximum percentage allowed is " + maxErrorPercentage + "%");
-    maxErrors = 0;
+  TooManyErrorsException(float maxErrorRatio) {
+    super("Too many errors, the maximum percentage allowed is " + (maxErrorRatio * 100f) + "%");
+    this.maxErrorRatio = maxErrorRatio;
+    maxErrors = -1;
   }
 
-  public float getMaxErrors() {
+  public int getMaxErrors() {
     return maxErrors;
+  }
+
+  public float getMaxErrorRatio() {
+    return maxErrorRatio;
   }
 }

@@ -47,7 +47,7 @@
     <jnr-posix.version>3.0.42</jnr-posix.version>
     <slf4j.version>1.7.25</slf4j.version>
     <logback.version>1.2.3</logback.version>
-    <metrics.version>3.2.5</metrics.version>
+    <metrics.version>4.0.1</metrics.version>
     <lz4.version>1.4.0</lz4.version>
     <snappy.version>1.1.4</snappy.version>
     <hdr.version>2.1.10</hdr.version>
@@ -218,6 +218,12 @@
       <dependency>
         <groupId>io.dropwizard.metrics</groupId>
         <artifactId>metrics-core</artifactId>
+        <version>${metrics.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.dropwizard.metrics</groupId>
+        <artifactId>metrics-jmx</artifactId>
         <version>${metrics.version}</version>
       </dependency>
 
