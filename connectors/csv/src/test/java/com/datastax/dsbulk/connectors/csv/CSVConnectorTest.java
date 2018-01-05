@@ -185,7 +185,7 @@ class CSVConnectorTest {
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("header = false, url = -, encoding = ISO-8859-1")
+              ConfigFactory.parseString("header = false, encoding = ISO-8859-1")
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -413,8 +413,7 @@ class CSVConnectorTest {
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
           new DefaultLoaderConfig(
-              ConfigFactory.parseString("header = true, url = -")
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+              ConfigFactory.parseString("header = true").withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
       List<Record> actual = Flux.defer(connector.read()).collectList().block();
