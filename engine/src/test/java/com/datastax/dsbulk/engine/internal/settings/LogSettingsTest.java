@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTIO
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumingThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -219,20 +220,24 @@ class LogSettingsTest {
   }
 
   @Test
-  void should_throw_IAE_when_execution_directory_not_writable() throws Exception {
-    Path logDir = Files.createTempDirectory("test");
-    Path executionDir = logDir.resolve("TEST_EXECUTION_ID");
-    Files.createDirectories(executionDir);
-    assertThat(executionDir.toFile().setWritable(false, false)).isTrue();
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(() -> settings.init(false))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Execution directory exists but is not writable: " + executionDir);
+  void should_throw_IAE_when_execution_directory_not_writable() {
+    assumingThat(
+        !PlatformUtils.isWindows(),
+        () -> {
+          Path logDir = Files.createTempDirectory("test");
+          Path executionDir = logDir.resolve("TEST_EXECUTION_ID");
+          Files.createDirectories(executionDir);
+          assertThat(executionDir.toFile().setWritable(false, false)).isTrue();
+          LoaderConfig config =
+              new DefaultLoaderConfig(
+                  ConfigFactory.parseString(
+                          "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                      .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+          LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+          assertThatThrownBy(() -> settings.init(false))
+              .isInstanceOf(IllegalArgumentException.class)
+              .hasMessage("Execution directory exists but is not writable: " + executionDir);
+        });
   }
 
   @Test
@@ -253,22 +258,21 @@ class LogSettingsTest {
   }
 
   @Test
-  void should_throw_IAE_when_execution_directory_contains_forbidden_chars() throws Exception {
-    Path logDir = Files.createTempDirectory("test");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    char forbidden;
-    if (PlatformUtils.isWindows()) {
-      forbidden = '\\';
-    } else {
-      forbidden = '/';
-    }
-    LogSettings settings = new LogSettings(config, forbidden + " IS FORBIDDEN");
-    assertThatThrownBy(() -> settings.init(false))
-        .isInstanceOf(IOException.class)
-        .hasMessageContaining(forbidden + " IS FORBIDDEN");
+  void should_throw_IAE_when_execution_directory_contains_forbidden_chars() {
+    assumingThat(
+        !PlatformUtils.isWindows(),
+        () -> {
+          Path logDir = Files.createTempDirectory("test");
+          LoaderConfig config =
+              new DefaultLoaderConfig(
+                  ConfigFactory.parseString(
+                          "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                      .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+          char forbidden = '/';
+          LogSettings settings = new LogSettings(config, forbidden + " IS FORBIDDEN");
+          assertThatThrownBy(() -> settings.init(false))
+              .isInstanceOf(IOException.class)
+              .hasMessageContaining(forbidden + " IS FORBIDDEN");
+        });
   }
 }
