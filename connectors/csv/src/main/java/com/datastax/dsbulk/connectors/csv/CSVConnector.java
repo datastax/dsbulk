@@ -121,8 +121,7 @@ public class CSVConnector implements Connector {
       if (!settings.hasPath(URL)) {
         throw new BulkConfigurationException(
             "url is mandatory when using the csv connector. Please set connector.csv.url "
-                + "and try again. See settings.md or help for more information.",
-            "connector.csv");
+                + "and try again. See settings.md or help for more information.");
       }
       this.read = read;
       url = settings.getURL(URL);

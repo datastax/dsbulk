@@ -39,8 +39,7 @@ public class ConnectorSettings {
       connector.configure(connectorConfig, read);
     } else {
       throw new BulkConfigurationException(
-          String.format("Cannot find configuration entry for connector '%s'", connectorName),
-          "connector");
+          String.format("Cannot find configuration entry for connector '%s'", connectorName));
     }
   }
 
@@ -74,7 +73,6 @@ public class ConnectorSettings {
             name,
             StreamSupport.stream(connectors.spliterator(), false)
                 .map(connector -> connector.getClass().getName())
-                .collect(Collectors.joining(", "))),
-        "connector");
+                .collect(Collectors.joining(", "))));
   }
 }

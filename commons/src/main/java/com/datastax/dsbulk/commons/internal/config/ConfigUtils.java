@@ -11,6 +11,7 @@ import com.typesafe.config.ConfigException;
 import java.util.regex.Matcher;
 
 public class ConfigUtils {
+
   public static BulkConfigurationException configExceptionToBulkConfigurationException(
       ConfigException e, String path) {
     // This will happen if a user provides the wrong type
@@ -19,16 +20,15 @@ public class ConfigUtils {
     // more info.
     if (e instanceof ConfigException.WrongType) {
       String em = e.getMessage();
-      int starting_index = em.lastIndexOf(":") + 2;
-      String errorMsg = em.substring(starting_index);
+      int startingIndex = em.lastIndexOf(":") + 2;
+      String errorMsg = em.substring(startingIndex);
       return new BulkConfigurationException(
           "Configuration entry of "
               + path
               + "."
               + errorMsg
               + ". See settings.md or help for more info.",
-          e,
-          path);
+          e);
     } else if (e instanceof ConfigException.Parse) {
       return new BulkConfigurationException(
           "Configuration entry of "
@@ -36,11 +36,10 @@ public class ConfigUtils {
               + ". "
               + e.getMessage()
               + ". See settings.md or help for more info.",
-          e,
-          path);
+          e);
     } else {
       // Catch-all for other types of exceptions.
-      return new BulkConfigurationException(e.getMessage(), e, path);
+      return new BulkConfigurationException(e.getMessage(), e);
     }
   }
 
@@ -49,9 +48,6 @@ public class ConfigUtils {
   }
 
   public static boolean containsBackslashError(ConfigException exception) {
-    if (exception.getMessage().contains("backslash")) {
-      return true;
-    }
-    return false;
+    return exception.getMessage().contains("backslash");
   }
 }
