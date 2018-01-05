@@ -11,6 +11,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
@@ -31,7 +32,8 @@ class MonitoringSettingsTest {
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.monitoring"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     settings.init();
-    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true, null);
+    MetricsManager metricsManager =
+        settings.newMetricsManager(WorkflowType.UNLOAD, true, null, new MetricRegistry());
     assertThat(metricsManager).isNotNull();
     assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "durationUnit"))
@@ -59,7 +61,8 @@ class MonitoringSettingsTest {
                     + "csv = true"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     settings.init();
-    MetricsManager metricsManager = settings.newMetricsManager(WorkflowType.UNLOAD, true, tmpPath);
+    MetricsManager metricsManager =
+        settings.newMetricsManager(WorkflowType.UNLOAD, true, tmpPath, new MetricRegistry());
     assertThat(metricsManager).isNotNull();
     assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "durationUnit")).isEqualTo(SECONDS);

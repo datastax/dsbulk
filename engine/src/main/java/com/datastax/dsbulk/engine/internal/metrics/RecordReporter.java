@@ -48,10 +48,7 @@ public class RecordReporter extends ScheduledReporter {
   }
 
   private static MetricFilter createFilter() {
-    return (name, metric) ->
-        name.equals("records/total")
-            || name.equals("records/successful")
-            || name.equals("records/failed");
+    return (name, metric) -> name.equals("records/total") || name.equals("records/failed");
   }
 
   @Override
@@ -62,35 +59,37 @@ public class RecordReporter extends ScheduledReporter {
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
     Meter totalMeter = meters.get("records/total");
-    Meter successfulMeter = meters.get("records/successful");
-    Meter failedMeter = meters.get("records/failed");
+    Counter failedMeter = counters.get("records/failed");
     if (expectedTotal < 0) {
-      reportWithoutExpectedTotal(totalMeter, successfulMeter, failedMeter);
+      reportWithoutExpectedTotal(totalMeter, failedMeter);
     } else {
-      reportWithExpectedTotal(totalMeter, successfulMeter, failedMeter);
+      reportWithExpectedTotal(totalMeter, failedMeter);
     }
   }
 
-  private void reportWithoutExpectedTotal(
-      Meter totalMeter, Meter successfulMeter, Meter failedMeter) {
+  private void reportWithoutExpectedTotal(Meter totalMeter, Counter failedMeter) {
+    long total = totalMeter.getCount();
+    long failed = failedMeter.getCount();
     LOGGER.info(
         String.format(
             msg,
-            totalMeter.getCount(),
-            successfulMeter.getCount(),
-            failedMeter.getCount(),
+            total,
+            total - failed,
+            failed,
             convertRate(totalMeter.getMeanRate()),
             getRateUnit()));
   }
 
-  private void reportWithExpectedTotal(Meter totalMeter, Meter successfulMeter, Meter failedMeter) {
-    float progression = (float) totalMeter.getCount() / (float) expectedTotal * 100f;
+  private void reportWithExpectedTotal(Meter totalMeter, Counter failedMeter) {
+    long total = totalMeter.getCount();
+    long failed = failedMeter.getCount();
+    float progression = (float) total / (float) expectedTotal * 100f;
     LOGGER.info(
         String.format(
             msg,
-            totalMeter.getCount(),
-            successfulMeter.getCount(),
-            failedMeter.getCount(),
+            total,
+            total - failed,
+            failed,
             progression,
             convertRate(totalMeter.getMeanRate()),
             getRateUnit()));

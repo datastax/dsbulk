@@ -29,6 +29,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
+import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.typesafe.config.ConfigFactory;
@@ -91,10 +92,7 @@ class LogSettingsTest {
             ConfigFactory.parseString("maxErrors = 112 %")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
-    assertThatThrownBy(
-            () -> {
-              settings.init(false);
-            })
+    assertThatThrownBy(() -> settings.init(false))
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
 
@@ -104,10 +102,7 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
 
     LogSettings settings2 = new LogSettings(config, "test");
-    assertThatThrownBy(
-            () -> {
-              settings2.init(false);
-            })
+    assertThatThrownBy(() -> settings2.init(false))
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
   }
@@ -265,9 +260,15 @@ class LogSettingsTest {
             ConfigFactory.parseString(
                     "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "/ IS FORBIDDEN");
+    char forbidden;
+    if (PlatformUtils.isWindows()) {
+      forbidden = '\\';
+    } else {
+      forbidden = '/';
+    }
+    LogSettings settings = new LogSettings(config, forbidden + " IS FORBIDDEN");
     assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IOException.class)
-        .hasMessageContaining("/ IS FORBIDDEN");
+        .hasMessageContaining(forbidden + " IS FORBIDDEN");
   }
 }

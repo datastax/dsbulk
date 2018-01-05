@@ -15,6 +15,7 @@ import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createComplexTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createWithSpacesTable;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_COMPLEX;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_HEADER;
@@ -24,8 +25,6 @@ import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_WITH_S
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
-import static com.google.common.io.MoreFiles.deleteRecursively;
-import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -83,8 +82,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @AfterEach
-  void deleteDirs() throws IOException {
-    deleteRecursively(unloadDir, ALLOW_INSECURE);
+  void deleteDirs() {
+    deleteDirectory(unloadDir);
   }
 
   /** Simple test case which attempts to load and unload data using ccm. */

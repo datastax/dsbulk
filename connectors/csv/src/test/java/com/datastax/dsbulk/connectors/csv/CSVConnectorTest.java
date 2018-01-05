@@ -6,8 +6,7 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
-import static com.google.common.io.MoreFiles.deleteRecursively;
-import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -323,7 +322,7 @@ class CSVConnectorTest {
               "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
               ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
     } finally {
-      deleteRecursively(dir, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 
@@ -360,7 +359,7 @@ class CSVConnectorTest {
               "Year,Make,Model,Description,Price",
               "air, moon roof, loaded\",4799.00");
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 
@@ -399,7 +398,7 @@ class CSVConnectorTest {
               "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
               ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 
@@ -540,7 +539,7 @@ class CSVConnectorTest {
       connector.configure(settings, false);
       assertThrows(IllegalArgumentException.class, connector::init);
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 
@@ -566,7 +565,7 @@ class CSVConnectorTest {
           .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
       connector.close();
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 
@@ -598,7 +597,7 @@ class CSVConnectorTest {
           .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
       connector.close();
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 

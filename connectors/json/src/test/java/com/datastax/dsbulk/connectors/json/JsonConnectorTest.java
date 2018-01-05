@@ -6,8 +6,7 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
-import static com.google.common.io.MoreFiles.deleteRecursively;
-import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -289,7 +288,7 @@ class JsonConnectorTest {
   }
 
   @Test
-  void should_write_single_file() throws Exception {
+  void should_write_single_file_multi_doc() throws Exception {
     JsonConnector connector = new JsonConnector();
     // test directory creation
     Path dir = Files.createTempDirectory("test");
@@ -317,7 +316,42 @@ class JsonConnectorTest {
               "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
     } finally {
-      deleteRecursively(dir, ALLOW_INSECURE);
+      deleteDirectory(out);
+    }
+  }
+
+  @Test
+  void should_write_single_file_single_doc() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT",
+                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      assertThat(connector.isWriteToStandardOutput()).isFalse();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+          .containsExactly(
+              "[",
+              "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0},",
+              "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0},",
+              "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
+              "]");
+    } finally {
+      deleteDirectory(out);
     }
   }
 
@@ -352,7 +386,7 @@ class JsonConnectorTest {
               "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 
@@ -388,7 +422,7 @@ class JsonConnectorTest {
               "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 
@@ -503,7 +537,7 @@ class JsonConnectorTest {
       connector.configure(settings, false);
       assertThrows(IllegalArgumentException.class, connector::init);
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 
@@ -529,7 +563,7 @@ class JsonConnectorTest {
           .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
       connector.close();
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 
@@ -561,7 +595,7 @@ class JsonConnectorTest {
           .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
       connector.close();
     } finally {
-      deleteRecursively(out, ALLOW_INSECURE);
+      deleteDirectory(out);
     }
   }
 

@@ -33,8 +33,6 @@ class MetricsManagerTest {
   private Record record2;
   private Record record3;
 
-  private Statement stmt1;
-  private Statement stmt2;
   private Statement stmt3;
 
   private BatchStatement batch;
@@ -52,8 +50,8 @@ class MetricsManagerTest {
     record3 =
         new DefaultErrorRecord(
             source3, null, -1, () -> location3, new RuntimeException("irrelevant"));
-    stmt1 = new BulkSimpleStatement<>(record1, "irrelevant");
-    stmt2 = new BulkSimpleStatement<>(record2, "irrelevant");
+    Statement stmt1 = new BulkSimpleStatement<>(record1, "irrelevant");
+    Statement stmt2 = new BulkSimpleStatement<>(record2, "irrelevant");
     stmt3 =
         new UnmappableStatement(
             record3, () -> URI.create("http://record3"), new RuntimeException("irrelevant"));
@@ -64,6 +62,7 @@ class MetricsManagerTest {
   void should_increment_records() throws Exception {
     MetricsManager manager =
         new MetricsManager(
+            new MetricRegistry(),
             WorkflowType.UNLOAD,
             "test",
             Executors.newSingleThreadScheduledExecutor(),
@@ -78,46 +77,22 @@ class MetricsManagerTest {
             false);
     manager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
-    records.transform(manager.newErrorRecordMonitor()).blockLast();
+    records
+        .transform(manager.newTotalItemsMonitor())
+        .transform(manager.newFailedItemsMonitor())
+        .blockLast();
     manager.close();
     MetricRegistry registry =
         (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
     assertThat(registry.meter("records/total").getCount()).isEqualTo(3);
-    assertThat(registry.meter("records/successful").getCount()).isEqualTo(2);
-    assertThat(registry.meter("records/failed").getCount()).isEqualTo(1);
-  }
-
-  @Test
-  void should_increment_mappings() throws Exception {
-    MetricsManager manager =
-        new MetricsManager(
-            WorkflowType.LOAD,
-            "test",
-            Executors.newSingleThreadScheduledExecutor(),
-            SECONDS,
-            MILLISECONDS,
-            -1,
-            -1,
-            false,
-            false,
-            null,
-            Duration.ofSeconds(5),
-            true);
-    manager.init();
-    Flux<Statement> statements = Flux.just(stmt1, stmt2, stmt3);
-    statements.transform(manager.newUnmappableStatementMonitor()).blockLast();
-    manager.close();
-    MetricRegistry registry =
-        (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
-    assertThat(registry.meter("mappings/total").getCount()).isEqualTo(3);
-    assertThat(registry.meter("mappings/successful").getCount()).isEqualTo(2);
-    assertThat(registry.meter("mappings/failed").getCount()).isEqualTo(1);
+    assertThat(registry.counter("records/failed").getCount()).isEqualTo(1);
   }
 
   @Test
   void should_increment_batches() throws Exception {
     MetricsManager manager =
         new MetricsManager(
+            new MetricRegistry(),
             WorkflowType.LOAD,
             "test",
             Executors.newSingleThreadScheduledExecutor(),

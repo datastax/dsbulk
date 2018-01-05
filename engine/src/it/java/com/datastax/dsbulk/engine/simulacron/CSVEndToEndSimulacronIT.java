@@ -11,6 +11,7 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_CRLF;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_ERROR;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_LONG;
@@ -31,8 +32,6 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePrepa
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateQueryCount;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
-import static com.google.common.io.MoreFiles.deleteRecursively;
-import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -112,8 +111,8 @@ class CSVEndToEndSimulacronIT {
   }
 
   @AfterEach
-  void deleteDirs() throws IOException {
-    deleteRecursively(unloadDir, ALLOW_INSECURE);
+  void deleteDirs() {
+    deleteDirectory(unloadDir);
   }
 
   @AfterEach
@@ -122,7 +121,8 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void full_load() throws Exception {
+  void full_load(@LogCapture LogInterceptor logs, @StreamCapture(STDOUT) StreamInterceptor stdOut)
+      throws Exception {
     String[] args = {
       "load",
       "--log.directory",
@@ -145,6 +145,13 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isZero();
+
+    assertThat(stdOut.getStreamAsString())
+        .contains(logs.getLoggedMessages())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
+        .contains("Writes: total: 24, successful: 24, failed: 0");
+
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
 
@@ -416,7 +423,8 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void full_unload() throws Exception {
+  void full_unload(@LogCapture LogInterceptor logs, @StreamCapture(STDOUT) StreamInterceptor stdOut)
+      throws Exception {
 
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
     simulacron.prime(new Prime(prime));
@@ -445,6 +453,11 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
+
+    assertThat(stdOut.getStreamAsString())
+        .contains(logs.getLoggedMessages())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Reads: total: 24, successful: 24, failed: 0");
 
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validateOutputFiles(24, outputFile);

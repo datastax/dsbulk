@@ -81,7 +81,7 @@ public class LogManager implements AutoCloseable {
   private final StatementFormatVerbosity verbosity;
 
   private final AtomicInteger errors = new AtomicInteger(0);
-  private final LongAdder attempted = new LongAdder();
+  private final LongAdder totalItems = new LongAdder();
 
   private final LoadingCache<Path, PrintWriter> openFiles =
       Caffeine.newBuilder()
@@ -205,7 +205,7 @@ public class LogManager implements AutoCloseable {
    * @return a handler for unmappable statements.
    */
   @NotNull
-  public Function<Flux<Statement>, Flux<Statement>> newUnmappableStatementErrorHandler() {
+  public Function<Flux<Statement>, Flux<Statement>> newFailedStatementsHandler() {
     FluxSink<UnmappableStatement> sink = newUnmappableStatementProcessor();
     return upstream ->
         upstream
@@ -240,7 +240,7 @@ public class LogManager implements AutoCloseable {
    * @return a handler for unmappable records.
    */
   @NotNull
-  public Function<Flux<Record>, Flux<Record>> newRecordErrorHandler() {
+  public Function<Flux<Record>, Flux<Record>> newFailedRecordsHandler() {
     FluxSink<ErrorRecord> sink = newUnmappableRecordProcessor();
     return upstream ->
         upstream
@@ -272,7 +272,7 @@ public class LogManager implements AutoCloseable {
    * @return a handler for unsuccessful write results.
    */
   @NotNull
-  public Function<Flux<WriteResult>, Flux<WriteResult>> newWriteErrorHandler() {
+  public Function<Flux<WriteResult>, Flux<WriteResult>> newFailedWritesHandler() {
     FluxSink<WriteResult> sink = newWriteResultProcessor();
     return upstream ->
         upstream
@@ -311,7 +311,7 @@ public class LogManager implements AutoCloseable {
    * @return a handler for unsuccessful read results.
    */
   @NotNull
-  public Function<Flux<ReadResult>, Flux<ReadResult>> newReadErrorHandler() {
+  public Function<Flux<ReadResult>, Flux<ReadResult>> newFailedReadsHandler() {
     FluxSink<ReadResult> sink = newReadResultProcessor();
     return upstream ->
         upstream
@@ -451,12 +451,8 @@ public class LogManager implements AutoCloseable {
     return processor.sink();
   }
 
-  public <T> Function<Flux<T>, Flux<T>> newAttemptedItemsCounter() {
-    return upstream ->
-        upstream.doOnNext(
-            r -> {
-              attempted.increment();
-            });
+  public <T> Function<Flux<T>, Flux<T>> newTotalItemsCounter() {
+    return upstream -> upstream.doOnNext(r -> totalItems.increment());
   }
 
   /**
@@ -714,10 +710,10 @@ public class LogManager implements AutoCloseable {
   }
 
   private TooManyErrorsException maxPercentageExceeded(int errorCount) {
-    long attemptedTemp = attempted.longValue();
+    long attemptedTemp = totalItems.longValue();
     float currentRatio = (float) errorCount / attemptedTemp;
     if (attemptedTemp > MIN_SAMPLE && currentRatio > maxErrorRatio) {
-      return new TooManyErrorsException(maxErrorRatio * 100f);
+      return new TooManyErrorsException(maxErrorRatio);
     }
     return null;
   }

@@ -27,6 +27,8 @@
 - [improvement] DAT-206: Default connector.*.url to "-".
 - [improvement] DAT-200: DSBulk should fail if execution directory already exists and is not empty.
 - [improvement] DAT-189: More gracefully error out when Json document mode is wrong.
+- [improvement] DAT-190: Consider connector.json.mode for unloading.
+- [bug] DAT-209: Records are being counted twice in Unload workflow.
 - [improvement] DAT-158: Reorganize in-tree documentation.
 
 ### 1.0.0-beta2
