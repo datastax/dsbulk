@@ -31,7 +31,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Suppliers;
-import com.google.common.util.concurrent.Uninterruptibles;
 import com.typesafe.config.ConfigException;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -49,8 +48,7 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -64,6 +62,12 @@ import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.concurrent.Queues;
+import stormpot.Allocator;
+import stormpot.BlazePool;
+import stormpot.Config;
+import stormpot.Poolable;
+import stormpot.Slot;
+import stormpot.Timeout;
 
 /**
  * A connector for Json files.
@@ -119,6 +123,7 @@ public class JsonConnector implements Connector {
   private List<JsonGenerator.Feature> generatorFeatures;
   private boolean prettyPrint;
   private Scheduler scheduler;
+  private BlazePool<PoolableJsonWriter> pool;
 
   @Override
   public RecordMetadata getRecordMetadata() {
@@ -177,9 +182,12 @@ public class JsonConnector implements Connector {
   }
 
   @Override
-  public void close() {
+  public void close() throws InterruptedException {
     if (scheduler != null) {
       scheduler.dispose();
+    }
+    if (pool != null) {
+      pool.shutdown().await(new Timeout(1, TimeUnit.MINUTES));
     }
   }
 
@@ -218,35 +226,38 @@ public class JsonConnector implements Connector {
     if (root != null && maxConcurrentFiles > 1) {
       return upstream -> {
         scheduler = Schedulers.newParallel("json-connector", maxConcurrentFiles);
-        BlockingQueue<PooledJsonWriter> pool = new ArrayBlockingQueue<>(maxConcurrentFiles);
-        for (int i = 0; i < maxConcurrentFiles; i++) {
-          PooledJsonWriter writer = new PooledJsonWriter();
-          pool.add(writer);
-        }
+        Config<PoolableJsonWriter> config =
+            new Config<PoolableJsonWriter>()
+                .setSize(maxConcurrentFiles)
+                .setAllocator(new JsonWriterAllocator());
+        pool = new BlazePool<>(config);
+        Timeout timeout = new Timeout(Long.MAX_VALUE, TimeUnit.SECONDS);
         return Flux.from(upstream)
             .window(Queues.SMALL_BUFFER_SIZE)
             .parallel(maxConcurrentFiles)
             .runOn(scheduler)
             .flatMap(
                 records -> {
-                  PooledJsonWriter writer = Uninterruptibles.takeUninterruptibly(pool);
                   try {
-                    return records.transform(writeRecords(writer));
-                  } finally {
-                    pool.add(writer);
+                    PoolableJsonWriter writer = pool.claim(timeout);
+                    if (writer != null) {
+                      try {
+                        return records.transform(writeRecords(writer));
+                      } finally {
+                        writer.release();
+                      }
+                    }
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                   }
+                  return Flux.empty();
                 })
-            .sequential()
-            .doOnComplete(() -> pool.forEach(PooledJsonWriter::appendNewLine))
-            .doOnTerminate(() -> pool.forEach(PooledJsonWriter::close));
+            .sequential();
       };
     } else {
       return upstream -> {
-        PooledJsonWriter writer = new PooledJsonWriter();
-        return Flux.from(upstream)
-            .transform(writeRecords(writer))
-            .doOnComplete(writer::appendNewLine)
-            .doOnTerminate(writer::close);
+        PoolableJsonWriter writer = new PoolableJsonWriter(null);
+        return Flux.from(upstream).transform(writeRecords(writer)).doOnTerminate(writer::close);
       };
     }
   }
@@ -278,11 +289,11 @@ public class JsonConnector implements Connector {
         if (!Files.isWritable(root)) {
           throw new IllegalArgumentException("Directory is not writable: " + root);
         }
-        this.root = root;
         if (IOUtils.isDirectoryNonEmpty(root)) {
           throw new IllegalArgumentException(
               "connector.json.url target directory :" + root + " must be empty.");
         }
+        this.root = root;
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to writing to URL directly
@@ -367,7 +378,7 @@ public class JsonConnector implements Connector {
             });
   }
 
-  private Function<Flux<Record>, Flux<Record>> writeRecords(PooledJsonWriter writer) {
+  private Function<Flux<Record>, Flux<Record>> writeRecords(PoolableJsonWriter writer) {
     return upstream ->
         upstream
             .materialize()
@@ -385,18 +396,40 @@ public class JsonConnector implements Connector {
             .dematerialize();
   }
 
-  private class PooledJsonWriter {
+  private class JsonWriterAllocator implements Allocator<PoolableJsonWriter> {
+    @Override
+    public PoolableJsonWriter allocate(Slot slot) {
+      return new PoolableJsonWriter(slot);
+    }
+
+    @Override
+    public void deallocate(PoolableJsonWriter writer) {
+      writer.close();
+    }
+  }
+
+  private class PoolableJsonWriter implements Poolable {
+
+    private final Slot slot;
 
     private URL url;
     private JsonGenerator writer;
     private long currentLine;
+
+    private PoolableJsonWriter(Slot slot) {
+      this.slot = slot;
+    }
+
+    @Override
+    public void release() {
+      slot.release(this);
+    }
 
     private void write(Record record) {
       try {
         if (writer == null) {
           open();
         } else if (shouldRoll()) {
-          appendNewLine();
           close();
           open();
         }
@@ -428,23 +461,14 @@ public class JsonConnector implements Connector {
     private void close() {
       if (writer != null) {
         try {
+          // add one last EOL before closing; the writer doesn't do it by default
+          writer.writeRaw(System.lineSeparator());
           writer.close();
           LOGGER.debug("Done writing {}", url);
+          writer = null;
         } catch (IOException e) {
           throw new UncheckedIOException(
               String.format("Error closing %s: %s", url, e.getMessage()), e);
-        }
-      }
-    }
-
-    private void appendNewLine() {
-      if (writer != null) {
-        try {
-          // add one last EOL if the file completed successfully; the writer doesn't do it by default
-          writer.writeRaw(System.lineSeparator());
-        } catch (IOException e) {
-          throw new UncheckedIOException(
-              String.format("Error writing to %s: %s", url, e.getMessage()), e);
         }
       }
     }
