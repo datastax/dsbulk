@@ -136,8 +136,7 @@ public class JsonConnector implements Connector {
       if (!settings.hasPath(URL)) {
         throw new BulkConfigurationException(
             "url is mandatory when using the json connector. Please set connector.json.url "
-                + "and try again. See settings.md or help for more information.",
-            "connector.json");
+                + "and try again. See settings.md or help for more information.");
       }
       this.read = read;
       url = settings.getURL(URL);

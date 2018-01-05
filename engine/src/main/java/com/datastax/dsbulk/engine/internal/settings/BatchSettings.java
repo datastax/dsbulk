@@ -45,8 +45,7 @@ public class BatchSettings {
         throw new BulkConfigurationException(
             String.format(
                 "batch.bufferSize (%d) must be greater than or equal to buffer.maxBatchSize (%d). See settings.md for more information.",
-                bufferSize, maxBatchSize),
-            "batch");
+                bufferSize, maxBatchSize));
       }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
