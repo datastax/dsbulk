@@ -80,20 +80,6 @@
       <artifactId>logback-classic</artifactId>
     </dependency>
 
-    <!-- source artifacts -->
-
-    <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dse-java-driver-core</artifactId>
-      <classifier>sources</classifier>
-    </dependency>
-
-    <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dse-java-driver-extras</artifactId>
-      <classifier>sources</classifier>
-    </dependency>
-
   </dependencies>
 
   <build>
@@ -140,14 +126,6 @@
       <build>
 
         <plugins>
-
-          <plugin>
-            <artifactId>maven-source-plugin</artifactId>
-            <configuration>
-              <skipSource>true</skipSource>
-            </configuration>
-          </plugin>
-
           <plugin>
             <artifactId>maven-javadoc-plugin</artifactId>
             <executions>
