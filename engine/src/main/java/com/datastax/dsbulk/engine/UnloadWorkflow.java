@@ -79,14 +79,15 @@ public class UnloadWorkflow implements Workflow {
     engineSettings.init();
     // First verify that dry-run is off; that's unsupported for unload.
     if (engineSettings.isDryRun()) {
-      throw new BulkConfigurationException("Dry-run is not supported for unload", "engine.dryRun");
+      throw new BulkConfigurationException("Dry-run is not supported for unload");
     }
     connectorSettings.init();
     connector = connectorSettings.getConnector();
     connector.init();
     // No logs should be produced until the following statement returns
     logSettings.init(connector.isWriteToStandardOutput());
-    settingsManager.logEffectiveSettings();
+    settingsManager.logEffectiveSettings(
+        connectorSettings.getConnectorName(), connectorSettings.getConnectorConfig());
     codecSettings.init();
     schemaSettings.init(codecSettings.getTimestampCodec());
     monitoringSettings.init();

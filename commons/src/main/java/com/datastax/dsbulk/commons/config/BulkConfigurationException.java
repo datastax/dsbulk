@@ -6,25 +6,18 @@
  */
 package com.datastax.dsbulk.commons.config;
 
+/** Thrown when DSBulk fails to configure itself. */
 public class BulkConfigurationException extends RuntimeException {
 
-  private final String path;
-
-  public BulkConfigurationException(String message, String path) {
+  public BulkConfigurationException(String message) {
     super(message);
-    this.path = path;
   }
 
-  public BulkConfigurationException(Throwable cause, String path) {
-    this(cause.getMessage(), cause, path);
+  public BulkConfigurationException(Throwable cause) {
+    this(cause.getMessage(), cause);
   }
 
-  public BulkConfigurationException(String message, Throwable cause, String path) {
+  public BulkConfigurationException(String message, Throwable cause) {
     super(message, cause);
-    this.path = path;
-  }
-
-  public String getPath() {
-    return path;
   }
 }

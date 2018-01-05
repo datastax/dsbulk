@@ -15,10 +15,10 @@ import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
 import com.datastax.dsbulk.engine.Main;
-import com.datastax.dsbulk.tests.ccm.CCMCluster;
-import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.tests.driver.annotations.ClusterConfig;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;

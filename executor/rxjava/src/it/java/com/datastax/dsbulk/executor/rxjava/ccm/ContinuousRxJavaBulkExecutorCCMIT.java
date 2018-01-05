@@ -7,9 +7,9 @@
 package com.datastax.dsbulk.executor.rxjava.ccm;
 
 import com.datastax.driver.core.ContinuousPagingSession;
+import com.datastax.dsbulk.commons.tests.utils.VersionRequirement;
 import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.dsbulk.executor.rxjava.ContinuousRxJavaBulkExecutor;
-import com.datastax.dsbulk.tests.utils.VersionRequirement;
 import org.junit.jupiter.api.Tag;
 
 @Tag("ccm")

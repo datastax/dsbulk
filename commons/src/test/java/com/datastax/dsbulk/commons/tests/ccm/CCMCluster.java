@@ -4,9 +4,9 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.ccm;
+package com.datastax.dsbulk.commons.tests.ccm;
 
-import com.datastax.dsbulk.tests.utils.Version;
+import com.datastax.dsbulk.commons.tests.utils.Version;
 import java.io.Closeable;
 import java.io.File;
 import java.net.InetAddress;

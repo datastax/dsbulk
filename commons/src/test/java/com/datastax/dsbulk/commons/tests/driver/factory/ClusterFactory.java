@@ -4,7 +4,7 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.driver.factory;
+package com.datastax.dsbulk.commons.tests.driver.factory;
 
 import static com.datastax.driver.core.HostDistance.LOCAL;
 import static com.datastax.driver.core.HostDistance.REMOTE;
@@ -19,10 +19,10 @@ import com.datastax.driver.core.SSLOptions;
 import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.graph.GraphOptions;
+import com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster;
+import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
+import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterFactoryMethod;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
-import com.datastax.dsbulk.tests.ccm.DefaultCCMCluster;
-import com.datastax.dsbulk.tests.driver.annotations.ClusterConfig;
-import com.datastax.dsbulk.tests.driver.annotations.ClusterFactoryMethod;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;

@@ -4,10 +4,10 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.simulacron;
+package com.datastax.dsbulk.commons.tests.simulacron;
 
-import com.datastax.dsbulk.tests.RemoteClusterExtension;
-import com.datastax.dsbulk.tests.simulacron.factory.BoundClusterFactory;
+import com.datastax.dsbulk.commons.tests.RemoteClusterExtension;
+import com.datastax.dsbulk.commons.tests.simulacron.factory.BoundClusterFactory;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.datastax.oss.simulacron.server.BoundNode;
 import com.datastax.oss.simulacron.server.Server;

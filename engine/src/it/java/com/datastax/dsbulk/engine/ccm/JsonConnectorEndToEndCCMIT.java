@@ -28,10 +28,10 @@ import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
-import com.datastax.dsbulk.tests.ccm.CCMCluster;
-import com.datastax.dsbulk.tests.ccm.annotations.CCMConfig;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

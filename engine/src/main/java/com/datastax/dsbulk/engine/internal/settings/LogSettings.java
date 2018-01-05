@@ -21,7 +21,6 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
-import com.google.common.annotations.VisibleForTesting;
 import com.typesafe.config.ConfigException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -33,7 +32,9 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 public class LogSettings {
 
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
-  @VisibleForTesting public static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
+  public static final String MAIN_LOG_FILE_APPENDER = "MAIN_LOG_FILE_APPENDER";
+  public static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
+
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
 
   // Path Constants
@@ -135,6 +136,7 @@ public class LogSettings {
       ple.setCharset(StandardCharsets.UTF_8);
       ple.start();
       FileAppender<ILoggingEvent> fileAppender = new FileAppender<>();
+      fileAppender.setName(MAIN_LOG_FILE_APPENDER);
       fileAppender.setFile(executionDirectory.resolve("operation.log").toFile().getAbsolutePath());
       fileAppender.setEncoder(ple);
       fileAppender.setContext(lc);
@@ -147,8 +149,7 @@ public class LogSettings {
   private void validatePercentageRange(float maxErrorRatio) {
     if (maxErrorRatio <= 0 || maxErrorRatio >= 1) {
       throw new BulkConfigurationException(
-          "maxErrors must either be a number, or percentage between 0 and 100 exclusive.",
-          "maxErrors");
+          "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
     }
   }
 

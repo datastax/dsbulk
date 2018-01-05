@@ -19,6 +19,6 @@
   </root>
 
   <logger name="com.datastax.oss.simulacron" level="ERROR"/>
-  <logger name="com.datastax.dsbulk.tests.ccm" level="ERROR"/>
+  <logger name="com.datastax.dsbulk.commons.tests.ccm" level="ERROR"/>
 
 </configuration>

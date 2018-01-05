@@ -109,8 +109,7 @@ public class CodecSettings {
               .collect(Collectors.toList());
       if (booleanNumbers.size() != 2) {
         throw new BulkConfigurationException(
-            "Invalid boolean numbers list, expecting two elements, got " + booleanNumbers,
-            "codec." + BOOLEAN_NUMBERS);
+            "Invalid boolean numbers list, expecting two elements, got " + booleanNumbers);
       }
       String number = config.getString(NUMBER);
       String timeZone = config.getString(TIME_ZONE);
