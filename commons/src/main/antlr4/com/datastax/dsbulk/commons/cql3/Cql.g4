@@ -14,10 +14,6 @@ query
     : cqlStatement EOS? EOF
     ;
 
-resource
-    : cassandraResource
-    ;
-
 // PARSER
 
 /** STATEMENTS **/
@@ -90,7 +86,7 @@ selectStatement
       ( K_ORDER K_BY orderByClause ( ',' orderByClause )* )?
       ( K_PER K_PARTITION K_LIMIT intValue  )?
       ( K_LIMIT intValue  )?
-      ( K_ALLOW K_FILTERING   )?
+      ( K_ALLOW K_FILTERING )?
     ;
 
 selectClause
@@ -105,7 +101,7 @@ selectors
     ;
 
 selector
-    : unaliasedSelector (K_AS noncol_ident )?
+    : unaliasedSelector (K_AS noncolIdent )?
     ;
 
 unaliasedSelector
@@ -128,9 +124,10 @@ selectionMultiplication
     ;
 
 selectionGroup
-    : /*(selectionGroupWithField)=>*/ selectionGroupWithField
-    | selectionGroupWithoutField
-    | '-' selectionGroup
+    // note: the original grammar declares selectionGroupWithField before selectionGroupWithoutField
+    : selectionGroupWithoutField                              #selectionGroupSelectionGroupWithoutField
+    | /*(selectionGroupWithField)=>*/ selectionGroupWithField #selectionGroupSelectionGroupWithField
+    | '-' selectionGroup                                      #selectionGroupMinusSelectionGroup
     ;
 
 selectionGroupWithField
@@ -138,9 +135,9 @@ selectionGroupWithField
     ;
 
 selectorModifier
-    : fieldSelectorModifier selectorModifier
-    | '[' collectionSubSelection ']' selectorModifier
-    |
+    : fieldSelectorModifier selectorModifier          #selectorModifierField
+    | '[' collectionSubSelection ']' selectorModifier #selectorModifierCollection
+    |                                                 #selectorModifierEmpty
     ;
 
 fieldSelectorModifier
@@ -148,17 +145,17 @@ fieldSelectorModifier
     ;
 
 collectionSubSelection
-    : ( term (  RANGE (term)? )?
+    : ( term ( RANGE term? )?
       | RANGE  term
       )
      ;
 
 selectionGroupWithoutField
-    : simpleUnaliasedSelector
-    | /*(selectionTypeHint)=>*/ selectionTypeHint
-    | selectionTupleOrNestedSelector
-    | selectionList
-    | selectionMapOrSet
+    : simpleUnaliasedSelector                     #selectionGroupWithoutFieldSimpleUnaliasedSelector
+    | /*(selectionTypeHint)=>*/ selectionTypeHint #selectionGroupWithoutFieldSelectionTypeHint
+    | selectionTupleOrNestedSelector              #selectionGroupWithoutFieldSelectionTupleOrNestedSelector
+    | selectionList                               #selectionGroupWithoutFieldSelectionList
+    | selectionMapOrSet                           #selectionGroupWithoutFieldSelectionMapOrSet
     // UDTs are equivalent to maps from the syntax point of view, so the final decision will be done in Selectable.WithMapOrUdt
     ;
 
@@ -192,23 +189,23 @@ selectionTupleOrNestedSelector
  * sub-element selection for UDT.
  */
 simpleUnaliasedSelector
-    : sident
-    | selectionLiteral
-    | selectionFunction
+    : sident             #simpleUnaliasedSelectorSident
+    | selectionLiteral   #simpleUnaliasedSelectorSelectionLiteral
+    | selectionFunction  #simpleUnaliasedSelectorSelectionFunction
     ;
 
 selectionFunction
     : K_COUNT '(' '*' ')'                                    #selectionFunctionCount
     | K_WRITETIME '(' cident ')'                             #selectionFunctionWriteTime
     | K_TTL       '(' cident ')'                             #selectionFunctionTtl
-    | K_CAST      '(' unaliasedSelector K_AS native_type ')' #selectionFunctionCast
+    | K_CAST      '(' unaliasedSelector K_AS nativeType ')'  #selectionFunctionCast
     | functionName selectionFunctionArgs                     #selectionFunctionOther
     ;
 
 selectionLiteral
     : constant         #selectionLiteralConstant
     | K_NULL           #selectionLiteralNull
-    | ':' noncol_ident #selectionLiteralNonColIdent
+    | ':' noncolIdent  #selectionLiteralNonColIdent
     | QMARK            #selectionLiteralQuestionMark
     ;
 
@@ -219,7 +216,7 @@ selectionFunctionArgs
 sident
     : IDENT               #sidentSimple
     | QUOTED_NAME         #sidentQuoted
-    | unreserved_keyword  #sidentUnreservedKeyword
+    | unreservedKeyword   #sidentUnreservedKeyword
     ;
 
 whereClause
@@ -265,14 +262,14 @@ normalInsertStatement
 
 jsonInsertStatement
     : jsonValue
-      ( K_DEFAULT ( K_NULL | ( K_UNSET) ) )?
+      ( K_DEFAULT ( K_NULL | K_UNSET ) )?
       ( K_IF K_NOT K_EXISTS )?
       ( usingClause )?
     ;
 
 jsonValue
     : STRING_LITERAL    #jsonValueStringLiteral
-    | ':' noncol_ident  #jsonValueNonColIdent
+    | ':' noncolIdent   #jsonValueNonColIdent
     | QMARK             #jsonValueQuestionMark
     ;
 
@@ -362,7 +359,7 @@ batchStatement
     : K_BEGIN
       ( K_UNLOGGED | K_COUNTER )?
       K_BATCH ( usingClause )?
-          ( batchStatementObjective ';'? )*
+          ( batchStatementObjective EOS? )*
       K_APPLY K_BATCH
     ;
 
@@ -396,7 +393,7 @@ createFunctionStatement
       K_FUNCTION
       (K_IF K_NOT K_EXISTS)?
       functionName
-      '(' ( noncol_ident comparatorType ( ',' noncol_ident comparatorType )* )? ')'
+      '(' ( noncolIdent comparatorType ( ',' noncolIdent comparatorType )* )? ')'
       ( (K_RETURNS K_NULL) | (K_CALLED)) K_ON K_NULL K_INPUT
       K_RETURNS comparatorType
       K_LANGUAGE IDENT
@@ -467,7 +464,7 @@ cfamOrdering
 createTypeStatement
     : K_CREATE K_TYPE (K_IF K_NOT K_EXISTS )?
          userTypeName
-         '(' typeColumns ( ',' typeColumns )* ')'
+         '(' typeColumns ( ',' typeColumns /* ? */ )* ')'
     ;
 
 typeColumns
@@ -510,7 +507,7 @@ createMaterializedViewStatement
         '(' '(' cident ( ',' cident )* ')' ( ',' cident )* ')'
     |   '(' cident ( ',' cident )* ')'
         )
-        ( K_WITH cfamProperty ( K_AND cfamProperty )*)?
+        (K_WITH cfamProperty ( K_AND cfamProperty )*)?
     ;
 
 /**
@@ -545,18 +542,18 @@ alterKeyspaceStatement
  */
 alterTableStatement
     : K_ALTER K_COLUMNFAMILY columnFamilyName
-          ( K_ALTER schema_cident  K_TYPE comparatorType
-          | K_ADD  ( ( schema_cident  comparatorType   cfisStatic)
-                     | ('('  schema_cident  comparatorType  cfisStatic
-                       ( ',' schema_cident  comparatorType  cfisStatic )* ')' ) )
-          | K_DROP ( ( schema_cident
-                      | ('('  schema_cident
-                        ( ',' schema_cident )* ')') )
+          ( K_ALTER schemaCident  K_TYPE comparatorType
+          | K_ADD  ( ( schemaCident  comparatorType   cfisStatic)
+                     | ('('  schemaCident  comparatorType  cfisStatic
+                       ( ',' schemaCident  comparatorType  cfisStatic )* ')' ) )
+          | K_DROP ( ( schemaCident
+                      | ('('  schemaCident
+                        ( ',' schemaCident )* ')') )
                      ( K_USING K_TIMESTAMP INTEGER)? )
           | K_WITH  properties
           | K_RENAME
-               schema_cident K_TO schema_cident
-               ( K_AND schema_cident K_TO schema_cident )*
+               schemaCident K_TO schemaCident
+               ( K_AND schemaCident K_TO schemaCident )*
           )
     ;
 
@@ -711,7 +708,7 @@ permissionDomain
     : IDENT               #permissionDomainIdent
     | STRING_LITERAL      #permissionDomainStringLiteral
     | QUOTED_NAME         #permissionDomainQuotedName
-    | unreserved_keyword  #permissionDomainUnreservedKeyword
+    | unreservedKeyword  #permissionDomainUnreservedKeyword
     ;
 
 permissionName
@@ -719,7 +716,7 @@ permissionName
     | STRING_LITERAL     #permissionNameStringLiteral
     | QUOTED_NAME        #permissionNameQuotedName
     | corePermissionName #permissionNameCorePermissionName
-    | unreserved_keyword #permissionNameUnreservedKeyword
+    | unreservedKeyword #permissionNameUnreservedKeyword
     ;
 
 corePermissionName
@@ -749,11 +746,15 @@ resourceFromInternalName
     : K_RESOURCE '(' STRING_LITERAL ')'
     ;
 
+resource
+    : cassandraResource
+    ;
+
 cassandraResource
-    : dataResource     #resourceData
-    | roleResource     #resourceRole
-    | functionResource #resourceFunction
-    | jmxResource      #resourceJmx
+    : dataResource     #cassandraResourceData
+    | roleResource     #cassandraResourceRole
+    | functionResource #cassandraResourceFunction
+    | jmxResource      #cassandraResourceJmx
     ;
 
 dataResource
@@ -798,8 +799,7 @@ createUserStatement
 alterUserStatement
     : K_ALTER K_USER username
       ( K_WITH userPassword )?
-      ( K_SUPERUSER
-        | K_NOSUPERUSER ) ?
+      ( K_SUPERUSER | K_NOSUPERUSER ) ?
     ;
 
 /**
@@ -888,33 +888,33 @@ cident
     : EMPTY_QUOTED_NAME   #cidentEmpty
     | IDENT               #cidentSimple
     | QUOTED_NAME         #cidentQuoted
-    | unreserved_keyword  #cidentUnreservedKeyword
+    | unreservedKeyword  #cidentUnreservedKeyword
     ;
 
-schema_cident
+schemaCident
     : IDENT               #schemaCidentSimple
     | QUOTED_NAME         #schemaCidentQuoted
-    | unreserved_keyword  #schemaCidentUnreservedKeyword
+    | unreservedKeyword  #schemaCidentUnreservedKeyword
     ;
 
 // Column identifiers where the comparator is known to be text
 ident
     : IDENT               #identSimple
     | QUOTED_NAME         #identQuoted
-    | unreserved_keyword  #identUnreservedKeyword
+    | unreservedKeyword  #identUnreservedKeyword
     ;
 
 fident
     : IDENT               #fidentSimple
     | QUOTED_NAME         #fidentQuoted
-    | unreserved_keyword  #fidentUnreservedKeyword
+    | unreservedKeyword  #fidentUnreservedKeyword
     ;
 
 // Identifiers that do not refer to columns
-noncol_ident
+noncolIdent
     : IDENT               #nonColIdentSimple
     | QUOTED_NAME         #nonColIdentQuoted
-    | unreserved_keyword  #nonColIdentUnreservedKeyword
+    | unreservedKeyword  #nonColIdentUnreservedKeyword
     ;
 
 // Keyspace & Column family names
@@ -931,31 +931,31 @@ columnFamilyName
     ;
 
 userTypeName
-    : (noncol_ident '.')? non_type_ident
+    : (noncolIdent '.')? nonTypeIdent
     ;
 
 userOrRoleName
-        : roleName
+    : roleName
     ;
 
 ksName
     : IDENT                #ksNameSimple
     | QUOTED_NAME          #ksNameQuoted
-    | unreserved_keyword   #ksNameUnreservedKeyword
+    | unreservedKeyword   #ksNameUnreservedKeyword
     | QMARK                #ksNameQuestionMark
     ;
 
 cfName
     : IDENT                #cfNameSimple
     | QUOTED_NAME          #cfNameQuoted
-    | unreserved_keyword   #cfNameUnreservedKeyword
+    | unreservedKeyword   #cfNameUnreservedKeyword
     | QMARK                #cfNameQuestionMark
     ;
 
 idxName
     : IDENT                #idxNameSimple
     | QUOTED_NAME          #idxNameQuoted
-    | unreserved_keyword   #idxNameUnreservedKeyword
+    | unreservedKeyword   #idxNameUnreservedKeyword
     | QMARK                #idxNameQuestionMark
     ;
 
@@ -963,7 +963,7 @@ roleName
     : IDENT                #roleNameSimple
     | STRING_LITERAL       #roleNameStringLiteral
     | QUOTED_NAME          #roleNameQuoted
-    | unreserved_keyword   #roleNameUnreservedKeyword
+    | unreservedKeyword   #roleNameUnreservedKeyword
     | QMARK                #roleNameQuestionMark
     ;
 
@@ -1024,13 +1024,13 @@ value
     | usertypeLiteral       #valueUserTypeLiteral
     | tupleLiteral          #valueTupleLiteral
     | K_NULL                #valueNull
-    | ':' noncol_ident      #valueNonColIdent
+    | ':' noncolIdent      #valueNonColIdent
     | QMARK                 #valueQuestionMark
     ;
 
 intValue
     : INTEGER            #intValueSimple
-    | ':' noncol_ident   #intValueNonColIdent
+    | ':' noncolIdent   #intValueNonColIdent
     | QMARK              #intValueQuestionMark
     ;
 
@@ -1043,7 +1043,7 @@ functionName
 allowedFunctionName
     : IDENT                        #allowedFunctionNameIdent
     | QUOTED_NAME                  #allowedFunctionNameQuotedName
-    | unreserved_function_keyword  #allowedFunctionNameUnreservedKeywork
+    | unreservedFunctionKeyword  #allowedFunctionNameUnreservedKeywork
     | K_TOKEN                      #allowedFunctionNameToken
     | K_COUNT                      #allowedFunctionNameCount
     ;
@@ -1146,13 +1146,13 @@ properties
     ;
 
 property
-    : noncol_ident '=' propertyValue  #propertyPropertyValue
-    | noncol_ident '=' fullMapLiteral #propertyFullMapLiteral
+    : noncolIdent '=' propertyValue  #propertyPropertyValue
+    | noncolIdent '=' fullMapLiteral #propertyFullMapLiteral
     ;
 
 propertyValue
     : constant           #propertyValueConstant
-    | unreserved_keyword #propertyValueUnreservedKeyword
+    | unreservedKeyword #propertyValueUnreservedKeyword
     ;
 
 relationType
@@ -1191,8 +1191,8 @@ containsOperator
     ;
 
 inMarker
-    : QMARK
-    | ':' noncol_ident
+    : QMARK             #inMarkerQuestionMark
+    | ':' noncolIdent  #inMarkerNonColIdent
     ;
 
 tupleOfIdentifiers
@@ -1208,8 +1208,8 @@ tupleOfTupleLiterals
     ;
 
 markerForTuple
-    : QMARK
-    | ':' noncol_ident
+    : QMARK            #markerForTupleQuestionMark
+    | ':' noncolIdent #markerForTupleNonColIdent
     ;
 
 tupleOfMarkersForTuples
@@ -1217,20 +1217,20 @@ tupleOfMarkersForTuples
     ;
 
 inMarkerForTuple
-    : QMARK
-    | ':' noncol_ident
+    : QMARK            #inMarkerForTupleQuestionMark
+    | ':' noncolIdent #inMarkerForTupleNonColIdent
     ;
 
 comparatorType
-    : native_type
-    | collection_type
-    | tuple_type
-    | userTypeName
-    | K_FROZEN '<' comparatorType '>'
-    | STRING_LITERAL
+    : nativeType                     #comparatorTypeNativeType
+    | collectionType                 #comparatorTypeCollectionType
+    | tupleType                      #comparatorTypeTupleType
+    | userTypeName                    #comparatorTypeUserType
+    | K_FROZEN '<' comparatorType '>' #comparatorTypeFrozenType
+    | STRING_LITERAL                  #comparatorTypeStringLiteral
     ;
 
-native_type
+nativeType
     : K_ASCII
     | K_BIGINT
     | K_BLOB
@@ -1254,20 +1254,20 @@ native_type
     | K_TIME
     ;
 
-collection_type
-    : K_MAP  '<' comparatorType ',' comparatorType '>'
-    | K_LIST '<' comparatorType '>'
-    | K_SET  '<' comparatorType '>'
+collectionType
+    : K_MAP  '<' comparatorType ',' comparatorType '>' #collectionTypeMap
+    | K_LIST '<' comparatorType '>'                    #collectionTypeList
+    | K_SET  '<' comparatorType '>'                    #collectionTypeSet
     ;
 
-tuple_type
+tupleType
     : K_TUPLE '<' comparatorType (',' comparatorType)* '>'
     ;
 
 username
-    : IDENT
-    | STRING_LITERAL
-    | QUOTED_NAME
+    : IDENT          #usernameIdent
+    | STRING_LITERAL #usernameStringLiteral
+    | QUOTED_NAME    #usernameQuotedName
     ;
 
 mbean
@@ -1276,24 +1276,24 @@ mbean
 
 // Basically the same as cident, but we need to exlude existing CQL3 types
 // (which for some reason are not reserved otherwise)
-non_type_ident
-    : IDENT
-    | QUOTED_NAME
-    | basic_unreserved_keyword
-    | K_KEY
+nonTypeIdent
+    : IDENT                    #nonTypeIdentIdent
+    | QUOTED_NAME              #nonTypeIdentIdentQuotedName
+    | basicUnreservedKeyword #nonTypeIdentBasicUnreservedKeyword
+    | K_KEY                    #nonTypeIdentKey
     ;
 
-unreserved_keyword
-    : unreserved_function_keyword
-    | (K_TTL | K_COUNT | K_WRITETIME | K_KEY | K_CAST | K_JSON | K_DISTINCT)
+unreservedKeyword
+    : unreservedFunctionKeyword                                             #unreservedKeywordFunction
+    | (K_TTL | K_COUNT | K_WRITETIME | K_KEY | K_CAST | K_JSON | K_DISTINCT)  #unreservedKeywordConstant
     ;
 
-unreserved_function_keyword
-    : basic_unreserved_keyword
-    | native_type
+unreservedFunctionKeyword
+    : basicUnreservedKeyword #unreservedFunctionKeywordBasic
+    | nativeType              #unreservedFunctionKeywordNativeType
     ;
 
-basic_unreserved_keyword
+basicUnreservedKeyword
     : ( K_KEYS
         | K_AS
         | K_CLUSTERING
@@ -1592,9 +1592,9 @@ RANGE
  * to support multiple (see @lexer::members near the top of the grammar).
  */
 FLOAT
-    : /*(INTEGER '.' RANGE) =>*/ INTEGER '.'
-    | /*(INTEGER RANGE) =>*/ INTEGER
-    | INTEGER ('.' DIGIT*)? EXPONENT?
+//    : /*(INTEGER '.' RANGE) =>*/ INTEGER '.'
+//    | /*(INTEGER RANGE) =>*/ INTEGER
+    : INTEGER ('.' {_input.LA(1) != '.'}? DIGIT*)? EXPONENT?
     ;
 
 /*
