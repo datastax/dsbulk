@@ -63,15 +63,13 @@ public class WorkflowUtils {
         throw new BulkConfigurationException(
             "Could not generate execution ID with template: '"
                 + template
-                + "': the generated ID is empty.",
-            "engine.executionId");
+                + "': the generated ID is empty.");
       }
       return executionId;
     } catch (Exception e) {
       throw new BulkConfigurationException(
           "Could not generate execution ID with template: '" + template + "': " + e.getMessage(),
-          e,
-          "engine.executionId");
+          e);
     }
   }
 

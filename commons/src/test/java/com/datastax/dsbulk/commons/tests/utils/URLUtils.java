@@ -15,8 +15,8 @@ public class URLUtils {
   public static void setURLFactoryIfNeeded() {
     try {
       URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    } catch (Exception e) {
-      //URL.setURLStreamHandlerFactory throws an exception if it's been set more then once
+    } catch (Throwable t) {
+      //URL.setURLStreamHandlerFactory throws an Error if it's been set more then once
       //Ignore that and keep going.
     }
   }
