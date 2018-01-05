@@ -69,6 +69,7 @@ public class LogSettings {
     try {
       executionDirectory = config.getPath("directory").resolve(executionId);
       checkExecutionDirectory();
+      System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
       maxQueryStringLength = config.getInt(MAX_QUERY_STRING_LENGTH);
       maxBoundValueLength = config.getInt(MAX_BOUND_VALUE_LENGTH);
       maxBoundValues = config.getInt(MAX_BOUND_VALUES);
