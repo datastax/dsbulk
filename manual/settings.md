@@ -49,11 +49,11 @@ Default: **"csv"**.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
 
-- **file**: the file protocol can be used with all supported file systems, local or not.
-    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
-    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+The file protocol can be used with all supported file systems, local or not.
+- **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+- **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
 Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
 
@@ -68,9 +68,9 @@ Examples:
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
-This setting has no default value and must be supplied by the user.
+The default value is `-` (read from `stdin` / write to `stdout`).
 
-Default: **&lt;unspecified&gt;**.
+Default: **"-"**.
 
 #### -delim,--connector.csv.delimiter _&lt;string&gt;_
 
@@ -128,11 +128,11 @@ Default: **-1**.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
 
-- **file**: the file protocol can be used with all supported file systems, local or not.
-    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
-    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; Json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+The file protocol can be used with all supported file systems, local or not.
+- **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+- **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
 Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
 
@@ -147,9 +147,9 @@ Examples:
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
-This setting has no default value and must be supplied by the user.
+The default value is `-` (read from `stdin` / write to `stdout`).
 
-Default: **&lt;unspecified&gt;**.
+Default: **"-"**.
 
 #### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
 
@@ -344,11 +344,11 @@ CSV Connector configuration.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
 
-- **file**: the file protocol can be used with all supported file systems, local or not.
-    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
-    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+The file protocol can be used with all supported file systems, local or not.
+- **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+- **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; CSV files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
 Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
 
@@ -363,9 +363,9 @@ Examples:
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
-This setting has no default value and must be supplied by the user.
+The default value is `-` (read from `stdin` / write to `stdout`).
 
-Default: **&lt;unspecified&gt;**.
+Default: **"-"**.
 
 #### -delim,--connector.csv.delimiter _&lt;string&gt;_
 
@@ -510,11 +510,11 @@ Json Connector configuration.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the following are guaranteed to be supported:
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
 
-- **file**: the file protocol can be used with all supported file systems, local or not.
-    - **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
-    - **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; Json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
+The file protocol can be used with all supported file systems, local or not.
+- **When reading**: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
+- **When writing**: the URL will be treated as a directory; if it doesn't exist, the loader will attempt to create it; json files will be created inside this directory, and their names can be controlled with the *fileNameFormat* setting.
 
 Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol.
 
@@ -529,9 +529,9 @@ Examples:
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
-This setting has no default value and must be supplied by the user.
+The default value is `-` (read from `stdin` / write to `stdout`).
 
-Default: **&lt;unspecified&gt;**.
+Default: **"-"**.
 
 #### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
 
