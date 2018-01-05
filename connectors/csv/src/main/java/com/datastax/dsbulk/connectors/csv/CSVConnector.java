@@ -224,28 +224,26 @@ public class CSVConnector implements Connector {
                 .setSize(maxConcurrentFiles)
                 .setAllocator(new CSVWriterAllocator());
         pool = new BlazePool<>(config);
-        Timeout timeout = new Timeout(1, TimeUnit.SECONDS);
+        Timeout timeout = new Timeout(Long.MAX_VALUE, TimeUnit.SECONDS);
         return Flux.from(upstream)
             .window(Queues.SMALL_BUFFER_SIZE)
             .parallel(maxConcurrentFiles)
             .runOn(scheduler)
             .flatMap(
                 records -> {
-                  while (true) {
-                    try {
-                      PoolableCSVWriter writer = pool.claim(timeout);
-                      if (writer != null) {
-                        try {
-                          return records.transform(writeRecords(writer));
-                        } finally {
-                          writer.release();
-                        }
+                  try {
+                    PoolableCSVWriter writer = pool.claim(timeout);
+                    if (writer != null) {
+                      try {
+                        return records.transform(writeRecords(writer));
+                      } finally {
+                        writer.release();
                       }
-                    } catch (InterruptedException e) {
-                      Thread.currentThread().interrupt();
-                      return Flux.empty();
                     }
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                   }
+                  return Flux.empty();
                 })
             .sequential();
       };
