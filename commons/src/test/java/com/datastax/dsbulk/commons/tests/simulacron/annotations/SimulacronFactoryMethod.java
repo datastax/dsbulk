@@ -4,12 +4,12 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.simulacron.annotations;
+package com.datastax.dsbulk.commons.tests.simulacron.annotations;
 
 import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-import com.datastax.dsbulk.tests.ccm.CCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;

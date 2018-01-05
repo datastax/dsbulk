@@ -4,13 +4,13 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.simulacron.factory;
+package com.datastax.dsbulk.commons.tests.simulacron.factory;
 
+import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronConfig;
+import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronFactory;
+import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronFactoryMethod;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
-import com.datastax.dsbulk.tests.simulacron.annotations.SimulacronConfig;
-import com.datastax.dsbulk.tests.simulacron.annotations.SimulacronFactory;
-import com.datastax.dsbulk.tests.simulacron.annotations.SimulacronFactoryMethod;
-import com.datastax.dsbulk.tests.utils.Version;
+import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;

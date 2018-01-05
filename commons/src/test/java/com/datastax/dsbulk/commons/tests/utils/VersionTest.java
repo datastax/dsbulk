@@ -4,10 +4,10 @@
  * This software can be used solely with DataStax Enterprise. Please consult the license at
  * http://www.datastax.com/terms/datastax-dse-driver-license-terms
  */
-package com.datastax.dsbulk.tests.utils;
+package com.datastax.dsbulk.commons.tests.utils;
 
-import static com.datastax.dsbulk.tests.utils.Version.isWithinRange;
-import static com.datastax.dsbulk.tests.utils.Version.parse;
+import static com.datastax.dsbulk.commons.tests.utils.Version.isWithinRange;
+import static com.datastax.dsbulk.commons.tests.utils.Version.parse;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
