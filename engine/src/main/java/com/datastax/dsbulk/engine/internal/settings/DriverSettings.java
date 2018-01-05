@@ -174,8 +174,7 @@ public class DriverSettings {
       if (!config.hasPath("hosts")) {
         throw new BulkConfigurationException(
             "driver.hosts is mandatory. Please set driver.hosts "
-                + "and try again. See settings.md or help for more information.",
-            "driver");
+                + "and try again. See settings.md or help for more information.");
       }
       hosts = config.getString(HOSTS);
       port = config.getInt(PORT);
@@ -200,8 +199,7 @@ public class DriverSettings {
           case DSE_PLAINTEXT_PROVIDER:
             if (!config.hasPath(AUTH_USERNAME) || !config.hasPath(AUTH_PASSWORD)) {
               throw new BulkConfigurationException(
-                  authProvider + " must be provided with both auth.username and auth.password",
-                  "driver");
+                  authProvider + " must be provided with both auth.username and auth.password");
             }
             authUsername = config.getString(AUTH_USERNAME);
             authPassword = config.getString(AUTH_PASSWORD);
@@ -210,8 +208,7 @@ public class DriverSettings {
             if (!config.hasPath(AUTH_PRINCIPAL) || !config.hasPath(AUTH_SASLPROTOCOL)) {
               throw new BulkConfigurationException(
                   authProvider
-                      + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional.",
-                  "driver");
+                      + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional.");
             }
             authPrincipal = config.getString(AUTH_PRINCIPAL);
             authSaslProtocol = config.getString(AUTH_SASLPROTOCOL);
@@ -226,8 +223,7 @@ public class DriverSettings {
           default:
             throw new BulkConfigurationException(
                 authProvider
-                    + " is not a valid auth provider. Valid auth providers are PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider",
-                "driver");
+                    + " is not a valid auth provider. Valid auth providers are PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider");
         }
       }
       sslProvider = config.getString(SSL_PROVIDER);
@@ -239,8 +235,7 @@ public class DriverSettings {
                   + SSL_KEYSTORE_PASSWORD
                   + " and "
                   + SSL_TRUSTSTORE_ALGORITHM
-                  + " must be provided together or not at all when using the JDK SSL Provider",
-              "driver.ssl");
+                  + " must be provided together or not at all when using the JDK SSL Provider");
         } else {
           if (config.hasPath(SSL_KEYSTORE_PATH)) {
             sslKeyStorePath = config.getURL(SSL_KEYSTORE_PATH);
@@ -255,8 +250,7 @@ public class DriverSettings {
               SSL_OPENSSL_KEYCHAINCERT
                   + " and "
                   + SSL_OPENSSL_PRIVATE_KEY
-                  + " must be provided together or not at all when using the openssl Provider",
-              "driver.ssl");
+                  + " must be provided together or not at all when using the openssl Provider");
         }
         if (config.hasPath(SSL_OPENSSL_KEYCHAINCERT)) {
           sslOpenSslKeyCertChain = config.getURL(SSL_OPENSSL_KEYCHAINCERT);
@@ -270,8 +264,7 @@ public class DriverSettings {
                 + SSL_TRUSTSTORE_PASSWORD
                 + " and "
                 + SSL_TRUSTSTORE_ALGORITHM
-                + " must be provided together or not at all",
-            "driver.ssl");
+                + " must be provided together or not at all");
       } else {
         if (config.hasPath(SSL_TRUSTSTORE_PATH)) {
           sslTrustStorePath = config.getURL(SSL_TRUSTSTORE_PATH);
@@ -332,7 +325,7 @@ public class DriverSettings {
       try {
         sslOptions = createSSLOptions();
       } catch (Exception e) {
-        throw new BulkConfigurationException("Could not configure SSL", e, "driver.ssl");
+        throw new BulkConfigurationException("Could not configure SSL", e);
       }
       builder.withSSL(sslOptions);
     }
@@ -365,8 +358,7 @@ public class DriverSettings {
               "Load balancing policy chaining loop detected: "
                   + seenPolicies.stream().map(BuiltinLBP::name).collect(Collectors.joining(","))
                   + ","
-                  + childName.name(),
-              "driver.policy.lbp");
+                  + childName.name());
         }
         childPolicy =
             getLoadBalancingPolicy(

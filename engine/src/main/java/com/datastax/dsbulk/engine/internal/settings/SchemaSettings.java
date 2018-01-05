@@ -131,8 +131,7 @@ public class SchemaSettings {
           this.timestampMicros = instantToTimestampSinceEpoch(instant, MICROSECONDS, EPOCH);
         } catch (Exception e) {
           throw new BulkConfigurationException(
-              String.format("Could not parse %s '%s'", prettyPath(QUERY_TIMESTAMP), timestampStr),
-              prettyPath(QUERY_TIMESTAMP));
+              String.format("Could not parse %s '%s'", prettyPath(QUERY_TIMESTAMP), timestampStr));
         }
       }
       this.query = config.hasPath(QUERY) ? config.getString(QUERY) : null;
@@ -149,7 +148,7 @@ public class SchemaSettings {
       // If table is present, keyspace must be, but not necessarily the other way around.
       if (config.hasPath(TABLE) && keyspaceName == null) {
         throw new BulkConfigurationException(
-            prettyPath(KEYSPACE) + " must accompany schema.table in the configuration", "schema");
+            prettyPath(KEYSPACE) + " must accompany schema.table in the configuration");
       }
 
       // If mapping is present, make sure it is parseable as a map.
@@ -159,8 +158,7 @@ public class SchemaSettings {
           throw new BulkConfigurationException(
               String.format(
                   "%s, or %s and %s must be defined when using inferred mapping",
-                  prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)),
-              "schema");
+                  prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)));
         }
       } else {
         mapping = null;
@@ -171,8 +169,7 @@ public class SchemaSettings {
         throw new BulkConfigurationException(
             String.format(
                 "%s, %s, or %s and %s must be defined",
-                prettyPath(MAPPING), prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)),
-            "schema");
+                prettyPath(MAPPING), prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)));
       }
 
       // Either the keyspace and table must be present, or the mapping must be present.
@@ -180,8 +177,7 @@ public class SchemaSettings {
         throw new BulkConfigurationException(
             String.format(
                 "%s, or %s and %s must be defined",
-                prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)),
-            "schema");
+                prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)));
       }
 
       // If a query is provided, ttl and timestamp must not be.
@@ -189,16 +185,14 @@ public class SchemaSettings {
         throw new BulkConfigurationException(
             String.format(
                 "%s must not be defined if %s or %s is defined",
-                prettyPath(QUERY), prettyPath(QUERY_TTL), prettyPath(QUERY_TIMESTAMP)),
-            "schema");
+                prettyPath(QUERY), prettyPath(QUERY_TTL), prettyPath(QUERY_TIMESTAMP)));
       }
 
       if (query != null && keyspaceTablePresent) {
         throw new BulkConfigurationException(
             String.format(
                 "%s must not be defined if %s and %s are defined",
-                prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)),
-            "schema");
+                prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)));
       }
 
       if (mapping != null) {
@@ -225,8 +219,7 @@ public class SchemaSettings {
                 "Multiple input values in mapping resolve to column "
                     + mapping.getString(fieldName)
                     + ". "
-                    + "Please review schema.mapping for duplicates.",
-                "schema.mapping");
+                    + "Please review schema.mapping for duplicates.");
           }
           explicitVariables.put(fieldName, variableName);
         }
@@ -238,21 +231,18 @@ public class SchemaSettings {
             throw new BulkConfigurationException(
                 String.format(
                     "%s must not be defined when mapping a field to query-timestamp",
-                    prettyPath(QUERY)),
-                "schema");
+                    prettyPath(QUERY)));
           }
           if (explicitVariables.containsValue(TTL_VARNAME)) {
             throw new BulkConfigurationException(
                 String.format(
-                    "%s must not be defined when mapping a field to query-ttl", prettyPath(QUERY)),
-                "schema");
+                    "%s must not be defined when mapping a field to query-ttl", prettyPath(QUERY)));
           }
           if (explicitVariables.keySet().stream().anyMatch(SchemaSettings::isFunction)) {
             throw new BulkConfigurationException(
                 String.format(
                     "%s must not be defined when mapping a function to a column",
-                    prettyPath(QUERY)),
-                "schema");
+                    prettyPath(QUERY)));
           }
         }
       } else {
@@ -268,7 +258,7 @@ public class SchemaSettings {
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
     } catch (IllegalArgumentException e) {
-      throw new BulkConfigurationException(e, "schema");
+      throw new BulkConfigurationException(e);
     }
   }
 
@@ -418,15 +408,13 @@ public class SchemaSettings {
               throw new BulkConfigurationException(
                   String.format(
                       "Schema mapping %s doesn't match any column found in table %s",
-                      value, table.getName()),
-                  "schema.mapping");
+                      value, table.getName()));
             } else {
               assert query != null;
               throw new BulkConfigurationException(
                   String.format(
                       "Schema mapping %s doesn't match any bound variable found in query: '%s'",
-                      value, query),
-                  "schema.mapping");
+                      value, query));
             }
           }
         });
@@ -441,8 +429,7 @@ public class SchemaSettings {
             throw new BulkConfigurationException(
                 "Missing required key column of "
                     + key.getName()
-                    + " from header or schema.mapping. Please ensure it's included in the header or mapping",
-                "schema.mapping");
+                    + " from header or schema.mapping. Please ensure it's included in the header or mapping");
           }
         });
   }
