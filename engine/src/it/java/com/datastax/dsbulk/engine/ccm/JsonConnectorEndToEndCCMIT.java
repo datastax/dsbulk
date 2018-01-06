@@ -378,7 +378,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("24");
 
     int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
     validateResultSetSize(21, SELECT_FROM_IP_BY_COUNTRY);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);

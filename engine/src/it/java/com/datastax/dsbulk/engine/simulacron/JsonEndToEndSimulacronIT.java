@@ -224,7 +224,7 @@ class JsonEndToEndSimulacronIT {
     };
 
     int status = new Main(args).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
 
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
@@ -302,7 +302,7 @@ class JsonEndToEndSimulacronIT {
     // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
     // the unavailable.
     int status = new Main(args).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
 
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
@@ -338,7 +338,7 @@ class JsonEndToEndSimulacronIT {
     };
 
     int status = new Main(args).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
 
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
@@ -453,7 +453,7 @@ class JsonEndToEndSimulacronIT {
     };
 
     int status = new Main(unloadArgs).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
 
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
@@ -490,7 +490,7 @@ class JsonEndToEndSimulacronIT {
     };
 
     int status = new Main(unloadArgs).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
 
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
@@ -548,7 +548,7 @@ class JsonEndToEndSimulacronIT {
     };
 
     int status = new Main(unloadArgs).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
 
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
