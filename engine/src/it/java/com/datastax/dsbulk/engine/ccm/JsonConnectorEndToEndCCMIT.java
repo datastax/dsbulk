@@ -48,7 +48,6 @@ import org.junit.jupiter.api.Test;
 class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private Path unloadDir;
-  private Path outputFile;
 
   JsonConnectorEndToEndCCMIT(CCMCluster ccm, Session session) {
     super(ccm, session);
@@ -64,7 +63,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @BeforeEach
   void setUpDirs() throws IOException {
     unloadDir = createTempDirectory("test");
-    outputFile = unloadDir.resolve("output-000001.json");
   }
 
   @AfterEach
@@ -114,7 +112,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */
@@ -163,7 +161,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (Snappy). */
@@ -212,7 +210,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   /** Attempts to load and unload complex types (Collections, UDTs, etc). */
@@ -257,7 +255,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(5, outputFile);
+    validateOutputFiles(5, unloadDir);
   }
 
   /** Attempts to load and unload a larger dataset which can be batched. */
@@ -302,7 +300,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(500, outputFile);
+    validateOutputFiles(500, unloadDir);
   }
 
   /**
@@ -351,7 +349,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(1, outputFile);
+    validateOutputFiles(1, unloadDir);
   }
 
   /** Attempts to load and unload data, some of which will be unsuccessful. */
@@ -403,6 +401,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(21, outputFile);
+    validateOutputFiles(21, unloadDir);
   }
 }

@@ -74,6 +74,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -92,7 +93,6 @@ class CSVEndToEndSimulacronIT {
   private final BoundCluster simulacron;
 
   private Path unloadDir;
-  private Path outputFile;
 
   CSVEndToEndSimulacronIT(BoundCluster simulacron) {
     this.simulacron = simulacron;
@@ -107,7 +107,6 @@ class CSVEndToEndSimulacronIT {
   @BeforeEach
   void setUpDirs() throws IOException {
     unloadDir = createTempDirectory("test");
-    outputFile = unloadDir.resolve("output-000001.csv");
   }
 
   @AfterEach
@@ -461,7 +460,7 @@ class CSVEndToEndSimulacronIT {
         .contains("Reads: total: 24, successful: 24, failed: 0");
 
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   /**
@@ -506,7 +505,7 @@ class CSVEndToEndSimulacronIT {
     verifyDelimiterCount(';', 168);
     verifyDelimiterCount('<', 96);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   @Test
@@ -542,12 +541,7 @@ class CSVEndToEndSimulacronIT {
     assertThat(status).isZero();
 
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.LOCAL_ONE);
-    validateOutputFiles(
-        1000,
-        unloadDir.resolve("output-000001.csv"),
-        unloadDir.resolve("output-000002.csv"),
-        unloadDir.resolve("output-000003.csv"),
-        unloadDir.resolve("output-000004.csv"));
+    validateOutputFiles(1000, unloadDir);
   }
 
   @Test
@@ -728,7 +722,9 @@ class CSVEndToEndSimulacronIT {
   }
 
   private void verifyDelimiterCount(char delimiter, int expected) throws Exception {
-    String contents = FileUtils.readFile(outputFile, UTF_8);
+    String contents =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir, UTF_8)
+            .collect(Collectors.joining("\n"));
     assertThat(StringUtils.countOccurrences(delimiter, contents)).isEqualTo(expected);
   }
 }

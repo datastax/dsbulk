@@ -21,7 +21,9 @@ import com.datastax.oss.simulacron.common.result.ErrorResult;
 import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
+import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -144,9 +146,10 @@ public class EndToEndUtils {
     assertThat(numBadOps).isEqualTo(size);
   }
 
-  public static void validateOutputFiles(int numOfRecords, Path... outputFilePaths) {
+  public static void validateOutputFiles(int numOfRecords, Path dir) throws IOException {
     // Sum the number of lines in each file and assert that the total matches the expected value.
-    long totalLines = FileUtils.readLines(outputFilePaths).size();
+    long totalLines =
+        FileUtils.readAllLinesInDirectoryAsStream(dir, StandardCharsets.UTF_8).count();
     assertThat(totalLines).isEqualTo(numOfRecords);
   }
 

@@ -62,7 +62,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private Path unloadDir;
-  private Path outputFile;
 
   CSVConnectorEndToEndCCMIT(CCMCluster ccm, Session session) {
     super(ccm, session);
@@ -78,7 +77,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @BeforeEach
   void setUpDirs() throws IOException {
     unloadDir = createTempDirectory("test");
-    outputFile = unloadDir.resolve("output-000001.csv");
   }
 
   @AfterEach
@@ -128,7 +126,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */
@@ -177,7 +175,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (Snappy). */
@@ -226,7 +224,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   /** Attempts to load and unload complex types (Collections, UDTs, etc). */
@@ -271,7 +269,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(5, outputFile);
+    validateOutputFiles(5, unloadDir);
   }
 
   /** Attempts to load and unload a larger dataset which can be batched. */
@@ -316,7 +314,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(500, outputFile);
+    validateOutputFiles(500, unloadDir);
   }
 
   /**
@@ -365,7 +363,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(3, outputFile);
+    validateOutputFiles(3, unloadDir);
   }
 
   /** Attempts to load and unload data, some of which will be unsuccessful. */
@@ -417,7 +415,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(21, outputFile);
+    validateOutputFiles(21, unloadDir);
   }
 
   @Test
