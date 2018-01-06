@@ -29,6 +29,7 @@
 - [improvement] DAT-189: More gracefully error out when Json document mode is wrong.
 - [improvement] DAT-190: Consider connector.json.mode for unloading.
 - [bug] DAT-209: Records are being counted twice in Unload workflow.
+- [improvement] DAT-158: Reorganize in-tree documentation.
 - [improvement] DAT-180: Improve DSBulk exit statuses.
 
 

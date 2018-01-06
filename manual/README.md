@@ -2,16 +2,13 @@
 
 The Datastax Bulk Loader tool provides the ability to load large amounts of data 
 into the database efficiently and reliably as well as conversely unload data from the
-database. In this release, only csv file loading/unloading is supported.  
-
-The tool consists of three main components:
-* [Connectors](./connectors)
-* [Executor](./executor)
-* [Engine](./engine)
+database. In this release, csv and json file loading/unloading is supported.  
 
 Launch the tool with the appropriate script in the bin directory of
 your distribution. The help text of the tool provides summaries of all 
 supported settings.
+
+The most up-to-date documentation is available [online][onlineDocs]. 
 
 ## Basic Usage
 The `dsbulk` command takes a subcommand argument followed by options:
@@ -29,7 +26,8 @@ required settings of their own and those must be set as well. For example, the c
 requires the `connector.csv.url` setting to specify the source path/url of the csv data to 
 load (or path/url where to send unloaded data).
 
-See the [Settings page](settings.md) for details.
+See the [Settings page](settings.md) or the [template application config]
+for details.
 
 ### Shortcuts
 For convenience, many options (prefaced with `--`), have shortcut variants (prefaced with `-`).
@@ -50,7 +48,8 @@ dsbulk -c csv --help
 
 ## Config Files, Settings, Search Order, and Overrides
 
-Available settings along with defaults are documented [here](settings.md).
+Available settings along with defaults are documented [here](settings.md) and in the
+[template application config].
 
 The conf directory also contains an `application.conf` file where a user may specify permanent
 overrides of settings. These are expressed in dotted form:
@@ -114,7 +113,8 @@ used in both load and unload.
   `dsbulk unload -url https://svr/data/table1 -k ks1 -t table1 -h 10.200.1.3`
 
 ## Command-line Help
-Available settings along with defaults are documented [here](settings.md). 
+Available settings along with defaults are documented [here](settings.md) and in the
+[template application config].
 This information is also available on the command-line via the `help` subcommand.
 
 * Get help for common options and a list of sections from which more help is available:
@@ -124,3 +124,6 @@ This information is also available on the command-line via the `help` subcommand
 * Get help for all `connector.csv` options:
 
   `dsbulk help connector.csv`
+  
+[template application config]:application.template.conf
+[onlineDocs]:https://docs.datastax.com/en/dse/1.0.0/dsbulk/

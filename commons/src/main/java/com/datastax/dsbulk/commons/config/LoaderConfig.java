@@ -17,6 +17,7 @@ import com.typesafe.config.ConfigValueType;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.regex.Matcher;
@@ -73,19 +74,31 @@ public interface LoaderConfig extends Config {
    *
    * <p>For convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the
    * current user's home directory, as supplied by `System.getProperty("user.home")`. Note that this
-   * expansion will not occur when the tilde is not the first character in the path.
+   * expansion will not occur when the tilde is not the first character in the path, nor when the
+   * home directory owner is not the current user.
    *
    * @param path path expression.
    * @return the Path object at the requested path.
    * @throws ConfigException.Missing if value is absent or null.
    * @throws ConfigException.WrongType if value is not convertible to a Path.
+   * @throws ConfigException.BadValue if value is not convertible to a Path.
    */
   default Path getPath(String path) {
     String setting = getString(path);
     if (setting.startsWith("~")) {
-      setting = System.getProperty("user.home") + setting.substring(1);
+      if (setting.equals("~") || setting.startsWith("~/")) {
+        setting = System.getProperty("user.home") + setting.substring(1);
+      } else {
+        throw new ConfigException.BadValue(
+            origin(), path, "Cannot resolve home directory: " + setting);
+      }
     }
-    return Paths.get(setting).normalize().toAbsolutePath();
+    try {
+      return Paths.get(setting).normalize().toAbsolutePath();
+    } catch (InvalidPathException e) {
+      throw new ConfigException.WrongType(
+          origin(), path, "path", getValue(path).valueType().toString(), e);
+    }
   }
 
   /**
