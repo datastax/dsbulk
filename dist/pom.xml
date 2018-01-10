@@ -24,13 +24,6 @@
     Binary distribution of the DataStax Bulk Loader.
   </description>
 
-  <properties>
-    <joda.version>2.9.9</joda.version>
-    <jsr353-api.version>1.0</jsr353-api.version>
-    <esri.version>1.2.1</esri.version>
-    <osgi-core.version>4.3.0</osgi-core.version>
-  </properties>
-
   <dependencies>
 
     <dependency>
@@ -83,6 +76,22 @@
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dse-java-driver-extras</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <exclusions>
+        <!-- artifacts not needed in the final DSBulk archive -->
+        <exclusion>
+          <groupId>org.checkerframework</groupId>
+          <artifactId>checker-qual</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>animal-sniffer-annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -149,68 +158,29 @@
       <build>
 
         <plugins>
+
           <plugin>
-            <artifactId>maven-javadoc-plugin</artifactId>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>license-maven-plugin</artifactId>
+            <version>1.14</version>
+            <configuration>
+              <excludedScopes>test</excludedScopes>
+              <licenseMerges>
+                <licenseMerge>Apache License, Version 2.0|The Apache Software License, Version 2.0|Apache Public License 2.0|Apache License 2.0|Apache 2.0|Apache 2</licenseMerge>
+                <licenseMerge>BSD License|The BSD License|BSD|BSD-2-Clause</licenseMerge>
+                <licenseMerge>MIT License|The MIT License|MIT license</licenseMerge>
+                <licenseMerge>Creative Commons CC0|Public Domain, per Creative Commons CC0|CC0</licenseMerge>
+                <licenseMerge>Eclipse Public License, Version 1.0|Eclipse Public License - v 1.0|Common Public License - v 1.0</licenseMerge>
+              </licenseMerges>
+              <failOnMissing>true</failOnMissing>
+            </configuration>
             <executions>
               <execution>
-                <id>attach-sources</id>
-                <configuration>
-                  <skip>true</skip>
-                </configuration>
-              </execution>
-              <execution>
-                <id>dependencies-javadoc</id>
-                <phase>package</phase>
+                <id>add-third-party</id>
                 <goals>
-                  <goal>jar</goal>
+                  <goal>add-third-party</goal>
                 </goals>
-                <configuration>
-                  <includeDependencySources>true</includeDependencySources>
-                  <includeTransitiveDependencySources>true</includeTransitiveDependencySources>
-                  <dependencySourceIncludes>
-                    <dependencySourceInclude>com.datastax.*</dependencySourceInclude>
-                  </dependencySourceIncludes>
-                  <excludePackageNames>*.internal:internal.*</excludePackageNames>
-                  <!-- required unfortunately because javadocs from the java driver do not comply -->
-                  <doclint>none</doclint>
-                  <additionalDependencies>
-                    <!--
-                    dependencies from this project;
-                    not used in the binary distribution but required
-                    for javadoc generation
-                    -->
-                    <additionalDependency>
-                      <groupId>io.reactivex.rxjava2</groupId>
-                      <artifactId>rxjava</artifactId>
-                      <version>${rx-java.version}</version>
-                    </additionalDependency>
-                    <!--
-                    dependencies from the java driver;
-                    not used in this project but required
-                    for javadoc generation
-                    -->
-                    <additionalDependency>
-                      <groupId>org.osgi</groupId>
-                      <artifactId>org.osgi.core</artifactId>
-                      <version>${osgi-core.version}</version>
-                    </additionalDependency>
-                    <additionalDependency>
-                      <groupId>joda-time</groupId>
-                      <artifactId>joda-time</artifactId>
-                      <version>${joda.version}</version>
-                    </additionalDependency>
-                    <additionalDependency>
-                      <groupId>javax.json</groupId>
-                      <artifactId>javax.json-api</artifactId>
-                      <version>${jsr353-api.version}</version>
-                    </additionalDependency>
-                    <additionalDependency>
-                      <groupId>com.esri.geometry</groupId>
-                      <artifactId>esri-geometry-api</artifactId>
-                      <version>${esri.version}</version>
-                    </additionalDependency>
-                  </additionalDependencies>
-                </configuration>
+                <phase>process-sources</phase>
               </execution>
             </executions>
           </plugin>
