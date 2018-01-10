@@ -21,7 +21,8 @@
   <fileSets>
 
     <fileSet>
-      <directory>${project.basedir}</directory>
+      <directory>${project.basedir}/..</directory>
+      <outputDirectory>./</outputDirectory>
       <includes>
         <include>README*</include>
         <include>LICENSE*</include>
@@ -29,21 +30,26 @@
     </fileSet>
 
     <fileSet>
-      <directory>../manual</directory>
+      <directory>${project.basedir}/../manual</directory>
+      <outputDirectory>manual</outputDirectory>
     </fileSet>
 
     <fileSet>
-      <directory>../bin</directory>
-    </fileSet>
-
-    <fileSet>
-      <directory>${project.build.directory}/apidocs</directory>
-      <outputDirectory>apidocs</outputDirectory>
+      <directory>${project.basedir}/../bin</directory>
+      <outputDirectory>bin</outputDirectory>
     </fileSet>
 
     <fileSet>
       <directory>${project.basedir}/src/conf</directory>
       <outputDirectory>conf</outputDirectory>
+    </fileSet>
+
+    <fileSet>
+      <directory>${project.build.directory}/generated-sources/license</directory>
+      <outputDirectory>./</outputDirectory>
+      <includes>
+        <include>THIRD-PARTY*</include>
+      </includes>
     </fileSet>
 
   </fileSets>
@@ -54,10 +60,6 @@
       <outputDirectory>lib</outputDirectory>
       <useProjectArtifact>false</useProjectArtifact>
       <scope>runtime</scope>
-      <excludes>
-        <!-- Guava dependency that must be kept during build, but can be discarded now -->
-        <exclude>org.codehaus.mojo:animal-sniffer-annotations*</exclude>
-      </excludes>
     </dependencySet>
 
   </dependencySets>
