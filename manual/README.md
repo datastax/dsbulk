@@ -108,10 +108,6 @@ used in both load and unload.
                                           
   `dsbulk unload -url ~/-data-export -k ks1 -t table1`
   
-* Unload data from a remote cluster to a remote destination url:
-
-  `dsbulk unload -url https://svr/data/table1 -k ks1 -t table1 -h 10.200.1.3`
-
 ## Command-line Help
 Available settings along with defaults are documented [here](settings.md) and in the
 [template application config].

@@ -7,6 +7,7 @@
 package com.datastax.dsbulk.connectors.json;
 
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,6 +19,7 @@ import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.tests.HttpTestServer;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
@@ -28,13 +30,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import io.undertow.util.Headers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.net.URISyntaxException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -618,6 +623,33 @@ class JsonConnectorTest {
     connector.close();
   }
 
+  @Test
+  void should_read_from_http_url() throws Exception {
+    HttpTestServer server = new HttpTestServer();
+    try {
+      server.start(
+          exchange -> {
+            exchange.getResponseHeaders().add(Headers.CONTENT_TYPE, "text/json");
+            exchange.getResponseSender().send(readFile(path("/single_doc.json")));
+          });
+      JsonConnector connector = new JsonConnector();
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"http://localhost:%d/file.json\", mode = SINGLE_DOCUMENT, parserFeatures = [ALLOW_COMMENTS]",
+                          server.getPort()))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      List<Record> actual = Flux.defer(connector.read()).collectList().block();
+      verifyRecords(actual);
+      connector.close();
+    } finally {
+      server.stop();
+    }
+  }
+
   private void verifyRecords(List<Record> actual) {
     assertThat(actual).hasSize(5);
     assertThat(actual.get(0).values())
@@ -725,5 +757,10 @@ class JsonConnectorTest {
 
   private static String url(String resource) {
     return JsonConnectorTest.class.getResource(resource).toExternalForm();
+  }
+
+  private static Path path(@SuppressWarnings("SameParameterValue") String resource)
+      throws URISyntaxException {
+    return Paths.get(JsonConnectorTest.class.getResource(resource).toURI());
   }
 }
