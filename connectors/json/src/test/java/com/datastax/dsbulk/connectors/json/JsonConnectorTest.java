@@ -655,16 +655,15 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "url = \"http://localhost:1234/file.json\"")
+            ConfigFactory.parseString("url = \"http://localhost:1234/file.json\"")
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    assertThatThrownBy(() -> Flux.fromIterable(createRecords())
-        .transform(connector.write())
-        .blockLast())
+    assertThatThrownBy(
+            () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.json");
+        .hasMessage(
+            "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.json");
     connector.close();
   }
 
