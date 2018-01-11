@@ -49,6 +49,8 @@ public final class IOUtils {
         // should not happen, URLs have been validated already
         throw new IllegalArgumentException(e);
       }
+    } else if (url.getProtocol().startsWith("http")){
+      throw new IllegalArgumentException("HTTP/HTTPS protocols cannot be used for output: " + url);
     } else {
       URLConnection connection = url.openConnection();
       connection.setDoOutput(true);

@@ -633,6 +633,24 @@ class CSVConnectorTest {
     }
   }
 
+  @Test
+  void should_not_write_to_http_url() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "url = \"http://localhost:1234/file.csv\"")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    assertThatThrownBy(() -> Flux.fromIterable(createRecords())
+        .transform(connector.write())
+        .blockLast())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.csv");
+    connector.close();
+  }
+
   private static List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
     String[] fields = new String[] {"Year", "Make", "Model", "Description", "Price"};
