@@ -7,6 +7,7 @@
 package com.datastax.dsbulk.engine;
 
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.slf4j.event.Level.ERROR;
 
@@ -16,14 +17,18 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 class SettingsValidatorTest {
-
   private static final String[] BAD_PARAMS_WRONG_TYPE = {
     "--connector.csv.recursive=tralse",
     "--log.stmt.maxQueryStringLength=NotANumber",
@@ -79,11 +84,23 @@ class SettingsValidatorTest {
   private final LogInterceptor logs;
   private final StreamInterceptor stdErr;
 
+  private Path tempFolder;
+
   public SettingsValidatorTest(
       @LogCapture(value = Main.class, level = ERROR) LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stdErr) {
     this.logs = logs;
     this.stdErr = stdErr;
+  }
+
+  @BeforeEach
+  void createTempFolder() throws IOException {
+    tempFolder = Files.createTempDirectory("test");
+  }
+
+  @AfterEach
+  void deleteTempFolder() {
+    deleteDirectory(tempFolder);
   }
 
   @Test
@@ -214,24 +231,6 @@ class SettingsValidatorTest {
         .run();
     String err = logs.getAllMessagesAsString();
     assertThat(err).contains("InvalidAuthProvider is not a valid auth provider");
-  }
-
-  @Test
-  void should_error_invalid_auth_combinations_missing_principal() {
-    new Main(
-            new String[] {
-              "load",
-              "--connector.csv.url",
-              "/path/to/file",
-              "--schema.query",
-              "INSERT",
-              "--driver.auth.provider=DseGSSAPIAuthProvider",
-              "--driver.auth.principal",
-              ""
-            })
-        .run();
-    String err = logs.getAllMessagesAsString();
-    assertThat(err).contains("must be provided with auth.principal");
   }
 
   @Test
@@ -531,5 +530,89 @@ class SettingsValidatorTest {
     assertThat(err)
         .contains(
             "Load balancing policy chaining loop detected: dse,whiteList,tokenAware,whiteList");
+  }
+
+  @Test
+  void should_error_nonexistent_keytab() {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "c1=c2",
+              "--driver.auth.provider",
+              "DseGSSAPIAuthProvider",
+              "--driver.auth.keyTab",
+              "noexist.keytab",
+              "--schema.query",
+              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err).matches(".*Keytab file .*/noexist.keytab does not exist.*");
+  }
+
+  @Test
+  void should_error_keytab_is_a_dir() {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "c1=c2",
+              "--driver.auth.provider",
+              "DseGSSAPIAuthProvider",
+              "--driver.auth.keyTab",
+              ".",
+              "--schema.query",
+              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err).matches(".*Keytab file .* is not a file.*");
+  }
+
+  @Test
+  void should_error_keytab_has_no_keys() throws Exception {
+    Path keytabPath = Files.createTempFile(tempFolder, "my", ".keytab");
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "c1=c2",
+              "--driver.auth.provider",
+              "DseGSSAPIAuthProvider",
+              "--driver.auth.keyTab",
+              keytabPath.toString(),
+              "--schema.query",
+              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err).matches(".*Could not find any principals in.*");
+  }
+
+  @Test
+  void should_error_DseGSSAPIAuthProvider_and_no_sasl_protocol() {
+    new Main(
+            new String[] {
+              "load",
+              "--connector.csv.url=/path/to/my/file",
+              "-m",
+              "c1=c2",
+              "--driver.auth.provider",
+              "DseGSSAPIAuthProvider",
+              "--driver.auth.saslProtocol",
+              "",
+              "--schema.query",
+              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err)
+        .contains(
+            "DseGSSAPIAuthProvider must be provided with auth.saslProtocol. "
+                + "auth.principal, auth.keyTab, and auth.authorizationId are optional.");
   }
 }

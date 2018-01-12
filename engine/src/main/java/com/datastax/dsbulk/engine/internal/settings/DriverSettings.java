@@ -42,6 +42,8 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
 import java.net.InetSocketAddress;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -57,9 +59,14 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import sun.security.krb5.internal.ktab.KeyTab;
+import sun.security.krb5.internal.ktab.KeyTabEntry;
 
 /** */
 public class DriverSettings {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DriverSettings.class);
 
   //Path Constants
   private static final String POOLING = "pooling";
@@ -160,7 +167,7 @@ public class DriverSettings {
   private String sslTrustStoreAlgorithm;
   private URL sslOpenSslPrivateKey;
   private URL sslOpenSslKeyCertChain;
-  private URL authKeyTab;
+  private Path authKeyTab;
   private String authSaslProtocol;
   private LoadBalancingPolicy policy;
 
@@ -205,19 +212,34 @@ public class DriverSettings {
             authPassword = config.getString(AUTH_PASSWORD);
             break;
           case DSE_GSSAPI_PROVIDER:
-            if (!config.hasPath(AUTH_PRINCIPAL) || !config.hasPath(AUTH_SASLPROTOCOL)) {
+            if (!config.hasPath(AUTH_SASLPROTOCOL)) {
               throw new BulkConfigurationException(
                   authProvider
-                      + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional.");
+                      + " must be provided with auth.saslProtocol. auth.principal, auth.keyTab, and auth.authorizationId are optional.");
             }
-            authPrincipal = config.getString(AUTH_PRINCIPAL);
-            authSaslProtocol = config.getString(AUTH_SASLPROTOCOL);
             if (config.hasPath(AUTH_PRINCIPAL)) {
               authPrincipal = config.getString(AUTH_PRINCIPAL);
             }
             if (config.hasPath(AUTH_KEYTAB)) {
-              authKeyTab = config.getURL(AUTH_KEYTAB);
+              authKeyTab = config.getPath(AUTH_KEYTAB);
+              assertAccessibleFile(authKeyTab, "Keytab file");
+
+              // When using a keytab, we must have a principal. If the user didn't provide one,
+              // try to get the first principal from the keytab.
+              if (authPrincipal == null) {
+                // Best effort: get the first principal in the keytab, if possible.
+                KeyTab keyTab = KeyTab.getInstance(authKeyTab.toString());
+                KeyTabEntry[] entries = keyTab.getEntries();
+                if (entries.length > 0) {
+                  authPrincipal = entries[0].getService().getName();
+                  LOGGER.debug("Found Kerberos principal %s in %s", authPrincipal, authKeyTab);
+                } else {
+                  throw new BulkConfigurationException(
+                      String.format("Could not find any principals in %s", authKeyTab));
+                }
+              }
             }
+            authSaslProtocol = config.getString(AUTH_SASLPROTOCOL);
 
             break;
           default:
@@ -335,6 +357,22 @@ public class DriverSettings {
     return builder.build();
   }
 
+  @SuppressWarnings("SameParameterValue")
+  private static void assertAccessibleFile(Path filePath, String descriptor) {
+    if (!Files.exists(filePath)) {
+      throw new BulkConfigurationException(
+          String.format("%s %s does not exist", descriptor, filePath));
+    }
+    if (!Files.isRegularFile(filePath)) {
+      throw new BulkConfigurationException(
+          String.format("%s %s is not a file", descriptor, filePath));
+    }
+    if (!Files.isReadable(filePath)) {
+      throw new BulkConfigurationException(
+          String.format("%s %s is not readable", descriptor, filePath));
+    }
+  }
+
   private LoadBalancingPolicy getLoadBalancingPolicy(LoaderConfig config, BuiltinLBP lbpName)
       throws BulkConfigurationException {
     Set<BuiltinLBP> seenPolicies = new LinkedHashSet<>();
@@ -412,7 +450,7 @@ public class DriverSettings {
       case DSE_GSSAPI_PROVIDER:
         Configuration configuration;
         if (authKeyTab != null) {
-          configuration = new KeyTabConfiguration(authPrincipal, authKeyTab.getPath());
+          configuration = new KeyTabConfiguration(authPrincipal, authKeyTab.toString());
         } else {
           configuration = new TicketCacheConfiguration(authPrincipal);
         }
@@ -543,13 +581,17 @@ public class DriverSettings {
 
     @Override
     public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
-      Map<String, String> options =
+      ImmutableMap.Builder<String, String> builder =
           ImmutableMap.<String, String>builder()
-              .put("principal", principal)
               .put("useTicketCache", "true")
               .put("refreshKrb5Config", "true")
-              .put("renewTGT", "true")
-              .build();
+              .put("renewTGT", "true");
+
+      if (principal != null) {
+        builder.put("principal", principal);
+      }
+
+      Map<String, String> options = builder.build();
 
       return new AppConfigurationEntry[] {
         new AppConfigurationEntry(

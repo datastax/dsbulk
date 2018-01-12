@@ -165,15 +165,50 @@ class DriverSettingsTest {
 
   @Test
   void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab() {
+    String keyTab = getClass().getResource("/cassandra.keytab").getPath();
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    " auth { "
-                        + "provider = DseGSSAPIAuthProvider, "
-                        + "principal = \"alice@DATASTAX.COM\", "
-                        + "keyTab = \"file:///path/to/my/keyTab\", "
-                        + "authorizationId = \"bob@DATASTAX.COM\","
-                        + "saslProtocol = foo }")
+                    String.format(
+                        " auth { "
+                            + "provider = DseGSSAPIAuthProvider , "
+                            + "keyTab = \"%s\", "
+                            + "authorizationId = \"bob@DATASTAX.COM\","
+                            + "saslProtocol = foo }",
+                        keyTab))
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
+    DseCluster cluster = driverSettings.newCluster();
+    assertThat(cluster).isNotNull();
+    DseConfiguration configuration = cluster.getConfiguration();
+    AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
+    assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
+    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
+        .isEqualTo("bob@DATASTAX.COM");
+    Configuration loginConfiguration =
+        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+    assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
+    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
+        .isEqualTo("cassandra@DATASTAX.COM");
+    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "keyTab")).isEqualTo(keyTab);
+  }
+
+  @Test
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab_and_principal() {
+    String keyTab = getClass().getResource("/cassandra.keytab").getPath();
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        " auth { "
+                            + "provider = DseGSSAPIAuthProvider , "
+                            + "principal = \"alice@DATASTAX.COM\", "
+                            + "keyTab = \"%s\", "
+                            + "authorizationId = \"bob@DATASTAX.COM\","
+                            + "saslProtocol = foo }",
+                        keyTab))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -190,12 +225,73 @@ class DriverSettingsTest {
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
     assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
         .isEqualTo("alice@DATASTAX.COM");
-    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "keyTab"))
-        .isEqualTo("/path/to/my/keyTab");
+    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "keyTab")).isEqualTo(keyTab);
+  }
+
+  @Test
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_empty_keytab_and_principal() {
+    // Get the path to the "empty keytab". We emulate that by choosing a file that isn't
+    // a keytab at all. Since we're specifying the principal, it shouldn't matter that the
+    // keytab is empty (e.g. we shouldn't even be checking).
+    String keyTab = getClass().getResource("/client.key").getPath();
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        " auth { "
+                            + "provider = DseGSSAPIAuthProvider, "
+                            + "principal = \"alice@DATASTAX.COM\", "
+                            + "keyTab = \"%s\", "
+                            + "authorizationId = \"bob@DATASTAX.COM\","
+                            + "saslProtocol = foo }",
+                        keyTab))
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
+    DseCluster cluster = driverSettings.newCluster();
+    assertThat(cluster).isNotNull();
+    DseConfiguration configuration = cluster.getConfiguration();
+    AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
+    assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
+    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
+        .isEqualTo("bob@DATASTAX.COM");
+    Configuration loginConfiguration =
+        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+    assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
+    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
+        .isEqualTo("alice@DATASTAX.COM");
+    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "keyTab")).isEqualTo(keyTab);
   }
 
   @Test
   void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    " auth { "
+                        + "provider = DseGSSAPIAuthProvider, "
+                        + "authorizationId = \"bob@DATASTAX.COM\","
+                        + "saslProtocol = foo }")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
+    DseCluster cluster = driverSettings.newCluster();
+    assertThat(cluster).isNotNull();
+    DseConfiguration configuration = cluster.getConfiguration();
+    AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
+    assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
+    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
+        .isEqualTo("bob@DATASTAX.COM");
+    Configuration loginConfiguration =
+        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+    assertThat(loginConfiguration).isInstanceOf(DriverSettings.TicketCacheConfiguration.class);
+    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal")).isNull();
+  }
+
+  @Test
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache_and_principal() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
