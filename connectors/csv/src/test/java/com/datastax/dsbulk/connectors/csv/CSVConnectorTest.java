@@ -7,6 +7,7 @@
 package com.datastax.dsbulk.connectors.csv;
 
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,6 +19,7 @@ import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.tests.HttpTestServer;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
@@ -26,13 +28,16 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import io.undertow.util.Headers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.net.URISyntaxException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -601,6 +606,50 @@ class CSVConnectorTest {
     }
   }
 
+  @Test
+  void should_read_from_http_url() throws Exception {
+    HttpTestServer server = new HttpTestServer();
+    try {
+      server.start(
+          exchange -> {
+            exchange.getResponseHeaders().add(Headers.CONTENT_TYPE, "text/csv");
+            exchange.getResponseSender().send(readFile(path("/sample.csv")));
+          });
+      CSVConnector connector = new CSVConnector();
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"http://localhost:%d/file.csv\", escape = \"\\\"\", comment = \"#\"",
+                          server.getPort()))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      List<Record> actual = Flux.defer(connector.read()).collectList().block();
+      assertRecords(actual);
+      connector.close();
+    } finally {
+      server.stop();
+    }
+  }
+
+  @Test
+  void should_not_write_to_http_url() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("url = \"http://localhost:1234/file.csv\"")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    assertThatThrownBy(
+            () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.csv");
+    connector.close();
+  }
+
   private static List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
     String[] fields = new String[] {"Year", "Make", "Model", "Description", "Price"};
@@ -660,5 +709,10 @@ class CSVConnectorTest {
 
   private static String url(String resource) {
     return CSVConnectorTest.class.getResource(resource).toExternalForm();
+  }
+
+  private static Path path(@SuppressWarnings("SameParameterValue") String resource)
+      throws URISyntaxException {
+    return Paths.get(CSVConnectorTest.class.getResource(resource).toURI());
   }
 }

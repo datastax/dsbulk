@@ -40,7 +40,17 @@
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-executor-api</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-executor-reactor</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-connectors-api</artifactId>
     </dependency>
 
     <dependency>
@@ -87,6 +97,19 @@
     <finalName>dsbulk-${project.version}</finalName>
 
     <plugins>
+
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>report-aggregate</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
 
       <plugin>
         <artifactId>maven-jar-plugin</artifactId>

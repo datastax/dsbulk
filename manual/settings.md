@@ -42,7 +42,7 @@ Default: **"csv"**.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported for reads and writes, and the **http** and **https** protocols are guaranteed to be supported for reads.
 
 The file protocol can be used with all supported file systems, local or not.
 - When reading: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
@@ -57,7 +57,8 @@ Examples:
     url = "/path/to/dir/or/file"           # without protocol
     url = "./path/to/dir/or/file"          # without protocol, relative to working directory
     url = "~/path/to/dir/or/file"          # without protocol, relative to the user's home directory
-    url = "file:///path/to/dir/or/file"    # with protocol
+    url = "file:///path/to/dir/or/file"    # with file protocol
+    url = "http://acme.com/file.csv"       # with HTTP protocol
     url = "-"                              # to read csv data from stdin (for load) or
     url = "-"                              # write csv data to stdout (for unload)
 
@@ -97,7 +98,7 @@ Default: **-1**.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported for reads and writes, and the **http** and **https** protocols are guaranteed to be supported for reads.
 
 The file protocol can be used with all supported file systems, local or not.
 - When reading: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
@@ -112,7 +113,8 @@ Examples:
     url = "/path/to/dir/or/file"           # without protocol
     url = "./path/to/dir/or/file"          # without protocol, relative to working directory
     url = "~/path/to/dir/or/file"          # without protocol, relative to the user's home directory
-    url = "file:///path/to/dir/or/file"    # with protocol
+    url = "file:///path/to/dir/or/file"    # with file protocol
+    url = "http://acme.com/file.json"      # with HTTP protocol
     url = "-"                              # to read json data from stdin (for load) or
     url = "-"                              # write json data to stdout (for unload)
 
@@ -253,7 +255,7 @@ CSV Connector configuration.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported for reads and writes, and the **http** and **https** protocols are guaranteed to be supported for reads.
 
 The file protocol can be used with all supported file systems, local or not.
 - When reading: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
@@ -268,7 +270,8 @@ Examples:
     url = "/path/to/dir/or/file"           # without protocol
     url = "./path/to/dir/or/file"          # without protocol, relative to working directory
     url = "~/path/to/dir/or/file"          # without protocol, relative to the user's home directory
-    url = "file:///path/to/dir/or/file"    # with protocol
+    url = "file:///path/to/dir/or/file"    # with file protocol
+    url = "http://acme.com/file.csv"       # with HTTP protocol
     url = "-"                              # to read csv data from stdin (for load) or
     url = "-"                              # write csv data to stdout (for unload)
 
@@ -367,7 +370,7 @@ JSON Connector configuration.
 
 The URL or path of the resource(s) to read from or write to.
 
-Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported.
+Which URL protocols are available depend on which URL stream handlers have been installed, but at least the **file** protocol is guaranteed to be supported for reads and writes, and the **http** and **https** protocols are guaranteed to be supported for reads.
 
 The file protocol can be used with all supported file systems, local or not.
 - When reading: the URL can point to a single file, or to an existing directory; in case of a directory, the *fileNamePattern* setting can be used to filter files to read, and the *recursive* setting can be used to control whether or not the connector should look for files in subdirectories as well.
@@ -382,7 +385,8 @@ Examples:
     url = "/path/to/dir/or/file"           # without protocol
     url = "./path/to/dir/or/file"          # without protocol, relative to working directory
     url = "~/path/to/dir/or/file"          # without protocol, relative to the user's home directory
-    url = "file:///path/to/dir/or/file"    # with protocol
+    url = "file:///path/to/dir/or/file"    # with file protocol
+    url = "http://acme.com/file.json"      # with HTTP protocol
     url = "-"                              # to read json data from stdin (for load) or
     url = "-"                              # write json data to stdout (for unload)
 

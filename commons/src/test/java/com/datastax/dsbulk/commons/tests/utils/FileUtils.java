@@ -12,6 +12,7 @@ import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -36,6 +37,10 @@ public class FileUtils {
                 throw new UncheckedIOException(e);
               }
             });
+  }
+
+  public static String readFile(Path file) throws IOException {
+    return readFile(file, StandardCharsets.UTF_8);
   }
 
   public static String readFile(Path file, Charset charset) throws IOException {
