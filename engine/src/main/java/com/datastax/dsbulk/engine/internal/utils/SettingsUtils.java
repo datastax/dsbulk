@@ -42,7 +42,7 @@ public class SettingsUtils {
           .hasArg()
           .argName("string")
           .desc(
-              "Load settings from the given file rather than from `<dsbulk_home>/conf/application.conf`.")
+              "Load options from the given file rather than from `<dsbulk_home>/conf/application.conf`.")
           .build();
 
   public static final Map<String, Group> GROUPS =

@@ -30,7 +30,7 @@ A template configuration file can be found [here](./application.template.conf).
 
 #### -f _&lt;string&gt;_
 
-Load settings from the given file rather than from `<dsbulk_home>/conf/application.conf`.
+Load options from the given file rather than from `<dsbulk_home>/conf/application.conf`.
 
 #### -c,--connector.name _&lt;string&gt;_
 
@@ -76,6 +76,7 @@ Default: **","**.
 #### -header,--connector.csv.header _&lt;boolean&gt;_
 
 Enable or disable whether the files to read or write begin with a header line. If enabled for loading, the first non-empty line in every file will assign field names for each record column, in lieu of `schema.mapping`, `fieldA = col1, fieldB = col2, fieldC = col3`. If disabled for loading, records will not contain fields names, only field indexes, `0 = col1, 1 = col2, 2 = col3`. For unloading, if this setting is enabled, each file will begin with a header line, and if disabled, each file will not contain a header line.
+
 Note: This option will apply to all files loaded or unloaded.
 
 Default: **true**.
@@ -123,7 +124,7 @@ Default: **"-"**.
 
 #### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
 
-The number of JSON records to skip from each input file before the parser can begin to execute. Used for loading only.
+The number of JSON records to skip from each input file before the parser can begin to execute. This setting is ignored when writing.
 
 Default: **0**.
 
@@ -153,7 +154,7 @@ The field-to-column mapping to use, that applies to both loading and unloading. 
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 
-To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`. Note that TTL fields are parsed as integers representing the seconds. Timestamp fields can be parsed as:
+To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`. Note that TTL fields are parsed as integers representing seconds. Timestamp fields can be parsed as:
 
 * An integer representing the number of microseconds since epoch.
 * A valid date-time format specified in the options `codec.timestamp` and `codec.timeZone`.
@@ -210,7 +211,7 @@ Default: **"LOCAL_ONE"**.
 
 #### --executor.maxPerSecond _&lt;number&gt;_
 
-The maximum number of concurrent operations per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with the throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value will disable it.
+The maximum number of concurrent operations per second. This acts as a safeguard to prevent more requests than the cluster can handle. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value will disable it.
 
 Default: **-1**.
 
@@ -286,6 +287,7 @@ Default: **","**.
 #### -header,--connector.csv.header _&lt;boolean&gt;_
 
 Enable or disable whether the files to read or write begin with a header line. If enabled for loading, the first non-empty line in every file will assign field names for each record column, in lieu of `schema.mapping`, `fieldA = col1, fieldB = col2, fieldC = col3`. If disabled for loading, records will not contain fields names, only field indexes, `0 = col1, 1 = col2, 2 = col3`. For unloading, if this setting is enabled, each file will begin with a header line, and if disabled, each file will not contain a header line.
+
 Note: This option will apply to all files loaded or unloaded.
 
 Default: **true**.
@@ -352,7 +354,7 @@ Default: **"0.25C"**.
 
 #### --connector.csv.recursive _&lt;boolean&gt;_
 
-Enable or disable scanning for files in the root's subdirectories. Only applicable when the *url* setting is set to a directory on a known filesystem. Used for loading only.
+Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.
 
 Default: **false**.
 
@@ -392,7 +394,7 @@ Default: **"-"**.
 
 #### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
 
-The number of JSON records to skip from each input file before the parser can begin to execute. Used for loading only.
+The number of JSON records to skip from each input file before the parser can begin to execute. This setting is ignored when writing.
 
 Default: **0**.
 
@@ -449,13 +451,15 @@ Default: **[]**.
 
 #### --connector.json.prettyPrint _&lt;boolean&gt;_
 
-Enable or disable pretty printing. When enabled, JSON records are written with indents. Note that this may result in much bigger records. Used for unloading only.
+Enable or disable pretty printing. When enabled, JSON records are written with indents. Used for unloading only.
+
+Note: Can result in much bigger records.
 
 Default: **false**.
 
 #### --connector.json.recursive _&lt;boolean&gt;_
 
-Enable or disable scanning for files in the root's subdirectories. Only applicable when the *url* setting is set to a directory on a known filesystem. Used for loading only.
+Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.
 
 Default: **false**.
 
@@ -484,7 +488,7 @@ The field-to-column mapping to use, that applies to both loading and unloading. 
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 
-To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`. Note that TTL fields are parsed as integers representing the seconds. Timestamp fields can be parsed as:
+To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`. Note that TTL fields are parsed as integers representing seconds. Timestamp fields can be parsed as:
 
 * An integer representing the number of microseconds since epoch.
 * A valid date-time format specified in the options `codec.timestamp` and `codec.timeZone`.
@@ -499,7 +503,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### -nullStrings,--schema.nullStrings _&lt;string&gt;_
 
-Comma-separated list of strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, only the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required. This setting only applies for fields of type String.
+Comma-separated list of strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, only the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required.
 
 Default: **&lt;unspecified&gt;**.
 
@@ -517,9 +521,9 @@ The query to use. If not specified, then *schema.keyspace* and *schema.table* mu
 
 For loading, the statement can be any `INSERT` or `UPDATE` statement, but must use named bound variables exclusively; positional bound variables will not work. Bound variable names usually match those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those specified in the mapping.
 
-For unloading, the statement can be any regular `SELECT` statement; it can optionally contain a token range restriction clause of the form: `token(...) > :start and token(...) <= :end.` If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas. The column names in the SELECT clause will be used to match column names specified in the mapping.
+For unloading, the statement can be any regular `SELECT` statement; it can optionally contain a token range restriction clause of the form: `token(...) > :start and token(...) <= :end`. If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas. The column names in the SELECT clause will be used to match column names specified in the mapping.
 
-Note: The query will be parsed because `dsbulk` needs to know which bound variables are present in order to correctly map them to fields. The parser used internally is based on CQL 3.4.5 (as used in Apache Cassandra 3.11.1) and is capable of parsing all statements defined by that specific grammar version, even complex ones. However, future versions of CQL might introduce new grammar rules that DSBulk's parser will not be able to parse; DSBulk will emit a warning in such situations.
+Note: The dsbulk query is parsed to discover which bound variables are present, to map the variable correctly to fields.
 
 See *schema.mapping* setting for more information.
 
@@ -590,7 +594,7 @@ When unloading, these settings determine how row cells emitted by DSE are format
 
 #### --codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
 
-Set how true and false representations of numbers are interpreted. The representation is of the form true_value,false_value. The mapping is reciprocal, so that numbers are mapping to Boolean and vice versa. All numbers unspecified in this setting are rejected.
+Set how true and false representations of numbers are interpreted. The representation is of the form `true_value,false_value`. The mapping is reciprocal, so that numbers are mapping to Boolean and vice versa. All numbers unspecified in this setting are rejected.
 
 Default: **[1,0]**.
 
@@ -673,8 +677,6 @@ Strategy to use when generating time-based (version 1) UUIDs from timestamps. Cl
 - MIN: Generates the smallest possible type 1 UUID for a given timestamp. Warning: this strategy doesn't guarantee uniquely generated UUIDs and should be used with caution.
 - MAX: Generates the biggest possible type 1 UUID for a given timestamp. Warning: this strategy doesn't guarantee uniquely generated UUIDs and should be used with caution.
 
-Also please note that, for all strategies outlined above, the clock sequence and the node ID parts of the generated UUIDs are determined on a best-effort basis and are not fully compliant with RFC 4122.
-
 Default: **"RANDOM"**.
 
 <a name="driver"></a>
@@ -740,7 +742,8 @@ The name of the AuthProvider to use. Valid choices are:
  - None: no authentication.
  - PlainTextAuthProvider: Uses `com.datastax.driver.core.PlainTextAuthProvider` for authentication. Supports SASL authentication using the `PLAIN` mechanism (plain text authentication).
  - DsePlainTextAuthProvider: Uses `com.datastax.driver.dse.auth.DsePlainTextAuthProvider` for authentication. Supports SASL authentication to DSE clusters using the `PLAIN` mechanism (plain text authentication), and also supports optional proxy authentication; should be preferred to `PlainTextAuthProvider` when connecting to secured DSE clusters.
- - DseGSSAPIAuthProvider: Uses `com.datastax.driver.dse.auth.DseGSSAPIAuthProvider` for authentication. Supports SASL authentication to DSE clusters using the `GSSAPI` mechanism (Kerberos authentication), and also supports optional proxy authentication. Note: When using this provider you may have to set the `java.security.krb5.conf` system property to point to your `krb5.conf` file (e.g. set the `DSBULK_JAVA_OPTS` environment variable to `-Djava.security.krb5.conf=/home/user/krb5.conf`). See the [Oracle Java Kerberos documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/security/jgss/tutorials/KerberosReq.html) for more details.
+ - DseGSSAPIAuthProvider: Uses `com.datastax.driver.dse.auth.DseGSSAPIAuthProvider` for authentication. Supports SASL authentication to DSE clusters using the `GSSAPI` mechanism (Kerberos authentication), and also supports optional proxy authentication.
+   - Note: When using this provider you may have to set the `java.security.krb5.conf` system property to point to your `krb5.conf` file (e.g. set the `DSBULK_JAVA_OPTS` environment variable to `-Djava.security.krb5.conf=/home/user/krb5.conf`). See the [Oracle Java Kerberos documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/security/jgss/tutorials/KerberosReq.html) for more details.
 
 Default: **"None"**.
 
@@ -770,7 +773,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### --driver.auth.saslProtocol _&lt;string&gt;_
 
-The SASL protocol name to use. This value should match the username of the Kerberos service principal used by the DSE server. This information is specified in the `dse.yaml` file by the *service_principal* option under the *kerberos_options* section, and may vary from one DSE installation to another – especially if you installed DSE with an automated package installer. Providers that accept this setting:
+The SASL protocol name to use. This value should match the username of the Kerberos service principal used by the DSE server. This information is specified in the `dse.yaml` file by the *service_principal* option under the *kerberos_options* section, and may vary from one DSE installation to another - especially if you installed DSE with an automated package installer. Providers that accept this setting:
 
  - `DseGSSAPIAuthProvider`
 
@@ -783,7 +786,9 @@ Settings for various driver policies.
 
 #### -lbp,--driver.policy.lbp.name _&lt;string&gt;_
 
-The name of the load balancing policy. Supported policies include: `dse`, `dcAwareRoundRobin`, `roundRobin`, `whiteList`, `tokenAware`. Available options for the policies are listed below as appropriate. For more information, refer to the driver documentation for the policy. If not specified, defaults to the driver's default load balancing policy, which is currently the `DseLoadBalancingPolicy` wrapping a `TokenAwarePolicy`, wrapping a `DcAwareRoundRobinPolicy`. Note: It is critical for a token-aware policy to be used in the chain in order to benefit from batching by partition key.
+The name of the load balancing policy. Supported policies include: `dse`, `dcAwareRoundRobin`, `roundRobin`, `whiteList`, `tokenAware`. Available options for the policies are listed below as appropriate. For more information, refer to the driver documentation for the policy. If not specified, defaults to the driver's default load balancing policy, which is currently the `DseLoadBalancingPolicy` wrapping a `TokenAwarePolicy`, wrapping a `DcAwareRoundRobinPolicy`.
+
+Note: It is critical for a token-aware policy to be used in the chain in order to benefit from batching by partition key.
 
 Default: **&lt;unspecified&gt;**.
 
@@ -874,7 +879,7 @@ Default: **1**.
 
 #### --driver.pooling.remote.requests _&lt;number&gt;_
 
-The maximum number of requests (1 to 32768) that can be executed concurrently on a connection. This must be between 1 and 32768.
+The maximum number of requests (1 to 32768) that can be executed concurrently on a connection.
 
 Default: **1024**.
 
@@ -981,7 +986,7 @@ Default: **&lt;unspecified&gt;**.
 The SSL provider to use. Valid values are:
 
 - **None**: no SSL.
-- **JDK**: uses JDK's SSLContext
+- **JDK**: uses the JDK SSLContext
 - **OpenSSL**: uses Netty's native support for OpenSSL. It provides better performance and generates less garbage. This is the recommended provider when using SSL.
 
 Default: **"None"**.
@@ -1017,12 +1022,10 @@ Default: **false**.
 
 #### --engine.executionId _&lt;string&gt;_
 
-A unique identifier to attribute to each execution.
+A unique identifier to attribute to each execution. When unspecified or empty, the engine will automatically generate identifiers of the following form: *workflow*_*timestamp*, where :
 
-When unspecified or empty, the engine will automatically generate identifiers of the following form: `workflow`_`timestamp`, where :
-
-- `workflow` stands for the workflow type (`LOAD`, `UNLOAD`, etc.);
-- `timestamp` is the current timestamp formatted as `uuuuMMdd-HHmmss-SSSSSS` (see [https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns)) in UTC, with microsecond precision if available, and millisecond precision otherwise.
+- *workflow* stands for the workflow type (`LOAD`, `UNLOAD`, etc.);
+- *timestamp* is the current timestamp formatted as `uuuuMMdd-HHmmss-SSSSSS` (see [https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns)) in UTC, with microsecond precision if available, and millisecond precision otherwise.
 
 When this identifier is user-supplied, it is important to guarantee its uniqueness; failing to do so may result in execution failures. It is also possible to provide templates here. Any format compliant with the formatting rules of [`String.format()`](https://docs.oracle.com/javase/8/docs/api/java/util/Formatter.html#syntax) is accepted, and can contain the following parameters:
 
@@ -1039,7 +1042,7 @@ Executor-specific settings.
 
 #### --executor.maxPerSecond _&lt;number&gt;_
 
-The maximum number of concurrent operations per second. This acts as a safeguard against workflows that could overwhelm the cluster with more requests than it can handle. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with the throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value will disable it.
+The maximum number of concurrent operations per second. This acts as a safeguard to prevent more requests than the cluster can handle. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value will disable it.
 
 Default: **-1**.
 
@@ -1108,25 +1111,33 @@ Default: **"EXTENDED"**.
 
 #### --log.stmt.maxBoundValueLength _&lt;number&gt;_
 
-The maximum length for a bound value. Bound values longer than this value will be truncated. Setting this value to `-1` disables this feature (not recommended).
+The maximum length for a bound value. Bound values longer than this value will be truncated.
+
+Setting this value to `-1` disables this feature (not recommended).
 
 Default: **50**.
 
 #### --log.stmt.maxBoundValues _&lt;number&gt;_
 
-The maximum number of bound values to print. If the statement has more bound values than this limit, the exceeding values will not be printed. Setting this value to `-1` disables this feature (not recommended).
+The maximum number of bound values to print. If the statement has more bound values than this limit, the exceeding values will not be printed.
+
+Setting this value to `-1` disables this feature (not recommended).
 
 Default: **50**.
 
 #### --log.stmt.maxInnerStatements _&lt;number&gt;_
 
-The maximum number of inner statements to print for a batch statement. Only applicable for batch statements, ignored otherwise. If the batch statement has more children than this value, the exceeding child statements will not be printed. Setting this value to `-1` disables this feature (not recommended).
+The maximum number of inner statements to print for a batch statement. Only applicable for batch statements, ignored otherwise. If the batch statement has more children than this value, the exceeding child statements will not be printed.
+
+Setting this value to `-1` disables this feature (not recommended).
 
 Default: **10**.
 
 #### --log.stmt.maxQueryStringLength _&lt;number&gt;_
 
-The maximum length for a query string. Query strings longer than this value will be truncated. Setting this value to `-1` disables this feature (not recommended).
+The maximum length for a query string. Query strings longer than this value will be truncated.
+
+Setting this value to `-1` disables this feature (not recommended).
 
 Default: **500**.
 
@@ -1155,13 +1166,13 @@ Default: **"MILLISECONDS"**.
 
 #### --monitoring.expectedReads _&lt;number&gt;_
 
-The expected total number of reads. Optional, but if set, the console reporter will also print the the overall achievement percentage. Setting this value to `-1` disables this feature.
+The expected total number of reads. Optional, but if set, the console reporter will also print the overall achievement percentage. Setting this value to `-1` disables this feature.
 
 Default: **-1**.
 
 #### --monitoring.expectedWrites _&lt;number&gt;_
 
-The expected total number of writes. Optional, but if set, the console reporter will also print the the overall achievement percentage. Setting this value to `-1` disables this feature.
+The expected total number of writes. Optional, but if set, the console reporter will also print the overall achievement percentage. Setting this value to `-1` disables this feature.
 
 Default: **-1**.
 
