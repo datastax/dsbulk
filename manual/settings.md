@@ -770,7 +770,8 @@ Default: **&lt;unspecified&gt;**.
 
 #### --driver.auth.principal _&lt;string&gt;_
 
-The Kerberos principal to use. For example, `user@datastax.com`. Providers that accept this setting:
+The Kerberos principal to use. For example, `user@datastax.com`. If left unspecified, the principal is chosen from the first key in the ticket cache or keytab. Providers that accept this setting:
+
  - `DseGSSAPIAuthProvider`
 
 Default: **&lt;unspecified&gt;**.
