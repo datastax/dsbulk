@@ -37,6 +37,6 @@ build:
   - xunit:
     - "**/target/surefire-reports/TEST-*.xml"
     - "**/target/failsafe-reports/TEST-*.xml"
-  - jacoco: true
+  - jacoco:
     exec_pattern: **/target/**.exec
     exclusion_pattern: com/datastax/dsbulk/commons/cql3/Cql*
