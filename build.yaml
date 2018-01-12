@@ -38,5 +38,5 @@ build:
     - "**/target/surefire-reports/TEST-*.xml"
     - "**/target/failsafe-reports/TEST-*.xml"
   - jacoco:
-    exec_pattern: **/target/**.exec
-    exclusion_pattern: com/datastax/dsbulk/commons/cql3/Cql*
+    - exec_pattern: **/target/**.exec
+    - exclusion_pattern: com/datastax/dsbulk/commons/cql3/Cql*
