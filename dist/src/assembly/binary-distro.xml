@@ -33,11 +33,6 @@
     </fileSet>
 
     <fileSet>
-      <directory>${project.build.directory}/webDocs</directory>
-      <outputDirectory>manual/webDocs</outputDirectory>
-    </fileSet>
-
-    <fileSet>
       <directory>../bin</directory>
     </fileSet>
 

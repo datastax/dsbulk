@@ -62,21 +62,26 @@ Finally, a user may specify impromptu overrides via options on the command line.
 See examples for details.
 
 ## Load Examples
-* Load CSV data from `stdin` (represented by a hyphen url value) to the `ks1.table1` table in a 
-  cluster with a `localhost` contact point. Field names in the data match column names in the
-  table. Field names are obtained from a *header row* in the data; by default the 
-  tool presumes a header exists in each file being loaded:
+* Load the `ks1.table1` table from CSV data read from `stdin`.
+  Use a cluster with a `localhost` contact point. Field names in the data match column names in the
+  table. Field names are obtained from a *header row* in the data; by default the tool presumes 
+  a header exists in each file being loaded:
 
-  `generate_data | dsbulk load -url - -k ks1 -t table1`
+  `dsbulk load -k ks1 -t table1`
+
+* Load the `ks1.table1` table from a gzipped CSV file by unzipping it to stdout and piping to 
+  `stdin` of the tool:
+
+  `gzcat table1.csv.gz | dsbulk load -k ks1 -t table1`
 
 * Specify a few hosts (initial contact points) that belong to the desired cluster and
-  load from a local file, without headers:
+  load from a local file, without headers. Map field indices of the input to table columns:
   
-  `dsbulk load -url  ~/export.csv -k ks1 -t table1 -h '10.200.1.3, 10.200.1.4' -header false`
+  `dsbulk load -url ~/export.csv -k ks1 -t table1 -h '10.200.1.3, 10.200.1.4' -header false -m '0=col1,1=col3'`
 
 * Specify port 9876 for the cluster hosts and load from an external source url:
 
-  `dsbulk load -url https://svr/data/export.csv -k ks1 -t table1 -h '10.200.1.3, 10.200.1.4' -port 9876`
+  `dsbulk load -url https://192.168.1.100/data/export.csv -k ks1 -t table1 -h '10.200.1.3, 10.200.1.4' -port 9876`
 
 * Load all csv files from a directory. The files do not have header rows. Map field indices
   of the input to table columns:
@@ -91,27 +96,30 @@ See examples for details.
 * With default port for cluster hosts, keyspace, table, and mapping set in
   `conf/application.conf`:
 
-  `dsbulk load -url https://svr/data/export.csv -h '10.200.1.3,10.200.1.4'`
+  `dsbulk load -url https://192.168.1.100/data/export.csv -h '10.200.1.3,10.200.1.4'`
+
+* With default port for cluster hosts, keyspace, table, and mapping set in `dsbulk_load.conf`:
+
+  `dsbulk load -f dsbulk_load.conf -url https://192.168.1.100/data/export.csv -h '10.200.1.3,10.200.1.4'`
 
 ## Unload Examples
 Unloading is simply the inverse of loading and due to the symmetry, many settings are
 used in both load and unload.
 
-* Unload data to `stdout` (represented by a hyphen url value) from the `ks1.table1` table in a 
-  cluster with a `localhost` contact point. Column names in the table map to field names 
-  in the data. Field names must be emitted in a *header row* in the output:
+* Unload data to `stdout` from the `ks1.table1` table in a cluster with a `localhost` contact 
+  point. Column names in the table map to field names in the data. Field names must be emitted 
+  in a *header row* in the output:
 
-  `dsbulk unload -url - -k ks1 -t table1`
+  `dsbulk unload -k ks1 -t table1`
 
-* Unload data to a local directory (which may
-  not yet exist):
+* Unload data to `stdout` from the `ks1.table1` and gzip the result:
+
+  `dsbulk unload -k ks1 -t table1 | gzip > table1.gz`
+
+* Unload data to a local directory (which may not yet exist):
                                           
-  `dsbulk unload -url ~/-data-export -k ks1 -t table1`
+  `dsbulk unload -url ~/data-export -k ks1 -t table1`
   
-* Unload data from a remote cluster to a remote destination url:
-
-  `dsbulk unload -url https://svr/data/table1 -k ks1 -t table1 -h 10.200.1.3`
-
 ## Command-line Help
 Available settings along with defaults are documented [here](settings.md) and in the
 [template application config].
