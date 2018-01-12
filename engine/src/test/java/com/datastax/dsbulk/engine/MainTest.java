@@ -846,7 +846,7 @@ class MainTest {
       assertThat(out).doesNotContain("-url, --connector.csv.url");
     }
     assertThat(out).doesNotContain("First argument must be subcommand");
-    assertThat(out).containsPattern("-f <string>\\s+Load settings from the given file");
+    assertThat(out).containsPattern("-f <string>\\s+Load options from the given file");
   }
 
   private void assertSectionHelp() {
