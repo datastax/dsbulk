@@ -603,18 +603,35 @@ http://www.datastax.com/terms/datastax-dse-driver-license-terms
           <version>0.7.9</version>
           <executions>
             <execution>
+              <id>unit-tests-coverage</id>
               <goals>
                 <goal>prepare-agent</goal>
               </goals>
             </execution>
             <execution>
-              <id>report</id>
-              <phase>prepare-package</phase>
+              <id>integration-tests-coverage</id>
+              <goals>
+                <goal>prepare-agent-integration</goal>
+              </goals>
+            </execution>
+            <execution>
+              <id>report-unit-tests-coverage</id>
               <goals>
                 <goal>report</goal>
               </goals>
             </execution>
+            <execution>
+              <id>report-integration-tests-coverage</id>
+              <goals>
+                <goal>report-integration</goal>
+              </goals>
+            </execution>
           </executions>
+          <configuration>
+            <excludes>
+              <exclude>com/datastax/dsbulk/commons/cql3/Cql*</exclude>
+            </excludes>
+          </configuration>
         </plugin>
 
         <plugin>
