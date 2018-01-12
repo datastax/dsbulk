@@ -72,7 +72,7 @@ class CassLoadEndToEndSimulacronIT {
     };
 
     int status = new Main(args).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
 
     assertThat(interceptor)
         .hasMessageContaining(

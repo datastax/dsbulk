@@ -73,7 +73,6 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
 
     Path unloadDir = createTempDirectory("test");
-    Path outputFile = unloadDir.resolve("output-000001.csv");
 
     args = new ArrayList<>();
     args.add("unload");
@@ -98,6 +97,6 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 }

@@ -62,7 +62,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private Path unloadDir;
-  private Path outputFile;
 
   CSVConnectorEndToEndCCMIT(CCMCluster ccm, Session session) {
     super(ccm, session);
@@ -78,7 +77,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @BeforeEach
   void setUpDirs() throws IOException {
     unloadDir = createTempDirectory("test");
-    outputFile = unloadDir.resolve("output-000001.csv");
   }
 
   @AfterEach
@@ -128,7 +126,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */
@@ -177,7 +175,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (Snappy). */
@@ -226,7 +224,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, outputFile);
+    validateOutputFiles(24, unloadDir);
   }
 
   /** Attempts to load and unload complex types (Collections, UDTs, etc). */
@@ -271,7 +269,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(5, outputFile);
+    validateOutputFiles(5, unloadDir);
   }
 
   /** Attempts to load and unload a larger dataset which can be batched. */
@@ -316,7 +314,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(500, outputFile);
+    validateOutputFiles(500, unloadDir);
   }
 
   /**
@@ -365,7 +363,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(3, outputFile);
+    validateOutputFiles(3, unloadDir);
   }
 
   /** Attempts to load and unload data, some of which will be unsuccessful. */
@@ -392,7 +390,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("24");
 
     int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
     validateResultSetSize(21, SELECT_FROM_IP_BY_COUNTRY);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
@@ -417,7 +415,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(21, outputFile);
+    validateOutputFiles(21, unloadDir);
   }
 
   @Test
@@ -581,7 +579,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_code");
 
     int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
     validateErrorMessageLogged(
         logs, "Multiple input values in mapping resolve to column", "country_code");
   }
@@ -607,7 +605,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number, 5=country_name");
 
     int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
     validateErrorMessageLogged(logs, "Missing required key column of", "country_code");
   }
 
@@ -631,14 +629,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code, 5=country_name, 6=extra");
 
     int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
     validateErrorMessageLogged(logs, "doesn't match any column found in table", "extra");
   }
 
   private void validateErrorMessageLogged(LogInterceptor logs, String... msg) {
     CommonsAssertions.assertThat(logs)
         .hasMessageContaining("Load workflow engine execution")
-        .hasMessageContaining("failed");
+        .hasMessageContaining("aborted");
     for (String s : msg) {
       CommonsAssertions.assertThat(logs).hasMessageContaining(s);
     }

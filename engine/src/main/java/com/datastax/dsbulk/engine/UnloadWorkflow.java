@@ -116,7 +116,7 @@ public class UnloadWorkflow implements Workflow {
   }
 
   @Override
-  public void execute() {
+  public boolean execute() {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Record> flux;
@@ -132,6 +132,7 @@ public class UnloadWorkflow implements Workflow {
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+    return logManager.getTotalErrors() == 0;
   }
 
   @NotNull
