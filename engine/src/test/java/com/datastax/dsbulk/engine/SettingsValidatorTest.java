@@ -603,7 +603,7 @@ class SettingsValidatorTest {
               "c1=c2",
               "--driver.auth.provider",
               "DseGSSAPIAuthProvider",
-              "--driver.auth.saslProtocol",
+              "--driver.auth.saslService",
               "",
               "--schema.query",
               "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
@@ -612,7 +612,7 @@ class SettingsValidatorTest {
     String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains(
-            "DseGSSAPIAuthProvider must be provided with auth.saslProtocol. "
+            "DseGSSAPIAuthProvider must be provided with auth.saslService. "
                 + "auth.principal, auth.keyTab, and auth.authorizationId are optional.");
   }
 }

@@ -174,7 +174,7 @@ class DriverSettingsTest {
                             + "provider = DseGSSAPIAuthProvider , "
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
-                            + "saslProtocol = foo }",
+                            + "saslService = foo }",
                         keyTab))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
@@ -207,7 +207,7 @@ class DriverSettingsTest {
                             + "principal = \"alice@DATASTAX.COM\", "
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
-                            + "saslProtocol = foo }",
+                            + "saslService = foo }",
                         keyTab))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
@@ -243,7 +243,7 @@ class DriverSettingsTest {
                             + "principal = \"alice@DATASTAX.COM\", "
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
-                            + "saslProtocol = foo }",
+                            + "saslService = foo }",
                         keyTab))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
@@ -272,7 +272,7 @@ class DriverSettingsTest {
                     " auth { "
                         + "provider = DseGSSAPIAuthProvider, "
                         + "authorizationId = \"bob@DATASTAX.COM\","
-                        + "saslProtocol = foo }")
+                        + "saslService = foo }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -299,7 +299,7 @@ class DriverSettingsTest {
                         + "provider = DseGSSAPIAuthProvider, "
                         + "principal = \"alice@DATASTAX.COM\", "
                         + "authorizationId = \"bob@DATASTAX.COM\","
-                        + "saslProtocol = foo }")
+                        + "saslService = foo }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();

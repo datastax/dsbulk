@@ -109,7 +109,7 @@ public class DriverSettings {
   private static final String AUTH_PASSWORD = AUTH + DELIMITER + "password";
   private static final String AUTH_PRINCIPAL = AUTH + DELIMITER + "principal";
   private static final String AUTHORIZATION_ID = AUTH + DELIMITER + "authorizationId";
-  private static final String AUTH_SASLPROTOCOL = AUTH + DELIMITER + "saslProtocol";
+  private static final String AUTH_SASL_SERVICE = AUTH + DELIMITER + "saslService";
   private static final String AUTH_KEYTAB = AUTH + DELIMITER + "keyTab";
 
   private static final String PROTOCOL_COMPRESSION = PROTOCOL + DELIMITER + "compression";
@@ -168,7 +168,7 @@ public class DriverSettings {
   private URL sslOpenSslPrivateKey;
   private URL sslOpenSslKeyCertChain;
   private Path authKeyTab;
-  private String authSaslProtocol;
+  private String authSaslService;
   private LoadBalancingPolicy policy;
 
   DriverSettings(LoaderConfig config, String executionId) {
@@ -206,16 +206,23 @@ public class DriverSettings {
           case DSE_PLAINTEXT_PROVIDER:
             if (!config.hasPath(AUTH_USERNAME) || !config.hasPath(AUTH_PASSWORD)) {
               throw new BulkConfigurationException(
-                  authProvider + " must be provided with both auth.username and auth.password");
+                  String.format(
+                      "%s must be provided with both %s and %s",
+                      authProvider, AUTH_USERNAME, AUTH_PASSWORD));
             }
             authUsername = config.getString(AUTH_USERNAME);
             authPassword = config.getString(AUTH_PASSWORD);
             break;
           case DSE_GSSAPI_PROVIDER:
-            if (!config.hasPath(AUTH_SASLPROTOCOL)) {
+            if (!config.hasPath(AUTH_SASL_SERVICE)) {
               throw new BulkConfigurationException(
-                  authProvider
-                      + " must be provided with auth.saslProtocol. auth.principal, auth.keyTab, and auth.authorizationId are optional.");
+                  String.format(
+                      "%s must be provided with %s. %s, %s, and %s are optional.",
+                      authProvider,
+                      AUTH_SASL_SERVICE,
+                      AUTH_PRINCIPAL,
+                      AUTH_KEYTAB,
+                      AUTHORIZATION_ID));
             }
             if (config.hasPath(AUTH_PRINCIPAL)) {
               authPrincipal = config.getString(AUTH_PRINCIPAL);
@@ -239,13 +246,14 @@ public class DriverSettings {
                 }
               }
             }
-            authSaslProtocol = config.getString(AUTH_SASLPROTOCOL);
+            authSaslService = config.getString(AUTH_SASL_SERVICE);
 
             break;
           default:
             throw new BulkConfigurationException(
-                authProvider
-                    + " is not a valid auth provider. Valid auth providers are PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider");
+                String.format(
+                    "%s is not a valid auth provider. Valid auth providers are %s, %s, or %s",
+                    authProvider, PLAINTEXT_PROVIDER, DSE_PLAINTEXT_PROVIDER, DSE_GSSAPI_PROVIDER));
         }
       }
       sslProvider = config.getString(SSL_PROVIDER);
@@ -457,7 +465,7 @@ public class DriverSettings {
         DseGSSAPIAuthProvider.Builder authProviderBuilder =
             DseGSSAPIAuthProvider.builder()
                 .withLoginConfiguration(configuration)
-                .withSaslProtocol(authSaslProtocol);
+                .withSaslProtocol(authSaslService);
         if (authorizationId != null) {
           authProviderBuilder.withAuthorizationId(authorizationId);
         }

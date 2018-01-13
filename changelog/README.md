@@ -32,6 +32,7 @@
 - [improvement] DAT-158: Reorganize in-tree documentation.
 - [improvement] DAT-180: Improve DSBulk exit statuses.
 - [improvement] DAT-214: driver.auth.principal should be optional when using Kerberos.
+- [improvement] DAT-207: Rename driver.auth.saslProtocol to driver.auth.saslService.
 
 
 ### 1.0.0-beta2

@@ -776,9 +776,9 @@ The Kerberos principal to use. For example, `user@datastax.com`. If left unspeci
 
 Default: **&lt;unspecified&gt;**.
 
-#### --driver.auth.saslProtocol _&lt;string&gt;_
+#### --driver.auth.saslService _&lt;string&gt;_
 
-The SASL protocol name to use. This value should match the username of the Kerberos service principal used by the DSE server. This information is specified in the `dse.yaml` file by the *service_principal* option under the *kerberos_options* section, and may vary from one DSE installation to another - especially if you installed DSE with an automated package installer. Providers that accept this setting:
+The SASL service name to use. This value should match the username of the Kerberos service principal used by the DSE server. This information is specified in the `dse.yaml` file by the *service_principal* option under the *kerberos_options* section, and may vary from one DSE installation to another - especially if you installed DSE with an automated package installer. Providers that accept this setting:
 
  - `DseGSSAPIAuthProvider`
 
