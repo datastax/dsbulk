@@ -192,7 +192,9 @@ class DriverSettingsTest {
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
     assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
         .isEqualTo("cassandra@DATASTAX.COM");
-    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "keyTab")).isEqualTo(keyTab);
+    String loginConfigKeyTab =
+        (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
+    assertThat(loginConfigKeyTab.replace("\\", "/")).isEqualTo(keyTab);
   }
 
   @Test
@@ -225,7 +227,9 @@ class DriverSettingsTest {
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
     assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
         .isEqualTo("alice@DATASTAX.COM");
-    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "keyTab")).isEqualTo(keyTab);
+    String loginConfigKeyTab =
+        (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
+    assertThat(loginConfigKeyTab.replace("\\", "/")).isEqualTo(keyTab);
   }
 
   @Test
@@ -261,7 +265,9 @@ class DriverSettingsTest {
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
     assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
         .isEqualTo("alice@DATASTAX.COM");
-    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "keyTab")).isEqualTo(keyTab);
+    String loginConfigKeyTab =
+        (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
+    assertThat(loginConfigKeyTab.replace("\\", "/")).isEqualTo(keyTab);
   }
 
   @Test
