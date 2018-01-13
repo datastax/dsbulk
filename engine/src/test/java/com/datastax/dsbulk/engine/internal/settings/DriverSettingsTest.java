@@ -165,7 +165,7 @@ class DriverSettingsTest {
 
   @Test
   void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab() {
-    String keyTab = getClass().getResource("/cassandra.keytab").getPath();
+    String keyTab = maybeTrimLeadingSlash(getClass().getResource("/cassandra.keytab").getPath());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -197,7 +197,7 @@ class DriverSettingsTest {
 
   @Test
   void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab_and_principal() {
-    String keyTab = getClass().getResource("/cassandra.keytab").getPath();
+    String keyTab = maybeTrimLeadingSlash(getClass().getResource("/cassandra.keytab").getPath());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -233,7 +233,7 @@ class DriverSettingsTest {
     // Get the path to the "empty keytab". We emulate that by choosing a file that isn't
     // a keytab at all. Since we're specifying the principal, it shouldn't matter that the
     // keytab is empty (e.g. we shouldn't even be checking).
-    String keyTab = getClass().getResource("/client.key").getPath();
+    String keyTab = maybeTrimLeadingSlash(getClass().getResource("/client.key").getPath());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -461,9 +461,18 @@ class DriverSettingsTest {
         .isEqualTo(2);
   }
 
-  private Host makeHostWithAddress(String host, int port) {
+  private static Host makeHostWithAddress(String host, int port) {
     Host h = Mockito.mock(Host.class);
     Mockito.when(h.getSocketAddress()).thenReturn(new InetSocketAddress(host, port));
     return h;
+  }
+
+  private static String maybeTrimLeadingSlash(String path) {
+    // On Windows, getPath() on a URL yields something like "/C:/....". Remove the leading
+    // slash.
+    if (path.startsWith("/") && path.contains(":")) {
+      return path.substring(1);
+    }
+    return path;
   }
 }

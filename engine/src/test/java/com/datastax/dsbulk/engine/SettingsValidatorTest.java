@@ -549,7 +549,7 @@ class SettingsValidatorTest {
             })
         .run();
     String err = logs.getAllMessagesAsString();
-    assertThat(err).matches(".*Keytab file .*/noexist.keytab does not exist.*");
+    assertThat(err).matches(".*Keytab file .*noexist.keytab does not exist.*");
   }
 
   @Test
