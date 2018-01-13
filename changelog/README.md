@@ -31,6 +31,7 @@
 - [bug] DAT-209: Records are being counted twice in Unload workflow.
 - [improvement] DAT-158: Reorganize in-tree documentation.
 - [improvement] DAT-180: Improve DSBulk exit statuses.
+- [improvement] DAT-216: application.conf and application.template.conf should include dsbulk element wrapping.
 
 
 ### 1.0.0-beta2

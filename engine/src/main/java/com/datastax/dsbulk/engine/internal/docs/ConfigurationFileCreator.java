@@ -24,6 +24,8 @@ import org.apache.commons.text.WordUtils;
 public class ConfigurationFileCreator {
 
   private static final int LINE_LENGTH = 100;
+  private static final int INDENT_LENGTH = 4;
+  private static final String LINE_INDENT = StringUtils.nCopies(" ", INDENT_LENGTH);
 
   public static void main(String[] args) throws FileNotFoundException {
     try {
@@ -36,6 +38,8 @@ public class ConfigurationFileCreator {
       PrintWriter pw = new PrintWriter(file);
       LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
       String rowOfHashes = StringUtils.nCopies("#", LINE_LENGTH);
+      String indentedRowOfHashes =
+          LINE_INDENT + StringUtils.nCopies("#", LINE_LENGTH - INDENT_LENGTH);
       pw.println(rowOfHashes);
       pw.println("# This is a template configuration file for the DataStax Bulk Loader (DSBulk).");
       pw.println("#");
@@ -51,6 +55,8 @@ public class ConfigurationFileCreator {
                   + "To use other file names see the -f command-line option."));
       pw.println(rowOfHashes);
       pw.println("");
+      pw.println("dsbulk {");
+      pw.println("");
 
       for (Map.Entry<String, Group> groupEntry : GROUPS.entrySet()) {
         String section = groupEntry.getKey();
@@ -58,7 +64,7 @@ public class ConfigurationFileCreator {
           // In this context, we don't care about the "Common" pseudo-section.
           continue;
         }
-        pw.println(rowOfHashes);
+        pw.println(indentedRowOfHashes);
         config
             .getConfig(section)
             .root()
@@ -66,10 +72,10 @@ public class ConfigurationFileCreator {
             .comments()
             .forEach(
                 l -> {
-                  pw.print("# ");
-                  pw.println(wrapLines(l));
+                  pw.print(LINE_INDENT + "# ");
+                  pw.println(wrapIndentedLines(l));
                 });
-        pw.println(rowOfHashes);
+        pw.println(indentedRowOfHashes);
 
         for (String settingName : groupEntry.getValue().getSettings()) {
           ConfigValue value = config.getValue(settingName);
@@ -80,24 +86,24 @@ public class ConfigurationFileCreator {
               .comments()
               .forEach(
                   l -> {
-                    pw.print("# ");
-                    pw.println(wrapLines(l));
+                    pw.print(LINE_INDENT + "# ");
+                    pw.println(wrapIndentedLines(l));
                   });
-          pw.print("# Type: ");
+          pw.print(LINE_INDENT + "# Type: ");
           pw.println(config.getTypeString(settingName));
-          pw.print("# Default value: ");
+          pw.print(LINE_INDENT + "# Default value: ");
           pw.println(value.render(ConfigRenderOptions.concise()));
+          pw.print(LINE_INDENT);
           if (template) {
             pw.print("#");
           }
-          pw.print("dsbulk.");
           pw.print(settingName);
           pw.print(" = ");
           pw.println(value.render(ConfigRenderOptions.concise()));
         }
         pw.println();
-        pw.println();
       }
+      pw.println("}");
       pw.flush();
     } catch (Exception e) {
       System.err.println("Error encountered generating merged configuration file");
@@ -107,6 +113,11 @@ public class ConfigurationFileCreator {
   }
 
   private static String wrapLines(String text) {
-    return WordUtils.wrap(text, LINE_LENGTH, String.format("%n# "), false);
+    return WordUtils.wrap(text, LINE_LENGTH - 2, String.format("%n# "), false);
+  }
+
+  private static String wrapIndentedLines(String text) {
+    return WordUtils.wrap(
+        text, LINE_LENGTH - INDENT_LENGTH - 2, String.format("%n%s# ", LINE_INDENT), false);
   }
 }
