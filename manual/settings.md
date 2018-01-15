@@ -437,7 +437,7 @@ Default: **"\*\*/\*.json"**.
 
 #### --connector.json.generatorFeatures _&lt;list&gt;_
 
-JSON generator features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `[ESCAPE_NON_ASCII, QUOTE_FIELD_NAMES]` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when generating JSON output. Used for unloading only.
+JSON generator features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `[ESCAPE_NON_ASCII, QUOTE_FIELD_NAMES]` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
 
 Default: **[]**.
 
