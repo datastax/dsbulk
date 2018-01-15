@@ -144,20 +144,6 @@
       </dependency>
 
       <dependency>
-        <groupId>com.datastax.dse</groupId>
-        <artifactId>dse-java-driver-core</artifactId>
-        <version>${driver.version}</version>
-        <classifier>sources</classifier>
-      </dependency>
-
-      <dependency>
-        <groupId>com.datastax.dse</groupId>
-        <artifactId>dse-java-driver-extras</artifactId>
-        <version>${driver.version}</version>
-        <classifier>sources</classifier>
-      </dependency>
-
-      <dependency>
         <groupId>org.reactivestreams</groupId>
         <artifactId>reactive-streams</artifactId>
         <version>${reactive-streams.version}</version>
