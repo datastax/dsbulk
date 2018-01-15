@@ -32,6 +32,7 @@
 - [improvement] DAT-158: Reorganize in-tree documentation.
 - [improvement] DAT-180: Improve DSBulk exit statuses.
 - [improvement] DAT-213: Create examples for connector.json.parserFeatures and connector.json.generatorFeatures.
+- [improvement] DAT-216: application.conf and application.template.conf should include dsbulk element wrapping.
 
 
 ### 1.0.0-beta2
