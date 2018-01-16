@@ -7,6 +7,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.engine.internal.utils.StringUtils.DELIMITER;
+import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.assertAccessibleFile;
 
 import com.datastax.driver.core.AuthProvider;
 import com.datastax.driver.core.CodecRegistry;
@@ -40,9 +41,10 @@ import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.SecureRandom;
@@ -61,8 +63,6 @@ import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.security.krb5.internal.ktab.KeyTab;
-import sun.security.krb5.internal.ktab.KeyTabEntry;
 
 /** */
 public class DriverSettings {
@@ -235,14 +235,49 @@ public class DriverSettings {
               // try to get the first principal from the keytab.
               if (authPrincipal == null) {
                 // Best effort: get the first principal in the keytab, if possible.
-                KeyTab keyTab = KeyTab.getInstance(authKeyTab.toString());
-                KeyTabEntry[] entries = keyTab.getEntries();
-                if (entries.length > 0) {
-                  authPrincipal = entries[0].getService().getName();
-                  LOGGER.debug("Found Kerberos principal %s in %s", authPrincipal, authKeyTab);
-                } else {
+                // We use reflection because we're referring to sun internal kerberos classes:
+                // sun.security.krb5.internal.ktab.KeyTab;
+                // sun.security.krb5.internal.ktab.KeyTabEntry;
+                // The code below is equivalent to the following:
+                //
+                // keyTab = KeyTab.getInstance(authKeyTab.toString());
+                // KeyTabEntry[] entries = keyTab.getEntries();
+                // if (entries.length > 0) {
+                //   authPrincipal = entries[0].getService().getName();
+                //   LOGGER.debug("Found Kerberos principal %s in %s", authPrincipal, authKeyTab);
+                // } else {
+                //   throw new BulkConfigurationException(
+                //   String.format("Could not find any principals in %s", authKeyTab));
+                // }
+
+                try {
+                  Class<?> keyTabClazz = Class.forName("sun.security.krb5.internal.ktab.KeyTab");
+                  Class<?> keyTabEntryClazz =
+                      Class.forName("sun.security.krb5.internal.ktab.KeyTabEntry");
+                  Class<?> principalNameClazz = Class.forName("sun.security.krb5.PrincipalName");
+
+                  Method getInstanceMethod = keyTabClazz.getMethod("getInstance", String.class);
+                  Method getEntriesMethod = keyTabClazz.getMethod("getEntries");
+                  Method getServiceMethod = keyTabEntryClazz.getMethod("getService");
+                  Method getNameMethod = principalNameClazz.getMethod("getName");
+
+                  Object keyTab = getInstanceMethod.invoke(null, authKeyTab.toString());
+                  Object[] entries = (Object[]) getEntriesMethod.invoke(keyTab);
+
+                  if (entries.length > 0) {
+                    authPrincipal =
+                        (String) getNameMethod.invoke(getServiceMethod.invoke(entries[0]));
+                    LOGGER.debug("Found Kerberos principal %s in %s", authPrincipal, authKeyTab);
+                  } else {
+                    throw new BulkConfigurationException(
+                        String.format("Could not find any principals in %s", authKeyTab));
+                  }
+                } catch (ClassNotFoundException
+                    | NoSuchMethodException
+                    | IllegalAccessException
+                    | InvocationTargetException e) {
                   throw new BulkConfigurationException(
-                      String.format("Could not find any principals in %s", authKeyTab));
+                      String.format("Could not find any principals in %s", authKeyTab), e);
                 }
               }
             }
@@ -363,22 +398,6 @@ public class DriverSettings {
     }
 
     return builder.build();
-  }
-
-  @SuppressWarnings("SameParameterValue")
-  private static void assertAccessibleFile(Path filePath, String descriptor) {
-    if (!Files.exists(filePath)) {
-      throw new BulkConfigurationException(
-          String.format("%s %s does not exist", descriptor, filePath));
-    }
-    if (!Files.isRegularFile(filePath)) {
-      throw new BulkConfigurationException(
-          String.format("%s %s is not a file", descriptor, filePath));
-    }
-    if (!Files.isReadable(filePath)) {
-      throw new BulkConfigurationException(
-          String.format("%s %s is not readable", descriptor, filePath));
-    }
   }
 
   private LoadBalancingPolicy getLoadBalancingPolicy(LoaderConfig config, BuiltinLBP lbpName)

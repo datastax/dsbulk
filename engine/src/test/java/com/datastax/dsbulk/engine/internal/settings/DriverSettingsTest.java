@@ -476,7 +476,7 @@ class DriverSettingsTest {
   private static String maybeTrimLeadingSlash(String path) {
     // On Windows, getPath() on a URL yields something like "/C:/....". Remove the leading
     // slash.
-    if (path.startsWith("/") && path.contains(":")) {
+    if (path.startsWith("/") && PlatformUtils.isWindows()) {
       return path.substring(1);
     }
     return path;

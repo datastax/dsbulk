@@ -20,6 +20,8 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.google.common.base.Throwables;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -73,7 +75,6 @@ public class WorkflowUtils {
     }
   }
 
-  @NotNull
   public static int pid() {
     if (Native.isGetpidAvailable()) {
       return Native.processId();
@@ -145,6 +146,21 @@ public class WorkflowUtils {
       }
     }
     return suppressed;
+  }
+
+  public static void assertAccessibleFile(Path filePath, String descriptor) {
+    if (!Files.exists(filePath)) {
+      throw new BulkConfigurationException(
+          String.format("%s %s does not exist", descriptor, filePath));
+    }
+    if (!Files.isRegularFile(filePath)) {
+      throw new BulkConfigurationException(
+          String.format("%s %s is not a file", descriptor, filePath));
+    }
+    if (!Files.isReadable(filePath)) {
+      throw new BulkConfigurationException(
+          String.format("%s %s is not readable", descriptor, filePath));
+    }
   }
 
   public static void checkProductCompatibility(Cluster cluster) {
