@@ -48,7 +48,6 @@ import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigFactory;
 import io.netty.handler.ssl.SslContext;
 import java.net.InetSocketAddress;
-import java.net.URL;
 import java.util.List;
 import javax.security.auth.login.Configuration;
 import org.junit.jupiter.api.Test;
@@ -363,9 +362,12 @@ class DriverSettingsTest {
     assumingThat(
         PlatformUtils.isWindows(),
         () -> {
-          String keyCertChain = maybeTrimLeadingSlash(getClass().getResource("/client.crt").getPath());
-          String privateKey = maybeTrimLeadingSlash(getClass().getResource("/client.key").getPath());
-          String truststore = maybeTrimLeadingSlash(getClass().getResource("/client.truststore").getPath());
+          String keyCertChain =
+              maybeTrimLeadingSlash(getClass().getResource("/client.crt").getPath());
+          String privateKey =
+              maybeTrimLeadingSlash(getClass().getResource("/client.key").getPath());
+          String truststore =
+              maybeTrimLeadingSlash(getClass().getResource("/client.truststore").getPath());
           LoaderConfig config =
               new DefaultLoaderConfig(
                   ConfigFactory.parseString(
