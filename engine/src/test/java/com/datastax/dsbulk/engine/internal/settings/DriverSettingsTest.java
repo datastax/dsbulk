@@ -326,8 +326,9 @@ class DriverSettingsTest {
 
   @Test
   void should_configure_encryption_with_SSLContext() {
-    URL keystore = getClass().getResource("/client.keystore");
-    URL truststore = getClass().getResource("/client.truststore");
+    String keystore = maybeTrimLeadingSlash(getClass().getResource("/client.keystore").getPath());
+    String truststore =
+        maybeTrimLeadingSlash(getClass().getResource("/client.truststore").getPath());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(

@@ -537,15 +537,10 @@ class SettingsValidatorTest {
     new Main(
             new String[] {
               "load",
-              "--connector.csv.url=/path/to/my/file",
-              "-m",
-              "c1=c2",
               "--driver.auth.provider",
               "DseGSSAPIAuthProvider",
               "--driver.auth.keyTab",
-              "noexist.keytab",
-              "--schema.query",
-              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+              "noexist.keytab"
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -556,16 +551,7 @@ class SettingsValidatorTest {
   void should_error_keytab_is_a_dir() {
     new Main(
             new String[] {
-              "load",
-              "--connector.csv.url=/path/to/my/file",
-              "-m",
-              "c1=c2",
-              "--driver.auth.provider",
-              "DseGSSAPIAuthProvider",
-              "--driver.auth.keyTab",
-              ".",
-              "--schema.query",
-              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+              "load", "--driver.auth.provider", "DseGSSAPIAuthProvider", "--driver.auth.keyTab", "."
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -578,15 +564,10 @@ class SettingsValidatorTest {
     new Main(
             new String[] {
               "load",
-              "--connector.csv.url=/path/to/my/file",
-              "-m",
-              "c1=c2",
               "--driver.auth.provider",
               "DseGSSAPIAuthProvider",
               "--driver.auth.keyTab",
-              keytabPath.toString(),
-              "--schema.query",
-              "INSERT INTO KEYSPACE (f1, f2) VALUES (:f1, :f2)"
+              keytabPath.toString()
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -614,5 +595,308 @@ class SettingsValidatorTest {
         .contains(
             "DseGSSAPIAuthProvider must be provided with auth.saslService. "
                 + "auth.principal, auth.keyTab, and auth.authorizationId are optional.");
+  }
+
+  @Test
+  void should_error_keystore_without_password() throws IOException {
+    Path keystore = Files.createTempFile(tempFolder, "my", "keystore");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "JDK",
+              "--driver.ssl.keystore.path",
+              keystore.toString()
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err)
+        .contains(
+            "ssl.keystore.path, ssl.keystore.password and ssl.truststore.algorithm must be provided together");
+  }
+
+  @Test
+  void should_error_password_without_keystore() {
+    new Main(
+            new String[] {
+              "load", "--driver.ssl.provider", "JDK", "--driver.ssl.keystore.password", "mypass"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err)
+        .contains(
+            "ssl.keystore.path, ssl.keystore.password and ssl.truststore.algorithm must be provided together");
+  }
+
+  @Test
+  void should_error_openssl_keycertchain_without_key() throws IOException {
+    Path chain = Files.createTempFile(tempFolder, "my", ".chain");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "OpenSSL",
+              "--driver.ssl.openssl.keyCertChain",
+              chain.toString(),
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err)
+        .contains("ssl.openssl.keyCertChain and ssl.openssl.privateKey must be provided together");
+  }
+
+  @Test
+  void should_error_key_without_openssl_keycertchain() throws IOException {
+    Path key = Files.createTempFile(tempFolder, "my", ".key");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "OpenSSL",
+              "--driver.ssl.openssl.privateKey",
+              key.toString(),
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err)
+        .contains("ssl.openssl.keyCertChain and ssl.openssl.privateKey must be provided together");
+  }
+
+  @Test
+  void should_error_truststore_without_password() throws IOException {
+    Path truststore = Files.createTempFile(tempFolder, "my", "truststore");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "JDK",
+              "--driver.ssl.truststore.path",
+              truststore.toString()
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err)
+        .contains(
+            "ssl.truststore.path, ssl.truststore.password and ssl.truststore.algorithm must be provided");
+  }
+
+  @Test
+  void should_error_password_without_truststore() {
+    new Main(
+            new String[] {
+              "load", "--driver.ssl.provider", "JDK", "--driver.ssl.truststore.password", "mypass"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err)
+        .contains(
+            "ssl.truststore.path, ssl.truststore.password and ssl.truststore.algorithm must be provided together");
+  }
+
+  @Test
+  void should_error_nonexistent_truststore() {
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "JDK",
+              "--driver.ssl.truststore.path",
+              "noexist.truststore",
+              "--driver.ssl.truststore.password",
+              "mypass"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err).matches(".*SSL truststore file .*noexist.truststore does not exist.*");
+  }
+
+  @Test
+  void should_error_truststore_is_a_dir() {
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "JDK",
+              "--driver.ssl.truststore.path",
+              ".",
+              "--driver.ssl.truststore.password",
+              "mypass"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err).matches(".*SSL truststore file .* is not a file.*");
+  }
+
+  @Test
+  void should_accept_existing_truststore() throws IOException {
+    Path truststore = Files.createTempFile(tempFolder, "my", ".truststore");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.truststore.path",
+              truststore.toString(),
+              "--driver.ssl.truststore.password",
+              "mypass"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+
+    // So, success in this case is that we *didn't* error out on the setting under test,
+    // but rather fail on a missing option.
+    assertThat(err)
+        .contains(
+            "schema.mapping, schema.query, or schema.keyspace and schema.table must be defined");
+  }
+
+  @Test
+  void should_error_nonexistent_keystore() {
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "JDK",
+              "--driver.ssl.keystore.path",
+              "noexist.keystore",
+              "--driver.ssl.keystore.password",
+              "mypass"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err).matches(".*SSL keystore file .*noexist.keystore does not exist.*");
+  }
+
+  @Test
+  void should_error_keystore_is_a_dir() {
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "JDK",
+              "--driver.ssl.keystore.path",
+              ".",
+              "--driver.ssl.keystore.password",
+              "mypass"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err).matches(".*SSL keystore file .* is not a file.*");
+  }
+
+  @Test
+  void should_accept_existing_keystore() throws IOException {
+    Path keystore = Files.createTempFile(tempFolder, "my", ".keystore");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.keystore.path",
+              keystore.toString(),
+              "--driver.ssl.keystore.password",
+              "mypass"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+
+    // So, success in this case is that we *didn't* error out on the setting under test,
+    // but rather fail on a missing option.
+    assertThat(err)
+        .contains(
+            "schema.mapping, schema.query, or schema.keyspace and schema.table must be defined");
+  }
+
+  @Test
+  void should_error_nonexistent_openssl_keycertchain() throws IOException {
+    Path key = Files.createTempFile(tempFolder, "my", ".key");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "OpenSSL",
+              "--driver.ssl.openssl.keyCertChain",
+              "noexist.chain",
+              "--driver.ssl.openssl.privateKey",
+              key.toString()
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err)
+        .matches(".*OpenSSL key certificate chain file .*noexist.chain does not exist.*");
+  }
+
+  @Test
+  void should_error_openssl_keycertchain_is_a_dir() throws IOException {
+    Path key = Files.createTempFile(tempFolder, "my", ".key");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "OpenSSL",
+              "--driver.ssl.openssl.keyCertChain",
+              ".",
+              "--driver.ssl.openssl.privateKey",
+              key.toString()
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err).matches(".*OpenSSL key certificate chain file .* is not a file.*");
+  }
+
+  @Test
+  void should_accept_existing_openssl_keycertchain_and_key() throws IOException {
+    Path key = Files.createTempFile(tempFolder, "my", ".key");
+    Path chain = Files.createTempFile(tempFolder, "my", ".chain");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "OpenSSL",
+              "--driver.ssl.openssl.keyCertChain",
+              chain.toString(),
+              "--driver.ssl.openssl.privateKey",
+              key.toString()
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+
+    // So, success in this case is that we *didn't* error out on the setting under test,
+    // but rather fail on a missing option.
+    assertThat(err)
+        .contains(
+            "schema.mapping, schema.query, or schema.keyspace and schema.table must be defined");
+  }
+
+  @Test
+  void should_error_nonexistent_openssl_key() throws IOException {
+    Path chain = Files.createTempFile(tempFolder, "my", ".chain");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "OpenSSL",
+              "--driver.ssl.openssl.keyCertChain",
+              chain.toString(),
+              "--driver.ssl.openssl.privateKey",
+              "noexist.key"
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err).matches(".*OpenSSL private key file .*noexist.key does not exist.*");
+  }
+
+  @Test
+  void should_error_openssl_key_is_a_dir() throws IOException {
+    Path chain = Files.createTempFile(tempFolder, "my", ".chain");
+    new Main(
+            new String[] {
+              "load",
+              "--driver.ssl.provider",
+              "OpenSSL",
+              "--driver.ssl.openssl.keyCertChain",
+              chain.toString(),
+              "--driver.ssl.openssl.privateKey",
+              "."
+            })
+        .run();
+    String err = logs.getAllMessagesAsString();
+    assertThat(err).matches(".*OpenSSL private key file .* is not a file.*");
   }
 }
