@@ -41,10 +41,11 @@ import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
-import java.net.URL;
 import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.SecureRandom;
@@ -124,7 +125,7 @@ public class DriverSettings {
       SSL + DELIMITER + KEYSTORE + DELIMITER + "password";
   private static final String SSL_TRUSTSTORE_ALGORITHM =
       SSL + DELIMITER + TRUSTSTORE + DELIMITER + "algorithm";
-  private static final String SSL_OPENSSL_KEYCHAINCERT =
+  private static final String SSL_OPENSSL_KEYCERTCHAIN =
       SSL + DELIMITER + OPENSSL + DELIMITER + "keyCertChain";
   private static final String SSL_OPENSSL_PRIVATE_KEY =
       SSL + DELIMITER + OPENSSL + DELIMITER + "privateKey";
@@ -160,13 +161,13 @@ public class DriverSettings {
   private String authPassword;
   private String authorizationId;
   private String sslProvider;
-  private URL sslTrustStorePath;
+  private Path sslTrustStorePath;
   private String sslTrustStorePassword;
-  private URL sslKeyStorePath;
+  private Path sslKeyStorePath;
   private String sslKeyStorePassword;
   private String sslTrustStoreAlgorithm;
-  private URL sslOpenSslPrivateKey;
-  private URL sslOpenSslKeyCertChain;
+  private Path sslOpenSslPrivateKey;
+  private Path sslOpenSslKeyCertChain;
   private Path authKeyTab;
   private String authSaslService;
   private LoadBalancingPolicy policy;
@@ -293,7 +294,7 @@ public class DriverSettings {
       }
       sslProvider = config.getString(SSL_PROVIDER);
       if (sslProvider.equals(SSLProvider.JDK.name())) {
-        if (!(config.hasPath(SSL_KEYSTORE_PATH) == config.hasPath(SSL_KEYSTORE_PASSWORD))) {
+        if (config.hasPath(SSL_KEYSTORE_PATH) != config.hasPath(SSL_KEYSTORE_PASSWORD)) {
           throw new BulkConfigurationException(
               SSL_KEYSTORE_PATH
                   + ", "
@@ -303,40 +304,46 @@ public class DriverSettings {
                   + " must be provided together or not at all when using the JDK SSL Provider");
         } else {
           if (config.hasPath(SSL_KEYSTORE_PATH)) {
-            sslKeyStorePath = config.getURL(SSL_KEYSTORE_PATH);
+            sslKeyStorePath = config.getPath(SSL_KEYSTORE_PATH);
+            assertAccessibleFile(sslKeyStorePath, "SSL keystore file");
             sslKeyStorePassword = config.getString(SSL_KEYSTORE_PASSWORD);
             sslTrustStoreAlgorithm = config.getString(SSL_TRUSTSTORE_ALGORITHM);
           }
         }
       } else if (sslProvider.equals(SSLProvider.OpenSSL.name())) {
-        if (!(config.hasPath(SSL_OPENSSL_KEYCHAINCERT)
-            == config.hasPath(SSL_OPENSSL_PRIVATE_KEY))) {
+        if (config.hasPath(SSL_OPENSSL_KEYCERTCHAIN) != config.hasPath(SSL_OPENSSL_PRIVATE_KEY)) {
           throw new BulkConfigurationException(
-              SSL_OPENSSL_KEYCHAINCERT
+              SSL_OPENSSL_KEYCERTCHAIN
                   + " and "
                   + SSL_OPENSSL_PRIVATE_KEY
                   + " must be provided together or not at all when using the openssl Provider");
         }
-        if (config.hasPath(SSL_OPENSSL_KEYCHAINCERT)) {
-          sslOpenSslKeyCertChain = config.getURL(SSL_OPENSSL_KEYCHAINCERT);
-          sslOpenSslPrivateKey = config.getURL(SSL_OPENSSL_PRIVATE_KEY);
+        if (config.hasPath(SSL_OPENSSL_KEYCERTCHAIN)) {
+          sslOpenSslKeyCertChain = config.getPath(SSL_OPENSSL_KEYCERTCHAIN);
+          sslOpenSslPrivateKey = config.getPath(SSL_OPENSSL_PRIVATE_KEY);
+          assertAccessibleFile(sslOpenSslKeyCertChain, "OpenSSL key certificate chain file");
+          assertAccessibleFile(sslOpenSslPrivateKey, "OpenSSL private key file");
         }
       }
-      if (!(config.hasPath(SSL_TRUSTSTORE_PATH) == config.hasPath(SSL_TRUSTSTORE_PASSWORD))) {
-        throw new BulkConfigurationException(
-            SSL_TRUSTSTORE_PATH
-                + ", "
-                + SSL_TRUSTSTORE_PASSWORD
-                + " and "
-                + SSL_TRUSTSTORE_ALGORITHM
-                + " must be provided together or not at all");
-      } else {
-        if (config.hasPath(SSL_TRUSTSTORE_PATH)) {
-          sslTrustStorePath = config.getURL(SSL_TRUSTSTORE_PATH);
-          sslTrustStorePassword = config.getString(SSL_TRUSTSTORE_PASSWORD);
-          sslTrustStoreAlgorithm = config.getString(SSL_TRUSTSTORE_ALGORITHM);
+      if (!sslProvider.equals(SSLProvider.None.name())) {
+        if (config.hasPath(SSL_TRUSTSTORE_PATH) != config.hasPath(SSL_TRUSTSTORE_PASSWORD)) {
+          throw new BulkConfigurationException(
+              SSL_TRUSTSTORE_PATH
+                  + ", "
+                  + SSL_TRUSTSTORE_PASSWORD
+                  + " and "
+                  + SSL_TRUSTSTORE_ALGORITHM
+                  + " must be provided together or not at all");
+        } else {
+          if (config.hasPath(SSL_TRUSTSTORE_PATH)) {
+            sslTrustStorePath = config.getPath(SSL_TRUSTSTORE_PATH);
+            assertAccessibleFile(sslTrustStorePath, "SSL truststore file");
+            sslTrustStorePassword = config.getString(SSL_TRUSTSTORE_PASSWORD);
+            sslTrustStoreAlgorithm = config.getString(SSL_TRUSTSTORE_ALGORITHM);
+          }
         }
       }
+
       if (config.hasPath(POLICY_NAME)) {
         policy = getLoadBalancingPolicy(config, config.getEnum(BuiltinLBP.class, POLICY_NAME));
       }
@@ -499,7 +506,9 @@ public class DriverSettings {
     TrustManagerFactory tmf = null;
     if (sslTrustStorePath != null) {
       KeyStore ks = KeyStore.getInstance("JKS");
-      ks.load(sslTrustStorePath.openStream(), sslTrustStorePassword.toCharArray());
+      ks.load(
+          new BufferedInputStream(new FileInputStream(sslTrustStorePath.toFile())),
+          sslTrustStorePassword.toCharArray());
 
       tmf = TrustManagerFactory.getInstance(config.getString("ssl.truststore.algorithm"));
       tmf.init(ks);
@@ -515,7 +524,9 @@ public class DriverSettings {
           KeyManagerFactory kmf = null;
           if (sslKeyStorePath != null) {
             KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load(sslKeyStorePath.openStream(), sslKeyStorePassword.toCharArray());
+            ks.load(
+                new BufferedInputStream(new FileInputStream(sslKeyStorePath.toFile())),
+                sslKeyStorePassword.toCharArray());
 
             kmf = KeyManagerFactory.getInstance(sslTrustStoreAlgorithm);
             kmf.init(ks, sslKeyStorePassword.toCharArray());
@@ -543,7 +554,8 @@ public class DriverSettings {
 
           if (sslOpenSslKeyCertChain != null) {
             builder.keyManager(
-                sslOpenSslKeyCertChain.openStream(), sslOpenSslPrivateKey.openStream());
+                new BufferedInputStream(new FileInputStream(sslOpenSslKeyCertChain.toFile())),
+                new BufferedInputStream(new FileInputStream(sslOpenSslPrivateKey.toFile())));
           }
 
           if (!cipherSuites.isEmpty()) {
@@ -638,6 +650,7 @@ public class DriverSettings {
   }
 
   private enum SSLProvider {
+    None,
     JDK,
     OpenSSL
   }

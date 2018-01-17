@@ -48,7 +48,6 @@ import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigFactory;
 import io.netty.handler.ssl.SslContext;
 import java.net.InetSocketAddress;
-import java.net.URL;
 import java.util.List;
 import javax.security.auth.login.Configuration;
 import org.junit.jupiter.api.Test;
@@ -326,8 +325,9 @@ class DriverSettingsTest {
 
   @Test
   void should_configure_encryption_with_SSLContext() {
-    URL keystore = getClass().getResource("/client.keystore");
-    URL truststore = getClass().getResource("/client.truststore");
+    String keystore = maybeTrimLeadingSlash(getClass().getResource("/client.keystore").getPath());
+    String truststore =
+        maybeTrimLeadingSlash(getClass().getResource("/client.truststore").getPath());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -362,9 +362,12 @@ class DriverSettingsTest {
     assumingThat(
         PlatformUtils.isWindows(),
         () -> {
-          URL keyCertChain = getClass().getResource("/client.crt");
-          URL privateKey = getClass().getResource("/client.key");
-          URL truststore = getClass().getResource("/client.truststore");
+          String keyCertChain =
+              maybeTrimLeadingSlash(getClass().getResource("/client.crt").getPath());
+          String privateKey =
+              maybeTrimLeadingSlash(getClass().getResource("/client.key").getPath());
+          String truststore =
+              maybeTrimLeadingSlash(getClass().getResource("/client.truststore").getPath());
           LoaderConfig config =
               new DefaultLoaderConfig(
                   ConfigFactory.parseString(
