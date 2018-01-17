@@ -165,15 +165,52 @@ class DriverSettingsTest {
 
   @Test
   void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab() {
+    String keyTab = maybeTrimLeadingSlash(getClass().getResource("/cassandra.keytab").getPath());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    " auth { "
-                        + "provider = DseGSSAPIAuthProvider, "
-                        + "principal = \"alice@DATASTAX.COM\", "
-                        + "keyTab = \"file:///path/to/my/keyTab\", "
-                        + "authorizationId = \"bob@DATASTAX.COM\","
-                        + "saslProtocol = foo }")
+                    String.format(
+                        " auth { "
+                            + "provider = DseGSSAPIAuthProvider , "
+                            + "keyTab = \"%s\", "
+                            + "authorizationId = \"bob@DATASTAX.COM\","
+                            + "saslService = foo }",
+                        keyTab))
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
+    DseCluster cluster = driverSettings.newCluster();
+    assertThat(cluster).isNotNull();
+    DseConfiguration configuration = cluster.getConfiguration();
+    AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
+    assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
+    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
+        .isEqualTo("bob@DATASTAX.COM");
+    Configuration loginConfiguration =
+        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+    assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
+    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
+        .isEqualTo("cassandra@DATASTAX.COM");
+    String loginConfigKeyTab =
+        (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
+    assertThat(loginConfigKeyTab.replace("\\", "/")).isEqualTo(keyTab);
+  }
+
+  @Test
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab_and_principal() {
+    String keyTab = maybeTrimLeadingSlash(getClass().getResource("/cassandra.keytab").getPath());
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        " auth { "
+                            + "provider = DseGSSAPIAuthProvider , "
+                            + "principal = \"alice@DATASTAX.COM\", "
+                            + "keyTab = \"%s\", "
+                            + "authorizationId = \"bob@DATASTAX.COM\","
+                            + "saslService = foo }",
+                        keyTab))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -190,8 +227,47 @@ class DriverSettingsTest {
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
     assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
         .isEqualTo("alice@DATASTAX.COM");
-    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "keyTab"))
-        .isEqualTo("/path/to/my/keyTab");
+    String loginConfigKeyTab =
+        (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
+    assertThat(loginConfigKeyTab.replace("\\", "/")).isEqualTo(keyTab);
+  }
+
+  @Test
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_empty_keytab_and_principal() {
+    // Get the path to the "empty keytab". We emulate that by choosing a file that isn't
+    // a keytab at all. Since we're specifying the principal, it shouldn't matter that the
+    // keytab is empty (e.g. we shouldn't even be checking).
+    String keyTab = maybeTrimLeadingSlash(getClass().getResource("/client.key").getPath());
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        " auth { "
+                            + "provider = DseGSSAPIAuthProvider, "
+                            + "principal = \"alice@DATASTAX.COM\", "
+                            + "keyTab = \"%s\", "
+                            + "authorizationId = \"bob@DATASTAX.COM\","
+                            + "saslService = foo }",
+                        keyTab))
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
+    DseCluster cluster = driverSettings.newCluster();
+    assertThat(cluster).isNotNull();
+    DseConfiguration configuration = cluster.getConfiguration();
+    AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
+    assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
+    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
+        .isEqualTo("bob@DATASTAX.COM");
+    Configuration loginConfiguration =
+        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+    assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
+    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
+        .isEqualTo("alice@DATASTAX.COM");
+    String loginConfigKeyTab =
+        (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
+    assertThat(loginConfigKeyTab.replace("\\", "/")).isEqualTo(keyTab);
   }
 
   @Test
@@ -201,9 +277,35 @@ class DriverSettingsTest {
             ConfigFactory.parseString(
                     " auth { "
                         + "provider = DseGSSAPIAuthProvider, "
+                        + "authorizationId = \"bob@DATASTAX.COM\","
+                        + "saslService = foo }")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
+    DseCluster cluster = driverSettings.newCluster();
+    assertThat(cluster).isNotNull();
+    DseConfiguration configuration = cluster.getConfiguration();
+    AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
+    assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
+    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
+        .isEqualTo("bob@DATASTAX.COM");
+    Configuration loginConfiguration =
+        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+    assertThat(loginConfiguration).isInstanceOf(DriverSettings.TicketCacheConfiguration.class);
+    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal")).isNull();
+  }
+
+  @Test
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache_and_principal() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    " auth { "
+                        + "provider = DseGSSAPIAuthProvider, "
                         + "principal = \"alice@DATASTAX.COM\", "
                         + "authorizationId = \"bob@DATASTAX.COM\","
-                        + "saslProtocol = foo }")
+                        + "saslService = foo }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -365,9 +467,18 @@ class DriverSettingsTest {
         .isEqualTo(2);
   }
 
-  private Host makeHostWithAddress(String host, int port) {
+  private static Host makeHostWithAddress(String host, int port) {
     Host h = Mockito.mock(Host.class);
     Mockito.when(h.getSocketAddress()).thenReturn(new InetSocketAddress(host, port));
     return h;
+  }
+
+  private static String maybeTrimLeadingSlash(String path) {
+    // On Windows, getPath() on a URL yields something like "/C:/....". Remove the leading
+    // slash.
+    if (path.startsWith("/") && PlatformUtils.isWindows()) {
+      return path.substring(1);
+    }
+    return path;
   }
 }

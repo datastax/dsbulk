@@ -7,6 +7,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.engine.internal.utils.StringUtils.DELIMITER;
+import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.assertAccessibleFile;
 
 import com.datastax.driver.core.AuthProvider;
 import com.datastax.driver.core.CodecRegistry;
@@ -40,8 +41,11 @@ import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URL;
+import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -57,9 +61,12 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** */
 public class DriverSettings {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DriverSettings.class);
 
   //Path Constants
   private static final String POOLING = "pooling";
@@ -102,7 +109,7 @@ public class DriverSettings {
   private static final String AUTH_PASSWORD = AUTH + DELIMITER + "password";
   private static final String AUTH_PRINCIPAL = AUTH + DELIMITER + "principal";
   private static final String AUTHORIZATION_ID = AUTH + DELIMITER + "authorizationId";
-  private static final String AUTH_SASLPROTOCOL = AUTH + DELIMITER + "saslProtocol";
+  private static final String AUTH_SASL_SERVICE = AUTH + DELIMITER + "saslService";
   private static final String AUTH_KEYTAB = AUTH + DELIMITER + "keyTab";
 
   private static final String PROTOCOL_COMPRESSION = PROTOCOL + DELIMITER + "compression";
@@ -160,8 +167,8 @@ public class DriverSettings {
   private String sslTrustStoreAlgorithm;
   private URL sslOpenSslPrivateKey;
   private URL sslOpenSslKeyCertChain;
-  private URL authKeyTab;
-  private String authSaslProtocol;
+  private Path authKeyTab;
+  private String authSaslService;
   private LoadBalancingPolicy policy;
 
   DriverSettings(LoaderConfig config, String executionId) {
@@ -199,31 +206,89 @@ public class DriverSettings {
           case DSE_PLAINTEXT_PROVIDER:
             if (!config.hasPath(AUTH_USERNAME) || !config.hasPath(AUTH_PASSWORD)) {
               throw new BulkConfigurationException(
-                  authProvider + " must be provided with both auth.username and auth.password");
+                  String.format(
+                      "%s must be provided with both %s and %s",
+                      authProvider, AUTH_USERNAME, AUTH_PASSWORD));
             }
             authUsername = config.getString(AUTH_USERNAME);
             authPassword = config.getString(AUTH_PASSWORD);
             break;
           case DSE_GSSAPI_PROVIDER:
-            if (!config.hasPath(AUTH_PRINCIPAL) || !config.hasPath(AUTH_SASLPROTOCOL)) {
+            if (!config.hasPath(AUTH_SASL_SERVICE)) {
               throw new BulkConfigurationException(
-                  authProvider
-                      + " must be provided with auth.principal and auth.saslProtocol. auth.keyTab, and auth.authorizationId are optional.");
+                  String.format(
+                      "%s must be provided with %s. %s, %s, and %s are optional.",
+                      authProvider,
+                      AUTH_SASL_SERVICE,
+                      AUTH_PRINCIPAL,
+                      AUTH_KEYTAB,
+                      AUTHORIZATION_ID));
             }
-            authPrincipal = config.getString(AUTH_PRINCIPAL);
-            authSaslProtocol = config.getString(AUTH_SASLPROTOCOL);
             if (config.hasPath(AUTH_PRINCIPAL)) {
               authPrincipal = config.getString(AUTH_PRINCIPAL);
             }
             if (config.hasPath(AUTH_KEYTAB)) {
-              authKeyTab = config.getURL(AUTH_KEYTAB);
+              authKeyTab = config.getPath(AUTH_KEYTAB);
+              assertAccessibleFile(authKeyTab, "Keytab file");
+
+              // When using a keytab, we must have a principal. If the user didn't provide one,
+              // try to get the first principal from the keytab.
+              if (authPrincipal == null) {
+                // Best effort: get the first principal in the keytab, if possible.
+                // We use reflection because we're referring to sun internal kerberos classes:
+                // sun.security.krb5.internal.ktab.KeyTab;
+                // sun.security.krb5.internal.ktab.KeyTabEntry;
+                // The code below is equivalent to the following:
+                //
+                // keyTab = KeyTab.getInstance(authKeyTab.toString());
+                // KeyTabEntry[] entries = keyTab.getEntries();
+                // if (entries.length > 0) {
+                //   authPrincipal = entries[0].getService().getName();
+                //   LOGGER.debug("Found Kerberos principal %s in %s", authPrincipal, authKeyTab);
+                // } else {
+                //   throw new BulkConfigurationException(
+                //   String.format("Could not find any principals in %s", authKeyTab));
+                // }
+
+                try {
+                  Class<?> keyTabClazz = Class.forName("sun.security.krb5.internal.ktab.KeyTab");
+                  Class<?> keyTabEntryClazz =
+                      Class.forName("sun.security.krb5.internal.ktab.KeyTabEntry");
+                  Class<?> principalNameClazz = Class.forName("sun.security.krb5.PrincipalName");
+
+                  Method getInstanceMethod = keyTabClazz.getMethod("getInstance", String.class);
+                  Method getEntriesMethod = keyTabClazz.getMethod("getEntries");
+                  Method getServiceMethod = keyTabEntryClazz.getMethod("getService");
+                  Method getNameMethod = principalNameClazz.getMethod("getName");
+
+                  Object keyTab = getInstanceMethod.invoke(null, authKeyTab.toString());
+                  Object[] entries = (Object[]) getEntriesMethod.invoke(keyTab);
+
+                  if (entries.length > 0) {
+                    authPrincipal =
+                        (String) getNameMethod.invoke(getServiceMethod.invoke(entries[0]));
+                    LOGGER.debug("Found Kerberos principal %s in %s", authPrincipal, authKeyTab);
+                  } else {
+                    throw new BulkConfigurationException(
+                        String.format("Could not find any principals in %s", authKeyTab));
+                  }
+                } catch (ClassNotFoundException
+                    | NoSuchMethodException
+                    | IllegalAccessException
+                    | InvocationTargetException e) {
+                  throw new BulkConfigurationException(
+                      String.format("Could not find any principals in %s", authKeyTab), e);
+                }
+              }
             }
+            authSaslService = config.getString(AUTH_SASL_SERVICE);
 
             break;
           default:
             throw new BulkConfigurationException(
-                authProvider
-                    + " is not a valid auth provider. Valid auth providers are PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider");
+                String.format(
+                    "%s is not a valid auth provider. Valid auth providers are %s, %s, or %s",
+                    authProvider, PLAINTEXT_PROVIDER, DSE_PLAINTEXT_PROVIDER, DSE_GSSAPI_PROVIDER));
         }
       }
       sslProvider = config.getString(SSL_PROVIDER);
@@ -412,14 +477,14 @@ public class DriverSettings {
       case DSE_GSSAPI_PROVIDER:
         Configuration configuration;
         if (authKeyTab != null) {
-          configuration = new KeyTabConfiguration(authPrincipal, authKeyTab.getPath());
+          configuration = new KeyTabConfiguration(authPrincipal, authKeyTab.toString());
         } else {
           configuration = new TicketCacheConfiguration(authPrincipal);
         }
         DseGSSAPIAuthProvider.Builder authProviderBuilder =
             DseGSSAPIAuthProvider.builder()
                 .withLoginConfiguration(configuration)
-                .withSaslProtocol(authSaslProtocol);
+                .withSaslProtocol(authSaslService);
         if (authorizationId != null) {
           authProviderBuilder.withAuthorizationId(authorizationId);
         }
@@ -543,13 +608,17 @@ public class DriverSettings {
 
     @Override
     public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
-      Map<String, String> options =
+      ImmutableMap.Builder<String, String> builder =
           ImmutableMap.<String, String>builder()
-              .put("principal", principal)
               .put("useTicketCache", "true")
               .put("refreshKrb5Config", "true")
-              .put("renewTGT", "true")
-              .build();
+              .put("renewTGT", "true");
+
+      if (principal != null) {
+        builder.put("principal", principal);
+      }
+
+      Map<String, String> options = builder.build();
 
       return new AppConfigurationEntry[] {
         new AppConfigurationEntry(

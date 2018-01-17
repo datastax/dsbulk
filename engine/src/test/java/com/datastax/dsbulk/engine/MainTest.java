@@ -529,7 +529,7 @@ class MainTest {
               "user@foo.com",
               "--driver.auth.keyTab",
               "mykeytab",
-              "--driver.auth.saslProtocol",
+              "--driver.auth.saslService",
               "sasl",
               "--driver.ssl.provider",
               "myssl",
@@ -675,7 +675,7 @@ class MainTest {
     assertThat(result.getString("driver.auth.authorizationId")).isEqualTo("authid");
     assertThat(result.getString("driver.auth.principal")).isEqualTo("user@foo.com");
     assertThat(result.getString("driver.auth.keyTab")).isEqualTo("mykeytab");
-    assertThat(result.getString("driver.auth.saslProtocol")).isEqualTo("sasl");
+    assertThat(result.getString("driver.auth.saslService")).isEqualTo("sasl");
     assertThat(result.getString("driver.ssl.provider")).isEqualTo("myssl");
     assertThat(result.getStringList("driver.ssl.cipherSuites"))
         .isEqualTo(Collections.singletonList("TLS"));

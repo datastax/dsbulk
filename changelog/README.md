@@ -33,6 +33,8 @@
 - [improvement] DAT-180: Improve DSBulk exit statuses.
 - [improvement] DAT-213: Create examples for connector.json.parserFeatures and connector.json.generatorFeatures.
 - [improvement] DAT-216: application.conf and application.template.conf should include dsbulk element wrapping.
+- [improvement] DAT-214: driver.auth.principal should be optional when using Kerberos.
+- [improvement] DAT-207: Rename driver.auth.saslProtocol to driver.auth.saslService.
 
 
 ### 1.0.0-beta2
