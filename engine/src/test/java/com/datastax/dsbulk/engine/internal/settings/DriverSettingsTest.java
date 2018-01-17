@@ -363,9 +363,9 @@ class DriverSettingsTest {
     assumingThat(
         PlatformUtils.isWindows(),
         () -> {
-          URL keyCertChain = getClass().getResource("/client.crt");
-          URL privateKey = getClass().getResource("/client.key");
-          URL truststore = getClass().getResource("/client.truststore");
+          String keyCertChain = maybeTrimLeadingSlash(getClass().getResource("/client.crt").getPath());
+          String privateKey = maybeTrimLeadingSlash(getClass().getResource("/client.key").getPath());
+          String truststore = maybeTrimLeadingSlash(getClass().getResource("/client.truststore").getPath());
           LoaderConfig config =
               new DefaultLoaderConfig(
                   ConfigFactory.parseString(
