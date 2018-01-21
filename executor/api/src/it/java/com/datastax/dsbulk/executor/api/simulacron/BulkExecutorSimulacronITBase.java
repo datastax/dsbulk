@@ -1164,7 +1164,7 @@ public abstract class BulkExecutorSimulacronITBase {
             .filter(
                 (l) ->
                     (l.getType().equals("EXECUTE") || l.getType().equals("QUERY"))
-                        && !l.getQuery().contains("system")
+                        && l.getQuery().contains("INSERT INTO ip_by_country")
                         && !l.getQuery().equals(FAILED_STR))
             .count();
 

@@ -19,11 +19,7 @@ class DefaultReactorBulkExecutorSimulacronIT extends BulkExecutorSimulacronITBas
     super(
         simulacron,
         session,
-        DefaultReactorBulkExecutor.builder(session)
-            // serialize execution of statements to force results to be produced in deterministic
-            // order
-            .withMaxInFlightRequests(1)
-            .build(),
+        DefaultReactorBulkExecutor.builder(session).build(),
         DefaultReactorBulkExecutor.builder(session).failSafe().build());
   }
 }

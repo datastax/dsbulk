@@ -10,7 +10,6 @@ package com.datastax.dsbulk.executor.api.internal.subscription;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
@@ -18,9 +17,8 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.RateLimiter;
+import java.util.Iterator;
 import java.util.Optional;
-import java.util.Queue;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import org.reactivestreams.Subscriber;
 
@@ -29,30 +27,45 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
 
   public ReadResultSubscription(
       Subscriber<? super ReadResult> subscriber,
-      Queue<ReadResult> queue,
       Statement statement,
-      Session session,
-      Executor executor,
       Optional<ExecutionListener> listener,
-      Optional<RateLimiter> rateLimiter,
       Optional<Semaphore> requestPermits,
+      Optional<RateLimiter> rateLimiter,
       boolean failFast) {
-    super(
-        subscriber,
-        queue,
-        statement,
-        session,
-        executor,
-        listener,
-        rateLimiter,
-        requestPermits,
-        failFast);
+    super(subscriber, statement, listener, requestPermits, rateLimiter, failFast);
   }
 
   @Override
-  public void start() {
-    super.start();
-    fetchNextPage(() -> session.executeAsync(statement));
+  Page toPage(ResultSet rs, ExecutionContext local) {
+    Iterator<ReadResult> results =
+        new Iterator<ReadResult>() {
+
+          int remaining = rs.getAvailableWithoutFetching();
+          Iterator<Row> iterator = rs.iterator();
+
+          @Override
+          public boolean hasNext() {
+            // DON'T rely on iterator.hasNext(), that
+            // iterator only stops when the result set is fully fetched,
+            // and triggers blocking background requests for the next pages.
+            return remaining > 0;
+          }
+
+          @Override
+          public ReadResult next() {
+            Row row = iterator.next();
+            remaining--;
+            listener.ifPresent(l -> l.onRowReceived(row, local));
+            return new DefaultReadResult(statement, rs.getExecutionInfo(), row);
+          }
+        };
+    boolean hasMorePages = rs.getExecutionInfo().getPagingState() != null;
+    return new Page(results, hasMorePages ? rs::fetchMoreResults : null);
+  }
+
+  @Override
+  ReadResult toErrorResult(BulkExecutionException error) {
+    return new DefaultReadResult(error);
   }
 
   @Override
@@ -63,33 +76,10 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
   @Override
   void onRequestSuccessful(ResultSet resultSet, ExecutionContext local) {
     listener.ifPresent(l -> l.onReadRequestSuccessful(statement, local));
-    int remaining = resultSet.getAvailableWithoutFetching();
-    for (Row row : resultSet) {
-      if (isCancelled()) {
-        return;
-      }
-      listener.ifPresent(l -> l.onRowReceived(row, local));
-      onNext(new DefaultReadResult(statement, resultSet.getExecutionInfo(), row));
-      if (--remaining == 0) {
-        break;
-      }
-    }
-    boolean lastPage = resultSet.getExecutionInfo().getPagingState() == null;
-    if (lastPage) {
-      onComplete();
-    } else if (!isCancelled()) {
-      fetchNextPage(resultSet::fetchMoreResults);
-    }
   }
 
   @Override
   void onRequestFailed(Throwable t, ExecutionContext local) {
     listener.ifPresent(l -> l.onReadRequestFailed(statement, t, local));
-    onError(t);
-  }
-
-  @Override
-  ReadResult toErrorResult(BulkExecutionException error) {
-    return new DefaultReadResult(error);
   }
 }

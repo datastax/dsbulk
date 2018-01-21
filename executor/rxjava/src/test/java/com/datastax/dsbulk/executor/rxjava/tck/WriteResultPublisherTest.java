@@ -8,8 +8,11 @@
  */
 package com.datastax.dsbulk.executor.rxjava.tck;
 
-import static com.datastax.dsbulk.executor.api.tck.ReadResultPublisherTestBase.setUpFailedSession;
+import static com.datastax.dsbulk.executor.api.tck.ReadResultPublisherTestBase.FAILED_LISTENER;
+import static com.datastax.dsbulk.executor.api.tck.ReadResultPublisherTestBase.setUpSuccessfulSession;
+import static org.mockito.Mockito.mock;
 
+import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.api.tck.WriteResultPublisherTestBase;
 import com.datastax.dsbulk.executor.rxjava.DefaultRxJavaBulkExecutor;
@@ -19,13 +22,16 @@ public class WriteResultPublisherTest extends WriteResultPublisherTestBase {
 
   @Override
   public Publisher<WriteResult> createPublisher(long elements) {
-    DefaultRxJavaBulkExecutor executor = new DefaultRxJavaBulkExecutor(setUpSuccessfulSession());
+    DefaultRxJavaBulkExecutor executor = new DefaultRxJavaBulkExecutor(setUpSuccessfulSession(0));
     return executor.writeReactive("irrelevant");
   }
 
   @Override
   public Publisher<WriteResult> createFailedPublisher() {
-    DefaultRxJavaBulkExecutor executor = new DefaultRxJavaBulkExecutor(setUpFailedSession());
+    DefaultRxJavaBulkExecutor executor =
+        DefaultRxJavaBulkExecutor.builder(mock(Session.class))
+            .withExecutionListener(FAILED_LISTENER)
+            .build();
     return executor.writeReactive("irrelevant");
   }
 }

@@ -20,9 +20,7 @@ import com.datastax.dsbulk.executor.api.internal.subscription.WriteResultSubscri
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import io.reactivex.Flowable;
-import io.reactivex.Scheduler;
 import io.reactivex.Single;
-import io.reactivex.schedulers.Schedulers;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -46,8 +44,6 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
     return new DefaultRxJavaBulkExecutorBuilder(session);
   }
 
-  private final Scheduler scheduler;
-
   /**
    * Creates a new instance using the given {@link Session} and using defaults for all parameters.
    *
@@ -58,12 +54,10 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
    */
   public DefaultRxJavaBulkExecutor(Session session) {
     super(session);
-    this.scheduler = Schedulers.from(executor);
   }
 
   DefaultRxJavaBulkExecutor(AbstractBulkExecutorBuilder builder) {
     super(builder);
-    this.scheduler = Schedulers.from(this.executor);
   }
 
   @Override
@@ -86,7 +80,6 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
     Single.fromPublisher(writeReactive(statement))
         .doOnSuccess(future::complete)
         .doOnError(future::completeExceptionally)
-        .subscribeOn(scheduler)
         .subscribe();
     return future;
   }
@@ -114,7 +107,6 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
         .doOnNext(consumer::accept)
         .doOnComplete(() -> future.complete(null))
         .doOnError(future::completeExceptionally)
-        .subscribeOn(scheduler)
         .subscribe();
     return future;
   }
@@ -186,7 +178,6 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
         .doOnNext(consumer::accept)
         .doOnComplete(() -> future.complete(null))
         .doOnError(future::completeExceptionally)
-        .subscribeOn(scheduler)
         .subscribe();
     return future;
   }
@@ -220,12 +211,6 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
     return Flowable.fromPublisher(statements).flatMap(this::readReactive);
   }
 
-  @Override
-  public void close() throws InterruptedException {
-    super.close();
-    scheduler.shutdown();
-  }
-
   private class ReadResultPublisher implements Publisher<ReadResult> {
 
     private final Statement statement;
@@ -236,19 +221,30 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
 
     @Override
     public void subscribe(Subscriber<? super ReadResult> subscriber) {
+      // As per rule 1.9, we need to throw an NPE if subscriber is null
+      Objects.requireNonNull(subscriber, "Subscriber cannot be null");
+      // As per rule 1.11, this publisher supports multiple subscribers in a unicast configuration,
+      // i.e., each subscriber triggers an independent execution/subscription and gets its own copy of
+      // the results.
       ReadResultSubscription subscription =
           new ReadResultSubscription(
-              subscriber,
-              queueFactory.newQueue(statement),
-              statement,
-              session,
-              executor,
-              listener,
-              rateLimiter,
-              requestPermits,
-              failFast);
-      subscriber.onSubscribe(subscription);
-      subscription.start();
+              subscriber, statement, listener, requestPermits, rateLimiter, failFast);
+      try {
+        subscriber.onSubscribe(subscription);
+        // must be called after onSubscribe
+        subscription.start(session.executeAsync(statement));
+      } catch (Throwable t) {
+        // As per rule 2.13: In the case that this rule is violated,
+        // any associated Subscription to the Subscriber MUST be considered as
+        // cancelled, and the caller MUST raise this error condition in a fashion
+        // that is adequate for the runtime environment.
+        subscription.doOnError(
+            new IllegalStateException(
+                subscriber
+                    + " violated the Reactive Streams rule 2.13 by throwing an exception from onSubscribe.",
+                t));
+      }
+      // As per 2.13, this method must return normally (i.e. not throw)
     }
   }
 
@@ -262,18 +258,30 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
 
     @Override
     public void subscribe(Subscriber<? super WriteResult> subscriber) {
+      // As per rule 1.9, we need to throw an NPE if subscriber is null
+      Objects.requireNonNull(subscriber, "Subscriber cannot be null");
+      // As per rule 1.11, this publisher supports multiple subscribers in a unicast configuration,
+      // i.e., each subscriber triggers an independent execution/subscription and gets its own copy of
+      // the results.
       WriteResultSubscription subscription =
           new WriteResultSubscription(
-              subscriber,
-              statement,
-              session,
-              executor,
-              listener,
-              rateLimiter,
-              requestPermits,
-              failFast);
-      subscriber.onSubscribe(subscription);
-      subscription.start();
+              subscriber, statement, listener, requestPermits, rateLimiter, failFast);
+      try {
+        subscriber.onSubscribe(subscription);
+        // must be called after onSubscribe
+        subscription.start(session.executeAsync(statement));
+      } catch (Throwable t) {
+        // As per rule 2.13: In the case that this rule is violated,
+        // any associated Subscription to the Subscriber MUST be considered as
+        // cancelled, and the caller MUST raise this error condition in a fashion
+        // that is adequate for the runtime environment.
+        subscription.doOnError(
+            new IllegalStateException(
+                subscriber
+                    + " violated the Reactive Streams rule 2.13 by throwing an exception from onSubscribe.",
+                t));
+      }
+      // As per 2.13, this method must return normally (i.e. not throw)
     }
   }
 }

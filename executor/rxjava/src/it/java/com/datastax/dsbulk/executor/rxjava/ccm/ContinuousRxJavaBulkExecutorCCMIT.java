@@ -21,11 +21,7 @@ class ContinuousRxJavaBulkExecutorCCMIT extends BulkExecutorCCMITBase {
   ContinuousRxJavaBulkExecutorCCMIT(ContinuousPagingSession session) {
     super(
         session,
-        ContinuousRxJavaBulkExecutor.builder(session)
-            // serialize execution of statements to force results to be produced in deterministic
-            // order
-            .withMaxInFlightRequests(1)
-            .build(),
+        ContinuousRxJavaBulkExecutor.builder(session).build(),
         ContinuousRxJavaBulkExecutor.builder(session).failSafe().build());
   }
 }

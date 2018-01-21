@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.0.0-rc2 (in progress)
+
+- [improvement] DAT-220: Make ResultSubscription fully non-blocking.
+
+
 ### 1.0.0-rc1
 
 - [bug] DAT-165: Messages should not be logged to standard output when it is being used for unloading.

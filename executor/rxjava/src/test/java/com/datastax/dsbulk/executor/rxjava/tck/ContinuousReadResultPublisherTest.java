@@ -8,6 +8,10 @@
  */
 package com.datastax.dsbulk.executor.rxjava.tck;
 
+import static com.datastax.dsbulk.executor.api.tck.ReadResultPublisherTestBase.FAILED_LISTENER;
+import static org.mockito.Mockito.mock;
+
+import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.tck.ContinuousReadResultPublisherTestBase;
 import com.datastax.dsbulk.executor.rxjava.ContinuousRxJavaBulkExecutor;
@@ -24,7 +28,10 @@ public class ContinuousReadResultPublisherTest extends ContinuousReadResultPubli
 
   @Override
   public Publisher<ReadResult> createFailedPublisher() {
-    ContinuousRxJavaBulkExecutor executor = new ContinuousRxJavaBulkExecutor(setUpFailedSession());
+    ContinuousRxJavaBulkExecutor executor =
+        ContinuousRxJavaBulkExecutor.builder(mock(ContinuousPagingSession.class))
+            .withExecutionListener(FAILED_LISTENER)
+            .build();
     return executor.readReactive("irrelevant");
   }
 }

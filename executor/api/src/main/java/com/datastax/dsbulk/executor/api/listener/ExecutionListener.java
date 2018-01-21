@@ -73,6 +73,9 @@ public interface ExecutionListener {
   /**
    * Called when a row has been successfully received. Applicable only for reads.
    *
+   * <p>Note: this method is called when the row is effectively read and emitted to downstream
+   * subscribers, which might be later than the moment when it was made available by the driver.
+   *
    * @param row the row.
    * @param context the local request execution context.
    */
