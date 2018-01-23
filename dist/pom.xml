@@ -172,7 +172,7 @@
                   </dependencySourceIncludes>
                   <excludePackageNames>*.internal:internal.*</excludePackageNames>
                   <!-- required unfortunately because javadocs from the java driver do not comply -->
-                  <additionalparam>-Xdoclint:none</additionalparam>
+                  <doclint>none</doclint>
                   <additionalDependencies>
                     <!--
                     dependencies from this project;
