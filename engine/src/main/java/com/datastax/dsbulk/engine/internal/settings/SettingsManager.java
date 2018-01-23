@@ -74,7 +74,7 @@ public class SettingsManager {
 
   public void logEffectiveSettings(String connectorName, Config connectorConfig) {
     if (LOGGER.isInfoEnabled()) {
-      LOGGER.info(HelpUtils.getVersionMessage() + " starting");
+      LOGGER.info(HelpUtils.getVersionMessage() + " starting.");
       ch.qos.logback.classic.Logger root =
           (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
       LoggerContext lc = root.getLoggerContext();
@@ -107,8 +107,8 @@ public class SettingsManager {
                   entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
         }
       }
-      LOGGER.info("Available CPU cores: {}", Runtime.getRuntime().availableProcessors());
-      LOGGER.info("Operation output directory: {}", logSettings.getExecutionDirectory());
+      LOGGER.info("Available CPU cores: {}.", Runtime.getRuntime().availableProcessors());
+      LOGGER.info("Operation output directory: {}.", logSettings.getExecutionDirectory());
     }
   }
 
