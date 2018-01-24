@@ -1,8 +1,10 @@
 /*
- * Copyright DataStax Inc.
+ * Copyright DataStax, Inc.
  *
- * This software can be used solely with DataStax Enterprise. Please consult the license at
- * http://www.datastax.com/terms/datastax-dse-driver-license-terms
+ * This software is subject to the below license agreement.
+ * DataStax may make changes to the agreement from time to time,
+ * and will post the amended terms at
+ * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
 package com.datastax.dsbulk.commons.url;
 
