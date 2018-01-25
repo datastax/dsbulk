@@ -1,6 +1,6 @@
 ## Changelog
 
-### 1.0.0 (in progress)
+### 1.0.0-rc1
 
 - [bug] DAT-165: Messages should not be logged to standard output when it is being used for unloading.
 - [new feature] DAT-172: Support numeric-to-temporal conversions.
