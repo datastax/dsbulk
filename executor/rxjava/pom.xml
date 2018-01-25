@@ -15,7 +15,7 @@
   <parent>
     <artifactId>dsbulk-executor</artifactId>
     <groupId>com.datastax.dse</groupId>
-    <version>1.0.0-rc1</version>
+    <version>1.0.0-rc2-SNAPSHOT</version>
   </parent>
 
   <artifactId>dsbulk-executor-rxjava</artifactId>
