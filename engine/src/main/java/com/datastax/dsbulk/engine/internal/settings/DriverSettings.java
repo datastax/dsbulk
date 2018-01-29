@@ -39,6 +39,7 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -52,7 +53,6 @@ import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -199,8 +199,8 @@ public class DriverSettings {
       queryFetchSize = config.getInt(QUERY_FETCHSIZE);
       queryIdempotence = config.getBoolean(QUERY_IDEMPOTENCE);
       socketReadTimeout = config.getDuration(SOCKET_READTIMEOUT);
-      timestampGenerator = config.getInstance(TIMESTAMP_GENERATOR);
-      addressTranslator = config.getInstance(ADDRESS_TRANSLATOR);
+      timestampGenerator = config.getInstance(TIMESTAMP_GENERATOR, TimestampGenerator.class);
+      addressTranslator = config.getInstance(ADDRESS_TRANSLATOR, AddressTranslator.class);
       authProvider = config.getString(AUTH_PROVIDER);
       policyMaxRetries = config.getInt(POLICY_MAXRETRIES);
       if (!authProvider.equals("None")) {
@@ -572,12 +572,17 @@ public class DriverSettings {
   }
 
   private Stream<InetSocketAddress> getHostsStream(String hosts) {
-    return Arrays.stream(hosts.split(",\\s*"))
+    return Splitter.onPattern(",\\s*")
+        .splitToList(hosts)
+        .stream()
         .map(
-            s -> {
-              String[] tokens = s.split(":");
-              int inetPort = tokens.length > 1 ? Integer.parseInt(tokens[1]) : port;
-              return new InetSocketAddress(tokens[0], inetPort);
+            host -> {
+              List<String> tokens = Splitter.on(":").splitToList(host);
+              if (tokens.size() < 1 || tokens.size() > 2) {
+                throw new IllegalArgumentException("Expecting or host or host:port, got " + host);
+              }
+              int inetPort = tokens.size() > 1 ? Integer.parseInt(tokens.get(1)) : port;
+              return new InetSocketAddress(tokens.get(0), inetPort);
             });
   }
 

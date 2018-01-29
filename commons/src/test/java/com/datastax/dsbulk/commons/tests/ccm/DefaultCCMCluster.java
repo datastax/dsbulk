@@ -23,17 +23,18 @@ import com.google.common.io.Closer;
 import com.google.common.io.Files;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -944,8 +945,13 @@ public class DefaultCCMCluster implements CCMCluster {
                 debugPort);
             File nodeConf = new File(ccm.getNodeDir(n), "node.conf");
             File nodeConf2 = new File(ccm.getNodeDir(n), "node.conf.tmp");
-            BufferedReader br = closer.register(new BufferedReader(new FileReader(nodeConf)));
-            PrintWriter pw = closer.register(new PrintWriter(new FileWriter(nodeConf2)));
+            BufferedReader br =
+                closer.register(
+                    new BufferedReader(
+                        new InputStreamReader(
+                            new FileInputStream(nodeConf), StandardCharsets.UTF_8.name())));
+            PrintWriter pw =
+                closer.register(new PrintWriter(nodeConf2, StandardCharsets.UTF_8.name()));
             String line;
             while ((line = br.readLine()) != null) {
               line =

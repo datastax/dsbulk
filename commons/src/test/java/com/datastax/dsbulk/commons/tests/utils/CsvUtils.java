@@ -50,7 +50,7 @@ public class CsvUtils {
 
   public static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
 
-  private static final Map<String, Record> RECORD_MAP =
+  private static final ImmutableMap<String, Record> RECORD_MAP =
       ImmutableMap.copyOf(
           csvRecords(CSV_RECORDS)
               .toMap(
@@ -192,10 +192,6 @@ public class CsvUtils {
         .isEqualTo(record.getValue("ending IP Address", InetAddress.class, INET_CONVERTER));
     assertThat(row.getLong("beginning_ip_number")).isEqualTo(record.getLong("beginning IP Number"));
     assertThat(row.getLong("ending_ip_number")).isEqualTo(record.getLong("ending IP Number"));
-  }
-
-  public static Flowable<Record> csvRecords() {
-    return csvRecords(CSV_RECORDS);
   }
 
   private static Flowable<Record> csvRecords(URL url) {

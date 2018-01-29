@@ -12,7 +12,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
+import com.datastax.driver.core.TimestampGenerator;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
+import com.datastax.driver.core.policies.RetryPolicy;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.typesafe.config.ConfigException;
@@ -146,9 +148,9 @@ class DefaultLoaderConfigTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("class1 = java.lang.String, class2 = DefaultRetryPolicy"));
-    Class<String> class1 = config.getClass("class1");
+    Class<? extends String> class1 = config.getClass("class1", String.class);
     assertThat(class1).isEqualTo(String.class);
-    Class<?> class2 = config.getClass("class2");
+    Class<?> class2 = config.getClass("class2", RetryPolicy.class);
     assertThat(class2).isEqualTo(DefaultRetryPolicy.class);
   }
 
@@ -158,9 +160,9 @@ class DefaultLoaderConfigTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                 "class1 = java.lang.String, class2 = AtomicMonotonicTimestampGenerator"));
-    Object o1 = config.getInstance("class1");
+    Object o1 = config.getInstance("class1", String.class);
     assertThat(o1).isInstanceOf(String.class);
-    Object o2 = config.getInstance("class2");
+    Object o2 = config.getInstance("class2", TimestampGenerator.class);
     assertThat(o2).isInstanceOf(AtomicMonotonicTimestampGenerator.class);
   }
 }

@@ -72,6 +72,7 @@ public abstract class BoundClusterFactory {
     private static Map<String, Object> toConfigMap(String[] conf) {
       Map<String, Object> config = new HashMap<>();
       for (String aConf : conf) {
+        @SuppressWarnings("StringSplitter")
         String[] tokens = aConf.split(":");
         if (tokens.length != 2) {
           throw new IllegalArgumentException("Wrong configuration option: " + aConf);

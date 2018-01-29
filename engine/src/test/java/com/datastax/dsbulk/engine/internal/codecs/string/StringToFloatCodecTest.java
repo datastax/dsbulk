@@ -35,6 +35,7 @@ class StringToFloatCodecTest {
           newArrayList(ONE, ZERO));
 
   @Test
+  @SuppressWarnings("FloatingPointLiteralPrecision")
   void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
         .convertsFrom("0")

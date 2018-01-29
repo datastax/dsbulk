@@ -25,8 +25,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public abstract class ContinuousReadResultPublisherTestBase
     extends ResultPublisherTestBase<ReadResult> {
@@ -50,10 +48,9 @@ public abstract class ContinuousReadResultPublisherTestBase
     ExecutionInfo executionInfo = mock(ExecutionInfo.class);
     when(page.getExecutionInfo()).thenReturn(executionInfo);
     when(page.isLast()).thenReturn(true);
-    ExecutorService executor = Executors.newSingleThreadExecutor();
     doAnswer(
             invocation -> {
-              executor.submit((Runnable) invocation.getArguments()[0]);
+              ((Runnable) invocation.getArguments()[0]).run();
               return null;
             })
         .when(future)

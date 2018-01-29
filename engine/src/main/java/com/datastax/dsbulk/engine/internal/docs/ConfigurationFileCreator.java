@@ -20,6 +20,8 @@ import com.typesafe.config.ConfigValue;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.commons.text.WordUtils;
 
@@ -29,7 +31,8 @@ public class ConfigurationFileCreator {
   private static final int INDENT_LENGTH = 4;
   private static final String LINE_INDENT = StringUtils.nCopies(" ", INDENT_LENGTH);
 
-  public static void main(String[] args) throws FileNotFoundException {
+  public static void main(String[] args)
+      throws FileNotFoundException, UnsupportedEncodingException {
     try {
       assert args.length == 2;
       String outFile = args[0];
@@ -37,7 +40,7 @@ public class ConfigurationFileCreator {
       File file = new File(outFile);
       //noinspection ResultOfMethodCallIgnored
       file.getParentFile().mkdirs();
-      PrintWriter pw = new PrintWriter(file);
+      PrintWriter pw = new PrintWriter(file, StandardCharsets.UTF_8.name());
       LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
       String rowOfHashes = StringUtils.nCopies("#", LINE_LENGTH);
       String indentedRowOfHashes =

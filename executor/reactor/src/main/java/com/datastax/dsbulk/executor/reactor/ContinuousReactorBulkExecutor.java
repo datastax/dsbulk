@@ -39,7 +39,7 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
     return new ContinuousReactorBulkExecutorBuilder(session);
   }
 
-  private final ContinuousPagingSession session;
+  private final ContinuousPagingSession continuousPagingSession;
   private final ContinuousPagingOptions options;
 
   /**
@@ -49,10 +49,10 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
    * <p>If you need to customize your executor, use the {@link #builder(ContinuousPagingSession)
    * builder} method instead.
    *
-   * @param session the {@link ContinuousPagingSession} to use.
+   * @param continuousPagingSession the {@link ContinuousPagingSession} to use.
    */
-  public ContinuousReactorBulkExecutor(ContinuousPagingSession session) {
-    this(session, ContinuousPagingOptions.builder().build());
+  public ContinuousReactorBulkExecutor(ContinuousPagingSession continuousPagingSession) {
+    this(continuousPagingSession, ContinuousPagingOptions.builder().build());
   }
 
   /**
@@ -62,19 +62,19 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
    * <p>If you need to customize your executor, use the {@link #builder(ContinuousPagingSession)
    * builder} method instead.
    *
-   * @param session the {@link ContinuousPagingSession} to use.
+   * @param continuousPagingSession the {@link ContinuousPagingSession} to use.
    * @param options the {@link ContinuousPagingOptions} to use.
    */
   public ContinuousReactorBulkExecutor(
-      ContinuousPagingSession session, ContinuousPagingOptions options) {
-    super(session);
-    this.session = session;
+      ContinuousPagingSession continuousPagingSession, ContinuousPagingOptions options) {
+    super(continuousPagingSession);
+    this.continuousPagingSession = continuousPagingSession;
     this.options = options;
   }
 
   ContinuousReactorBulkExecutor(ContinuousReactorBulkExecutorBuilder builder) {
     super(builder);
-    this.session = builder.session;
+    this.continuousPagingSession = builder.continuousPagingSession;
     this.options = builder.options;
   }
 
@@ -99,7 +99,7 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
               subscriber,
               queueFactory.newQueue(statement),
               statement,
-              session,
+              continuousPagingSession,
               options,
               executor,
               listener,
