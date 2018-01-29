@@ -22,6 +22,7 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueType;
 import java.io.PrintWriter;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -190,11 +191,10 @@ public class Main {
   private static void initDefaultConfig(String[] optionArgs) {
     // If the user specified the -f option (giving us an app config path),
     // set the config.file property to tell TypeSafeConfig.
-    String appConfigPath = getAppConfigPath(optionArgs);
+    Path appConfigPath = getAppConfigPath(optionArgs);
     if (appConfigPath != null) {
-      System.setProperty("config.file", appConfigPath);
+      System.setProperty("config.file", appConfigPath.toString());
       ConfigFactory.invalidateCaches();
-
       try {
         DEFAULT = ConfigFactory.load().getConfig("dsbulk");
       } catch (ConfigException.Parse e) {
@@ -212,15 +212,15 @@ public class Main {
     DEFAULT = ConfigFactory.load().getConfig("dsbulk");
   }
 
-  private static String getAppConfigPath(String[] optionArgs) {
+  private static Path getAppConfigPath(String[] optionArgs) {
     // Walk through args, looking for a -f option + value.
     boolean foundDashF = false;
-    String appConfigPath = null;
+    Path appConfigPath = null;
     for (String arg : optionArgs) {
       if (!foundDashF && arg.equals("-f")) {
         foundDashF = true;
       } else if (foundDashF) {
-        appConfigPath = arg;
+        appConfigPath = ConfigUtils.resolvePath(arg);
         break;
       }
     }

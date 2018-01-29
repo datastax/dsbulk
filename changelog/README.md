@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.0.0 (in progress)
+
+- [bug] DAT-221: User home directory not correctly expanded when used with -f option.
+
+
 ### 1.0.0-rc1
 
 - [bug] DAT-165: Messages should not be logged to standard output when it is being used for unloading.

@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.commons.config;
 
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.reflection.ReflectionUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -16,14 +17,10 @@ import com.typesafe.config.ConfigMergeable;
 import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
-import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public interface LoaderConfig extends Config {
 
@@ -86,17 +83,8 @@ public interface LoaderConfig extends Config {
    * @throws ConfigException.BadValue if value is not convertible to a Path.
    */
   default Path getPath(String path) {
-    String setting = getString(path);
-    if (setting.startsWith("~")) {
-      if (setting.equals("~") || setting.startsWith("~/")) {
-        setting = System.getProperty("user.home") + setting.substring(1);
-      } else {
-        throw new ConfigException.BadValue(
-            origin(), path, "Cannot resolve home directory: " + setting);
-      }
-    }
     try {
-      return Paths.get(setting).normalize().toAbsolutePath();
+      return ConfigUtils.resolvePath(getString(path));
     } catch (InvalidPathException e) {
       throw new ConfigException.WrongType(
           origin(), path, "path", getValue(path).valueType().toString(), e);
@@ -120,21 +108,11 @@ public interface LoaderConfig extends Config {
    * @throws ConfigException.WrongType if value is not convertible to a URL.
    */
   default URL getURL(String path) {
-    String setting = getString(path);
-    if (setting.equals("-")) {
-      setting = "std:/";
-    }
     try {
-      return new URI(setting).normalize().toURL();
+      return ConfigUtils.resolveURL(getString(path));
     } catch (Exception e) {
-      // not a valid URL, consider it a path on the local filesystem.
-      try {
-        return getPath(path).toUri().toURL();
-      } catch (Exception e1) {
-        e1.addSuppressed(e);
-        throw new ConfigException.WrongType(
-            origin(), path, "path or URL", getValue(path).valueType().toString(), e1);
-      }
+      throw new ConfigException.WrongType(
+          origin(), path, "path or URL", getValue(path).valueType().toString(), e);
     }
   }
 
@@ -152,23 +130,14 @@ public interface LoaderConfig extends Config {
    */
   default int getThreads(String path) {
     try {
-      return getInt(path);
-    } catch (ConfigException.WrongType e) {
-      Pattern pattern = Pattern.compile("(.+)\\s*C", Pattern.CASE_INSENSITIVE);
-      Matcher matcher = pattern.matcher(getString(path));
-      if (matcher.matches()) {
-        int threads =
-            (int)
-                (((float) Runtime.getRuntime().availableProcessors())
-                    * Float.parseFloat(matcher.group(1)));
-        return Math.max(1, threads);
-      } else {
-        throw new ConfigException.WrongType(
-            origin(),
-            path,
-            "integer or string in 'nC' syntax",
-            getValue(path).valueType().toString());
-      }
+      return ConfigUtils.resolveThreads(getString(path));
+    } catch (Exception e) {
+      throw new ConfigException.WrongType(
+          origin(),
+          path,
+          "integer or string in 'nC' syntax",
+          getValue(path).valueType().toString(),
+          e);
     }
   }
 
