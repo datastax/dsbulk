@@ -140,7 +140,7 @@ public class ConfigUtils {
     try {
       threads = Integer.parseInt(threadsStr);
     } catch (NumberFormatException e) {
-      Matcher matcher = THREADS_PATTERN.matcher(threadsStr);
+      Matcher matcher = THREADS_PATTERN.matcher(threadsStr.trim());
       if (matcher.matches()) {
         threads =
             (int)
