@@ -93,6 +93,7 @@ public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTest
     when(successFuture1b.isDone()).thenReturn(true);
     when(successfulResultSet1b.iterator()).thenReturn(page1b.iterator());
     when(successfulResultSet1b.getAvailableWithoutFetching()).thenReturn(page1b.size());
+    when(successfulResultSet1b.isFullyFetched()).thenReturn(true); // only useful in write tests
     ExecutionInfo executionInfo1b = mock(ExecutionInfo.class);
     when(successfulResultSet1b.getExecutionInfo()).thenReturn(executionInfo1b);
     when(executionInfo1b.getPagingState()).thenReturn(null);

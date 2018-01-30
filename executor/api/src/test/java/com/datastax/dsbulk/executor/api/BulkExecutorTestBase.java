@@ -56,20 +56,20 @@ public abstract class BulkExecutorTestBase {
   protected ExecutionListener listener;
 
   @BeforeAll
-  static void disableStackTraces() throws Exception {
+  static void disableStackTraces() {
     RxJavaPlugins.setErrorHandler((t) -> {});
   }
 
   @SuppressWarnings("unchecked")
   @BeforeEach
-  void setUpConsumers() throws ExecutionException, InterruptedException {
+  void setUpConsumers() {
     writeConsumer = mock(Consumer.class);
     readConsumer = mock(Consumer.class);
   }
 
   @SuppressWarnings("unchecked")
   @BeforeEach
-  void setUpListener() throws ExecutionException, InterruptedException {
+  void setUpListener() {
     listener = mock(ExecutionListener.class);
   }
 
@@ -419,7 +419,7 @@ public abstract class BulkExecutorTestBase {
     BulkExecutor executor = newBulkExecutor(true);
     executor.writeAsync(Stream.of(successful1, failed), writeConsumer).get();
     verifySession(1, 1);
-    verifyListener(0, 1);
+    verifyListener(1, 1);
     verifyWriteConsumer(1, 1);
   }
 
@@ -540,14 +540,14 @@ public abstract class BulkExecutorTestBase {
   // Tests for rx write methods
 
   @Test
-  void writeReactiveStringTest() throws Exception {
+  void writeReactiveStringTest() {
     BulkExecutor executor = newBulkExecutor(false);
     Flowable.just("should succeed").flatMap(executor::writeReactive).blockingSubscribe();
     verifySession(1, 0);
   }
 
   @Test
-  void writeReactiveStringFailFastTest() throws Exception {
+  void writeReactiveStringFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       Flowable.just("should fail").flatMap(executor::writeReactive).blockingSubscribe();
@@ -559,7 +559,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactiveStringFailSafeTest() throws Exception {
+  void writeReactiveStringFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     Flowable.just("should fail").flatMap(executor::writeReactive).blockingSubscribe();
     verifySession(0, 1);
@@ -567,14 +567,14 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactiveStatementTest() throws Exception {
+  void writeReactiveStatementTest() {
     BulkExecutor executor = newBulkExecutor(false);
     Flowable.just(successful1).flatMap(executor::writeReactive).blockingSubscribe();
     verifySession(1, 0);
   }
 
   @Test
-  void writeReactiveStatementFailFastTest() throws Exception {
+  void writeReactiveStatementFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       Flowable.just(failed).flatMap(executor::writeReactive).blockingSubscribe();
@@ -586,7 +586,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactiveStatementFailSafeTest() throws Exception {
+  void writeReactiveStatementFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     Flowable.just(failed).flatMap(executor::writeReactive).blockingSubscribe();
     verifySession(0, 1);
@@ -594,7 +594,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactiveStreamTest() throws Exception {
+  void writeReactiveStreamTest() {
     BulkExecutor executor = newBulkExecutor(false);
     Flowable.fromPublisher(executor.writeReactive(Stream.of(successful1, successful2)))
         .blockingSubscribe();
@@ -602,7 +602,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactiveStreamFailFastTest() throws Exception {
+  void writeReactiveStreamFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       Flowable.fromPublisher(executor.writeReactive(Stream.of(successful1, failed)))
@@ -615,7 +615,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactiveStreamFailSafeTest() throws Exception {
+  void writeReactiveStreamFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     Flowable.fromPublisher(executor.writeReactive(Stream.of(successful1, failed)))
         .blockingSubscribe();
@@ -624,7 +624,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactiveIterableTest() throws Exception {
+  void writeReactiveIterableTest() {
     BulkExecutor executor = newBulkExecutor(false);
     Flowable.fromPublisher(executor.writeReactive(Arrays.asList(successful1, successful2)))
         .blockingSubscribe();
@@ -632,7 +632,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactiveIterableFailFastTest() throws Exception {
+  void writeReactiveIterableFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       Flowable.fromPublisher(executor.writeReactive(Arrays.asList(successful1, failed)))
@@ -645,7 +645,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactiveIterableFailSafeTest() throws Exception {
+  void writeReactiveIterableFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     Flowable.fromPublisher(executor.writeReactive(Arrays.asList(successful1, failed)))
         .blockingSubscribe();
@@ -654,7 +654,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactivePublisherTest() throws Exception {
+  void writeReactivePublisherTest() {
     BulkExecutor executor = newBulkExecutor(false);
     Flowable.fromPublisher(executor.writeReactive(Flowable.fromArray(successful1, successful2)))
         .blockingSubscribe();
@@ -662,7 +662,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactivePublisherFailFastTest() throws Exception {
+  void writeReactivePublisherFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       Flowable.fromPublisher(executor.writeReactive(Flowable.fromArray(successful1, failed)))
@@ -675,7 +675,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void writeReactivePublisherFailSafeTest() throws Exception {
+  void writeReactivePublisherFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     Flowable.fromPublisher(executor.writeReactive(Flowable.fromArray(successful1, failed)))
         .blockingSubscribe();
@@ -686,7 +686,7 @@ public abstract class BulkExecutorTestBase {
   // Tests for synchronous read methods
 
   @Test
-  void readSyncStringConsumerTest() throws Exception {
+  void readSyncStringConsumerTest() {
     BulkExecutor executor = newBulkExecutor(false);
     executor.readSync("should succeed", readConsumer);
     verifySession(1, 0);
@@ -694,7 +694,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readSyncStringConsumerFailFastTest() throws Exception {
+  void readSyncStringConsumerFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       executor.readSync("should fail", readConsumer);
@@ -707,7 +707,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readSyncStringConsumerFailSafeTest() throws Exception {
+  void readSyncStringConsumerFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     executor.readSync("should fail", readConsumer);
     verifySession(0, 1);
@@ -716,7 +716,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readSyncStatementConsumerTest() throws Exception {
+  void readSyncStatementConsumerTest() {
     BulkExecutor executor = newBulkExecutor(false);
     executor.readSync(successful1, readConsumer);
     verifySession(1, 0);
@@ -724,7 +724,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readSyncStatementConsumerFailFastTest() throws Exception {
+  void readSyncStatementConsumerFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       executor.readSync(failed, readConsumer);
@@ -737,7 +737,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readSyncStatementConsumerFailSafeTest() throws Exception {
+  void readSyncStatementConsumerFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     executor.readSync(failed, readConsumer);
     verifySession(0, 1);
@@ -990,14 +990,14 @@ public abstract class BulkExecutorTestBase {
   // Tests for rx read methods
 
   @Test
-  void readReactiveStringTest() throws Exception {
+  void readReactiveStringTest() {
     BulkExecutor executor = newBulkExecutor(false);
     Flowable.just("should succeed").flatMap(executor::readReactive).blockingSubscribe();
     verifySession(1, 0);
   }
 
   @Test
-  void readReactiveStringFailFastTest() throws Exception {
+  void readReactiveStringFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       Flowable.just("should fail").flatMap(executor::readReactive).blockingSubscribe();
@@ -1009,7 +1009,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactiveStringFailSafeTest() throws Exception {
+  void readReactiveStringFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     Flowable.just("should fail").flatMap(executor::readReactive).blockingSubscribe();
     verifySession(0, 1);
@@ -1017,14 +1017,14 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactiveStatementTest() throws Exception {
+  void readReactiveStatementTest() {
     BulkExecutor executor = newBulkExecutor(false);
     Flowable.just(successful1).flatMap(executor::readReactive).blockingSubscribe();
     verifySession(1, 0);
   }
 
   @Test
-  void readReactiveStatementFailFastTest() throws Exception {
+  void readReactiveStatementFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       Flowable.just(failed).flatMap(executor::readReactive).blockingSubscribe();
@@ -1036,7 +1036,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactiveStatementFailSafeTest() throws Exception {
+  void readReactiveStatementFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     Flowable.just(successful1).flatMap(executor::readReactive).blockingSubscribe();
     verifySession(1, 0);
@@ -1044,7 +1044,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactiveStreamTest() throws Exception {
+  void readReactiveStreamTest() {
     BulkExecutor executor = newBulkExecutor(false);
     Flowable.fromPublisher(executor.readReactive(Stream.of(successful1, successful2)))
         .blockingSubscribe();
@@ -1052,7 +1052,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactiveStreamFailFastTest() throws Exception {
+  void readReactiveStreamFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       Flowable.fromPublisher(executor.readReactive(Stream.of(successful1, failed)))
@@ -1065,7 +1065,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactiveStreamFailSafeTest() throws Exception {
+  void readReactiveStreamFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     Flowable.fromPublisher(executor.readReactive(Stream.of(successful1, failed)))
         .blockingSubscribe();
@@ -1074,7 +1074,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactiveIterableTest() throws Exception {
+  void readReactiveIterableTest() {
     BulkExecutor executor = newBulkExecutor(false);
     Flowable.fromPublisher(executor.readReactive(Arrays.asList(successful1, successful2)))
         .blockingSubscribe();
@@ -1082,7 +1082,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactiveIterableFailFastTest() throws Exception {
+  void readReactiveIterableFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       Flowable.fromPublisher(executor.readReactive(Arrays.asList(successful1, failed)))
@@ -1095,7 +1095,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactiveIterableFailSafeTest() throws Exception {
+  void readReactiveIterableFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     Flowable.fromPublisher(executor.readReactive(Arrays.asList(successful1, failed)))
         .blockingSubscribe();
@@ -1104,7 +1104,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactivePublisherTest() throws Exception {
+  void readReactivePublisherTest() {
     BulkExecutor executor = newBulkExecutor(false);
     Flowable.fromPublisher(executor.readReactive(Flowable.fromArray(successful1, successful2)))
         .blockingSubscribe();
@@ -1112,7 +1112,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactivePublisherFailFastTest() throws Exception {
+  void readReactivePublisherFailFastTest() {
     try {
       BulkExecutor executor = newBulkExecutor(false);
       Flowable.fromPublisher(executor.readReactive(Flowable.fromArray(successful1, failed)))
@@ -1125,7 +1125,7 @@ public abstract class BulkExecutorTestBase {
   }
 
   @Test
-  void readReactivePublisherFailSafeTest() throws Exception {
+  void readReactivePublisherFailSafeTest() {
     BulkExecutor executor = newBulkExecutor(true);
     Flowable.fromPublisher(executor.readReactive(Flowable.fromArray(successful1, failed)))
         .blockingSubscribe();

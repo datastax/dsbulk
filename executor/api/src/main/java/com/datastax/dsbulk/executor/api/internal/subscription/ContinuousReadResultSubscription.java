@@ -9,8 +9,6 @@
 package com.datastax.dsbulk.executor.api.internal.subscription;
 
 import com.datastax.driver.core.AsyncContinuousPagingResult;
-import com.datastax.driver.core.ContinuousPagingOptions;
-import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
@@ -19,9 +17,8 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.RateLimiter;
+import java.util.Iterator;
 import java.util.Optional;
-import java.util.Queue;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import org.reactivestreams.Subscriber;
 
@@ -29,38 +26,36 @@ import org.reactivestreams.Subscriber;
 public class ContinuousReadResultSubscription
     extends ResultSubscription<ReadResult, AsyncContinuousPagingResult> {
 
-  private final ContinuousPagingSession continuousPagingSession;
-  private final ContinuousPagingOptions options;
-
   public ContinuousReadResultSubscription(
       Subscriber<? super ReadResult> subscriber,
-      Queue<ReadResult> queue,
       Statement statement,
-      ContinuousPagingSession continuousPagingSession,
-      ContinuousPagingOptions options,
-      Executor executor,
       Optional<ExecutionListener> listener,
-      Optional<RateLimiter> rateLimiter,
       Optional<Semaphore> requestPermits,
+      Optional<RateLimiter> rateLimiter,
       boolean failFast) {
-    super(
-        subscriber,
-        queue,
-        statement,
-        continuousPagingSession,
-        executor,
-        listener,
-        rateLimiter,
-        requestPermits,
-        failFast);
-    this.continuousPagingSession = continuousPagingSession;
-    this.options = options;
+    super(subscriber, statement, listener, requestPermits, rateLimiter, failFast);
   }
 
   @Override
-  public void start() {
-    super.start();
-    fetchNextPage(() -> continuousPagingSession.executeContinuouslyAsync(statement, options));
+  Page toPage(AsyncContinuousPagingResult rs, ExecutionContext local) {
+    Iterator<ReadResult> results =
+        new Iterator<ReadResult>() {
+
+          Iterator<Row> rows = rs.currentPage().iterator();
+
+          @Override
+          public boolean hasNext() {
+            return rows.hasNext();
+          }
+
+          @Override
+          public ReadResult next() {
+            Row row = rows.next();
+            listener.ifPresent(l -> l.onRowReceived(row, local));
+            return new DefaultReadResult(statement, rs.getExecutionInfo(), row);
+          }
+        };
+    return new Page(results, rs.isLast() ? null : rs::nextPage);
   }
 
   @Override
@@ -71,25 +66,11 @@ public class ContinuousReadResultSubscription
   @Override
   void onRequestSuccessful(AsyncContinuousPagingResult page, ExecutionContext local) {
     listener.ifPresent(l -> l.onReadRequestSuccessful(statement, local));
-    for (Row row : page.currentPage()) {
-      if (isCancelled()) {
-        page.cancel();
-        return;
-      }
-      listener.ifPresent(l -> l.onRowReceived(row, local));
-      onNext(new DefaultReadResult(statement, page.getExecutionInfo(), row));
-    }
-    if (page.isLast()) {
-      onComplete();
-    } else if (!isCancelled()) {
-      fetchNextPage(page::nextPage);
-    }
   }
 
   @Override
   void onRequestFailed(Throwable t, ExecutionContext local) {
     listener.ifPresent(l -> l.onReadRequestFailed(statement, t, local));
-    onError(t);
   }
 
   @Override

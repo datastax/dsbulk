@@ -27,8 +27,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 /**
  * An implementation of {@link BulkExecutor} using <a href="https://projectreactor.io">Reactor</a>.
@@ -46,8 +44,6 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     return new DefaultReactorBulkExecutorBuilder(session);
   }
 
-  private final Scheduler scheduler;
-
   /**
    * Creates a new instance using the given {@link Session} and using defaults for all parameters.
    *
@@ -58,12 +54,10 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
    */
   public DefaultReactorBulkExecutor(Session session) {
     super(session);
-    this.scheduler = Schedulers.fromExecutor(executor);
   }
 
   DefaultReactorBulkExecutor(AbstractBulkExecutorBuilder builder) {
     super(builder);
-    this.scheduler = Schedulers.fromExecutor(this.executor);
   }
 
   @Override
@@ -86,7 +80,6 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     Mono.from(writeReactive(statement))
         .doOnSuccess(future::complete)
         .doOnError(future::completeExceptionally)
-        .subscribeOn(scheduler)
         .subscribe();
     return future;
   }
@@ -114,7 +107,6 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
         .doOnNext(consumer::accept)
         .doOnComplete(() -> future.complete(null))
         .doOnError(future::completeExceptionally)
-        .subscribeOn(scheduler)
         .subscribe();
     return future;
   }
@@ -186,7 +178,6 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
         .doOnNext(consumer::accept)
         .doOnComplete(() -> future.complete(null))
         .doOnError(future::completeExceptionally)
-        .subscribeOn(scheduler)
         .subscribe();
     return future;
   }
@@ -220,12 +211,6 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     return Flux.from(statements).flatMap(this::readReactive);
   }
 
-  @Override
-  public void close() throws InterruptedException {
-    super.close();
-    scheduler.dispose();
-  }
-
   private class ReadResultPublisher implements Publisher<ReadResult> {
 
     private final Statement statement;
@@ -236,19 +221,30 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
 
     @Override
     public void subscribe(Subscriber<? super ReadResult> subscriber) {
+      // As per rule 1.9, we need to throw an NPE if subscriber is null
+      Objects.requireNonNull(subscriber, "Subscriber cannot be null");
+      // As per rule 1.11, this publisher supports multiple subscribers in a unicast configuration,
+      // i.e., each subscriber triggers an independent execution/subscription and gets its own copy of
+      // the results.
       ReadResultSubscription subscription =
           new ReadResultSubscription(
-              subscriber,
-              queueFactory.newQueue(statement),
-              statement,
-              session,
-              executor,
-              listener,
-              rateLimiter,
-              requestPermits,
-              failFast);
-      subscriber.onSubscribe(subscription);
-      subscription.start();
+              subscriber, statement, listener, requestPermits, rateLimiter, failFast);
+      try {
+        subscriber.onSubscribe(subscription);
+        // must be called after onSubscribe
+        subscription.start(session.executeAsync(statement));
+      } catch (Throwable t) {
+        // As per rule 2.13: In the case that this rule is violated,
+        // any associated Subscription to the Subscriber MUST be considered as
+        // cancelled, and the caller MUST raise this error condition in a fashion
+        // that is adequate for the runtime environment.
+        subscription.doOnError(
+            new IllegalStateException(
+                subscriber
+                    + " violated the Reactive Streams rule 2.13 by throwing an exception from onSubscribe.",
+                t));
+      }
+      // As per 2.13, this method must return normally (i.e. not throw)
     }
   }
 
@@ -262,18 +258,30 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
 
     @Override
     public void subscribe(Subscriber<? super WriteResult> subscriber) {
+      // As per rule 1.9, we need to throw an NPE if subscriber is null
+      Objects.requireNonNull(subscriber, "Subscriber cannot be null");
+      // As per rule 1.11, this publisher supports multiple subscribers in a unicast configuration,
+      // i.e., each subscriber triggers an independent execution/subscription and gets its own copy of
+      // the results.
       WriteResultSubscription subscription =
           new WriteResultSubscription(
-              subscriber,
-              statement,
-              session,
-              executor,
-              listener,
-              rateLimiter,
-              requestPermits,
-              failFast);
-      subscriber.onSubscribe(subscription);
-      subscription.start();
+              subscriber, statement, listener, requestPermits, rateLimiter, failFast);
+      try {
+        subscriber.onSubscribe(subscription);
+        // must be called after onSubscribe
+        subscription.start(session.executeAsync(statement));
+      } catch (Throwable t) {
+        // As per rule 2.13: In the case that this rule is violated,
+        // any associated Subscription to the Subscriber MUST be considered as
+        // cancelled, and the caller MUST raise this error condition in a fashion
+        // that is adequate for the runtime environment.
+        subscription.doOnError(
+            new IllegalStateException(
+                subscriber
+                    + " violated the Reactive Streams rule 2.13 by throwing an exception from onSubscribe.",
+                t));
+      }
+      // As per 2.13, this method must return normally (i.e. not throw)
     }
   }
 }

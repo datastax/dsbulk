@@ -132,7 +132,6 @@ public class ExecutorSettings {
       AbstractBulkExecutorBuilder<? extends ReactiveBulkExecutor> builder,
       ExecutionListener executionListener) {
     builder
-        .withoutExecutor()
         .withExecutionListener(executionListener)
         .withMaxInFlightRequests(maxInFlight)
         .withMaxRequestsPerSecond(maxPerSecond)

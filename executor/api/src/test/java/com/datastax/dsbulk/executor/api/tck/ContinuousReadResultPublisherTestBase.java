@@ -12,71 +12,70 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.testng.Assert.fail;
 
 import com.datastax.driver.core.AsyncContinuousPagingResult;
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ExecutionInfo;
+import com.datastax.driver.core.PagingState;
 import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.ListenableFuture;
-import java.net.InetSocketAddress;
-import java.util.concurrent.ExecutionException;
+import io.reactivex.Flowable;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Executor;
+import org.reactivestreams.tck.PublisherVerification;
+import org.reactivestreams.tck.TestEnvironment;
 
 public abstract class ContinuousReadResultPublisherTestBase
-    extends ResultPublisherTestBase<ReadResult> {
+    extends PublisherVerification<ReadResult> {
+
+  public ContinuousReadResultPublisherTestBase() {
+    super(new TestEnvironment());
+  }
 
   protected static ContinuousPagingSession setUpSuccessfulSession(long elements) {
     ContinuousPagingSession session = mock(ContinuousPagingSession.class);
-    @SuppressWarnings("unchecked")
-    ListenableFuture<AsyncContinuousPagingResult> future = mock(ListenableFuture.class);
+    ListenableFuture<AsyncContinuousPagingResult> previous = mockPages(elements);
     when(session.executeContinuouslyAsync(
             any(SimpleStatement.class), any(ContinuousPagingOptions.class)))
-        .thenReturn(future);
-    AsyncContinuousPagingResult page = mock(AsyncContinuousPagingResult.class);
-    try {
-      when(future.get()).thenReturn(page);
-    } catch (Exception e) {
-      fail(e.getMessage(), e);
-    }
-    when(future.isDone()).thenReturn(true);
-    when(page.currentPage())
-        .thenAnswer(invocation -> ROWS.subList(0, Math.toIntExact(Math.min(100, elements))));
-    ExecutionInfo executionInfo = mock(ExecutionInfo.class);
-    when(page.getExecutionInfo()).thenReturn(executionInfo);
-    when(page.isLast()).thenReturn(true);
-    doAnswer(
-            invocation -> {
-              ((Runnable) invocation.getArguments()[0]).run();
-              return null;
-            })
-        .when(future)
-        .addListener(any(Runnable.class), any(Executor.class));
-    setUpCluster(session);
+        .thenReturn(previous);
     return session;
   }
 
-  protected static ContinuousPagingSession setUpFailedSession() {
-    ContinuousPagingSession session = mock(ContinuousPagingSession.class);
+  private static ListenableFuture<AsyncContinuousPagingResult> mockPages(long elements) {
+    // The TCK usually requests between 0 and 20 items, or Long.MAX_VALUE.
+    // Past 3 elements it never checks how many elements have been effectively produced,
+    // so we can safely cap at, say, 20.
+    int effective = (int) Math.min(elements, 20L);
+    ListenableFuture<AsyncContinuousPagingResult> previous = null;
+    if (effective > 0) {
+      // create pages of 5 elements each to exercise pagination
+      List<Integer> pages =
+          Flowable.range(0, effective).buffer(5).map(List::size).toList().blockingGet();
+      Collections.reverse(pages);
+      for (Integer size : pages) {
+        previous = mockPage(previous, size);
+      }
+    } else {
+      previous = mockPage(null, 0);
+    }
+    return previous;
+  }
+
+  private static ListenableFuture<AsyncContinuousPagingResult> mockPage(
+      ListenableFuture<AsyncContinuousPagingResult> previous, int size) {
     @SuppressWarnings("unchecked")
     ListenableFuture<AsyncContinuousPagingResult> future = mock(ListenableFuture.class);
-    when(session.executeContinuouslyAsync(
-            any(SimpleStatement.class), any(ContinuousPagingOptions.class)))
-        .thenReturn(future);
-    try {
-      when(future.get())
-          .thenThrow(
-              new ExecutionException(
-                  new SyntaxError(
-                      InetSocketAddress.createUnresolved("localhost", 9042),
-                      "line 1:0 no viable alternative at input 'should' ([should]...)")));
-    } catch (Exception e) {
-      fail(e.getMessage(), e);
-    }
+    ExecutionInfo executionInfo = mock(ExecutionInfo.class);
+    when(executionInfo.getPagingState())
+        .thenReturn(previous == null ? null : mock(PagingState.class));
     when(future.isDone()).thenReturn(true);
+    try {
+      when(future.get()).thenReturn(new MockResultSet(size, executionInfo, previous));
+    } catch (Exception ignored) {
+    }
     doAnswer(
             invocation -> {
               ((Runnable) invocation.getArguments()[0]).run();
@@ -84,7 +83,7 @@ public abstract class ContinuousReadResultPublisherTestBase
             })
         .when(future)
         .addListener(any(Runnable.class), any(Executor.class));
-    setUpCluster(session);
-    return session;
+    previous = future;
+    return previous;
   }
 }
