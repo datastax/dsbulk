@@ -8,22 +8,12 @@
  */
 package com.datastax.dsbulk.executor.api;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
-import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.RateLimiter;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.function.Supplier;
 
 /** Base class for implementations of {@link BulkExecutor}. */
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
@@ -35,17 +25,6 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
   /** The default maximum number of concurrent requests per second. */
   static final int DEFAULT_MAX_REQUESTS_PER_SECOND = 100_000;
 
-  static final Supplier<Executor> DEFAULT_EXECUTOR_SUPPLIER =
-      () ->
-          new ThreadPoolExecutor(
-              0,
-              Runtime.getRuntime().availableProcessors() * 4,
-              60,
-              SECONDS,
-              new SynchronousQueue<>(),
-              new ThreadFactoryBuilder().setDaemon(true).setNameFormat("bulk-executor-%d").build(),
-              new ThreadPoolExecutor.CallerRunsPolicy());
-
   protected final Session session;
 
   protected final boolean failFast;
@@ -56,19 +35,8 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
 
   protected final Optional<ExecutionListener> listener;
 
-  protected final Executor executor;
-
-  protected final QueueFactory<ReadResult> queueFactory;
-
   protected AbstractBulkExecutor(Session session) {
-    this(
-        session,
-        true,
-        DEFAULT_MAX_IN_FLIGHT_REQUESTS,
-        DEFAULT_MAX_REQUESTS_PER_SECOND,
-        null,
-        DEFAULT_EXECUTOR_SUPPLIER.get(),
-        defaultQueueFactory(session));
+    this(session, true, DEFAULT_MAX_IN_FLIGHT_REQUESTS, DEFAULT_MAX_REQUESTS_PER_SECOND, null);
   }
 
   protected AbstractBulkExecutor(AbstractBulkExecutorBuilder<?> builder) {
@@ -77,9 +45,7 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
         builder.failFast,
         builder.maxInFlightRequests,
         builder.maxRequestsPerSecond,
-        builder.listener,
-        builder.executor.get(),
-        builder.queueFactory);
+        builder.listener);
   }
 
   private AbstractBulkExecutor(
@@ -87,12 +53,8 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
       boolean failFast,
       int maxInFlightRequests,
       int maxRequestsPerSecond,
-      ExecutionListener listener,
-      Executor executor,
-      QueueFactory<ReadResult> queueFactory) {
+      ExecutionListener listener) {
     Objects.requireNonNull(session, "session cannot be null");
-    Objects.requireNonNull(executor, "executor cannot be null");
-    Objects.requireNonNull(queueFactory, "queueFactory cannot be null");
     this.session = session;
     this.failFast = failFast;
     this.requestPermits =
@@ -104,27 +66,10 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
             ? Optional.empty()
             : Optional.of(RateLimiter.create(maxRequestsPerSecond));
     this.listener = Optional.ofNullable(listener);
-    this.executor = executor;
-    this.queueFactory = queueFactory;
-  }
-
-  private static QueueFactory<ReadResult> defaultQueueFactory(Session session) {
-    return statement -> {
-      int fetchSize = statement.getFetchSize();
-      if (fetchSize <= 0) {
-        fetchSize = session.getCluster().getConfiguration().getQueryOptions().getFetchSize();
-      }
-      return new ArrayBlockingQueue<>(fetchSize * 4);
-    };
   }
 
   @Override
-  public void close() throws InterruptedException {
-    if (executor instanceof ExecutorService) {
-      ExecutorService tpe = (ExecutorService) executor;
-      tpe.shutdown();
-      tpe.awaitTermination(5, SECONDS);
-      tpe.shutdownNow();
-    }
+  public void close() {
+    // no-op
   }
 }

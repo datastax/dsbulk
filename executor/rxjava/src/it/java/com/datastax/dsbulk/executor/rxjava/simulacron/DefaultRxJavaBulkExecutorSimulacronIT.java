@@ -19,11 +19,7 @@ class DefaultRxJavaBulkExecutorSimulacronIT extends BulkExecutorSimulacronITBase
     super(
         simulacron,
         session,
-        DefaultRxJavaBulkExecutor.builder(session)
-            // serialize execution of statements to force results to be produced in deterministic
-            // order
-            .withMaxInFlightRequests(1)
-            .build(),
+        DefaultRxJavaBulkExecutor.builder(session).build(),
         DefaultRxJavaBulkExecutor.builder(session).failSafe().build());
   }
 }

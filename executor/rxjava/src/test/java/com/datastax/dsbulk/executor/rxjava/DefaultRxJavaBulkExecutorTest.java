@@ -17,10 +17,7 @@ public class DefaultRxJavaBulkExecutorTest extends NonContinuousBulkExecutorTest
   @Override
   protected BulkExecutor newBulkExecutor(boolean failSafe) {
     AbstractBulkExecutorBuilder<DefaultRxJavaBulkExecutor> builder =
-        DefaultRxJavaBulkExecutor.builder(session)
-            // serialize execution of statements to force results to be produced in deterministic order
-            .withoutExecutor()
-            .withExecutionListener(listener);
+        DefaultRxJavaBulkExecutor.builder(session).withExecutionListener(listener);
     if (failSafe) {
       builder.failSafe();
     }
