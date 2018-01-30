@@ -1281,13 +1281,13 @@ public abstract class BulkExecutorTestBase {
 
     @Override
     public boolean matches(Statement item) {
-      return item instanceof SimpleStatement
-              && ((SimpleStatement) item).getQueryString().equals(stmt.getQueryString())
-          || item instanceof BoundStatement
+      return ((item instanceof SimpleStatement)
+              && ((SimpleStatement) item).getQueryString().equals(stmt.getQueryString()))
+          || ((item instanceof BoundStatement)
               && ((BoundStatement) item)
                   .preparedStatement()
                   .getQueryString()
-                  .equals(stmt.getQueryString());
+                  .equals(stmt.getQueryString()));
     }
   }
 
@@ -1310,20 +1310,18 @@ public abstract class BulkExecutorTestBase {
     public boolean matches(BulkExecutionException item) {
       if (item != null) {
         Statement stmt = item.getStatement();
-        if (stmt instanceof SimpleStatement
-                && ((SimpleStatement) stmt).getQueryString().equals(this.stmt.getQueryString())
-            || stmt instanceof BoundStatement
+        if (((stmt instanceof SimpleStatement)
+                && ((SimpleStatement) stmt).getQueryString().equals(this.stmt.getQueryString()))
+            || ((stmt instanceof BoundStatement)
                 && ((BoundStatement) stmt)
                     .preparedStatement()
                     .getQueryString()
-                    .equals(this.stmt.getQueryString())) {
+                    .equals(this.stmt.getQueryString()))) {
           if (clazz == null) {
             return true;
           }
           Throwable cause = item.getCause();
-          if (cause.getClass().equals(clazz)) {
-            return true;
-          }
+          return cause.getClass().equals(clazz);
         }
       }
       return false;

@@ -20,8 +20,11 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueType;
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -108,7 +111,10 @@ public class Main {
         return STATUS_CRASHED;
       }
     } catch (VersionRequestException e) {
-      PrintWriter pw = new PrintWriter(System.out);
+      // Use the OS charset
+      PrintWriter pw =
+          new PrintWriter(
+              new BufferedWriter(new OutputStreamWriter(System.out, Charset.defaultCharset())));
       pw.println(HelpUtils.getVersionMessage());
       pw.flush();
       return STATUS_OK;

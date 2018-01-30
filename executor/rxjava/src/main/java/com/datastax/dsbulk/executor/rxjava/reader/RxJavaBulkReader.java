@@ -32,6 +32,7 @@ public interface RxJavaBulkReader extends ReactiveBulkReader {
    * @return A {@link Flowable flowable} that will emit one single read result.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
+  @Override
   default Flowable<ReadResult> readReactive(String statement) throws BulkExecutionException {
     return readReactive(new SimpleStatement(statement));
   }
@@ -43,6 +44,7 @@ public interface RxJavaBulkReader extends ReactiveBulkReader {
    * @return A {@link Flowable flowable} that will emit one single read result.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
+  @Override
   Flowable<ReadResult> readReactive(Statement statement) throws BulkExecutionException;
 
   /**
@@ -52,6 +54,7 @@ public interface RxJavaBulkReader extends ReactiveBulkReader {
    * @return A {@link Flowable flowable} of read results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
+  @Override
   Flowable<ReadResult> readReactive(Stream<? extends Statement> statements)
       throws BulkExecutionException;
 
@@ -62,6 +65,7 @@ public interface RxJavaBulkReader extends ReactiveBulkReader {
    * @return A {@link Flowable flowable} of read results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
+  @Override
   Flowable<ReadResult> readReactive(Iterable<? extends Statement> statements)
       throws BulkExecutionException;
 
@@ -72,6 +76,7 @@ public interface RxJavaBulkReader extends ReactiveBulkReader {
    * @return A {@link Flowable flowable} of read results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
+  @Override
   Flowable<ReadResult> readReactive(Publisher<? extends Statement> statements)
       throws BulkExecutionException;
 }

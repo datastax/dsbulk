@@ -18,9 +18,13 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.Main;
 import com.google.common.base.CharMatcher;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -96,7 +100,10 @@ public class HelpUtils {
   }
 
   private static void emitHelp(Options options, String footer) {
-    PrintWriter pw = new PrintWriter(System.out);
+    // Use the OS charset
+    PrintWriter pw =
+        new PrintWriter(
+            new BufferedWriter(new OutputStreamWriter(System.out, Charset.defaultCharset())));
     HelpEmitter helpEmitter = new HelpEmitter(options);
     helpEmitter.emit(pw, footer);
     pw.flush();
@@ -107,7 +114,8 @@ public class HelpUtils {
     String version = "UNKNOWN";
     try (InputStream versionStream = Main.class.getResourceAsStream("/version.txt")) {
       if (versionStream != null) {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(versionStream));
+        BufferedReader reader =
+            new BufferedReader(new InputStreamReader(versionStream, StandardCharsets.UTF_8));
         version = reader.readLine();
       }
     } catch (Exception e) {

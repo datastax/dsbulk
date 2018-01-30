@@ -19,10 +19,12 @@ import com.google.common.base.CharMatcher;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
-import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -39,7 +41,10 @@ public class SettingsDocumentor {
   @SuppressWarnings("WeakerAccess")
   SettingsDocumentor(Path filePath) throws FileNotFoundException {
     try (PrintWriter out =
-        new PrintWriter(new BufferedOutputStream(new FileOutputStream(filePath.toFile())))) {
+        new PrintWriter(
+            new BufferedWriter(
+                new OutputStreamWriter(
+                    new FileOutputStream(filePath.toFile()), StandardCharsets.UTF_8)))) {
       // Print page title
       out.printf(
           "# %s%n%n"

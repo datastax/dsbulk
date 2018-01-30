@@ -68,6 +68,7 @@ public class ConvertingCodecAssert<FROM, TO>
     return this;
   }
 
+  @SuppressWarnings("ClassCanBeStatic")
   public class ConvertsFromAssert extends ConvertingCodecAssert<FROM, TO> {
 
     private final FROM from;
@@ -88,6 +89,7 @@ public class ConvertingCodecAssert<FROM, TO>
     }
   }
 
+  @SuppressWarnings("ClassCanBeStatic")
   public class ConvertsToAssert extends ConvertingCodecAssert<FROM, TO> {
 
     private final FROM from;

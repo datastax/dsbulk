@@ -36,12 +36,10 @@ import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.typesafe.config.ConfigFactory;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,11 +78,7 @@ class LogSettingsTest {
       assertThat(logManager.getExecutionDirectory().toFile().getAbsolutePath())
           .isEqualTo(Paths.get("./logs/test").normalize().toFile().getAbsolutePath());
     } finally {
-      //noinspection ResultOfMethodCallIgnored
-      Files.walk(logManager.getExecutionDirectory().getParent())
-          .sorted(Comparator.reverseOrder())
-          .map(Path::toFile)
-          .forEach(File::delete);
+      FileUtils.deleteDirectory(logManager.getExecutionDirectory().getParent());
     }
   }
 

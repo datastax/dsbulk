@@ -53,22 +53,20 @@ public class MemoryReporter extends ScheduledReporter {
       SortedMap<String, Histogram> histograms,
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
-
-    Gauge freeMemoryGauge = gauges.get("memory/free");
-    Gauge allocatedMemoryGauge = gauges.get("memory/allocated");
-    Gauge usedMemoryGauge = gauges.get("memory/used");
-    Gauge availableMemoryGauge = gauges.get("memory/available");
-    Gauge gcCountGauge = gauges.get("memory/gc_count");
-    Gauge gcTimeGauge = gauges.get("memory/gc_time");
-    //noinspection MalformedFormatString
+    Gauge<?> freeMemoryGauge = gauges.get("memory/free");
+    Gauge<?> allocatedMemoryGauge = gauges.get("memory/allocated");
+    Gauge<?> usedMemoryGauge = gauges.get("memory/used");
+    Gauge<?> availableMemoryGauge = gauges.get("memory/available");
+    Gauge<?> gcCountGauge = gauges.get("memory/gc_count");
+    Gauge<?> gcTimeGauge = gauges.get("memory/gc_time");
+    long usedMemory = (Long) usedMemoryGauge.getValue();
+    long freeMemory = (Long) freeMemoryGauge.getValue();
+    long allocatedMemory = (Long) allocatedMemoryGauge.getValue();
+    long availableMemory = (Long) availableMemoryGauge.getValue();
+    long gcCount = (Long) gcCountGauge.getValue();
+    long gcTime = (Long) gcTimeGauge.getValue();
     LOGGER.info(
         String.format(
-            MSG,
-            usedMemoryGauge.getValue(),
-            freeMemoryGauge.getValue(),
-            allocatedMemoryGauge.getValue(),
-            availableMemoryGauge.getValue(),
-            gcCountGauge.getValue(),
-            gcTimeGauge.getValue()));
+            MSG, usedMemory, freeMemory, allocatedMemory, availableMemory, gcCount, gcTime));
   }
 }
