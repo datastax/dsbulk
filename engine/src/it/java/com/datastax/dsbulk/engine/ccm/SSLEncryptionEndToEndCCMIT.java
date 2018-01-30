@@ -27,9 +27,11 @@ import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
 import com.datastax.dsbulk.engine.Main;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
@@ -199,6 +201,10 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static String getAbsoluteKeystorePath(String path) {
     URL resource = SSLEncryptionEndToEndCCMIT.class.getResource(path);
-    return resource.getPath();
+    try {
+      return Paths.get(resource.toURI()).normalize().toAbsolutePath().toString();
+    } catch (URISyntaxException e) {
+      throw new AssertionError(e);
+    }
   }
 }

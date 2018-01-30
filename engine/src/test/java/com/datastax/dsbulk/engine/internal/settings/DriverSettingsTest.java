@@ -15,7 +15,6 @@ import static com.datastax.driver.core.HostDistance.REMOTE;
 import static com.datastax.driver.core.ProtocolOptions.Compression.NONE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assumptions.assumingThat;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.AuthProvider;
@@ -42,20 +41,22 @@ import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
 import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigFactory;
 import io.netty.handler.ssl.SslContext;
 import java.net.InetSocketAddress;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import javax.security.auth.login.Configuration;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-/** */
 class DriverSettingsTest {
 
   @Test
@@ -165,8 +166,9 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab() {
-    String keyTab = maybeTrimLeadingSlash(getClass().getResource("/cassandra.keytab").getPath());
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab()
+      throws URISyntaxException {
+    Path keyTab = Paths.get(getClass().getResource("/cassandra.keytab").toURI());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -176,7 +178,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        keyTab))
+                        ConfigUtils.maybeEscapeBackslash(keyTab.toString())))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -195,12 +197,13 @@ class DriverSettingsTest {
         .isEqualTo("cassandra@DATASTAX.COM");
     String loginConfigKeyTab =
         (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
-    assertThat(loginConfigKeyTab.replace("\\", "/")).isEqualTo(keyTab);
+    assertThat(loginConfigKeyTab).isEqualTo(keyTab.toString());
   }
 
   @Test
-  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab_and_principal() {
-    String keyTab = maybeTrimLeadingSlash(getClass().getResource("/cassandra.keytab").getPath());
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab_and_principal()
+      throws URISyntaxException {
+    Path keyTab = Paths.get(getClass().getResource("/cassandra.keytab").toURI());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -211,7 +214,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        keyTab))
+                        ConfigUtils.maybeEscapeBackslash(keyTab.toString())))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -230,15 +233,16 @@ class DriverSettingsTest {
         .isEqualTo("alice@DATASTAX.COM");
     String loginConfigKeyTab =
         (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
-    assertThat(loginConfigKeyTab.replace("\\", "/")).isEqualTo(keyTab);
+    assertThat(loginConfigKeyTab).isEqualTo(keyTab.toString());
   }
 
   @Test
-  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_empty_keytab_and_principal() {
+  void should_configure_authentication_with_DseGSSAPIAuthProvider_and_empty_keytab_and_principal()
+      throws URISyntaxException {
     // Get the path to the "empty keytab". We emulate that by choosing a file that isn't
     // a keytab at all. Since we're specifying the principal, it shouldn't matter that the
     // keytab is empty (e.g. we shouldn't even be checking).
-    String keyTab = maybeTrimLeadingSlash(getClass().getResource("/client.key").getPath());
+    Path keyTab = Paths.get(getClass().getResource("/client.key").toURI());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -249,7 +253,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        keyTab))
+                        ConfigUtils.maybeEscapeBackslash(keyTab.toString())))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -268,7 +272,7 @@ class DriverSettingsTest {
         .isEqualTo("alice@DATASTAX.COM");
     String loginConfigKeyTab =
         (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
-    assertThat(loginConfigKeyTab.replace("\\", "/")).isEqualTo(keyTab);
+    assertThat(loginConfigKeyTab).isEqualTo(keyTab.toString());
   }
 
   @Test
@@ -326,10 +330,9 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_configure_encryption_with_SSLContext() {
-    String keystore = maybeTrimLeadingSlash(getClass().getResource("/client.keystore").getPath());
-    String truststore =
-        maybeTrimLeadingSlash(getClass().getResource("/client.truststore").getPath());
+  void should_configure_encryption_with_SSLContext() throws URISyntaxException {
+    Path keystore = Paths.get(getClass().getResource("/client.keystore").toURI());
+    Path truststore = Paths.get(getClass().getResource("/client.truststore").toURI());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
@@ -346,7 +349,8 @@ class DriverSettingsTest {
                             + "   password = cassandra1sfun"
                             + "}"
                             + "}",
-                        keystore, truststore))
+                        ConfigUtils.maybeEscapeBackslash(keystore.toString()),
+                        ConfigUtils.maybeEscapeBackslash(truststore.toString())))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -360,46 +364,40 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_configure_encryption_with_OpenSSL() {
-    assumingThat(
-        PlatformUtils.isWindows(),
-        () -> {
-          String keyCertChain =
-              maybeTrimLeadingSlash(getClass().getResource("/client.crt").getPath());
-          String privateKey =
-              maybeTrimLeadingSlash(getClass().getResource("/client.key").getPath());
-          String truststore =
-              maybeTrimLeadingSlash(getClass().getResource("/client.truststore").getPath());
-          LoaderConfig config =
-              new DefaultLoaderConfig(
-                  ConfigFactory.parseString(
-                          String.format(
-                              " ssl { "
-                                  + "provider = OpenSSL, "
-                                  + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
-                                  + "openssl { "
-                                  + "   keyCertChain = \"%s\","
-                                  + "   privateKey = \"%s\""
-                                  + "}, "
-                                  + "truststore { "
-                                  + "   path = \"%s\","
-                                  + "   password = cassandra1sfun "
-                                  + "}"
-                                  + "}",
-                              keyCertChain, privateKey, truststore))
-                      .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-          DriverSettings driverSettings = new DriverSettings(config, "test");
-          driverSettings.init();
-          DseCluster cluster = driverSettings.newCluster();
-          assertThat(cluster).isNotNull();
-          DseConfiguration configuration = cluster.getConfiguration();
-          SSLOptions sslOptions = configuration.getProtocolOptions().getSSLOptions();
-          assertThat(sslOptions).isInstanceOf(RemoteEndpointAwareNettySSLOptions.class);
-          SslContext sslContext =
-              (SslContext) ReflectionUtils.getInternalState(sslOptions, "context");
-          assertThat(sslContext.cipherSuites())
-              .containsExactly("TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA");
-        });
+  void should_configure_encryption_with_OpenSSL() throws URISyntaxException {
+    Path keyCertChain = Paths.get(getClass().getResource("/client.crt").toURI());
+    Path privateKey = Paths.get(getClass().getResource("/client.key").toURI());
+    Path truststore = Paths.get(getClass().getResource("/client.truststore").toURI());
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        " ssl { "
+                            + "provider = OpenSSL, "
+                            + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
+                            + "openssl { "
+                            + "   keyCertChain = \"%s\","
+                            + "   privateKey = \"%s\""
+                            + "}, "
+                            + "truststore { "
+                            + "   path = \"%s\","
+                            + "   password = cassandra1sfun "
+                            + "}"
+                            + "}",
+                        ConfigUtils.maybeEscapeBackslash(keyCertChain.toString()),
+                        ConfigUtils.maybeEscapeBackslash(privateKey.toString()),
+                        ConfigUtils.maybeEscapeBackslash(truststore.toString())))
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
+    DseCluster cluster = driverSettings.newCluster();
+    assertThat(cluster).isNotNull();
+    DseConfiguration configuration = cluster.getConfiguration();
+    SSLOptions sslOptions = configuration.getProtocolOptions().getSSLOptions();
+    assertThat(sslOptions).isInstanceOf(RemoteEndpointAwareNettySSLOptions.class);
+    SslContext sslContext = (SslContext) ReflectionUtils.getInternalState(sslOptions, "context");
+    assertThat(sslContext.cipherSuites())
+        .containsExactly("TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA");
   }
 
   @Test
@@ -476,14 +474,5 @@ class DriverSettingsTest {
     Host h = Mockito.mock(Host.class);
     Mockito.when(h.getSocketAddress()).thenReturn(new InetSocketAddress(host, port));
     return h;
-  }
-
-  private static String maybeTrimLeadingSlash(String path) {
-    // On Windows, getPath() on a URL yields something like "/C:/....". Remove the leading
-    // slash.
-    if (path.startsWith("/") && PlatformUtils.isWindows()) {
-      return path.substring(1);
-    }
-    return path;
   }
 }
