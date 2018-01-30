@@ -36,7 +36,8 @@ class JsonNodeToFloatCodecTest {
           newArrayList(ONE, ZERO));
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  @SuppressWarnings("FloatingPointLiteralPrecision")
+  void should_convert_from_valid_input() {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.numberNode(0f))
         .to(0f)
@@ -85,7 +86,8 @@ class JsonNodeToFloatCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  @SuppressWarnings("FloatingPointLiteralPrecision")
+  void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(0f)
         .from(JsonNodeFactory.instance.numberNode(0f))
@@ -102,7 +104,7 @@ class JsonNodeToFloatCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     assertThat(codec).cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid float"));
   }
 }

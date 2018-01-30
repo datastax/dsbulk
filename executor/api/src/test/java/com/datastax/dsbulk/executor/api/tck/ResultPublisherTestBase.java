@@ -26,7 +26,7 @@ import org.reactivestreams.tck.TestEnvironment;
 public abstract class ResultPublisherTestBase<R extends Result> extends PublisherVerification<R> {
 
   protected static final List<Row> ROWS =
-      IntStream.range(1, 100).boxed().map(i -> mock(Row.class)).collect(Collectors.toList());
+      IntStream.range(0, 100).boxed().map(i -> mock(Row.class)).collect(Collectors.toList());
 
   protected ResultPublisherTestBase() {
     super(new TestEnvironment());

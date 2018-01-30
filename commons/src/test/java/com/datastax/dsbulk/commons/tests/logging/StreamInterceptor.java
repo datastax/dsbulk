@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
-/** */
 public interface StreamInterceptor {
 
   default String getStreamAsString() {

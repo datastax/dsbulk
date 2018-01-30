@@ -135,7 +135,7 @@ public class MetricsManager implements AutoCloseable {
   }
 
   private void createMemoryGauges() {
-    int bytesPerMeg = 1024 * 1024;
+    long bytesPerMeg = 1024 * 1024;
     registry.gauge(
         "memory/used",
         () ->

@@ -116,7 +116,9 @@ public class LogSettings {
     if (Files.exists(executionDirectory)) {
       if (Files.isDirectory(executionDirectory)) {
         if (Files.isWritable(executionDirectory)) {
-          if (Files.list(executionDirectory).count() > 0) {
+          @SuppressWarnings("StreamResourceLeak")
+          long count = Files.list(executionDirectory).count();
+          if (count > 0) {
             throw new IllegalArgumentException(
                 "Execution directory exists but is not empty: " + executionDirectory);
           }

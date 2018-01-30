@@ -31,14 +31,24 @@ public interface LoaderConfig extends Config {
    *
    * @param <T> the expected type.
    * @param path path expression.
+   * @param expected The expected class or interface that the object should be an instance of.
    * @return the newly-allocated object corresponding to the class name at the requested path.
    * @throws ConfigException.Missing if value is absent or null.
    * @throws ConfigException.WrongType if value is not convertible to a Path.
    */
-  default <T> T getInstance(String path) {
+  default <T> T getInstance(String path, Class<T> expected) {
     String setting = getString(path);
     try {
-      return ReflectionUtils.newInstance(setting);
+      Object o = ReflectionUtils.newInstance(setting);
+      if (expected.isAssignableFrom(o.getClass())) {
+        @SuppressWarnings("unchecked")
+        T ret = (T) o;
+        return ret;
+      }
+      throw new IllegalStateException(
+          String.format(
+              "Object does not extend nor implement %s: %s",
+              expected.getSimpleName(), o.getClass().getSimpleName()));
     } catch (Exception e) {
       throw new ConfigException.WrongType(
           origin(), path, "FQCN or short class name", getValue(path).valueType().toString(), e);
@@ -52,14 +62,24 @@ public interface LoaderConfig extends Config {
    *
    * @param <T> the expected type.
    * @param path path expression.
+   * @param expected The expected class or interface that the object should be an instance of.
    * @return the Class object corresponding to the class name at the requested path.
    * @throws ConfigException.Missing if value is absent or null.
    * @throws ConfigException.WrongType if value is not convertible to a Path.
    */
-  default <T> Class<T> getClass(String path) {
+  default <T> Class<? extends T> getClass(String path, Class<T> expected) {
     String setting = getString(path);
     try {
-      return ReflectionUtils.resolveClass(setting);
+      Class<?> c = ReflectionUtils.resolveClass(setting);
+      if (expected.isAssignableFrom(c)) {
+        @SuppressWarnings("unchecked")
+        Class<T> ret = (Class<T>) c;
+        return ret;
+      }
+      throw new IllegalStateException(
+          String.format(
+              "Class does not extend nor implement %s: %s",
+              expected.getSimpleName(), c.getSimpleName()));
     } catch (Exception e) {
       throw new ConfigException.WrongType(
           origin(), path, "FQCN or short class name", getValue(path).valueType().toString(), e);
@@ -213,8 +233,9 @@ public interface LoaderConfig extends Config {
         return "number";
       case BOOLEAN:
         return "boolean";
+      default:
+        return "arg";
     }
-    return "arg";
   }
 
   @Override

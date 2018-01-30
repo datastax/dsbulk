@@ -368,6 +368,7 @@ public class JsonConnector implements Connector {
               try {
                 // this stream will be closed by the flux, do not add it to a try-with-resources
                 // block
+                @SuppressWarnings("StreamResourceLeak")
                 Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
                 return Flux.fromStream(files);
               } catch (IOException e) {

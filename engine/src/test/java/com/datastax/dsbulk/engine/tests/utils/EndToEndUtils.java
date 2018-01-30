@@ -138,12 +138,14 @@ public class EndToEndUtils {
   public static void validateExceptionsLog(int size, String keyword, String fileName, Path logPath)
       throws Exception {
     Path exceptionFile = logPath.resolve(fileName);
+    @SuppressWarnings("StreamResourceLeak")
     long numErrors = Files.lines(exceptionFile).filter(l -> l.startsWith(keyword)).count();
     assertThat(numErrors).isEqualTo(size);
   }
 
   public static void validateBadOps(int size, Path logPath) throws Exception {
     Path badOps = logPath.resolve("operation.bad");
+    @SuppressWarnings("StreamResourceLeak")
     long numBadOps = Files.lines(badOps, Charset.defaultCharset()).count();
     assertThat(numBadOps).isEqualTo(size);
   }

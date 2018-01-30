@@ -29,14 +29,14 @@ import org.reactivestreams.Subscriber;
 public class ContinuousReadResultSubscription
     extends ResultSubscription<ReadResult, AsyncContinuousPagingResult> {
 
-  private final ContinuousPagingSession session;
+  private final ContinuousPagingSession continuousPagingSession;
   private final ContinuousPagingOptions options;
 
   public ContinuousReadResultSubscription(
       Subscriber<? super ReadResult> subscriber,
       Queue<ReadResult> queue,
       Statement statement,
-      ContinuousPagingSession session,
+      ContinuousPagingSession continuousPagingSession,
       ContinuousPagingOptions options,
       Executor executor,
       Optional<ExecutionListener> listener,
@@ -47,20 +47,20 @@ public class ContinuousReadResultSubscription
         subscriber,
         queue,
         statement,
-        session,
+        continuousPagingSession,
         executor,
         listener,
         rateLimiter,
         requestPermits,
         failFast);
-    this.session = session;
+    this.continuousPagingSession = continuousPagingSession;
     this.options = options;
   }
 
   @Override
   public void start() {
     super.start();
-    fetchNextPage(() -> session.executeContinuouslyAsync(statement, options));
+    fetchNextPage(() -> continuousPagingSession.executeContinuouslyAsync(statement, options));
   }
 
   @Override

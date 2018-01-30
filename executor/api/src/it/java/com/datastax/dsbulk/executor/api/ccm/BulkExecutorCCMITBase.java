@@ -1126,7 +1126,7 @@ public abstract class BulkExecutorCCMITBase {
         Flowable.fromPublisher(failFastExecutor.readReactive(READ_SUCCESSFUL))
             .doOnNext(
                 r -> {
-                  Assertions.assertThat(r.getRow().isPresent());
+                  Assertions.assertThat(r.getRow().isPresent()).isTrue();
                   Row row = r.getRow().get();
                   Record record = CsvUtils.recordForRow(row);
                   Assertions.assertThat(record).isNotNull();

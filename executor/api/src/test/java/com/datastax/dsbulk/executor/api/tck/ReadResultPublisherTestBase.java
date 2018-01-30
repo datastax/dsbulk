@@ -24,8 +24,6 @@ import com.datastax.dsbulk.executor.api.result.ReadResult;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public abstract class ReadResultPublisherTestBase extends ResultPublisherTestBase<ReadResult> {
 
@@ -46,10 +44,9 @@ public abstract class ReadResultPublisherTestBase extends ResultPublisherTestBas
     ExecutionInfo executionInfo = mock(ExecutionInfo.class);
     when(rs.getExecutionInfo()).thenReturn(executionInfo);
     when(executionInfo.getPagingState()).thenReturn(null);
-    ExecutorService executor = Executors.newSingleThreadExecutor();
     doAnswer(
             invocation -> {
-              executor.submit((Runnable) invocation.getArguments()[0]);
+              ((Runnable) invocation.getArguments()[0]).run();
               return null;
             })
         .when(future)
