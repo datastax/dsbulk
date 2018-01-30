@@ -57,7 +57,7 @@
     <lz4.version>1.4.0</lz4.version>
     <snappy.version>1.1.4</snappy.version>
     <hdr.version>2.1.10</hdr.version>
-    <jackson.version>2.9.2</jackson.version>
+    <jackson.version>2.9.4</jackson.version>
     <junit.version>5.0.2</junit.version>
     <junit-platform.version>1.0.2</junit-platform.version>
     <univocity.version>2.5.9</univocity.version>
