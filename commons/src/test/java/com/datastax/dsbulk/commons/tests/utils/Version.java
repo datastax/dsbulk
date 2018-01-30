@@ -54,8 +54,9 @@ public class Version implements Comparable<Version> {
   }
 
   public static boolean isWithinRange(Version min, Version max, @NotNull Version def) {
-    return min == null && max == null
-        || (min == null || min.compareTo(def) <= 0) && (max == null || max.compareTo(def) > 0);
+    return ((min == null) && (max == null))
+        || (((min == null) || (min.compareTo(def) <= 0))
+            && ((max == null) || (max.compareTo(def) > 0)));
   }
 
   private final int major;

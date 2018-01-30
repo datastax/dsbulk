@@ -16,12 +16,12 @@ import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 public class ContinuousRxJavaBulkExecutorBuilder
     extends AbstractBulkExecutorBuilder<ContinuousRxJavaBulkExecutor> {
 
-  final ContinuousPagingSession session;
+  final ContinuousPagingSession continuousPagingSession;
   ContinuousPagingOptions options = ContinuousPagingOptions.builder().build();
 
-  ContinuousRxJavaBulkExecutorBuilder(ContinuousPagingSession session) {
-    super(session);
-    this.session = session;
+  ContinuousRxJavaBulkExecutorBuilder(ContinuousPagingSession continuousPagingSession) {
+    super(continuousPagingSession);
+    this.continuousPagingSession = continuousPagingSession;
   }
 
   @SuppressWarnings("UnusedReturnValue")

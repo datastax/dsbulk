@@ -47,7 +47,6 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
-/** */
 class CSVConnectorTest {
 
   static {

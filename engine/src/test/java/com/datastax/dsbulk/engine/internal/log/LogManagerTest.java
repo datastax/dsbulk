@@ -26,6 +26,7 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.DriverInternalError;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
+import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
@@ -187,7 +188,7 @@ class LogManagerTest {
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(3);
@@ -229,7 +230,7 @@ class LogManagerTest {
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -268,7 +269,7 @@ class LogManagerTest {
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -315,7 +316,7 @@ class LogManagerTest {
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -368,7 +369,7 @@ class LogManagerTest {
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -410,7 +411,8 @@ class LogManagerTest {
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(errors);
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+        .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
@@ -441,7 +443,8 @@ class LogManagerTest {
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(errors);
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+        .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
@@ -479,7 +482,8 @@ class LogManagerTest {
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(errors);
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+        .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     assertThat(lines.stream().filter(l -> l.contains("BulkExecutionException")).count())
         .isEqualTo(101);
@@ -514,7 +518,7 @@ class LogManagerTest {
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(1);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray())
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -550,7 +554,8 @@ class LogManagerTest {
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
-    assertThat(Files.list(logManager.getExecutionDirectory()).toArray()).containsOnly(errors);
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+        .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)

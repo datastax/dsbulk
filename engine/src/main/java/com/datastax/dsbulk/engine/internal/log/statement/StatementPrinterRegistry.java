@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class StatementPrinterRegistry {
 
-  private static final Map<Class<?>, StatementPrinter<?>> BUILT_IN_PRINTERS =
+  private static final ImmutableMap<Class<?>, StatementPrinter<?>> BUILT_IN_PRINTERS =
       ImmutableMap.<Class<?>, StatementPrinter<?>>builder()
           .put(BulkSimpleStatement.class, new BulkSimpleStatementPrinter())
           .put(BulkBoundStatement.class, new BulkBoundStatementPrinter())

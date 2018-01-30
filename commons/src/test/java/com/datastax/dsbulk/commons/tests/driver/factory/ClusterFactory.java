@@ -118,6 +118,7 @@ public abstract class ClusterFactory {
     private static Map<String, String> toConfigMap(String[] conf) {
       Map<String, String> config = new HashMap<>();
       for (String aConf : conf) {
+        @SuppressWarnings("StringSplitter")
         String[] tokens = aConf.split(":");
         if (tokens.length != 2) {
           throw new IllegalArgumentException("Wrong configuration option: " + aConf);
@@ -134,6 +135,7 @@ public abstract class ClusterFactory {
         for (Map.Entry<String, String> entry : properties.entrySet()) {
           String name = entry.getKey().trim();
           String methodName = "set" + name.substring(0, 1).toUpperCase() + name.substring(1);
+          @SuppressWarnings("StringSplitter")
           String[] tokens = entry.getValue().split(",");
           Method method = ReflectionUtils.locateMethod(methodName, bean.getClass(), tokens.length);
           if (method == null) {
