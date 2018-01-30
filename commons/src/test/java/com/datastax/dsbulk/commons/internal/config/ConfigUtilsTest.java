@@ -38,9 +38,18 @@ class ConfigUtilsTest {
         .isEqualTo(Paths.get("/foo/bar").normalize().toAbsolutePath());
     assertThat(resolvePath("foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
-    assertThatThrownBy(() -> resolvePath("\u0000"))
-        .isInstanceOf(InvalidPathException.class)
-        .hasMessageContaining("Nul character not allowed");
+    assumingThat(
+        !PlatformUtils.isWindows(),
+        () ->
+            assertThatThrownBy(() -> resolvePath("\u0000"))
+                .isInstanceOf(InvalidPathException.class)
+                .hasMessageContaining("Nul character not allowed"));
+    assumingThat(
+        PlatformUtils.isWindows(),
+        () ->
+            assertThatThrownBy(() -> resolvePath(":"))
+                .isInstanceOf(InvalidPathException.class)
+                .hasMessageContaining("Illegal char <:> at index 0:"));
     assertThatThrownBy(() -> resolvePath("~otheruser/foo"))
         .isInstanceOf(InvalidPathException.class)
         .hasMessageContaining("Cannot resolve home directory");
@@ -66,7 +75,6 @@ class ConfigUtilsTest {
                 .satisfies(
                     t -> assertThat(t.getSuppressed()[0]).isInstanceOf(MalformedURLException.class))
                 .hasMessageContaining("Illegal char <:> at index 17"));
-
     assertThat(resolveURL("~"))
         .isEqualTo(Paths.get(System.getProperty("user.home")).toUri().toURL());
     assertThat(resolveURL("~/foo"))
