@@ -157,8 +157,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   }
 
   /**
-   * Must be called immediately after creating the subscription, but after {@link
-   * Subscriber#onSubscribe(Subscription)}.
+   * Must be called immediately after {@link Subscriber#onSubscribe(Subscription)}.
    *
    * @param initial the future that, once complete, will produce the first page.
    */
@@ -337,7 +336,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    * concurrently due to the fact that one can only fetch the next page when the current one is
    * arrived and enqueued.
    */
-  void fetchNextPage(Page current) {
+  private void fetchNextPage(Page current) {
     // A local execution context to record metrics for this specific request-response cycle.
     DefaultExecutionContext local = new DefaultExecutionContext();
     rateLimiter.ifPresent(limiter -> limiter.acquire(batchSize));
