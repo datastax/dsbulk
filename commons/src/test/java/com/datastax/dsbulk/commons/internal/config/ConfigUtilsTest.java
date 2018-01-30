@@ -32,27 +32,31 @@ class ConfigUtilsTest {
 
   @Test
   void should_resolve_path() {
+    // relative paths, should behave the same on all platforms
     assertThat(resolvePath("~")).isEqualTo(Paths.get(System.getProperty("user.home")));
     assertThat(resolvePath("~/foo")).isEqualTo(Paths.get(System.getProperty("user.home"), "foo"));
-    assertThat(resolvePath("/foo/bar"))
-        .isEqualTo(Paths.get("/foo/bar").normalize().toAbsolutePath());
     assertThat(resolvePath("foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
-    assumingThat(
-        !PlatformUtils.isWindows(),
-        () ->
-            assertThatThrownBy(() -> resolvePath("\u0000"))
-                .isInstanceOf(InvalidPathException.class)
-                .hasMessageContaining("Nul character not allowed"));
-    assumingThat(
-        PlatformUtils.isWindows(),
-        () ->
-            assertThatThrownBy(() -> resolvePath(":"))
-                .isInstanceOf(InvalidPathException.class)
-                .hasMessageContaining("Illegal char <:> at index 0:"));
     assertThatThrownBy(() -> resolvePath("~otheruser/foo"))
         .isInstanceOf(InvalidPathException.class)
         .hasMessageContaining("Cannot resolve home directory");
+    // absolute and invalid paths must be tested on a per-platform basis
+    assumingThat(
+        !PlatformUtils.isWindows(),
+        () -> {
+          assertThat(resolvePath("/foo/bar")).isEqualTo(Paths.get("/foo/bar"));
+          assertThatThrownBy(() -> resolvePath("\u0000"))
+              .isInstanceOf(InvalidPathException.class)
+              .hasMessageContaining("Nul character not allowed");
+        });
+    assumingThat(
+        PlatformUtils.isWindows(),
+        () -> {
+          assertThat(resolvePath("C:\\foo\\bar")).isEqualTo(Paths.get("C:\\foo\\bar"));
+          assertThatThrownBy(() -> resolvePath("C:\\should:\\fail"))
+              .isInstanceOf(InvalidPathException.class)
+              .hasMessageContaining("Illegal char <:> at index");
+        });
   }
 
   @Test
