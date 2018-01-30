@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.Test;
 
 class DefaultLoaderConfigTest {
+
   static {
     URLUtils.setURLFactoryIfNeeded();
   }

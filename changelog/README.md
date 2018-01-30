@@ -3,6 +3,7 @@
 ### 1.0.0-rc2 (in progress)
 
 - [improvement] DAT-220: Make ResultSubscription fully non-blocking.
+- [bug] DAT-221: User home directory not correctly expanded when used with -f option.
 
 
 ### 1.0.0-rc1

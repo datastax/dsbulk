@@ -26,8 +26,10 @@ import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.typesafe.config.Config;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import org.apache.commons.cli.ParseException;
@@ -198,7 +200,7 @@ class MainTest {
     }
     logs.clear();
     {
-      Path f = Files.createTempFile(tempFolder, "myapp3", ".conf");
+      Path f = Files.createTempFile(tempFolder, "myapp", ".conf");
       Files.write(
           f,
           ("dsbulk.connector.csv.url=/path/to/my/file\n"
@@ -210,6 +212,18 @@ class MainTest {
       assertThat(err)
           .doesNotContain("First argument must be subcommand")
           .contains("Invalid value at 'socket.readTimeout'");
+    }
+    // DAT-221: -f should expand user home
+    logs.clear();
+    {
+      Path f = Files.createTempFile(Paths.get(System.getProperty("user.home")), "myapp", ".conf");
+      Files.write(f, "dsbulk.connector.name=foo".getBytes("UTF-8"));
+      new Main(new String[] {"load", "-f", "~/" + f.getFileName().toString()}).run();
+      String err = logs.getAllMessagesAsString();
+      assertThat(err)
+          .doesNotContain("First argument must be subcommand")
+          .doesNotContain("InvalidPathException")
+          .contains("Cannot find connector 'foo'");
     }
   }
 
@@ -815,11 +829,21 @@ class MainTest {
   }
 
   @Test
-  void should_error_on_backslash() {
-    String badJson = ClassLoader.getSystemResource("bad-json.conf").getPath();
+  void should_error_on_backslash() throws URISyntaxException {
+    Path badJson = Paths.get(ClassLoader.getSystemResource("bad-json.conf").toURI());
     new Main(
             new String[] {
-              "load", "-dryRun", "true", "-url", "/foo/bar", "-k", "k1", "-t", "t1", "-f", badJson
+              "load",
+              "-dryRun",
+              "true",
+              "-url",
+              "/foo/bar",
+              "-k",
+              "k1",
+              "-t",
+              "t1",
+              "-f",
+              badJson.toString()
             })
         .run();
     assertThat(stdErr.getStreamAsString())
