@@ -27,11 +27,10 @@ public class ConfigUtils {
 
   public static BulkConfigurationException configExceptionToBulkConfigurationException(
       ConfigException e, String path) {
-    // This will happen if a user provides the wrong type
-    // Error generated will look like this
-    // Configuration entry of connector.csv.recursive has type STRING rather than BOOLEAN. See
-    // settings.md or help for
-    // more info.
+    // This will happen if a user provides the wrong type.
+    // Error generated will look like this:
+    // "Configuration entry of connector.csv.recursive has type STRING rather than BOOLEAN.
+    // See settings.md or help for more info."
     if (e instanceof ConfigException.WrongType) {
       String em = e.getMessage();
       int startingIndex = em.lastIndexOf(":") + 2;
@@ -66,11 +65,11 @@ public class ConfigUtils {
   }
 
   /**
-   * Resolves the given path
+   * Resolves the given path.
    *
    * <p>The returned path is normalized and absolute. If the input denotes a relative path, it is
    * resolved against the current working directory. If it starts with a tilde, the tilde is
-   * expanded into the current user's home.
+   * expanded into the current user's home directory.
    *
    * @param path The path to resolve.
    * @return The resolved {@link Path}, absolute and normalized.
@@ -96,7 +95,7 @@ public class ConfigUtils {
    * special {@code "-"} (single dash) URL into DSBulk's internal {@link
    * LoaderURLStreamHandlerFactory#STD standard input/output} URL.
    *
-   * <p>If that fails, this method then attemps to interpret the input as a path object. See {@link
+   * <p>If that fails, this method then attempts to interpret the input as a path object. See {@link
    * #resolvePath(String)}.
    *
    * @param url The URL to resolve.
