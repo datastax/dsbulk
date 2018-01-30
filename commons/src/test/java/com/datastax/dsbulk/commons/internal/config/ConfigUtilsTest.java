@@ -13,7 +13,9 @@ import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveThr
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveURL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumingThat;
 
+import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -32,7 +34,8 @@ class ConfigUtilsTest {
   void should_resolve_path() {
     assertThat(resolvePath("~")).isEqualTo(Paths.get(System.getProperty("user.home")));
     assertThat(resolvePath("~/foo")).isEqualTo(Paths.get(System.getProperty("user.home"), "foo"));
-    assertThat(resolvePath("/foo/bar")).isEqualTo(Paths.get("/foo/bar"));
+    assertThat(resolvePath("/foo/bar"))
+        .isEqualTo(Paths.get("/foo/bar").normalize().toAbsolutePath());
     assertThat(resolvePath("foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
     assertThatThrownBy(() -> resolvePath("\u0000"))
@@ -47,10 +50,23 @@ class ConfigUtilsTest {
   void should_resolve_url() throws MalformedURLException {
     assertThat(resolveURL("-")).isEqualTo(new URL("std:/"));
     assertThat(resolveURL("http://acme.com")).isEqualTo(new URL("http://acme.com"));
-    assertThatThrownBy(() -> resolveURL("nonexistentscheme://\u0000"))
-        .isInstanceOf(InvalidPathException.class)
-        .satisfies(t -> assertThat(t.getSuppressed()[0]).isInstanceOf(MalformedURLException.class))
-        .hasMessageContaining("Nul character not allowed");
+    assumingThat(
+        !PlatformUtils.isWindows(),
+        () ->
+            assertThatThrownBy(() -> resolveURL("nonexistentscheme://should/fail/\u0000"))
+                .isInstanceOf(InvalidPathException.class)
+                .satisfies(
+                    t -> assertThat(t.getSuppressed()[0]).isInstanceOf(MalformedURLException.class))
+                .hasMessageContaining("Nul character not allowed"));
+    assumingThat(
+        PlatformUtils.isWindows(),
+        () ->
+            assertThatThrownBy(() -> resolveURL("nonexistentscheme://should/fail"))
+                .isInstanceOf(InvalidPathException.class)
+                .satisfies(
+                    t -> assertThat(t.getSuppressed()[0]).isInstanceOf(MalformedURLException.class))
+                .hasMessageContaining("Illegal char <:> at index 17"));
+
     assertThat(resolveURL("~"))
         .isEqualTo(Paths.get(System.getProperty("user.home")).toUri().toURL());
     assertThat(resolveURL("~/foo"))
