@@ -14,9 +14,12 @@ import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
 import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.google.common.collect.ImmutableMap;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -28,14 +31,16 @@ class StringToByteCodecTest {
       new StringToByteCodec(
           ThreadLocal.withInitial(
               () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          OverflowStrategy.REJECT,
+          RoundingMode.HALF_EVEN,
           CQL_DATE_TIME_FORMAT,
           MILLISECONDS,
-          EPOCH,
+          EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
           newArrayList(ONE, ZERO));
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     assertThat(codec)
         .convertsFrom("0")
         .to((byte) 0)
@@ -62,7 +67,7 @@ class StringToByteCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo((byte) 0)
         .from("0")
@@ -75,7 +80,7 @@ class StringToByteCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     assertThat(codec)
         .cannotConvertFrom("not a valid byte")
         .cannotConvertFrom("1.2")

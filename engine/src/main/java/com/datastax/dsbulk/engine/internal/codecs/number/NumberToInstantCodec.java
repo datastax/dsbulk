@@ -12,18 +12,18 @@ import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
 
 public class NumberToInstantCodec<FROM extends Number> extends ConvertingCodec<FROM, Instant> {
 
-  private final TimeUnit numericTimestampUnit;
-  private final Instant numericTimestampEpoch;
+  private final TimeUnit timeUnit;
+  private final ZonedDateTime epoch;
 
-  public NumberToInstantCodec(
-      Class<FROM> javaType, TimeUnit numericTimestampUnit, Instant numericTimestampEpoch) {
+  public NumberToInstantCodec(Class<FROM> javaType, TimeUnit timeUnit, ZonedDateTime epoch) {
     super(InstantCodec.instance, javaType);
-    this.numericTimestampUnit = numericTimestampUnit;
-    this.numericTimestampEpoch = numericTimestampEpoch;
+    this.timeUnit = timeUnit;
+    this.epoch = epoch;
   }
 
   @Override
@@ -31,10 +31,9 @@ public class NumberToInstantCodec<FROM extends Number> extends ConvertingCodec<F
     if (value == null) {
       return null;
     }
-    long timestamp =
-        CodecUtils.instantToTimestampSinceEpoch(value, numericTimestampUnit, numericTimestampEpoch);
+    long timestamp = CodecUtils.instantToNumber(value, timeUnit, epoch.toInstant());
     @SuppressWarnings("unchecked")
-    FROM n = (FROM) CodecUtils.convertNumberExact(timestamp, getJavaType().getRawType());
+    FROM n = (FROM) CodecUtils.convertNumber(timestamp, getJavaType().getRawType());
     return n;
   }
 
@@ -43,6 +42,6 @@ public class NumberToInstantCodec<FROM extends Number> extends ConvertingCodec<F
     if (value == null) {
       return null;
     }
-    return CodecUtils.numberToInstant(value, numericTimestampUnit, numericTimestampEpoch);
+    return CodecUtils.numberToInstant(value, timeUnit, epoch.toInstant());
   }
 }

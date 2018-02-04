@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 class DefaultMappingTest {
 
   @Test
-  void should_create_mapping() throws Exception {
+  void should_create_mapping() {
     ImmutableBiMap<String, String> fieldsToVariables =
         ImmutableBiMap.<String, String>builder().put("f1", "c1").build();
     ExtendedCodecRegistry extendedCodecRegistry = mock(ExtendedCodecRegistry.class);
@@ -44,9 +44,9 @@ class DefaultMappingTest {
   }
 
   @Test
-  void should_detect_writetime_variable() throws Exception {
+  void should_detect_writetime_variable() {
     ExtendedCodecRegistry extendedCodecRegistry = mock(ExtendedCodecRegistry.class);
-    ConvertingCodec<String, Instant> codec = new StringToInstantCodec(null, null, null);
+    ConvertingCodec<String, Instant> codec = new StringToInstantCodec(null, null, null, null);
     when(extendedCodecRegistry.<String, Instant>convertingCodecFor(
             timestamp(), TypeToken.of(String.class)))
         .thenReturn(codec);

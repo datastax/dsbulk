@@ -17,15 +17,11 @@ import java.time.temporal.TemporalAccessor;
 public abstract class StringToTemporalCodec<T extends TemporalAccessor>
     extends ConvertingCodec<String, T> {
 
-  final DateTimeFormatter parser;
+  final DateTimeFormatter temporalFormat;
 
-  StringToTemporalCodec(TypeCodec<T> targetCodec, DateTimeFormatter parser) {
+  StringToTemporalCodec(TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat) {
     super(targetCodec, String.class);
-    this.parser = parser;
-  }
-
-  TemporalAccessor parseAsTemporalAccessor(String s) {
-    return CodecUtils.parseTemporal(s, parser);
+    this.temporalFormat = temporalFormat;
   }
 
   @Override
@@ -33,6 +29,10 @@ public abstract class StringToTemporalCodec<T extends TemporalAccessor>
     if (value == null) {
       return null;
     }
-    return parser.format(value);
+    return temporalFormat.format(value);
+  }
+
+  TemporalAccessor parseTemporalAccessor(String s) {
+    return CodecUtils.parseTemporal(s, temporalFormat);
   }
 }

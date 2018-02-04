@@ -24,7 +24,7 @@ class StringToBooleanCodecTest {
   private final StringToBooleanCodec codec = new StringToBooleanCodec(inputs, outputs);
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     assertThat(codec)
         .convertsFrom("FOO")
         .to(true)
@@ -41,7 +41,7 @@ class StringToBooleanCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(true)
         .from("foo")
@@ -52,7 +52,7 @@ class StringToBooleanCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     assertThat(codec).cannotConvertFrom("not a valid boolean");
   }
 }

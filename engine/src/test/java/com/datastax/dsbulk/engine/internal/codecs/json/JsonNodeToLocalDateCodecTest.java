@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 class JsonNodeToLocalDateCodecTest {
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("2016-07-24"))
@@ -39,7 +39,7 @@ class JsonNodeToLocalDateCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec)
         .convertsTo(LocalDate.parse("2016-07-24"))
@@ -55,7 +55,7 @@ class JsonNodeToLocalDateCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid date format"));

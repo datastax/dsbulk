@@ -10,10 +10,11 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static java.util.stream.Collectors.toList;
 
-import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
-import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -22,18 +23,22 @@ import java.util.concurrent.TimeUnit;
 public class StringToShortCodec extends StringToNumberCodec<Short> {
 
   public StringToShortCodec(
-      ThreadLocal<DecimalFormat> formatter,
-      DateTimeFormatter temporalParser,
-      TimeUnit numericTimestampUnit,
-      Instant numericTimestampEpoch,
+      ThreadLocal<DecimalFormat> numberFormat,
+      OverflowStrategy overflowStrategy,
+      RoundingMode roundingMode,
+      DateTimeFormatter temporalFormat,
+      TimeUnit timeUnit,
+      ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
       List<BigDecimal> booleanNumbers) {
     super(
         smallInt(),
-        formatter,
-        temporalParser,
-        numericTimestampUnit,
-        numericTimestampEpoch,
+        numberFormat,
+        overflowStrategy,
+        roundingMode,
+        temporalFormat,
+        timeUnit,
+        epoch,
         booleanWords,
         booleanNumbers.stream().map(BigDecimal::shortValueExact).collect(toList()));
   }
@@ -44,6 +49,6 @@ public class StringToShortCodec extends StringToNumberCodec<Short> {
     if (number == null) {
       return null;
     }
-    return CodecUtils.toShortValueExact(number);
+    return narrowNumber(number, Short.class);
   }
 }

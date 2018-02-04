@@ -15,6 +15,7 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.driver.core.utils.UUIDs;
@@ -25,7 +26,7 @@ import org.junit.jupiter.api.Test;
 class NumberToUUIDCodecTest {
 
   private NumberToInstantCodec<Long> instantCodec =
-      new NumberToInstantCodec<>(Long.class, MILLISECONDS, EPOCH);
+      new NumberToInstantCodec<>(Long.class, MILLISECONDS, EPOCH.atZone(UTC));
 
   @Test
   void should_convert_when_valid_input() {

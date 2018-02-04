@@ -11,11 +11,12 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 import static java.util.stream.Collectors.toList;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
-import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -24,18 +25,22 @@ import java.util.concurrent.TimeUnit;
 public class StringToBigIntegerCodec extends StringToNumberCodec<BigInteger> {
 
   public StringToBigIntegerCodec(
-      ThreadLocal<DecimalFormat> formatter,
-      DateTimeFormatter temporalParser,
-      TimeUnit numericTimestampUnit,
-      Instant numericTimestampEpoch,
+      ThreadLocal<DecimalFormat> numberFormat,
+      OverflowStrategy overflowStrategy,
+      RoundingMode roundingMode,
+      DateTimeFormatter temporalFormat,
+      TimeUnit timeUnit,
+      ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
       List<BigDecimal> booleanNumbers) {
     super(
         TypeCodec.varint(),
-        formatter,
-        temporalParser,
-        numericTimestampUnit,
-        numericTimestampEpoch,
+        numberFormat,
+        overflowStrategy,
+        roundingMode,
+        temporalFormat,
+        timeUnit,
+        epoch,
         booleanWords,
         booleanNumbers.stream().map(BigDecimal::toBigInteger).collect(toList()));
   }
@@ -46,6 +51,6 @@ public class StringToBigIntegerCodec extends StringToNumberCodec<BigInteger> {
     if (number == null) {
       return null;
     }
-    return CodecUtils.toBigIntegerExact(number);
+    return narrowNumber(number, BigInteger.class);
   }
 }

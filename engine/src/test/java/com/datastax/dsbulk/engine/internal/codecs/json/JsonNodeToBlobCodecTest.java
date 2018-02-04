@@ -32,7 +32,7 @@ class JsonNodeToBlobCodecTest {
   private final JsonNodeToBlobCodec codec = JsonNodeToBlobCodec.INSTANCE;
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.binaryNode(DATA))
         .to(DATA_BB)
@@ -53,7 +53,7 @@ class JsonNodeToBlobCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(DATA_BB)
         .from(JsonNodeFactory.instance.binaryNode(DATA))
@@ -64,7 +64,7 @@ class JsonNodeToBlobCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     assertThat(codec).cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid binary"));
   }
 }

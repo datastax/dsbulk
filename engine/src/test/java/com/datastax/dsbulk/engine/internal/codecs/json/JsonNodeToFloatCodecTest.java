@@ -13,25 +13,33 @@ import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
+import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
+import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.collect.ImmutableMap;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToFloatCodecTest {
 
+  private final ThreadLocal<DecimalFormat> numberFormat =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN));
+
   private final JsonNodeToFloatCodec codec =
       new JsonNodeToFloatCodec(
-          ThreadLocal.withInitial(
-              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          numberFormat,
+          OverflowStrategy.REJECT,
+          RoundingMode.HALF_EVEN,
           CQL_DATE_TIME_FORMAT,
           MILLISECONDS,
-          EPOCH,
+          EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
           newArrayList(ONE, ZERO));
 
@@ -66,15 +74,13 @@ class JsonNodeToFloatCodecTest {
         .to(Float.MIN_VALUE)
         .convertsFrom(
             JsonNodeFactory.instance.textNode(
-                "340,282,346,638,528,860,000,000,000,000,000,000,000"))
+                "340,282,350,000,000,000,000,000,000,000,000,000,000"))
         .to(Float.MAX_VALUE)
         .convertsFrom(
             JsonNodeFactory.instance.textNode("0.0000000000000000000000000000000000000000000014"))
         .to(Float.MIN_VALUE)
         .convertsFrom(JsonNodeFactory.instance.textNode("1970-01-01T00:00:00Z"))
         .to(0f)
-        .convertsFrom(JsonNodeFactory.instance.textNode("2000-01-01T00:00:00Z"))
-        .to(946684800000f)
         .convertsFrom(JsonNodeFactory.instance.textNode("TRUE"))
         .to(1f)
         .convertsFrom(JsonNodeFactory.instance.textNode("FALSE"))
@@ -96,7 +102,7 @@ class JsonNodeToFloatCodecTest {
         .convertsTo(Float.MAX_VALUE)
         .from(
             JsonNodeFactory.instance.numberNode(
-                340_282_346_638_528_860_000_000_000_000_000_000_000f))
+                340_282_350_000_000_000_000_000_000_000_000_000_000f))
         .convertsTo(0.001f)
         .from(JsonNodeFactory.instance.numberNode(0.001f))
         .convertsTo(null)

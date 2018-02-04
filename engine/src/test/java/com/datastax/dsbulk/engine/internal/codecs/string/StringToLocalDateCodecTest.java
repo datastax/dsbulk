@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 class StringToLocalDateCodecTest {
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     StringToLocalDateCodec codec = new StringToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec)
         .convertsFrom("2016-07-24")
@@ -32,7 +32,7 @@ class StringToLocalDateCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     StringToLocalDateCodec codec = new StringToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec).convertsTo(LocalDate.parse("2016-07-24")).from("2016-07-24");
     codec = new StringToLocalDateCodec(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -40,7 +40,7 @@ class StringToLocalDateCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     StringToLocalDateCodec codec = new StringToLocalDateCodec(ISO_LOCAL_DATE);
     assertThat(codec).cannotConvertFrom("not a valid date format");
   }

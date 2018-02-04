@@ -26,7 +26,7 @@ public class NumberToBooleanCodec<FROM extends Number> extends ConvertingCodec<F
     this.booleanNumbers =
         booleanNumbers
             .stream()
-            .map(n -> (FROM) CodecUtils.convertNumberExact(n, javaType))
+            .map(n -> (FROM) CodecUtils.convertNumber(n, javaType))
             .collect(Collectors.toList());
   }
 
