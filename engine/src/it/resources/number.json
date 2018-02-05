@@ -1,0 +1,67 @@
+[
+  {
+    "key": "scientific_notation",
+    "vdouble": "1e+7",
+    "vdecimal": "1e+7"
+  },
+  {
+    "key": "regular_notation",
+    "vdouble": 10000000,
+    "vdecimal": 10000000
+  },
+  {
+    "key": "hex_notation",
+    "vdouble": "0x1.fffffffffffffP+1023",
+    "vdecimal": "0x1.fffffffffffffP+1023"
+  },
+  {
+    "key": "irrational",
+    "vdouble": 0.1,
+    "vdecimal": 0.1
+  },
+  {
+    "key": "Double.NaN",
+    "vdouble": "NaN",
+    "vdecimal": null
+  },
+  {
+    "key": "Double.POSITIVE_INFINITY",
+    "vdouble": "+Infinity",
+    "vdecimal": null
+  },
+  {
+    "key": "Double.NEGATIVE_INFINITY",
+    "vdouble": "-Infinity",
+    "vdecimal": null
+  },
+  {
+    "key": "Double.MAX_VALUE",
+    "vdouble": 1.7976931348623157E308,
+    "vdecimal": 1.7976931348623157E308
+  },
+  {
+    "key": "Double.MIN_VALUE",
+    "vdouble": 4.9E-324,
+    "vdecimal": 4.9E-324
+  },
+  {
+    "key": "Double.MIN_NORMAL",
+    "vdouble": 2.2250738585072014E-308,
+    "vdecimal": 2.2250738585072014E-308
+  },
+  {
+    "key": "Float.MAX_VALUE",
+    "vdouble": 340282350000000000000000000000000000000,
+    "vdecimal": 340282350000000000000000000000000000000
+  },
+  {
+    "key": "Float.MIN_VALUE",
+    "vdouble": 0.0000000000000000000000000000000000000000000014,
+    "vdecimal": 0.0000000000000000000000000000000000000000000014
+  },
+  {
+    "key": "too_many_digits",
+    "vdouble": 0.12345678901234567890123456789,
+    "vdecimal": 0.12345678901234567890123456789
+  }
+]

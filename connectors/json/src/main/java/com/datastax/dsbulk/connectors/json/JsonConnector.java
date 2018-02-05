@@ -29,10 +29,13 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Suppliers;
 import com.typesafe.config.ConfigException;
 import java.io.BufferedReader;
@@ -49,7 +52,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -102,6 +105,9 @@ public class JsonConnector implements Connector {
   private static final String FILE_NAME_FORMAT = "fileNameFormat";
   private static final String PARSER_FEATURES = "parserFeatures";
   private static final String GENERATOR_FEATURES = "generatorFeatures";
+  private static final String MAPPER_FEATURES = "mapperFeatures";
+  private static final String SERIALIZATION_FEATURES = "serializationFeatures";
+  private static final String DESERIALIZATION_FEATURES = "deserializationFeatures";
   private static final String PRETTY_PRINT = "prettyPrint";
 
   private static final TypeReference<Map<String, JsonNode>> JSON_NODE_MAP_TYPE_REFERENCE =
@@ -122,8 +128,12 @@ public class JsonConnector implements Connector {
   private AtomicInteger counter;
   private ObjectMapper objectMapper;
   private JavaType jsonNodeMapType;
-  private List<JsonParser.Feature> parserFeatures;
-  private List<JsonGenerator.Feature> generatorFeatures;
+  private Map<JsonParser.Feature, Boolean> parserFeatures;
+  private Map<JsonGenerator.Feature, Boolean> generatorFeatures;
+  private Map<MapperFeature, Boolean> mapperFeatures;
+  private Map<SerializationFeature, Boolean> serializationFeatures;
+  private Map<DeserializationFeature, Boolean> deserializationFeatures;
+
   private boolean prettyPrint;
   private Scheduler scheduler;
   private BlazePool<PoolableJsonWriter> pool;
@@ -151,8 +161,14 @@ public class JsonConnector implements Connector {
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
       recursive = settings.getBoolean(RECURSIVE);
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
-      parserFeatures = settings.getEnumList(JsonParser.Feature.class, PARSER_FEATURES);
-      generatorFeatures = settings.getEnumList(JsonGenerator.Feature.class, GENERATOR_FEATURES);
+      parserFeatures = getFeatureMap(settings.getConfig(PARSER_FEATURES), JsonParser.Feature.class);
+      generatorFeatures =
+          getFeatureMap(settings.getConfig(GENERATOR_FEATURES), JsonGenerator.Feature.class);
+      mapperFeatures = getFeatureMap(settings.getConfig(MAPPER_FEATURES), MapperFeature.class);
+      serializationFeatures =
+          getFeatureMap(settings.getConfig(SERIALIZATION_FEATURES), SerializationFeature.class);
+      deserializationFeatures =
+          getFeatureMap(settings.getConfig(DESERIALIZATION_FEATURES), DeserializationFeature.class);
       prettyPrint = settings.getBoolean(PRETTY_PRINT);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.json");
@@ -168,13 +184,24 @@ public class JsonConnector implements Connector {
     }
     objectMapper = new ObjectMapper();
     jsonNodeMapType = objectMapper.constructType(JSON_NODE_MAP_TYPE_REFERENCE.getType());
+    for (MapperFeature mapperFeature : mapperFeatures.keySet()) {
+      objectMapper.configure(mapperFeature, mapperFeatures.get(mapperFeature));
+    }
     if (read) {
-      for (JsonParser.Feature parserFeature : parserFeatures) {
-        objectMapper.configure(parserFeature, true);
+      for (JsonParser.Feature parserFeature : parserFeatures.keySet()) {
+        objectMapper.configure(parserFeature, parserFeatures.get(parserFeature));
+      }
+      for (DeserializationFeature deserializationFeature : deserializationFeatures.keySet()) {
+        objectMapper.configure(
+            deserializationFeature, deserializationFeatures.get(deserializationFeature));
       }
     } else {
-      for (JsonGenerator.Feature generatorFeature : generatorFeatures) {
-        objectMapper.configure(generatorFeature, true);
+      for (JsonGenerator.Feature generatorFeature : generatorFeatures.keySet()) {
+        objectMapper.configure(generatorFeature, generatorFeatures.get(generatorFeature));
+      }
+      for (SerializationFeature serializationFeature : serializationFeatures.keySet()) {
+        objectMapper.configure(
+            serializationFeature, serializationFeatures.get(serializationFeature));
       }
       counter = new AtomicInteger(0);
       if (prettyPrint) {
@@ -518,5 +545,14 @@ public class JsonConnector implements Connector {
     }
     // assume we are writing to a single URL and ignore fileNameFormat
     return url;
+  }
+
+  private static <T extends Enum<T>> Map<T, Boolean> getFeatureMap(
+      LoaderConfig source, Class<T> featureClass) {
+    Map<T, Boolean> dest = new HashMap<>();
+    for (String name : source.root().keySet()) {
+      dest.put(Enum.valueOf(featureClass, name), source.getBoolean(name));
+    }
+    return dest;
   }
 }

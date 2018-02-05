@@ -417,6 +417,12 @@ The mode for loading and unloading JSON documents. Valid values are:
 
 Default: **"MULTI_DOCUMENT"**.
 
+#### --connector.json.deserializationFeatures.USE_BIG_DECIMAL_FOR_FLOATS _&lt;boolean&gt;_
+
+
+
+Default: **true**.
+
 #### -encoding,--connector.json.encoding _&lt;string&gt;_
 
 The file encoding to use for all read or written files.
@@ -435,23 +441,11 @@ The glob pattern to use when searching for files to read. The syntax to use is t
 
 Default: **"\*\*/\*.json"**.
 
-#### --connector.json.generatorFeatures _&lt;list&gt;_
-
-JSON generator features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `[ESCAPE_NON_ASCII, QUOTE_FIELD_NAMES]` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
-
-Default: **[]**.
-
 #### -maxConcurrentFiles,--connector.json.maxConcurrentFiles _&lt;string&gt;_
 
 The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
 Default: **"0.25C"**.
-
-#### --connector.json.parserFeatures _&lt;list&gt;_
-
-JSON parser features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonParser.Feature`. For example, a value of `[ALLOW_COMMENTS, ALLOW_SINGLE_QUOTES]` will configure the parser to allow the use of comments and single-quoted strings in JSON data. Used for loading only.
-
-Default: **[]**.
 
 #### --connector.json.prettyPrint _&lt;boolean&gt;_
 

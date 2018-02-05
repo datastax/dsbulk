@@ -71,7 +71,9 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS]", url("/multi_doc.json")))
+                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                        url("/multi_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -87,7 +89,9 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS], mode = SINGLE_DOCUMENT",
+                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}, "
+                            + "mode = SINGLE_DOCUMENT",
                         url("/single_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -104,7 +108,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS], mode = SINGLE_DOCUMENT",
+                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, mode = SINGLE_DOCUMENT",
                         url("/empty.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -122,7 +126,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS], mode = MULTI_DOCUMENT",
+                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, mode = MULTI_DOCUMENT",
                         url("/empty.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -140,7 +144,9 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS]", url("/multi_doc.json")))
+                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                        url("/multi_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -613,7 +619,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = [ALLOW_COMMENTS], mode = MULTI_DOCUMENT",
+                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, mode = MULTI_DOCUMENT",
                         url("/single_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -639,7 +645,10 @@ class JsonConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"http://localhost:%d/file.json\", mode = SINGLE_DOCUMENT, parserFeatures = [ALLOW_COMMENTS]",
+                          "url = \"http://localhost:%d/file.json\", "
+                              + "mode = SINGLE_DOCUMENT, "
+                              + "parserFeatures = {ALLOW_COMMENTS:true}, "
+                              + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
                           server.getPort()))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
