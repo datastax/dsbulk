@@ -8,6 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.utils;
 
+import static com.datastax.dsbulk.commons.config.LoaderConfig.LEAF_ANNOTATION;
+import static com.datastax.dsbulk.commons.config.LoaderConfig.TYPE_ANNOTATION;
+
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.typesafe.config.Config;
@@ -185,20 +188,40 @@ public class SettingsUtils {
       }
     }
 
-    for (Map.Entry<String, ConfigValue> entry : DEFAULT.entrySet()) {
+    addSettings(DEFAULT.root(), "");
+  }
+
+  private static void addSettings(ConfigObject root, String keyPrefix) {
+    for (Map.Entry<String, ConfigValue> entry : root.entrySet()) {
       // Add the setting name to each group (and which groups want the setting will
       // take it).
 
+      String key = entry.getKey();
+      ConfigValue value = entry.getValue();
+      String fullKey = keyPrefix.isEmpty() ? key : keyPrefix + '.' + key;
+
       // Never add a setting under "metaSettings".
-      if (entry.getKey().contains("metaSettings.")) {
+      if (key.equals("metaSettings")) {
         continue;
       }
 
-      for (Group group : GROUPS.values()) {
-        if (group.addSetting(entry.getKey())) {
-          // The setting was added to a group. Don't try adding to other groups.
-          break;
+      boolean leaf =
+          !(value instanceof ConfigObject)
+              || value
+                  .origin()
+                  .comments()
+                  .stream()
+                  .anyMatch(line -> line.contains(LEAF_ANNOTATION));
+
+      if (leaf) {
+        for (Group group : GROUPS.values()) {
+          if (group.addSetting(fullKey)) {
+            // The setting was added to a group. Don't try adding to other groups.
+            break;
+          }
         }
+      } else {
+        addSettings((ConfigObject) value, fullKey);
       }
     }
   }
@@ -224,6 +247,10 @@ public class SettingsUtils {
         action.accept(connectorConfig, connectorName);
       }
     }
+  }
+
+  public static boolean isAnnotation(String line) {
+    return line.contains(TYPE_ANNOTATION) || line.contains(LEAF_ANNOTATION);
   }
 
   /**

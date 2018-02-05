@@ -417,11 +417,11 @@ The mode for loading and unloading JSON documents. Valid values are:
 
 Default: **"MULTI_DOCUMENT"**.
 
-#### --connector.json.deserializationFeatures.USE_BIG_DECIMAL_FOR_FLOATS _&lt;boolean&gt;_
+#### --connector.json.deserializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
+A map of JSON deserialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.DeserializationFeature`. Used for loading only.
 
-
-Default: **true**.
+Note: the default is to set `USE_BIG_DECIMAL_FOR_FLOATS` to `true`; this is the only way to guarantee that floating point numbers will not have their precision truncated when parsed, at the cost of a slightly slower parsing.
 
 #### -encoding,--connector.json.encoding _&lt;string&gt;_
 
@@ -441,11 +441,23 @@ The glob pattern to use when searching for files to read. The syntax to use is t
 
 Default: **"\*\*/\*.json"**.
 
+#### --connector.json.generatorFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+
+A map of JSON generator features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `{ ESCAPE_NON_ASCII : true, QUOTE_FIELD_NAMES : true }` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
+
+#### --connector.json.mapperFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+
+A map of JSON mapper features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.MapperFeature`. Used both for loading and unloading.
+
 #### -maxConcurrentFiles,--connector.json.maxConcurrentFiles _&lt;string&gt;_
 
 The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
 Default: **"0.25C"**.
+
+#### --connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+
+A map of JSON parser features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.core.JsonParser.Feature`. For example, a value of `{ ALLOW_COMMENTS : true, ALLOW_SINGLE_QUOTES : true }` will configure the parser to allow the use of comments and single-quoted strings in JSON data. Used for loading only.
 
 #### --connector.json.prettyPrint _&lt;boolean&gt;_
 
@@ -460,6 +472,10 @@ Default: **false**.
 Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.
 
 Default: **false**.
+
+#### --connector.json.serializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+
+A map of JSON serialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.SerializationFeature`. Used for unloading only.
 
 <a name="schema"></a>
 ## Schema Settings
