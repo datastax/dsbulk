@@ -604,7 +604,9 @@ public class CodecUtils {
   /**
    * Converts the given temporal into a temporal of the target class.
    *
+   * @param <T> the target type.
    * @param value the value to convert.
+   * @param targetClass the target class.
    * @param timeZone the time zone to use.
    * @param epoch the epoch to use.
    * @return the converted value.
