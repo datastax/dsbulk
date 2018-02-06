@@ -49,6 +49,7 @@ import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -81,8 +82,8 @@ class SchemaSettingsTest {
 
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
   private final RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
-  private final ThreadLocal<NumberFormat> numberFormat =
-      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
+  private final FastThreadLocal<NumberFormat> numberFormat =
+      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
   private final StringToInstantCodec codec =
       new StringToInstantCodec(CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
 

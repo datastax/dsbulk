@@ -35,6 +35,7 @@ import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jetbrains.annotations.NotNull;
@@ -95,7 +96,9 @@ public class UnloadWorkflow implements Workflow {
     monitoringSettings.init();
     executorSettings.init();
     driverSettings.init();
-    scheduler = Schedulers.newParallel("workflow");
+    scheduler =
+        Schedulers.newParallel(
+            Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     cluster = driverSettings.newCluster();
     String keyspace = schemaSettings.getKeyspace();
     DseSession session = cluster.connect(keyspace);

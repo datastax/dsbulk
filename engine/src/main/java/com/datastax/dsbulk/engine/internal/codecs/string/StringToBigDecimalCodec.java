@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 public class StringToBigDecimalCodec extends StringToNumberCodec<BigDecimal> {
 
   public StringToBigDecimalCodec(
-      ThreadLocal<NumberFormat> numberFormat,
+      FastThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
       DateTimeFormatter temporalFormat,

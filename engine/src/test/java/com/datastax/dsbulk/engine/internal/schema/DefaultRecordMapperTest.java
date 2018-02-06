@@ -46,7 +46,7 @@ import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
-import java.math.RoundingMode;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.net.URI;
 import java.text.NumberFormat;
 import java.time.Instant;
@@ -84,8 +84,8 @@ class DefaultRecordMapperTest {
   private ArgumentCaptor<Object> valueCaptor;
   private ArgumentCaptor<TypeCodec> codecCaptor;
   private RecordMetadata recordMetadata;
-  private final ThreadLocal<NumberFormat> formatter =
-      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
+  private final FastThreadLocal<NumberFormat> formatter =
+      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   @BeforeEach
   void setUp() {
@@ -163,7 +163,7 @@ class DefaultRecordMapperTest {
             new StringToLongCodec(
                 formatter,
                 OverflowStrategy.REJECT,
-                RoundingMode.HALF_EVEN,
+                HALF_EVEN,
                 CQL_DATE_TIME_FORMAT,
                 MINUTES,
                 EPOCH.atZone(UTC),
@@ -195,7 +195,7 @@ class DefaultRecordMapperTest {
             new StringToLongCodec(
                 formatter,
                 OverflowStrategy.REJECT,
-                RoundingMode.HALF_EVEN,
+                HALF_EVEN,
                 CQL_DATE_TIME_FORMAT,
                 MINUTES,
                 millennium.atZone(UTC),
@@ -225,7 +225,7 @@ class DefaultRecordMapperTest {
             new StringToLongCodec(
                 formatter,
                 OverflowStrategy.REJECT,
-                RoundingMode.HALF_EVEN,
+                HALF_EVEN,
                 CQL_DATE_TIME_FORMAT,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
@@ -257,7 +257,7 @@ class DefaultRecordMapperTest {
             new StringToLongCodec(
                 formatter,
                 OverflowStrategy.REJECT,
-                RoundingMode.HALF_EVEN,
+                HALF_EVEN,
                 timestampFormat,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),

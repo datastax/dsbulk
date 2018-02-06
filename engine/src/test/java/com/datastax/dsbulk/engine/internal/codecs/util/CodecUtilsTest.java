@@ -55,6 +55,7 @@ import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -105,9 +106,11 @@ class CodecUtilsTest {
   private final DateTimeFormatter localTimeFormat =
       CodecSettings.getDateTimeFormat("ISO_LOCAL_TIME", UTC, US, EPOCH.atZone(UTC));
 
-  private Map<String, Boolean> booleanInputWords = ImmutableMap.of("true", true, "false", false);
+  private final Map<String, Boolean> booleanInputWords =
+      ImmutableMap.of("true", true, "false", false);
 
-  private List<BigDecimal> booleanNumbers = Lists.newArrayList(BigDecimal.ONE, BigDecimal.ZERO);
+  private final List<BigDecimal> booleanNumbers =
+      Lists.newArrayList(BigDecimal.ONE, BigDecimal.ZERO);
 
   @SuppressWarnings("ConstantConditions")
   @Test
@@ -945,7 +948,12 @@ class CodecUtilsTest {
     StringToInstantCodec instantCodec =
         new StringToInstantCodec(
             timestampFormat1,
-            ThreadLocal.withInitial(() -> this.numberFormat1),
+            new FastThreadLocal<NumberFormat>() {
+              @Override
+              protected NumberFormat initialValue() throws Exception {
+                return numberFormat1;
+              }
+            },
             MILLISECONDS,
             EPOCH.atZone(UTC));
     assertThat(CodecUtils.parseUUID(null, instantCodec, MIN)).isNull();
