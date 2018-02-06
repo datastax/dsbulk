@@ -42,7 +42,8 @@
 - [improvement] DAT-214: driver.auth.principal should be optional when using Kerberos.
 - [improvement] DAT-207: Rename driver.auth.saslProtocol to driver.auth.saslService.
 - [improvement] DAT-215: When validating path-based settings, verify file existence.
-- [improvement] DAT-108: Upgrade DSE driver to 1.6.2.
+- [improvement] DAT-225: Change driver.pooling.local.connections default to 8.
+- [improvement] DAT-108: Upgrade DSE driver to 1.6.3.
 
 
 ### 1.0.0-beta2
