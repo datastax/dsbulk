@@ -699,11 +699,11 @@ Only applicable when unloading, and only if the connector in use requires format
 
 Valid choices: any `java.math.RoundingMode` enum constant name, that is: `CEILING`, `FLOOR`, `UP`, `DOWN`, `HALF_UP`, `HALF_EVEN`, `HALF_DOWN`, and `UNNECESSARY`.
 
-Note that `UNNECESSARY` will result in an unlimited number of decimal places, regardless of how many of them the pattern above specifies. Use this strategy if you need to export numeric data with absolute precision.
+The precision used when rounding is inferred from the numeric pattern declared under `number`. For example, `#,###.##` allows up to 2 fraction digits, so the rounding precision will be 2; 123.456 would be rounded to 123.46 with this pattern and strategy `UP`.
 
-The precision used when rounding is inferred from the numeric pattern. For example, `#,###.##` allows up to 2 fraction digits, so the rounding precision will be 2; 123.456 would be rounded to 123.46 with this pattern and strategy `UP`.
+The default is `UNNECESSARY` because this is the only strategy that allows to export numeric data without precision loss. Note however that this strategy will result in infinite precision and thus will print decimal numbers with as many fraction digits as required, regardless of the number of fraction digits declared in the numeric pattern in use.
 
-Default: **"HALF_EVEN"**.
+Default: **"UNNECESSARY"**.
 
 #### --codec.time _&lt;string&gt;_
 
