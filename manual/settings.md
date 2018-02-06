@@ -986,7 +986,7 @@ Default: **"30 seconds"**.
 
 The number of connections in the pool for nodes at "local" distance.
 
-Default: **4**.
+Default: **8**.
 
 #### --driver.pooling.local.requests _&lt;number&gt;_
 
