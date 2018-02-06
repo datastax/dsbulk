@@ -30,7 +30,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import java.math.RoundingMode;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,8 +41,8 @@ class StringToMapCodecTest {
 
   private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  private final ThreadLocal<DecimalFormat> numberFormat =
-      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN));
+  private final ThreadLocal<NumberFormat> numberFormat =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
 
   private final StringToDoubleCodec keyCodec =
       new StringToDoubleCodec(

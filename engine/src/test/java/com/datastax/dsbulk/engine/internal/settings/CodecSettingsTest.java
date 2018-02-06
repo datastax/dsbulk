@@ -86,7 +86,6 @@ import java.util.Date;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** */
 class CodecSettingsTest {
 
   private Cluster cluster;
@@ -342,7 +341,6 @@ class CodecSettingsTest {
 
   @Test
   void should_return_boolean_converting_codecs() {
-
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     settings.init();
@@ -364,7 +362,7 @@ class CodecSettingsTest {
   void should_return_rounding_codecs() {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("roundingStrategy = UP")
+            ConfigFactory.parseString("roundingStrategy = UP, formatNumbers = true")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.codec")));
     CodecSettings settings = new CodecSettings(config);
     settings.init();

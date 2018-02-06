@@ -15,7 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 public class JsonNodeToShortCodec extends JsonNodeToNumberCodec<Short> {
 
   public JsonNodeToShortCodec(
-      ThreadLocal<DecimalFormat> numberFormat,
+      ThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
       DateTimeFormatter temporalFormat,

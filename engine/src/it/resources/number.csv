@@ -1,7 +1,7 @@
 key;vdouble;vdecimal
 
 # Scientific notation
-scientific_notation;1e+7;1e+7
+scientific_notation;1.0e+7;1.0e+7
 
 # 1e+7 in regular notation
 regular_notation;10000000;10000000

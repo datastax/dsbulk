@@ -81,7 +81,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -111,7 +111,7 @@ public class ExtendedCodecRegistry {
   private final Map<String, Boolean> booleanInputWords;
   private final Map<Boolean, String> booleanOutputWords;
   private final List<BigDecimal> booleanNumbers;
-  private final ThreadLocal<DecimalFormat> numberFormat;
+  private final ThreadLocal<NumberFormat> numberFormat;
   private final OverflowStrategy overflowStrategy;
   private final RoundingMode roundingMode;
   private final DateTimeFormatter localDateFormat;
@@ -127,7 +127,7 @@ public class ExtendedCodecRegistry {
       Map<String, Boolean> booleanInputWords,
       Map<Boolean, String> booleanOutputWords,
       List<BigDecimal> booleanNumbers,
-      ThreadLocal<DecimalFormat> numberFormat,
+      ThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
       DateTimeFormatter localDateFormat,

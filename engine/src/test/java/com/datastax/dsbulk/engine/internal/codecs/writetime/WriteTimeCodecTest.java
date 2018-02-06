@@ -22,7 +22,7 @@ import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCod
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.sql.Timestamp;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -40,8 +40,8 @@ class WriteTimeCodecTest {
   private DateTimeFormatter temporalFormat =
       CodecSettings.getDateTimeFormat("CQL_DATE_TIME", UTC, US, epoch);
 
-  private final ThreadLocal<DecimalFormat> numberFormat =
-      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN));
+  private final ThreadLocal<NumberFormat> numberFormat =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
 
   @Test
   void should_convert_to_timestamp_micros() {

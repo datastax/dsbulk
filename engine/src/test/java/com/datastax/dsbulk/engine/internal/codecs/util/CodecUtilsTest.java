@@ -59,7 +59,7 @@ import com.google.common.collect.Lists;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -82,11 +82,17 @@ class CodecUtilsTest {
   private final Instant i2 = Instant.parse("2018-02-01T00:00:00Z");
   private final Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
 
-  private final DecimalFormat numberFormat1 =
-      CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN);
+  private final NumberFormat numberFormat1 =
+      CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true);
 
-  private final DecimalFormat numberFormat2 =
-      CodecSettings.getNumberFormat("0.###E0", US, UNNECESSARY);
+  private final NumberFormat numberFormat2 =
+      CodecSettings.getNumberFormat("0.###E0", US, UNNECESSARY, true);
+
+  private final NumberFormat numberFormat3 =
+      CodecSettings.getNumberFormat("#.##", US, UNNECESSARY, true);
+
+  private final NumberFormat numberFormat4 =
+      CodecSettings.getNumberFormat("#,###.##", US, UNNECESSARY, false);
 
   private final DateTimeFormatter timestampFormat1 =
       CodecSettings.getDateTimeFormat("CQL_DATE_TIME", UTC, US, EPOCH.atZone(UTC));
@@ -348,6 +354,11 @@ class CodecUtilsTest {
     assertThatThrownBy(() -> parseNumber("0.1234 ABC", numberFormat1))
         .isInstanceOf(ParseException.class)
         .hasMessageContaining("Invalid number format: 0.1234 ABC");
+    // check that parsing is still possible even if formatting is "turned off"
+    assertThat(parseNumber("1,234.567", numberFormat4)).isEqualTo(new BigDecimal("1234.567"));
+    assertThatThrownBy(() -> parseNumber("0.1234 ABC", numberFormat4))
+        .isInstanceOf(ParseException.class)
+        .hasMessageContaining("Invalid number format: 0.1234 ABC");
   }
 
   @Test
@@ -365,10 +376,23 @@ class CodecUtilsTest {
     assertThat(formatNumber(Double.POSITIVE_INFINITY, numberFormat1)).isEqualTo("Infinity");
     assertThat(formatNumber(Double.NEGATIVE_INFINITY, numberFormat1)).isEqualTo("-Infinity");
     // with rounding mode UNNECESSARY, check that all fraction digits are printed
-    DecimalFormat unlimited = CodecSettings.getNumberFormat("#.##", US, UNNECESSARY);
-    assertThat(formatNumber(Math.PI, unlimited)).isEqualTo("3.141592653589793");
-    assertThat(formatNumber(Float.MIN_VALUE, unlimited))
+    assertThat(formatNumber(Math.PI, numberFormat3)).isEqualTo("3.141592653589793");
+    assertThat(formatNumber(Float.MIN_VALUE, numberFormat3))
         .isEqualTo("0.0000000000000000000000000000000000000000000014");
+    // without formatting
+    assertThat(formatNumber(1234, numberFormat4)).isEqualTo("1234");
+    assertThat(formatNumber(1234.5678, numberFormat4)).isEqualTo("1234.5678");
+    assertThat(formatNumber(new BigDecimal("1.2E+10"), numberFormat4))
+        .isEqualTo(new BigDecimal("1.2E+10").toString());
+    assertThat(formatNumber(Math.PI, numberFormat4)).isEqualTo("3.141592653589793");
+    assertThat(formatNumber(Long.MIN_VALUE, numberFormat4))
+        .isEqualTo(Long.toString(Long.MIN_VALUE));
+    assertThat(formatNumber(Long.MAX_VALUE, numberFormat4))
+        .isEqualTo(Long.toString(Long.MAX_VALUE));
+    assertThat(formatNumber(Double.MIN_VALUE, numberFormat4))
+        .isEqualTo(Double.toString(Double.MIN_VALUE));
+    assertThat(formatNumber(Double.MAX_VALUE, numberFormat4))
+        .isEqualTo(Double.toString(Double.MAX_VALUE));
   }
 
   @Test
@@ -912,7 +936,7 @@ class CodecUtilsTest {
 
   @Test
   void should_parse_uuid() {
-    ThreadLocal<DecimalFormat> numberFormat1 = ThreadLocal.withInitial(() -> this.numberFormat1);
+    ThreadLocal<NumberFormat> numberFormat1 = ThreadLocal.withInitial(() -> this.numberFormat1);
     StringToInstantCodec instantCodec =
         new StringToInstantCodec(
             CQL_DATE_TIME_FORMAT, numberFormat1, MILLISECONDS, EPOCH.atZone(UTC));

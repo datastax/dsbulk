@@ -17,7 +17,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.ByteBuffer;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.ParsePosition;
 import java.time.DateTimeException;
@@ -64,7 +64,7 @@ public class CodecUtils {
   public static TemporalAccessor parseTemporal(
       String s,
       @NotNull DateTimeFormatter temporalFormat,
-      @NotNull DecimalFormat numberFormat,
+      @NotNull NumberFormat numberFormat,
       @NotNull TimeUnit timeUnit,
       @NotNull Instant epoch) {
     Objects.requireNonNull(temporalFormat);
@@ -107,7 +107,7 @@ public class CodecUtils {
    * epoch; and if that fails too, it tries to convert it to a boolean number.
    *
    * @param s the string to parse, may be {@code null}.
-   * @param numberFormat the {@link DecimalFormat} to use to parse numbers; cannot be {@code null}.
+   * @param numberFormat the {@link NumberFormat} to use to parse numbers; cannot be {@code null}.
    * @param temporalFormat the parser to use if the string is an alphanumeric temporal; cannot be
    *     {@code null}.
    * @param timeUnit the time unit to use to convert the alphanumeric temporal to a numeric
@@ -121,7 +121,7 @@ public class CodecUtils {
    */
   public static Number parseNumber(
       String s,
-      @NotNull DecimalFormat numberFormat,
+      @NotNull NumberFormat numberFormat,
       @NotNull DateTimeFormatter temporalFormat,
       @NotNull TimeUnit timeUnit,
       @NotNull ZonedDateTime epoch,
@@ -254,14 +254,14 @@ public class CodecUtils {
   }
 
   /**
-   * Parses the given string using the given {@link DecimalFormat}.
+   * Parses the given string using the given {@link NumberFormat}.
    *
    * @param s the string to parse, may be {@code null}.
    * @param decimalFormat the format to use; cannot be {@code null}.
    * @return a {@link BigDecimal}, or {@code null} if the input was {@code null} or empty.
    * @throws ParseException if the string cannot be parsed.
    */
-  public static Number parseNumber(String s, DecimalFormat decimalFormat) throws ParseException {
+  public static Number parseNumber(String s, NumberFormat decimalFormat) throws ParseException {
     if (s == null || s.isEmpty()) {
       return null;
     }
@@ -284,26 +284,10 @@ public class CodecUtils {
    * @return the formatted value.
    * @throws NumberFormatException if the number cannot be formatted.
    */
-  public static String formatNumber(Number value, DecimalFormat format)
+  public static String formatNumber(Number value, NumberFormat format)
       throws NumberFormatException {
     if (value == null) {
       return null;
-    }
-    // DecimalFormat sometimes applies type narrowing / widening;
-    // especially, for decimal values, it widens float -> double and
-    // narrows BigDecimal -> double, then formats the resulting double.
-    // This poses a problem for floats. The float -> double widening
-    // may alter the original value; however, if we first convert float -> BigDecimal,
-    // then let DecimalFormat do the BigDecimal -> double narrowing, the result
-    // *seems* exact for all floats.
-    // To be on the safe side, let's convert all floating-point numbers to BigDecimals
-    // before formatting.
-    if (value instanceof Float || value instanceof Double) {
-      try {
-        value = toBigDecimal(value);
-      } catch (NumberFormatException ignored) {
-        // happens in rare cases, e.g. with Double.NaN
-      }
     }
     return format.format(value);
   }
@@ -322,7 +306,7 @@ public class CodecUtils {
       return null;
     }
     ParsePosition pos = new ParsePosition(0);
-    TemporalAccessor accessor = dateTimeFormat.parse(s, pos);
+    TemporalAccessor accessor = dateTimeFormat.parse(s.trim(), pos);
     if (pos.getIndex() != s.length()) {
       throw new DateTimeParseException("Invalid temporal format", s, pos.getIndex());
     }
@@ -339,6 +323,9 @@ public class CodecUtils {
    */
   public static String formatTemporal(TemporalAccessor value, DateTimeFormatter format)
       throws DateTimeException {
+    if (value == null) {
+      return null;
+    }
     return format.format(value);
   }
 

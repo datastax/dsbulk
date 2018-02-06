@@ -19,7 +19,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -32,8 +32,8 @@ class JsonNodeToInstantCodecTest {
 
   private final Instant minutesAfterMillennium = MILLENNIUM.plus(Duration.ofMinutes(123456));
 
-  private final ThreadLocal<DecimalFormat> numberFormat =
-      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN));
+  private final ThreadLocal<NumberFormat> numberFormat =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
 
   @Test
   void should_convert_from_valid_input() {

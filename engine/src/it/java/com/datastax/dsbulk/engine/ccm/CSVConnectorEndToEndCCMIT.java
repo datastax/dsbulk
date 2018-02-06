@@ -696,6 +696,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     unloadArgs.add("1");
     unloadArgs.add("--codec.roundingStrategy");
     unloadArgs.add("FLOOR");
+    unloadArgs.add("--codec.formatNumbers");
+    unloadArgs.add("true");
     unloadArgs.add("--schema.keyspace");
     unloadArgs.add(session.getLoggedKeyspace());
     unloadArgs.add("--schema.query");
@@ -704,7 +706,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
 
-    checkNumbersRead(TRUNCATE, FLOOR, unloadDir);
+    checkNumbersRead(TRUNCATE, FLOOR, true, unloadDir);
 
     // check we can load from the unloaded dataset
     loadArgs = new ArrayList<>();
@@ -790,7 +792,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
 
-    checkNumbersRead(REJECT, UNNECESSARY, unloadDir);
+    checkNumbersRead(REJECT, UNNECESSARY, false, unloadDir);
 
     // check we can load from the unloaded dataset
     loadArgs = new ArrayList<>();
@@ -830,12 +832,18 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
               doubles.put(row.getString("key"), row.getDouble("vdouble"));
               bigdecimals.put(row.getString("key"), row.getDecimal("vdecimal"));
             });
-    if (roundingMode == UNNECESSARY) checkExactNumbers(doubles, bigdecimals, overflowStrategy);
-    else checkRoundedNumbers(doubles, bigdecimals, overflowStrategy);
+    if (roundingMode == UNNECESSARY) {
+      checkExactNumbers(doubles, bigdecimals, overflowStrategy);
+    } else {
+      checkRoundedNumbers(doubles, bigdecimals, overflowStrategy);
+    }
   }
 
   private static void checkNumbersRead(
-      OverflowStrategy overflowStrategy, RoundingMode roundingMode, Path unloadDir)
+      OverflowStrategy overflowStrategy,
+      RoundingMode roundingMode,
+      boolean formatted,
+      Path unloadDir)
       throws IOException {
     Map<String, String> doubles = new HashMap<>();
     Map<String, String> bigdecimals = new HashMap<>();
@@ -846,12 +854,17 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
       doubles.put(cols.get(0), cols.get(1));
       bigdecimals.put(cols.get(0), cols.get(2));
     }
-    if (roundingMode == UNNECESSARY) {
-      checkExactNumbers(doubles, overflowStrategy, true);
-      checkExactNumbers(bigdecimals, overflowStrategy, false);
+    if (formatted) {
+      if (roundingMode == UNNECESSARY) {
+        checkExactNumbersFormatted(doubles, overflowStrategy, true);
+        checkExactNumbersFormatted(bigdecimals, overflowStrategy, false);
+      } else {
+        checkRoundedNumbersFormatted(doubles, overflowStrategy, true);
+        checkRoundedNumbersFormatted(bigdecimals, overflowStrategy, false);
+      }
     } else {
-      checkRoundedNumbers(doubles, overflowStrategy, true);
-      checkRoundedNumbers(bigdecimals, overflowStrategy, false);
+      checkExactNumbersUnformatted(doubles, overflowStrategy, true);
+      checkExactNumbersUnformatted(bigdecimals, overflowStrategy, false);
     }
   }
 
@@ -882,29 +895,24 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     } else {
       assertThat(doubles.get("too_many_digits")).isNull();
     }
-    // Note: we need to use isEqualByComparingTo because the retrieved BigDecimal is actually
-    // 1.0e+7, i.e. the number is the same but the scale is different.
-    assertThat(bigdecimals.get("scientific_notation")).isEqualByComparingTo("1e+7");
-    assertThat(bigdecimals.get("regular_notation")).isEqualByComparingTo("10000000");
+    assertThat(bigdecimals.get("scientific_notation")).isEqualTo("1.0E+7");
+    assertThat(bigdecimals.get("regular_notation")).isEqualTo("10000000");
     assertThat(bigdecimals.get("regular_notation"))
-        .isEqualByComparingTo(bigdecimals.get("scientific_notation"));
-    assertThat(bigdecimals.get("hex_notation"))
-        .isEqualByComparingTo(BigDecimal.valueOf(Double.MAX_VALUE));
-    assertThat(bigdecimals.get("irrational")).isEqualByComparingTo("0.1");
-    assertThat(bigdecimals.get("Double.MAX_VALUE"))
-        .isEqualByComparingTo(Double.toString(Double.MAX_VALUE));
-    assertThat(bigdecimals.get("Double.MIN_VALUE"))
-        .isEqualByComparingTo(Double.toString(Double.MIN_VALUE));
-    assertThat(bigdecimals.get("Double.MIN_NORMAL"))
-        .isEqualByComparingTo(Double.toString(Double.MIN_NORMAL));
+        .isNotEqualTo(bigdecimals.get("scientific_notation")); // different scale
+    assertThat(bigdecimals.get("regular_notation"))
+        .isEqualByComparingTo(bigdecimals.get("scientific_notation")); // different scale
+    assertThat(bigdecimals.get("hex_notation")).isEqualTo(BigDecimal.valueOf(Double.MAX_VALUE));
+    assertThat(bigdecimals.get("irrational")).isEqualTo("0.1");
+    assertThat(bigdecimals.get("Double.MAX_VALUE")).isEqualTo(Double.toString(Double.MAX_VALUE));
+    assertThat(bigdecimals.get("Double.MIN_VALUE")).isEqualTo(Double.toString(Double.MIN_VALUE));
+    assertThat(bigdecimals.get("Double.MIN_NORMAL")).isEqualTo(Double.toString(Double.MIN_NORMAL));
+    // Float.MAX_VALUE was in regular notation, so scale = 0
     assertThat(bigdecimals.get("Float.MAX_VALUE"))
-        .isEqualByComparingTo(Float.toString(Float.MAX_VALUE));
-    assertThat(bigdecimals.get("Float.MIN_VALUE"))
-        .isEqualByComparingTo(Float.toString(Float.MIN_VALUE));
+        .isEqualTo(new BigDecimal(Float.toString(Float.MAX_VALUE)).setScale(0, UNNECESSARY));
+    assertThat(bigdecimals.get("Float.MIN_VALUE")).isEqualTo(Float.toString(Float.MIN_VALUE));
     if (overflowStrategy == TRUNCATE) {
       // not truncated
-      assertThat(bigdecimals.get("too_many_digits"))
-          .isEqualByComparingTo("0.12345678901234567890123456789");
+      assertThat(bigdecimals.get("too_many_digits")).isEqualTo("0.12345678901234567890123456789");
     } else {
       assertThat(bigdecimals.get("too_many_digits")).isNull();
     }
@@ -936,39 +944,35 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     } else {
       assertThat(doubles.get("too_many_digits")).isNull();
     }
-    // Note: we need to use isEqualByComparingTo because the retrieved BigDecimal is actually
-    // 1.0e+7, i.e. the number is the same but the scale is different.
-    assertThat(bigdecimals.get("scientific_notation")).isEqualByComparingTo("1e+7");
-    assertThat(bigdecimals.get("regular_notation")).isEqualByComparingTo("10000000");
-    assertThat(bigdecimals.get("regular_notation"))
-        .isEqualByComparingTo(bigdecimals.get("scientific_notation"));
+    assertThat(bigdecimals.get("scientific_notation")).isEqualTo("10000000");
+    assertThat(bigdecimals.get("regular_notation")).isEqualTo("10000000");
     assertThat(bigdecimals.get("hex_notation"))
-        .isEqualByComparingTo(BigDecimal.valueOf(Double.MAX_VALUE));
-    assertThat(bigdecimals.get("irrational")).isEqualByComparingTo("0.1");
+        .isEqualTo(BigDecimal.valueOf(Double.MAX_VALUE).setScale(0, UNNECESSARY));
+    assertThat(bigdecimals.get("irrational")).isEqualTo("0.1");
     assertThat(bigdecimals.get("Double.MAX_VALUE"))
-        .isEqualByComparingTo(Double.toString(Double.MAX_VALUE));
-    assertThat(bigdecimals.get("Double.MIN_VALUE")).isEqualByComparingTo("0"); // rounded
-    assertThat(bigdecimals.get("Double.MIN_NORMAL")).isEqualByComparingTo("0"); // rounded
+        .isEqualTo(BigDecimal.valueOf(Double.MAX_VALUE).setScale(0, UNNECESSARY));
+    assertThat(bigdecimals.get("Double.MIN_VALUE")).isEqualTo("0"); // rounded
+    assertThat(bigdecimals.get("Double.MIN_NORMAL")).isEqualTo("0"); // rounded
     assertThat(bigdecimals.get("Float.MAX_VALUE"))
-        .isEqualByComparingTo(Float.toString(Float.MAX_VALUE));
-    assertThat(bigdecimals.get("Float.MIN_VALUE")).isEqualByComparingTo("0"); // rounded
+        .isEqualTo(new BigDecimal(Float.toString(Float.MAX_VALUE)).setScale(0, UNNECESSARY));
+    assertThat(bigdecimals.get("Float.MIN_VALUE")).isEqualTo("0"); // rounded
     if (overflowStrategy == TRUNCATE) {
       // not truncated
-      assertThat(bigdecimals.get("too_many_digits")).isEqualByComparingTo("0.12"); // rounded
+      assertThat(bigdecimals.get("too_many_digits")).isEqualTo("0.12"); // rounded
     } else {
       assertThat(bigdecimals.get("too_many_digits")).isNull();
     }
   }
 
-  private static void checkExactNumbers(
-      Map<String, String> numbers, OverflowStrategy overflowStrategy, boolean checkNaN) {
+  private static void checkExactNumbersFormatted(
+      Map<String, String> numbers, OverflowStrategy overflowStrategy, boolean isDouble) {
     assertThat(numbers.get("scientific_notation")).isEqualTo("10,000,000");
     assertThat(numbers.get("regular_notation")).isEqualTo("10,000,000");
     assertThat(numbers.get("hex_notation")).startsWith("179,769,313,486,231,570,000,000");
     assertThat(Double.valueOf(numbers.get("hex_notation").replace(",", "")))
         .isEqualTo(Double.MAX_VALUE);
     assertThat(numbers.get("irrational")).isEqualTo("0.1");
-    if (checkNaN) {
+    if (isDouble) {
       assertThat(numbers.get("Double.NaN")).isEqualTo("NaN");
       assertThat(numbers.get("Double.POSITIVE_INFINITY")).isEqualTo("Infinity");
       assertThat(numbers.get("Double.NEGATIVE_INFINITY")).isEqualTo("-Infinity");
@@ -991,7 +995,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(Float.valueOf(numbers.get("Float.MAX_VALUE").replace(",", "")))
         .isEqualTo(Float.MAX_VALUE);
     assertThat(numbers.get("Float.MIN_VALUE"))
-        .isEqualTo("0.0000000000000000000000000000000000000000000014"); //rounded
+        .isEqualTo("0.0000000000000000000000000000000000000000000014"); // rounded
     assertThat(Float.valueOf(numbers.get("Float.MIN_VALUE").replace(",", "")))
         .isEqualTo(Float.MIN_VALUE);
     if (overflowStrategy == TRUNCATE) {
@@ -1002,15 +1006,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     }
   }
 
-  private static void checkRoundedNumbers(
-      Map<String, String> numbers, OverflowStrategy overflowStrategy, boolean checkNaN) {
+  private static void checkRoundedNumbersFormatted(
+      Map<String, String> numbers, OverflowStrategy overflowStrategy, boolean isDouble) {
     assertThat(numbers.get("scientific_notation")).isEqualTo("10,000,000");
     assertThat(numbers.get("regular_notation")).isEqualTo("10,000,000");
     assertThat(numbers.get("hex_notation")).startsWith("179,769,313,486,231,570,000,000");
     assertThat(Double.valueOf(numbers.get("hex_notation").replace(",", "")))
         .isEqualTo(Double.MAX_VALUE);
     assertThat(numbers.get("irrational")).isEqualTo("0.1");
-    if (checkNaN) {
+    if (isDouble) {
       assertThat(numbers.get("Double.NaN")).isEqualTo("NaN");
       assertThat(numbers.get("Double.POSITIVE_INFINITY")).isEqualTo("Infinity");
       assertThat(numbers.get("Double.NEGATIVE_INFINITY")).isEqualTo("-Infinity");
@@ -1018,18 +1022,70 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(numbers.get("Double.MAX_VALUE")).startsWith("179,769,313,486,231,570,000,000,000");
     assertThat(Double.valueOf(numbers.get("Double.MAX_VALUE").replace(",", "")))
         .isEqualTo(Double.MAX_VALUE);
-    assertThat(numbers.get("Double.MIN_VALUE")).isEqualTo("0"); //rounded
-    assertThat(numbers.get("Double.MIN_NORMAL")).isEqualTo("0"); //rounded
+    assertThat(numbers.get("Double.MIN_VALUE")).isEqualTo("0"); // rounded
+    assertThat(numbers.get("Double.MIN_NORMAL")).isEqualTo("0"); // rounded
     assertThat(numbers.get("Float.MAX_VALUE"))
         .isEqualTo("340,282,350,000,000,000,000,000,000,000,000,000,000");
     assertThat(Float.valueOf(numbers.get("Float.MAX_VALUE").replace(",", "")))
         .isEqualTo(Float.MAX_VALUE);
-    assertThat(numbers.get("Float.MIN_VALUE")).isEqualTo("0"); //rounded
+    assertThat(numbers.get("Float.MIN_VALUE")).isEqualTo("0"); // rounded
     if (overflowStrategy == TRUNCATE) {
       // truncated
       assertThat(numbers.get("too_many_digits")).isEqualTo("0.12"); // rounded
     } else {
       assertThat(numbers.get("too_many_digits")).isNull();
+    }
+  }
+
+  private static void checkExactNumbersUnformatted(
+      Map<String, String> numbers, OverflowStrategy overflowStrategy, boolean isDouble) {
+    if (isDouble) {
+      assertThat(numbers.get("scientific_notation")).isEqualTo(Double.toString(10000000d));
+      assertThat(numbers.get("regular_notation")).isEqualTo(Double.toString(10000000d));
+      assertThat(numbers.get("hex_notation")).isEqualTo(Double.toString(Double.MAX_VALUE));
+      assertThat(numbers.get("irrational")).isEqualTo(Double.toString(0.1d));
+      assertThat(numbers.get("Double.NaN")).isEqualTo(Double.toString(Double.NaN));
+      assertThat(numbers.get("Double.POSITIVE_INFINITY"))
+          .isEqualTo(Double.toString(Double.POSITIVE_INFINITY));
+      assertThat(numbers.get("Double.NEGATIVE_INFINITY"))
+          .isEqualTo(Double.toString(Double.NEGATIVE_INFINITY));
+      assertThat(numbers.get("Double.MAX_VALUE")).isEqualTo(Double.toString(Double.MAX_VALUE));
+      assertThat(numbers.get("Double.MIN_VALUE")).isEqualTo(Double.toString(Double.MIN_VALUE));
+      assertThat(numbers.get("Double.MIN_NORMAL")).isEqualTo(Double.toString(Double.MIN_NORMAL));
+      assertThat(numbers.get("Float.MAX_VALUE")).isEqualTo(Float.toString(Float.MAX_VALUE));
+      assertThat(numbers.get("Float.MIN_VALUE")).isEqualTo(Float.toString(Float.MIN_VALUE));
+      if (overflowStrategy == TRUNCATE) {
+        // truncated
+        assertThat(numbers.get("too_many_digits"))
+            .isEqualTo(Double.toString(0.123456789012345678d));
+      } else {
+        assertThat(numbers.get("too_many_digits")).isNull();
+      }
+    } else {
+      assertThat(numbers.get("scientific_notation")).isEqualTo(new BigDecimal("1.0E+7").toString());
+      assertThat(numbers.get("regular_notation")).isEqualTo(new BigDecimal("10000000").toString());
+      assertThat(numbers.get("hex_notation"))
+          .isEqualTo(BigDecimal.valueOf(Double.MAX_VALUE).toString());
+      assertThat(numbers.get("irrational")).isEqualTo(BigDecimal.valueOf(0.1d).toString());
+      assertThat(numbers.get("Double.MAX_VALUE"))
+          .isEqualTo(BigDecimal.valueOf(Double.MAX_VALUE).toString());
+      assertThat(numbers.get("Double.MIN_VALUE"))
+          .isEqualTo(BigDecimal.valueOf(Double.MIN_VALUE).toString());
+      assertThat(numbers.get("Double.MIN_NORMAL"))
+          .isEqualTo(BigDecimal.valueOf(Double.MIN_NORMAL).toString());
+      // Float.MAX_VALUE was in regular notation, so scale = 0
+      assertThat(numbers.get("Float.MAX_VALUE"))
+          .isEqualTo(
+              new BigDecimal(Float.toString(Float.MAX_VALUE)).setScale(0, UNNECESSARY).toString());
+      assertThat(numbers.get("Float.MIN_VALUE"))
+          .isEqualTo(new BigDecimal(Float.toString(Float.MIN_VALUE)).toString());
+      if (overflowStrategy == TRUNCATE) {
+        // not truncated
+        assertThat(numbers.get("too_many_digits"))
+            .isEqualTo(new BigDecimal("0.12345678901234567890123456789").toString());
+      } else {
+        assertThat(numbers.get("too_many_digits")).isNull();
+      }
     }
   }
 

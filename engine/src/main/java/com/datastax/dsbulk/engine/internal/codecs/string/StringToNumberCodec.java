@@ -13,7 +13,7 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import java.math.RoundingMode;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class StringToNumberCodec<N extends Number> extends ConvertingCodec<String, N> {
 
-  private final ThreadLocal<DecimalFormat> numberFormat;
+  private final ThreadLocal<NumberFormat> numberFormat;
   private final OverflowStrategy overflowStrategy;
   private final RoundingMode roundingMode;
   private final DateTimeFormatter temporalFormat;
@@ -33,7 +33,7 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
 
   StringToNumberCodec(
       TypeCodec<N> targetCodec,
-      ThreadLocal<DecimalFormat> numberFormat,
+      ThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
       DateTimeFormatter temporalFormat,

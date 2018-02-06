@@ -16,8 +16,10 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToTemporalCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.ExactNumberFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
+import com.datastax.dsbulk.engine.internal.codecs.util.ToStringNumberFormat;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
@@ -28,6 +30,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -91,6 +94,7 @@ public class CodecSettings {
   private static final String BOOLEAN_WORDS = "booleanWords";
   private static final String BOOLEAN_NUMBERS = "booleanNumbers";
   private static final String NUMBER = "number";
+  private static final String FORMAT_NUMERIC_OUTPUT = "formatNumbers";
   private static final String ROUNDING_STRATEGY = "roundingStrategy";
   private static final String OVERFLOW_STRATEGY = "overflowStrategy";
   private static final String TIME = "time";
@@ -106,7 +110,7 @@ public class CodecSettings {
   private Map<String, Boolean> booleanInputWords;
   private Map<Boolean, String> booleanOutputWords;
   private List<BigDecimal> booleanNumbers;
-  private ThreadLocal<DecimalFormat> numberFormat;
+  private ThreadLocal<NumberFormat> numberFormat;
   private RoundingMode roundingMode;
   private OverflowStrategy overflowStrategy;
   private DateTimeFormatter localDateFormat;
@@ -129,7 +133,9 @@ public class CodecSettings {
       // numeric
       roundingMode = config.getEnum(RoundingMode.class, ROUNDING_STRATEGY);
       overflowStrategy = config.getEnum(OverflowStrategy.class, OVERFLOW_STRATEGY);
-      numberFormat = getNumberFormatThreadLocal(locale, config.getString(NUMBER), roundingMode);
+      boolean formatNumbers = config.getBoolean(FORMAT_NUMERIC_OUTPUT);
+      numberFormat =
+          getNumberFormatThreadLocal(locale, config.getString(NUMBER), roundingMode, formatNumbers);
 
       // temporal
       ZoneId timeZone = ZoneId.of(config.getString(TIME_ZONE));
@@ -204,14 +210,15 @@ public class CodecSettings {
     }
   }
 
-  private static ThreadLocal<DecimalFormat> getNumberFormatThreadLocal(
-      Locale locale, String pattern, RoundingMode roundingMode) {
-    return ThreadLocal.withInitial(() -> getNumberFormat(pattern, locale, roundingMode));
+  private static ThreadLocal<NumberFormat> getNumberFormatThreadLocal(
+      Locale locale, String pattern, RoundingMode roundingMode, boolean formatNumbers) {
+    return ThreadLocal.withInitial(
+        () -> getNumberFormat(pattern, locale, roundingMode, formatNumbers));
   }
 
   @VisibleForTesting
-  public static DecimalFormat getNumberFormat(
-      String pattern, Locale locale, RoundingMode roundingMode) {
+  public static NumberFormat getNumberFormat(
+      String pattern, Locale locale, RoundingMode roundingMode, boolean formatNumbers) {
     DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(locale);
     // manually set the NaN and Infinity symbols; the default ones are not parseable:
     // 'REPLACEMENT CHARACTER' (U+FFFD) and 'INFINITY' (U+221E)
@@ -226,7 +233,11 @@ public class CodecSettings {
       // if user selects unnecessary, print as many fraction digits as necessary
       format.setMaximumFractionDigits(Integer.MAX_VALUE);
     }
-    return format;
+    if (!formatNumbers) {
+      return new ToStringNumberFormat(format);
+    } else {
+      return new ExactNumberFormat(format);
+    }
   }
 
   @NotNull

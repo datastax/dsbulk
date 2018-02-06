@@ -15,8 +15,10 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newPreparedId;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
+import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,7 +49,7 @@ import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -79,13 +81,8 @@ class SchemaSettingsTest {
 
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
   private final RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
-  private ThreadLocal<DecimalFormat> numberFormat =
-      ThreadLocal.withInitial(
-          () -> {
-            DecimalFormat format = new DecimalFormat("#,###.##");
-            format.setParseBigDecimal(true);
-            return format;
-          });
+  private final ThreadLocal<NumberFormat> numberFormat =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
   private final StringToInstantCodec codec =
       new StringToInstantCodec(CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
 

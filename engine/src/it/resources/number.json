@@ -1,8 +1,8 @@
 [
   {
     "key": "scientific_notation",
-    "vdouble": "1e+7",
-    "vdecimal": "1e+7"
+    "vdouble": "1.0e+7",
+    "vdecimal": "1.0e+7"
   },
   {
     "key": "regular_notation",

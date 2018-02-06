@@ -14,7 +14,7 @@ import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.math.RoundingMode;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 abstract class JsonNodeToNumberCodec<N extends Number> extends ConvertingCodec<JsonNode, N> {
 
-  private final ThreadLocal<DecimalFormat> numberFormat;
+  private final ThreadLocal<NumberFormat> numberFormat;
   private final OverflowStrategy overflowStrategy;
   private final RoundingMode roundingMode;
   private final DateTimeFormatter temporalFormat;
@@ -34,7 +34,7 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends ConvertingCodec<J
 
   JsonNodeToNumberCodec(
       TypeCodec<N> targetCodec,
-      ThreadLocal<DecimalFormat> numberFormat,
+      ThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
       DateTimeFormatter temporalFormat,

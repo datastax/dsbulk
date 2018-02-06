@@ -645,6 +645,16 @@ When local times need to be converted to full timestamps, they are converted usi
 
 Default: **"1970-01-01T00:00:00Z"**.
 
+#### --codec.formatNumbers _&lt;boolean&gt;_
+
+Whether or not to use the `number` pattern to format numeric output.
+
+Only applicable when unloading, and only if the connector in use requires stringification (i.e., if it does not handle raw numeric data, e.g. the CSV connector); ignored otherwise.
+
+When `true`, the numeric pattern defined under `number` will be used to format all numbers. This allows for nicely-formatted output, but may result in rounding (see `roundingStrategy`), or alteration of the original decimal's scale. When `false`, numbers will be simply stringified using their `toString()` method. This is the safest choice as it never results in rounding nor in scale alteration.
+
+Default: **false**.
+
 #### -locale,--codec.locale _&lt;string&gt;_
 
 The locale to use for locale-sensitive conversions.
@@ -695,7 +705,7 @@ Default: **"REJECT"**.
 
 The rounding strategy to use for conversions from CQL numeric types to `String`.
 
-Only applicable when unloading, and only if the connector in use requires formatting (i.e., if it does not accept raw numeric data, such as the CSV connector); ignored otherwise.
+Only applicable when unloading, if `formatNumbers` is true and if the connector in use requires stringification (i.e., if it does not handle raw numeric data, e.g. the CSV connector); ignored otherwise.
 
 Valid choices: any `java.math.RoundingMode` enum constant name, that is: `CEILING`, `FLOOR`, `UP`, `DOWN`, `HALF_UP`, `HALF_EVEN`, `HALF_DOWN`, and `UNNECESSARY`.
 
