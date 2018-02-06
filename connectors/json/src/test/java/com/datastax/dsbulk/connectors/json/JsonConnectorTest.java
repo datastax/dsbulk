@@ -48,7 +48,6 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
-/** */
 @SuppressWarnings("Duplicates")
 class JsonConnectorTest {
 
@@ -198,7 +197,15 @@ class JsonConnectorTest {
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isTrue();
-      Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
+      Flux.<Record>just(
+          new DefaultRecord(
+              null,
+              null,
+              -1,
+              null,
+              factory.textNode("fóô"),
+              factory.textNode("bàr"),
+              factory.textNode("qïx")))
           .transform(connector.write())
           .blockLast();
       assertThat(new String(baos.toByteArray(), "ISO-8859-1"))

@@ -49,8 +49,8 @@
     </dependency>
 
     <dependency>
-      <groupId>com.github.chrisvest</groupId>
-      <artifactId>stormpot</artifactId>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-common</artifactId>
     </dependency>
 
     <dependency>

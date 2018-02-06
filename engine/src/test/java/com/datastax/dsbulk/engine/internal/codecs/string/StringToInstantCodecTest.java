@@ -17,6 +17,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -35,8 +36,8 @@ class StringToInstantCodecTest {
   private final DateTimeFormatter temporalFormat2 =
       CodecSettings.getDateTimeFormat("yyyyMMddHHmmss", UTC, US, EPOCH.atZone(UTC));
 
-  private final ThreadLocal<NumberFormat> numberFormat =
-      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
+  private final FastThreadLocal<NumberFormat> numberFormat =
+      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   @Test
   void should_convert_from_valid_input() {

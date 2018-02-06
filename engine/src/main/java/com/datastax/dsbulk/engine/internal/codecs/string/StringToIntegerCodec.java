@@ -12,6 +12,7 @@ import static java.util.stream.Collectors.toList;
 
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -24,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 public class StringToIntegerCodec extends StringToNumberCodec<Integer> {
 
   public StringToIntegerCodec(
-      ThreadLocal<NumberFormat> numberFormat,
+      FastThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
       DateTimeFormatter temporalFormat,

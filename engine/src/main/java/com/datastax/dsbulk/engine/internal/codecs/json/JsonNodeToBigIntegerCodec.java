@@ -14,6 +14,7 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -27,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 public class JsonNodeToBigIntegerCodec extends JsonNodeToNumberCodec<BigInteger> {
 
   public JsonNodeToBigIntegerCodec(
-      ThreadLocal<NumberFormat> numberFormat,
+      FastThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
       DateTimeFormatter temporalFormat,
