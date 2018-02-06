@@ -10,6 +10,8 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkNumbersWritten;
+import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
+import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
@@ -26,6 +28,7 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.SELECT_FROM_IP_BY
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createComplexTable;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createWithSpacesTable;
+import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -419,6 +422,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void should_truncate_and_round() throws Exception {
 
+    session.execute("DROP TABLE IF EXISTS dat224");
     session.execute(
         "CREATE TABLE IF NOT EXISTS dat224 (key varchar PRIMARY KEY, vdouble double, vdecimal decimal)");
 
@@ -444,7 +448,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
 
-    checkNumbersWritten(OverflowStrategy.TRUNCATE, session);
+    checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
 
     List<String> unloadArgs = new ArrayList<>();
     unloadArgs.add("unload");
@@ -456,10 +460,10 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     unloadArgs.add(unloadDir.toString());
     unloadArgs.add("--connector.json.mode");
     unloadArgs.add("MULTI_DOCUMENT");
-    unloadArgs.add("--codec.roundingStrategy");
-    unloadArgs.add("FLOOR");
     unloadArgs.add("--connector.csv.maxConcurrentFiles");
     unloadArgs.add("1");
+    unloadArgs.add("--codec.roundingStrategy");
+    unloadArgs.add("FLOOR");
     unloadArgs.add("--schema.keyspace");
     unloadArgs.add(session.getLoggedKeyspace());
     unloadArgs.add("--schema.query");
@@ -468,13 +472,40 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
 
-    checkNumbersRead(OverflowStrategy.TRUNCATE, unloadDir);
+    checkNumbersRead(TRUNCATE, unloadDir);
+
+    // check we can load from the unloaded dataset
+    loadArgs = new ArrayList<>();
+    loadArgs.add("load");
+    loadArgs.add("--log.directory");
+    loadArgs.add(Files.createTempDirectory("test").toString());
+    loadArgs.add("--connector.csv.url");
+    loadArgs.add(unloadDir.toString());
+    loadArgs.add("--connector.csv.header");
+    loadArgs.add("false");
+    loadArgs.add("--connector.csv.delimiter");
+    loadArgs.add(";");
+    loadArgs.add("--codec.overflowStrategy");
+    loadArgs.add("TRUNCATE");
+    loadArgs.add("--schema.keyspace");
+    loadArgs.add(session.getLoggedKeyspace());
+    loadArgs.add("--schema.table");
+    loadArgs.add("dat224");
+    loadArgs.add("--schema.mapping");
+    loadArgs.add("key,vdouble,vdecimal");
+
+    loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
+    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+
+    // no rounding possible in json
+    checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
   }
 
   /** Test for DAT-224. */
   @Test
   void should_not_truncate_nor_round() throws Exception {
 
+    session.execute("DROP TABLE IF EXISTS dat224");
     session.execute(
         "CREATE TABLE IF NOT EXISTS dat224 (key varchar PRIMARY KEY, vdouble double, vdecimal decimal)");
 
@@ -504,7 +535,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateExceptionsLog(1, "overflow", "mapping-errors.log", logPath);
-    checkNumbersWritten(OverflowStrategy.REJECT, session);
+    checkNumbersWritten(REJECT, UNNECESSARY, session);
 
     List<String> unloadArgs = new ArrayList<>();
     unloadArgs.add("unload");
@@ -528,7 +559,32 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
 
-    checkNumbersRead(OverflowStrategy.REJECT, unloadDir);
+    checkNumbersRead(REJECT, unloadDir);
+
+    // check we can load from the unloaded dataset
+    loadArgs = new ArrayList<>();
+    loadArgs.add("load");
+    loadArgs.add("--log.directory");
+    loadArgs.add(Files.createTempDirectory("test").toString());
+    loadArgs.add("--connector.csv.url");
+    loadArgs.add(unloadDir.toString());
+    loadArgs.add("--connector.csv.header");
+    loadArgs.add("false");
+    loadArgs.add("--connector.csv.delimiter");
+    loadArgs.add(";");
+    loadArgs.add("--codec.overflowStrategy");
+    loadArgs.add("REJECT");
+    loadArgs.add("--schema.keyspace");
+    loadArgs.add(session.getLoggedKeyspace());
+    loadArgs.add("--schema.table");
+    loadArgs.add("dat224");
+    loadArgs.add("--schema.mapping");
+    loadArgs.add("key,vdouble,vdecimal");
+
+    loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
+    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+
+    checkNumbersWritten(REJECT, UNNECESSARY, session);
   }
 
   private static void checkNumbersRead(OverflowStrategy overflowStrategy, Path unloadDir)
@@ -551,7 +607,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @SuppressWarnings("FloatingPointLiteralPrecision")
-  static void checkNumbers(
+  private static void checkNumbers(
       Map<String, String> numbers, OverflowStrategy overflowStrategy, boolean isDouble) {
     // when USE_BIG_DECIMAL_FOR_FLOATS is true Jackson tends to favor scientific notation for
     // decimal nodes, but apart from that the values are correct after all
@@ -578,7 +634,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(numbers.get("Float.MAX_VALUE")).isIn("3.4028235E38", "3.4028235E+38");
     assertThat(Float.valueOf(numbers.get("Float.MAX_VALUE"))).isEqualTo(Float.MAX_VALUE);
     assertThat(numbers.get("Float.MIN_VALUE")).isEqualTo("1.4E-45");
-    if (overflowStrategy == OverflowStrategy.TRUNCATE) {
+    if (overflowStrategy == TRUNCATE) {
       if (isDouble) {
         assertThat(numbers.get("too_many_digits")).isEqualTo("0.12345678901234568");
       } else {
