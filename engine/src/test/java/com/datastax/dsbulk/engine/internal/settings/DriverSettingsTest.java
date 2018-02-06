@@ -104,8 +104,8 @@ class DriverSettingsTest {
     assertThat(queryOptions.getFetchSize()).isEqualTo(5000);
     assertThat(queryOptions.getDefaultIdempotence()).isTrue();
     PoolingOptions poolingOptions = configuration.getPoolingOptions();
-    assertThat(poolingOptions.getCoreConnectionsPerHost(LOCAL)).isEqualTo(4);
-    assertThat(poolingOptions.getMaxConnectionsPerHost(LOCAL)).isEqualTo(4);
+    assertThat(poolingOptions.getCoreConnectionsPerHost(LOCAL)).isEqualTo(8);
+    assertThat(poolingOptions.getMaxConnectionsPerHost(LOCAL)).isEqualTo(8);
     assertThat(poolingOptions.getCoreConnectionsPerHost(REMOTE)).isEqualTo(1);
     assertThat(poolingOptions.getMaxConnectionsPerHost(REMOTE)).isEqualTo(1);
     assertThat(poolingOptions.getMaxRequestsPerConnection(LOCAL)).isEqualTo(32768);
