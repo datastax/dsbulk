@@ -60,6 +60,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.text.DecimalFormat;
+import java.text.ParseException;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -338,14 +339,14 @@ class CodecUtilsTest {
   }
 
   @Test
-  void should_parse_number() {
-    assertThat(parseNumber("1,234.567", numberFormat1)).isEqualTo("1234.567");
-    assertThat(parseNumber("0.1234E10", numberFormat2)).isEqualTo("0.1234E10");
+  void should_parse_number() throws ParseException {
+    assertThat(parseNumber("1,234.567", numberFormat1)).isEqualTo(new BigDecimal("1234.567"));
+    assertThat(parseNumber("0.1234E10", numberFormat2)).isEqualTo(new BigDecimal("0.1234E10"));
     assertThatThrownBy(() -> parseNumber("1,234.567", numberFormat2))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ParseException.class)
         .hasMessageContaining("Invalid number format: 1,234.567");
     assertThatThrownBy(() -> parseNumber("0.1234 ABC", numberFormat1))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ParseException.class)
         .hasMessageContaining("Invalid number format: 0.1234 ABC");
   }
 
