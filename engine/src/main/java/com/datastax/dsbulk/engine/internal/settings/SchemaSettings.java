@@ -324,9 +324,6 @@ public class SchemaSettings {
       // remove function mappings as we won't need them anymore from now on
       fieldsToVariables.keySet().removeIf(SchemaSettings::isFunction);
     }
-    if (keyspaceName != null) {
-      session.execute("USE " + keyspaceName);
-    }
     preparedStatement = session.prepare(query);
     if (fieldsToVariables == null) {
       fieldsToVariables =
