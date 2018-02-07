@@ -13,21 +13,20 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class SerializedSession extends AbstractSession {
+public class SerializedSession implements Session, ContinuousPagingSession {
 
-  private final AbstractSession session;
+  private final Session session;
 
   private final AtomicReference<ResultSetFuture> resultSetFutureRef = new AtomicReference<>();
   private final AtomicReference<ListenableFuture<AsyncContinuousPagingResult>> continuousResultRef =
       new AtomicReference<>();
 
   public SerializedSession(Session session) {
-    this.session = (AbstractSession) session;
+    this.session = session;
   }
 
   @Override
@@ -65,7 +64,7 @@ public class SerializedSession extends AbstractSession {
   public ListenableFuture<AsyncContinuousPagingResult> executeContinuouslyAsync(
       Statement statement, ContinuousPagingOptions options) {
     ListenableFuture<AsyncContinuousPagingResult> current =
-        session.executeContinuouslyAsync(statement, options);
+        ((ContinuousPagingSession) session).executeContinuouslyAsync(statement, options);
     for (; ; ) {
       ListenableFuture<AsyncContinuousPagingResult> previous = continuousResultRef.get();
       SettableFuture<AsyncContinuousPagingResult> next = SettableFuture.create();
@@ -126,6 +125,12 @@ public class SerializedSession extends AbstractSession {
   }
 
   @Override
+  public ContinuousPagingResult executeContinuously(
+      Statement statement, ContinuousPagingOptions options) {
+    return ((ContinuousPagingSession) session).executeContinuously(statement, options);
+  }
+
+  @Override
   public PreparedStatement prepare(String query) {
     return session.prepare(query);
   }
@@ -146,27 +151,6 @@ public class SerializedSession extends AbstractSession {
   }
 
   @Override
-  public ListenableFuture<PreparedStatement> prepareAsync(
-      String query, String keyspace, Map<String, ByteBuffer> customPayload) {
-    return session.prepareAsync(query, keyspace, customPayload);
-  }
-
-  @Override
-  public void close() {
-    session.close();
-  }
-
-  @Override
-  public Cluster getConcreteCluster() {
-    return session.getConcreteCluster();
-  }
-
-  @Override
-  public void checkNotInEventLoop() {
-    session.checkNotInEventLoop();
-  }
-
-  @Override
   public String getLoggedKeyspace() {
     return session.getLoggedKeyspace();
   }
@@ -179,6 +163,11 @@ public class SerializedSession extends AbstractSession {
   @Override
   public ListenableFuture<Session> initAsync() {
     return session.initAsync();
+  }
+
+  @Override
+  public void close() {
+    session.close();
   }
 
   @Override
@@ -199,11 +188,5 @@ public class SerializedSession extends AbstractSession {
   @Override
   public State getState() {
     return session.getState();
-  }
-
-  @Override
-  public ContinuousPagingResult executeContinuously(
-      Statement statement, ContinuousPagingOptions options) {
-    return session.executeContinuously(statement, options);
   }
 }
