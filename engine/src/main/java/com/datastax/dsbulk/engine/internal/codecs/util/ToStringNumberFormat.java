@@ -29,14 +29,17 @@ public class ToStringNumberFormat extends NumberFormat {
     return delegate.parse(source, parsePosition);
   }
 
+  @Override
   public StringBuffer format(Object number, StringBuffer result, FieldPosition fieldPosition) {
     return result.append(number);
   }
 
+  @Override
   public StringBuffer format(double number, StringBuffer result, FieldPosition fieldPosition) {
     return result.append(number);
   }
 
+  @Override
   public StringBuffer format(long number, StringBuffer result, FieldPosition fieldPosition) {
     return result.append(number);
   }

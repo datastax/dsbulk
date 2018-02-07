@@ -1037,6 +1037,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     }
   }
 
+  @SuppressWarnings("FloatingPointLiteralPrecision")
   private static void checkExactNumbersUnformatted(
       Map<String, String> numbers, OverflowStrategy overflowStrategy, boolean isDouble) {
     if (isDouble) {

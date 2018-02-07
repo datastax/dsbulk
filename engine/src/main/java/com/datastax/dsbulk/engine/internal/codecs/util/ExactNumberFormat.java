@@ -29,6 +29,7 @@ public class ExactNumberFormat extends NumberFormat {
     return delegate.parse(source, parsePosition);
   }
 
+  @Override
   public StringBuffer format(Object number, StringBuffer result, FieldPosition fieldPosition) {
     // NumberFormat sometimes applies type narrowing / widening;
     // especially, for decimal values, it widens float -> double and
