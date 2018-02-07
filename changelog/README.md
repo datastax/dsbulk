@@ -4,6 +4,7 @@
 
 - [improvement] DAT-220: Make ResultSubscription fully non-blocking.
 - [bug] DAT-221: User home directory not correctly expanded when used with -f option.
+- [improvement] DAT-227: Warn that continuous paging is not available when unloading with CL > ONE.
 
 
 ### 1.0.0-rc1
