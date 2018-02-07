@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.executor.reactor.ccm;
 
 import com.datastax.driver.core.ContinuousPagingSession;
+import com.datastax.driver.core.SerializedSession;
 import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
 import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
@@ -22,7 +23,7 @@ class DefaultReactorBulkExecutorCCMIT extends BulkExecutorCCMITBase {
           ContinuousPagingSession session) {
     super(
         session,
-        DefaultReactorBulkExecutor.builder(session).build(),
-        DefaultReactorBulkExecutor.builder(session).failSafe().build());
+        DefaultReactorBulkExecutor.builder(new SerializedSession(session)).build(),
+        DefaultReactorBulkExecutor.builder(new SerializedSession(session)).failSafe().build());
   }
 }
