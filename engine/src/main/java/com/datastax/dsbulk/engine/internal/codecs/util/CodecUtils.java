@@ -149,6 +149,7 @@ public class CodecUtils {
         try {
           // 3) try a temporal, then convert to units since epoch
           TemporalAccessor temporal = parseTemporal(s, temporalFormat);
+          assert temporal != null;
           Instant instant = toInstant(temporal, temporalFormat.getZone(), epoch.toLocalDate());
           number = instantToNumber(instant, timeUnit, epoch.toInstant());
         } catch (DateTimeException e3) {
@@ -180,7 +181,7 @@ public class CodecUtils {
 
   /**
    * Attempts to convert the given number to the target class, using loss-less conversions. If the
-   * conversion fails, applies the overflow strategy and return the narrowed number.
+   * conversion fails, applies the overflow strategy and returns the narrowed number.
    *
    * @param <N> The target type.
    * @param value the value to convert.
@@ -192,9 +193,12 @@ public class CodecUtils {
    */
   public static <N extends Number> N narrowNumber(
       Number value,
-      Class<? extends N> targetClass,
-      OverflowStrategy overflowStrategy,
-      RoundingMode roundingMode) {
+      @NotNull Class<? extends N> targetClass,
+      @NotNull OverflowStrategy overflowStrategy,
+      @NotNull RoundingMode roundingMode) {
+    Objects.requireNonNull(targetClass);
+    Objects.requireNonNull(overflowStrategy);
+    Objects.requireNonNull(roundingMode);
     if (value == null) {
       return null;
     }
@@ -225,10 +229,13 @@ public class CodecUtils {
    * @return an {@link Instant} or {@code null} if the string was {@code null} or empty.
    * @throws ArithmeticException if the number cannot be converted to a Long.
    */
-  public static Instant numberToInstant(Number n, TimeUnit timeUnit, Instant epoch) {
+  public static Instant numberToInstant(
+      Number n, @NotNull TimeUnit timeUnit, @NotNull Instant epoch) {
     if (n == null) {
       return null;
     }
+    Objects.requireNonNull(timeUnit);
+    Objects.requireNonNull(epoch);
     Duration duration = Duration.ofNanos(NANOSECONDS.convert(toLongValueExact(n), timeUnit));
     return epoch.plus(duration);
   }
@@ -244,6 +251,9 @@ public class CodecUtils {
    */
   public static long instantToNumber(
       @NotNull Instant instant, @NotNull TimeUnit timeUnit, @NotNull Instant epoch) {
+    Objects.requireNonNull(instant);
+    Objects.requireNonNull(timeUnit);
+    Objects.requireNonNull(epoch);
     long t1 =
         timeUnit.convert(instant.getEpochSecond(), SECONDS)
             + timeUnit.convert(instant.getNano(), NANOSECONDS);
@@ -257,16 +267,17 @@ public class CodecUtils {
    * Parses the given string using the given {@link NumberFormat}.
    *
    * @param s the string to parse, may be {@code null}.
-   * @param decimalFormat the format to use; cannot be {@code null}.
+   * @param format the format to use; cannot be {@code null}.
    * @return a {@link BigDecimal}, or {@code null} if the input was {@code null} or empty.
    * @throws ParseException if the string cannot be parsed.
    */
-  public static Number parseNumber(String s, NumberFormat decimalFormat) throws ParseException {
+  public static Number parseNumber(String s, @NotNull NumberFormat format) throws ParseException {
+    Objects.requireNonNull(format);
     if (s == null || s.isEmpty()) {
       return null;
     }
     ParsePosition pos = new ParsePosition(0);
-    Number number = decimalFormat.parse(s.trim(), pos);
+    Number number = format.parse(s.trim(), pos);
     if (number == null) {
       throw new ParseException("Invalid number format: " + s, pos.getErrorIndex());
     }
@@ -284,8 +295,9 @@ public class CodecUtils {
    * @return the formatted value.
    * @throws NumberFormatException if the number cannot be formatted.
    */
-  public static String formatNumber(Number value, NumberFormat format)
+  public static String formatNumber(Number value, @NotNull NumberFormat format)
       throws NumberFormatException {
+    Objects.requireNonNull(format);
     if (value == null) {
       return null;
     }
@@ -296,17 +308,18 @@ public class CodecUtils {
    * Parses the given string as an alphanumeric temporal, using the given parser.
    *
    * @param s the string to parse, may be {@code null}.
-   * @param dateTimeFormat the format to use; cannot be {@code null}.
+   * @param format the format to use; cannot be {@code null}.
    * @return a {@link TemporalAccessor} or {@code null} if the string was {@code null} or empty.
    * @throws DateTimeParseException if the string cannot be parsed.
    */
-  public static TemporalAccessor parseTemporal(String s, DateTimeFormatter dateTimeFormat)
+  public static TemporalAccessor parseTemporal(String s, @NotNull DateTimeFormatter format)
       throws DateTimeParseException {
+    Objects.requireNonNull(format);
     if (s == null || s.isEmpty()) {
       return null;
     }
     ParsePosition pos = new ParsePosition(0);
-    TemporalAccessor accessor = dateTimeFormat.parse(s.trim(), pos);
+    TemporalAccessor accessor = format.parse(s.trim(), pos);
     if (pos.getIndex() != s.length()) {
       throw new DateTimeParseException("Invalid temporal format", s, pos.getIndex());
     }
@@ -321,8 +334,9 @@ public class CodecUtils {
    * @return the formatted value.
    * @throws DateTimeException if the value cannot be formatted.
    */
-  public static String formatTemporal(TemporalAccessor value, DateTimeFormatter format)
+  public static String formatTemporal(TemporalAccessor value, @NotNull DateTimeFormatter format)
       throws DateTimeException {
+    Objects.requireNonNull(format);
     if (value == null) {
       return null;
     }
@@ -342,8 +356,9 @@ public class CodecUtils {
    * @throws NumberFormatException if the number cannot be converted to the target class.
    */
   @SuppressWarnings("unchecked")
-  public static <N> N convertNumber(Number value, Class<? extends N> targetClass)
+  public static <N> N convertNumber(Number value, @NotNull Class<? extends N> targetClass)
       throws IllegalArgumentException, ArithmeticException {
+    Objects.requireNonNull(targetClass);
     if (value == null) return null;
     if (targetClass.equals(Byte.class)) {
       return (N) toByteValueExact(value);
@@ -376,11 +391,12 @@ public class CodecUtils {
   /**
    * Converts the given number into a Byte, throwing an exception in case of overflow.
    *
-   * @param value the number to convert.
+   * @param value the number to convert; cannot be {@code null}.
    * @return the converted value.
    * @throws ArithmeticException in case of overflow.
    */
-  public static Byte toByteValueExact(Number value) throws ArithmeticException {
+  public static Byte toByteValueExact(@NotNull Number value) throws ArithmeticException {
+    Objects.requireNonNull(value);
     if (value instanceof Byte) {
       return (Byte) value;
     } else if (value instanceof Short) {
@@ -410,11 +426,12 @@ public class CodecUtils {
   /**
    * Converts the given number into a Short, throwing an exception in case of overflow.
    *
-   * @param value the number to convert.
+   * @param value the number to convert; cannot be {@code null}.
    * @return the converted value.
    * @throws ArithmeticException in case of overflow.
    */
-  public static Short toShortValueExact(Number value) throws ArithmeticException {
+  public static Short toShortValueExact(@NotNull Number value) throws ArithmeticException {
+    Objects.requireNonNull(value);
     if (value instanceof Short) {
       return (Short) value;
     } else if (value instanceof Byte) {
@@ -441,16 +458,15 @@ public class CodecUtils {
   /**
    * Converts the given number into an Integer, throwing an exception in case of overflow.
    *
-   * @param value the number to convert.
+   * @param value the number to convert; cannot be {@code null}.
    * @return the converted value.
    * @throws ArithmeticException in case of overflow.
    */
-  public static Integer toIntValueExact(Number value) throws ArithmeticException {
+  public static Integer toIntValueExact(@NotNull Number value) throws ArithmeticException {
+    Objects.requireNonNull(value);
     if (value instanceof Integer) {
       return (Integer) value;
-    } else if (value instanceof Byte) {
-      return value.intValue();
-    } else if (value instanceof Short) {
+    } else if (value instanceof Byte || value instanceof Short) {
       return value.intValue();
     } else if (value instanceof Long) {
       if (value.intValue() != value.longValue()) {
@@ -469,18 +485,15 @@ public class CodecUtils {
   /**
    * Converts the given number into a Long, throwing an exception in case of overflow.
    *
-   * @param value the number to convert.
+   * @param value the number to convert; cannot be {@code null}.
    * @return the converted value.
    * @throws ArithmeticException in case of overflow.
    */
-  public static Long toLongValueExact(Number value) throws ArithmeticException {
+  public static Long toLongValueExact(@NotNull Number value) throws ArithmeticException {
+    Objects.requireNonNull(value);
     if (value instanceof Long) {
       return (Long) value;
-    } else if (value instanceof Byte) {
-      return value.longValue();
-    } else if (value instanceof Short) {
-      return value.longValue();
-    } else if (value instanceof Integer) {
+    } else if (value instanceof Byte || value instanceof Short || value instanceof Integer) {
       return value.longValue();
     } else if (value instanceof BigInteger) {
       return ((BigInteger) value).longValueExact();
@@ -494,20 +507,18 @@ public class CodecUtils {
   /**
    * Converts the given number into a BigInteger, throwing an exception in case of overflow.
    *
-   * @param value the number to convert.
+   * @param value the number to convert; cannot be {@code null}.
    * @return the converted value.
    * @throws ArithmeticException in case of overflow.
    */
-  public static BigInteger toBigIntegerExact(Number value) throws ArithmeticException {
+  public static BigInteger toBigIntegerExact(@NotNull Number value) throws ArithmeticException {
+    Objects.requireNonNull(value);
     if (value instanceof BigInteger) {
       return (BigInteger) value;
-    } else if (value instanceof Byte) {
-      return BigInteger.valueOf(value.longValue());
-    } else if (value instanceof Short) {
-      return BigInteger.valueOf(value.longValue());
-    } else if (value instanceof Integer) {
-      return BigInteger.valueOf(value.longValue());
-    } else if (value instanceof Long) {
+    } else if (value instanceof Byte
+        || value instanceof Short
+        || value instanceof Integer
+        || value instanceof Long) {
       return BigInteger.valueOf(value.longValue());
     } else if (value instanceof BigDecimal) {
       return ((BigDecimal) value).toBigIntegerExact();
@@ -519,19 +530,23 @@ public class CodecUtils {
   /**
    * Converts the given number into a Float, throwing an exception in case of overflow.
    *
-   * @param value the number to convert.
+   * @param value the number to convert; cannot be {@code null}.
    * @return the converted value.
    * @throws ArithmeticException in case of overflow.
    * @throws NumberFormatException if the number cannot be converted to a {@link BigDecimal}.
    */
-  public static Float toFloatValueExact(Number value)
+  public static Float toFloatValueExact(@NotNull Number value)
       throws ArithmeticException, NumberFormatException {
+    Objects.requireNonNull(value);
     if (value instanceof Float) {
       return (Float) value;
     } else {
-      if (Float.isInfinite(value.floatValue()))
+      if (Float.isInfinite(value.floatValue())) {
         throw new ArithmeticException("floating point overflow");
-      if (Float.isNaN(value.floatValue())) throw new ArithmeticException("floating point overflow");
+      }
+      if (Float.isNaN(value.floatValue())) {
+        throw new ArithmeticException("floating point overflow");
+      }
       if (toBigDecimal(value).compareTo(new BigDecimal(Float.toString(value.floatValue()))) != 0) {
         throw new ArithmeticException("floating point overflow");
       }
@@ -542,20 +557,23 @@ public class CodecUtils {
   /**
    * Converts the given number into a Double, throwing an exception in case of overflow.
    *
-   * @param value the number to convert.
+   * @param value the number to convert; cannot be {@code null}.
    * @return the converted value.
    * @throws ArithmeticException in case of overflow.
    * @throws NumberFormatException if the number cannot be converted to a {@link BigDecimal}.
    */
-  public static Double toDoubleValueExact(Number value)
+  public static Double toDoubleValueExact(@NotNull Number value)
       throws ArithmeticException, NumberFormatException {
+    Objects.requireNonNull(value);
     if (value instanceof Double) {
       return (Double) value;
     } else {
-      if (Double.isInfinite(value.doubleValue()))
+      if (Double.isInfinite(value.doubleValue())) {
         throw new ArithmeticException("floating point overflow");
-      if (Double.isNaN(value.doubleValue()))
+      }
+      if (Double.isNaN(value.doubleValue())) {
         throw new ArithmeticException("floating point overflow");
+      }
       if (toBigDecimal(value).compareTo(new BigDecimal(Double.toString(value.doubleValue())))
           != 0) {
         throw new ArithmeticException("floating point overflow");
@@ -567,23 +585,21 @@ public class CodecUtils {
   /**
    * Converts the given number into a BigDecimal.
    *
-   * @param value the number to convert.
+   * @param value the number to convert; cannot be {@code null}.
    * @return the converted value.
    * @throws NumberFormatException if the number cannot be converted to a {@link BigDecimal}.
    */
-  public static BigDecimal toBigDecimal(Number value) throws NumberFormatException {
+  public static BigDecimal toBigDecimal(@NotNull Number value) throws NumberFormatException {
+    Objects.requireNonNull(value);
     if (value instanceof BigDecimal) {
       return (BigDecimal) value;
-    } else if (value instanceof Byte) {
-      return BigDecimal.valueOf(value.longValue());
-    } else if (value instanceof Short) {
-      return BigDecimal.valueOf(value.longValue());
-    } else if (value instanceof Integer) {
-      return BigDecimal.valueOf(value.longValue());
-    } else if (value instanceof Long) {
+    } else if (value instanceof Byte
+        || value instanceof Short
+        || value instanceof Integer
+        || value instanceof Long) {
       return BigDecimal.valueOf(value.longValue());
     } else if (value instanceof BigInteger) {
-      return new BigDecimal(((BigInteger) value));
+      return new BigDecimal((BigInteger) value);
     } else {
       return new BigDecimal(value.toString());
     }
@@ -593,17 +609,23 @@ public class CodecUtils {
    *
    * @param <T> the target type.
    * @param value the value to convert.
-   * @param targetClass the target class.
-   * @param timeZone the time zone to use.
-   * @param epoch the epoch to use.
+   * @param targetClass the target class; cannot be {@code null}.
+   * @param timeZone the time zone to use; cannot be {@code null}.
+   * @param epoch the epoch to use; cannot be {@code null}.
    * @return the converted value.
    * @throws DateTimeException if the temporal cannot be converted.
    * @throws IllegalArgumentException if target class is unknown.
    */
   @SuppressWarnings("unchecked")
   public static <T extends TemporalAccessor> T convertTemporal(
-      TemporalAccessor value, Class<? extends T> targetClass, ZoneId timeZone, LocalDate epoch)
+      TemporalAccessor value,
+      @NotNull Class<? extends T> targetClass,
+      @NotNull ZoneId timeZone,
+      @NotNull LocalDate epoch)
       throws DateTimeException, IllegalArgumentException {
+    Objects.requireNonNull(targetClass);
+    Objects.requireNonNull(timeZone);
+    Objects.requireNonNull(epoch);
     if (value == null) {
       return null;
     }
@@ -629,14 +651,18 @@ public class CodecUtils {
   /**
    * Converts the given temporal into a {@link ZonedDateTime}.
    *
-   * @param value the value to convert.
-   * @param timeZone the time zone to use.
-   * @param epoch the epoch to use.
+   * @param value the value to convert; cannot be {@code null}.
+   * @param timeZone the time zone to use; cannot be {@code null}.
+   * @param epoch the epoch to use; cannot be {@code null}.
    * @return the converted value.
    * @throws DateTimeException if the temporal cannot be converted.
    */
   public static ZonedDateTime toZonedDateTime(
-      TemporalAccessor value, ZoneId timeZone, LocalDate epoch) throws DateTimeException {
+      @NotNull TemporalAccessor value, @NotNull ZoneId timeZone, @NotNull LocalDate epoch)
+      throws DateTimeException {
+    Objects.requireNonNull(value);
+    Objects.requireNonNull(timeZone);
+    Objects.requireNonNull(epoch);
     if (value instanceof LocalDate) {
       return ((LocalDate) value).atStartOfDay(timeZone);
     }
@@ -663,14 +689,18 @@ public class CodecUtils {
   /**
    * Converts the given temporal into an {@link Instant}.
    *
-   * @param value the value to convert.
-   * @param timeZone the time zone to use.
-   * @param epoch the epoch to use.
+   * @param value the value to convert; cannot be {@code null}.
+   * @param timeZone the time zone to use; cannot be {@code null}.
+   * @param epoch the epoch to use; cannot be {@code null}.
    * @return the converted value.
    * @throws DateTimeException if the temporal cannot be converted.
    */
-  public static Instant toInstant(TemporalAccessor value, ZoneId timeZone, LocalDate epoch)
+  public static Instant toInstant(
+      @NotNull TemporalAccessor value, @NotNull ZoneId timeZone, @NotNull LocalDate epoch)
       throws DateTimeException {
+    Objects.requireNonNull(value);
+    Objects.requireNonNull(timeZone);
+    Objects.requireNonNull(epoch);
     if (value instanceof LocalDate) {
       return ((LocalDate) value).atStartOfDay(timeZone).toInstant();
     }
@@ -692,14 +722,18 @@ public class CodecUtils {
   /**
    * Converts the given temporal into a {@link LocalDateTime}.
    *
-   * @param value the value to convert.
-   * @param timeZone the time zone to use.
-   * @param epoch the epoch to use.
+   * @param value the value to convert; cannot be {@code null}.
+   * @param timeZone the time zone to use; cannot be {@code null}.
+   * @param epoch the epoch to use; cannot be {@code null}.
    * @return the converted instant.
    * @throws DateTimeException if the temporal cannot be converted.
    */
   public static LocalDateTime toLocalDateTime(
-      TemporalAccessor value, ZoneId timeZone, LocalDate epoch) throws DateTimeException {
+      @NotNull TemporalAccessor value, @NotNull ZoneId timeZone, @NotNull LocalDate epoch)
+      throws DateTimeException {
+    Objects.requireNonNull(value);
+    Objects.requireNonNull(timeZone);
+    Objects.requireNonNull(epoch);
     if (value instanceof LocalDate) {
       return ((LocalDate) value).atStartOfDay();
     }
@@ -721,13 +755,15 @@ public class CodecUtils {
   /**
    * Converts the given temporal into a {@link LocalDate}.
    *
-   * @param value the value to convert.
-   * @param timeZone the time zone to use.
+   * @param value the value to convert; cannot be {@code null}.
+   * @param timeZone the time zone to use; cannot be {@code null}.
    * @return the converted instant.
    * @throws DateTimeException if the temporal cannot be converted.
    */
-  public static LocalDate toLocalDate(TemporalAccessor value, ZoneId timeZone)
+  public static LocalDate toLocalDate(@NotNull TemporalAccessor value, @NotNull ZoneId timeZone)
       throws DateTimeException {
+    Objects.requireNonNull(value);
+    Objects.requireNonNull(timeZone);
     if (value instanceof LocalDate) {
       return (LocalDate) value;
     }
@@ -746,13 +782,15 @@ public class CodecUtils {
   /**
    * Converts the given temporal into a {@link LocalTime}.
    *
-   * @param value the value to convert.
-   * @param timeZone the time zone to use.
+   * @param value the value to convert; cannot be {@code null}.
+   * @param timeZone the time zone to use; cannot be {@code null}.
    * @return the converted instant.
    * @throws DateTimeException if the temporal cannot be converted.
    */
-  public static LocalTime toLocalTime(TemporalAccessor value, ZoneId timeZone)
+  public static LocalTime toLocalTime(@NotNull TemporalAccessor value, @NotNull ZoneId timeZone)
       throws DateTimeException {
+    Objects.requireNonNull(value);
+    Objects.requireNonNull(timeZone);
     if (value instanceof LocalTime) {
       return (LocalTime) value;
     }
@@ -768,8 +806,24 @@ public class CodecUtils {
     return LocalTime.from(value);
   }
 
+  /**
+   * Parses the given string as a {@link UUID}.
+   *
+   * <p>First, if the string is a UUID in canonical representation, parses the string using {@link
+   * UUID#fromString(String)}. If that fails, then tries to parse the string as a temporal, then
+   * converts the temporal into a time UUID.
+   *
+   * @param s the string to parse; may be {@code null}.
+   * @param instantCodec the codec to use to parse temporals; cannot be {@code null}.
+   * @param generator the generator to use to create a time UUIDl cannot be {@code null}.
+   * @return the parsed UUID.
+   */
   public static UUID parseUUID(
-      String s, ConvertingCodec<String, Instant> instantCodec, TimeUUIDGenerator generator) {
+      String s,
+      @NotNull ConvertingCodec<String, Instant> instantCodec,
+      @NotNull TimeUUIDGenerator generator) {
+    Objects.requireNonNull(instantCodec);
+    Objects.requireNonNull(generator);
     if (s == null || s.isEmpty()) {
       return null;
     }
@@ -787,6 +841,15 @@ public class CodecUtils {
     }
   }
 
+  /**
+   * Parses the given string as a {@link ByteBuffer}.
+   *
+   * <p>First, tries to parse the string as a CQL blob literal in hexadecimal notation; if that
+   * fails, then tries to parse the string as a Base64-encoded byte array.
+   *
+   * @param s the string to parse; may be {@code null}.
+   * @return the parsed {@link ByteBuffer}.
+   */
   public static ByteBuffer parseByteBuffer(String s) {
     if (s == null || s.isEmpty()) {
       return null;

@@ -33,7 +33,6 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MAX;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MIN;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.time.Instant.EPOCH;
@@ -173,6 +172,7 @@ class CodecUtilsTest {
         .isEqualTo(ofEpochMilli(123));
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Test
   void should_parse_temporal() {
     assertThat(parseTemporal(null, timestampFormat1)).isNull();
@@ -443,6 +443,7 @@ class CodecUtilsTest {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Test
   void test_toZonedDateTime() {
     // from LocalDate
@@ -506,6 +507,7 @@ class CodecUtilsTest {
         .isInstanceOf(DateTimeException.class);
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Test
   void test_toInstant() {
     // from LocalDate
@@ -565,6 +567,7 @@ class CodecUtilsTest {
         .isInstanceOf(DateTimeException.class);
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Test
   void test_toLocalDateTime() {
     // from LocalDate
@@ -624,6 +627,7 @@ class CodecUtilsTest {
         .isInstanceOf(DateTimeException.class);
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Test
   void test_toLocalDate() {
     // from LocalTime (not supported)
@@ -663,6 +667,7 @@ class CodecUtilsTest {
         .isInstanceOf(DateTimeException.class);
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Test
   void test_toLocalTime() {
     // from LocalDate (not supported)
@@ -934,15 +939,18 @@ class CodecUtilsTest {
         .isEqualTo(i1.getEpochSecond() / 60 - millennium.getEpochSecond() / 60);
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Test
   void should_parse_uuid() {
-    ThreadLocal<NumberFormat> numberFormat1 = ThreadLocal.withInitial(() -> this.numberFormat1);
     StringToInstantCodec instantCodec =
         new StringToInstantCodec(
-            CQL_DATE_TIME_FORMAT, numberFormat1, MILLISECONDS, EPOCH.atZone(UTC));
-    assertThat(CodecUtils.parseUUID(null, instantCodec, null)).isNull();
-    assertThat(CodecUtils.parseUUID("", instantCodec, null)).isNull();
-    assertThat(CodecUtils.parseUUID("a15341ec-ebef-4eab-b91d-ff16bf801a79", instantCodec, null))
+            timestampFormat1,
+            ThreadLocal.withInitial(() -> this.numberFormat1),
+            MILLISECONDS,
+            EPOCH.atZone(UTC));
+    assertThat(CodecUtils.parseUUID(null, instantCodec, MIN)).isNull();
+    assertThat(CodecUtils.parseUUID("", instantCodec, MIN)).isNull();
+    assertThat(CodecUtils.parseUUID("a15341ec-ebef-4eab-b91d-ff16bf801a79", instantCodec, MIN))
         .isEqualTo(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"));
     // time UUIDs with MIN strategy
     assertThat(CodecUtils.parseUUID("2017-12-05T12:44:36+01:00", instantCodec, MIN))

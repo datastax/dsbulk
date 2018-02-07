@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import org.junit.jupiter.api.Test;
 
@@ -32,14 +31,18 @@ class JsonNodeToInstantCodecTest {
 
   private final Instant minutesAfterMillennium = MILLENNIUM.plus(Duration.ofMinutes(123456));
 
+  private final DateTimeFormatter temporalFormat1 =
+      CodecSettings.getDateTimeFormat("CQL_DATE_TIME", UTC, US, EPOCH.atZone(UTC));
+  private final DateTimeFormatter temporalFormat2 =
+      CodecSettings.getDateTimeFormat("yyyyMMddHHmmss", UTC, US, EPOCH.atZone(UTC));
+
   private final ThreadLocal<NumberFormat> numberFormat =
       ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
 
   @Test
   void should_convert_from_valid_input() {
     JsonNodeToInstantCodec codec =
-        new JsonNodeToInstantCodec(
-            CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("2016-07-24T20:34"))
         .to(Instant.parse("2016-07-24T20:34:00Z"))
@@ -58,11 +61,7 @@ class JsonNodeToInstantCodecTest {
         .convertsFrom(JsonNodeFactory.instance.textNode(""))
         .to(null);
     codec =
-        new JsonNodeToInstantCodec(
-            DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneId.of("UTC")),
-            numberFormat,
-            MILLISECONDS,
-            EPOCH.atZone(UTC));
+        new JsonNodeToInstantCodec(temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("20160724203412"))
         .to(Instant.parse("2016-07-24T20:34:12Z"))
@@ -71,8 +70,7 @@ class JsonNodeToInstantCodecTest {
         .convertsFrom(JsonNodeFactory.instance.textNode(""))
         .to(null);
     codec =
-        new JsonNodeToInstantCodec(
-            CQL_DATE_TIME_FORMAT, numberFormat, MINUTES, MILLENNIUM.atZone(UTC));
+        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MINUTES, MILLENNIUM.atZone(UTC));
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("123456"))
         .to(minutesAfterMillennium)
@@ -84,8 +82,7 @@ class JsonNodeToInstantCodecTest {
   @Test
   void should_convert_to_valid_input() {
     JsonNodeToInstantCodec codec =
-        new JsonNodeToInstantCodec(
-            CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec)
         .convertsTo(Instant.parse("2016-07-24T20:34:00Z"))
         .from(JsonNodeFactory.instance.textNode("2016-07-24T20:34:00Z"))
@@ -100,31 +97,25 @@ class JsonNodeToInstantCodecTest {
         .convertsTo(null)
         .from(JsonNodeFactory.instance.nullNode());
     codec =
-        new JsonNodeToInstantCodec(
-            DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneId.of("UTC")),
-            numberFormat,
-            MILLISECONDS,
-            EPOCH.atZone(UTC));
+        new JsonNodeToInstantCodec(temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec)
         .convertsTo(Instant.parse("2016-07-24T20:34:12Z"))
         .from(JsonNodeFactory.instance.textNode("20160724203412"))
         .convertsTo(null)
         .from(JsonNodeFactory.instance.nullNode());
     codec =
-        new JsonNodeToInstantCodec(
-            CQL_DATE_TIME_FORMAT, numberFormat, MINUTES, MILLENNIUM.atZone(UTC));
-    // conversion back to numeric timestamps is not possible, values are always formatted with full alphanumeric pattern
+        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MINUTES, MILLENNIUM.atZone(UTC));
+    // conversion back to numeric timestamps is not possible, values are always formatted with full
+    // alphanumeric pattern
     assertThat(codec)
         .convertsTo(minutesAfterMillennium)
-        .from(
-            JsonNodeFactory.instance.textNode(CQL_DATE_TIME_FORMAT.format(minutesAfterMillennium)));
+        .from(JsonNodeFactory.instance.textNode(temporalFormat1.format(minutesAfterMillennium)));
   }
 
   @Test
   void should_not_convert_from_invalid_input() {
     JsonNodeToInstantCodec codec =
-        new JsonNodeToInstantCodec(
-            CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid date format"));
   }
