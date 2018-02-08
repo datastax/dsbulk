@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import com.datastax.driver.core.Configuration;
+import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.ContinuousPagingOptions;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ProtocolVersion;
@@ -31,7 +33,6 @@ import com.typesafe.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** */
 public class ExecutorSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
@@ -91,9 +92,8 @@ public class ExecutorSettings {
     if (workflowType == WorkflowType.UNLOAD) {
       if (continuousPagingEnabled) {
         if (continuousPagingAvailable(session)) {
-          continuousPagingAvailable(session);
           ContinuousReactorBulkExecutorBuilder builder =
-              ContinuousReactorBulkExecutor.builder(((ContinuousPagingSession) session));
+              ContinuousReactorBulkExecutor.builder((ContinuousPagingSession) session);
           configure(builder, executionListener);
           ContinuousPagingOptions options =
               ContinuousPagingOptions.builder()
@@ -104,7 +104,10 @@ public class ExecutorSettings {
           builder.withContinuousPagingOptions(options);
           return builder.build();
         } else {
-          LOGGER.warn("Continuous paging is not available, read performance will not be optimal");
+          LOGGER.warn(
+              "Continuous paging is not available, read performance will not be optimal. "
+                  + "Check your remote DSE cluster configuration, and ensure that "
+                  + "the configured consistency level is either ONE or LOCAL_ONE.");
         }
       }
     }
@@ -118,14 +121,13 @@ public class ExecutorSettings {
   }
 
   private boolean continuousPagingAvailable(Session session) {
+    Configuration configuration = session.getCluster().getConfiguration();
+    ProtocolVersion protocolVersion = configuration.getProtocolOptions().getProtocolVersion();
+    ConsistencyLevel consistencyLevel = configuration.getQueryOptions().getConsistencyLevel();
     return session instanceof ContinuousPagingSession
-        && session
-                .getCluster()
-                .getConfiguration()
-                .getProtocolOptions()
-                .getProtocolVersion()
-                .compareTo(ProtocolVersion.DSE_V1)
-            >= 0;
+        && protocolVersion.compareTo(ProtocolVersion.DSE_V1) >= 0
+        && (consistencyLevel == ConsistencyLevel.ONE
+            || consistencyLevel == ConsistencyLevel.LOCAL_ONE);
   }
 
   private void configure(

@@ -209,6 +209,8 @@ Default: **"cassandra"**.
 
 The consistency level to use for both loading and unloading. Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
 
+Note that stronger consistency levels usually result in reduced throughput; besides, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
+
 Default: **"LOCAL_ONE"**.
 
 #### --executor.maxPerSecond _&lt;number&gt;_
@@ -908,6 +910,8 @@ Query-related settings.
 
 The consistency level to use for both loading and unloading. Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
 
+Note that stronger consistency levels usually result in reduced throughput; besides, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
+
 Default: **"LOCAL_ONE"**.
 
 #### --driver.query.fetchSize _&lt;number&gt;_
@@ -1053,7 +1057,9 @@ Default: **-1**.
 
 #### --executor.continuousPaging.enabled _&lt;boolean&gt;_
 
-Enable or disable continuous paging. If the target cluster does not support continuous paging, traditional paging will be used regardless of this setting.
+Enable or disable continuous paging.
+
+Note that if the target cluster does not support continuous paging, or if the consistency level is not `ONE` or `LOCAL_ONE` (see `driver.query.consistency`), traditional paging will be used regardless of this setting.
 
 Default: **true**.
 
