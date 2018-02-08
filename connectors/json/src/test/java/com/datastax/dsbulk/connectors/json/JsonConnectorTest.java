@@ -23,7 +23,6 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.HttpTestServer;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
-import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -236,15 +235,13 @@ class JsonConnectorTest {
   @Test
   void should_read_all_resources_in_directory_with_path() throws Exception {
     JsonConnector connector = new JsonConnector();
-    String rootPath = JsonConnectorTest.class.getResource("/root").getPath();
-    if (PlatformUtils.isWindows()) {
-      // Root-path is of the form "/C:/foo/bar/root". We want forward
-      // slashes, but we don't want the leading slash.
-      rootPath = rootPath.substring(1);
-    }
+    Path rootPath = Paths.get(getClass().getResource("/root").toURI());
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = \"%s\", recursive = false", rootPath))
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", recursive = false",
+                        ConfigUtils.maybeEscapeBackslash(rootPath.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
