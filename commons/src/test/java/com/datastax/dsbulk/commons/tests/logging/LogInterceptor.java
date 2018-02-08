@@ -12,7 +12,6 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** */
 public interface LogInterceptor {
 
   List<ILoggingEvent> getLoggedEvents();
