@@ -41,7 +41,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <driver.version>1.5.0</driver.version>
+    <driver.version>1.6.3</driver.version>
     <reactive-streams.version>1.0.1</reactive-streams.version>
     <rx-java.version>2.1.9</rx-java.version>
     <reactor.version>Bismuth-SR4</reactor.version>
@@ -70,6 +70,8 @@
     <awaitility.version>3.0.0</awaitility.version>
     <surefire.version>2.19.1</surefire.version>
     <antlr4.version>4.7.1</antlr4.version>
+    <max.simulacron.clusters>4</max.simulacron.clusters>
+    <max.ccm.clusters>2</max.ccm.clusters>
   </properties>
 
   <dependencyManagement>
@@ -587,6 +589,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
             <systemPropertyVariables>
               <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
             </systemPropertyVariables>
+            <forkCount>${max.simulacron.clusters}</forkCount>
           </configuration>
           <dependencies>
             <dependency>
@@ -897,6 +900,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
                     <includeTags>ccm</includeTags>
                   </properties>
                   <reportNameSuffix>ccm</reportNameSuffix>
+                  <forkCount>${max.ccm.clusters}</forkCount>
                 </configuration>
               </execution>
             </executions>
@@ -906,6 +910,20 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
     </profile>
 
   </profiles>
+
+  <repositories>
+    <repository>
+      <id>datastax-releases-local</id>
+      <name>DataStax Local Releases</name>
+      <url>https://datastax.jfrog.io/datastax/datastax-releases-local/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
 
   <distributionManagement>
     <repository>
