@@ -9,18 +9,26 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
+import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
+import static java.util.Locale.US;
 
+import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import org.junit.jupiter.api.Test;
 
 class StringToLocalTimeCodecTest {
 
+  private DateTimeFormatter format1 =
+      CodecSettings.getDateTimeFormat("ISO_LOCAL_TIME", UTC, US, EPOCH.atZone(UTC));
+
+  private DateTimeFormatter format2 =
+      CodecSettings.getDateTimeFormat("HHmmss.SSS", UTC, US, EPOCH.atZone(UTC));
+
   @Test
-  void should_convert_from_valid_input() throws Exception {
-    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(ISO_LOCAL_TIME);
+  void should_convert_from_valid_input() {
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1);
     assertThat(codec)
         .convertsFrom("12:24:46")
         .to(LocalTime.parse("12:24:46"))
@@ -30,21 +38,21 @@ class StringToLocalTimeCodecTest {
         .to(null)
         .convertsFrom("")
         .to(null);
-    codec = new StringToLocalTimeCodec(DateTimeFormatter.ofPattern("HHmmss.SSS"));
+    codec = new StringToLocalTimeCodec(format2);
     assertThat(codec).convertsFrom("122446.999").to(LocalTime.parse("12:24:46.999"));
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
-    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(ISO_LOCAL_TIME);
+  void should_convert_to_valid_input() {
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1);
     assertThat(codec).convertsTo(LocalTime.parse("12:24:46.999")).from("12:24:46.999");
-    codec = new StringToLocalTimeCodec(DateTimeFormatter.ofPattern("HHmmss.SSS"));
+    codec = new StringToLocalTimeCodec(format2);
     assertThat(codec).convertsTo(LocalTime.parse("12:24:46.999")).from("122446.999");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
-    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(ISO_LOCAL_DATE);
+  void should_not_convert_from_invalid_input() {
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1);
     assertThat(codec).cannotConvertFrom("not a valid date format");
   }
 }

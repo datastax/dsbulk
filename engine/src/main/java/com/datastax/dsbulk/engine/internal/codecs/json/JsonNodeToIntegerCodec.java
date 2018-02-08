@@ -10,12 +10,14 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static java.util.stream.Collectors.toList;
 
-import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.driver.core.TypeCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.math.BigDecimal;
-import java.text.DecimalFormat;
-import java.time.Instant;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -24,18 +26,22 @@ import java.util.concurrent.TimeUnit;
 public class JsonNodeToIntegerCodec extends JsonNodeToNumberCodec<Integer> {
 
   public JsonNodeToIntegerCodec(
-      ThreadLocal<DecimalFormat> formatter,
-      DateTimeFormatter temporalParser,
-      TimeUnit numericTimestampUnit,
-      Instant numericTimestampEpoch,
+      ThreadLocal<NumberFormat> numberFormat,
+      OverflowStrategy overflowStrategy,
+      RoundingMode roundingMode,
+      DateTimeFormatter temporalFormat,
+      TimeUnit timeUnit,
+      ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
       List<BigDecimal> booleanNumbers) {
     super(
-        cint(),
-        formatter,
-        temporalParser,
-        numericTimestampUnit,
-        numericTimestampEpoch,
+        TypeCodec.cint(),
+        numberFormat,
+        overflowStrategy,
+        roundingMode,
+        temporalFormat,
+        timeUnit,
+        epoch,
         booleanWords,
         booleanNumbers.stream().map(BigDecimal::intValueExact).collect(toList()));
   }
@@ -48,11 +54,13 @@ public class JsonNodeToIntegerCodec extends JsonNodeToNumberCodec<Integer> {
     if (node.isInt()) {
       return node.intValue();
     }
-    Number number = parseNumber(node);
-    if (number == null) {
-      return null;
+    Number number;
+    if (node.isNumber()) {
+      number = node.numberValue();
+    } else {
+      number = parseNumber(node);
     }
-    return CodecUtils.toIntValueExact(number);
+    return narrowNumber(number, Integer.class);
   }
 
   @Override

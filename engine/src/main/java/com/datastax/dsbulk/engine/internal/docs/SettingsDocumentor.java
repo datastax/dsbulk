@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.DEFAULT;
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.LONG_TO_SHORT_OPTIONS;
 
+import com.datastax.dsbulk.engine.internal.utils.SettingsUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils.Group;
 import com.datastax.dsbulk.engine.internal.utils.StringUtils;
 import com.google.common.base.CharMatcher;
@@ -20,11 +21,12 @@ import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
 import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -34,12 +36,13 @@ import java.util.stream.Collectors;
 public class SettingsDocumentor {
   private static final String TITLE = "DataStax Bulk Loader Options";
 
-  public static void main(String[] args) throws FileNotFoundException {
+  public static void main(String[] args) throws IOException {
     new SettingsDocumentor(Paths.get(args[0]));
   }
 
   @SuppressWarnings("WeakerAccess")
-  SettingsDocumentor(Path filePath) throws FileNotFoundException {
+  SettingsDocumentor(Path filePath) throws IOException {
+    Files.createDirectories(filePath.getParent());
     try (PrintWriter out =
         new PrintWriter(
             new BufferedWriter(
@@ -141,6 +144,7 @@ public class SettingsDocumentor {
             .origin()
             .comments()
             .stream()
+            .filter(line -> !SettingsUtils.isAnnotation(line))
             .map(s -> s.length() > 0 ? s.substring(1) : s)
             .collect(Collectors.joining("\n"));
     if (value.valueType() != ConfigValueType.OBJECT) {

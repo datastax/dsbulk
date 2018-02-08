@@ -12,6 +12,7 @@ import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.engine.internal.utils.SettingsUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils.Group;
 import com.datastax.dsbulk.engine.internal.utils.StringUtils;
 import com.typesafe.config.ConfigFactory;
@@ -75,6 +76,8 @@ public class ConfigurationFileCreator {
             .root()
             .origin()
             .comments()
+            .stream()
+            .filter(line -> !SettingsUtils.isAnnotation(line))
             .forEach(
                 l -> {
                   pw.print(LINE_INDENT + "# ");
@@ -89,6 +92,8 @@ public class ConfigurationFileCreator {
           value
               .origin()
               .comments()
+              .stream()
+              .filter(line -> !SettingsUtils.isAnnotation(line))
               .forEach(
                   l -> {
                     pw.print(LINE_INDENT + "# ");

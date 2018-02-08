@@ -140,7 +140,7 @@ public class EndToEndUtils {
       throws Exception {
     Path exceptionFile = logPath.resolve(fileName);
     @SuppressWarnings("StreamResourceLeak")
-    long numErrors = Files.lines(exceptionFile).filter(l -> l.startsWith(keyword)).count();
+    long numErrors = Files.lines(exceptionFile).filter(l -> l.contains(keyword)).count();
     assertThat(numErrors).isEqualTo(size);
   }
 

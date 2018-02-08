@@ -8,14 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.writetime;
 
-import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.time.Instant;
 
-/** */
 public class WriteTimeCodec<T> extends ConvertingCodec<T, Long> {
 
   private final ConvertingCodec<T, Instant> innerCodec;
@@ -31,7 +30,7 @@ public class WriteTimeCodec<T> extends ConvertingCodec<T, Long> {
       return null;
     }
     Instant i = innerCodec.convertFrom(value);
-    return instantToTimestampSinceEpoch(i, MICROSECONDS, EPOCH);
+    return CodecUtils.instantToNumber(i, MICROSECONDS, EPOCH);
   }
 
   @Override

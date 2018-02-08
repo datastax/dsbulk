@@ -15,8 +15,11 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
-import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dsbulk.engine.internal.codecs.string.StringToTemporalCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.ExactNumberFormat;
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
+import com.datastax.dsbulk.engine.internal.codecs.util.ToStringNumberFormat;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
@@ -24,48 +27,66 @@ import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
-import java.time.temporal.TemporalAccessor;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.jetbrains.annotations.NotNull;
 
-/** */
 public class CodecSettings {
 
-  /** A {@link DateTimeFormatter} that formats and parses all accepted CQL timestamp formats. */
+  /** A {@link DateTimeFormatter} that formats and parses most accepted CQL timestamp formats. */
   public static final DateTimeFormatter CQL_DATE_TIME_FORMAT =
       new DateTimeFormatterBuilder()
-          .parseCaseSensitive()
-          .parseStrict()
+          // date part
+          .optionalStart()
           .append(DateTimeFormatter.ISO_LOCAL_DATE)
+          .optionalEnd()
+
+          // date-time separator
           .optionalStart()
           .appendLiteral('T')
-          .appendValue(ChronoField.HOUR_OF_DAY, 2)
-          .appendLiteral(':')
-          .appendValue(ChronoField.MINUTE_OF_HOUR, 2)
+          .optionalEnd()
+
+          // time part
+          .optionalStart()
+          .append(DateTimeFormatter.ISO_LOCAL_TIME)
+          .optionalEnd()
+
+          // time zone part
+          .optionalStart()
+          // ISO_ZONED_DATE_TIME has appendOffsetId() here, which, when parsing, does not set the
+          // zone id
+          .appendZoneOrOffsetId()
           .optionalEnd()
           .optionalStart()
-          .appendLiteral(':')
-          .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
+          .appendLiteral('[')
+          .appendZoneRegionId()
+          .appendLiteral(']')
           .optionalEnd()
-          .optionalStart()
-          .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-          .optionalEnd()
-          .optionalStart()
-          .appendZoneId()
-          .optionalEnd()
-          .toFormatter()
+
+          // defaults, locale and time zone will be overridden with user-supplied settings
+          .parseDefaulting(ChronoField.YEAR, 1970)
+          .parseDefaulting(ChronoField.MONTH_OF_YEAR, 1)
+          .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
+          .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
+          .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
+          .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
+          .parseDefaulting(ChronoField.NANO_OF_SECOND, 0)
+          .toFormatter(Locale.US)
           .withZone(ZoneOffset.UTC);
 
   private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
@@ -73,6 +94,9 @@ public class CodecSettings {
   private static final String BOOLEAN_WORDS = "booleanWords";
   private static final String BOOLEAN_NUMBERS = "booleanNumbers";
   private static final String NUMBER = "number";
+  private static final String FORMAT_NUMERIC_OUTPUT = "formatNumbers";
+  private static final String ROUNDING_STRATEGY = "roundingStrategy";
+  private static final String OVERFLOW_STRATEGY = "overflowStrategy";
   private static final String TIME = "time";
   private static final String TIME_ZONE = "timeZone";
   private static final String DATE = "date";
@@ -86,13 +110,15 @@ public class CodecSettings {
   private Map<String, Boolean> booleanInputWords;
   private Map<Boolean, String> booleanOutputWords;
   private List<BigDecimal> booleanNumbers;
-  private ThreadLocal<DecimalFormat> numberFormat;
+  private ThreadLocal<NumberFormat> numberFormat;
+  private RoundingMode roundingMode;
+  private OverflowStrategy overflowStrategy;
   private DateTimeFormatter localDateFormat;
   private DateTimeFormatter localTimeFormat;
   private DateTimeFormatter timestampFormat;
   private ObjectMapper objectMapper;
-  private TimeUnit numericTimestampUnit;
-  private Instant numericTimestampEpoch;
+  private TimeUnit timeUnit;
+  private ZonedDateTime epoch;
   private TimeUUIDGenerator generator;
 
   CodecSettings(LoaderConfig config) {
@@ -101,8 +127,25 @@ public class CodecSettings {
 
   public void init() {
     try {
-      String localeString = config.getString(LOCALE);
-      List<String> booleanWords = config.getStringList(BOOLEAN_WORDS);
+
+      Locale locale = parseLocale(config.getString(LOCALE));
+
+      // numeric
+      roundingMode = config.getEnum(RoundingMode.class, ROUNDING_STRATEGY);
+      overflowStrategy = config.getEnum(OverflowStrategy.class, OVERFLOW_STRATEGY);
+      boolean formatNumbers = config.getBoolean(FORMAT_NUMERIC_OUTPUT);
+      numberFormat =
+          getNumberFormatThreadLocal(locale, config.getString(NUMBER), roundingMode, formatNumbers);
+
+      // temporal
+      ZoneId timeZone = ZoneId.of(config.getString(TIME_ZONE));
+      timeUnit = config.getEnum(TimeUnit.class, NUMERIC_TIMESTAMP_UNIT);
+      epoch = ZonedDateTime.parse(config.getString(NUMERIC_TIMESTAMP_EPOCH));
+      localDateFormat = getDateTimeFormat(config.getString(DATE), timeZone, locale, epoch);
+      localTimeFormat = getDateTimeFormat(config.getString(TIME), timeZone, locale, epoch);
+      timestampFormat = getDateTimeFormat(config.getString(TIMESTAMP), timeZone, locale, epoch);
+
+      // boolean
       booleanNumbers =
           config
               .getStringList(BOOLEAN_NUMBERS)
@@ -113,32 +156,23 @@ public class CodecSettings {
         throw new BulkConfigurationException(
             "Invalid boolean numbers list, expecting two elements, got " + booleanNumbers);
       }
-      String number = config.getString(NUMBER);
-      String timeZone = config.getString(TIME_ZONE);
-      String date = config.getString(DATE);
-      String time = config.getString(TIME);
-      String timestamp = config.getString(TIMESTAMP);
-      Locale locale = parseLocale(localeString);
+      List<String> booleanWords = config.getStringList(BOOLEAN_WORDS);
       booleanInputWords = getBooleanInputWords(booleanWords);
       booleanOutputWords = getBooleanOutputWords(booleanWords);
-      numberFormat = getNumberFormat(locale, number);
-      localDateFormat = getDateFormat(date, timeZone, locale);
-      localTimeFormat = getDateFormat(time, timeZone, locale);
-      timestampFormat = getDateFormat(timestamp, timeZone, locale);
-      numericTimestampUnit = config.getEnum(TimeUnit.class, NUMERIC_TIMESTAMP_UNIT);
-      TemporalAccessor temporal =
-          CodecUtils.parseTemporal(config.getString(NUMERIC_TIMESTAMP_EPOCH), timestampFormat);
-      assert temporal != null;
-      this.numericTimestampEpoch = Instant.from(temporal);
+
+      // UUID
       generator = config.getEnum(TimeUUIDGenerator.class, TIME_UUID_GENERATOR);
+
+      // json
       objectMapper = getObjectMapper();
+
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "codec");
     }
   }
 
-  public StringToInstantCodec getTimestampCodec() {
-    return new StringToInstantCodec(timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+  public StringToTemporalCodec<Instant> getTimestampCodec() {
+    return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch);
   }
 
   public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {
@@ -149,11 +183,13 @@ public class CodecSettings {
         booleanOutputWords,
         booleanNumbers,
         numberFormat,
+        overflowStrategy,
+        roundingMode,
         localDateFormat,
         localTimeFormat,
         timestampFormat,
-        numericTimestampUnit,
-        numericTimestampEpoch,
+        timeUnit,
+        epoch,
         generator,
         objectMapper);
   }
@@ -174,31 +210,67 @@ public class CodecSettings {
     }
   }
 
-  private static ThreadLocal<DecimalFormat> getNumberFormat(Locale locale, String decimalPattern) {
+  private static ThreadLocal<NumberFormat> getNumberFormatThreadLocal(
+      Locale locale, String pattern, RoundingMode roundingMode, boolean formatNumbers) {
     return ThreadLocal.withInitial(
-        () -> new DecimalFormat(decimalPattern, DecimalFormatSymbols.getInstance(locale)));
+        () -> getNumberFormat(pattern, locale, roundingMode, formatNumbers));
   }
 
-  private static DateTimeFormatter getDateFormat(
-      String constantOrPattern, String timeZone, Locale locale) {
-    if (constantOrPattern.equalsIgnoreCase(CQL_DATE_TIME)) {
-      return CQL_DATE_TIME_FORMAT.withZone(ZoneId.of(timeZone));
+  @VisibleForTesting
+  public static NumberFormat getNumberFormat(
+      String pattern, Locale locale, RoundingMode roundingMode, boolean formatNumbers) {
+    DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(locale);
+    // manually set the NaN and Infinity symbols; the default ones are not parseable:
+    // 'REPLACEMENT CHARACTER' (U+FFFD) and 'INFINITY' (U+221E)
+    symbols.setNaN("NaN");
+    symbols.setInfinity("Infinity");
+    DecimalFormat format = new DecimalFormat(pattern, symbols);
+    // Always parse floating point numbers as BigDecimals to preserve maximum precision
+    format.setParseBigDecimal(true);
+    // Used only when formatting
+    format.setRoundingMode(roundingMode);
+    if (roundingMode == RoundingMode.UNNECESSARY) {
+      // if user selects unnecessary, print as many fraction digits as necessary
+      format.setMaximumFractionDigits(Integer.MAX_VALUE);
     }
-    try {
-      Field field = DateTimeFormatter.class.getDeclaredField(constantOrPattern);
-      DateTimeFormatter formatter = (DateTimeFormatter) field.get(null);
-      return new DateTimeFormatterBuilder()
-          .append(formatter)
-          .parseStrict()
-          .toFormatter(locale)
-          .withZone(ZoneId.of(timeZone));
-    } catch (NoSuchFieldException | IllegalAccessException ignored) {
+    if (!formatNumbers) {
+      return new ToStringNumberFormat(format);
+    } else {
+      return new ExactNumberFormat(format);
     }
-    return new DateTimeFormatterBuilder()
-        .appendPattern(constantOrPattern)
-        .parseStrict()
-        .toFormatter(locale)
-        .withZone(ZoneId.of(timeZone));
+  }
+
+  @NotNull
+  @VisibleForTesting
+  public static DateTimeFormatter getDateTimeFormat(
+      String pattern, ZoneId timeZone, Locale locale, ZonedDateTime epoch) {
+    DateTimeFormatterBuilder builder =
+        new DateTimeFormatterBuilder().parseStrict().parseCaseInsensitive();
+    if (pattern.equals(CQL_DATE_TIME)) {
+      builder =
+          builder
+              .append(CQL_DATE_TIME_FORMAT)
+              // add defaults for missing fields, which allows the parsing to be lenient when
+              // some fields cannot be inferred from the input.
+              .parseDefaulting(ChronoField.YEAR, epoch.get(ChronoField.YEAR))
+              .parseDefaulting(ChronoField.MONTH_OF_YEAR, epoch.get(ChronoField.MONTH_OF_YEAR))
+              .parseDefaulting(ChronoField.DAY_OF_MONTH, epoch.get(ChronoField.DAY_OF_MONTH))
+              .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
+              .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
+              .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
+              .parseDefaulting(ChronoField.NANO_OF_SECOND, 0);
+    } else {
+      try {
+        // first, assume it is a predefined format
+        Field field = DateTimeFormatter.class.getDeclaredField(pattern);
+        DateTimeFormatter formatter = (DateTimeFormatter) field.get(null);
+        builder = builder.append(formatter);
+      } catch (NoSuchFieldException | IllegalAccessException ignored) {
+        // if that fails, assume it's a pattern
+        builder = builder.appendPattern(pattern);
+      }
+    }
+    return builder.toFormatter(locale).withZone(timeZone);
   }
 
   @VisibleForTesting

@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import org.junit.jupiter.api.Test;
 
-/** */
 class TImeUUIDGeneratorTest {
 
   @Test

@@ -15,14 +15,14 @@ import org.junit.jupiter.api.Test;
 
 class StringToDurationCodecTest {
 
-  private static final long NANOS_PER_MINUTE = 60 * 1000L * 1000L * 1000L;
+  private final long nanosPerMinute = 60 * 1000L * 1000L * 1000L;
 
-  private final Duration duration = Duration.newInstance(15, 0, 130 * NANOS_PER_MINUTE);
+  private final Duration duration = Duration.newInstance(15, 0, 130 * nanosPerMinute);
 
   private final StringToDurationCodec codec = StringToDurationCodec.INSTANCE;
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     assertThat(codec)
         .convertsFrom("1y3mo2h10m") // standard pattern
         .to(duration)
@@ -37,12 +37,12 @@ class StringToDurationCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     assertThat(codec).convertsTo(duration).from("1y3mo2h10m").convertsTo(null).from(null);
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     assertThat(codec)
         .cannotConvertFrom("1Y3M4D") // The minutes should be after days
         .cannotConvertFrom("not a valid duration");

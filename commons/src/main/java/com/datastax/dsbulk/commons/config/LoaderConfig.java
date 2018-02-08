@@ -14,6 +14,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigMergeable;
+import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
@@ -21,8 +22,13 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.Optional;
 
 public interface LoaderConfig extends Config {
+
+  String TYPE_ANNOTATION = "@type";
+
+  String LEAF_ANNOTATION = "@leaf";
 
   /**
    * Returns a new instance of the class name at the given path.
@@ -204,13 +210,31 @@ public interface LoaderConfig extends Config {
    * @throws ConfigException.Missing if value is absent or null.
    */
   default String getTypeString(String path) {
-    ConfigValueType type = getValue(path).valueType();
+    ConfigValue value = getValue(path);
+    Optional<String> typeHint =
+        value
+            .origin()
+            .comments()
+            .stream()
+            .filter(line -> line.contains(TYPE_ANNOTATION))
+            .findFirst();
+    if (typeHint.isPresent()) {
+      return typeHint.get().replace("@type", "").trim();
+    }
+    ConfigValueType type = value.valueType();
     if (type == ConfigValueType.LIST) {
       ConfigList list = getList(path);
       if (list.isEmpty()) {
         return "list";
       } else {
         return "list<" + getTypeString(list.get(0).valueType()) + ">";
+      }
+    } else if (type == ConfigValueType.OBJECT) {
+      ConfigObject object = getObject(path);
+      if (object.isEmpty()) {
+        return "map";
+      } else {
+        return "map<string," + getTypeString(object.values().iterator().next().valueType()) + ">";
       }
     } else {
       return getTypeString(type);
@@ -229,6 +253,8 @@ public interface LoaderConfig extends Config {
         return "string";
       case LIST:
         return "list";
+      case OBJECT:
+        return "map";
       case NUMBER:
         return "number";
       case BOOLEAN:

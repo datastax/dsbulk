@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.number;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.time.Instant;
@@ -18,7 +19,7 @@ import org.junit.jupiter.api.Test;
 class NumberToInstantCodecTest {
 
   private NumberToInstantCodec<Long> codec =
-      new NumberToInstantCodec<>(Long.class, MILLISECONDS, EPOCH);
+      new NumberToInstantCodec<>(Long.class, MILLISECONDS, EPOCH.atZone(UTC));
 
   @Test
   void should_convert_when_valid_input() {

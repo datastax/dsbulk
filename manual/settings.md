@@ -419,6 +419,12 @@ The mode for loading and unloading JSON documents. Valid values are:
 
 Default: **"MULTI_DOCUMENT"**.
 
+#### --connector.json.deserializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+
+A map of JSON deserialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.DeserializationFeature`. Used for loading only.
+
+Note: the default is to set `USE_BIG_DECIMAL_FOR_FLOATS` to `true`; this is the only way to guarantee that floating point numbers will not have their precision truncated when parsed, at the cost of a slightly slower parsing.
+
 #### -encoding,--connector.json.encoding _&lt;string&gt;_
 
 The file encoding to use for all read or written files.
@@ -437,11 +443,13 @@ The glob pattern to use when searching for files to read. The syntax to use is t
 
 Default: **"\*\*/\*.json"**.
 
-#### --connector.json.generatorFeatures _&lt;list&gt;_
+#### --connector.json.generatorFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
-JSON generator features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `[ESCAPE_NON_ASCII, QUOTE_FIELD_NAMES]` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
+A map of JSON generator features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `{ ESCAPE_NON_ASCII : true, QUOTE_FIELD_NAMES : true }` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
 
-Default: **[]**.
+#### --connector.json.mapperFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+
+A map of JSON mapper features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.MapperFeature`. Used both for loading and unloading.
 
 #### -maxConcurrentFiles,--connector.json.maxConcurrentFiles _&lt;string&gt;_
 
@@ -449,11 +457,9 @@ The maximum number of files that can be written simultaneously. This setting is 
 
 Default: **"0.25C"**.
 
-#### --connector.json.parserFeatures _&lt;list&gt;_
+#### --connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
-JSON parser features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonParser.Feature`. For example, a value of `[ALLOW_COMMENTS, ALLOW_SINGLE_QUOTES]` will configure the parser to allow the use of comments and single-quoted strings in JSON data. Used for loading only.
-
-Default: **[]**.
+A map of JSON parser features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.core.JsonParser.Feature`. For example, a value of `{ ALLOW_COMMENTS : true, ALLOW_SINGLE_QUOTES : true }` will configure the parser to allow the use of comments and single-quoted strings in JSON data. Used for loading only.
 
 #### --connector.json.prettyPrint _&lt;boolean&gt;_
 
@@ -468,6 +474,10 @@ Default: **false**.
 Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.
 
 Default: **false**.
+
+#### --connector.json.serializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+
+A map of JSON serialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.SerializationFeature`. Used for unloading only.
 
 <a name="schema"></a>
 ## Schema Settings
@@ -614,18 +624,38 @@ Default: **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
 
 The temporal pattern to use for `String` to CQL date conversions. Valid choices:
 
-- A date-time pattern
-- A pre-defined formatter such as `ISO_LOCAL_DATE`
+- A date-time pattern such as `uuuu-MM-dd`.
+- A pre-defined formatter such as `ISO_LOCAL_DATE`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
 
 For more information on patterns and pre-defined formatters, see [https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns).
+
+For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
 
 Default: **"ISO_LOCAL_DATE"**.
 
 #### --codec.epoch _&lt;string&gt;_
 
-This setting applies only to CQL timestamp columns, and `USING TIMESTAMP` clauses in queries. If the input is a string containing only digits that cannot be parsed using the `codec.timestamp` format, the specified epoch determines the relative point in time used with the parsed value. The value must be a valid timestamp, defined by options `codec.timestamp` and `codec.timeZone` (if the value does not include a time zone).
+The instant, or "epoch", to use when converting numeric input to CQL temporal types, and when converting local times to full timestamps.
+
+The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
+
+Numeric inputs are converted using this instant and the unit specified under `unit`. For example, if the unit is `DAYS` and the epoch is `2000-01-01T00:00:00Z`, then the number 31 is converted to `2000-01-01` + 31 days, that is, `2000-02-01T00:00:00Z`.
+
+When local times need to be converted to full timestamps, they are converted using the local date extracted from this value. For example, if the epoch is `2000-01-01T00:00:00Z`, then the local time `12:34:56` is converted to `2000-01-01T12:34:56Z`.
+
+ The default values for `unit` and `epoch` result in numeric input being interpreted as milliseconds since Unix Epoch (1970-01-01).
 
 Default: **"1970-01-01T00:00:00Z"**.
+
+#### --codec.formatNumbers _&lt;boolean&gt;_
+
+Whether or not to use the `number` pattern to format numeric output.
+
+Only applicable when unloading, and only if the connector in use requires stringification (i.e., if it does not handle raw numeric data, e.g. the CSV connector); ignored otherwise.
+
+When `true`, the numeric pattern defined under `number` will be used to format all numbers. This allows for nicely-formatted output, but may result in rounding (see `roundingStrategy`), or alteration of the original decimal's scale. When `false`, numbers will be simply stringified using their `toString()` method. This is the safest choice as it never results in rounding nor in scale alteration.
+
+Default: **false**.
 
 #### -locale,--codec.locale _&lt;string&gt;_
 
@@ -635,24 +665,74 @@ Default: **"en_US"**.
 
 #### --codec.number _&lt;string&gt;_
 
-The `DecimalFormat` pattern to use for `String` to `Number` conversions. See [java.text.DecimalFormat](https://docs.oracle.com/javase/8/docs/api/java/text/DecimalFormat.html) for details about the pattern syntax to use.
+The `DecimalFormat` pattern to use for conversions between `String` and CQL numeric types.
+
+See [java.text.DecimalFormat](https://docs.oracle.com/javase/8/docs/api/java/text/DecimalFormat.html) for details about the pattern syntax to use.
+
+The default pattern is `#,###.##`. This format recognizes almost every input, with an optional, localized thousands separator, and a localized decimal separator. It also recognizes an optional exponent. When used with locale `en_US`, the following inputs are all valid when parsing: `1234`, `1,234`, `1234.5678`, `1,234.5678`, `1,234.5678E2`.
+
+Beware that, when unloading / formatting, rounding may be necessary and could incur in precision loss. You can specify the rounding strategy to apply, see `roundingStrategy` below.
+
+In addition to the pattern specified here, DSBulk will always recognize Java's numeric notation as valid input, both decimal and hexadecimal. Thus, regardless of the pattern being used, the following examples are always correctly parsed:
+
+- Decimal notation: `1.234e+56`
+- Hexadecimal notation: `0x1.fffP+1023`
 
 Default: **"#,###.##"**.
+
+#### --codec.overflowStrategy _&lt;string&gt;_
+
+The overflow strategy to use when converting from `String` to CQL numeric types.
+
+"Overflow" should be understood here in 3 possible ways:
+
+- The value's magnitude is too big or too small for the target CQL type. For example, trying to convert 128 to a CQL `tinyint` results in overflow, as the maximum value for such type is 127.
+- The value is decimal, but the target CQL type is integral. For example, trying to convert 123.45 to a CQL `int` results in overflow.
+- The value's precision is too large for the target CQL type. For example, trying to insert 0.1234567890123456789 into a CQL `double` results in overflow as there are too many significant digits to fit in a 64-bit double.
+
+Valid choices:
+
+- `REJECT`: overflows are considered errors and the data is rejected. This is the default value.
+- `TRUNCATE`: the data is truncated to fit in the target CQL type. The truncation algorithm is similar to the narrowing primitive conversion defined in section 5.1.3 of The Java Language Specification, with the following exceptions:
+    - If the value is too big or too small, it is rounded up or down to the maximum or minimum value allowed, rather than truncated at bit level. For example, 128 would be rounded down to 127 to fit in a byte, whereas Java would have truncated the exceeding bits and converted to -127 instead.
+    - If the value is decimal, but the target CQL type is integral, it is first rounded to an integral using the defined rounding strategy, then narrowed to fit into the target type.
+
+Beware that `TRUNCATE` may result in precision loss and should be used with caution.
+
+Note: this setting only applies for loading, when parsing numeric inputs; it does not apply for unloading, since formatting never results in any of the overflow situations outlined above (but it may involve rounding – see `roundingStrategy`).
+
+Default: **"REJECT"**.
+
+#### --codec.roundingStrategy _&lt;string&gt;_
+
+The rounding strategy to use for conversions from CQL numeric types to `String`.
+
+Only applicable when unloading, if `formatNumbers` is true and if the connector in use requires stringification (i.e., if it does not handle raw numeric data, e.g. the CSV connector); ignored otherwise.
+
+Valid choices: any `java.math.RoundingMode` enum constant name, that is: `CEILING`, `FLOOR`, `UP`, `DOWN`, `HALF_UP`, `HALF_EVEN`, `HALF_DOWN`, and `UNNECESSARY`.
+
+The precision used when rounding is inferred from the numeric pattern declared under `number`. For example, `#,###.##` allows up to 2 fraction digits, so the rounding precision will be 2; 123.456 would be rounded to 123.46 with this pattern and strategy `UP`.
+
+The default is `UNNECESSARY` because this is the only strategy that allows to export numeric data without precision loss. Note however that this strategy will result in infinite precision and thus will print decimal numbers with as many fraction digits as required, regardless of the number of fraction digits declared in the numeric pattern in use.
+
+Default: **"UNNECESSARY"**.
 
 #### --codec.time _&lt;string&gt;_
 
 The temporal pattern to use for `String` to CQL time conversions. Valid choices:
 
-- A date-time pattern
-- A pre-defined formatter such as `ISO_LOCAL_TIME`
+- A date-time pattern such as `HH:mm:ss`.
+- A pre-defined formatter such as `ISO_LOCAL_TIME`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
 
 For more information on patterns and pre-defined formatters, see [https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns).
+
+For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
 
 Default: **"ISO_LOCAL_TIME"**.
 
 #### -timeZone,--codec.timeZone _&lt;string&gt;_
 
-The time zone to use for temporal conversions that do not convey any explicit time zone information.
+The time zone to use for temporal conversions, when the input being parsed or formatted does not convey any explicit time zone information.
 
 Default: **"UTC"**.
 
@@ -660,17 +740,55 @@ Default: **"UTC"**.
 
 The temporal pattern to use for `String` to CQL timestamp conversions. Valid choices:
 
-- A date-time pattern
-- A pre-defined formatter such as `ISO_DATE_TIME`
-- The special formatter `CQL_DATE_TIME`, which is a special parser that accepts all valid CQL literal formats for the `timestamp` type
+- A date-time pattern such as `uuuu-MM-dd HH:mm:ss`.
+- A pre-defined formatter such as `ISO_ZONED_DATE_TIME` or `ISO_INSTANT`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
+- The special value `CQL_DATE_TIME`, which is a special parser that accepts most CQL date, time and timestamp literals (see below).
 
 For more information on patterns and pre-defined formatters, see [https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns).
+
+For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
+
+The default value is the special `CQL_DATE_TIME` value. This format is roughly equivalent to the pre-defined `ISO_ZONED_DATE_TIME`, but is more permissive regarding missing fields and time zone formats.
+
+When parsing, this format recognizes most CQL temporal literals, e.g.:
+
+- Local dates:
+    - `2012-01-01`
+- Local times:
+    - `12:34`
+    - `12:34:56`
+    - `12:34:56.123`
+    - `12:34:56.123456`
+    - `12:34:56.123456789`
+- Local date-times:
+    - `2012-01-01T12:34`
+    - `2012-01-01T12:34:56`
+    - `2012-01-01T12:34:56.123`
+    - `2012-01-01T12:34:56.123456`
+    - `2012-01-01T12:34:56.123456789`
+- Zoned date-times:
+    - `2012-01-01T12:34+01:00`
+    - `2012-01-01T12:34:56+01:00`
+    - `2012-01-01T12:34:56.123+01:00`
+    - `2012-01-01T12:34:56.123456+01:00`
+    - `2012-01-01T12:34:56.123456789+01:00`
+    - `2012-01-01T12:34:56.123456789+01:00[Europe/Paris]`
+
+When the input is a local date, the timestamp is resolved using the time zone specified under `timeZone`, at midnight. When the input is a local time, the timestamp is resolved using the time zone specified under `timeZone`, and the date is inferred from the instant specified under `epoch` (by default, January 1st 1970).
+
+When formatting, this format is equivalent to `ISO_ZONED_DATE_TIME`, and produces formatted output of the following form: '2011-12-03T10:15:30.567+01:00[Europe/Paris]'.
 
 Default: **"CQL_DATE_TIME"**.
 
 #### --codec.unit _&lt;string&gt;_
 
-This setting applies only to CQL timestamp columns, and `USING TIMESTAMP` clauses in queries. If the input is a string containing only digits that cannot be parsed using the `codec.timestamp` format, the specified time unit is applied to the parsed value. All `TimeUnit` enum constants are valid choices.
+The time unit to use when converting numeric input to CQL temporal types.
+
+All `TimeUnit` enum constants are valid choices.
+
+Numeric inputs are converted using this unit and the instant specified under `epoch`. For example, if the unit is `DAYS` and the epoch is `2000-01-01T00:00:00Z`, then the number 31 is converted to `2000-01-01` + 31 days, that is, `2000-02-01T00:00:00Z`.
+
+ The default values for `unit` and `epoch` result in numeric input being interpreted as milliseconds since Unix Epoch (1970-01-01).
 
 Default: **"MILLISECONDS"**.
 

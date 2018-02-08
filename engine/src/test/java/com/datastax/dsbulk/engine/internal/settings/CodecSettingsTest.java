@@ -41,6 +41,7 @@ import com.datastax.driver.core.TupleType;
 import com.datastax.driver.core.UserType;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.BooleanToNumberCodec;
@@ -85,7 +86,6 @@ import java.util.Date;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** */
 class CodecSettingsTest {
 
   private Cluster cluster;
@@ -194,11 +194,11 @@ class CodecSettingsTest {
 
     assertThat(codecRegistry.convertingCodecFor(date(), TypeToken.of(ZonedDateTime.class)))
         .convertsFrom(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
-        .to(LocalDate.parse("2017-11-29"))
+        .to(LocalDate.parse("2017-11-30"))
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(time(), TypeToken.of(ZonedDateTime.class)))
         .convertsFrom(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
-        .to(LocalTime.parse("23:00:00"))
+        .to(LocalTime.parse("00:00:00"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(ZonedDateTime.class)))
@@ -341,7 +341,6 @@ class CodecSettingsTest {
 
   @Test
   void should_return_boolean_converting_codecs() {
-
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     settings.init();
@@ -357,5 +356,33 @@ class CodecSettingsTest {
         .isInstanceOf(NumberToBooleanCodec.class)
         .convertsFrom((byte) 1)
         .to(true);
+  }
+
+  @Test
+  void should_return_rounding_codecs() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("roundingStrategy = UP, formatNumbers = true")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.codec")));
+    CodecSettings settings = new CodecSettings(config);
+    settings.init();
+    ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
+    ConvertingCodec<String, Float> codec =
+        codecRegistry.convertingCodecFor(cfloat(), TypeToken.of(String.class));
+    assertThat(codec.convertTo(0.123f)).isEqualTo("0.13");
+  }
+
+  @Test
+  void should_return_codecs_honoring_overflow_strategy() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("overflowStrategy = TRUNCATE")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.codec")));
+    CodecSettings settings = new CodecSettings(config);
+    settings.init();
+    ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
+    ConvertingCodec<String, Byte> codec =
+        codecRegistry.convertingCodecFor(tinyint(), TypeToken.of(String.class));
+    assertThat(codec.convertFrom("128")).isEqualTo((byte) 127);
   }
 }

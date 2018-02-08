@@ -72,6 +72,7 @@ import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,8 +80,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import java.math.BigDecimal;
-import java.text.DecimalFormat;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
@@ -108,12 +111,14 @@ public class ExtendedCodecRegistry {
   private final Map<String, Boolean> booleanInputWords;
   private final Map<Boolean, String> booleanOutputWords;
   private final List<BigDecimal> booleanNumbers;
-  private final ThreadLocal<DecimalFormat> numberFormat;
+  private final ThreadLocal<NumberFormat> numberFormat;
+  private final OverflowStrategy overflowStrategy;
+  private final RoundingMode roundingMode;
   private final DateTimeFormatter localDateFormat;
   private final DateTimeFormatter localTimeFormat;
   private final DateTimeFormatter timestampFormat;
-  private final TimeUnit numericTimestampUnit;
-  private final Instant numericTimestampEpoch;
+  private final TimeUnit timeUnit;
+  private final ZonedDateTime epoch;
   private final ObjectMapper objectMapper;
   private final TimeUUIDGenerator generator;
 
@@ -122,12 +127,14 @@ public class ExtendedCodecRegistry {
       Map<String, Boolean> booleanInputWords,
       Map<Boolean, String> booleanOutputWords,
       List<BigDecimal> booleanNumbers,
-      ThreadLocal<DecimalFormat> numberFormat,
+      ThreadLocal<NumberFormat> numberFormat,
+      OverflowStrategy overflowStrategy,
+      RoundingMode roundingMode,
       DateTimeFormatter localDateFormat,
       DateTimeFormatter localTimeFormat,
       DateTimeFormatter timestampFormat,
-      TimeUnit numericTimestampUnit,
-      Instant numericTimestampEpoch,
+      TimeUnit timeUnit,
+      ZonedDateTime epoch,
       TimeUUIDGenerator generator,
       ObjectMapper objectMapper) {
     this.codecRegistry = codecRegistry;
@@ -135,11 +142,13 @@ public class ExtendedCodecRegistry {
     this.booleanOutputWords = booleanOutputWords;
     this.booleanNumbers = booleanNumbers;
     this.numberFormat = numberFormat;
+    this.overflowStrategy = overflowStrategy;
+    this.roundingMode = roundingMode;
     this.localDateFormat = localDateFormat;
     this.localTimeFormat = localTimeFormat;
     this.timestampFormat = timestampFormat;
-    this.numericTimestampUnit = numericTimestampUnit;
-    this.numericTimestampEpoch = numericTimestampEpoch;
+    this.timeUnit = timeUnit;
+    this.epoch = epoch;
     this.generator = generator;
     this.objectMapper = objectMapper;
     // register Java Time API codecs
@@ -192,14 +201,14 @@ public class ExtendedCodecRegistry {
     if (Number.class.isAssignableFrom(javaType.getRawType()) && cqlType == DataType.timestamp()) {
       @SuppressWarnings("unchecked")
       Class<Number> numberType = (Class<Number>) javaType.getRawType();
-      return new NumberToInstantCodec<>(numberType, numericTimestampUnit, numericTimestampEpoch);
+      return new NumberToInstantCodec<>(numberType, timeUnit, epoch);
     }
     if (Number.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
       TypeCodec<UUID> uuidCodec = codecRegistry.codecFor(cqlType);
       @SuppressWarnings("unchecked")
       Class<Number> numberType = (Class<Number>) javaType.getRawType();
       NumberToInstantCodec<Number> instantCodec =
-          new NumberToInstantCodec<>(numberType, numericTimestampUnit, numericTimestampEpoch);
+          new NumberToInstantCodec<>(numberType, timeUnit, epoch);
       return new NumberToUUIDCodec<>(uuidCodec, instantCodec, generator);
     }
     if (Number.class.isAssignableFrom(javaType.getRawType()) && cqlType == DataType.cboolean()) {
@@ -212,15 +221,15 @@ public class ExtendedCodecRegistry {
       Class<Temporal> fromTemporalType = (Class<Temporal>) javaType.getRawType();
       if (cqlType == DataType.date()) {
         return new TemporalToTemporalCodec<>(
-            fromTemporalType, LocalDateCodec.instance, timestampFormat.getZone());
+            fromTemporalType, LocalDateCodec.instance, timestampFormat.getZone(), epoch);
       }
       if (cqlType == DataType.time()) {
         return new TemporalToTemporalCodec<>(
-            fromTemporalType, LocalTimeCodec.instance, timestampFormat.getZone());
+            fromTemporalType, LocalTimeCodec.instance, timestampFormat.getZone(), epoch);
       }
       if (cqlType == DataType.timestamp()) {
         return new TemporalToTemporalCodec<>(
-            fromTemporalType, InstantCodec.instance, timestampFormat.getZone());
+            fromTemporalType, InstantCodec.instance, timestampFormat.getZone(), epoch);
       }
     }
     if (Temporal.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
@@ -273,65 +282,81 @@ public class ExtendedCodecRegistry {
       case TINYINT:
         return new StringToByteCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case SMALLINT:
         return new StringToShortCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case INT:
         return new StringToIntegerCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case BIGINT:
         return new StringToLongCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case FLOAT:
         return new StringToFloatCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case DOUBLE:
         return new StringToDoubleCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case VARINT:
         return new StringToBigIntegerCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case DECIMAL:
         return new StringToBigDecimalCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case DATE:
@@ -339,8 +364,7 @@ public class ExtendedCodecRegistry {
       case TIME:
         return new StringToLocalTimeCodec(localTimeFormat);
       case TIMESTAMP:
-        return new StringToInstantCodec(
-            timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+        return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch);
       case INET:
         return StringToInetAddressCodec.INSTANCE;
       case UUID:
@@ -416,65 +440,81 @@ public class ExtendedCodecRegistry {
       case TINYINT:
         return new JsonNodeToByteCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case SMALLINT:
         return new JsonNodeToShortCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case INT:
         return new JsonNodeToIntegerCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case BIGINT:
         return new JsonNodeToLongCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case FLOAT:
         return new JsonNodeToFloatCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case DOUBLE:
         return new JsonNodeToDoubleCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case VARINT:
         return new JsonNodeToBigIntegerCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case DECIMAL:
         return new JsonNodeToBigDecimalCodec(
             numberFormat,
+            overflowStrategy,
+            roundingMode,
             timestampFormat,
-            numericTimestampUnit,
-            numericTimestampEpoch,
+            timeUnit,
+            epoch,
             booleanInputWords,
             booleanNumbers);
       case DATE:
@@ -482,8 +522,7 @@ public class ExtendedCodecRegistry {
       case TIME:
         return new JsonNodeToLocalTimeCodec(localTimeFormat);
       case TIMESTAMP:
-        return new JsonNodeToInstantCodec(
-            timestampFormat, numericTimestampUnit, numericTimestampEpoch);
+        return new JsonNodeToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch);
       case INET:
         return JsonNodeToInetAddressCodec.INSTANCE;
       case UUID:

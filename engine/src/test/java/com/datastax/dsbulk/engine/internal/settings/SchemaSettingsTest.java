@@ -13,9 +13,12 @@ import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefin
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newPreparedId;
 import static com.datastax.driver.core.ProtocolVersion.V4;
-import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
+import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
+import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,6 +49,7 @@ import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
+import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -58,7 +62,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-/** */
 @SuppressWarnings("unchecked")
 class SchemaSettingsTest {
 
@@ -78,8 +81,10 @@ class SchemaSettingsTest {
 
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
   private final RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
+  private final ThreadLocal<NumberFormat> numberFormat =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
   private final StringToInstantCodec codec =
-      new StringToInstantCodec(CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH);
+      new StringToInstantCodec(CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
 
   @BeforeEach
   void setUp() {
@@ -262,8 +267,7 @@ class SchemaSettingsTest {
                 "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) USING TIMESTAMP %3$s",
                 C1,
                 C2,
-                instantToTimestampSinceEpoch(
-                    Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS, EPOCH)));
+                instantToNumber(Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS, EPOCH)));
   }
 
   @Test
@@ -275,7 +279,8 @@ class SchemaSettingsTest {
     DateTimeFormatter formatter =
         DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneId.of("Europe/Paris"));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(new StringToInstantCodec(formatter, MILLISECONDS, EPOCH));
+    schemaSettings.init(
+        new StringToInstantCodec(formatter, numberFormat, MILLISECONDS, EPOCH.atZone(UTC)));
     schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -285,7 +290,7 @@ class SchemaSettingsTest {
                 "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) USING TIMESTAMP %3$s",
                 C1,
                 C2,
-                instantToTimestampSinceEpoch(
+                instantToNumber(
                     Instant.from(formatter.parse("20171123102034")), MICROSECONDS, EPOCH)));
   }
 

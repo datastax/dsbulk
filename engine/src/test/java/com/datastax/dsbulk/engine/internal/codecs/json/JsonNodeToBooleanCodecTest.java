@@ -19,10 +19,11 @@ class JsonNodeToBooleanCodecTest {
 
   private final Map<String, Boolean> inputs =
       ImmutableMap.<String, Boolean>builder().put("foo", true).put("bar", false).build();
+
   private final JsonNodeToBooleanCodec codec = new JsonNodeToBooleanCodec(inputs);
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.booleanNode(true))
         .to(true)
@@ -45,7 +46,7 @@ class JsonNodeToBooleanCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(true)
         .from(JsonNodeFactory.instance.booleanNode(true))
@@ -56,7 +57,7 @@ class JsonNodeToBooleanCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     assertThat(codec).cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid boolean"));
   }
 }

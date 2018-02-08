@@ -19,19 +19,11 @@ import java.time.temporal.TemporalAccessor;
 public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
     extends ConvertingCodec<JsonNode, T> {
 
-  final DateTimeFormatter parser;
+  final DateTimeFormatter temporalFormat;
 
-  JsonNodeToTemporalCodec(TypeCodec<T> targetCodec, DateTimeFormatter parser) {
+  JsonNodeToTemporalCodec(TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat) {
     super(targetCodec, JsonNode.class);
-    this.parser = parser;
-  }
-
-  TemporalAccessor parseAsTemporalAccessor(JsonNode node) {
-    if (node == null || node.isNull()) {
-      return null;
-    }
-    String s = node.asText();
-    return CodecUtils.parseTemporal(s, parser);
+    this.temporalFormat = temporalFormat;
   }
 
   @Override
@@ -39,6 +31,14 @@ public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
     if (value == null) {
       return JsonNodeFactory.instance.nullNode();
     }
-    return JsonNodeFactory.instance.textNode(parser.format(value));
+    return JsonNodeFactory.instance.textNode(temporalFormat.format(value));
+  }
+
+  TemporalAccessor parseTemporalAccessor(JsonNode node) {
+    if (node == null || node.isNull()) {
+      return null;
+    }
+    String s = node.asText();
+    return CodecUtils.parseTemporal(s, temporalFormat);
   }
 }

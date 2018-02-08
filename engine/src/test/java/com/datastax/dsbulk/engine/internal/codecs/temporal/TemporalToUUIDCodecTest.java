@@ -13,19 +13,21 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MIN;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
 
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.utils.UUIDs;
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import org.junit.jupiter.api.Test;
 
 class TemporalToUUIDCodecTest {
 
   private TemporalToTemporalCodec<ZonedDateTime, Instant> instantCodec =
-      new TemporalToTemporalCodec<>(ZonedDateTime.class, InstantCodec.instance, ZoneOffset.UTC);
+      new TemporalToTemporalCodec<>(
+          ZonedDateTime.class, InstantCodec.instance, UTC, EPOCH.atZone(UTC));
 
   @Test
   void should_convert_when_valid_input() {

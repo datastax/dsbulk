@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 class NumberToNumberCodecTest {
 
   @Test
-  void should_convert_when_valid_input() throws Exception {
+  void should_convert_when_valid_input() {
 
     assertThat(new NumberToNumberCodec<>(Byte.class, TypeCodec.cdouble()))
         .convertsFrom((byte) 123)
@@ -80,7 +80,7 @@ class NumberToNumberCodecTest {
   }
 
   @Test
-  void should_not_convert_when_invalid_input() throws Exception {
+  void should_not_convert_when_invalid_input() {
 
     assertThat(new NumberToNumberCodec<>(Double.class, TypeCodec.cint()))
         .cannotConvertFrom(123.45d);

@@ -16,14 +16,14 @@ import org.junit.jupiter.api.Test;
 
 class JsonNodeToDurationCodecTest {
 
-  private static final long NANOS_PER_MINUTE = 60 * 1000L * 1000L * 1000L;
+  private final long nanosPerMinute = 60 * 1000L * 1000L * 1000L;
 
-  private final Duration duration = Duration.newInstance(15, 0, 130 * NANOS_PER_MINUTE);
+  private final Duration duration = Duration.newInstance(15, 0, 130 * nanosPerMinute);
 
   private final JsonNodeToDurationCodec codec = JsonNodeToDurationCodec.INSTANCE;
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("1y3mo2h10m")) // standard pattern
         .to(duration)
@@ -42,7 +42,7 @@ class JsonNodeToDurationCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(duration)
         .from(JsonNodeFactory.instance.textNode("1y3mo2h10m"))
@@ -51,7 +51,7 @@ class JsonNodeToDurationCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     assertThat(codec)
         .cannotConvertFrom(
             JsonNodeFactory.instance.textNode("1Y3M4D")) // The minutes should be after days

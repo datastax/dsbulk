@@ -13,7 +13,10 @@ import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DAT
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
+import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
+import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,17 +40,18 @@ import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecordMetadata;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToIntegerCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToLongCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
+import java.math.RoundingMode;
 import java.net.URI;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
+import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 import java.util.Set;
 import org.assertj.core.util.Sets;
 import org.junit.jupiter.api.BeforeEach;
@@ -80,12 +84,11 @@ class DefaultRecordMapperTest {
   private ArgumentCaptor<Object> valueCaptor;
   private ArgumentCaptor<TypeCodec> codecCaptor;
   private RecordMetadata recordMetadata;
-  private ThreadLocal<DecimalFormat> formatter =
-      ThreadLocal.withInitial(
-          () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US)));
+  private final ThreadLocal<NumberFormat> formatter =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
     variableCaptor = ArgumentCaptor.forClass(String.class);
     valueCaptor = ArgumentCaptor.forClass(Object.class);
     codecCaptor = ArgumentCaptor.forClass(TypeCodec.class);
@@ -130,7 +133,7 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_map_regular_fields() throws Exception {
+  void should_map_regular_fields() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -150,7 +153,7 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_bind_mapped_numeric_timestamp() throws Exception {
+  void should_bind_mapped_numeric_timestamp() {
     when(record.fields()).thenReturn(set(F1));
     when(variables.getType(C1)).thenReturn(bigint());
     // timestamp is 123456 minutes before unix epoch
@@ -159,9 +162,11 @@ class DefaultRecordMapperTest {
         spy(
             new StringToLongCodec(
                 formatter,
+                OverflowStrategy.REJECT,
+                RoundingMode.HALF_EVEN,
                 CQL_DATE_TIME_FORMAT,
                 MINUTES,
-                EPOCH,
+                EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO)));
     when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
@@ -179,7 +184,7 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_bind_mapped_numeric_timestamp_with_custom_unit_and_epoch() throws Exception {
+  void should_bind_mapped_numeric_timestamp_with_custom_unit_and_epoch() {
     when(record.fields()).thenReturn(set(F1));
     when(variables.getType(C1)).thenReturn(bigint());
     // timestamp is one minute before year 2000
@@ -189,9 +194,11 @@ class DefaultRecordMapperTest {
         spy(
             new StringToLongCodec(
                 formatter,
+                OverflowStrategy.REJECT,
+                RoundingMode.HALF_EVEN,
                 CQL_DATE_TIME_FORMAT,
                 MINUTES,
-                millennium,
+                millennium.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO)));
     when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
@@ -209,7 +216,7 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_bind_mapped_alphanumeric_timestamp() throws Exception {
+  void should_bind_mapped_alphanumeric_timestamp() {
     when(record.fields()).thenReturn(set(F1));
     when(variables.getType(C1)).thenReturn(bigint());
     when(record.getFieldValue(F1)).thenReturn("2017-01-02T00:00:02");
@@ -217,9 +224,11 @@ class DefaultRecordMapperTest {
         spy(
             new StringToLongCodec(
                 formatter,
+                OverflowStrategy.REJECT,
+                RoundingMode.HALF_EVEN,
                 CQL_DATE_TIME_FORMAT,
                 MILLISECONDS,
-                EPOCH,
+                EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO)));
     when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
@@ -237,7 +246,7 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_bind_mapped_alphanumeric_timestamp_with_custom_pattern() throws Exception {
+  void should_bind_mapped_alphanumeric_timestamp_with_custom_pattern() {
     when(record.fields()).thenReturn(set(F1));
     when(variables.getType(C1)).thenReturn(bigint());
     when(record.getFieldValue(F1)).thenReturn("20171123-123456");
@@ -247,9 +256,11 @@ class DefaultRecordMapperTest {
         spy(
             new StringToLongCodec(
                 formatter,
+                OverflowStrategy.REJECT,
+                RoundingMode.HALF_EVEN,
                 timestampFormat,
                 MILLISECONDS,
-                EPOCH,
+                EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO)));
     when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
@@ -267,7 +278,7 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_map_null_to_unset() throws Exception {
+  void should_map_null_to_unset() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
     when(record.getFieldValue(F2)).thenReturn(null);
     RecordMapper mapper =
@@ -287,7 +298,7 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_map_null_words_to_unset() throws Exception {
+  void should_map_null_words_to_unset() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
     when(record.getFieldValue(F2)).thenReturn("NIL");
     when(record.getFieldValue(F3)).thenReturn("NULL");
@@ -307,7 +318,7 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_map_null_to_null() throws Exception {
+  void should_map_null_to_null() {
     when(record.fields()).thenReturn(set(F1));
     when(record.getFieldValue(F1)).thenReturn(null);
     RecordMapper mapper =
@@ -327,7 +338,7 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_map_null_word_to_null() throws Exception {
+  void should_map_null_word_to_null() {
     when(record.fields()).thenReturn(set(F1));
     when(record.getFieldValue(F1)).thenReturn("NIL");
     RecordMapper mapper =
@@ -347,7 +358,7 @@ class DefaultRecordMapperTest {
   }
 
   @Test
-  void should_return_unmappable_statement_when_mapping_fails() throws Exception {
+  void should_return_unmappable_statement_when_mapping_fails() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
     when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class)))
         .thenThrow(CodecNotFoundException.class);

@@ -1,0 +1,41 @@
+key;vdouble;vdecimal
+
+# Scientific notation
+scientific_notation;1.0e+7;1.0e+7
+
+# 1e+7 in regular notation
+regular_notation;10000000;10000000
+
+# Hexadecimal floating point notation
+hex_notation;0x1.fffffffffffffP+1023;0x1.fffffffffffffP+1023
+
+# Cannot be represented exactly with IEEE 754
+irrational;0.1;0.1
+
+# Double.NaN
+Double.NaN;NaN;
+
+# Double.POSITIVE_INFINITY
+Double.POSITIVE_INFINITY;+Infinity;
+
+# Double.NEGATIVE_INFINITY
+Double.NEGATIVE_INFINITY;-Infinity;
+
+# Double.MAX_VALUE
+Double.MAX_VALUE;1.7976931348623157E308;1.7976931348623157E308
+
+# Double.MIN_VALUE
+Double.MIN_VALUE;4.9E-324;4.9E-324
+
+# Double.MIN_NORMAL
+Double.MIN_NORMAL;2.2250738585072014E-308;2.2250738585072014E-308
+
+# Float.MAX_VALUE, in regular notation
+Float.MAX_VALUE;340,282,350,000,000,000,000,000,000,000,000,000,000;340,282,350,000,000,000,000,000,000,000,000,000,000
+
+# Float.MIN_VALUE, in regular notation
+Float.MIN_VALUE;0.0000000000000000000000000000000000000000000014;0.0000000000000000000000000000000000000000000014
+
+# Too many precision digits (> 16), will be rejected or truncated
+too_many_digits;0.12345678901234567890123456789;0.12345678901234567890123456789
+

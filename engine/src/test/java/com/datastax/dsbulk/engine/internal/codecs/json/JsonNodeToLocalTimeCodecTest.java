@@ -9,9 +9,12 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
+import static java.util.Locale.US;
 
+import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -19,9 +22,15 @@ import org.junit.jupiter.api.Test;
 
 class JsonNodeToLocalTimeCodecTest {
 
+  private DateTimeFormatter format1 =
+      CodecSettings.getDateTimeFormat("ISO_LOCAL_TIME", UTC, US, EPOCH.atZone(UTC));
+
+  private DateTimeFormatter format2 =
+      CodecSettings.getDateTimeFormat("HHmmss.SSS", UTC, US, EPOCH.atZone(UTC));
+
   @Test
-  void should_convert_from_valid_input() throws Exception {
-    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(ISO_LOCAL_TIME);
+  void should_convert_from_valid_input() {
+    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(format1);
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("12:24:46"))
         .to(LocalTime.parse("12:24:46"))
@@ -31,7 +40,7 @@ class JsonNodeToLocalTimeCodecTest {
         .to(null)
         .convertsFrom(JsonNodeFactory.instance.textNode(""))
         .to(null);
-    codec = new JsonNodeToLocalTimeCodec(DateTimeFormatter.ofPattern("HHmmss.SSS"));
+    codec = new JsonNodeToLocalTimeCodec(format2);
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("122446.999"))
         .to(LocalTime.parse("12:24:46.999"))
@@ -42,14 +51,14 @@ class JsonNodeToLocalTimeCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
-    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(ISO_LOCAL_TIME);
+  void should_convert_to_valid_input() {
+    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(format1);
     assertThat(codec)
         .convertsTo(LocalTime.parse("12:24:46.999"))
         .from(JsonNodeFactory.instance.textNode("12:24:46.999"))
         .convertsTo(null)
         .from(JsonNodeFactory.instance.nullNode());
-    codec = new JsonNodeToLocalTimeCodec(DateTimeFormatter.ofPattern("HHmmss.SSS"));
+    codec = new JsonNodeToLocalTimeCodec(format2);
     assertThat(codec)
         .convertsTo(LocalTime.parse("12:24:46.999"))
         .from(JsonNodeFactory.instance.textNode("122446.999"))
@@ -58,7 +67,7 @@ class JsonNodeToLocalTimeCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(ISO_LOCAL_DATE);
     assertThat(codec)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid date format"));

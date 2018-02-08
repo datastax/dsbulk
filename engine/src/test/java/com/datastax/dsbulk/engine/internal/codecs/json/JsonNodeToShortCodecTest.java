@@ -13,30 +13,38 @@ import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
+import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
+import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.collect.ImmutableMap;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.util.Locale;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToShortCodecTest {
 
+  private final ThreadLocal<NumberFormat> numberFormat =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
+
   private final JsonNodeToShortCodec codec =
       new JsonNodeToShortCodec(
-          ThreadLocal.withInitial(
-              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          numberFormat,
+          OverflowStrategy.REJECT,
+          RoundingMode.HALF_EVEN,
           CQL_DATE_TIME_FORMAT,
           MILLISECONDS,
-          EPOCH,
+          EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
           newArrayList(ONE, ZERO));
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.numberNode((short) 0))
         .to((short) 0)
@@ -67,7 +75,7 @@ class JsonNodeToShortCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo((short) 0)
         .from(JsonNodeFactory.instance.numberNode((short) 0))
@@ -80,7 +88,7 @@ class JsonNodeToShortCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     assertThat(codec)
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid short"))
         .cannotConvertFrom(JsonNodeFactory.instance.textNode("1.2"))

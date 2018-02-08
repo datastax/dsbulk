@@ -8,9 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
-import java.time.DateTimeException;
+import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
@@ -23,14 +22,10 @@ public class StringToLocalDateCodec extends StringToTemporalCodec<LocalDate> {
 
   @Override
   public LocalDate convertFrom(String s) {
-    TemporalAccessor temporal = parseAsTemporalAccessor(s);
+    TemporalAccessor temporal = parseTemporalAccessor(s);
     if (temporal == null) {
       return null;
     }
-    try {
-      return LocalDate.from(temporal);
-    } catch (DateTimeException e) {
-      throw new InvalidTypeException("Cannot parse local date:" + s, e);
-    }
+    return CodecUtils.toLocalDate(temporal, temporalFormat.getZone());
   }
 }

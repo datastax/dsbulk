@@ -14,7 +14,10 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
+import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.driver.core.CodecRegistry;
@@ -29,6 +32,7 @@ import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
+import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -37,11 +41,17 @@ class StringToTupleCodecTest {
 
   private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
+  private final ThreadLocal<NumberFormat> numberFormat =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
+
   private final CodecRegistry codecRegistry = new CodecRegistry().register(InstantCodec.instance);
+
   private final TupleType tupleType = newTupleType(V4, codecRegistry, timestamp(), varchar());
 
   private final ConvertingCodec eltCodec1 =
-      new JsonNodeToInstantCodec(CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH);
+      new JsonNodeToInstantCodec(
+          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+
   private final ConvertingCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
 
   @SuppressWarnings("unchecked")
@@ -54,7 +64,7 @@ class StringToTupleCodecTest {
           objectMapper);
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     assertThat(codec)
         .convertsFrom("[\"2016-07-24T20:34:12.999\",\"+01:00\"]")
         .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
@@ -77,7 +87,7 @@ class StringToTupleCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
         .from("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]")
@@ -88,7 +98,7 @@ class StringToTupleCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     assertThat(codec)
         .cannotConvertFrom("[\"not a valid tuple\"]")
         .cannotConvertFrom("{\"not a valid tuple\":42}")

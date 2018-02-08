@@ -14,19 +14,27 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
+import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.utils.UUIDs;
+import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import java.text.NumberFormat;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class StringToUUIDCodecTest {
 
+  private final ThreadLocal<NumberFormat> numberFormat =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
+
   private StringToInstantCodec instantCodec =
-      new StringToInstantCodec(CQL_DATE_TIME_FORMAT, MILLISECONDS, EPOCH);
+      new StringToInstantCodec(CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
 
   private final StringToUUIDCodec codec =
       new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN);

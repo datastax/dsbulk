@@ -16,33 +16,40 @@ import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
+import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
+import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToDoubleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToListCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToStringCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.util.List;
-import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 class StringToListCodecTest {
 
   private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
+  private final ThreadLocal<NumberFormat> numberFormat =
+      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
+
   private final JsonNodeToDoubleCodec eltCodec1 =
       new JsonNodeToDoubleCodec(
-          ThreadLocal.withInitial(
-              () -> new DecimalFormat("#,###.##", DecimalFormatSymbols.getInstance(Locale.US))),
+          numberFormat,
+          OverflowStrategy.REJECT,
+          RoundingMode.HALF_EVEN,
           CQL_DATE_TIME_FORMAT,
           MILLISECONDS,
-          EPOCH,
+          EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
           newArrayList(ONE, ZERO));
 
@@ -60,7 +67,7 @@ class StringToListCodecTest {
           new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper), objectMapper);
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_input() {
     assertThat(codec1)
         .convertsFrom("[1,2,3]")
         .to(newArrayList(1d, 2d, 3d))
@@ -104,7 +111,7 @@ class StringToListCodecTest {
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_to_valid_input() {
     assertThat(codec1)
         .convertsTo(newArrayList(1d, 2d, 3d))
         .from("[1.0,2.0,3.0]")
@@ -134,7 +141,7 @@ class StringToListCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_input() {
     assertThat(codec1).cannotConvertFrom("[1,\"not a valid double\"]");
   }
 }

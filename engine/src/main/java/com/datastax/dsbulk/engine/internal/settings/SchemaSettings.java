@@ -11,7 +11,7 @@ package com.datastax.dsbulk.engine.internal.settings;
 import static com.datastax.driver.core.DriverCoreHooks.resultSetVariables;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
-import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToTimestampSinceEpoch;
+import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
@@ -35,7 +35,7 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
+import com.datastax.dsbulk.engine.internal.codecs.string.StringToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
@@ -119,7 +119,7 @@ public class SchemaSettings {
     this.config = config;
   }
 
-  public void init(StringToInstantCodec timestampCodec) {
+  public void init(StringToTemporalCodec<Instant> timestampCodec) {
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       nullStrings = ImmutableSet.copyOf(config.getStringList(NULL_STRINGS));
@@ -130,7 +130,7 @@ public class SchemaSettings {
       } else {
         try {
           Instant instant = timestampCodec.convertFrom(timestampStr);
-          this.timestampMicros = instantToTimestampSinceEpoch(instant, MICROSECONDS, EPOCH);
+          this.timestampMicros = instantToNumber(instant, MICROSECONDS, EPOCH);
         } catch (Exception e) {
           throw new BulkConfigurationException(
               String.format("Could not parse %s '%s'", prettyPath(QUERY_TIMESTAMP), timestampStr));

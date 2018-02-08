@@ -10,12 +10,14 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static java.util.stream.Collectors.toList;
 
-import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.driver.core.TypeCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.math.BigDecimal;
-import java.text.DecimalFormat;
-import java.time.Instant;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -24,18 +26,22 @@ import java.util.concurrent.TimeUnit;
 public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
 
   public JsonNodeToFloatCodec(
-      ThreadLocal<DecimalFormat> formatter,
-      DateTimeFormatter temporalParser,
-      TimeUnit numericTimestampUnit,
-      Instant numericTimestampEpoch,
+      ThreadLocal<NumberFormat> numberFormat,
+      OverflowStrategy overflowStrategy,
+      RoundingMode roundingMode,
+      DateTimeFormatter temporalFormat,
+      TimeUnit timeUnit,
+      ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
       List<BigDecimal> booleanNumbers) {
     super(
-        cfloat(),
-        formatter,
-        temporalParser,
-        numericTimestampUnit,
-        numericTimestampEpoch,
+        TypeCodec.cfloat(),
+        numberFormat,
+        overflowStrategy,
+        roundingMode,
+        temporalFormat,
+        timeUnit,
+        epoch,
         booleanWords,
         booleanNumbers.stream().map(BigDecimal::floatValue).collect(toList()));
   }
@@ -48,11 +54,16 @@ public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
     if (node.isFloat()) {
       return node.floatValue();
     }
-    Number number = parseNumber(node);
+    Number number;
+    if (node.isNumber()) {
+      number = node.numberValue();
+    } else {
+      number = parseNumber(node);
+    }
     if (number == null) {
       return null;
     }
-    return CodecUtils.toFloatValue(number);
+    return narrowNumber(number, Float.class);
   }
 
   @Override
