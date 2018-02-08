@@ -34,6 +34,8 @@ build:
       failIfNoTests=false
       maven.test.failure.ignore=true
       maven.javadoc.skip=true
+      max.simulacron.clusters=1
+      max.ccm.clusters=1
   - xunit:
     - "**/target/surefire-reports/TEST-*.xml"
     - "**/target/failsafe-reports/TEST-*.xml"

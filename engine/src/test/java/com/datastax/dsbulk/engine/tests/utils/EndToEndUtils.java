@@ -24,6 +24,7 @@ import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -158,7 +159,8 @@ public class EndToEndUtils {
   }
 
   public static String fetchContactPoints(BoundCluster simulacron) {
-    return simulacron.dc(0).node(0).inet().getHostAddress();
+    InetSocketAddress address = simulacron.dc(0).node(0).inetSocketAddress();
+    return address.getHostName() + ':' + address.getPort();
   }
 
   public static void validateQueryCount(
