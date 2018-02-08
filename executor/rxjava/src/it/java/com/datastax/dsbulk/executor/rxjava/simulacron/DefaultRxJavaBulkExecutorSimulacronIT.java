@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.executor.rxjava.simulacron;
 
+import com.datastax.driver.core.SerializedSession;
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.api.simulacron.BulkExecutorSimulacronITBase;
 import com.datastax.dsbulk.executor.rxjava.DefaultRxJavaBulkExecutor;
@@ -19,7 +20,7 @@ class DefaultRxJavaBulkExecutorSimulacronIT extends BulkExecutorSimulacronITBase
     super(
         simulacron,
         session,
-        DefaultRxJavaBulkExecutor.builder(session).build(),
-        DefaultRxJavaBulkExecutor.builder(session).failSafe().build());
+        DefaultRxJavaBulkExecutor.builder(new SerializedSession(session)).build(),
+        DefaultRxJavaBulkExecutor.builder(new SerializedSession(session)).failSafe().build());
   }
 }
