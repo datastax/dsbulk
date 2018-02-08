@@ -70,6 +70,8 @@
     <awaitility.version>3.0.0</awaitility.version>
     <surefire.version>2.19.1</surefire.version>
     <antlr4.version>4.7.1</antlr4.version>
+    <max.simulacron.clusters>4</max.simulacron.clusters>
+    <max.ccm.clusters>2</max.ccm.clusters>
   </properties>
 
   <dependencyManagement>
@@ -587,6 +589,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
             <systemPropertyVariables>
               <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
             </systemPropertyVariables>
+            <forkCount>${max.simulacron.clusters}</forkCount>
           </configuration>
           <dependencies>
             <dependency>
@@ -897,6 +900,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
                     <includeTags>ccm</includeTags>
                   </properties>
                   <reportNameSuffix>ccm</reportNameSuffix>
+                  <forkCount>${max.ccm.clusters}</forkCount>
                 </configuration>
               </execution>
             </executions>
