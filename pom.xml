@@ -41,7 +41,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <driver.version>1.5.0</driver.version>
+    <driver.version>1.6.3</driver.version>
     <reactive-streams.version>1.0.1</reactive-streams.version>
     <rx-java.version>2.1.9</rx-java.version>
     <reactor.version>Bismuth-SR4</reactor.version>
@@ -906,6 +906,20 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
     </profile>
 
   </profiles>
+
+  <repositories>
+    <repository>
+      <id>datastax-releases-local</id>
+      <name>DataStax Local Releases</name>
+      <url>https://datastax.jfrog.io/datastax/datastax-releases-local/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
 
   <distributionManagement>
     <repository>
