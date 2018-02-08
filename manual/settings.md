@@ -1057,7 +1057,9 @@ Default: **-1**.
 
 #### --executor.continuousPaging.enabled _&lt;boolean&gt;_
 
-Enable or disable continuous paging. If the target cluster does not support continuous paging, traditional paging will be used regardless of this setting.
+Enable or disable continuous paging.
+
+Note that if the target cluster does not support continuous paging, or if the consistency level is not `ONE` or `LOCAL_ONE` (see `driver.query.consistency`), traditional paging will be used regardless of this setting.
 
 Default: **true**.
 
