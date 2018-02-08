@@ -25,12 +25,13 @@ import org.junit.jupiter.api.Test;
 
 class StringToInstantCodecTest {
 
-  private static final Instant MILLENNIUM = Instant.parse("2000-01-01T00:00:00Z");
+  private final Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
 
-  private final Instant minutesAfterMillennium = MILLENNIUM.plus(Duration.ofMinutes(123456));
+  private final Instant minutesAfterMillennium = millennium.plus(Duration.ofMinutes(123456));
 
   private final DateTimeFormatter temporalFormat1 =
       CodecSettings.getDateTimeFormat("CQL_DATE_TIME", UTC, US, EPOCH.atZone(UTC));
+
   private final DateTimeFormatter temporalFormat2 =
       CodecSettings.getDateTimeFormat("yyyyMMddHHmmss", UTC, US, EPOCH.atZone(UTC));
 
@@ -60,7 +61,7 @@ class StringToInstantCodecTest {
         new StringToInstantCodec(temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec).convertsFrom("20160724203412").to(Instant.parse("2016-07-24T20:34:12Z"));
     codec =
-        new StringToInstantCodec(temporalFormat1, numberFormat, MINUTES, MILLENNIUM.atZone(UTC));
+        new StringToInstantCodec(temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC));
     assertThat(codec)
         .convertsFrom("123456")
         .to(minutesAfterMillennium)
@@ -87,7 +88,7 @@ class StringToInstantCodecTest {
         new StringToInstantCodec(temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec).convertsTo(Instant.parse("2016-07-24T20:34:12Z")).from("20160724203412");
     codec =
-        new StringToInstantCodec(temporalFormat1, numberFormat, MINUTES, MILLENNIUM.atZone(UTC));
+        new StringToInstantCodec(temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC));
     // conversion back to numeric timestamps is not possible, values are always formatted with full
     // alphanumeric pattern
     assertThat(codec)

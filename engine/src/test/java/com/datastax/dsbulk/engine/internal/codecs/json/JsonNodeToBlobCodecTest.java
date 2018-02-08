@@ -18,32 +18,30 @@ import org.junit.jupiter.api.Test;
 
 class JsonNodeToBlobCodecTest {
 
-  private static final byte[] DATA = {1, 2, 3, 4, 5, 6};
-  private static final byte[] EMPTY = {};
+  private final byte[] data = {1, 2, 3, 4, 5, 6};
+  private final byte[] empty = {};
 
-  private static final ByteBuffer DATA_BB = ByteBuffer.wrap(DATA);
-  private static final ByteBuffer EMPTY_BB = ByteBuffer.wrap(EMPTY);
+  private final ByteBuffer dataBb = ByteBuffer.wrap(data);
+  private final ByteBuffer emptyBb = ByteBuffer.wrap(empty);
 
-  private static final String DATA_64 = Base64.getEncoder().encodeToString(DATA);
-  private static final String DATA_HEX = Bytes.toHexString(DATA);
-
-  private static final String EMPTY_HEX = "0x";
+  private final String data64 = Base64.getEncoder().encodeToString(data);
+  private final String dataHex = Bytes.toHexString(data);
 
   private final JsonNodeToBlobCodec codec = JsonNodeToBlobCodec.INSTANCE;
 
   @Test
   void should_convert_from_valid_input() {
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.binaryNode(DATA))
-        .to(DATA_BB)
-        .convertsFrom(JsonNodeFactory.instance.binaryNode(EMPTY))
+        .convertsFrom(JsonNodeFactory.instance.binaryNode(data))
+        .to(dataBb)
+        .convertsFrom(JsonNodeFactory.instance.binaryNode(empty))
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(DATA_64))
-        .to(DATA_BB)
-        .convertsFrom(JsonNodeFactory.instance.textNode(DATA_HEX))
-        .to(DATA_BB)
-        .convertsFrom(JsonNodeFactory.instance.textNode(EMPTY_HEX))
-        .to(EMPTY_BB)
+        .convertsFrom(JsonNodeFactory.instance.textNode(data64))
+        .to(dataBb)
+        .convertsFrom(JsonNodeFactory.instance.textNode(dataHex))
+        .to(dataBb)
+        .convertsFrom(JsonNodeFactory.instance.textNode("0x"))
+        .to(emptyBb)
         .convertsFrom(JsonNodeFactory.instance.textNode(""))
         .to(null)
         .convertsFrom(JsonNodeFactory.instance.nullNode())
@@ -55,10 +53,10 @@ class JsonNodeToBlobCodecTest {
   @Test
   void should_convert_to_valid_input() {
     assertThat(codec)
-        .convertsTo(DATA_BB)
-        .from(JsonNodeFactory.instance.binaryNode(DATA))
-        .convertsTo(EMPTY_BB)
-        .from(JsonNodeFactory.instance.binaryNode(EMPTY))
+        .convertsTo(dataBb)
+        .from(JsonNodeFactory.instance.binaryNode(data))
+        .convertsTo(emptyBb)
+        .from(JsonNodeFactory.instance.binaryNode(empty))
         .convertsTo(null)
         .from(JsonNodeFactory.instance.nullNode());
   }

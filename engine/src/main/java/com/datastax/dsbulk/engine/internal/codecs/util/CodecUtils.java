@@ -359,7 +359,9 @@ public class CodecUtils {
   public static <N> N convertNumber(Number value, @NotNull Class<? extends N> targetClass)
       throws IllegalArgumentException, ArithmeticException {
     Objects.requireNonNull(targetClass);
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     if (targetClass.equals(Byte.class)) {
       return (N) toByteValueExact(value);
     }
@@ -541,10 +543,7 @@ public class CodecUtils {
     if (value instanceof Float) {
       return (Float) value;
     } else {
-      if (Float.isInfinite(value.floatValue())) {
-        throw new ArithmeticException("floating point overflow");
-      }
-      if (Float.isNaN(value.floatValue())) {
+      if (Float.isInfinite(value.floatValue()) || Float.isNaN(value.floatValue())) {
         throw new ArithmeticException("floating point overflow");
       }
       if (toBigDecimal(value).compareTo(new BigDecimal(Float.toString(value.floatValue()))) != 0) {
@@ -568,10 +567,7 @@ public class CodecUtils {
     if (value instanceof Double) {
       return (Double) value;
     } else {
-      if (Double.isInfinite(value.doubleValue())) {
-        throw new ArithmeticException("floating point overflow");
-      }
-      if (Double.isNaN(value.doubleValue())) {
+      if (Double.isInfinite(value.doubleValue()) || Double.isNaN(value.doubleValue())) {
         throw new ArithmeticException("floating point overflow");
       }
       if (toBigDecimal(value).compareTo(new BigDecimal(Double.toString(value.doubleValue())))

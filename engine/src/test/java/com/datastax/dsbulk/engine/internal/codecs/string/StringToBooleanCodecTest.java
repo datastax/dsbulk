@@ -18,6 +18,7 @@ class StringToBooleanCodecTest {
 
   private final Map<String, Boolean> inputs =
       ImmutableMap.<String, Boolean>builder().put("foo", true).put("bar", false).build();
+
   private final Map<Boolean, String> outputs =
       ImmutableMap.<Boolean, String>builder().put(true, "foo").put(false, "bar").build();
 

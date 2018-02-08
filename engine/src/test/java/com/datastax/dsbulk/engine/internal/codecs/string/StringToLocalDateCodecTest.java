@@ -22,6 +22,7 @@ class StringToLocalDateCodecTest {
 
   private DateTimeFormatter format1 =
       CodecSettings.getDateTimeFormat("ISO_LOCAL_DATE", UTC, US, EPOCH.atZone(UTC));
+
   private DateTimeFormatter format2 =
       CodecSettings.getDateTimeFormat("yyyyMMdd", UTC, US, EPOCH.atZone(UTC));
 

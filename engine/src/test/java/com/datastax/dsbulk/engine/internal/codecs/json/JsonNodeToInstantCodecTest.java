@@ -27,12 +27,13 @@ import org.junit.jupiter.api.Test;
 
 class JsonNodeToInstantCodecTest {
 
-  private static final Instant MILLENNIUM = Instant.parse("2000-01-01T00:00:00Z");
+  private final Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
 
-  private final Instant minutesAfterMillennium = MILLENNIUM.plus(Duration.ofMinutes(123456));
+  private final Instant minutesAfterMillennium = millennium.plus(Duration.ofMinutes(123456));
 
   private final DateTimeFormatter temporalFormat1 =
       CodecSettings.getDateTimeFormat("CQL_DATE_TIME", UTC, US, EPOCH.atZone(UTC));
+
   private final DateTimeFormatter temporalFormat2 =
       CodecSettings.getDateTimeFormat("yyyyMMddHHmmss", UTC, US, EPOCH.atZone(UTC));
 
@@ -70,7 +71,7 @@ class JsonNodeToInstantCodecTest {
         .convertsFrom(JsonNodeFactory.instance.textNode(""))
         .to(null);
     codec =
-        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MINUTES, MILLENNIUM.atZone(UTC));
+        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC));
     assertThat(codec)
         .convertsFrom(JsonNodeFactory.instance.textNode("123456"))
         .to(minutesAfterMillennium)
@@ -104,7 +105,7 @@ class JsonNodeToInstantCodecTest {
         .convertsTo(null)
         .from(JsonNodeFactory.instance.nullNode());
     codec =
-        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MINUTES, MILLENNIUM.atZone(UTC));
+        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC));
     // conversion back to numeric timestamps is not possible, values are always formatted with full
     // alphanumeric pattern
     assertThat(codec)

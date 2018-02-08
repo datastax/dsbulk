@@ -19,6 +19,7 @@ class JsonNodeToBooleanCodecTest {
 
   private final Map<String, Boolean> inputs =
       ImmutableMap.<String, Boolean>builder().put("foo", true).put("bar", false).build();
+
   private final JsonNodeToBooleanCodec codec = new JsonNodeToBooleanCodec(inputs);
 
   @Test

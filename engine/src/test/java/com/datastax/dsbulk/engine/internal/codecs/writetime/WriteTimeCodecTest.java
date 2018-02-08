@@ -30,14 +30,13 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
-/** */
 class WriteTimeCodecTest {
 
-  private TimeUnit unit = MILLISECONDS;
+  private final TimeUnit unit = MILLISECONDS;
 
-  private ZonedDateTime epoch = Instant.EPOCH.atZone(UTC);
+  private final ZonedDateTime epoch = Instant.EPOCH.atZone(UTC);
 
-  private DateTimeFormatter temporalFormat =
+  private final DateTimeFormatter temporalFormat =
       CodecSettings.getDateTimeFormat("CQL_DATE_TIME", UTC, US, epoch);
 
   private final ThreadLocal<NumberFormat> numberFormat =
