@@ -17,9 +17,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 /**
- * A {@link Session} implementation that delegates to another session
- * and ensures that futures produced by it are completed in the order they were
- * submitted.
+ * A {@link Session} implementation that delegates to another session and ensures that futures
+ * produced by it are completed in the order they were submitted.
  */
 public class SerializedSession implements Session, ContinuousPagingSession {
 

@@ -527,7 +527,11 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     return page;
   }
 
-  /** Creates a result from the given error. */
+  /**
+   * Creates a result from the given error.
+   *
+   * @param error The error to convert.
+   */
   abstract R toErrorResult(BulkExecutionException error);
 
   /**
