@@ -6,15 +6,13 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
+
+
+/*
+ * This is a simplified ANTLR4 version of the full grammar extracted from Apache Cassandra (TM) version 3.11.1.
+*/
+
 grammar Cql;
-
-file
-    : cqlStatement (EOS cqlStatement)* EOS? EOF
-    ;
-
-query
-    : cqlStatement EOS? EOF
-    ;
 
 // PARSER
 
@@ -24,52 +22,8 @@ cqlStatement
     : selectStatement                 #cqlStatementSelectStatement
     | insertStatement                 #cqlStatementInsertStatement
     | updateStatement                 #cqlStatementUpdateStatement
-    | batchStatement                  #cqlStatementBatchStatement
     | deleteStatement                 #cqlStatementDeleteStatement
-    | useStatement                    #cqlStatementUseStatement
-    | truncateStatement               #cqlStatementTruncateStatement
-    | createKeyspaceStatement         #cqlStatementCreateKeyspaceStatement
-    | createTableStatement            #cqlStatementCreateTableStatement
-    | createIndexStatement            #cqlStatementCreateIndexStatement
-    | dropKeyspaceStatement           #cqlStatementDropKeyspaceStatement
-    | dropTableStatement              #cqlStatementDropTableStatement
-    | dropIndexStatement              #cqlStatementDropIndexStatement
-    | alterTableStatement             #cqlStatementAlterTableStatement
-    | alterKeyspaceStatement          #cqlStatementAlterKeyspaceStatement
-    | grantPermissionsStatement       #cqlStatementGrantPermissionsStatement
-    | revokePermissionsStatement      #cqlStatementRevokePermissionsStatement
-    | listPermissionsStatement        #cqlStatementListPermissionsStatement
-    | createUserStatement             #cqlStatementCreateUserStatement
-    | alterUserStatement              #cqlStatementAlterUserStatement
-    | dropUserStatement               #cqlStatementDropUserStatement
-    | listUsersStatement              #cqlStatementListUsersStatement
-    | createTriggerStatement          #cqlStatementCreateTriggerStatement
-    | dropTriggerStatement            #cqlStatementDropTriggerStatement
-    | createTypeStatement             #cqlStatementCreateTypeStatement
-    | alterTypeStatement              #cqlStatementAlterTypeStatement
-    | dropTypeStatement               #cqlStatementDropTypeStatement
-    | createFunctionStatement         #cqlStatementCreateFunctionStatement
-    | dropFunctionStatement           #cqlStatementDropFunctionStatement
-    | createAggregateStatement        #cqlStatementCreateAggregateStatement
-    | dropAggregateStatement          #cqlStatementDropAggregateStatement
-    | createRoleStatement             #cqlStatementCreateRoleStatement
-    | alterRoleStatement              #cqlStatementAlterRoleStatement
-    | dropRoleStatement               #cqlStatementDropRoleStatement
-    | listRolesStatement              #cqlStatementListRolesStatement
-    | grantRoleStatement              #cqlStatementGrantRoleStatement
-    | revokeRoleStatement             #cqlStatementRevokeRoleStatement
-    | createMaterializedViewStatement #cqlStatementCreateMaterializedViewStatement
-    | dropMaterializedViewStatement   #cqlStatementDropMaterializedViewStatement
-    | alterMaterializedViewStatement  #cqlStatementAlterMaterializedViewStatement
-    | restrictPermissionsStatement    #cqlStatementRestrictPermissionsStatement
-    | unrestrictPermissionsStatement  #cqlStatementUnrestrictPermissionsStatement
-    ;
-
-/*
- * USE <KEYSPACE>;
- */
-useStatement
-    : K_USE keyspaceName
+    | batchStatement                  #cqlStatementBatchStatement
     ;
 
 /**
@@ -80,145 +34,45 @@ useStatement
  */
 selectStatement
     : K_SELECT
-        // json is a valid column name. By consequence, we need to resolve the ambiguity for "json - json"
-      ( /*(K_JSON selectClause)=>*/ K_JSON  )? selectClause
+      ( K_JSON )?
+      ( ( K_DISTINCT )? selectClause )
       K_FROM columnFamilyName
       ( K_WHERE whereClause )?
       ( K_GROUP K_BY groupByClause ( ',' groupByClause )* )?
       ( K_ORDER K_BY orderByClause ( ',' orderByClause )* )?
-      ( K_PER K_PARTITION K_LIMIT intValue  )?
-      ( K_LIMIT intValue  )?
+      ( K_PER K_PARTITION K_LIMIT intValue )?
+      ( K_LIMIT intValue )?
       ( K_ALLOW K_FILTERING )?
     ;
 
 selectClause
-    // distinct is a valid column name. By consequence, we need to resolve the ambiguity for "distinct - distinct"
-    : /*(K_DISTINCT selectors)=>*/ K_DISTINCT selectors  #selectClauseDistinct
-    | selectors                                          #selectClauseSimple
-    ;
-
-selectors
-    : selector (',' selector )* #selectorsSimple
-    | '*'                       #selectorsAll
+    : selector (',' selector)*
+    | '*'
     ;
 
 selector
-    : unaliasedSelector (K_AS noncolIdent )?
-    ;
-
-unaliasedSelector
-    : selectionAddition
-    ;
-
-selectionAddition
-    :   selectionMultiplication
-        ( '+' selectionMultiplication
-        | '-' selectionMultiplication
-        )*
-    ;
-
-selectionMultiplication
-    :   selectionGroup
-        ( '*' selectionGroup
-        | '/' selectionGroup
-        | '%' selectionGroup
-        )*
-    ;
-
-selectionGroup
-    // note: the original grammar declares selectionGroupWithField before selectionGroupWithoutField
-    : selectionGroupWithoutField                              #selectionGroupSelectionGroupWithoutField
-    | /*(selectionGroupWithField)=>*/ selectionGroupWithField #selectionGroupSelectionGroupWithField
-    | '-' selectionGroup                                      #selectionGroupMinusSelectionGroup
-    ;
-
-selectionGroupWithField
-    : selectionGroupWithoutField selectorModifier
-    ;
-
-selectorModifier
-    : fieldSelectorModifier selectorModifier          #selectorModifierField
-    | '[' collectionSubSelection ']' selectorModifier #selectorModifierCollection
-    |                                                 #selectorModifierEmpty
-    ;
-
-fieldSelectorModifier
-    : '.' fident
-    ;
-
-collectionSubSelection
-    : ( term ( RANGE term? )?
-      | RANGE  term
-      )
-     ;
-
-selectionGroupWithoutField
-    : simpleUnaliasedSelector                     #selectionGroupWithoutFieldSimpleUnaliasedSelector
-    | /*(selectionTypeHint)=>*/ selectionTypeHint #selectionGroupWithoutFieldSelectionTypeHint
-    | selectionTupleOrNestedSelector              #selectionGroupWithoutFieldSelectionTupleOrNestedSelector
-    | selectionList                               #selectionGroupWithoutFieldSelectionList
-    | selectionMapOrSet                           #selectionGroupWithoutFieldSelectionMapOrSet
-    // UDTs are equivalent to maps from the syntax point of view, so the final decision will be done in Selectable.WithMapOrUdt
-    ;
-
-selectionTypeHint
-    : '(' comparatorType ')' selectionGroupWithoutField
-    ;
-
-selectionList
-    : '[' ( unaliasedSelector ( ',' unaliasedSelector )* )? ']'
-    ;
-
-selectionMapOrSet
-    : '{' unaliasedSelector ( selectionMap | selectionSet ) '}'
-    | '{' '}'
-    ;
-
-selectionMap
-      : ':' unaliasedSelector ( ',' unaliasedSelector ':' unaliasedSelector )*
-      ;
-
-selectionSet
-      : ( ',' unaliasedSelector )*
-      ;
-
-selectionTupleOrNestedSelector
-    : '(' unaliasedSelector (',' unaliasedSelector )* ')'
+    : unaliasedSelector (K_AS noncolIdent)?
     ;
 
 /*
  * A single selection. The core of it is selecting a column, but we also allow any term and function, as well as
  * sub-element selection for UDT.
  */
-simpleUnaliasedSelector
-    : sident             #simpleUnaliasedSelectorSident
-    | selectionLiteral   #simpleUnaliasedSelectorSelectionLiteral
-    | selectionFunction  #simpleUnaliasedSelectorSelectionFunction
-    ;
-
-selectionFunction
-    : K_COUNT '(' '*' ')'                                    #selectionFunctionCount
-    | K_WRITETIME '(' cident ')'                             #selectionFunctionWriteTime
-    | K_TTL       '(' cident ')'                             #selectionFunctionTtl
-    | K_CAST      '(' unaliasedSelector K_AS nativeType ')'  #selectionFunctionCast
-    | functionName selectionFunctionArgs                     #selectionFunctionOther
-    ;
-
-selectionLiteral
-    : constant         #selectionLiteralConstant
-    | K_NULL           #selectionLiteralNull
-    | ':' noncolIdent  #selectionLiteralNonColIdent
-    | QMARK            #selectionLiteralQuestionMark
+unaliasedSelector
+    :  ( cident
+       | value
+       | '(' comparatorType ')' value
+       | K_COUNT '(' '*' ')'
+       | K_WRITETIME '(' cident ')'
+       | K_TTL       '(' cident ')'
+       | K_CAST      '(' unaliasedSelector K_AS nativeType ')'
+       | functionName selectionFunctionArgs
+       ) ( '.' fident )*
     ;
 
 selectionFunctionArgs
-    : '(' (unaliasedSelector ( ',' unaliasedSelector )* )? ')'
-    ;
-
-sident
-    : IDENT               #sidentSimple
-    | QUOTED_NAME         #sidentQuoted
-    | unreservedKeyword   #sidentUnreservedKeyword
+    : '(' ')'
+    | '(' unaliasedSelector ( ',' unaliasedSelector )*  ')'
     ;
 
 whereClause
@@ -239,7 +93,7 @@ orderByClause
     ;
 
 groupByClause
-    : unaliasedSelector
+    : cident
     ;
 
 /**
@@ -371,573 +225,44 @@ batchStatementObjective
     | deleteStatement  #batchStatementObjectiveDeleteStatement
     ;
 
-createAggregateStatement
-    : K_CREATE (K_OR K_REPLACE)?
-      K_AGGREGATE
-      (K_IF K_NOT K_EXISTS)?
-      functionName
-      '(' ( comparatorType ( ',' comparatorType )* )? ')'
-      K_SFUNC allowedFunctionName
-      K_STYPE comparatorType
-      ( K_FINALFUNC allowedFunctionName )?
-      ( K_INITCOND term )?
-    ;
 
-dropAggregateStatement
-    : K_DROP K_AGGREGATE
-      (K_IF K_EXISTS )?
-      functionName
-      ( '(' ( comparatorType ( ',' comparatorType )* )? ')' )?
-    ;
-
-createFunctionStatement
-    : K_CREATE (K_OR K_REPLACE)?
-      K_FUNCTION
-      (K_IF K_NOT K_EXISTS)?
-      functionName
-      '(' ( noncolIdent comparatorType ( ',' noncolIdent comparatorType )* )? ')'
-      ( (K_RETURNS K_NULL) | (K_CALLED)) K_ON K_NULL K_INPUT
-      K_RETURNS comparatorType
-      K_LANGUAGE IDENT
-      K_AS STRING_LITERAL
-    ;
-
-dropFunctionStatement
-    : K_DROP K_FUNCTION
-      (K_IF K_EXISTS )?
-      functionName
-      ( '(' ( comparatorType ( ',' comparatorType )* )? ')' )?
-    ;
-
-/**
- * CREATE KEYSPACE [IF NOT EXISTS] <KEYSPACE> WITH attr1 = value1 AND attr2 = value2;
- */
-createKeyspaceStatement
-    : K_CREATE K_KEYSPACE (K_IF K_NOT K_EXISTS )? keyspaceName
-      K_WITH properties
-    ;
-
-/**
- * CREATE COLUMNFAMILY [IF NOT EXISTS] <CF> (
- *     <name1> <type>,
- *     <name2> <type>,
- *     <name3> <type>
- * ) WITH <property> = <value> AND ...;
- */
-createTableStatement
-    : K_CREATE K_COLUMNFAMILY (K_IF K_NOT K_EXISTS )?
-      columnFamilyName
-      cfamDefinition
-    ;
-
-cfamDefinition
-    : '(' cfamColumns ( ',' cfamColumns? )* ')'
-      ( K_WITH cfamProperty ( K_AND cfamProperty )* )?
-    ;
-
-cfamColumns
-    : ident comparatorType (K_STATIC)? (K_PRIMARY K_KEY)?  #cfamColumnsSimple
-    | K_PRIMARY K_KEY '(' pkDef (',' ident )* ')'          #cfamColumnsPrimaryKey
-    ;
-
-pkDef
-    : ident                         #pkDefSimple
-    | '(' ident ( ',' ident )* ')'  #pkDefComposite
-    ;
-
-cfamProperty
-    : property                                                           #cfamPropertySimple
-    | K_COMPACT K_STORAGE                                                #cfamPropertyCompactStorage
-    | K_CLUSTERING K_ORDER K_BY '(' cfamOrdering (',' cfamOrdering)* ')' #cfamPropertyClusteringOrderBy
-    ;
-
-cfamOrdering
-    : ident (K_ASC | K_DESC )
-    ;
-
-
-/**
- * CREATE TYPE foo (
- *    <name1> <type1>,
- *    <name2> <type2>,
- *    ....
- * )
- */
-createTypeStatement
-    : K_CREATE K_TYPE (K_IF K_NOT K_EXISTS )?
-         userTypeName
-         '(' typeColumns ( ',' typeColumns /* ? */ )* ')'
-    ;
-
-typeColumns
-    : fident comparatorType
-    ;
-
-
-/**
- * CREATE INDEX [IF NOT EXISTS] [indexName] ON <columnFamily> (<columnName>);
- * CREATE CUSTOM INDEX [IF NOT EXISTS] [indexName] ON <columnFamily> (<columnName>) USING <indexClass>;
- */
-createIndexStatement
-    : K_CREATE (K_CUSTOM)? K_INDEX (K_IF K_NOT K_EXISTS )?
-        (idxName)? K_ON columnFamilyName '(' (indexIdent (',' indexIdent)*)? ')'
-        (K_USING STRING_LITERAL)?
-        (K_WITH properties)?
-    ;
-
-indexIdent
-    : cident                     #indexIdentSimple
-    | K_VALUES '(' cident ')'    #indexIdentValues
-    | K_KEYS '(' cident ')'      #indexIdentKeys
-    | K_ENTRIES '(' cident ')'   #indexIdentEntries
-    | K_FULL '(' cident ')'      #indexIdentFull
-    ;
-
-/**
- * CREATE MATERIALIZED VIEW <viewName> AS
- *  SELECT <columns>
- *  FROM <CF>
- *  WHERE <pkColumns> IS NOT NULL
- *  PRIMARY KEY (<pkColumns>)
- *  WITH <property> = <value> AND ...;
- */
-createMaterializedViewStatement
-    : K_CREATE K_MATERIALIZED K_VIEW (K_IF K_NOT K_EXISTS)? columnFamilyName K_AS
-        K_SELECT selectors K_FROM columnFamilyName
-        (K_WHERE whereClause)?
-        K_PRIMARY K_KEY (
-        '(' '(' cident ( ',' cident )* ')' ( ',' cident )* ')'
-    |   '(' cident ( ',' cident )* ')'
-        )
-        (K_WITH cfamProperty ( K_AND cfamProperty )*)?
-    ;
-
-/**
- * CREATE TRIGGER triggerName ON columnFamily USING 'triggerClass';
- */
-createTriggerStatement
-    : K_CREATE K_TRIGGER (K_IF K_NOT K_EXISTS )? (ident)
-        K_ON columnFamilyName K_USING STRING_LITERAL
-    ;
-
-/**
- * DROP TRIGGER [IF EXISTS] triggerName ON columnFamily;
- */
-dropTriggerStatement
-    : K_DROP K_TRIGGER (K_IF K_EXISTS )? (ident) K_ON columnFamilyName
-    ;
-
-/**
- * ALTER KEYSPACE <KS> WITH <property> = <value>;
- */
-alterKeyspaceStatement
-    : K_ALTER K_KEYSPACE keyspaceName
-        K_WITH properties
-    ;
-
-/**
- * ALTER COLUMN FAMILY <CF> ALTER <column> TYPE <newtype>;
- * ALTER COLUMN FAMILY <CF> ADD <column> <newtype>; | ALTER COLUMN FAMILY <CF> ADD (<column> <newtype>,<column1> <newtype1>..... <column n> <newtype n>)
- * ALTER COLUMN FAMILY <CF> DROP <column>; | ALTER COLUMN FAMILY <CF> DROP ( <column>,<column1>.....<column n>)
- * ALTER COLUMN FAMILY <CF> WITH <property> = <value>;
- * ALTER COLUMN FAMILY <CF> RENAME <column> TO <column>;
- */
-alterTableStatement
-    : K_ALTER K_COLUMNFAMILY columnFamilyName
-          ( K_ALTER schemaCident  K_TYPE comparatorType
-          | K_ADD  ( ( schemaCident  comparatorType   cfisStatic)
-                     | ('('  schemaCident  comparatorType  cfisStatic
-                       ( ',' schemaCident  comparatorType  cfisStatic )* ')' ) )
-          | K_DROP ( ( schemaCident
-                      | ('('  schemaCident
-                        ( ',' schemaCident )* ')') )
-                     ( K_USING K_TIMESTAMP INTEGER)? )
-          | K_WITH  properties
-          | K_RENAME
-               schemaCident K_TO schemaCident
-               ( K_AND schemaCident K_TO schemaCident )*
-          )
-    ;
-
-cfisStatic
-    : (K_STATIC)?
-    ;
-
-alterMaterializedViewStatement
-    : K_ALTER K_MATERIALIZED K_VIEW columnFamilyName
-          K_WITH properties
-    ;
-
-
-/**
- * ALTER TYPE <name> ALTER <field> TYPE <newtype>;
- * ALTER TYPE <name> ADD <field> <newtype>;
- * ALTER TYPE <name> RENAME <field> TO <newtype> AND ...;
- */
-alterTypeStatement
-    : K_ALTER K_TYPE userTypeName
-          ( K_ALTER fident K_TYPE comparatorType
-          | K_ADD   fident comparatorType
-          | K_RENAME renamedColumns
-          )
-    ;
-
-renamedColumns
-    : fident K_TO fident ( K_AND fident K_TO fident )*
-    ;
-
-/**
- * DROP KEYSPACE [IF EXISTS] <KSP>;
- */
-dropKeyspaceStatement
-    : K_DROP K_KEYSPACE (K_IF K_EXISTS )? keyspaceName
-    ;
-
-/**
- * DROP COLUMNFAMILY [IF EXISTS] <CF>;
- */
-dropTableStatement
-    : K_DROP K_COLUMNFAMILY (K_IF K_EXISTS)? columnFamilyName
-    ;
-
-/**
- * DROP TYPE <name>;
- */
-dropTypeStatement
-    : K_DROP K_TYPE (K_IF K_EXISTS)? userTypeName
-    ;
-
-/**
- * DROP INDEX [IF EXISTS] <INDEX_NAME>
- */
-dropIndexStatement
-    : K_DROP K_INDEX (K_IF K_EXISTS )? indexName
-    ;
-
-/**
- * DROP MATERIALIZED VIEW [IF EXISTS] <view_name>
- */
-dropMaterializedViewStatement
-    : K_DROP K_MATERIALIZED K_VIEW (K_IF K_EXISTS )? columnFamilyName
-    ;
-
-/**
-  * TRUNCATE <CF>;
-  */
-truncateStatement
-    : K_TRUNCATE (K_COLUMNFAMILY)? columnFamilyName
-    ;
-
-/**
- * GRANT <permission> ON <resource> TO <rolename>
- */
-grantPermissionsStatement
-    : K_GRANT
-          ( K_AUTHORIZE K_FOR )?
-          permissionOrAll
-      K_ON
-          ( resourceFromInternalName | resource )
-      K_TO
-          userOrRoleName
-    ;
-
-/**
- * REVOKE <permission> ON <resource> FROM <rolename>
- */
-revokePermissionsStatement
-    : K_REVOKE
-          ( K_AUTHORIZE K_FOR )?
-          permissionOrAll
-      K_ON
-          ( resourceFromInternalName | resource )
-      K_FROM
-          userOrRoleName
-    ;
-
-/**
- * GRANT <permission> ON <resource> TO <rolename>
- */
-restrictPermissionsStatement
-    : K_RESTRICT
-          permissionOrAll
-      K_ON
-          ( resourceFromInternalName | resource )
-      K_TO
-          userOrRoleName
-    ;
-
-/**
- * REVOKE <permission> ON <resource> FROM <rolename>
- */
-unrestrictPermissionsStatement
-    : K_UNRESTRICT
-          permissionOrAll
-      K_ON
-          ( resourceFromInternalName | resource )
-      K_FROM
-          userOrRoleName
-    ;
-
-/**
- * GRANT ROLE <rolename> TO <grantee>
- */
-grantRoleStatement
-    : K_GRANT
-          userOrRoleName
-      K_TO
-          userOrRoleName
-    ;
-
-/**
- * REVOKE ROLE <rolename> FROM <revokee>
- */
-revokeRoleStatement
-    : K_REVOKE
-          userOrRoleName
-      K_FROM
-          userOrRoleName
-    ;
-
-listPermissionsStatement
-    : K_LIST
-          permissionOrAll
-      ( K_ON resource )?
-      ( K_OF roleName )?
-      ( K_NORECURSIVE )?
-    ;
-
-permissionDomain
-    : IDENT               #permissionDomainIdent
-    | STRING_LITERAL      #permissionDomainStringLiteral
-    | QUOTED_NAME         #permissionDomainQuotedName
-    | unreservedKeyword  #permissionDomainUnreservedKeyword
-    ;
-
-permissionName
-    : IDENT              #permissionNameIdent
-    | STRING_LITERAL     #permissionNameStringLiteral
-    | QUOTED_NAME        #permissionNameQuotedName
-    | corePermissionName #permissionNameCorePermissionName
-    | unreservedKeyword #permissionNameUnreservedKeyword
-    ;
-
-corePermissionName
-    : K_CREATE       #corePermissionNameCreate
-    | K_ALTER        #corePermissionNameAlter
-    | K_DROP         #corePermissionNameDrop
-    | K_SELECT       #corePermissionNameSelect
-    | K_MODIFY       #corePermissionNameModify
-    | K_AUTHORIZE    #corePermissionNameAuthorize
-    | K_DESCRIBE     #corePermissionNameDescribe
-    | K_EXECUTE      #corePermissionNameExecute
-    ;
-
-permission
-    // unnamespaced permissions default to the SYSTEM namespace
-    : corePermissionName                    #permissionCorePermissionName
-    | permissionDomain '.' permissionName   #permissionDomainName
-    ;
-
-permissionOrAll
-    : K_ALL ( K_PERMISSIONS )?                                           #permissionOrAllAll
-    | K_PERMISSIONS                                                      #permissionOrAllPermissions
-    | permission ( K_PERMISSION )? ( ',' permission ( K_PERMISSION )? )* #permissionOrAllPermission
-    ;
-
-resourceFromInternalName
-    : K_RESOURCE '(' STRING_LITERAL ')'
-    ;
-
-resource
-    : cassandraResource
-    ;
-
-cassandraResource
-    : dataResource     #cassandraResourceData
-    | roleResource     #cassandraResourceRole
-    | functionResource #cassandraResourceFunction
-    | jmxResource      #cassandraResourceJmx
-    ;
-
-dataResource
-    : K_ALL K_KEYSPACES                    #dataResourceAllKeyspaces
-    | K_KEYSPACE keyspaceName              #dataResourceKeyspace
-    | ( K_COLUMNFAMILY )? columnFamilyName #dataResourceColumnFamily
-    ;
-
-jmxResource
-    : K_ALL K_MBEANS #jmxResourceAllMbeans
-    // when a bean name (or pattern) is supplied, validate that it's a legal ObjectName
-    // also, just to be picky, if the "MBEANS" form is used, only allow a pattern style names
-    | K_MBEAN mbean  #jmxResourceMbean
-    | K_MBEANS mbean #jmxResourceMbeans
-    ;
-
-roleResource
-    : K_ALL K_ROLES           #roleResourceAllRoles
-    | K_ROLE userOrRoleName   #roleResourceRole
-    ;
-
-functionResource
-    : K_ALL K_FUNCTIONS                                        #functionResourceAllFunctions
-    | K_ALL K_FUNCTIONS K_IN K_KEYSPACE keyspaceName           #functionResourceAllFunctionsInKeyspace
-    // Arg types are mandatory for DCL statements on Functions
-    | K_FUNCTION functionName
-      ( '(' ( comparatorType ( ',' comparatorType )* )? ')' )  #functionResourceFunction
-    ;
-
-/**
- * CREATE USER [IF NOT EXISTS] <username> [WITH PASSWORD <password>] [SUPERUSER|NOSUPERUSER]
- */
-createUserStatement
-    : K_CREATE K_USER (K_IF K_NOT K_EXISTS)? username
-      ( K_WITH userPassword )?
-      ( K_SUPERUSER | K_NOSUPERUSER )?
-    ;
-
-/**
- * ALTER USER <username> [WITH PASSWORD <password>] [SUPERUSER|NOSUPERUSER]
- */
-alterUserStatement
-    : K_ALTER K_USER username
-      ( K_WITH userPassword )?
-      ( K_SUPERUSER | K_NOSUPERUSER ) ?
-    ;
-
-/**
- * DROP USER [IF EXISTS] <username>
- */
-dropUserStatement
-    : K_DROP K_USER (K_IF K_EXISTS)? username
-    ;
-
-/**
- * LIST USERS
- */
-listUsersStatement
-    : K_LIST K_USERS
-    ;
-
-/**
- * CREATE ROLE [IF NOT EXISTS] <rolename> [ [WITH] option [ [AND] option ]* ]
- *
- * where option can be:
- *  PASSWORD = '<password>'
- *  SUPERUSER = (true|false)
- *  LOGIN = (true|false)
- *  OPTIONS = { 'k1':'v1', 'k2':'v2'}
- */
-createRoleStatement
-    : K_CREATE K_ROLE (K_IF K_NOT K_EXISTS)? userOrRoleName
-      ( K_WITH roleOptions )?
-    ;
-
-/**
- * ALTER ROLE <rolename> [ [WITH] option [ [AND] option ]* ]
- *
- * where option can be:
- *  PASSWORD = '<password>'
- *  SUPERUSER = (true|false)
- *  LOGIN = (true|false)
- *  OPTIONS = { 'k1':'v1', 'k2':'v2'}
- */
-alterRoleStatement
-    : K_ALTER K_ROLE userOrRoleName
-      ( K_WITH roleOptions )?
-    ;
-
-/**
- * DROP ROLE [IF EXISTS] <rolename>
- */
-dropRoleStatement
-    : K_DROP K_ROLE (K_IF K_EXISTS)? userOrRoleName
-    ;
-
-/**
- * LIST ROLES [OF <rolename>] [NORECURSIVE]
- */
-listRolesStatement
-    : K_LIST K_ROLES
-      ( K_OF roleName)?
-      ( K_NORECURSIVE )?
-    ;
-
-roleOptions
-    : roleOption (K_AND roleOption)*
-    ;
-
-roleOption
-    :  K_PASSWORD '=' STRING_LITERAL  #roleOptionPassword
-    |  K_OPTIONS '=' fullMapLiteral   #roleOptionOptions
-    |  K_SUPERUSER '=' BOOLEAN        #roleOptionSuperuser
-    |  K_LOGIN '=' BOOLEAN            #roleOptionLogin
-    ;
-
-// for backwards compatibility in CREATE/ALTER USER, this has no '='
-userPassword
-    :  K_PASSWORD STRING_LITERAL
-    ;
 
 /** DEFINITIONS **/
 
 // Column Identifiers.  These need to be treated differently from other
 // identifiers because the underlying comparator is not necessarily text. See
 // CASSANDRA-8178 for details.
-// Also, we need to support the internal of the super column map (for backward
-// compatibility) which is empty (we only want to allow this is in data manipulation
-// queries, not in schema defition etc).
 cident
-    : EMPTY_QUOTED_NAME   #cidentEmpty
-    | IDENT               #cidentSimple
+    : IDENT               #cidentSimple
     | QUOTED_NAME         #cidentQuoted
-    | unreservedKeyword  #cidentUnreservedKeyword
+    | unreservedKeyword   #cidentUnreservedKeyword
     ;
 
-schemaCident
-    : IDENT               #schemaCidentSimple
-    | QUOTED_NAME         #schemaCidentQuoted
-    | unreservedKeyword  #schemaCidentUnreservedKeyword
-    ;
-
-// Column identifiers where the comparator is known to be text
-ident
-    : IDENT               #identSimple
-    | QUOTED_NAME         #identQuoted
-    | unreservedKeyword  #identUnreservedKeyword
-    ;
 
 fident
     : IDENT               #fidentSimple
     | QUOTED_NAME         #fidentQuoted
-    | unreservedKeyword  #fidentUnreservedKeyword
+    | unreservedKeyword   #fidentUnreservedKeyword
     ;
 
 // Identifiers that do not refer to columns
 noncolIdent
     : IDENT               #nonColIdentSimple
     | QUOTED_NAME         #nonColIdentQuoted
-    | unreservedKeyword  #nonColIdentUnreservedKeyword
+    | unreservedKeyword   #nonColIdentUnreservedKeyword
     ;
 
 // Keyspace & Column family names
 keyspaceName
-        : ksName
-    ;
-
-indexName
-        : (ksName '.')? idxName
+    : ksName
     ;
 
 columnFamilyName
-        : (ksName '.')? cfName
+    : (ksName '.')? cfName
     ;
 
 userTypeName
     : (noncolIdent '.')? nonTypeIdent
-    ;
-
-userOrRoleName
-    : roleName
     ;
 
 ksName
@@ -948,25 +273,17 @@ ksName
     ;
 
 cfName
-    : IDENT                #cfNameSimple
-    | QUOTED_NAME          #cfNameQuoted
+    : IDENT               #cfNameSimple
+    | QUOTED_NAME         #cfNameQuoted
     | unreservedKeyword   #cfNameUnreservedKeyword
-    | QMARK                #cfNameQuestionMark
+    | QMARK               #cfNameQuestionMark
     ;
 
 idxName
-    : IDENT                #idxNameSimple
-    | QUOTED_NAME          #idxNameQuoted
+    : IDENT               #idxNameSimple
+    | QUOTED_NAME         #idxNameQuoted
     | unreservedKeyword   #idxNameUnreservedKeyword
-    | QMARK                #idxNameQuestionMark
-    ;
-
-roleName
-    : IDENT                #roleNameSimple
-    | STRING_LITERAL       #roleNameStringLiteral
-    | QUOTED_NAME          #roleNameQuoted
-    | unreservedKeyword   #roleNameUnreservedKeyword
-    | QMARK                #roleNameQuestionMark
+    | QMARK               #idxNameQuestionMark
     ;
 
 constant
@@ -977,38 +294,20 @@ constant
     | DURATION                             #constantDuration
     | UUID                                 #constantUUID
     | HEXNUMBER                            #constantHexNumber
-    | ((K_POSITIVE_NAN | K_NEGATIVE_NAN)
-        | K_POSITIVE_INFINITY
-        | K_NEGATIVE_INFINITY)             #constantNanInfinity
-    ;
-
-fullMapLiteral
-    : '{' ( term ':' term ( ',' term ':' term )* )? '}'
+    | ('-' )? (K_NAN | K_INFINITY)         #constantNanInfinity
     ;
 
 setOrMapLiteral
-    : mapLiteral  #setOrMapLiteralMap
-    | setLiteral  #setOrMapLiteralSet
-    ;
-
-setLiteral
-    : ( ',' term )*
-    ;
-
-mapLiteral
     : ':' term ( ',' term ':' term )*
+    | ( ',' term )*
     ;
 
 collectionLiteral
-    : listLiteral                     #collectionLiteralList
-    | '{' term setOrMapLiteral '}'    #collectionLiteralSetOrMap
+    : '[' ( term ( ',' term )* )? ']'  #collectionLiteralList
+    | '{' term setOrMapLiteral '}'     #collectionLiteralSetOrMap
     // Note that we have an ambiguity between maps and set for "{}". So we force it to a set literal,
     // and deal with it later based on the type of the column (SetLiteral.java).
-    | '{' '}'                         #collectionLiteralSetOrMapEmpty
-    ;
-
-listLiteral
-    : '[' ( term ( ',' term )* )? ']'
+    | '{' '}'                          #collectionLiteralSetOrMapEmpty
     ;
 
 usertypeLiteral
@@ -1026,26 +325,24 @@ value
     | usertypeLiteral       #valueUserTypeLiteral
     | tupleLiteral          #valueTupleLiteral
     | K_NULL                #valueNull
-    | ':' noncolIdent      #valueNonColIdent
+    | ':' noncolIdent       #valueNonColIdent
     | QMARK                 #valueQuestionMark
     ;
 
 intValue
     : INTEGER            #intValueSimple
-    | ':' noncolIdent   #intValueNonColIdent
+    | ':' noncolIdent    #intValueNonColIdent
     | QMARK              #intValueQuestionMark
     ;
 
 functionName
-     // antlr might try to recover and give a null for f. It will still error out in the end, but FunctionName
-     // wouldn't be happy with that so we should bypass this for now or we'll have a weird user-facing error
     : (keyspaceName '.')? allowedFunctionName
     ;
 
 allowedFunctionName
     : IDENT                        #allowedFunctionNameIdent
     | QUOTED_NAME                  #allowedFunctionNameQuotedName
-    | unreservedFunctionKeyword  #allowedFunctionNameUnreservedKeywork
+    | unreservedFunctionKeyword    #allowedFunctionNameUnreservedKeyword
     | K_TOKEN                      #allowedFunctionNameToken
     | K_COUNT                      #allowedFunctionNameCount
     ;
@@ -1060,33 +357,9 @@ functionArgs
     ;
 
 term
-    : termAddition
-    ;
-
-termAddition
-    :   termMultiplication
-        ( '+' termMultiplication
-        | '-' termMultiplication
-        )*
-    ;
-
-termMultiplication
-    :   termGroup
-        ( '*' termGroup
-        | '/' termGroup
-        | '%' termGroup
-        )*
-    ;
-
-termGroup
-    : simpleTerm       #termGroupSimple
-    | '-'  simpleTerm  #termGroupNegative
-    ;
-
-simpleTerm
-    : value                             #simpleTermValue
-    | function                          #simpleTermFunction
-    | '(' comparatorType ')' simpleTerm #simpleTermTyped
+    : value                       #termValue
+    | function                    #termFunction
+    | '(' comparatorType ')' term #termTyped
     ;
 
 columnOperation
@@ -1143,20 +416,6 @@ columnCondition
         )
     ;
 
-properties
-    : property (K_AND property)*
-    ;
-
-property
-    : noncolIdent '=' propertyValue  #propertyPropertyValue
-    | noncolIdent '=' fullMapLiteral #propertyFullMapLiteral
-    ;
-
-propertyValue
-    : constant           #propertyValueConstant
-    | unreservedKeyword #propertyValueUnreservedKeyword
-    ;
-
 relationType
     : '='
     | '<'
@@ -1173,7 +432,7 @@ relation
     | K_TOKEN tupleOfIdentifiers relationType term #relationToken
     | cident K_IN inMarker                         #relationInMarker
     | cident K_IN singleColumnInValues             #relationInSingle
-    | cident containsOperator term                 #relationContains
+    | cident K_CONTAINS (K_KEY)? term              #relationContains
     | cident '[' term ']' relationType term        #relationCidentArrayRelationTypeTerm
     | tupleOfIdentifiers
       ( K_IN
@@ -1188,48 +447,43 @@ relation
     | '(' relation ')'                             #relationParentheses
     ;
 
-containsOperator
-    : K_CONTAINS (K_KEY)?
-    ;
-
 inMarker
     : QMARK             #inMarkerQuestionMark
-    | ':' noncolIdent  #inMarkerNonColIdent
+    | ':' noncolIdent   #inMarkerNonColIdent
     ;
 
 tupleOfIdentifiers
-        : '(' cident (',' cident)* ')'
+    : '(' cident (',' cident)* ')'
     ;
 
 singleColumnInValues
-        : '(' ( term (',' term)* )? ')'
+    : '(' ( term (',' term)* )? ')'
     ;
 
 tupleOfTupleLiterals
-        : '(' tupleLiteral (',' tupleLiteral)* ')'
+    : '(' tupleLiteral (',' tupleLiteral)* ')'
     ;
 
 markerForTuple
     : QMARK            #markerForTupleQuestionMark
-    | ':' noncolIdent #markerForTupleNonColIdent
+    | ':' noncolIdent  #markerForTupleNonColIdent
     ;
 
 tupleOfMarkersForTuples
-        : '(' markerForTuple (',' markerForTuple)* ')'
+    : '(' markerForTuple (',' markerForTuple)* ')'
     ;
 
 inMarkerForTuple
     : QMARK            #inMarkerForTupleQuestionMark
-    | ':' noncolIdent #inMarkerForTupleNonColIdent
+    | ':' noncolIdent  #inMarkerForTupleNonColIdent
     ;
 
 comparatorType
-    : nativeType                     #comparatorTypeNativeType
-    | collectionType                 #comparatorTypeCollectionType
-    | tupleType                      #comparatorTypeTupleType
+    : nativeType                      #comparatorTypeNativeType
+    | collectionType                  #comparatorTypeCollectionType
+    | tupleType                       #comparatorTypeTupleType
     | userTypeName                    #comparatorTypeUserType
     | K_FROZEN '<' comparatorType '>' #comparatorTypeFrozenType
-    | STRING_LITERAL                  #comparatorTypeStringLiteral
     ;
 
 nativeType
@@ -1266,110 +520,61 @@ tupleType
     : K_TUPLE '<' comparatorType (',' comparatorType)* '>'
     ;
 
-username
-    : IDENT          #usernameIdent
-    | STRING_LITERAL #usernameStringLiteral
-    | QUOTED_NAME    #usernameQuotedName
-    ;
-
-mbean
-    : STRING_LITERAL
-    ;
 
 // Basically the same as cident, but we need to exlude existing CQL3 types
 // (which for some reason are not reserved otherwise)
 nonTypeIdent
     : IDENT                    #nonTypeIdentIdent
     | QUOTED_NAME              #nonTypeIdentIdentQuotedName
-    | basicUnreservedKeyword #nonTypeIdentBasicUnreservedKeyword
+    | basicUnreservedKeyword   #nonTypeIdentBasicUnreservedKeyword
     | K_KEY                    #nonTypeIdentKey
     ;
 
 unreservedKeyword
-    : unreservedFunctionKeyword                                             #unreservedKeywordFunction
+    : unreservedFunctionKeyword                                               #unreservedKeywordFunction
     | (K_TTL | K_COUNT | K_WRITETIME | K_KEY | K_CAST | K_JSON | K_DISTINCT)  #unreservedKeywordConstant
     ;
 
 unreservedFunctionKeyword
-    : basicUnreservedKeyword #unreservedFunctionKeywordBasic
+    : basicUnreservedKeyword  #unreservedFunctionKeywordBasic
     | nativeType              #unreservedFunctionKeywordNativeType
     ;
 
 basicUnreservedKeyword
-    : ( K_KEYS
-        | K_AS
+    : ( K_AS
         | K_CLUSTERING
-        | K_COMPACT
-        | K_STORAGE
         | K_TYPE
         | K_VALUES
         | K_MAP
         | K_LIST
         | K_FILTERING
-        | K_PERMISSION
-        | K_PERMISSIONS
-        | K_KEYSPACES
-        | K_ALL
-        | K_USER
-        | K_USERS
-        | K_ROLE
-        | K_ROLES
-        | K_SUPERUSER
-        | K_NOSUPERUSER
-        | K_LOGIN
-        | K_NOLOGIN
-        | K_OPTIONS
-        | K_PASSWORD
         | K_EXISTS
-        | K_CUSTOM
-        | K_TRIGGER
         | K_CONTAINS
-        | K_STATIC
         | K_FROZEN
         | K_TUPLE
-        | K_FUNCTION
-        | K_FUNCTIONS
-        | K_AGGREGATE
-        | K_SFUNC
-        | K_STYPE
-        | K_FINALFUNC
-        | K_INITCOND
-        | K_RETURNS
-        | K_LANGUAGE
-        | K_CALLED
-        | K_INPUT
         | K_LIKE
         | K_PER
         | K_PARTITION
         | K_GROUP
-        | K_RESOURCE
         )
     ;
 
 
 // LEXER
 
-
 // Case-insensitive keywords
-// When adding a new reserved keyword, add entry to o.a.c.cql3.ReservedKeywords as well
-// When adding a new unreserved keyword, add entry to unreserved keywords in Parser.g
 K_SELECT:      S E L E C T;
 K_FROM:        F R O M;
 K_AS:          A S;
 K_WHERE:       W H E R E;
 K_AND:         A N D;
 K_KEY:         K E Y;
-K_KEYS:        K E Y S;
-K_ENTRIES:     E N T R I E S;
-K_FULL:        F U L L;
 K_INSERT:      I N S E R T;
 K_UPDATE:      U P D A T E;
-K_WITH:        W I T H;
 K_LIMIT:       L I M I T;
 K_PER:         P E R;
 K_PARTITION:   P A R T I T I O N;
 K_USING:       U S I N G;
-K_USE:         U S E;
 K_DISTINCT:    D I S T I N C T;
 K_COUNT:       C O U N T;
 K_SET:         S E T;
@@ -1377,34 +582,14 @@ K_BEGIN:       B E G I N;
 K_UNLOGGED:    U N L O G G E D;
 K_BATCH:       B A T C H;
 K_APPLY:       A P P L Y;
-K_TRUNCATE:    T R U N C A T E;
 K_DELETE:      D E L E T E;
 K_IN:          I N;
-K_CREATE:      C R E A T E;
-K_KEYSPACE:    ( K E Y S P A C E
-                 | S C H E M A );
-K_KEYSPACES:   K E Y S P A C E S;
-K_COLUMNFAMILY:( C O L U M N F A M I L Y
-                 | T A B L E );
-K_MATERIALIZED:M A T E R I A L I Z E D;
-K_VIEW:        V I E W;
-K_INDEX:       I N D E X;
-K_CUSTOM:      C U S T O M;
-K_ON:          O N;
-K_TO:          T O;
-K_DROP:        D R O P;
-K_PRIMARY:     P R I M A R Y;
 K_INTO:        I N T O;
 K_VALUES:      V A L U E S;
 K_TIMESTAMP:   T I M E S T A M P;
 K_TTL:         T T L;
 K_CAST:        C A S T;
-K_ALTER:       A L T E R;
-K_RENAME:      R E N A M E;
-K_ADD:         A D D;
 K_TYPE:        T Y P E;
-K_COMPACT:     C O M P A C T;
-K_STORAGE:     S T O R A G E;
 K_ORDER:       O R D E R;
 K_BY:          B Y;
 K_ASC:         A S C;
@@ -1415,35 +600,6 @@ K_IF:          I F;
 K_IS:          I S;
 K_CONTAINS:    C O N T A I N S;
 K_GROUP:       G R O U P;
-
-K_GRANT:       G R A N T;
-K_ALL:         A L L;
-K_PERMISSION:  P E R M I S S I O N;
-K_PERMISSIONS: P E R M I S S I O N S;
-K_OF:          O F;
-K_REVOKE:      R E V O K E;
-K_MODIFY:      M O D I F Y;
-K_AUTHORIZE:   A U T H O R I Z E;
-K_DESCRIBE:    D E S C R I B E;
-K_EXECUTE:     E X E C U T E;
-K_NORECURSIVE: N O R E C U R S I V E;
-K_MBEAN:       M B E A N;
-K_MBEANS:      M B E A N S;
-K_RESOURCE:    R E S O U R C E;
-K_FOR:         F O R;
-K_RESTRICT:    R E S T R I C T;
-K_UNRESTRICT:  U N R E S T R I C T;
-
-K_USER:        U S E R;
-K_USERS:       U S E R S;
-K_ROLE:        R O L E;
-K_ROLES:       R O L E S;
-K_SUPERUSER:   S U P E R U S E R;
-K_NOSUPERUSER: N O S U P E R U S E R;
-K_PASSWORD:    P A S S W O R D;
-K_LOGIN:       L O G I N;
-K_NOLOGIN:     N O L O G I N;
-K_OPTIONS:     O P T I O N S;
 
 K_CLUSTERING:  C L U S T E R I N G;
 K_ASCII:       A S C I I;
@@ -1475,29 +631,11 @@ K_EXISTS:      E X I S T S;
 
 K_MAP:         M A P;
 K_LIST:        L I S T;
-K_POSITIVE_NAN: N A N;
-K_NEGATIVE_NAN: '-' N A N;
-K_POSITIVE_INFINITY:    I N F I N I T Y;
-K_NEGATIVE_INFINITY: '-' I N F I N I T Y;
+K_NAN:         N A N;
+K_INFINITY:    I N F I N I T Y;
 K_TUPLE:       T U P L E;
 
-K_TRIGGER:     T R I G G E R;
-K_STATIC:      S T A T I C;
 K_FROZEN:      F R O Z E N;
-
-K_FUNCTION:    F U N C T I O N;
-K_FUNCTIONS:   F U N C T I O N S;
-K_AGGREGATE:   A G G R E G A T E;
-K_SFUNC:       S F U N C;
-K_STYPE:       S T Y P E;
-K_FINALFUNC:   F I N A L F U N C;
-K_INITCOND:    I N I T C O N D;
-K_RETURNS:     R E T U R N S;
-K_CALLED:      C A L L E D;
-K_INPUT:       I N P U T;
-K_LANGUAGE:    L A N G U A G E;
-K_OR:          O R;
-K_REPLACE:     R E P L A C E;
 
 K_JSON:        J S O N;
 K_DEFAULT:     D E F A U L T;
@@ -1585,18 +723,9 @@ QMARK
     : '?'
     ;
 
-RANGE
-    : '..'
-    ;
-
-/*
- * Normally a lexer only emits one token at a time, but ours is tricked out
- * to support multiple (see @lexer::members near the top of the grammar).
- */
 FLOAT
-//    : /*(INTEGER '.' RANGE) =>*/ INTEGER '.'
-//    | /*(INTEGER RANGE) =>*/ INTEGER
-    : INTEGER ('.' {_input.LA(1) != '.'}? DIGIT*)? EXPONENT?
+    : INTEGER EXPONENT
+    | INTEGER '.' DIGIT* EXPONENT?
     ;
 
 /*
@@ -1630,7 +759,7 @@ UUID
     ;
 
 WS
-    : (' ' | '\t' | '\n' | '\r')+  -> channel(HIDDEN)
+    : (' ' | '\t' | '\n' | '\r')+ -> channel(HIDDEN)
     ;
 
 COMMENT

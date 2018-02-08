@@ -8,6 +8,7 @@
 - [improvement] DAT-108: Upgrade DSE driver to 1.6.3.
 - [improvement] DAT-227: Warn that continuous paging is not available when unloading with CL > ONE.
 - [new feature] DAT-224: Add support for numeric overflow and rounding.
+- [improvement] DAT-228: Simplify embedded CQL grammar.
 
 
 ### 1.0.0-rc1
