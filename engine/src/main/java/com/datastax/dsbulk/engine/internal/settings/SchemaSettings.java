@@ -560,7 +560,7 @@ public class SchemaSettings {
                 msg);
           }
         });
-    ParseTree query = parser.query();
+    ParseTree query = parser.cqlStatement();
     ParseTreeWalker walker = new ParseTreeWalker();
     UsingTimestampListener listener = new UsingTimestampListener();
     walker.walk(listener, query);
