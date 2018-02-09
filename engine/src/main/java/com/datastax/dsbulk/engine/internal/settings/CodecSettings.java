@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -110,7 +111,7 @@ public class CodecSettings {
   private Map<String, Boolean> booleanInputWords;
   private Map<Boolean, String> booleanOutputWords;
   private List<BigDecimal> booleanNumbers;
-  private ThreadLocal<NumberFormat> numberFormat;
+  private FastThreadLocal<NumberFormat> numberFormat;
   private RoundingMode roundingMode;
   private OverflowStrategy overflowStrategy;
   private DateTimeFormatter localDateFormat;
@@ -135,7 +136,7 @@ public class CodecSettings {
       overflowStrategy = config.getEnum(OverflowStrategy.class, OVERFLOW_STRATEGY);
       boolean formatNumbers = config.getBoolean(FORMAT_NUMERIC_OUTPUT);
       numberFormat =
-          getNumberFormatThreadLocal(locale, config.getString(NUMBER), roundingMode, formatNumbers);
+          getNumberFormatThreadLocal(config.getString(NUMBER), locale, roundingMode, formatNumbers);
 
       // temporal
       ZoneId timeZone = ZoneId.of(config.getString(TIME_ZONE));
@@ -210,10 +211,15 @@ public class CodecSettings {
     }
   }
 
-  private static ThreadLocal<NumberFormat> getNumberFormatThreadLocal(
-      Locale locale, String pattern, RoundingMode roundingMode, boolean formatNumbers) {
-    return ThreadLocal.withInitial(
-        () -> getNumberFormat(pattern, locale, roundingMode, formatNumbers));
+  @VisibleForTesting
+  public static FastThreadLocal<NumberFormat> getNumberFormatThreadLocal(
+      String pattern, Locale locale, RoundingMode roundingMode, boolean formatNumbers) {
+    return new FastThreadLocal<NumberFormat>() {
+      @Override
+      protected NumberFormat initialValue() {
+        return getNumberFormat(pattern, locale, roundingMode, formatNumbers);
+      }
+    };
   }
 
   @VisibleForTesting

@@ -41,6 +41,7 @@ import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Range;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
@@ -117,7 +118,7 @@ public class LogManager implements AutoCloseable {
     this(
         workflowType,
         cluster,
-        Schedulers.newParallel("log-manager", 4),
+        Schedulers.newParallel(4, new DefaultThreadFactory("log-manager")),
         executionDirectory,
         maxErrors,
         maxErrorRatio,

@@ -13,6 +13,7 @@ import static java.util.stream.Collectors.toList;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -25,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 public class JsonNodeToShortCodec extends JsonNodeToNumberCodec<Short> {
 
   public JsonNodeToShortCodec(
-      ThreadLocal<NumberFormat> numberFormat,
+      FastThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
       DateTimeFormatter temporalFormat,

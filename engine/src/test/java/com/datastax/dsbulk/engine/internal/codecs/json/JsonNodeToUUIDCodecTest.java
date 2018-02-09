@@ -25,6 +25,7 @@ import com.datastax.driver.core.utils.UUIDs;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.ZonedDateTime;
 import java.util.UUID;
@@ -33,8 +34,8 @@ import org.junit.jupiter.api.Test;
 
 class JsonNodeToUUIDCodecTest {
 
-  private final ThreadLocal<NumberFormat> numberFormat =
-      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
+  private final FastThreadLocal<NumberFormat> numberFormat =
+      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   private StringToInstantCodec instantCodec =
       new StringToInstantCodec(CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));

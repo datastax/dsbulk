@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -19,13 +20,13 @@ import java.util.concurrent.TimeUnit;
 
 public class StringToInstantCodec extends StringToTemporalCodec<Instant> {
 
-  private final ThreadLocal<NumberFormat> numberFormat;
+  private final FastThreadLocal<NumberFormat> numberFormat;
   private final TimeUnit timeUnit;
   private final ZonedDateTime epoch;
 
   public StringToInstantCodec(
       DateTimeFormatter temporalFormat,
-      ThreadLocal<NumberFormat> numberFormat,
+      FastThreadLocal<NumberFormat> numberFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch) {
     super(InstantCodec.instance, temporalFormat);

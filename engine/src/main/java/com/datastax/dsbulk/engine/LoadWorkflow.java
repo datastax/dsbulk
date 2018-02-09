@@ -35,6 +35,7 @@ import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.datastax.dsbulk.executor.reactor.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -69,6 +70,7 @@ public class LoadWorkflow implements Workflow {
   private int batchBufferSize;
   private int maxInFlight;
   private Set<Disposable> disposables;
+  private DefaultThreadFactory threadFactory;
 
   LoadWorkflow(LoaderConfig config) {
     settingsManager = new SettingsManager(config, WorkflowType.LOAD);
@@ -127,6 +129,7 @@ public class LoadWorkflow implements Workflow {
     closed.set(false);
     resourceCount = connector.estimatedResourceCount();
     disposables = new HashSet<>();
+    threadFactory = new DefaultThreadFactory("workflow");
   }
 
   @Override
@@ -151,7 +154,8 @@ public class LoadWorkflow implements Workflow {
   @NotNull
   private Flux<Void> threadPerCoreFlux() {
     LOGGER.info("Using thread-per-core pattern.");
-    Scheduler scheduler = Schedulers.newParallel("workflow");
+    Scheduler scheduler =
+        Schedulers.newParallel(Runtime.getRuntime().availableProcessors(), threadFactory);
     disposables.add(scheduler);
     return Flux.defer(connector.readByResource())
         .flatMap(
@@ -179,8 +183,9 @@ public class LoadWorkflow implements Workflow {
 
   @NotNull
   private Flux<Void> parallelBatchedFlux() {
-    Scheduler scheduler1 = Schedulers.newSingle("workflow1");
-    Scheduler scheduler2 = Schedulers.newParallel("workflow2");
+    Scheduler scheduler1 = Schedulers.newSingle(threadFactory);
+    Scheduler scheduler2 =
+        Schedulers.newParallel(Runtime.getRuntime().availableProcessors(), threadFactory);
     disposables.add(scheduler1);
     disposables.add(scheduler2);
     return Flux.defer(connector.readByResource())
@@ -206,8 +211,9 @@ public class LoadWorkflow implements Workflow {
 
   @NotNull
   private Flux<Void> parallelUnbatchedFlux() {
-    Scheduler scheduler1 = Schedulers.newSingle("workflow1");
-    Scheduler scheduler2 = Schedulers.newParallel("workflow2");
+    Scheduler scheduler1 = Schedulers.newSingle(threadFactory);
+    Scheduler scheduler2 =
+        Schedulers.newParallel(Runtime.getRuntime().availableProcessors(), threadFactory);
     disposables.add(scheduler1);
     disposables.add(scheduler2);
     return Flux.defer(connector.read())

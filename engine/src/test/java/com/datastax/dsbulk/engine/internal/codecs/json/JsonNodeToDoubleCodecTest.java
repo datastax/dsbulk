@@ -23,14 +23,15 @@ import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.collect.ImmutableMap;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToDoubleCodecTest {
 
-  private final ThreadLocal<NumberFormat> numberFormat =
-      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
+  private final FastThreadLocal<NumberFormat> numberFormat =
+      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   private final JsonNodeToDoubleCodec codec =
       new JsonNodeToDoubleCodec(
