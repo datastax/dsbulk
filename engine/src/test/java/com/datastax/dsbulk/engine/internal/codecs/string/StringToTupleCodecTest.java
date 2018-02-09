@@ -32,6 +32,7 @@ import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.List;
@@ -41,8 +42,8 @@ class StringToTupleCodecTest {
 
   private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  private final ThreadLocal<NumberFormat> numberFormat =
-      ThreadLocal.withInitial(() -> CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true));
+  private final FastThreadLocal<NumberFormat> numberFormat =
+      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   private final CodecRegistry codecRegistry = new CodecRegistry().register(InstantCodec.instance);
 

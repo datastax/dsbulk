@@ -12,7 +12,6 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.typesafe.config.ConfigException;
 
-/** */
 public class EngineSettings {
 
   private static final String DRY_RUN = "dryRun";

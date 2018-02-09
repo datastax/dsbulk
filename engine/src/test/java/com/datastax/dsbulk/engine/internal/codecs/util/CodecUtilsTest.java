@@ -105,9 +105,11 @@ class CodecUtilsTest {
   private final DateTimeFormatter localTimeFormat =
       CodecSettings.getDateTimeFormat("ISO_LOCAL_TIME", UTC, US, EPOCH.atZone(UTC));
 
-  private Map<String, Boolean> booleanInputWords = ImmutableMap.of("true", true, "false", false);
+  private final Map<String, Boolean> booleanInputWords =
+      ImmutableMap.of("true", true, "false", false);
 
-  private List<BigDecimal> booleanNumbers = Lists.newArrayList(BigDecimal.ONE, BigDecimal.ZERO);
+  private final List<BigDecimal> booleanNumbers =
+      Lists.newArrayList(BigDecimal.ONE, BigDecimal.ZERO);
 
   @SuppressWarnings("ConstantConditions")
   @Test
@@ -945,7 +947,7 @@ class CodecUtilsTest {
     StringToInstantCodec instantCodec =
         new StringToInstantCodec(
             timestampFormat1,
-            ThreadLocal.withInitial(() -> this.numberFormat1),
+            CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
             MILLISECONDS,
             EPOCH.atZone(UTC));
     assertThat(CodecUtils.parseUUID(null, instantCodec, MIN)).isNull();

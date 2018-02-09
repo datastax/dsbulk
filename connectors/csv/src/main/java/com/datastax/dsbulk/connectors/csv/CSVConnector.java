@@ -29,6 +29,7 @@ import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
@@ -44,7 +45,9 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -58,13 +61,6 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.concurrent.Queues;
-import stormpot.Allocator;
-import stormpot.BlazePool;
-import stormpot.Config;
-import stormpot.Poolable;
-import stormpot.Slot;
-import stormpot.Timeout;
 
 /**
  * A connector for CSV files.
@@ -115,7 +111,7 @@ public class CSVConnector implements Connector {
   private CsvWriterSettings writerSettings;
   private AtomicInteger counter;
   private Scheduler scheduler;
-  private BlazePool<PoolableCSVWriter> pool;
+  private List<CSVWriter> writers;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -176,12 +172,12 @@ public class CSVConnector implements Connector {
   }
 
   @Override
-  public void close() throws InterruptedException {
+  public void close() {
     if (scheduler != null) {
       scheduler.dispose();
     }
-    if (pool != null) {
-      pool.shutdown().await(new Timeout(1, TimeUnit.MINUTES));
+    if (writers != null) {
+      writers.forEach(CSVWriter::close);
     }
   }
 
@@ -219,38 +215,21 @@ public class CSVConnector implements Connector {
     assert !read;
     if (root != null && maxConcurrentFiles > 1) {
       return upstream -> {
-        scheduler = Schedulers.newParallel("csv-connector", maxConcurrentFiles);
-        Config<PoolableCSVWriter> config =
-            new Config<PoolableCSVWriter>()
-                .setSize(maxConcurrentFiles)
-                .setAllocator(new CSVWriterAllocator());
-        pool = new BlazePool<>(config);
-        Timeout timeout = new Timeout(Long.MAX_VALUE, TimeUnit.SECONDS);
+        ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
+        scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
+        writers = new CopyOnWriteArrayList<>();
+        for (int i = 0; i < maxConcurrentFiles; i++) {
+          writers.add(new CSVWriter());
+        }
         return Flux.from(upstream)
-            .window(Queues.SMALL_BUFFER_SIZE)
             .parallel(maxConcurrentFiles)
             .runOn(scheduler)
-            .flatMap(
-                records -> {
-                  try {
-                    PoolableCSVWriter writer = pool.claim(timeout);
-                    if (writer != null) {
-                      try {
-                        return records.transform(writeRecords(writer));
-                      } finally {
-                        writer.release();
-                      }
-                    }
-                  } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                  }
-                  return Flux.empty();
-                })
-            .sequential();
+            .groups()
+            .flatMap(records -> records.transform(writeRecords(writers.get(records.key()))));
       };
     } else {
       return upstream -> {
-        PoolableCSVWriter writer = new PoolableCSVWriter(null);
+        CSVWriter writer = new CSVWriter();
         return Flux.from(upstream).transform(writeRecords(writer)).doOnTerminate(writer::close);
       };
     }
@@ -396,7 +375,7 @@ public class CSVConnector implements Connector {
             });
   }
 
-  private Function<Flux<Record>, Flux<Record>> writeRecords(PoolableCSVWriter writer) {
+  private Function<Flux<Record>, Flux<Record>> writeRecords(CSVWriter writer) {
     return upstream ->
         upstream
             .materialize()
@@ -414,33 +393,10 @@ public class CSVConnector implements Connector {
             .dematerialize();
   }
 
-  private class CSVWriterAllocator implements Allocator<PoolableCSVWriter> {
-    @Override
-    public PoolableCSVWriter allocate(Slot slot) {
-      return new PoolableCSVWriter(slot);
-    }
-
-    @Override
-    public void deallocate(PoolableCSVWriter writer) {
-      writer.close();
-    }
-  }
-
-  private class PoolableCSVWriter implements Poolable {
-
-    private final Slot slot;
+  private class CSVWriter {
 
     private URL url;
     private CsvWriter writer;
-
-    private PoolableCSVWriter(Slot slot) {
-      this.slot = slot;
-    }
-
-    @Override
-    public void release() {
-      slot.release(this);
-    }
 
     private void write(Record record) {
       try {

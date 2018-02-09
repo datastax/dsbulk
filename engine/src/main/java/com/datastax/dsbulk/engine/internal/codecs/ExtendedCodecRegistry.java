@@ -79,6 +79,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -111,7 +112,7 @@ public class ExtendedCodecRegistry {
   private final Map<String, Boolean> booleanInputWords;
   private final Map<Boolean, String> booleanOutputWords;
   private final List<BigDecimal> booleanNumbers;
-  private final ThreadLocal<NumberFormat> numberFormat;
+  private final FastThreadLocal<NumberFormat> numberFormat;
   private final OverflowStrategy overflowStrategy;
   private final RoundingMode roundingMode;
   private final DateTimeFormatter localDateFormat;
@@ -127,7 +128,7 @@ public class ExtendedCodecRegistry {
       Map<String, Boolean> booleanInputWords,
       Map<Boolean, String> booleanOutputWords,
       List<BigDecimal> booleanNumbers,
-      ThreadLocal<NumberFormat> numberFormat,
+      FastThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
       DateTimeFormatter localDateFormat,

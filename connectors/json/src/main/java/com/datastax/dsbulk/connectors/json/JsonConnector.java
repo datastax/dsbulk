@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
@@ -38,6 +39,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Suppliers;
 import com.typesafe.config.ConfigException;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -53,8 +55,10 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -67,13 +71,6 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.concurrent.Queues;
-import stormpot.Allocator;
-import stormpot.BlazePool;
-import stormpot.Config;
-import stormpot.Poolable;
-import stormpot.Slot;
-import stormpot.Timeout;
 
 /**
  * A connector for Json files.
@@ -133,10 +130,9 @@ public class JsonConnector implements Connector {
   private Map<MapperFeature, Boolean> mapperFeatures;
   private Map<SerializationFeature, Boolean> serializationFeatures;
   private Map<DeserializationFeature, Boolean> deserializationFeatures;
-
   private boolean prettyPrint;
   private Scheduler scheduler;
-  private BlazePool<PoolableJsonWriter> pool;
+  private List<JsonWriter> writers;
 
   @Override
   public RecordMetadata getRecordMetadata() {
@@ -211,12 +207,12 @@ public class JsonConnector implements Connector {
   }
 
   @Override
-  public void close() throws InterruptedException {
+  public void close() {
     if (scheduler != null) {
       scheduler.dispose();
     }
-    if (pool != null) {
-      pool.shutdown().await(new Timeout(1, TimeUnit.MINUTES));
+    if (writers != null) {
+      writers.forEach(JsonWriter::close);
     }
   }
 
@@ -254,38 +250,21 @@ public class JsonConnector implements Connector {
     assert !read;
     if (root != null && maxConcurrentFiles > 1) {
       return upstream -> {
-        scheduler = Schedulers.newParallel("json-connector", maxConcurrentFiles);
-        Config<PoolableJsonWriter> config =
-            new Config<PoolableJsonWriter>()
-                .setSize(maxConcurrentFiles)
-                .setAllocator(new JsonWriterAllocator());
-        pool = new BlazePool<>(config);
-        Timeout timeout = new Timeout(Long.MAX_VALUE, TimeUnit.SECONDS);
+        ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
+        scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
+        writers = new CopyOnWriteArrayList<>();
+        for (int i = 0; i < maxConcurrentFiles; i++) {
+          writers.add(new JsonWriter());
+        }
         return Flux.from(upstream)
-            .window(Queues.SMALL_BUFFER_SIZE)
             .parallel(maxConcurrentFiles)
             .runOn(scheduler)
-            .flatMap(
-                records -> {
-                  try {
-                    PoolableJsonWriter writer = pool.claim(timeout);
-                    if (writer != null) {
-                      try {
-                        return records.transform(writeRecords(writer));
-                      } finally {
-                        writer.release();
-                      }
-                    }
-                  } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                  }
-                  return Flux.empty();
-                })
-            .sequential();
+            .groups()
+            .flatMap(records -> records.transform(writeRecords(writers.get(records.key()))));
       };
     } else {
       return upstream -> {
-        PoolableJsonWriter writer = new PoolableJsonWriter(null);
+        JsonWriter writer = new JsonWriter();
         return Flux.from(upstream).transform(writeRecords(writer)).doOnTerminate(writer::close);
       };
     }
@@ -415,7 +394,7 @@ public class JsonConnector implements Connector {
             });
   }
 
-  private Function<Flux<Record>, Flux<Record>> writeRecords(PoolableJsonWriter writer) {
+  private Function<Flux<Record>, Flux<Record>> writeRecords(JsonWriter writer) {
     return upstream ->
         upstream
             .materialize()
@@ -433,34 +412,11 @@ public class JsonConnector implements Connector {
             .dematerialize();
   }
 
-  private class JsonWriterAllocator implements Allocator<PoolableJsonWriter> {
-    @Override
-    public PoolableJsonWriter allocate(Slot slot) {
-      return new PoolableJsonWriter(slot);
-    }
-
-    @Override
-    public void deallocate(PoolableJsonWriter writer) {
-      writer.close();
-    }
-  }
-
-  private class PoolableJsonWriter implements Poolable {
-
-    private final Slot slot;
+  private class JsonWriter {
 
     private URL url;
     private JsonGenerator writer;
     private long currentLine;
-
-    private PoolableJsonWriter(Slot slot) {
-      this.slot = slot;
-    }
-
-    @Override
-    public void release() {
-      slot.release(this);
-    }
 
     private void write(Record record) {
       try {
@@ -477,7 +433,7 @@ public class JsonConnector implements Connector {
         writer.writeStartObject();
         for (String field : record.fields()) {
           writer.writeFieldName(field);
-          writer.writeObject(record.getFieldValue(field));
+          writer.writeTree((TreeNode) record.getFieldValue(field));
         }
         writer.writeEndObject();
         currentLine++;
@@ -495,7 +451,8 @@ public class JsonConnector implements Connector {
       url = getOrCreateDestinationURL();
       writer = createJsonWriter(url);
       if (mode == DocumentMode.SINGLE_DOCUMENT) {
-        // do not use writer.writeStartArray(): we need to fool the parser into thinking it's on multi doc mode,
+        // do not use writer.writeStartArray(): we need to fool the parser into thinking it's on
+        // multi doc mode,
         // to get a better-looking result
         writer.writeRaw('[');
         writer.writeRaw(System.lineSeparator());
