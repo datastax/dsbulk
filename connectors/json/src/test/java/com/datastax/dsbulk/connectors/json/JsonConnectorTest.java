@@ -198,14 +198,14 @@ class JsonConnectorTest {
       connector.init();
       assertThat(connector.isWriteToStandardOutput()).isTrue();
       Flux.<Record>just(
-          new DefaultRecord(
-              null,
-              null,
-              -1,
-              null,
-              factory.textNode("fóô"),
-              factory.textNode("bàr"),
-              factory.textNode("qïx")))
+              new DefaultRecord(
+                  null,
+                  null,
+                  -1,
+                  null,
+                  factory.textNode("fóô"),
+                  factory.textNode("bàr"),
+                  factory.textNode("qïx")))
           .transform(connector.write())
           .blockLast();
       assertThat(new String(baos.toByteArray(), "ISO-8859-1"))
