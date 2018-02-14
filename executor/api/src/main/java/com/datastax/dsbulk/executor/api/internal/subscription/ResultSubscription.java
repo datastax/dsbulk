@@ -121,16 +121,6 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   private final CompletableFuture<Void> initial = new CompletableFuture<>();
 
   /**
-   * Used to signal that the last page has arrived.
-   *
-   * <p>Note: Spsc queues do not implement Deque, so we can't call pages.peekLast().hasMorePages().
-   *
-   * @see #enqueue(Page)
-   * @see #isExhausted()
-   */
-  private volatile boolean fullyFetched = false;
-
-  /**
    * Set to true when the subscription is cancelled, or when an error is encountered, or when the
    * result set is fully consumed.
    */
@@ -318,9 +308,6 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     if (cancelled) {
       return true;
     }
-    if (!fullyFetched) {
-      return false;
-    }
     Page current = pages.peek();
     // Note: current page can only be null when:
     // 1) we are waiting for the first page and it hasn't arrived yet;
@@ -422,10 +409,6 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     if (!pages.offer(page)) {
       throw new AssertionError("Queue is full, this should not happen");
     }
-    // only set this flag after enqueueing the page,
-    // otherwise a thread evaluating isExhausted() could be
-    // fooled into thinking it's already time to terminate.
-    fullyFetched = !page.hasMorePages();
   }
 
   private Page dequeue() {
