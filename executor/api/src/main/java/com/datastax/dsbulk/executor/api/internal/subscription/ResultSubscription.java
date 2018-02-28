@@ -81,6 +81,12 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   private final Queue<Page> pages = new SpscArrayQueue<>(MAX_ENQUEUED_PAGES);
 
   /**
+   * The last page in the queue (i.e., the queue's tail element). We keep a reference to it to avoid
+   * using Deques.
+   */
+  private volatile Page last = null;
+
+  /**
    * We maintain a separate counter as pages.size() is not a constant-time operation, and is not
    * guaranteed to be 100% accurate for spsc queues.
    */
@@ -396,18 +402,19 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   (This, btw, is the reason why it is possible to use an SPSC queue
   to store pages.)
   We don't need to synchronize access to the 3
-  connected resources – pages, pagesSize, and notFull –
-  as long as they are modified in proper order.
+  connected resources – the page queue, the queue size, and
+  each page's fullyConsumed future –  as long as they are modified in proper order.
   */
 
   private void enqueue(Page page) {
+    if (!pages.offer(page)) {
+      throw new AssertionError("Queue is full, this should not happen");
+    }
+    last = page;
     // if there is room for another page, complete the future now,
     // this will allow the enqueueing of the next one.
     if (pagesSize.incrementAndGet() < MAX_ENQUEUED_PAGES) {
       page.fullyConsumed.complete(null);
-    }
-    if (!pages.offer(page)) {
-      throw new AssertionError("Queue is full, this should not happen");
     }
   }
 
@@ -417,11 +424,10 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
       throw new AssertionError("Queue is empty, this should not happen");
     }
     pagesSize.decrementAndGet();
-    Page next = pages.peek();
     // complete the future as the last action, as its
     // completion might trigger a call to enqueue() with the next page
-    current.fullyConsumed.complete(null);
-    return next;
+    last.fullyConsumed.complete(null);
+    return pages.peek();
   }
 
   private void doOnNext(R result) {
