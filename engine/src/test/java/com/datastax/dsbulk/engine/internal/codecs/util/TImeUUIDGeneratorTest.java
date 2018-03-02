@@ -66,8 +66,8 @@ class TImeUUIDGeneratorTest {
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
 
     // time UUIDs with MAX strategy
-    // the driver's endOf method takes milliseconds and sets all the sub-millisecond digits to their max,
-    // that's why we add .000999999
+    // the driver's endOf method takes milliseconds and sets all the sub-millisecond digits to their
+    // max, that's why we add .000999999
     assertThat(MAX.generate(ZonedDateTime.parse("2017-12-05T12:44:36.000999999+01:00").toInstant()))
         .isEqualTo(
             UUIDs.endOf(

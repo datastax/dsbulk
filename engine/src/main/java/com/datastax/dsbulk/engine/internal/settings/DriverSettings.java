@@ -71,7 +71,7 @@ import org.slf4j.LoggerFactory;
 public class DriverSettings {
   private static final Logger LOGGER = LoggerFactory.getLogger(DriverSettings.class);
 
-  //Path Constants
+  // Path Constants
   private static final String POOLING = "pooling";
   private static final String LOCAL = "local";
   private static final String REMOTE = "remote";

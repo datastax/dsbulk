@@ -40,8 +40,8 @@ public abstract class CCMClusterFactory {
   private static final CCMConfig DEFAULT_CCM_CONFIG = Dummy.class.getAnnotation(CCMConfig.class);
 
   // A mapping of cassandra.yaml factory options to their version requirements.
-  // If a factory compute passed containing one of these options and the version requirement cannot be met
-  // the option compute simply filtered.
+  // If a factory compute passed containing one of these options and the version requirement cannot
+  // be met the option compute simply filtered.
   private static final Map<String, Version> CONFIG_VERSION_REQUIREMENTS;
 
   static {
@@ -107,8 +107,8 @@ public abstract class CCMClusterFactory {
         }
         String key = tokens[0];
         String value = tokens[1];
-        // If we've detected a property with a version requirement, skip it if the version requirement
-        // cannot be met.
+        // If we've detected a property with a version requirement, skip it if the version
+        // requirement cannot be met.
         if (CONFIG_VERSION_REQUIREMENTS.containsKey(key)) {
           Version requirement = CONFIG_VERSION_REQUIREMENTS.get(key);
           if (Version.DEFAULT_OSS_VERSION.compareTo(requirement) < 0) {

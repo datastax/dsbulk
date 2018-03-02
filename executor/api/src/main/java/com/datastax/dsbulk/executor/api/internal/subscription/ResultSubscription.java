@@ -520,6 +520,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    * Creates a result from the given error.
    *
    * @param error The error to convert.
+   * @return the error result.
    */
   abstract R toErrorResult(BulkExecutionException error);
 
