@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.maybeEscapeBackslash;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -107,7 +107,7 @@ class LogSettingsTest {
   @Test
   void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = maybeEscapeBackslash(dir.toString());
+    String logDir = escapeUserInput(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -123,7 +123,7 @@ class LogSettingsTest {
   @Test
   void should_create_log_file_when_in_production() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = maybeEscapeBackslash(dir.toString());
+    String logDir = escapeUserInput(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -151,7 +151,7 @@ class LogSettingsTest {
   @Test
   void should_not_create_log_file_when_not_in_production() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = maybeEscapeBackslash(dir.toString());
+    String logDir = escapeUserInput(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -169,7 +169,7 @@ class LogSettingsTest {
       @StreamCapture(STDERR) StreamInterceptor stdErr)
       throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = maybeEscapeBackslash(dir.toString());
+    String logDir = escapeUserInput(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -206,8 +206,7 @@ class LogSettingsTest {
     Files.createDirectories(foo);
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+            ConfigFactory.parseString("directory = \"" + escapeUserInput(logDir.toString()) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(() -> settings.init(false))
@@ -227,7 +226,7 @@ class LogSettingsTest {
           LoaderConfig config =
               new DefaultLoaderConfig(
                   ConfigFactory.parseString(
-                          "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                          "directory = \"" + escapeUserInput(logDir.toString()) + "\"")
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
           LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
           assertThatThrownBy(() -> settings.init(false))
@@ -244,8 +243,7 @@ class LogSettingsTest {
     Files.createFile(executionDir);
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+            ConfigFactory.parseString("directory = \"" + escapeUserInput(logDir.toString()) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(() -> settings.init(false))
@@ -262,7 +260,7 @@ class LogSettingsTest {
           LoaderConfig config =
               new DefaultLoaderConfig(
                   ConfigFactory.parseString(
-                          "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                          "directory = \"" + escapeUserInput(logDir.toString()) + "\"")
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
           char forbidden = '/';
           LogSettings settings = new LogSettings(config, forbidden + " IS FORBIDDEN");

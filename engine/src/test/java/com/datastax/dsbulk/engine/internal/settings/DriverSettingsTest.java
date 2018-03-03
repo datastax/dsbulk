@@ -41,9 +41,9 @@ import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
+import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
 import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigFactory;
@@ -178,7 +178,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        ConfigUtils.maybeEscapeBackslash(keyTab.toString())))
+                        StringUtils.escapeUserInput(keyTab.toString())))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -214,7 +214,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        ConfigUtils.maybeEscapeBackslash(keyTab.toString())))
+                        StringUtils.escapeUserInput(keyTab.toString())))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -253,7 +253,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        ConfigUtils.maybeEscapeBackslash(keyTab.toString())))
+                        StringUtils.escapeUserInput(keyTab.toString())))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -349,8 +349,8 @@ class DriverSettingsTest {
                             + "   password = cassandra1sfun"
                             + "}"
                             + "}",
-                        ConfigUtils.maybeEscapeBackslash(keystore.toString()),
-                        ConfigUtils.maybeEscapeBackslash(truststore.toString())))
+                        StringUtils.escapeUserInput(keystore.toString()),
+                        StringUtils.escapeUserInput(truststore.toString())))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -384,9 +384,9 @@ class DriverSettingsTest {
                             + "   password = cassandra1sfun "
                             + "}"
                             + "}",
-                        ConfigUtils.maybeEscapeBackslash(keyCertChain.toString()),
-                        ConfigUtils.maybeEscapeBackslash(privateKey.toString()),
-                        ConfigUtils.maybeEscapeBackslash(truststore.toString())))
+                        StringUtils.escapeUserInput(keyCertChain.toString()),
+                        StringUtils.escapeUserInput(privateKey.toString()),
+                        StringUtils.escapeUserInput(truststore.toString())))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();

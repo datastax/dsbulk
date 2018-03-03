@@ -19,10 +19,10 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.HttpTestServer;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
+import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -244,7 +244,7 @@ class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", recursive = false",
-                        ConfigUtils.maybeEscapeBackslash(rootPath.toString())))
+                        StringUtils.escapeUserInput(rootPath.toString())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -306,7 +306,7 @@ class CSVConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1",
-                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                          StringUtils.escapeUserInput(out.toString())))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -339,7 +339,7 @@ class CSVConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 4",
-                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                          StringUtils.escapeUserInput(out.toString())))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -376,7 +376,7 @@ class CSVConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 4",
-                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                          StringUtils.escapeUserInput(out.toString())))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -537,7 +537,7 @@ class CSVConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", maxConcurrentFiles = 1",
-                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                          StringUtils.escapeUserInput(out.toString())))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       assertThrows(IllegalArgumentException.class, connector::init);
@@ -556,7 +556,7 @@ class CSVConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", maxConcurrentFiles = 1",
-                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                          StringUtils.escapeUserInput(out.toString())))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -582,7 +582,7 @@ class CSVConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", maxConcurrentFiles = 2",
-                          ConfigUtils.maybeEscapeBackslash(out.toString())))
+                          StringUtils.escapeUserInput(out.toString())))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();

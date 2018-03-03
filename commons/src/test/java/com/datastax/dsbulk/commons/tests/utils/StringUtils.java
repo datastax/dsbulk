@@ -8,15 +8,17 @@
  */
 package com.datastax.dsbulk.commons.tests.utils;
 
+import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.google.common.base.CharMatcher;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** */
 public class StringUtils {
 
   private static final ConcurrentMap<String, AtomicInteger> SEQS = new ConcurrentHashMap<>();
+
+  private static final JsonStringEncoder JSON_STRING_ENCODER = new JsonStringEncoder();
 
   /**
    * Generates a unique CQL identifier with the given prefix.
@@ -30,5 +32,17 @@ public class StringUtils {
 
   public static int countOccurrences(char c, String s) {
     return CharMatcher.is(c).countIn(s);
+  }
+
+  /**
+   * Escapes the given string and returns an escaped string compliant with Json syntax for quoted
+   * strings. Useful in tests to escape paths and other variables as if they were provided by the
+   * user through the command line.
+   *
+   * @param value the value to escape.
+   * @return the escaped value.
+   */
+  public static String escapeUserInput(String value) {
+    return new String(JSON_STRING_ENCODER.quoteAsString(value));
   }
 }
