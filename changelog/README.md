@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.0.1 (in progress)
+
+- [improvement] DAT-240: Detect console width on Windows.
+
+
 ### 1.0.0
 
 - [improvement] DAT-220: Make ResultSubscription fully non-blocking.

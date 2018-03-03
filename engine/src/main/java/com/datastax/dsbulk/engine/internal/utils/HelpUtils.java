@@ -15,6 +15,7 @@ import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.PREFERRED_
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.engine.Main;
 import com.google.common.base.CharMatcher;
 import java.io.BufferedReader;
@@ -148,17 +149,25 @@ public class HelpUtils {
     private static final String HEADER =
         "Usage: dsbulk (load|unload) [options]\n       dsbulk help [section]\nOptions:";
 
+    private static final int DEFAULT_LINE_LENGTH = 150;
     private static final int LINE_LENGTH = getLineLength();
     private static final int INDENT = 4;
 
     private final Set<Option> options = new TreeSet<>(new PriorityComparator(PREFERRED_SETTINGS));
 
     private static int getLineLength() {
-      String columns = System.getenv("COLUMNS");
-      if (columns != null) {
-        return Integer.parseInt(columns);
+      int columns = DEFAULT_LINE_LENGTH;
+      String columnsStr = System.getenv("COLUMNS");
+      if (columnsStr != null) {
+        try {
+          columns = Integer.parseInt(columnsStr);
+        } catch (NumberFormatException ignored) {
+        }
+        if (PlatformUtils.isWindows()) {
+          columns--;
+        }
       }
-      return 150;
+      return columns;
     }
 
     HelpEmitter(Options options) {

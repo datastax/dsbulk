@@ -11,10 +11,10 @@ package com.datastax.dsbulk.commons.tests.ccm;
 import static com.datastax.dsbulk.commons.tests.utils.NetworkUtils.findAvailablePort;
 import static com.datastax.dsbulk.commons.tests.utils.Version.DEFAULT_DSE_VERSION;
 
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.MemoryUtils;
 import com.datastax.dsbulk.commons.tests.utils.NetworkUtils;
-import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.google.common.base.Joiner;
