@@ -64,6 +64,7 @@ class MainTest {
   @AfterEach
   void deleteTempFolder() {
     deleteDirectory(tempFolder);
+    deleteDirectory(Paths.get("./logs"));
   }
 
   @AfterEach
@@ -217,6 +218,7 @@ class MainTest {
     logs.clear();
     {
       Path f = Files.createTempFile(Paths.get(System.getProperty("user.home")), "myapp", ".conf");
+      f.toFile().deleteOnExit();
       Files.write(f, "dsbulk.connector.name=foo".getBytes("UTF-8"));
       new Main(new String[] {"load", "-f", "~/" + f.getFileName().toString()}).run();
       String err = logs.getAllMessagesAsString();
