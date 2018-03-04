@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.0.1 (in progress)
+
+- [improvement] DAT-237: Numeric overflows should display the original input that caused the overflow.
+
+
 ### 1.0.0
 
 - [improvement] DAT-220: Make ResultSubscription fully non-blocking.

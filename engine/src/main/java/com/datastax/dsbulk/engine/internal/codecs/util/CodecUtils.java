@@ -403,25 +403,31 @@ public class CodecUtils {
       return (Byte) value;
     } else if (value instanceof Short) {
       if (value.byteValue() != value.shortValue()) {
-        throw new ArithmeticException("integer overflow");
+        throw new ArithmeticException("Value is out of byte range: " + value);
       }
       return value.byteValue();
     } else if (value instanceof Integer) {
       if (value.byteValue() != value.intValue()) {
-        throw new ArithmeticException("integer overflow");
+        throw new ArithmeticException("Value is out of byte range: " + value);
       }
       return value.byteValue();
     } else if (value instanceof Long) {
       if (value.byteValue() != value.longValue()) {
-        throw new ArithmeticException("integer overflow");
+        throw new ArithmeticException("Value is out of byte range: " + value);
       }
       return value.byteValue();
-    } else if (value instanceof BigInteger) {
-      return ((BigInteger) value).byteValueExact();
-    } else if (value instanceof BigDecimal) {
-      return ((BigDecimal) value).byteValueExact();
     } else {
-      return new BigDecimal(value.toString()).byteValueExact();
+      try {
+        if (value instanceof BigInteger) {
+          return ((BigInteger) value).byteValueExact();
+        } else if (value instanceof BigDecimal) {
+          return ((BigDecimal) value).byteValueExact();
+        } else {
+          return new BigDecimal(value.toString()).byteValueExact();
+        }
+      } catch (ArithmeticException e) {
+        throw new ArithmeticException(e.getMessage() + ": " + value);
+      }
     }
   }
 
@@ -440,20 +446,26 @@ public class CodecUtils {
       return value.shortValue();
     } else if (value instanceof Integer) {
       if (value.shortValue() != value.intValue()) {
-        throw new ArithmeticException("integer overflow");
+        throw new ArithmeticException("Value is out of short range: " + value);
       }
       return value.shortValue();
     } else if (value instanceof Long) {
       if (value.shortValue() != value.longValue()) {
-        throw new ArithmeticException("integer overflow");
+        throw new ArithmeticException("Value is out of short range: " + value);
       }
       return value.shortValue();
-    } else if (value instanceof BigInteger) {
-      return ((BigInteger) value).shortValueExact();
-    } else if (value instanceof BigDecimal) {
-      return ((BigDecimal) value).shortValueExact();
     } else {
-      return new BigDecimal(value.toString()).shortValueExact();
+      try {
+        if (value instanceof BigInteger) {
+          return ((BigInteger) value).shortValueExact();
+        } else if (value instanceof BigDecimal) {
+          return ((BigDecimal) value).shortValueExact();
+        } else {
+          return new BigDecimal(value.toString()).shortValueExact();
+        }
+      } catch (ArithmeticException e) {
+        throw new ArithmeticException(e.getMessage() + ": " + value);
+      }
     }
   }
 
@@ -472,15 +484,21 @@ public class CodecUtils {
       return value.intValue();
     } else if (value instanceof Long) {
       if (value.intValue() != value.longValue()) {
-        throw new ArithmeticException("integer overflow");
+        throw new ArithmeticException("Value is out of int range: " + value);
       }
       return value.intValue();
-    } else if (value instanceof BigInteger) {
-      return ((BigInteger) value).intValueExact();
-    } else if (value instanceof BigDecimal) {
-      return ((BigDecimal) value).intValueExact();
     } else {
-      return new BigDecimal(value.toString()).intValueExact();
+      try {
+        if (value instanceof BigInteger) {
+          return ((BigInteger) value).intValueExact();
+        } else if (value instanceof BigDecimal) {
+          return ((BigDecimal) value).intValueExact();
+        } else {
+          return new BigDecimal(value.toString()).intValueExact();
+        }
+      } catch (ArithmeticException e) {
+        throw new ArithmeticException(e.getMessage() + ": " + value);
+      }
     }
   }
 
@@ -497,12 +515,18 @@ public class CodecUtils {
       return (Long) value;
     } else if (value instanceof Byte || value instanceof Short || value instanceof Integer) {
       return value.longValue();
-    } else if (value instanceof BigInteger) {
-      return ((BigInteger) value).longValueExact();
-    } else if (value instanceof BigDecimal) {
-      return ((BigDecimal) value).longValueExact();
     } else {
-      return new BigDecimal(value.toString()).longValueExact();
+      try {
+        if (value instanceof BigInteger) {
+          return ((BigInteger) value).longValueExact();
+        } else if (value instanceof BigDecimal) {
+          return ((BigDecimal) value).longValueExact();
+        } else {
+          return new BigDecimal(value.toString()).longValueExact();
+        }
+      } catch (ArithmeticException e) {
+        throw new ArithmeticException(e.getMessage() + ": " + value);
+      }
     }
   }
 
@@ -522,10 +546,16 @@ public class CodecUtils {
         || value instanceof Integer
         || value instanceof Long) {
       return BigInteger.valueOf(value.longValue());
-    } else if (value instanceof BigDecimal) {
-      return ((BigDecimal) value).toBigIntegerExact();
     } else {
-      return new BigDecimal(value.toString()).toBigIntegerExact();
+      try {
+        if (value instanceof BigDecimal) {
+          return ((BigDecimal) value).toBigIntegerExact();
+        } else {
+          return new BigDecimal(value.toString()).toBigIntegerExact();
+        }
+      } catch (ArithmeticException e) {
+        throw new ArithmeticException(e.getMessage() + ": " + value);
+      }
     }
   }
 
@@ -544,10 +574,10 @@ public class CodecUtils {
       return (Float) value;
     } else {
       if (Float.isInfinite(value.floatValue()) || Float.isNaN(value.floatValue())) {
-        throw new ArithmeticException("floating point overflow");
+        throw new ArithmeticException("Floating point overflow: " + value);
       }
       if (toBigDecimal(value).compareTo(new BigDecimal(Float.toString(value.floatValue()))) != 0) {
-        throw new ArithmeticException("floating point overflow");
+        throw new ArithmeticException("Floating point overflow: " + value);
       }
       return value.floatValue();
     }
@@ -568,11 +598,11 @@ public class CodecUtils {
       return (Double) value;
     } else {
       if (Double.isInfinite(value.doubleValue()) || Double.isNaN(value.doubleValue())) {
-        throw new ArithmeticException("floating point overflow");
+        throw new ArithmeticException("Floating point overflow: " + value);
       }
       if (toBigDecimal(value).compareTo(new BigDecimal(Double.toString(value.doubleValue())))
           != 0) {
-        throw new ArithmeticException("floating point overflow");
+        throw new ArithmeticException("Floating point overflow: " + value);
       }
       return value.doubleValue();
     }
@@ -583,9 +613,9 @@ public class CodecUtils {
    *
    * @param value the number to convert; cannot be {@code null}.
    * @return the converted value.
-   * @throws NumberFormatException if the number cannot be converted to a {@link BigDecimal}.
+   * @throws ArithmeticException if the number cannot be converted to a {@link BigDecimal}.
    */
-  public static BigDecimal toBigDecimal(@NotNull Number value) throws NumberFormatException {
+  public static BigDecimal toBigDecimal(@NotNull Number value) throws ArithmeticException {
     Objects.requireNonNull(value);
     if (value instanceof BigDecimal) {
       return (BigDecimal) value;
@@ -597,7 +627,15 @@ public class CodecUtils {
     } else if (value instanceof BigInteger) {
       return new BigDecimal((BigInteger) value);
     } else {
-      return new BigDecimal(value.toString());
+      try {
+        return new BigDecimal(value.toString());
+      } catch (NumberFormatException e) {
+        if (e.getMessage() != null) {
+          throw new ArithmeticException(e.getMessage() + ": " + value);
+        } else {
+          throw new ArithmeticException("Cannot convert to BigDecimal: " + value);
+        }
+      }
     }
   }
   /**

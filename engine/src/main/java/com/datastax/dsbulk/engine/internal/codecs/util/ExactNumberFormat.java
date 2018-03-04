@@ -43,7 +43,7 @@ public class ExactNumberFormat extends NumberFormat {
     if (number instanceof Float || number instanceof Double) {
       try {
         number = CodecUtils.toBigDecimal((Number) number);
-      } catch (NumberFormatException ignored) {
+      } catch (ArithmeticException ignored) {
         // happens in rare cases, e.g. with Double.NaN
       }
     }
