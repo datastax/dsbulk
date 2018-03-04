@@ -39,9 +39,9 @@ public abstract class CCMClusterFactory {
 
   private static final CCMConfig DEFAULT_CCM_CONFIG = Dummy.class.getAnnotation(CCMConfig.class);
 
-  // A mapping of cassandra.yaml factory options to their version requirements.
-  // If a factory compute passed containing one of these options and the version requirement cannot
-  // be met the option compute simply filtered.
+  // A mapping of cassandra.yaml config options to their version requirements.
+  // If a config is passed containing one of these options and the version requirement cannot
+  // be met the option is simply filtered.
   private static final Map<String, Version> CONFIG_VERSION_REQUIREMENTS;
 
   static {

@@ -204,7 +204,7 @@ public class Main {
       try {
         DEFAULT = ConfigFactory.load().getConfig("dsbulk");
       } catch (ConfigException.Parse e) {
-        // This should only be an issue for user provided configuration files. Command line options
+        // This should only be an issue for user-provided configuration files. Command line options
         // are escaped
         if (ConfigUtils.containsBackslashError(e)) {
           LOGGER.error(
