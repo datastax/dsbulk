@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.internal.settings;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.maybeEscapeBackslash;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,6 +42,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +56,8 @@ class LogSettingsTest {
 
   private Cluster cluster;
 
+  private Path tempFolder;
+
   @SuppressWarnings("Duplicates")
   @BeforeEach
   void setUp() {
@@ -66,20 +70,28 @@ class LogSettingsTest {
     when(configuration.getCodecRegistry()).thenReturn(CodecRegistry.DEFAULT_INSTANCE);
   }
 
+  @BeforeEach
+  void createTempFolder() throws IOException {
+    tempFolder = Files.createTempDirectory("test");
+    Files.createDirectories(tempFolder);
+  }
+
+  @AfterEach
+  void deleteTempFolder() {
+    deleteDirectory(tempFolder);
+    deleteDirectory(Paths.get("./logs"));
+  }
+
   @Test
   void should_create_log_manager_with_default_output_directory() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.log"));
     LogSettings settings = new LogSettings(config, "test");
     settings.init(false);
     LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
-    try {
-      logManager.init();
-      assertThat(logManager).isNotNull();
-      assertThat(logManager.getExecutionDirectory().toFile().getAbsolutePath())
-          .isEqualTo(Paths.get("./logs/test").normalize().toFile().getAbsolutePath());
-    } finally {
-      FileUtils.deleteDirectory(logManager.getExecutionDirectory().getParent());
-    }
+    logManager.init();
+    assertThat(logManager).isNotNull();
+    assertThat(logManager.getExecutionDirectory().toFile().getAbsolutePath())
+        .isEqualTo(Paths.get("./logs/test").normalize().toFile().getAbsolutePath());
   }
 
   @Test()
@@ -106,27 +118,26 @@ class LogSettingsTest {
 
   @Test
   void should_create_log_manager_when_output_directory_path_provided() throws Exception {
-    Path dir = Files.createTempDirectory("test");
-    String logDir = maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + logDir + "\"")
+            ConfigFactory.parseString(
+                "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     settings.init(false);
     LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster);
     logManager.init();
     assertThat(logManager).isNotNull();
-    assertThat(logManager.getExecutionDirectory().toFile()).isEqualTo(dir.resolve("test").toFile());
+    assertThat(logManager.getExecutionDirectory().toFile())
+        .isEqualTo(tempFolder.resolve("test").toFile());
   }
 
   @Test
   void should_create_log_file_when_in_production() throws Exception {
-    Path dir = Files.createTempDirectory("test");
-    String logDir = maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + logDir + "\"")
+            ConfigFactory.parseString(
+                "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     ch.qos.logback.classic.Logger root =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -138,7 +149,7 @@ class LogSettingsTest {
       settings.init(false);
       root.setLevel(Level.ERROR);
       LOGGER.error("this is a test");
-      Path logFile = dir.resolve("TEST_EXECUTION_ID").resolve("operation.log");
+      Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
       assertThat(logFile).exists();
       String contents = Files.readAllLines(logFile).stream().collect(Collectors.joining());
       assertThat(contents).contains("this is a test");
@@ -150,16 +161,15 @@ class LogSettingsTest {
 
   @Test
   void should_not_create_log_file_when_not_in_production() throws Exception {
-    Path dir = Files.createTempDirectory("test");
-    String logDir = maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + logDir + "\"")
+            ConfigFactory.parseString(
+                "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     settings.init(false);
     LOGGER.error("this is a test");
-    Path logFile = dir.resolve("TEST_EXECUTION_ID").resolve("operation.log");
+    Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
     assertThat(logFile).doesNotExist();
   }
 
@@ -168,11 +178,10 @@ class LogSettingsTest {
       @StreamCapture(STDOUT) StreamInterceptor stdOut,
       @StreamCapture(STDERR) StreamInterceptor stdErr)
       throws Exception {
-    Path dir = Files.createTempDirectory("test");
-    String logDir = maybeEscapeBackslash(dir.toString());
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + logDir + "\"")
+            ConfigFactory.parseString(
+                "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     ch.qos.logback.classic.Logger root =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -188,7 +197,7 @@ class LogSettingsTest {
       LOGGER.info("你好");
       assertThat(stdOut.getStreamAsString()).isEmpty();
       assertThat(stdErr.getStreamAsString()).contains("你好");
-      Path logFile = dir.resolve("TEST_EXECUTION_ID").resolve("operation.log");
+      Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
       assertThat(logFile).exists();
       String contents = FileUtils.readFile(logFile, UTF_8);
       assertThat(contents).contains("你好");
@@ -200,14 +209,13 @@ class LogSettingsTest {
 
   @Test
   void should_throw_IAE_when_execution_directory_not_empty() throws Exception {
-    Path logDir = Files.createTempDirectory("test");
-    Path executionDir = logDir.resolve("TEST_EXECUTION_ID");
+    Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
     Path foo = executionDir.resolve("foo");
     Files.createDirectories(foo);
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(() -> settings.init(false))
@@ -220,14 +228,13 @@ class LogSettingsTest {
     assumingThat(
         !PlatformUtils.isWindows(),
         () -> {
-          Path logDir = Files.createTempDirectory("test");
-          Path executionDir = logDir.resolve("TEST_EXECUTION_ID");
+          Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
           Files.createDirectories(executionDir);
           assertThat(executionDir.toFile().setWritable(false, false)).isTrue();
           LoaderConfig config =
               new DefaultLoaderConfig(
                   ConfigFactory.parseString(
-                          "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                      "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
           LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
           assertThatThrownBy(() -> settings.init(false))
@@ -238,14 +245,12 @@ class LogSettingsTest {
 
   @Test
   void should_throw_IAE_when_execution_directory_not_directory() throws Exception {
-    Path logDir = Files.createTempDirectory("test");
-    Path executionDir = logDir.resolve("TEST_EXECUTION_ID");
-    Files.createDirectories(logDir);
+    Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
     Files.createFile(executionDir);
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(() -> settings.init(false))
@@ -258,11 +263,10 @@ class LogSettingsTest {
     assumingThat(
         !PlatformUtils.isWindows(),
         () -> {
-          Path logDir = Files.createTempDirectory("test");
           LoaderConfig config =
               new DefaultLoaderConfig(
                   ConfigFactory.parseString(
-                          "directory = \"" + maybeEscapeBackslash(logDir.toString()) + "\"")
+                      "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
           char forbidden = '/';
           LogSettings settings = new LogSettings(config, forbidden + " IS FORBIDDEN");
