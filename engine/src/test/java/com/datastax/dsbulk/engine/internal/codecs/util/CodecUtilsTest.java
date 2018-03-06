@@ -442,7 +442,7 @@ class CodecUtilsTest {
                     YearMonth.class,
                     UTC,
                     LocalDate.ofEpochDay(0)))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(DateTimeException.class);
   }
 
   @SuppressWarnings("ConstantConditions")

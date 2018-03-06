@@ -656,8 +656,7 @@ public class CodecUtils {
    * @param timeZone the time zone to use; cannot be {@code null}.
    * @param epoch the epoch to use; cannot be {@code null}.
    * @return the converted value.
-   * @throws DateTimeException if the temporal cannot be converted.
-   * @throws IllegalArgumentException if target class is unknown.
+   * @throws DateTimeException if the temporal cannot be converted to the target class.
    */
   @SuppressWarnings("unchecked")
   public static <T extends TemporalAccessor> T convertTemporal(
@@ -687,7 +686,7 @@ public class CodecUtils {
     if (targetClass.equals(ZonedDateTime.class)) {
       return (T) toZonedDateTime(value, timeZone, epoch);
     }
-    throw new IllegalArgumentException(
+    throw new DateTimeException(
         String.format("Cannot convert %s of type %s to %s", value, value.getClass(), targetClass));
   }
 
