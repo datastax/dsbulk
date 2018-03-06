@@ -686,7 +686,7 @@ The overflow strategy to use when converting from `String` to CQL numeric types.
 
 "Overflow" should be understood here in 3 possible ways:
 
-- The value's magnitude is too big or too small for the target CQL type. For example, trying to convert 128 to a CQL `tinyint` results in overflow, as the maximum value for such type is 127.
+- The value is out of the target CQL type's range. For example, trying to convert 128 to a CQL `tinyint` results in overflow, as the maximum value for such type is 127.
 - The value is decimal, but the target CQL type is integral. For example, trying to convert 123.45 to a CQL `int` results in overflow.
 - The value's precision is too large for the target CQL type. For example, trying to insert 0.1234567890123456789 into a CQL `double` results in overflow as there are too many significant digits to fit in a 64-bit double.
 
