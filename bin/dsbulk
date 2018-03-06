@@ -28,6 +28,8 @@ real_path() {
 }
 
 # Look for a usable Java 8 binary in JAVA_HOME, the result of /usr/libexec/java_home, or path.
+SAVEIFS=$IFS
+IFS=$(echo -en "\n\b")
 for J in "$JAVA" "$JAVA_HOME"/bin/java "$(/usr/libexec/java_home 2> /dev/null)/bin/java" $(command -v java) ; do
   if [ ! -z "$J" -a -x "$J" ]; then
     VER=$($J -version 2>&1 | head -1 | sed -e 's/[^"]*"//' -e 's/".*//' -e 's/\.[^\.]*$//')
@@ -40,6 +42,7 @@ for J in "$JAVA" "$JAVA_HOME"/bin/java "$(/usr/libexec/java_home 2> /dev/null)/b
     fi
   fi
 done
+IFS=$SAVEIFS
 
 if [ -z "$JAVA_CMD" ] ; then
   echo "Unable to find java 8 (or later) executable. Check JAVA_HOME and PATH environment variables." >&2
@@ -59,6 +62,11 @@ done
 CP=$(echo $CP | sed -e 's/ :/:/g')
 [ ! -z "$DSBULK_CLASSPATH_EXTRA" ] && CP="$DSBULK_CLASSPATH_EXTRA:$CP"
 
+# Under Cygwin, translate the classpath to Windows style
+if [[ "$(uname -s)" == CYGWIN* ]]; then
+  CP=$(cygpath -pw "$CP")
+fi
+
 # Attempt to find the window width, to make help output look nicer. This
 # expression should work on Linux and Mac at least. If the result isn't a number,
 # it means we can't parse the stty output, so don't save off COLUMNS.
@@ -68,4 +76,4 @@ if /bin/expr  "$COLUMNS" + 0 > /dev/null 2>&1 ; then
 fi
 
 # Run the tool.
-$JAVA_CMD $DSBULK_JAVA_OPTS -cp "$CP" com.datastax.dsbulk.engine.Main "$@"
+"$JAVA_CMD" $DSBULK_JAVA_OPTS -cp "$CP" com.datastax.dsbulk.engine.Main "$@"

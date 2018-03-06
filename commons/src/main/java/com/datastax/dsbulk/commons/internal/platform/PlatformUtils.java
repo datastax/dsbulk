@@ -6,13 +6,12 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.commons.tests.utils;
+package com.datastax.dsbulk.commons.internal.platform;
 
-/** */
 public class PlatformUtils {
 
   /**
-   * Checks if the operating system is a Windows one
+   * Checks if the operating system is a Windows one.
    *
    * @return <code>true</code> if the operating system is a Windows one, <code>false</code>
    *     otherwise.

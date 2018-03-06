@@ -16,13 +16,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.slf4j.event.Level.ERROR;
 
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
-import com.datastax.dsbulk.commons.tests.utils.PlatformUtils;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.typesafe.config.Config;
 import java.io.IOException;
@@ -64,6 +64,7 @@ class MainTest {
   @AfterEach
   void deleteTempFolder() {
     deleteDirectory(tempFolder);
+    deleteDirectory(Paths.get("./logs"));
   }
 
   @AfterEach
@@ -217,6 +218,7 @@ class MainTest {
     logs.clear();
     {
       Path f = Files.createTempFile(Paths.get(System.getProperty("user.home")), "myapp", ".conf");
+      f.toFile().deleteOnExit();
       Files.write(f, "dsbulk.connector.name=foo".getBytes("UTF-8"));
       new Main(new String[] {"load", "-f", "~/" + f.getFileName().toString()}).run();
       String err = logs.getAllMessagesAsString();

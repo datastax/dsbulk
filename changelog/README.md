@@ -2,6 +2,7 @@
 
 ### 1.0.1 (in progress)
 
+- [improvement] DAT-240: Detect console width on Windows.
 - [improvement] DAT-237: Numeric overflows should display the original input that caused the overflow.
 
 

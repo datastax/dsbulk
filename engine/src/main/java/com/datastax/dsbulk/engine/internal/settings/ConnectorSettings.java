@@ -31,7 +31,8 @@ public class ConnectorSettings {
   }
 
   public void init() {
-    // Attempting to fetch the connector will run through all the validation logic we have for parsing the configuration
+    // Attempting to fetch the connector will run through all the validation logic we have for
+    // parsing the configuration
     connectorName = config.getString("name");
     connector = locateConnector(connectorName);
     if (config.hasPath(connectorName)) {
