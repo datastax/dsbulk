@@ -71,7 +71,7 @@ with double-quotes, as required by the HOCON syntax, e.g.:
 dsbulk load -url '"C:\\Users\\My Folder"'
 ```
 
-However, when then expected type of an option is simply string, it is possible to omit the 
+However, when the expected type of an option is simply string, it is possible to omit the 
 surrounding double-quotes, for convenience. Thus the following two lines are equivalent:
 
 ```bash
