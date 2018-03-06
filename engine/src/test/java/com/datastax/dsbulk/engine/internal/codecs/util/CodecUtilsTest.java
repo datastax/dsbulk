@@ -899,6 +899,9 @@ class CodecUtilsTest {
     assertThat(toFloatValueExact(123f)).isEqualTo(123f);
     assertThat(toFloatValueExact(BigInteger.valueOf(123L))).isEqualTo(123f);
     assertThat(toFloatValueExact(BigDecimal.valueOf(123d))).isEqualTo(123f);
+    assertThat(toFloatValueExact(Double.NEGATIVE_INFINITY)).isEqualTo(Float.NEGATIVE_INFINITY);
+    assertThat(toFloatValueExact(Double.POSITIVE_INFINITY)).isEqualTo(Float.POSITIVE_INFINITY);
+    assertThat(toFloatValueExact(Double.NaN)).isEqualTo(Float.NaN);
     // float -> double type widening may alter the original
     assertThatThrownBy(() -> toFloatValueExact((double) Float.MAX_VALUE))
         .isInstanceOf(ArithmeticException.class)
@@ -931,6 +934,9 @@ class CodecUtilsTest {
     assertThat(toDoubleValueExact(123f)).isEqualTo(123d);
     assertThat(toDoubleValueExact(BigInteger.valueOf(123L))).isEqualTo(123d);
     assertThat(toDoubleValueExact(BigDecimal.valueOf(123d))).isEqualTo(123d);
+    assertThat(toDoubleValueExact(Float.NEGATIVE_INFINITY)).isEqualTo(Double.NEGATIVE_INFINITY);
+    assertThat(toDoubleValueExact(Float.POSITIVE_INFINITY)).isEqualTo(Double.POSITIVE_INFINITY);
+    assertThat(toDoubleValueExact(Float.NaN)).isEqualTo(Double.NaN);
     // too big for double
     BigDecimal bigDecimal = BigDecimal.valueOf(Double.MAX_VALUE).add(BigDecimal.ONE);
     assertThatThrownBy(() -> toDoubleValueExact(bigDecimal))

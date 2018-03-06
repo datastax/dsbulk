@@ -569,13 +569,19 @@ public class CodecUtils {
     Objects.requireNonNull(value);
     if (value instanceof Float) {
       return (Float) value;
+    } else if (Float.isNaN(value.floatValue())) {
+      return Float.NaN;
+    } else if (Float.isInfinite(value.floatValue())) {
+      if (value.doubleValue() == Double.NEGATIVE_INFINITY) {
+        return Float.NEGATIVE_INFINITY;
+      } else if (value.doubleValue() == Double.POSITIVE_INFINITY) {
+        return Float.POSITIVE_INFINITY;
+      }
+      throw conversionFailed(value, Float.class);
+    } else if (toBigDecimal(value).compareTo(new BigDecimal(Float.toString(value.floatValue())))
+        != 0) {
+      throw conversionFailed(value, Float.class);
     } else {
-      if (Float.isInfinite(value.floatValue()) || Float.isNaN(value.floatValue())) {
-        throw conversionFailed(value, Float.class);
-      }
-      if (toBigDecimal(value).compareTo(new BigDecimal(Float.toString(value.floatValue()))) != 0) {
-        throw conversionFailed(value, Float.class);
-      }
       return value.floatValue();
     }
   }
@@ -593,14 +599,19 @@ public class CodecUtils {
     Objects.requireNonNull(value);
     if (value instanceof Double) {
       return (Double) value;
+    } else if (Double.isNaN(value.doubleValue())) {
+      return Double.NaN;
+    } else if (Double.isInfinite(value.doubleValue())) {
+      if (value.floatValue() == Float.NEGATIVE_INFINITY) {
+        return Double.NEGATIVE_INFINITY;
+      } else if (value.floatValue() == Float.POSITIVE_INFINITY) {
+        return Double.POSITIVE_INFINITY;
+      }
+      throw conversionFailed(value, Double.class);
+    } else if (toBigDecimal(value).compareTo(new BigDecimal(Double.toString(value.doubleValue())))
+        != 0) {
+      throw conversionFailed(value, Double.class);
     } else {
-      if (Double.isInfinite(value.doubleValue()) || Double.isNaN(value.doubleValue())) {
-        throw conversionFailed(value, Double.class);
-      }
-      if (toBigDecimal(value).compareTo(new BigDecimal(Double.toString(value.doubleValue())))
-          != 0) {
-        throw conversionFailed(value, Double.class);
-      }
       return value.doubleValue();
     }
   }
