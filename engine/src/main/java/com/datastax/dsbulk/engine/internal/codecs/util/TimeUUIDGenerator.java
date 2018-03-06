@@ -210,7 +210,8 @@ public enum TimeUUIDGenerator {
     try {
       InetAddress localhost = InetAddress.getLocalHost();
       allIps.add(localhost.toString());
-      // Also return the hostname if available, it won't hurt (this does a dns lookup, it's only done once at startup)
+      // Also return the hostname if available, it won't hurt (this does a dns lookup, it's only
+      // done once at startup)
       allIps.add(localhost.getCanonicalHostName());
       InetAddress[] allMyIps = InetAddress.getAllByName(localhost.getCanonicalHostName());
       if (allMyIps != null) {

@@ -166,7 +166,8 @@ public class SchemaSettings {
         mapping = null;
       }
 
-      // Either the keyspace and table must be present, or the mapping, or the query must be present.
+      // Either the keyspace and table must be present, or the mapping, or the query must be
+      // present.
       if (!config.hasPath(MAPPING) && !config.hasPath(QUERY) && !keyspaceTablePresent) {
         throw new BulkConfigurationException(
             String.format(
