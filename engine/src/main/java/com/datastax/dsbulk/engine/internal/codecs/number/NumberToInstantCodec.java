@@ -33,7 +33,7 @@ public class NumberToInstantCodec<FROM extends Number> extends ConvertingCodec<F
     }
     long timestamp = CodecUtils.instantToNumber(value, timeUnit, epoch.toInstant());
     @SuppressWarnings("unchecked")
-    FROM n = (FROM) CodecUtils.convertNumber(timestamp, getJavaType().getRawType());
+    FROM n = CodecUtils.convertNumber(timestamp, (Class<FROM>) getJavaType().getRawType());
     return n;
   }
 

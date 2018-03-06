@@ -353,7 +353,8 @@ public class CodecUtils {
    * @throws ArithmeticException if the number cannot be converted to the target class.
    */
   @SuppressWarnings("unchecked")
-  public static <N> N convertNumber(Number value, @NotNull Class<? extends N> targetClass)
+  public static <N extends Number> N convertNumber(
+      Number value, @NotNull Class<? extends N> targetClass)
       throws IllegalArgumentException, ArithmeticException {
     Objects.requireNonNull(targetClass);
     if (value == null) {

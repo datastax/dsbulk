@@ -22,12 +22,12 @@ public class NumberToNumberCodec<FROM extends Number, TO extends Number>
   @SuppressWarnings("unchecked")
   @Override
   public FROM convertTo(TO value) {
-    return (FROM) CodecUtils.convertNumber(value, getJavaType().getRawType());
+    return CodecUtils.convertNumber(value, (Class<FROM>) getJavaType().getRawType());
   }
 
   @SuppressWarnings("unchecked")
   @Override
   public TO convertFrom(FROM value) {
-    return (TO) CodecUtils.convertNumber(value, targetCodec.getJavaType().getRawType());
+    return CodecUtils.convertNumber(value, (Class<TO>) targetCodec.getJavaType().getRawType());
   }
 }
