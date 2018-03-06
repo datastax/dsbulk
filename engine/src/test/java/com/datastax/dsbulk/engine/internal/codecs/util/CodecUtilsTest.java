@@ -721,8 +721,7 @@ class CodecUtilsTest {
     assertThat(convertNumber(123, BigDecimal.class)).isEqualTo(new BigDecimal("123"));
     assertThatThrownBy(() -> convertNumber(123, AtomicLong.class))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(
-            "Cannot convert 123 from Integer to AtomicLong");
+        .hasMessageContaining("Cannot convert 123 from Integer to AtomicLong");
   }
 
   @Test
@@ -745,21 +744,25 @@ class CodecUtilsTest {
     // too big for byte
     assertThatThrownBy(() -> toByteValueExact(Short.MAX_VALUE))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from Short to Byte", Short.MAX_VALUE));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Short to Byte", Short.MAX_VALUE));
     assertThatThrownBy(() -> toByteValueExact(Integer.MAX_VALUE))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from Integer to Byte", Integer.MAX_VALUE));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Integer to Byte", Integer.MAX_VALUE));
     assertThatThrownBy(() -> toByteValueExact(Long.MAX_VALUE))
         .isInstanceOf(ArithmeticException.class)
         .hasMessageContaining(String.format("Cannot convert %s from Long to Byte", Long.MAX_VALUE));
     BigInteger bigInteger = BigInteger.valueOf(Long.MAX_VALUE);
     assertThatThrownBy(() -> toByteValueExact(bigInteger))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from BigInteger to Byte", bigInteger));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigInteger to Byte", bigInteger));
     BigDecimal bigDecimal = BigDecimal.valueOf(Long.MAX_VALUE);
     assertThatThrownBy(() -> toByteValueExact(bigDecimal))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from BigDecimal to Byte", bigDecimal));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Byte", bigDecimal));
   }
 
   @Test
@@ -782,18 +785,22 @@ class CodecUtilsTest {
     // too big for short
     assertThatThrownBy(() -> toShortValueExact(Integer.MAX_VALUE))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from Integer to Short", Integer.MAX_VALUE));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Integer to Short", Integer.MAX_VALUE));
     assertThatThrownBy(() -> toShortValueExact(Long.MAX_VALUE))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from Long to Short", Long.MAX_VALUE));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Long to Short", Long.MAX_VALUE));
     BigInteger bigInteger = BigInteger.valueOf(Long.MAX_VALUE);
     assertThatThrownBy(() -> toShortValueExact(bigInteger))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from BigInteger to Short", bigInteger));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigInteger to Short", bigInteger));
     BigDecimal bigDecimal = BigDecimal.valueOf(Long.MAX_VALUE);
     assertThatThrownBy(() -> toShortValueExact(bigDecimal))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from BigDecimal to Short", bigDecimal));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Short", bigDecimal));
   }
 
   @Test
@@ -816,15 +823,18 @@ class CodecUtilsTest {
     // too big for int
     assertThatThrownBy(() -> toIntValueExact(Long.MAX_VALUE))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from Long to Integer", Long.MAX_VALUE));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Long to Integer", Long.MAX_VALUE));
     BigInteger bigInteger = BigInteger.valueOf(Long.MAX_VALUE);
     assertThatThrownBy(() -> toIntValueExact(bigInteger))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from BigInteger to Integer", bigInteger));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigInteger to Integer", bigInteger));
     BigDecimal bigDecimal = BigDecimal.valueOf(Long.MAX_VALUE);
     assertThatThrownBy(() -> toIntValueExact(bigDecimal))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from BigDecimal to Integer", bigDecimal));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Integer", bigDecimal));
   }
 
   @Test
@@ -848,11 +858,13 @@ class CodecUtilsTest {
     BigInteger bigInteger = BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE);
     assertThatThrownBy(() -> toLongValueExact(bigInteger))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from BigInteger to Long", bigInteger));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigInteger to Long", bigInteger));
     BigDecimal bigDecimal = BigDecimal.valueOf(Long.MAX_VALUE).add(BigDecimal.ONE);
     assertThatThrownBy(() -> toLongValueExact(bigDecimal))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from BigDecimal to Long", bigDecimal));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Long", bigDecimal));
   }
 
   @Test
@@ -890,11 +902,13 @@ class CodecUtilsTest {
     // float -> double type widening may alter the original
     assertThatThrownBy(() -> toFloatValueExact((double) Float.MAX_VALUE))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from Double to Float", (double) Float.MAX_VALUE));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Double to Float", (double) Float.MAX_VALUE));
     // too big for float
     assertThatThrownBy(() -> toFloatValueExact(Double.MAX_VALUE))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from Double to Float", Double.MAX_VALUE));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Double to Float", Double.MAX_VALUE));
     // too many significant digits
     assertThatThrownBy(() -> toFloatValueExact(0.1234567891234d))
         .isInstanceOf(ArithmeticException.class)
@@ -903,7 +917,8 @@ class CodecUtilsTest {
     BigDecimal bigDecimal = BigDecimal.valueOf(Double.MAX_VALUE);
     assertThatThrownBy(() -> toFloatValueExact(bigDecimal))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from BigDecimal to Float", bigDecimal));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Float", bigDecimal));
   }
 
   @Test
@@ -920,7 +935,8 @@ class CodecUtilsTest {
     BigDecimal bigDecimal = BigDecimal.valueOf(Double.MAX_VALUE).add(BigDecimal.ONE);
     assertThatThrownBy(() -> toDoubleValueExact(bigDecimal))
         .isInstanceOf(ArithmeticException.class)
-        .hasMessageContaining(String.format("Cannot convert %s from BigDecimal to Double", bigDecimal));
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Double", bigDecimal));
     // too many significant digits
     assertThatThrownBy(() -> toDoubleValueExact(new BigDecimal("0.1234567890123456789")))
         .isInstanceOf(ArithmeticException.class)
