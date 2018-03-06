@@ -135,10 +135,13 @@ public class URIUtils {
     sb.append('?');
     int n = 0;
     // Bound variables and result variables can intersect, but in the general case they will not.
-    // A typical read statement is "SELECT a, b, c FROM t WHERE token (a) > :start and token(a) <= :end".
-    // Here, bound variables 'start' and 'end' are completely different from selected columns 'a', 'b', 'c'.
+    // A typical read statement is
+    // "SELECT a, b, c FROM t WHERE token (a) > :start and token(a) <= :end".
+    // Here, bound variables 'start' and 'end' are completely different from selected columns 'a',
+    // 'b', 'c'.
     // Granted, there can be duplication if the user adds a custom WHERE clause containing
-    // 'a', 'b', or 'c'. But duplicated query parameters are perfectly valid and don't invalidate the resulting URI.
+    // 'a', 'b', or 'c'. But duplicated query parameters are perfectly valid and don't invalidate
+    // the resulting URI.
     if (statement instanceof BoundStatement) {
       BoundStatement bs = (BoundStatement) statement;
       n = appendVariables(sb, bs.preparedStatement().getVariables(), bs, codecRegistry, n);

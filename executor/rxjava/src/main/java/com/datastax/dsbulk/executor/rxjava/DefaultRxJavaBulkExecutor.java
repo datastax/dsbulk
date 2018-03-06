@@ -224,8 +224,8 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
       // As per rule 1.9, we need to throw an NPE if subscriber is null
       Objects.requireNonNull(subscriber, "Subscriber cannot be null");
       // As per rule 1.11, this publisher supports multiple subscribers in a unicast configuration,
-      // i.e., each subscriber triggers an independent execution/subscription and gets its own copy of
-      // the results.
+      // i.e., each subscriber triggers an independent execution/subscription and gets its own copy
+      // of the results.
       ReadResultSubscription subscription =
           new ReadResultSubscription(
               subscriber, statement, listener, requestPermits, rateLimiter, failFast);
@@ -261,8 +261,8 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
       // As per rule 1.9, we need to throw an NPE if subscriber is null
       Objects.requireNonNull(subscriber, "Subscriber cannot be null");
       // As per rule 1.11, this publisher supports multiple subscribers in a unicast configuration,
-      // i.e., each subscriber triggers an independent execution/subscription and gets its own copy of
-      // the results.
+      // i.e., each subscriber triggers an independent execution/subscription and gets its own copy
+      // of the results.
       WriteResultSubscription subscription =
           new WriteResultSubscription(
               subscriber, statement, listener, requestPermits, rateLimiter, failFast);
