@@ -39,6 +39,19 @@
     <fileSet>
       <directory>${project.basedir}/../bin</directory>
       <outputDirectory>bin</outputDirectory>
+      <lineEnding>unix</lineEnding>
+      <includes>
+        <include>dsbulk</include>
+      </includes>
+    </fileSet>
+
+    <fileSet>
+      <directory>${project.basedir}/../bin</directory>
+      <outputDirectory>bin</outputDirectory>
+      <lineEnding>dos</lineEnding>
+      <includes>
+        <include>dsbulk.cmd</include>
+      </includes>
     </fileSet>
 
     <fileSet>
