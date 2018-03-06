@@ -419,6 +419,46 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
+  void error_load_primary_key_cannot_be_null(@LogCapture LogInterceptor logs) throws Exception {
+    String[] args = {
+      "load",
+      "--log.directory",
+      escapeUserInput(logDir),
+      "--log.maxErrors",
+      "9",
+      "-header",
+      "false",
+      "--connector.csv.url",
+      escapeUserInput(getClass().getResource("/ip-by-country-pk-null.csv")),
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      fetchContactPoints(simulacron),
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.nullStrings",
+      "[NULL]",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING
+    };
+    int status = new Main(args).run();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("aborted: Too many errors, the maximum allowed is 9")
+        .contains("Records: total: 24, successful: 14, failed: 10");
+    // the number of writes may vary due to the abortion
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    validateBadOps(10, logPath);
+    validateExceptionsLog(
+        10,
+        "Primary key column country_code cannot be mapped to null",
+        "mapping-errors.log",
+        logPath);
+  }
+
+  @Test
   void full_unload(@LogCapture LogInterceptor logs, @StreamCapture(STDOUT) StreamInterceptor stdOut)
       throws Exception {
 

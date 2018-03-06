@@ -11,7 +11,6 @@ package com.datastax.driver.core;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-/** */
 public class DriverCoreHooks {
 
   public static int valuesCount(
@@ -64,5 +63,9 @@ public class DriverCoreHooks {
 
   public static ColumnDefinitions resultSetVariables(PreparedStatement ps) {
     return ps.getPreparedId().resultSetMetadata.variables;
+  }
+
+  public static int[] primaryKeyIndices(PreparedId id) {
+    return id.routingKeyIndexes;
   }
 }

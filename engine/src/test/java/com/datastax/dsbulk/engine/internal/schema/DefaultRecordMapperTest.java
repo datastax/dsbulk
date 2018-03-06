@@ -75,6 +75,8 @@ class DefaultRecordMapperTest {
   private final TypeCodec codec2 = mock(StringToLongCodec.class);
   private final TypeCodec codec3 = TypeCodec.varchar();
 
+  private final int[] pkIndices = {0, 1, 2};
+
   private Mapping mapping;
   private Record record;
   private PreparedStatement insertStatement;
@@ -110,11 +112,20 @@ class DefaultRecordMapperTest {
     variables = mock(ColumnDefinitions.class);
 
     when(boundStatement.preparedStatement()).thenReturn(insertStatement);
+    when(boundStatement.isSet(0)).thenReturn(true);
+    when(boundStatement.isSet(1)).thenReturn(true);
+    when(boundStatement.isSet(2)).thenReturn(true);
     when(insertStatement.getVariables()).thenReturn(variables);
 
     when(variables.getType(C1)).thenReturn(DataType.cint());
     when(variables.getType(C2)).thenReturn(DataType.bigint());
     when(variables.getType(C3)).thenReturn(DataType.varchar());
+    when(variables.getIndexOf(C1)).thenReturn(0);
+    when(variables.getIndexOf(C2)).thenReturn(1);
+    when(variables.getIndexOf(C3)).thenReturn(2);
+    when(variables.getName(0)).thenReturn(C1);
+    when(variables.getName(1)).thenReturn(C2);
+    when(variables.getName(2)).thenReturn(C3);
 
     when(record.getFieldValue(F1)).thenReturn("42");
     when(record.getFieldValue(F2)).thenReturn("4242");
@@ -138,6 +149,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
+            pkIndices,
             mapping,
             recordMetadata,
             ImmutableSet.of(),
@@ -173,6 +185,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
+            pkIndices,
             mapping,
             recordMetadata,
             ImmutableSet.of(),
@@ -205,6 +218,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
+            pkIndices,
             mapping,
             recordMetadata,
             ImmutableSet.of(),
@@ -235,6 +249,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
+            pkIndices,
             mapping,
             recordMetadata,
             ImmutableSet.of(),
@@ -267,6 +282,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
+            pkIndices,
             mapping,
             recordMetadata,
             ImmutableSet.of(),
@@ -284,6 +300,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
+            new int[] {0, 2},
             mapping,
             recordMetadata,
             ImmutableSet.of(),
@@ -305,6 +322,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
+            new int[] {0},
             mapping,
             recordMetadata,
             ImmutableSet.of("NIL", "NULL"),
@@ -324,6 +342,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
+            new int[] {1, 2},
             mapping,
             recordMetadata,
             ImmutableSet.of(),
@@ -344,6 +363,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
+            new int[] {1, 2},
             mapping,
             recordMetadata,
             ImmutableSet.of("NIL"),
@@ -365,6 +385,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
+            pkIndices,
             mapping,
             recordMetadata,
             ImmutableSet.of(),
@@ -379,6 +400,50 @@ class DefaultRecordMapperTest {
         .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
     assertParameter(0, C1, "42", codec1);
     assertParameter(1, C2, "4242", codec2);
+  }
+
+  @Test
+  void should_return_unmappable_statement_when_pk_column_null() {
+    when(record.fields()).thenReturn(set(F1, F2, F3));
+    when(record.getFieldValue(F1)).thenReturn(null);
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            pkIndices,
+            mapping,
+            recordMetadata,
+            ImmutableSet.of(),
+            false,
+            (mappedRecord, statement) -> boundStatement);
+    Statement result = mapper.map(record);
+    assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
+    UnmappableStatement unmappableStatement = (UnmappableStatement) result;
+    assertThat(unmappableStatement.getError())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Primary key column col1 cannot be mapped to null");
+  }
+
+  @Test
+  void should_return_unmappable_statement_when_pk_column_unmapped() {
+    when(record.fields()).thenReturn(set(F1, F2, F3));
+    when(variables.getIndexOf(C1)).thenReturn(3);
+    when(variables.getName(3)).thenReturn(C1);
+    when(boundStatement.isSet(0)).thenReturn(false);
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            pkIndices,
+            mapping,
+            recordMetadata,
+            ImmutableSet.of(),
+            false,
+            (mappedRecord, statement) -> boundStatement);
+    Statement result = mapper.map(record);
+    assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
+    UnmappableStatement unmappableStatement = (UnmappableStatement) result;
+    assertThat(unmappableStatement.getError())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Primary key column col1 cannot be left unmapped");
   }
 
   private void assertParameter(

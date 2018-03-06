@@ -75,6 +75,10 @@ public class CsvUtils {
   public static final String IP_BY_COUNTRY_MAPPING =
       "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name";
 
+  public static final String IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE =
+      "0=\"BEGINNING IP ADDRESS\",1=\"ENDING IP ADDRESS\",2=\"BEGINNING IP NUMBER\",3=\"ENDING IP NUMBER\","
+          + "4=\"COUNTRY CODE\",5=\"COUNTRY NAME\"";
+
   public static final String IP_BY_COUNTRY_COMPLEX_MAPPING =
       "0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts";
 
@@ -108,6 +112,21 @@ public class CsvUtils {
     session.execute(
         "CREATE TABLE IF NOT EXISTS \"MYKS\".\"WITH_SPACES\" ("
             + "key int PRIMARY KEY, \"my destination\" text)");
+  }
+
+  public static void createIpByCountryCaseSensitiveTable(Session session) {
+    session.execute(
+        "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "
+            + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS \"MYKS\".\"IPBYCOUNTRY\" ("
+            + "\"COUNTRY CODE\" varchar,"
+            + "\"COUNTRY NAME\" varchar static,"
+            + "\"BEGINNING IP ADDRESS\" inet,"
+            + "\"ENDING IP ADDRESS\" inet,"
+            + "\"BEGINNING IP NUMBER\" bigint,"
+            + "\"ENDING IP NUMBER\" bigint,"
+            + "PRIMARY KEY(\"COUNTRY CODE\", \"BEGINNING IP ADDRESS\"))");
   }
 
   public static PreparedStatement prepareInsertStatement(Session session) {

@@ -286,10 +286,18 @@ public class SchemaSettings {
     if (variables.size() == 0) {
       return Collections.singletonList(preparedStatement.bind());
     }
-    assert variables.size() == 2
-            && variables.getIndexOf("start") != -1
-            && variables.getIndexOf("end") != -1
-        : "The provided statement contains unrecognized bound variables; only 'start' and 'end' can be used";
+    List<String> unrecognized =
+        StreamSupport.stream(variables.spliterator(), false)
+            .map(ColumnDefinitions.Definition::getName)
+            .filter(name -> !name.equals("start") && !name.equals("end"))
+            .collect(Collectors.toList());
+    if (!unrecognized.isEmpty()) {
+      throw new BulkConfigurationException(
+          String.format(
+              "The provided statement (schema.query) contains unrecognized bound variables: %s; "
+                  + "only 'start' and 'end' can be used to define a token range",
+              unrecognized));
+    }
     Set<TokenRange> ring = cluster.getMetadata().getTokenRanges();
     return TableScanner.scan(
         ring,
@@ -317,7 +325,8 @@ public class SchemaSettings {
                       .getColumns()
                       .stream()
                       .map(ColumnMetadata::getName)
-                      .collect(Collectors.toList()));
+                      .collect(Collectors.toList()),
+              workflowType);
       query =
           workflowType == WorkflowType.LOAD
               ? inferWriteQuery(fieldsToVariables)
@@ -345,15 +354,16 @@ public class SchemaSettings {
                   default:
                     throw new AssertionError();
                 }
-              });
+              },
+              workflowType);
     }
     return new DefaultMapping(
         ImmutableBiMap.copyOf(fieldsToVariables), codecRegistry, writeTimeVariable);
   }
 
-  @NotNull
   private BiMap<String, String> createFieldsToVariablesMap(
-      Session session, Supplier<List<String>> columns) throws BulkConfigurationException {
+      Session session, Supplier<List<String>> columns, WorkflowType workflowType)
+      throws BulkConfigurationException {
     BiMap<String, String> fieldsToVariables = null;
 
     if (keyspaceName != null && tableName != null) {
@@ -381,18 +391,10 @@ public class SchemaSettings {
       }
     }
 
-    validateAllFieldsPresent(fieldsToVariables, columns);
-
-    // It's tempting to change this check to simply check the query data member.
-    // At the time of this writing, that would be totally safe; however, that
-    // member is not final, which leaves the possibility of it being initialized
-    // after the constructor but before this method is called (with the inferred query).
-    //
-    // We really want to know if the *user* provided a query, and only validate
-    // if he didn't. So, we go to the source: the config object.
-    if (!config.hasPath(QUERY)) {
-      validateAllKeysPresent(fieldsToVariables);
+    if (workflowType == LOAD) {
+      validateAllKeysPresent(session, fieldsToVariables);
     }
+    validateAllFieldsPresent(fieldsToVariables, columns);
 
     Preconditions.checkNotNull(
         fieldsToVariables,
@@ -423,18 +425,35 @@ public class SchemaSettings {
         });
   }
 
-  private void validateAllKeysPresent(BiMap<String, String> fieldsToVariables) {
-    assert table != null;
-    List<ColumnMetadata> primaryKeys = table.getPrimaryKey();
-    primaryKeys.forEach(
-        key -> {
-          if (!fieldsToVariables.containsValue(key.getName())) {
-            throw new BulkConfigurationException(
-                "Missing required key column of "
-                    + key.getName()
-                    + " from header or schema.mapping. Please ensure it's included in the header or mapping");
-          }
-        });
+  private void validateAllKeysPresent(Session session, BiMap<String, String> fieldsToVariables) {
+    if (table == null) {
+      assert preparedStatement != null;
+      // infer table from bound variables
+      ColumnDefinitions definitions = preparedStatement.getVariables();
+      if (definitions != null && definitions.size() > 0) {
+        table = inferTable(session, definitions);
+      }
+      if (table == null) {
+        // infer table from result variables
+        definitions = DriverCoreHooks.resultSetVariables(preparedStatement);
+        if (definitions != null && definitions.size() > 0) {
+          table = inferTable(session, definitions);
+        }
+      }
+    }
+    // table can only be null in rare cases e.g. if all variables are UDFs
+    if (table != null) {
+      List<ColumnMetadata> primaryKey = table.getPrimaryKey();
+      primaryKey.forEach(
+          key -> {
+            if (!fieldsToVariables.containsValue(key.getName())) {
+              throw new BulkConfigurationException(
+                  "Missing required primary key column "
+                      + Metadata.quoteIfNecessary(key.getName())
+                      + " from schema.mapping or schema.query");
+            }
+          });
+    }
   }
 
   private Config getMapping() throws BulkConfigurationException {
@@ -615,6 +634,17 @@ public class SchemaSettings {
 
   private static String prettyPath(String path) {
     return String.format("schema%s%s", StringUtils.DELIMITER, path);
+  }
+
+  private static TableMetadata inferTable(Session session, ColumnDefinitions definitions) {
+    String keyspaceName = definitions.getKeyspace(0);
+    String tableName = definitions.getTable(0);
+    KeyspaceMetadata keyspace =
+        session.getCluster().getMetadata().getKeyspace(Metadata.quoteIfNecessary(keyspaceName));
+    if (keyspace == null) {
+      return null;
+    }
+    return keyspace.getTable(Metadata.quoteIfNecessary(tableName));
   }
 
   private static class UsingTimestampListener extends CqlBaseListener {
