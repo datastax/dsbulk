@@ -262,11 +262,7 @@ class MainTest {
       unloadDir = createTempDirectory("test");
       Files.createFile(unloadDir.resolve("output-000001.csv"));
 
-      new Main(
-              new String[] {
-                "unload", "--connector.csv.url=" + escapeUserInput(unloadDir.toString())
-              })
-          .run();
+      new Main(new String[] {"unload", "--connector.csv.url=" + escapeUserInput(unloadDir)}).run();
       String err = logs.getAllMessagesAsString();
       assertThat(err).contains("connector.csv.url target directory").contains("must be empty");
     } finally {
@@ -287,7 +283,7 @@ class MainTest {
               new String[] {
                 "unload",
                 "--connector.name=json",
-                "--connector.json.url=" + escapeUserInput(unloadDir.toString())
+                "--connector.json.url=" + escapeUserInput(unloadDir)
               })
           .run();
       String err = logs.getAllMessagesAsString();

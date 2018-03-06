@@ -18,6 +18,7 @@ import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createComplexTabl
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createWithSpacesTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
@@ -55,7 +56,6 @@ import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
@@ -76,6 +76,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @Tag("ccm")
 class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
+  private Path logDir;
   private Path unloadDir;
 
   CSVConnectorEndToEndCCMIT(CCMCluster ccm, Session session) {
@@ -91,11 +92,13 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @BeforeEach
   void setUpDirs() throws IOException {
-    unloadDir = createTempDirectory("test");
+    logDir = createTempDirectory("logs");
+    unloadDir = createTempDirectory("unload");
   }
 
   @AfterEach
   void deleteDirs() {
+    deleteDirectory(logDir);
     deleteDirectory(unloadDir);
   }
 
@@ -106,9 +109,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(CSV_RECORDS_UNIQUE.toExternalForm());
+    args.add(escapeUserInput(escapeUserInput(CSV_RECORDS_UNIQUE)));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -121,13 +124,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -151,11 +155,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--driver.protocol.compression");
     args.add("LZ4");
     args.add("--connector.csv.url");
-    args.add(CSV_RECORDS_UNIQUE.toExternalForm());
+    args.add(escapeUserInput(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -168,15 +172,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--driver.protocol.compression");
     args.add("LZ4");
     args.add("--connector.csv.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -200,11 +205,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--driver.protocol.compression");
     args.add("SNAPPY");
     args.add("--connector.csv.url");
-    args.add(CSV_RECORDS_UNIQUE.toExternalForm());
+    args.add(escapeUserInput(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -217,15 +222,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--driver.protocol.compression");
     args.add("SNAPPY");
     args.add("--connector.csv.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -249,9 +255,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(CSV_RECORDS_COMPLEX.toExternalForm());
+    args.add(escapeUserInput(CSV_RECORDS_COMPLEX));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -264,13 +270,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(5, SELECT_FROM_IP_BY_COUNTRY_COMPLEX);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -294,9 +301,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(CSV_RECORDS.toExternalForm());
+    args.add(escapeUserInput(CSV_RECORDS));
     args.add("--connector.csv.header");
     args.add("true");
     args.add("--schema.keyspace");
@@ -309,13 +316,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(500, SELECT_FROM_IP_BY_COUNTRY);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -343,9 +351,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("-url");
-    args.add(CSV_RECORDS_WITH_SPACES.toExternalForm());
+    args.add(escapeUserInput(CSV_RECORDS_WITH_SPACES));
     args.add("--schema.mapping");
     args.add("key=key,my source=my destination");
     args.add("-header");
@@ -358,13 +366,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("-url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.csv.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.mapping");
@@ -388,9 +397,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(CSV_RECORDS_SKIP.toExternalForm());
+    args.add(escapeUserInput(CSV_RECORDS_SKIP));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -410,13 +419,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
     validateExceptionsLog(3, "Source  :", "mapping-errors.log", logPath);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -434,7 +444,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void load_ttl_timestamp_now_in_mapping() throws Exception {
+  void load_ttl_timestamp_now_in_mapping() {
     session.execute(
         "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
@@ -442,7 +452,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            Files.createTempDirectory("test").toString(),
+            escapeUserInput(logDir),
             "--connector.csv.url",
             ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
             "--driver.pooling.local.connections",
@@ -460,7 +470,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void load_ttl_timestamp_now_in_query() throws Exception {
+  void load_ttl_timestamp_now_in_query() {
     session.execute(
         "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
@@ -468,7 +478,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            Files.createTempDirectory("test").toString(),
+            escapeUserInput(logDir),
             "--connector.csv.url",
             ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
             "--driver.pooling.local.connections",
@@ -484,7 +494,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void load_ttl_timestamp_now_in_query_and_mapping() throws Exception {
+  void load_ttl_timestamp_now_in_query_and_mapping() {
     session.execute(
         "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
@@ -492,7 +502,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            Files.createTempDirectory("test").toString(),
+            escapeUserInput(logDir),
             "--connector.csv.url",
             ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
             "--driver.pooling.local.connections",
@@ -510,8 +520,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void load_ttl_timestamp_now_in_query_and_mapping_with_keyspace_provided_separately()
-      throws Exception {
+  void load_ttl_timestamp_now_in_query_and_mapping_with_keyspace_provided_separately() {
     session.execute(
         "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
@@ -519,7 +528,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            Files.createTempDirectory("test").toString(),
+            escapeUserInput(logDir),
             "--connector.csv.url",
             ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
             "--driver.pooling.local.connections",
@@ -574,15 +583,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void duplicate_values(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs)
-      throws IOException {
+  void duplicate_values(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs) {
 
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(CSV_RECORDS_HEADER.toExternalForm());
+    args.add(escapeUserInput(CSV_RECORDS_HEADER));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -600,15 +608,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void missing_key(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs)
-      throws Exception {
+  void missing_key(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs) {
 
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(CSV_RECORDS_HEADER.toExternalForm());
+    args.add(escapeUserInput(CSV_RECORDS_HEADER));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -625,14 +632,13 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void extra_mapping(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs)
-      throws Exception {
+  void extra_mapping(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs) {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(CSV_RECORDS_HEADER.toExternalForm());
+    args.add(escapeUserInput(CSV_RECORDS_HEADER));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -659,7 +665,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> loadArgs = new ArrayList<>();
     loadArgs.add("load");
     loadArgs.add("--log.directory");
-    loadArgs.add(Files.createTempDirectory("test").toString());
+    loadArgs.add(escapeUserInput(logDir));
     loadArgs.add("--connector.csv.url");
     loadArgs.add(ClassLoader.getSystemResource("number.csv").toExternalForm());
     loadArgs.add("--connector.csv.header");
@@ -679,15 +685,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
-
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
+    deleteDirectory(logDir);
 
     List<String> unloadArgs = new ArrayList<>();
     unloadArgs.add("unload");
     unloadArgs.add("--log.directory");
-    unloadArgs.add(Files.createTempDirectory("test").toString());
+    unloadArgs.add(escapeUserInput(logDir));
     unloadArgs.add("--connector.csv.url");
-    unloadArgs.add(unloadDir.toString());
+    unloadArgs.add(escapeUserInput(unloadDir));
     unloadArgs.add("--connector.csv.header");
     unloadArgs.add("false");
     unloadArgs.add("--connector.csv.delimiter");
@@ -705,16 +711,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
-
     checkNumbersRead(TRUNCATE, FLOOR, true, unloadDir);
+    deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
     loadArgs = new ArrayList<>();
     loadArgs.add("load");
     loadArgs.add("--log.directory");
-    loadArgs.add(Files.createTempDirectory("test").toString());
+    loadArgs.add(escapeUserInput(logDir));
     loadArgs.add("--connector.csv.url");
-    loadArgs.add(unloadDir.toString());
+    loadArgs.add(escapeUserInput(unloadDir));
     loadArgs.add("--connector.csv.header");
     loadArgs.add("false");
     loadArgs.add("--connector.csv.delimiter");
@@ -730,7 +736,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
-
     checkNumbersWritten(TRUNCATE, FLOOR, session);
   }
 
@@ -745,7 +750,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> loadArgs = new ArrayList<>();
     loadArgs.add("load");
     loadArgs.add("--log.directory");
-    loadArgs.add(Files.createTempDirectory("test").toString());
+    loadArgs.add(escapeUserInput(logDir));
     loadArgs.add("--connector.csv.url");
     loadArgs.add(ClassLoader.getSystemResource("number.csv").toExternalForm());
     loadArgs.add("--connector.csv.header");
@@ -765,17 +770,17 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
-
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateExceptionsLog(1, "overflow", "mapping-errors.log", logPath);
     checkNumbersWritten(REJECT, UNNECESSARY, session);
+    deleteDirectory(logDir);
 
     List<String> unloadArgs = new ArrayList<>();
     unloadArgs.add("unload");
     unloadArgs.add("--log.directory");
-    unloadArgs.add(Files.createTempDirectory("test").toString());
+    unloadArgs.add(escapeUserInput(logDir));
     unloadArgs.add("--connector.csv.url");
-    unloadArgs.add(unloadDir.toString());
+    unloadArgs.add(escapeUserInput(unloadDir));
     unloadArgs.add("--connector.csv.header");
     unloadArgs.add("false");
     unloadArgs.add("--connector.csv.delimiter");
@@ -791,16 +796,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
-
     checkNumbersRead(REJECT, UNNECESSARY, false, unloadDir);
+    deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
     loadArgs = new ArrayList<>();
     loadArgs.add("load");
     loadArgs.add("--log.directory");
-    loadArgs.add(Files.createTempDirectory("test").toString());
+    loadArgs.add(escapeUserInput(logDir));
     loadArgs.add("--connector.csv.url");
-    loadArgs.add(unloadDir.toString());
+    loadArgs.add(escapeUserInput(unloadDir));
     loadArgs.add("--connector.csv.header");
     loadArgs.add("false");
     loadArgs.add("--connector.csv.delimiter");
@@ -816,7 +821,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
-
     checkNumbersWritten(REJECT, UNNECESSARY, session);
   }
 

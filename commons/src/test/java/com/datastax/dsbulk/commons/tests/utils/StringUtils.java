@@ -10,6 +10,8 @@ package com.datastax.dsbulk.commons.tests.utils;
 
 import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.google.common.base.CharMatcher;
+import java.net.URL;
+import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,6 +34,28 @@ public class StringUtils {
 
   public static int countOccurrences(char c, String s) {
     return CharMatcher.is(c).countIn(s);
+  }
+
+  /**
+   * Escapes and normalizes the given path.
+   *
+   * @param value the value to escape.
+   * @return the escaped value.
+   * @see #escapeUserInput(String)
+   */
+  public static String escapeUserInput(Path value) {
+    return escapeUserInput(value.normalize().toAbsolutePath().toString());
+  }
+
+  /**
+   * Escapes and normalizes the given URL.
+   *
+   * @param value the value to escape.
+   * @return the escaped value.
+   * @see #escapeUserInput(String)
+   */
+  public static String escapeUserInput(URL value) {
+    return escapeUserInput(value.toExternalForm());
   }
 
   /**

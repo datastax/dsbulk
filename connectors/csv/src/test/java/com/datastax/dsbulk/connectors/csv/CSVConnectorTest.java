@@ -243,8 +243,7 @@ class CSVConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", recursive = false",
-                        StringUtils.escapeUserInput(rootPath.toString())))
+                        "url = \"%s\", recursive = false", StringUtils.escapeUserInput(rootPath)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -306,7 +305,7 @@ class CSVConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1",
-                          StringUtils.escapeUserInput(out.toString())))
+                          StringUtils.escapeUserInput(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -339,7 +338,7 @@ class CSVConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 4",
-                          StringUtils.escapeUserInput(out.toString())))
+                          StringUtils.escapeUserInput(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -376,7 +375,7 @@ class CSVConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 4",
-                          StringUtils.escapeUserInput(out.toString())))
+                          StringUtils.escapeUserInput(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -536,8 +535,7 @@ class CSVConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", maxConcurrentFiles = 1",
-                          StringUtils.escapeUserInput(out.toString())))
+                          "url = \"%s\", maxConcurrentFiles = 1", StringUtils.escapeUserInput(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       assertThrows(IllegalArgumentException.class, connector::init);
@@ -555,8 +553,7 @@ class CSVConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", maxConcurrentFiles = 1",
-                          StringUtils.escapeUserInput(out.toString())))
+                          "url = \"%s\", maxConcurrentFiles = 1", StringUtils.escapeUserInput(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -581,8 +578,7 @@ class CSVConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", maxConcurrentFiles = 2",
-                          StringUtils.escapeUserInput(out.toString())))
+                          "url = \"%s\", maxConcurrentFiles = 2", StringUtils.escapeUserInput(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();

@@ -13,6 +13,8 @@ import static com.datastax.driver.core.ConsistencyLevel.LOCAL_SERIAL;
 import static com.datastax.driver.core.HostDistance.LOCAL;
 import static com.datastax.driver.core.HostDistance.REMOTE;
 import static com.datastax.driver.core.ProtocolOptions.Compression.NONE;
+import static com.datastax.dsbulk.commons.tests.utils.ReflectionUtils.getInternalState;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -42,8 +44,6 @@ import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
-import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
 import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigFactory;
@@ -83,20 +83,18 @@ class DriverSettingsTest {
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
-    Cluster delegate = (Cluster) ReflectionUtils.getInternalState(cluster, "delegate");
-    Object manager = ReflectionUtils.getInternalState(delegate, "manager");
+    Cluster delegate = (Cluster) getInternalState(cluster, "delegate");
+    Object manager = getInternalState(delegate, "manager");
     @SuppressWarnings("unchecked")
     List<InetSocketAddress> contactPoints =
-        (List<InetSocketAddress>) ReflectionUtils.getInternalState(manager, "contactPoints");
+        (List<InetSocketAddress>) getInternalState(manager, "contactPoints");
     assertThat(contactPoints)
         .containsExactly(
             new InetSocketAddress("1.2.3.4", 9042),
             new InetSocketAddress("2.3.4.5", 9876),
             new InetSocketAddress("9.8.7.6", 9876));
     DseConfiguration configuration = cluster.getConfiguration();
-    assertThat(
-            ReflectionUtils.getInternalState(
-                configuration.getProtocolOptions(), "initialProtocolVersion"))
+    assertThat(getInternalState(configuration.getProtocolOptions(), "initialProtocolVersion"))
         .isNull();
     assertThat(configuration.getProtocolOptions().getCompression()).isEqualTo(NONE);
     QueryOptions queryOptions = configuration.getQueryOptions();
@@ -120,8 +118,7 @@ class DriverSettingsTest {
     assertThat(policies.getAddressTranslator()).isInstanceOf(IdentityTranslator.class);
     assertThat(policies.getLoadBalancingPolicy()).isInstanceOf(DseLoadBalancingPolicy.class);
     assertThat(policies.getRetryPolicy()).isInstanceOf(MultipleRetryPolicy.class);
-    assertThat(ReflectionUtils.getInternalState(policies.getRetryPolicy(), "maxRetryCount"))
-        .isEqualTo(10);
+    assertThat(getInternalState(policies.getRetryPolicy(), "maxRetryCount")).isEqualTo(10);
     assertThat(policies.getSpeculativeExecutionPolicy())
         .isInstanceOf(NoSpeculativeExecutionPolicy.class);
     assertThat(configuration.getProtocolOptions().getSSLOptions()).isNull();
@@ -142,8 +139,8 @@ class DriverSettingsTest {
     DseConfiguration configuration = cluster.getConfiguration();
     AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
     assertThat(provider).isInstanceOf(PlainTextAuthProvider.class);
-    assertThat(ReflectionUtils.getInternalState(provider, "username")).isEqualTo("alice");
-    assertThat(ReflectionUtils.getInternalState(provider, "password")).isEqualTo("s3cr3t");
+    assertThat(getInternalState(provider, "username")).isEqualTo("alice");
+    assertThat(getInternalState(provider, "password")).isEqualTo("s3cr3t");
   }
 
   @Test
@@ -160,9 +157,9 @@ class DriverSettingsTest {
     DseConfiguration configuration = cluster.getConfiguration();
     AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
     assertThat(provider).isInstanceOf(DsePlainTextAuthProvider.class);
-    assertThat(ReflectionUtils.getInternalState(provider, "username")).isEqualTo("alice");
-    assertThat(ReflectionUtils.getInternalState(provider, "password")).isEqualTo("s3cr3t");
-    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId")).isEqualTo("bob");
+    assertThat(getInternalState(provider, "username")).isEqualTo("alice");
+    assertThat(getInternalState(provider, "password")).isEqualTo("s3cr3t");
+    assertThat(getInternalState(provider, "authorizationId")).isEqualTo("bob");
   }
 
   @Test
@@ -178,7 +175,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        StringUtils.escapeUserInput(keyTab.toString())))
+                        escapeUserInput(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -187,16 +184,14 @@ class DriverSettingsTest {
     DseConfiguration configuration = cluster.getConfiguration();
     AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
     assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
-    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
-    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
-        .isEqualTo("bob@DATASTAX.COM");
+    assertThat(getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(getInternalState(provider, "authorizationId")).isEqualTo("bob@DATASTAX.COM");
     Configuration loginConfiguration =
-        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+        (Configuration) getInternalState(provider, "loginConfiguration");
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
-    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
+    assertThat(getInternalState(loginConfiguration, "principal"))
         .isEqualTo("cassandra@DATASTAX.COM");
-    String loginConfigKeyTab =
-        (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
+    String loginConfigKeyTab = (String) getInternalState(loginConfiguration, "keyTab");
     assertThat(loginConfigKeyTab).isEqualTo(keyTab.toString());
   }
 
@@ -214,7 +209,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        StringUtils.escapeUserInput(keyTab.toString())))
+                        escapeUserInput(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -223,16 +218,13 @@ class DriverSettingsTest {
     DseConfiguration configuration = cluster.getConfiguration();
     AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
     assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
-    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
-    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
-        .isEqualTo("bob@DATASTAX.COM");
+    assertThat(getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(getInternalState(provider, "authorizationId")).isEqualTo("bob@DATASTAX.COM");
     Configuration loginConfiguration =
-        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+        (Configuration) getInternalState(provider, "loginConfiguration");
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
-    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
-        .isEqualTo("alice@DATASTAX.COM");
-    String loginConfigKeyTab =
-        (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
+    assertThat(getInternalState(loginConfiguration, "principal")).isEqualTo("alice@DATASTAX.COM");
+    String loginConfigKeyTab = (String) getInternalState(loginConfiguration, "keyTab");
     assertThat(loginConfigKeyTab).isEqualTo(keyTab.toString());
   }
 
@@ -253,7 +245,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        StringUtils.escapeUserInput(keyTab.toString())))
+                        escapeUserInput(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -262,16 +254,13 @@ class DriverSettingsTest {
     DseConfiguration configuration = cluster.getConfiguration();
     AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
     assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
-    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
-    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
-        .isEqualTo("bob@DATASTAX.COM");
+    assertThat(getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(getInternalState(provider, "authorizationId")).isEqualTo("bob@DATASTAX.COM");
     Configuration loginConfiguration =
-        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+        (Configuration) getInternalState(provider, "loginConfiguration");
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.KeyTabConfiguration.class);
-    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
-        .isEqualTo("alice@DATASTAX.COM");
-    String loginConfigKeyTab =
-        (String) ReflectionUtils.getInternalState(loginConfiguration, "keyTab");
+    assertThat(getInternalState(loginConfiguration, "principal")).isEqualTo("alice@DATASTAX.COM");
+    String loginConfigKeyTab = (String) getInternalState(loginConfiguration, "keyTab");
     assertThat(loginConfigKeyTab).isEqualTo(keyTab.toString());
   }
 
@@ -292,13 +281,12 @@ class DriverSettingsTest {
     DseConfiguration configuration = cluster.getConfiguration();
     AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
     assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
-    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
-    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
-        .isEqualTo("bob@DATASTAX.COM");
+    assertThat(getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(getInternalState(provider, "authorizationId")).isEqualTo("bob@DATASTAX.COM");
     Configuration loginConfiguration =
-        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+        (Configuration) getInternalState(provider, "loginConfiguration");
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.TicketCacheConfiguration.class);
-    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal")).isNull();
+    assertThat(getInternalState(loginConfiguration, "principal")).isNull();
   }
 
   @Test
@@ -319,14 +307,12 @@ class DriverSettingsTest {
     DseConfiguration configuration = cluster.getConfiguration();
     AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
     assertThat(provider).isInstanceOf(DseGSSAPIAuthProvider.class);
-    assertThat(ReflectionUtils.getInternalState(provider, "saslProtocol")).isEqualTo("foo");
-    assertThat(ReflectionUtils.getInternalState(provider, "authorizationId"))
-        .isEqualTo("bob@DATASTAX.COM");
+    assertThat(getInternalState(provider, "saslProtocol")).isEqualTo("foo");
+    assertThat(getInternalState(provider, "authorizationId")).isEqualTo("bob@DATASTAX.COM");
     Configuration loginConfiguration =
-        (Configuration) ReflectionUtils.getInternalState(provider, "loginConfiguration");
+        (Configuration) getInternalState(provider, "loginConfiguration");
     assertThat(loginConfiguration).isInstanceOf(DriverSettings.TicketCacheConfiguration.class);
-    assertThat(ReflectionUtils.getInternalState(loginConfiguration, "principal"))
-        .isEqualTo("alice@DATASTAX.COM");
+    assertThat(getInternalState(loginConfiguration, "principal")).isEqualTo("alice@DATASTAX.COM");
   }
 
   @Test
@@ -349,8 +335,7 @@ class DriverSettingsTest {
                             + "   password = cassandra1sfun"
                             + "}"
                             + "}",
-                        StringUtils.escapeUserInput(keystore.toString()),
-                        StringUtils.escapeUserInput(truststore.toString())))
+                        escapeUserInput(keystore), escapeUserInput(truststore)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -359,7 +344,7 @@ class DriverSettingsTest {
     DseConfiguration configuration = cluster.getConfiguration();
     SSLOptions sslOptions = configuration.getProtocolOptions().getSSLOptions();
     assertThat(sslOptions).isInstanceOf(RemoteEndpointAwareJdkSSLOptions.class);
-    assertThat(ReflectionUtils.getInternalState(sslOptions, "cipherSuites"))
+    assertThat(getInternalState(sslOptions, "cipherSuites"))
         .isEqualTo(new String[] {"TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA"});
   }
 
@@ -384,9 +369,9 @@ class DriverSettingsTest {
                             + "   password = cassandra1sfun "
                             + "}"
                             + "}",
-                        StringUtils.escapeUserInput(keyCertChain.toString()),
-                        StringUtils.escapeUserInput(privateKey.toString()),
-                        StringUtils.escapeUserInput(truststore.toString())))
+                        escapeUserInput(keyCertChain),
+                        escapeUserInput(privateKey),
+                        escapeUserInput(truststore)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -395,7 +380,7 @@ class DriverSettingsTest {
     DseConfiguration configuration = cluster.getConfiguration();
     SSLOptions sslOptions = configuration.getProtocolOptions().getSSLOptions();
     assertThat(sslOptions).isInstanceOf(RemoteEndpointAwareNettySSLOptions.class);
-    SslContext sslContext = (SslContext) ReflectionUtils.getInternalState(sslOptions, "context");
+    SslContext sslContext = (SslContext) getInternalState(sslOptions, "context");
     assertThat(sslContext.cipherSuites())
         .containsExactly("TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA");
   }
@@ -446,8 +431,7 @@ class DriverSettingsTest {
     // ... whose host-list is not reachable. But we can invoke the predicate to
     // verify that our two hosts are in the white list.
     @SuppressWarnings({"unchecked", "Guava"})
-    Predicate<Host> predicate =
-        (Predicate<Host>) ReflectionUtils.getInternalState(whiteListPolicy, "predicate");
+    Predicate<Host> predicate = (Predicate<Host>) getInternalState(whiteListPolicy, "predicate");
     assertThat(predicate.apply(makeHostWithAddress("127.0.0.1", 9123))).isTrue();
     assertThat(predicate.apply(makeHostWithAddress("127.0.0.4", 9123))).isFalse();
     assertThat(predicate.apply(makeHostWithAddress("127.0.0.4", 9000))).isTrue();
@@ -455,19 +439,15 @@ class DriverSettingsTest {
     // The whitelist policy chains to a token-aware policy.
     assertThat(whiteListPolicy.getChildPolicy()).isInstanceOf(TokenAwarePolicy.class);
     TokenAwarePolicy tokenAwarePolicy = (TokenAwarePolicy) whiteListPolicy.getChildPolicy();
-    assertThat(ReflectionUtils.getInternalState(tokenAwarePolicy, "shuffleReplicas"))
-        .isEqualTo(false);
+    assertThat(getInternalState(tokenAwarePolicy, "shuffleReplicas")).isEqualTo(false);
 
     // ...which chains to a DCAwareRoundRobinPolicy
     assertThat(tokenAwarePolicy.getChildPolicy()).isInstanceOf(DCAwareRoundRobinPolicy.class);
     DCAwareRoundRobinPolicy dcAwareRoundRobinPolicy =
         (DCAwareRoundRobinPolicy) tokenAwarePolicy.getChildPolicy();
-    assertThat(ReflectionUtils.getInternalState(dcAwareRoundRobinPolicy, "localDc"))
-        .isEqualTo("127.0.0.2");
-    assertThat(ReflectionUtils.getInternalState(dcAwareRoundRobinPolicy, "dontHopForLocalCL"))
-        .isEqualTo(false);
-    assertThat(ReflectionUtils.getInternalState(dcAwareRoundRobinPolicy, "usedHostsPerRemoteDc"))
-        .isEqualTo(2);
+    assertThat(getInternalState(dcAwareRoundRobinPolicy, "localDc")).isEqualTo("127.0.0.2");
+    assertThat(getInternalState(dcAwareRoundRobinPolicy, "dontHopForLocalCL")).isEqualTo(false);
+    assertThat(getInternalState(dcAwareRoundRobinPolicy, "usedHostsPerRemoteDc")).isEqualTo(2);
   }
 
   private static Host makeHostWithAddress(String host, int port) {

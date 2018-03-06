@@ -569,7 +569,7 @@ class SettingsValidatorTest {
               "--driver.auth.provider",
               "DseGSSAPIAuthProvider",
               "--driver.auth.keyTab",
-              escapeUserInput(keytabPath.toString())
+              escapeUserInput(keytabPath)
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -608,7 +608,7 @@ class SettingsValidatorTest {
               "--driver.ssl.provider",
               "JDK",
               "--driver.ssl.keystore.path",
-              escapeUserInput(keystore.toString())
+              escapeUserInput(keystore)
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -639,7 +639,7 @@ class SettingsValidatorTest {
               "--driver.ssl.provider",
               "OpenSSL",
               "--driver.ssl.openssl.keyCertChain",
-              escapeUserInput(chain.toString()),
+              escapeUserInput(chain),
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -656,7 +656,7 @@ class SettingsValidatorTest {
               "--driver.ssl.provider",
               "OpenSSL",
               "--driver.ssl.openssl.privateKey",
-              escapeUserInput(key.toString()),
+              escapeUserInput(key),
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -673,7 +673,7 @@ class SettingsValidatorTest {
               "--driver.ssl.provider",
               "JDK",
               "--driver.ssl.truststore.path",
-              escapeUserInput(truststore.toString())
+              escapeUserInput(truststore)
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -736,7 +736,7 @@ class SettingsValidatorTest {
             new String[] {
               "load",
               "--driver.ssl.truststore.path",
-              escapeUserInput(truststore.toString()),
+              escapeUserInput(truststore),
               "--driver.ssl.truststore.password",
               "mypass"
             })
@@ -791,7 +791,7 @@ class SettingsValidatorTest {
             new String[] {
               "load",
               "--driver.ssl.keystore.path",
-              escapeUserInput(keystore.toString()),
+              escapeUserInput(keystore),
               "--driver.ssl.keystore.password",
               "mypass"
             })
@@ -816,7 +816,7 @@ class SettingsValidatorTest {
               "--driver.ssl.openssl.keyCertChain",
               "noexist.chain",
               "--driver.ssl.openssl.privateKey",
-              escapeUserInput(key.toString())
+              escapeUserInput(key)
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -835,7 +835,7 @@ class SettingsValidatorTest {
               "--driver.ssl.openssl.keyCertChain",
               ".",
               "--driver.ssl.openssl.privateKey",
-              escapeUserInput(key.toString())
+              escapeUserInput(key)
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -852,9 +852,9 @@ class SettingsValidatorTest {
               "--driver.ssl.provider",
               "OpenSSL",
               "--driver.ssl.openssl.keyCertChain",
-              escapeUserInput(chain.toString()),
+              escapeUserInput(chain),
               "--driver.ssl.openssl.privateKey",
-              escapeUserInput(key.toString())
+              escapeUserInput(key)
             })
         .run();
     String err = logs.getAllMessagesAsString();
@@ -875,7 +875,7 @@ class SettingsValidatorTest {
               "--driver.ssl.provider",
               "OpenSSL",
               "--driver.ssl.openssl.keyCertChain",
-              escapeUserInput(chain.toString()),
+              escapeUserInput(chain),
               "--driver.ssl.openssl.privateKey",
               "noexist.key"
             })
@@ -893,7 +893,7 @@ class SettingsValidatorTest {
               "--driver.ssl.provider",
               "OpenSSL",
               "--driver.ssl.openssl.keyCertChain",
-              escapeUserInput(chain.toString()),
+              escapeUserInput(chain),
               "--driver.ssl.openssl.privateKey",
               "."
             })

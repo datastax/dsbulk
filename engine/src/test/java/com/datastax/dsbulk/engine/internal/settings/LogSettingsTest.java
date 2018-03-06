@@ -107,7 +107,7 @@ class LogSettingsTest {
   @Test
   void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = escapeUserInput(dir.toString());
+    String logDir = escapeUserInput(dir);
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -123,7 +123,7 @@ class LogSettingsTest {
   @Test
   void should_create_log_file_when_in_production() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = escapeUserInput(dir.toString());
+    String logDir = escapeUserInput(dir);
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -151,7 +151,7 @@ class LogSettingsTest {
   @Test
   void should_not_create_log_file_when_not_in_production() throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = escapeUserInput(dir.toString());
+    String logDir = escapeUserInput(dir);
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -169,7 +169,7 @@ class LogSettingsTest {
       @StreamCapture(STDERR) StreamInterceptor stdErr)
       throws Exception {
     Path dir = Files.createTempDirectory("test");
-    String logDir = escapeUserInput(dir.toString());
+    String logDir = escapeUserInput(dir);
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + logDir + "\"")
@@ -206,7 +206,7 @@ class LogSettingsTest {
     Files.createDirectories(foo);
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + escapeUserInput(logDir.toString()) + "\"")
+            ConfigFactory.parseString("directory = \"" + escapeUserInput(logDir) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(() -> settings.init(false))
@@ -225,8 +225,7 @@ class LogSettingsTest {
           assertThat(executionDir.toFile().setWritable(false, false)).isTrue();
           LoaderConfig config =
               new DefaultLoaderConfig(
-                  ConfigFactory.parseString(
-                          "directory = \"" + escapeUserInput(logDir.toString()) + "\"")
+                  ConfigFactory.parseString("directory = \"" + escapeUserInput(logDir) + "\"")
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
           LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
           assertThatThrownBy(() -> settings.init(false))
@@ -243,7 +242,7 @@ class LogSettingsTest {
     Files.createFile(executionDir);
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + escapeUserInput(logDir.toString()) + "\"")
+            ConfigFactory.parseString("directory = \"" + escapeUserInput(logDir) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(() -> settings.init(false))
@@ -259,8 +258,7 @@ class LogSettingsTest {
           Path logDir = Files.createTempDirectory("test");
           LoaderConfig config =
               new DefaultLoaderConfig(
-                  ConfigFactory.parseString(
-                          "directory = \"" + escapeUserInput(logDir.toString()) + "\"")
+                  ConfigFactory.parseString("directory = \"" + escapeUserInput(logDir) + "\"")
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
           char forbidden = '/';
           LogSettings settings = new LogSettings(config, forbidden + " IS FORBIDDEN");

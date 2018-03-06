@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkNumbersWritten;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
@@ -41,7 +42,6 @@ import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -62,6 +62,7 @@ import org.junit.jupiter.api.Test;
 class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private Path unloadDir;
+  private Path logDir;
 
   JsonConnectorEndToEndCCMIT(CCMCluster ccm, Session session) {
     super(ccm, session);
@@ -76,11 +77,13 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @BeforeEach
   void setUpDirs() throws IOException {
-    unloadDir = createTempDirectory("test");
+    logDir = createTempDirectory("logs");
+    unloadDir = createTempDirectory("unload");
   }
 
   @AfterEach
   void deleteDirs() {
+    deleteDirectory(logDir);
     deleteDirectory(unloadDir);
   }
 
@@ -91,11 +94,11 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.url");
-    args.add(JSON_RECORDS_UNIQUE.toExternalForm());
+    args.add(escapeUserInput(JSON_RECORDS_UNIQUE));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -106,15 +109,16 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
@@ -138,11 +142,11 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--driver.protocol.compression");
     args.add("LZ4");
     args.add("--connector.json.url");
-    args.add(JSON_RECORDS_UNIQUE.toExternalForm());
+    args.add(escapeUserInput(JSON_RECORDS_UNIQUE));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -153,17 +157,18 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--driver.protocol.compression");
     args.add("LZ4");
     args.add("--connector.json.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
@@ -187,11 +192,11 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--driver.protocol.compression");
     args.add("SNAPPY");
     args.add("--connector.json.url");
-    args.add(JSON_RECORDS_UNIQUE.toExternalForm());
+    args.add(escapeUserInput(JSON_RECORDS_UNIQUE));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -202,17 +207,18 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--driver.protocol.compression");
     args.add("SNAPPY");
     args.add("--connector.json.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
@@ -236,9 +242,9 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.json.url");
-    args.add(JSON_RECORDS_COMPLEX.toExternalForm());
+    args.add(escapeUserInput(JSON_RECORDS_COMPLEX));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -249,15 +255,16 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(5, SELECT_FROM_IP_BY_COUNTRY_COMPLEX);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.json.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
@@ -281,9 +288,9 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.json.url");
-    args.add(JSON_RECORDS.toExternalForm());
+    args.add(escapeUserInput(JSON_RECORDS));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -294,15 +301,16 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(500, SELECT_FROM_IP_BY_COUNTRY);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.json.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
@@ -330,9 +338,9 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("-url");
-    args.add(JSON_RECORDS_WITH_SPACES.toExternalForm());
+    args.add(escapeUserInput(JSON_RECORDS_WITH_SPACES));
     args.add("--schema.mapping");
     args.add("key=key,my source=my destination");
     args.add("-k");
@@ -343,15 +351,16 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("-url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.mapping");
@@ -375,9 +384,9 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.json.url");
-    args.add(JSON_RECORDS_SKIP.toExternalForm());
+    args.add(escapeUserInput(JSON_RECORDS_SKIP));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -395,15 +404,16 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
     validateExceptionsLog(3, "Source  :", "mapping-errors.log", logPath);
+    deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
     args.add("--log.directory");
-    args.add(Files.createTempDirectory("test").toString());
+    args.add(escapeUserInput(logDir));
     args.add("--connector.json.url");
-    args.add(unloadDir.toString());
+    args.add(escapeUserInput(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
@@ -431,9 +441,9 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     loadArgs.add("--connector.name");
     loadArgs.add("json");
     loadArgs.add("--log.directory");
-    loadArgs.add(Files.createTempDirectory("test").toString());
+    loadArgs.add(escapeUserInput(logDir));
     loadArgs.add("--connector.json.url");
-    loadArgs.add(ClassLoader.getSystemResource("number.json").toExternalForm());
+    loadArgs.add(escapeUserInput(ClassLoader.getSystemResource("number.json").toExternalForm()));
     loadArgs.add("--connector.json.mode");
     loadArgs.add("SINGLE_DOCUMENT");
     loadArgs.add("--codec.overflowStrategy");
@@ -447,17 +457,17 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
-
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
+    deleteDirectory(logDir);
 
     List<String> unloadArgs = new ArrayList<>();
     unloadArgs.add("unload");
     unloadArgs.add("--connector.name");
     unloadArgs.add("json");
     unloadArgs.add("--log.directory");
-    unloadArgs.add(Files.createTempDirectory("test").toString());
+    unloadArgs.add(escapeUserInput(logDir));
     unloadArgs.add("--connector.json.url");
-    unloadArgs.add(unloadDir.toString());
+    unloadArgs.add(escapeUserInput(unloadDir));
     unloadArgs.add("--connector.json.mode");
     unloadArgs.add("MULTI_DOCUMENT");
     unloadArgs.add("--connector.csv.maxConcurrentFiles");
@@ -471,16 +481,16 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
-
     checkNumbersRead(TRUNCATE, unloadDir);
+    deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
     loadArgs = new ArrayList<>();
     loadArgs.add("load");
     loadArgs.add("--log.directory");
-    loadArgs.add(Files.createTempDirectory("test").toString());
+    loadArgs.add(escapeUserInput(logDir));
     loadArgs.add("--connector.csv.url");
-    loadArgs.add(unloadDir.toString());
+    loadArgs.add(escapeUserInput(unloadDir));
     loadArgs.add("--connector.csv.header");
     loadArgs.add("false");
     loadArgs.add("--connector.csv.delimiter");
@@ -496,7 +506,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
-
     // no rounding possible in json
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
   }
@@ -514,11 +523,9 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     loadArgs.add("--connector.name");
     loadArgs.add("json");
     loadArgs.add("--log.directory");
-    loadArgs.add(Files.createTempDirectory("test").toString());
-    loadArgs.add("--connector.name");
-    loadArgs.add("json");
+    loadArgs.add(escapeUserInput(logDir));
     loadArgs.add("--connector.json.url");
-    loadArgs.add(ClassLoader.getSystemResource("number.json").toExternalForm());
+    loadArgs.add(escapeUserInput(ClassLoader.getSystemResource("number.json").toExternalForm()));
     loadArgs.add("--connector.json.mode");
     loadArgs.add("SINGLE_DOCUMENT");
     loadArgs.add("--codec.overflowStrategy");
@@ -532,19 +539,19 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
-
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateExceptionsLog(1, "overflow", "mapping-errors.log", logPath);
     checkNumbersWritten(REJECT, UNNECESSARY, session);
+    deleteDirectory(logDir);
 
     List<String> unloadArgs = new ArrayList<>();
     unloadArgs.add("unload");
     unloadArgs.add("--connector.name");
     unloadArgs.add("json");
     unloadArgs.add("--log.directory");
-    unloadArgs.add(Files.createTempDirectory("test").toString());
+    unloadArgs.add(escapeUserInput(logDir));
     unloadArgs.add("--connector.json.url");
-    unloadArgs.add(unloadDir.toString());
+    unloadArgs.add(escapeUserInput(unloadDir));
     unloadArgs.add("--connector.json.mode");
     unloadArgs.add("MULTI_DOCUMENT");
     unloadArgs.add("--connector.csv.maxConcurrentFiles");
@@ -558,16 +565,16 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
-
     checkNumbersRead(REJECT, unloadDir);
+    deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
     loadArgs = new ArrayList<>();
     loadArgs.add("load");
     loadArgs.add("--log.directory");
-    loadArgs.add(Files.createTempDirectory("test").toString());
+    loadArgs.add(escapeUserInput(logDir));
     loadArgs.add("--connector.csv.url");
-    loadArgs.add(unloadDir.toString());
+    loadArgs.add(escapeUserInput(unloadDir));
     loadArgs.add("--connector.csv.header");
     loadArgs.add("false");
     loadArgs.add("--connector.csv.delimiter");
@@ -583,7 +590,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
-
     checkNumbersWritten(REJECT, UNNECESSARY, session);
   }
 
