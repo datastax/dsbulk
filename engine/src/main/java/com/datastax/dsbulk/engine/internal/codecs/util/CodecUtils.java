@@ -350,10 +350,7 @@ public class CodecUtils {
    * @param value the value to convert.
    * @param targetClass the target class; cannot be {@code null}.
    * @return the converted number.
-   * @throws IllegalArgumentException if the target class is unknown.
-   * @throws ArithmeticException if he number cannot be converted to the target class without
-   *     precision loss.
-   * @throws NumberFormatException if the number cannot be converted to the target class.
+   * @throws ArithmeticException if the number cannot be converted to the target class.
    */
   @SuppressWarnings("unchecked")
   public static <N> N convertNumber(Number value, @NotNull Class<? extends N> targetClass)
@@ -386,8 +383,7 @@ public class CodecUtils {
     if (targetClass.equals(BigDecimal.class)) {
       return (N) toBigDecimal(value);
     }
-    throw new IllegalArgumentException(
-        String.format("Cannot convert %s of %s to %s", value, value.getClass(), targetClass));
+    throw conversionFailed(value, targetClass);
   }
 
   /**
@@ -403,17 +399,17 @@ public class CodecUtils {
       return (Byte) value;
     } else if (value instanceof Short) {
       if (value.byteValue() != value.shortValue()) {
-        throw new ArithmeticException("Value is out of byte range: " + value);
+        throw conversionFailed(value, Byte.class);
       }
       return value.byteValue();
     } else if (value instanceof Integer) {
       if (value.byteValue() != value.intValue()) {
-        throw new ArithmeticException("Value is out of byte range: " + value);
+        throw conversionFailed(value, Byte.class);
       }
       return value.byteValue();
     } else if (value instanceof Long) {
       if (value.byteValue() != value.longValue()) {
-        throw new ArithmeticException("Value is out of byte range: " + value);
+        throw conversionFailed(value, Byte.class);
       }
       return value.byteValue();
     } else {
@@ -426,7 +422,7 @@ public class CodecUtils {
           return new BigDecimal(value.toString()).byteValueExact();
         }
       } catch (ArithmeticException e) {
-        throw new ArithmeticException(e.getMessage() + ": " + value);
+        throw conversionFailed(value, Byte.class, e);
       }
     }
   }
@@ -446,12 +442,12 @@ public class CodecUtils {
       return value.shortValue();
     } else if (value instanceof Integer) {
       if (value.shortValue() != value.intValue()) {
-        throw new ArithmeticException("Value is out of short range: " + value);
+        throw conversionFailed(value, Short.class);
       }
       return value.shortValue();
     } else if (value instanceof Long) {
       if (value.shortValue() != value.longValue()) {
-        throw new ArithmeticException("Value is out of short range: " + value);
+        throw conversionFailed(value, Short.class);
       }
       return value.shortValue();
     } else {
@@ -464,7 +460,7 @@ public class CodecUtils {
           return new BigDecimal(value.toString()).shortValueExact();
         }
       } catch (ArithmeticException e) {
-        throw new ArithmeticException(e.getMessage() + ": " + value);
+        throw conversionFailed(value, Short.class, e);
       }
     }
   }
@@ -484,7 +480,7 @@ public class CodecUtils {
       return value.intValue();
     } else if (value instanceof Long) {
       if (value.intValue() != value.longValue()) {
-        throw new ArithmeticException("Value is out of int range: " + value);
+        throw conversionFailed(value, Integer.class);
       }
       return value.intValue();
     } else {
@@ -497,7 +493,7 @@ public class CodecUtils {
           return new BigDecimal(value.toString()).intValueExact();
         }
       } catch (ArithmeticException e) {
-        throw new ArithmeticException(e.getMessage() + ": " + value);
+        throw conversionFailed(value, Integer.class, e);
       }
     }
   }
@@ -525,7 +521,7 @@ public class CodecUtils {
           return new BigDecimal(value.toString()).longValueExact();
         }
       } catch (ArithmeticException e) {
-        throw new ArithmeticException(e.getMessage() + ": " + value);
+        throw conversionFailed(value, Long.class, e);
       }
     }
   }
@@ -554,7 +550,7 @@ public class CodecUtils {
           return new BigDecimal(value.toString()).toBigIntegerExact();
         }
       } catch (ArithmeticException e) {
-        throw new ArithmeticException(e.getMessage() + ": " + value);
+        throw conversionFailed(value, BigInteger.class, e);
       }
     }
   }
@@ -574,10 +570,10 @@ public class CodecUtils {
       return (Float) value;
     } else {
       if (Float.isInfinite(value.floatValue()) || Float.isNaN(value.floatValue())) {
-        throw new ArithmeticException("Floating point overflow: " + value);
+        throw conversionFailed(value, Float.class);
       }
       if (toBigDecimal(value).compareTo(new BigDecimal(Float.toString(value.floatValue()))) != 0) {
-        throw new ArithmeticException("Floating point overflow: " + value);
+        throw conversionFailed(value, Float.class);
       }
       return value.floatValue();
     }
@@ -598,11 +594,11 @@ public class CodecUtils {
       return (Double) value;
     } else {
       if (Double.isInfinite(value.doubleValue()) || Double.isNaN(value.doubleValue())) {
-        throw new ArithmeticException("Floating point overflow: " + value);
+        throw conversionFailed(value, Double.class);
       }
       if (toBigDecimal(value).compareTo(new BigDecimal(Double.toString(value.doubleValue())))
           != 0) {
-        throw new ArithmeticException("Floating point overflow: " + value);
+        throw conversionFailed(value, Double.class);
       }
       return value.doubleValue();
     }
@@ -630,14 +626,26 @@ public class CodecUtils {
       try {
         return new BigDecimal(value.toString());
       } catch (NumberFormatException e) {
-        if (e.getMessage() != null) {
-          throw new ArithmeticException(e.getMessage() + ": " + value);
-        } else {
-          throw new ArithmeticException("Cannot convert to BigDecimal: " + value);
-        }
+        throw conversionFailed(value, BigDecimal.class, e);
       }
     }
   }
+
+  private static ArithmeticException conversionFailed(
+      @NotNull Number value,
+      @NotNull Class<? extends Number> targetClass,
+      @NotNull Throwable cause) {
+    return (ArithmeticException) conversionFailed(value, targetClass).initCause(cause);
+  }
+
+  private static ArithmeticException conversionFailed(
+      @NotNull Number value, @NotNull Class<? extends Number> targetClass) {
+    return new ArithmeticException(
+        String.format(
+            "Cannot convert %s from %s to %s",
+            value, value.getClass().getSimpleName(), targetClass.getSimpleName()));
+  }
+
   /**
    * Converts the given temporal into a temporal of the target class.
    *
