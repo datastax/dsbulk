@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.commons.tests.utils;
 
-
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
