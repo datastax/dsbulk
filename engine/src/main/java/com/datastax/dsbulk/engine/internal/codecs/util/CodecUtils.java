@@ -189,7 +189,7 @@ public class CodecUtils {
    * @param overflowStrategy the overflow strategy; cannot be {@code null}.
    * @param roundingMode the rounding mode; cannot be {@code null}.
    * @return the narrowed number.
-   * @throws IllegalArgumentException if the number cannot be converted.
+   * @throws ArithmeticException if the number cannot be converted.
    */
   public static <N extends Number> N narrowNumber(
       Number value,
@@ -205,17 +205,9 @@ public class CodecUtils {
     try {
       return convertNumber(value, targetClass);
     } catch (ArithmeticException e1) {
-      try {
-        @SuppressWarnings("unchecked")
-        N truncated = (N) overflowStrategy.apply(value, e1, targetClass, roundingMode);
-        return truncated;
-      } catch (ArithmeticException e2) {
-        // e2 should be the same as e1, rethrown
-        throw new IllegalArgumentException(
-            String.format(
-                "Cannot convert %s of type %s to %s", value, value.getClass(), targetClass),
-            e2);
-      }
+      @SuppressWarnings("unchecked")
+      N truncated = (N) overflowStrategy.apply(value, e1, targetClass, roundingMode);
+      return truncated;
     }
   }
 
