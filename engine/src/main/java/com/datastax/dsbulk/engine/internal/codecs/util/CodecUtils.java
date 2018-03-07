@@ -346,8 +346,7 @@ public class CodecUtils {
    */
   @SuppressWarnings("unchecked")
   public static <N extends Number> N convertNumber(
-      Number value, @NotNull Class<? extends N> targetClass)
-      throws IllegalArgumentException, ArithmeticException {
+      Number value, @NotNull Class<? extends N> targetClass) throws ArithmeticException {
     Objects.requireNonNull(targetClass);
     if (value == null) {
       return null;
@@ -667,7 +666,7 @@ public class CodecUtils {
       @NotNull Class<? extends T> targetClass,
       @NotNull ZoneId timeZone,
       @NotNull LocalDate epoch)
-      throws DateTimeException, IllegalArgumentException {
+      throws DateTimeException {
     Objects.requireNonNull(targetClass);
     Objects.requireNonNull(timeZone);
     Objects.requireNonNull(epoch);
