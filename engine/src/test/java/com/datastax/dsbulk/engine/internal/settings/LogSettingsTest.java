@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.maybeEscapeBackslash;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.MAIN_LOG_FILE_APPENDER;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -136,8 +136,7 @@ class LogSettingsTest {
   void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
+            ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     settings.init(false);
@@ -153,8 +152,7 @@ class LogSettingsTest {
   void should_create_log_file_when_in_production() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
+            ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     ch.qos.logback.classic.Logger root =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -180,8 +178,7 @@ class LogSettingsTest {
   void should_not_create_log_file_when_not_in_production() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
+            ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     settings.init(false);
@@ -197,8 +194,7 @@ class LogSettingsTest {
       throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
+            ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     ch.qos.logback.classic.Logger root =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -231,8 +227,7 @@ class LogSettingsTest {
     Files.createDirectories(foo);
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
+            ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(() -> settings.init(false))
@@ -250,8 +245,7 @@ class LogSettingsTest {
           assertThat(executionDir.toFile().setWritable(false, false)).isTrue();
           LoaderConfig config =
               new DefaultLoaderConfig(
-                  ConfigFactory.parseString(
-                          "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
+                  ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
           LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
           assertThatThrownBy(() -> settings.init(false))
@@ -266,8 +260,7 @@ class LogSettingsTest {
     Files.createFile(executionDir);
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
+            ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(() -> settings.init(false))
@@ -282,8 +275,7 @@ class LogSettingsTest {
         () -> {
           LoaderConfig config =
               new DefaultLoaderConfig(
-                  ConfigFactory.parseString(
-                          "directory = \"" + maybeEscapeBackslash(tempFolder.toString()) + "\"")
+                  ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
           char forbidden = '/';
           LogSettings settings = new LogSettings(config, forbidden + " IS FORBIDDEN");

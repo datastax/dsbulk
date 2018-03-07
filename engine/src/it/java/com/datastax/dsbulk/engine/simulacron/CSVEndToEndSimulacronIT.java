@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_CRLF;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_ERROR;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_LONG;
@@ -56,6 +57,7 @@ import com.datastax.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
+import com.datastax.dsbulk.engine.tests.utils.EndToEndUtils;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
@@ -70,7 +72,6 @@ import com.datastax.oss.simulacron.server.BoundCluster;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -95,6 +96,7 @@ class CSVEndToEndSimulacronIT {
   private final BoundCluster simulacron;
 
   private Path unloadDir;
+  private Path logDir;
 
   CSVEndToEndSimulacronIT(BoundCluster simulacron) {
     this.simulacron = simulacron;
@@ -108,30 +110,31 @@ class CSVEndToEndSimulacronIT {
 
   @BeforeEach
   void setUpDirs() throws IOException {
-    unloadDir = createTempDirectory("test");
+    logDir = createTempDirectory("logs");
+    unloadDir = createTempDirectory("unload");
   }
 
   @AfterEach
   void deleteDirs() {
+    deleteDirectory(logDir);
     deleteDirectory(unloadDir);
   }
 
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
-    com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.resetLogbackConfiguration();
+    EndToEndUtils.resetLogbackConfiguration();
   }
 
   @Test
-  void full_load(@LogCapture LogInterceptor logs, @StreamCapture(STDOUT) StreamInterceptor stdOut)
-      throws Exception {
+  void full_load(@LogCapture LogInterceptor logs, @StreamCapture(STDOUT) StreamInterceptor stdOut) {
     String[] args = {
       "load",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      CSV_RECORDS_UNIQUE.toExternalForm(),
+      escapeUserInput(CSV_RECORDS_UNIQUE),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -146,26 +149,24 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isZero();
-
     assertThat(stdOut.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
-
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
 
   @Test
-  void full_load_dry_run() throws Exception {
+  void full_load_dry_run() {
     String[] args = {
       "load",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      CSV_RECORDS_UNIQUE.toExternalForm(),
+      escapeUserInput(CSV_RECORDS_UNIQUE),
       "-dryRun",
       "true",
       "--driver.query.consistency",
@@ -182,21 +183,20 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isZero();
-
     validateQueryCount(simulacron, 0, "INSERT INTO ip_by_country", ONE);
   }
 
   @Test
-  void full_load_crlf() throws Exception {
+  void full_load_crlf() {
 
     String[] args = {
       "load",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      CSV_RECORDS_CRLF.toExternalForm(),
+      escapeUserInput(CSV_RECORDS_CRLF),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -220,11 +220,11 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      CSV_RECORDS_PARTIAL_BAD.toExternalForm(),
+      escapeUserInput(CSV_RECORDS_PARTIAL_BAD),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
@@ -239,7 +239,6 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
-
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
@@ -294,11 +293,11 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      CSV_RECORDS_ERROR.toExternalForm(),
+      escapeUserInput(CSV_RECORDS_ERROR),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.policy.maxRetries",
@@ -317,7 +316,6 @@ class CSVEndToEndSimulacronIT {
     // the unavailable.
     int status = new Main(args).run();
     assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
-
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(4, logPath);
@@ -330,11 +328,11 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      CSV_RECORDS_SKIP.toExternalForm(),
+      escapeUserInput(CSV_RECORDS_SKIP),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
@@ -353,7 +351,6 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
-
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
@@ -361,16 +358,16 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void load_long_column() throws Exception {
+  void load_long_column() {
     // This will attempt to load a CSV file with column longer then 4096 characters.
     String[] args = {
       "load",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      CSV_RECORDS_LONG.toExternalForm(),
+      escapeUserInput(CSV_RECORDS_LONG),
       "--connector.csv.maxCharsPerColumn",
       "10000",
       "--driver.query.consistency",
@@ -387,23 +384,21 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isZero();
-
     validateQueryCount(simulacron, 1, "INSERT INTO ip_by_country", LOCAL_ONE);
   }
 
   @Test
-  void error_load_percentage(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs)
-      throws Exception {
+  void error_load_percentage(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs) {
     String[] args = {
       "load",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--log.maxErrors",
       "1%",
       "-header",
       "false",
       "--connector.csv.url",
-      CSV_RECORDS_PARTIAL_BAD_LONG.toExternalForm(),
+      escapeUserInput(CSV_RECORDS_PARTIAL_BAD_LONG),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -419,7 +414,6 @@ class CSVEndToEndSimulacronIT {
     };
     int status = new Main(args).run();
     assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
-
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum percentage allowed is 1.0%");
   }
@@ -434,11 +428,11 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      unloadDir.toString(),
+      escapeUserInput(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "1",
       "--driver.query.consistency",
@@ -455,12 +449,10 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
-
     assertThat(stdOut.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Reads: total: 24, successful: 24, failed: 0");
-
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validateOutputFiles(24, unloadDir);
   }
@@ -478,11 +470,11 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      unloadDir.toString(),
+      escapeUserInput(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "1",
       "--connector.csv.delimiter",
@@ -503,7 +495,6 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
-
     verifyDelimiterCount(';', 168);
     verifyDelimiterCount('<', 96);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
@@ -520,11 +511,11 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      unloadDir.toString(),
+      escapeUserInput(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "4",
       "--driver.query.consistency",
@@ -541,13 +532,12 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
-
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.LOCAL_ONE);
     validateOutputFiles(1000, unloadDir);
   }
 
   @Test
-  void unload_failure_during_read_single_thread() throws Exception {
+  void unload_failure_during_read_single_thread() {
 
     RequestPrime prime =
         createQueryWithError(
@@ -557,11 +547,11 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      unloadDir.toString(),
+      escapeUserInput(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "1",
       "--driver.query.consistency",
@@ -578,13 +568,12 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
-
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
 
   @Test
-  void unload_failure_during_read_multi_thread() throws Exception {
+  void unload_failure_during_read_multi_thread() {
 
     RequestPrime prime =
         createQueryWithError(
@@ -594,11 +583,11 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      unloadDir.toString(),
+      escapeUserInput(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "4",
       "--driver.query.consistency",
@@ -615,7 +604,6 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
-
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
@@ -623,8 +611,7 @@ class CSVEndToEndSimulacronIT {
   @Test
   void unload_write_error(
       @LogCapture(value = Main.class, level = ERROR) LogInterceptor logs,
-      @StreamCapture(STDERR) StreamInterceptor stdErr)
-      throws Exception {
+      @StreamCapture(STDERR) StreamInterceptor stdErr) {
 
     MockConnector.setDelegate(
         new CSVConnector() {
@@ -634,7 +621,7 @@ class CSVEndToEndSimulacronIT {
             settings =
                 new DefaultLoaderConfig(
                     ConfigFactory.parseMap(
-                            ImmutableMap.of("url", unloadDir.toString(), "header", "false"))
+                            ImmutableMap.of("url", escapeUserInput(unloadDir), "header", "false"))
                         .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.csv")));
             super.configure(settings, read);
           }
@@ -655,7 +642,7 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.name",
       "mock",
       "--driver.query.consistency",
@@ -672,7 +659,6 @@ class CSVEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
-
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("aborted: java.io.IOException: booo");
@@ -682,18 +668,17 @@ class CSVEndToEndSimulacronIT {
   void validate_stdout(
       @StreamCapture(STDOUT) StreamInterceptor stdOut,
       @StreamCapture(STDERR) StreamInterceptor stdErr,
-      @LogCapture(LogSettings.class) LogInterceptor logs)
-      throws Exception {
+      @LogCapture(LogSettings.class) LogInterceptor logs) {
 
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
     simulacron.prime(new Prime(prime));
 
-    com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.setProductionKey();
+    EndToEndUtils.setProductionKey();
 
     String[] args = {
       "unload",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "-header",
       "false",
       "--connector.csv.url",

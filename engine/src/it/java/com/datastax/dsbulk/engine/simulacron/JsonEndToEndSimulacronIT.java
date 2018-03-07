@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.simulacron;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createParameterizedQuery;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithError;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSet;
@@ -46,12 +47,12 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
-import com.datastax.dsbulk.commons.tests.utils.CsvUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.json.JsonConnector;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
+import com.datastax.dsbulk.engine.tests.utils.EndToEndUtils;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
@@ -88,6 +89,7 @@ class JsonEndToEndSimulacronIT {
   private final BoundCluster simulacron;
 
   private Path unloadDir;
+  private Path logDir;
 
   JsonEndToEndSimulacronIT(BoundCluster simulacron) {
     this.simulacron = simulacron;
@@ -95,11 +97,13 @@ class JsonEndToEndSimulacronIT {
 
   @BeforeEach
   void setUpDirs() throws IOException {
-    unloadDir = createTempDirectory("test");
+    logDir = createTempDirectory("logs");
+    unloadDir = createTempDirectory("unload");
   }
 
   @AfterEach
   void deleteDirs() {
+    deleteDirectory(logDir);
     deleteDirectory(unloadDir);
   }
 
@@ -111,19 +115,19 @@ class JsonEndToEndSimulacronIT {
 
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
-    com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.resetLogbackConfiguration();
+    EndToEndUtils.resetLogbackConfiguration();
   }
 
   @Test
-  void full_load() throws Exception {
+  void full_load() {
     String[] args = {
       "load",
       "-c",
       "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.json.url",
-      JSON_RECORDS_UNIQUE.toExternalForm(),
+      escapeUserInput(JSON_RECORDS_UNIQUE),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -142,15 +146,15 @@ class JsonEndToEndSimulacronIT {
   }
 
   @Test
-  void full_load_dry_run() throws Exception {
+  void full_load_dry_run() {
     String[] args = {
       "load",
       "-c",
       "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.json.url",
-      JSON_RECORDS_UNIQUE.toExternalForm(),
+      escapeUserInput(JSON_RECORDS_UNIQUE),
       "-dryRun",
       "true",
       "--driver.query.consistency",
@@ -167,21 +171,20 @@ class JsonEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isZero();
-
     validateQueryCount(simulacron, 0, "INSERT INTO ip_by_country", ONE);
   }
 
   @Test
-  void full_load_crlf() throws Exception {
+  void full_load_crlf() {
 
     String[] args = {
       "load",
       "-c",
       "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.json.url",
-      JSON_RECORDS_CRLF.toExternalForm(),
+      escapeUserInput(JSON_RECORDS_CRLF),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -196,7 +199,6 @@ class JsonEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isZero();
-
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
 
@@ -208,9 +210,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.json.url",
-      JSON_RECORDS_PARTIAL_BAD.toExternalForm(),
+      escapeUserInput(JSON_RECORDS_PARTIAL_BAD),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
@@ -225,7 +227,6 @@ class JsonEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
-
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(2, logPath);
@@ -282,9 +283,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.json.url",
-      JSON_RECORDS_ERROR.toExternalForm(),
+      escapeUserInput(JSON_RECORDS_ERROR),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.policy.maxRetries",
@@ -303,7 +304,6 @@ class JsonEndToEndSimulacronIT {
     // the unavailable.
     int status = new Main(args).run();
     assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
-
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(4, logPath);
@@ -318,9 +318,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.json.url",
-      JSON_RECORDS_SKIP.toExternalForm(),
+      escapeUserInput(JSON_RECORDS_SKIP),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
@@ -339,7 +339,6 @@ class JsonEndToEndSimulacronIT {
 
     int status = new Main(args).run();
     assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
-
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
@@ -357,9 +356,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.json.url",
-      unloadDir.toString(),
+      escapeUserInput(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "1",
       "--driver.query.consistency",
@@ -376,7 +375,6 @@ class JsonEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
-
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validateOutputFiles(24, unloadDir);
   }
@@ -393,9 +391,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.json.url",
-      unloadDir.toString(),
+      escapeUserInput(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "4",
       "--driver.query.consistency",
@@ -412,13 +410,12 @@ class JsonEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isZero();
-
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.LOCAL_ONE);
     validateOutputFiles(1000, unloadDir);
   }
 
   @Test
-  void unload_failure_during_read_single_thread() throws Exception {
+  void unload_failure_during_read_single_thread() {
 
     RequestPrime prime =
         createQueryWithError(
@@ -430,9 +427,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.json.url",
-      unloadDir.toString(),
+      escapeUserInput(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "1",
       "--driver.query.consistency",
@@ -449,13 +446,12 @@ class JsonEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
-
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
 
   @Test
-  void unload_failure_during_read_multi_thread() throws Exception {
+  void unload_failure_during_read_multi_thread() {
 
     RequestPrime prime =
         createQueryWithError(
@@ -467,9 +463,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.json.url",
-      unloadDir.toString(),
+      escapeUserInput(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "4",
       "--driver.query.consistency",
@@ -486,7 +482,6 @@ class JsonEndToEndSimulacronIT {
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
-
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
@@ -494,8 +489,7 @@ class JsonEndToEndSimulacronIT {
   @Test
   void unload_write_error(
       @LogCapture(value = Main.class, level = ERROR) LogInterceptor logs,
-      @StreamCapture(STDERR) StreamInterceptor stdErr)
-      throws Exception {
+      @StreamCapture(STDERR) StreamInterceptor stdErr) {
 
     MockConnector.setDelegate(
         new JsonConnector() {
@@ -505,7 +499,7 @@ class JsonEndToEndSimulacronIT {
             settings =
                 new DefaultLoaderConfig(
                     ConfigFactory.parseMap(
-                            ImmutableMap.of("url", unloadDir.toString(), "header", "false"))
+                            ImmutableMap.of("url", escapeUserInput(unloadDir), "header", "false"))
                         .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.json")));
             super.configure(settings, read);
           }
@@ -521,13 +515,13 @@ class JsonEndToEndSimulacronIT {
           }
         });
 
-    RequestPrime prime = createQueryWithResultSet(CsvUtils.SELECT_FROM_IP_BY_COUNTRY, 10);
+    RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 10);
     simulacron.prime(new Prime(prime));
 
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
+      escapeUserInput(logDir),
       "--connector.name",
       "mock",
       "--driver.query.consistency",
@@ -537,14 +531,13 @@ class JsonEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      CsvUtils.IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING
     };
 
     int status = new Main(unloadArgs).run();
     assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
-
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("Error writing to file:")
@@ -555,23 +548,22 @@ class JsonEndToEndSimulacronIT {
   void validate_stdout(
       @StreamCapture(STDOUT) StreamInterceptor stdOut,
       @StreamCapture(STDERR) StreamInterceptor stdErr,
-      @LogCapture(LogSettings.class) LogInterceptor logs)
-      throws Exception {
+      @LogCapture(LogSettings.class) LogInterceptor logs) {
 
-    RequestPrime prime = createQueryWithResultSet(CsvUtils.SELECT_FROM_IP_BY_COUNTRY, 24);
+    RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
     simulacron.prime(new Prime(prime));
 
     setProductionKey();
 
     String[] args = {
       "unload",
+      "-c",
+      "json",
       "--log.directory",
-      Files.createTempDirectory("test").toString(),
-      "-header",
-      "false",
-      "--connector.csv.url",
+      escapeUserInput(logDir),
+      "--connector.json.url",
       "-",
-      "--connector.csv.maxConcurrentFiles",
+      "--connector.json.maxConcurrentFiles",
       "1",
       "--driver.query.consistency",
       "ONE",
@@ -580,15 +572,14 @@ class JsonEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      CsvUtils.SELECT_FROM_IP_BY_COUNTRY,
+      SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      CsvUtils.IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING
     };
 
     int status = new Main(args).run();
     assertThat(status).isZero();
-
-    validateQueryCount(simulacron, 1, CsvUtils.SELECT_FROM_IP_BY_COUNTRY, ONE);
+    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     assertThat(stdOut.getStreamLines().size()).isEqualTo(24);
     assertThat(stdErr.getStreamAsString())
         .contains("Standard output is reserved, log messages are redirected to standard error.");
