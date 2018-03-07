@@ -30,7 +30,6 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** */
 public abstract class RemoteClusterExtension implements AfterAllCallback, ParameterResolver {
 
   public static final ExtensionContext.Namespace TEST_NAMESPACE =

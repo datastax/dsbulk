@@ -15,7 +15,6 @@ import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 
-/** */
 @SuppressWarnings("SimplifiableIfStatement")
 public class SessionFactory {
 

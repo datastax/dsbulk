@@ -11,7 +11,6 @@ package com.datastax.dsbulk.commons.tests.utils;
 import com.sun.management.OperatingSystemMXBean;
 import java.lang.management.ManagementFactory;
 
-/** */
 public class MemoryUtils {
 
   /**

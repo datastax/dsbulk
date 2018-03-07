@@ -57,7 +57,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-/** */
 class LogManagerTest {
 
   private final String source1 = "line1\n";

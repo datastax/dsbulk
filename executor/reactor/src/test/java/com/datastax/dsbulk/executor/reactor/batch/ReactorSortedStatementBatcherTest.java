@@ -15,7 +15,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
-/** */
 class ReactorSortedStatementBatcherTest extends ReactorStatementBatcherTest {
 
   @Test

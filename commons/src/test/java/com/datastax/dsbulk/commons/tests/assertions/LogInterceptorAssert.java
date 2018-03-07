@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.assertj.core.api.AbstractObjectAssert;
 
-/** */
 @SuppressWarnings("UnusedReturnValue")
 public class LogInterceptorAssert
     extends AbstractObjectAssert<LogInterceptorAssert, LogInterceptor> {

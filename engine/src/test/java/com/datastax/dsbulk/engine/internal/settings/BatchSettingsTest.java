@@ -29,7 +29,6 @@ import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** */
 class BatchSettingsTest {
 
   private Cluster cluster;

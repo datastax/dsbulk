@@ -15,7 +15,6 @@ import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.Statement;
 import java.util.List;
 
-/** */
 public class BoundStatementPrinter<T extends BoundStatement> extends StatementPrinterBase<T> {
 
   @Override
@@ -49,10 +48,14 @@ public class BoundStatementPrinter<T extends BoundStatement> extends StatementPr
         for (int i = 0; i < metadata.size(); i++) {
           out.newLine();
           out.indent();
-          if (statement.isSet(i))
+          if (statement.isSet(i)) {
             out.appendBoundValue(metadata.getName(i), statement.getObject(i), metadata.getType(i));
-          else out.appendUnsetBoundValue(metadata.getName(i));
-          if (out.maxAppendedBoundValuesExceeded()) break;
+          } else {
+            out.appendUnsetBoundValue(metadata.getName(i));
+          }
+          if (out.maxAppendedBoundValuesExceeded()) {
+            break;
+          }
         }
       }
     }

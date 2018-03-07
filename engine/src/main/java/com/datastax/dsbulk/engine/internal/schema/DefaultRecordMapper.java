@@ -25,7 +25,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import java.util.function.BiFunction;
 
-/** */
 public class DefaultRecordMapper implements RecordMapper {
 
   private static final String FIELD = "field";

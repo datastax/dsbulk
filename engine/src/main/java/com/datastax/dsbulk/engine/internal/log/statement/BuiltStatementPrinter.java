@@ -15,7 +15,6 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.BuiltStatement;
 import java.util.List;
 
-/** */
 public class BuiltStatementPrinter extends RegularStatementPrinter<BuiltStatement> {
 
   @Override
@@ -46,7 +45,9 @@ public class BuiltStatementPrinter extends RegularStatementPrinter<BuiltStatemen
         out.newLine();
         out.indent();
         out.appendBoundValue(i, statement.getObject(i), null);
-        if (out.maxAppendedBoundValuesExceeded()) break;
+        if (out.maxAppendedBoundValuesExceeded()) {
+          break;
+        }
       }
     }
   }

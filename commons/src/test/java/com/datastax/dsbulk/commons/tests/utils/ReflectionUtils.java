@@ -14,7 +14,6 @@ import java.lang.reflect.Method;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-/** */
 public class ReflectionUtils {
 
   public static Set<Field> locateFieldsAnnotatedWith(

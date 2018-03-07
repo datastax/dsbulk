@@ -11,7 +11,6 @@ package com.datastax.dsbulk.engine.internal.statement;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.PreparedStatement;
 
-/** */
 public class BulkBoundStatement<T> extends BoundStatement implements BulkStatement<T> {
 
   private final T source;

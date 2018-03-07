@@ -17,7 +17,6 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 
-/** */
 public class DefaultErrorRecord implements ErrorRecord {
 
   private final Object source;

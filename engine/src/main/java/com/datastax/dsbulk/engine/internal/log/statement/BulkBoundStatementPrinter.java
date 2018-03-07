@@ -14,7 +14,6 @@ import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 
-/** */
 public class BulkBoundStatementPrinter extends BoundStatementPrinter<BulkBoundStatement<Record>> {
 
   @Override

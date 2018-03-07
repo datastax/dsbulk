@@ -11,7 +11,6 @@ package com.datastax.driver.core;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-/** */
 public class DriverCoreHooks {
 
   public static int valuesCount(

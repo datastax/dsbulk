@@ -41,7 +41,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** */
 public class Main {
 
   private static final Config REFERENCE = ConfigFactory.defaultReference().getConfig("dsbulk");

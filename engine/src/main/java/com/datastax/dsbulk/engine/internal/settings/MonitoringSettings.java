@@ -21,7 +21,6 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
-/** */
 public class MonitoringSettings {
   private static final String RATE_UNIT = "rateUnit";
   private static final String DURATION_UNIT = "durationUnit";

@@ -17,7 +17,6 @@ import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigException;
 
-/** */
 public class BatchSettings {
 
   private static final String MODE = "mode";

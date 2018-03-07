@@ -18,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** */
 public class SessionUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionUtils.class);

@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.log.statement;
 
-/** */
 public class StatementFormatterSymbols {
 
   public static final String lineSeparator = System.lineSeparator();

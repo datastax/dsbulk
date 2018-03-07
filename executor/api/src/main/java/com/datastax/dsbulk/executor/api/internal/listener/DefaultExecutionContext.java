@@ -13,7 +13,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-/** */
 public class DefaultExecutionContext implements ExecutionContext {
 
   private volatile ConcurrentMap<Object, Object> attributes = null;

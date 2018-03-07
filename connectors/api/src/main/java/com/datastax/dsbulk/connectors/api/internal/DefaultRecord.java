@@ -21,7 +21,6 @@ import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import org.jetbrains.annotations.NotNull;
 
-/** */
 public class DefaultRecord extends LinkedHashMap<String, Object> implements Record {
 
   private final Object source;

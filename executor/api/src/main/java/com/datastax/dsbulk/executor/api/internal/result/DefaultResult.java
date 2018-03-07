@@ -14,7 +14,6 @@ import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.Result;
 import java.util.Optional;
 
-/** */
 abstract class DefaultResult implements Result {
 
   private final Statement statement;

@@ -22,7 +22,6 @@ import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatt
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Statement;
 
-/** */
 public class BatchStatementPrinter implements StatementPrinter<BatchStatement> {
 
   @Override

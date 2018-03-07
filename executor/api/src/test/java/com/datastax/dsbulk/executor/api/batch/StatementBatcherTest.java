@@ -33,7 +33,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-/** */
 public class StatementBatcherTest {
 
   protected ByteBuffer key1 = Bytes.fromHexString("0x1234");

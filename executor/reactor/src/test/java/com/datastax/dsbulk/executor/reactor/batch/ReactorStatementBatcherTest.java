@@ -22,7 +22,6 @@ import java.util.HashSet;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
-/** */
 class ReactorStatementBatcherTest extends StatementBatcherTest {
 
   @Test
