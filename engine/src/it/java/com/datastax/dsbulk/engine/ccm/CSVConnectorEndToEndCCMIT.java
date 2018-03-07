@@ -771,7 +771,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateExceptionsLog(1, "overflow", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1,
+        "ArithmeticException: Cannot convert 0.12345678901234567890123456789 from BigDecimal to Double",
+        "mapping-errors.log",
+        logPath);
     checkNumbersWritten(REJECT, UNNECESSARY, session);
     deleteDirectory(logDir);
 

@@ -442,7 +442,7 @@ class CodecUtilsTest {
                     YearMonth.class,
                     UTC,
                     LocalDate.ofEpochDay(0)))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(DateTimeException.class);
   }
 
   @SuppressWarnings("ConstantConditions")
@@ -720,9 +720,8 @@ class CodecUtilsTest {
     assertThat(convertNumber(123, Double.class)).isEqualTo(123d);
     assertThat(convertNumber(123, BigDecimal.class)).isEqualTo(new BigDecimal("123"));
     assertThatThrownBy(() -> convertNumber(123, AtomicLong.class))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(
-            "Cannot convert 123 of class java.lang.Integer to class java.util.concurrent.atomic.AtomicLong");
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123 from Integer to AtomicLong");
   }
 
   @Test
@@ -736,19 +735,34 @@ class CodecUtilsTest {
     assertThat(toByteValueExact(BigInteger.valueOf(123L))).isEqualTo((byte) 123);
     assertThat(toByteValueExact(BigDecimal.valueOf(123d))).isEqualTo((byte) 123);
     // decimal -> integral conversions should fail
-    assertThatThrownBy(() -> toByteValueExact(123.45f)).isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toByteValueExact(123.45d)).isInstanceOf(ArithmeticException.class);
+    assertThatThrownBy(() -> toByteValueExact(123.45f))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from Float to Byte");
+    assertThatThrownBy(() -> toByteValueExact(123.45d))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from Double to Byte");
     // too big for byte
     assertThatThrownBy(() -> toByteValueExact(Short.MAX_VALUE))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Short to Byte", Short.MAX_VALUE));
     assertThatThrownBy(() -> toByteValueExact(Integer.MAX_VALUE))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Integer to Byte", Integer.MAX_VALUE));
     assertThatThrownBy(() -> toByteValueExact(Long.MAX_VALUE))
-        .isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toByteValueExact(BigInteger.valueOf(Long.MAX_VALUE)))
-        .isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toByteValueExact(BigDecimal.valueOf(Long.MAX_VALUE)))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(String.format("Cannot convert %s from Long to Byte", Long.MAX_VALUE));
+    BigInteger bigInteger = BigInteger.valueOf(Long.MAX_VALUE);
+    assertThatThrownBy(() -> toByteValueExact(bigInteger))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigInteger to Byte", bigInteger));
+    BigDecimal bigDecimal = BigDecimal.valueOf(Long.MAX_VALUE);
+    assertThatThrownBy(() -> toByteValueExact(bigDecimal))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Byte", bigDecimal));
   }
 
   @Test
@@ -762,17 +776,31 @@ class CodecUtilsTest {
     assertThat(toShortValueExact(BigInteger.valueOf(123L))).isEqualTo((short) 123);
     assertThat(toShortValueExact(BigDecimal.valueOf(123d))).isEqualTo((short) 123);
     // decimal -> integral conversions should fail
-    assertThatThrownBy(() -> toShortValueExact(123.45f)).isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toShortValueExact(123.45d)).isInstanceOf(ArithmeticException.class);
+    assertThatThrownBy(() -> toShortValueExact(123.45f))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from Float to Short");
+    assertThatThrownBy(() -> toShortValueExact(123.45d))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from Double to Short");
     // too big for short
     assertThatThrownBy(() -> toShortValueExact(Integer.MAX_VALUE))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Integer to Short", Integer.MAX_VALUE));
     assertThatThrownBy(() -> toShortValueExact(Long.MAX_VALUE))
-        .isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toShortValueExact(BigInteger.valueOf(Long.MAX_VALUE)))
-        .isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toShortValueExact(BigDecimal.valueOf(Long.MAX_VALUE)))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Long to Short", Long.MAX_VALUE));
+    BigInteger bigInteger = BigInteger.valueOf(Long.MAX_VALUE);
+    assertThatThrownBy(() -> toShortValueExact(bigInteger))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigInteger to Short", bigInteger));
+    BigDecimal bigDecimal = BigDecimal.valueOf(Long.MAX_VALUE);
+    assertThatThrownBy(() -> toShortValueExact(bigDecimal))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Short", bigDecimal));
   }
 
   @Test
@@ -786,15 +814,27 @@ class CodecUtilsTest {
     assertThat(toIntValueExact(BigInteger.valueOf(123L))).isEqualTo(123);
     assertThat(toIntValueExact(BigDecimal.valueOf(123d))).isEqualTo(123);
     // decimal -> integral conversions should fail
-    assertThatThrownBy(() -> toIntValueExact(123.45f)).isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toIntValueExact(123.45d)).isInstanceOf(ArithmeticException.class);
+    assertThatThrownBy(() -> toIntValueExact(123.45f))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from Float to Integer");
+    assertThatThrownBy(() -> toIntValueExact(123.45d))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from Double to Integer");
     // too big for int
     assertThatThrownBy(() -> toIntValueExact(Long.MAX_VALUE))
-        .isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toIntValueExact(BigInteger.valueOf(Long.MAX_VALUE)))
-        .isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toIntValueExact(BigDecimal.valueOf(Long.MAX_VALUE)))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Long to Integer", Long.MAX_VALUE));
+    BigInteger bigInteger = BigInteger.valueOf(Long.MAX_VALUE);
+    assertThatThrownBy(() -> toIntValueExact(bigInteger))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigInteger to Integer", bigInteger));
+    BigDecimal bigDecimal = BigDecimal.valueOf(Long.MAX_VALUE);
+    assertThatThrownBy(() -> toIntValueExact(bigDecimal))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Integer", bigDecimal));
   }
 
   @Test
@@ -808,15 +848,23 @@ class CodecUtilsTest {
     assertThat(toLongValueExact(BigInteger.valueOf(123L))).isEqualTo(123L);
     assertThat(toLongValueExact(BigDecimal.valueOf(123d))).isEqualTo(123L);
     // decimal -> integral conversions should fail
-    assertThatThrownBy(() -> toLongValueExact(123.45f)).isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toLongValueExact(123.45d)).isInstanceOf(ArithmeticException.class);
+    assertThatThrownBy(() -> toLongValueExact(123.45f))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from Float to Long");
+    assertThatThrownBy(() -> toLongValueExact(123.45d))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from Double to Long");
     // too big for long
-    assertThatThrownBy(
-            () -> toLongValueExact(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE)))
-        .isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(
-            () -> toLongValueExact(BigDecimal.valueOf(Long.MAX_VALUE).add(BigDecimal.ONE)))
-        .isInstanceOf(ArithmeticException.class);
+    BigInteger bigInteger = BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE);
+    assertThatThrownBy(() -> toLongValueExact(bigInteger))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigInteger to Long", bigInteger));
+    BigDecimal bigDecimal = BigDecimal.valueOf(Long.MAX_VALUE).add(BigDecimal.ONE);
+    assertThatThrownBy(() -> toLongValueExact(bigDecimal))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Long", bigDecimal));
   }
 
   @Test
@@ -830,10 +878,15 @@ class CodecUtilsTest {
     assertThat(toBigIntegerExact(BigInteger.valueOf(123L))).isEqualTo(BigInteger.valueOf(123L));
     assertThat(toBigIntegerExact(BigDecimal.valueOf(123d))).isEqualTo(BigInteger.valueOf(123L));
     // decimal -> integral conversions should fail
-    assertThatThrownBy(() -> toBigIntegerExact(123.45f)).isInstanceOf(ArithmeticException.class);
-    assertThatThrownBy(() -> toBigIntegerExact(123.45d)).isInstanceOf(ArithmeticException.class);
+    assertThatThrownBy(() -> toBigIntegerExact(123.45f))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from Float to BigInteger");
+    assertThatThrownBy(() -> toBigIntegerExact(123.45d))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from Double to BigInteger");
     assertThatThrownBy(() -> toBigIntegerExact(BigDecimal.valueOf(123.45d)))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 123.45 from BigDecimal to BigInteger");
   }
 
   @Test
@@ -846,18 +899,29 @@ class CodecUtilsTest {
     assertThat(toFloatValueExact(123f)).isEqualTo(123f);
     assertThat(toFloatValueExact(BigInteger.valueOf(123L))).isEqualTo(123f);
     assertThat(toFloatValueExact(BigDecimal.valueOf(123d))).isEqualTo(123f);
+    assertThat(toFloatValueExact(Double.NEGATIVE_INFINITY)).isEqualTo(Float.NEGATIVE_INFINITY);
+    assertThat(toFloatValueExact(Double.POSITIVE_INFINITY)).isEqualTo(Float.POSITIVE_INFINITY);
+    assertThat(toFloatValueExact(Double.NaN)).isEqualTo(Float.NaN);
     // float -> double type widening may alter the original
     assertThatThrownBy(() -> toFloatValueExact((double) Float.MAX_VALUE))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Double to Float", (double) Float.MAX_VALUE));
     // too big for float
     assertThatThrownBy(() -> toFloatValueExact(Double.MAX_VALUE))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from Double to Float", Double.MAX_VALUE));
     // too many significant digits
     assertThatThrownBy(() -> toFloatValueExact(0.1234567891234d))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 0.1234567891234 from Double to Float");
     // too big for float
-    assertThatThrownBy(() -> toFloatValueExact(BigDecimal.valueOf(Double.MAX_VALUE)))
-        .isInstanceOf(ArithmeticException.class);
+    BigDecimal bigDecimal = BigDecimal.valueOf(Double.MAX_VALUE);
+    assertThatThrownBy(() -> toFloatValueExact(bigDecimal))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Float", bigDecimal));
   }
 
   @Test
@@ -870,13 +934,19 @@ class CodecUtilsTest {
     assertThat(toDoubleValueExact(123f)).isEqualTo(123d);
     assertThat(toDoubleValueExact(BigInteger.valueOf(123L))).isEqualTo(123d);
     assertThat(toDoubleValueExact(BigDecimal.valueOf(123d))).isEqualTo(123d);
+    assertThat(toDoubleValueExact(Float.NEGATIVE_INFINITY)).isEqualTo(Double.NEGATIVE_INFINITY);
+    assertThat(toDoubleValueExact(Float.POSITIVE_INFINITY)).isEqualTo(Double.POSITIVE_INFINITY);
+    assertThat(toDoubleValueExact(Float.NaN)).isEqualTo(Double.NaN);
     // too big for double
-    assertThatThrownBy(
-            () -> toDoubleValueExact(BigDecimal.valueOf(Double.MAX_VALUE).add(BigDecimal.ONE)))
-        .isInstanceOf(ArithmeticException.class);
+    BigDecimal bigDecimal = BigDecimal.valueOf(Double.MAX_VALUE).add(BigDecimal.ONE);
+    assertThatThrownBy(() -> toDoubleValueExact(bigDecimal))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining(
+            String.format("Cannot convert %s from BigDecimal to Double", bigDecimal));
     // too many significant digits
     assertThatThrownBy(() -> toDoubleValueExact(new BigDecimal("0.1234567890123456789")))
-        .isInstanceOf(ArithmeticException.class);
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessageContaining("Cannot convert 0.1234567890123456789 from BigDecimal to Double");
   }
 
   @Test

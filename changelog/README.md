@@ -4,6 +4,7 @@
 
 - [improvement] DAT-240: Detect console width on Windows.
 - [improvement] DAT-229: Allow user-supplied options to contain control characters.
+- [improvement] DAT-237: Numeric overflows should display the original input that caused the overflow.
 
 
 ### 1.0.0
