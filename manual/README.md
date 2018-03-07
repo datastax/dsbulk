@@ -1,6 +1,6 @@
 # DataStax Bulk Loader Overview
 
-The Datastax Bulk Loader tool provides the ability to load large amounts of data 
+The Datastax Bulk Loader tool (DSBulk) provides the ability to load large amounts of data 
 into the database efficiently and reliably as well as conversely unload data from the
 database. In this release, csv and json file loading/unloading is supported.  
 
@@ -11,7 +11,9 @@ supported settings.
 The most up-to-date documentation is available [online][onlineDocs]. 
 
 ## Basic Usage
+
 The `dsbulk` command takes a subcommand argument followed by options:
+
 ```
 # Load data
 dsbulk load <options>
@@ -26,19 +28,20 @@ required settings of their own and those must be set as well. For example, the c
 requires the `connector.csv.url` setting to specify the source path/url of the csv data to 
 load (or path/url where to send unloaded data).
 
-See the [Settings page](settings.md) or the [template application config]
+See the [Settings page](settings.md) or the [template configuration file]
 for details.
 
 ### Shortcuts
+
 For convenience, many options (prefaced with `--`), have shortcut variants (prefaced with `-`).
 For example, `--connector.name` has an equivalent short option `-c`. 
 
 Connector-specific options also have shortcut variants, but they are only available when
 the appropriate connector is chosen. This allows multiple connectors to overlap shortcut
-options. For example, a future JSON connector will likely have a `--connector.json.url`
-setting with a `-url` shortcut. This overlaps with the `-url` shortcut option for 
-`--connector.csv.url`, but in a given invocation of `dsbulk`, only the appropriate shortcut will 
-be active.  
+options. For example, the JSON connector has a `--connector.json.url`
+setting with a `-url` shortcut. This overlaps with the `-url` shortcut option for the CSV 
+connector, that actually maps to `--connector.csv.url`. But in a given invocation of `dsbulk`, 
+only the appropriate shortcut will be active.  
 
 Run the tool with `--help` and specify the connector to see its short options:
 
@@ -46,22 +49,88 @@ Run the tool with `--help` and specify the connector to see its short options:
 dsbulk -c csv --help
 ```
 
-## Config Files, Settings, Search Order, and Overrides
+## Escaping and Quoting Command Line Arguments
 
-Available settings along with defaults are documented [here](settings.md) and in the
-[template application config].
+When supplied via the command line, all option values are expected to be in valid [HOCON] syntax.
+For example, control characters, the backslash character, and the double-quote character all need to
+be properly escaped.
 
-The conf directory also contains an `application.conf` file where a user may specify permanent
-overrides of settings. These are expressed in dotted form:
-```hocon
-dsbulk.connector.name="csv"
-dsbulk.schema.keyspace="myks"
+The following is thus correct:
+
+```bash
+dsbulk load -delim '\t' -url 'C:\\Users\\My Folder'
 ```
 
-Finally, a user may specify impromptu overrides via options on the command line.
-See examples for details.
+In the above example, `\t` is the escape sequence that corresponds to the tab character, 
+whereas `\\` is the escape sequence for the backslash character.
+ 
+In general, string values containing special characters also need to be properly quoted 
+with double-quotes, as required by the HOCON syntax, e.g.:
+
+```bash
+dsbulk load -url '"C:\\Users\\My Folder"'
+```
+
+However, when the expected type of an option is simply string, it is possible to omit the 
+surrounding double-quotes, for convenience. Thus the following two lines are equivalent:
+
+```bash
+dsbulk load -url 'C:\\Users\\My Folder'
+dsbulk load -url '"C:\\Users\\My Folder"'
+```
+
+This is not possible for complex option types: in these cases, it is up to you to ensure that
+all arguments are properly escaped _and_ quoted.
+
+## Configuration Files vs Command Line Options
+
+All DSBulk options can be passed as command line arguments, or in a configuration file.
+
+Using a configuration file is sometimes easier than passing all configuration 
+options via the command line. 
+
+By default, the configuration file is located under DSBulk's `conf` directory and is named 
+`application.conf`. This location can be modified via the `-f` switch. See examples below.
+
+DSBulk ships with a default, empty `application.conf` file that users can customize to their 
+needs; it also has a [template configuration file] that can serve as a starting point for 
+further customization.
+
+Configuration files are also required to be compliant with the [HOCON] syntax. This syntax
+is very flexible and allows sections to be grouped together in blocks, e.g.:
+
+```hocon
+dsbulk {
+  connector {
+    name = "csv"
+    csv {
+      url = "C:\\Users\\My Folder"
+      delimiter = "\t"
+    }
+  }
+}
+```
+
+The above is equivalent to the following snippet using dotted notation instead of blocks:
+
+```hocon
+dsbulk.connector.name = "csv"
+dsbulk.connector.csv.url = "C:\\Users\\My Folder"
+dsbulk.connector.csv.delimiter = "\t"
+```
+
+**Important caveats:**
+
+1. Options specified in configuration files are always prefixed with `dsbulk.`. 
+   _This prefix must not be included when specifying options via the command line._ 
+   For example, to select the connector to use in a configuration file,
+   use `dsbulk.connector.name = csv`, as in the example above; on the command line, 
+   however, you should use `--connector.name csv` to achieve the same effect.
+2. Options specified through the command line _override options specified in configuration files_.
+   See examples for details.
 
 ## Load Examples
+
 * Load the `ks1.table1` table from CSV data read from `stdin`.
   Use a cluster with a `localhost` contact point. Field names in the data match column names in the
   table. Field names are obtained from a *header row* in the data; by default the tool presumes 
@@ -103,6 +172,7 @@ See examples for details.
   `dsbulk load -f dsbulk_load.conf -url https://192.168.1.100/data/export.csv -h '10.200.1.3,10.200.1.4'`
 
 ## Unload Examples
+
 Unloading is simply the inverse of loading and due to the symmetry, many settings are
 used in both load and unload.
 
@@ -121,9 +191,10 @@ used in both load and unload.
   `dsbulk unload -url ~/data-export -k ks1 -t table1`
   
 ## Command-line Help
+
 Available settings along with defaults are documented [here](settings.md) and in the
-[template application config].
-This information is also available on the command-line via the `help` subcommand.
+[template configuration file]. This information is also available on the command-line 
+via the `help` subcommand.
 
 * Get help for common options and a list of sections from which more help is available:
 
@@ -133,5 +204,6 @@ This information is also available on the command-line via the `help` subcommand
 
   `dsbulk help connector.csv`
   
-[template application config]:application.template.conf
+[template configuration file]:application.template.conf
 [onlineDocs]:https://docs.datastax.com/en/dse/1.0.0/dsbulk/
+[HOCON]:https://github.com/lightbend/config/blob/master/HOCON.md

@@ -41,6 +41,7 @@ public interface LoaderConfig extends Config {
    * @return the newly-allocated object corresponding to the class name at the requested path.
    * @throws ConfigException.Missing if value is absent or null.
    * @throws ConfigException.WrongType if value is not convertible to a Path.
+   * @throws ConfigException.BadValue if the object is not of the expected type.
    */
   default <T> T getInstance(String path, Class<T> expected) {
     String setting = getString(path);
@@ -51,13 +52,17 @@ public interface LoaderConfig extends Config {
         T ret = (T) o;
         return ret;
       }
-      throw new IllegalStateException(
+      throw new ConfigException.BadValue(
+          origin(),
+          path,
           String.format(
               "Object does not extend nor implement %s: %s",
               expected.getSimpleName(), o.getClass().getSimpleName()));
     } catch (Exception e) {
       throw new ConfigException.WrongType(
-          origin(), path, "FQCN or short class name", getValue(path).valueType().toString(), e);
+          origin(),
+          String.format("%s: Expecting FQCN or short class name, got '%s'", path, setting),
+          e);
     }
   }
 
@@ -72,6 +77,7 @@ public interface LoaderConfig extends Config {
    * @return the Class object corresponding to the class name at the requested path.
    * @throws ConfigException.Missing if value is absent or null.
    * @throws ConfigException.WrongType if value is not convertible to a Path.
+   * @throws ConfigException.BadValue if the object is not of the expected type.
    */
   default <T> Class<? extends T> getClass(String path, Class<T> expected) {
     String setting = getString(path);
@@ -82,13 +88,17 @@ public interface LoaderConfig extends Config {
         Class<T> ret = (Class<T>) c;
         return ret;
       }
-      throw new IllegalStateException(
+      throw new ConfigException.BadValue(
+          origin(),
+          path,
           String.format(
               "Class does not extend nor implement %s: %s",
               expected.getSimpleName(), c.getSimpleName()));
     } catch (Exception e) {
       throw new ConfigException.WrongType(
-          origin(), path, "FQCN or short class name", getValue(path).valueType().toString(), e);
+          origin(),
+          String.format("%s: Expecting FQCN or short class name, got '%s'", path, setting),
+          e);
     }
   }
 
@@ -106,14 +116,14 @@ public interface LoaderConfig extends Config {
    * @return the Path object at the requested path.
    * @throws ConfigException.Missing if value is absent or null.
    * @throws ConfigException.WrongType if value is not convertible to a Path.
-   * @throws ConfigException.BadValue if value is not convertible to a Path.
    */
   default Path getPath(String path) {
+    String setting = getString(path);
     try {
-      return ConfigUtils.resolvePath(getString(path));
+      return ConfigUtils.resolvePath(setting);
     } catch (InvalidPathException e) {
       throw new ConfigException.WrongType(
-          origin(), path, "path", getValue(path).valueType().toString(), e);
+          origin(), String.format("%s: Expecting valid filepath, got '%s'", path, setting), e);
     }
   }
 
@@ -134,11 +144,14 @@ public interface LoaderConfig extends Config {
    * @throws ConfigException.WrongType if value is not convertible to a URL.
    */
   default URL getURL(String path) {
+    String setting = getString(path);
     try {
-      return ConfigUtils.resolveURL(getString(path));
+      return ConfigUtils.resolveURL(setting);
     } catch (Exception e) {
       throw new ConfigException.WrongType(
-          origin(), path, "path or URL", getValue(path).valueType().toString(), e);
+          origin(),
+          String.format("%s: Expecting valid filepath or URL, got '%s'", path, setting),
+          e);
     }
   }
 
@@ -155,14 +168,13 @@ public interface LoaderConfig extends Config {
    * @throws ConfigException.WrongType if value is not convertible to a number of threads.
    */
   default int getThreads(String path) {
+    String setting = getString(path);
     try {
-      return ConfigUtils.resolveThreads(getString(path));
+      return ConfigUtils.resolveThreads(setting);
     } catch (Exception e) {
       throw new ConfigException.WrongType(
           origin(),
-          path,
-          "integer or string in 'nC' syntax",
-          getValue(path).valueType().toString(),
+          String.format("%s: Expecting integer or string in 'nC' syntax, got '%s'", path, setting),
           e);
     }
   }
@@ -179,7 +191,7 @@ public interface LoaderConfig extends Config {
     String setting = getString(path);
     if (setting.length() != 1) {
       throw new ConfigException.WrongType(
-          origin(), path, "single character", getValue(path).valueType().toString());
+          origin(), String.format("%s: Expecting single char, got '%s'", path, setting));
     }
     return setting.charAt(0);
   }
@@ -198,7 +210,7 @@ public interface LoaderConfig extends Config {
       return Charset.forName(setting);
     } catch (Exception e) {
       throw new ConfigException.WrongType(
-          origin(), path, "valid charset name", getValue(path).valueType().toString(), e);
+          origin(), String.format("%s: Expecting valid charset name, got '%s'", path, setting), e);
     }
   }
 

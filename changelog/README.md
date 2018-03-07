@@ -3,6 +3,7 @@
 ### 1.0.1 (in progress)
 
 - [improvement] DAT-240: Detect console width on Windows.
+- [improvement] DAT-229: Allow user-supplied options to contain control characters.
 
 
 ### 1.0.0

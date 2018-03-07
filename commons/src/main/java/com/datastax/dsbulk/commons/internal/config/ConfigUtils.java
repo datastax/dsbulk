@@ -25,43 +25,41 @@ public class ConfigUtils {
   private static final Pattern THREADS_PATTERN =
       Pattern.compile("(.+)\\s*C", Pattern.CASE_INSENSITIVE);
 
+  private static final Pattern WRONG_TYPE_PATTERN =
+      Pattern.compile("has type (\\w+) rather than (\\w+)", Pattern.CASE_INSENSITIVE);
+
+  private static final Pattern ENUM_PATTERN =
+      Pattern.compile(
+          "The enum class \\w+ has no constant of the name ('\\w+') \\(should be one of \\[([^]]+)]\\.\\)",
+          Pattern.CASE_INSENSITIVE);
+
   public static BulkConfigurationException configExceptionToBulkConfigurationException(
       ConfigException e, String path) {
-    // This will happen if a user provides the wrong type.
-    // Error generated will look like this:
-    // "Configuration entry of connector.csv.recursive has type STRING rather than BOOLEAN.
-    // See settings.md or help for more info."
     if (e instanceof ConfigException.WrongType) {
+      // This will happen if a user provides the wrong type, e.g. a string where a number was
+      // expected. We remove the origin's description as it is too cryptic for users.
+      // Error generated will look like this:
+      // "connector.csv.recursive: Expecting X, got Y."
       String em = e.getMessage();
-      int startingIndex = em.lastIndexOf(":") + 2;
-      String errorMsg = em.substring(startingIndex);
-      return new BulkConfigurationException(
-          "Configuration entry of "
-              + path
-              + "."
-              + errorMsg
-              + ". See settings.md or help for more info.",
-          e);
-    } else if (e instanceof ConfigException.Parse) {
-      return new BulkConfigurationException(
-          "Configuration entry of "
-              + path
-              + ". "
-              + e.getMessage()
-              + ". See settings.md or help for more info.",
-          e);
+      int startingIndex = e.origin().description().length() + 2;
+      String errorMsg = path + "." + em.substring(startingIndex);
+      Matcher matcher = WRONG_TYPE_PATTERN.matcher(errorMsg);
+      if (matcher.find()) {
+        errorMsg = matcher.replaceAll(": Expecting $1, got $2");
+      }
+      return new BulkConfigurationException(errorMsg, e);
     } else {
       // Catch-all for other types of exceptions.
-      return new BulkConfigurationException(e.getMessage(), e);
+      // We intercept errors related to unknown enum constants to improve the error message,
+      // which will look like this:
+      // log.stmt.level: 1: Invalid value at 'stmt.level': Expecting one of X, Y, Z, got 'weird'
+      String errorMsg = e.getMessage();
+      Matcher matcher = ENUM_PATTERN.matcher(errorMsg);
+      if (matcher.find()) {
+        errorMsg = matcher.replaceAll("Expecting one of $2, got $1");
+      }
+      return new BulkConfigurationException(errorMsg, e);
     }
-  }
-
-  public static String maybeEscapeBackslash(String value) {
-    return value.replaceAll("\\\\{1,2}", Matcher.quoteReplacement("\\\\"));
-  }
-
-  public static boolean containsBackslashError(ConfigException exception) {
-    return exception.getMessage().contains("backslash");
   }
 
   /**

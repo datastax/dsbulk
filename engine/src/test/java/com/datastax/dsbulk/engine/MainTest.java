@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -263,7 +264,7 @@ class MainTest {
       unloadDir = createTempDirectory("test");
       Files.createFile(unloadDir.resolve("output-000001.csv"));
 
-      new Main(new String[] {"unload", "--connector.csv.url=" + unloadDir.toString()}).run();
+      new Main(new String[] {"unload", "--connector.csv.url=" + escapeUserInput(unloadDir)}).run();
       String err = logs.getAllMessagesAsString();
       assertThat(err).contains("connector.csv.url target directory").contains("must be empty");
     } finally {
@@ -282,7 +283,9 @@ class MainTest {
 
       new Main(
               new String[] {
-                "unload", "--connector.name=json", "--connector.json.url=" + unloadDir.toString()
+                "unload",
+                "--connector.name=json",
+                "--connector.json.url=" + escapeUserInput(unloadDir)
               })
           .run();
       String err = logs.getAllMessagesAsString();
@@ -319,6 +322,54 @@ class MainTest {
         .contains(logs.getLoggedMessages())
         .contains("Load workflow engine execution null aborted")
         .contains("Could not generate execution ID with template: '%4$s'");
+  }
+
+  @Test
+  void should_accept_escaped_control_char() throws Exception {
+    // control chars should be provided escaped as valid HOCON
+    Config result =
+        Main.parseCommandLine("load", new String[] {"--connector.csv.delimiter", "\\t"});
+    assertThat(result.getString("connector.csv.delimiter")).isEqualTo("\t");
+  }
+
+  @Test
+  void should_accept_escaped_backslash() throws Exception {
+    // backslashes should be provided escaped as valid HOCON
+    Config result =
+        Main.parseCommandLine("load", new String[] {"--connector.csv.url", "C:\\\\Users"});
+    assertThat(result.getString("connector.csv.url")).isEqualTo("C:\\Users");
+  }
+
+  @Test
+  void should_accept_escaped_double_quote() throws Exception {
+    // double quotes should be provided escaped as valid HOCON
+    Config result = Main.parseCommandLine("load", new String[] {"--connector.csv.escape", "\\\""});
+    assertThat(result.getString("connector.csv.escape")).isEqualTo("\"");
+  }
+
+  @Test
+  void should_accept_escaped_double_quote_in_complex_type() throws Exception {
+    // double quotes should be provided escaped as valid HOCON
+    Config result =
+        Main.parseCommandLine("load", new String[] {"--codec.booleanWords", "[\"foo\\\"bar\"]"});
+    assertThat(result.getStringList("codec.booleanWords")).containsExactly("foo\"bar");
+  }
+
+  @Test
+  void should_not_add_quote_if_already_quoted() throws Exception {
+    // double quotes should be provided escaped as valid HOCON
+    Config result =
+        Main.parseCommandLine("load", new String[] {"--connector.csv.delimiter", "\"\\t\""});
+    assertThat(result.getString("connector.csv.delimiter")).isEqualTo("\t");
+  }
+
+  @Test
+  void should_not_accept_parse_error() {
+    new Main(new String[] {"load", "--codec.booleanWords", "[a,b"}).run();
+    assertThat(stdErr.getStreamAsString())
+        .contains(logs.getLoggedMessages())
+        .contains("codec.booleanWords: Expecting LIST, got '[a,b'")
+        .contains("List should have ended with ] or had a comma");
   }
 
   @Test
@@ -850,9 +901,12 @@ class MainTest {
         .run();
     assertThat(stdErr.getStreamAsString())
         .contains(
-            "Error parsing configuration file "
-                + badJson
-                + " if you are using \\ (backslash) to define a path, use / instead.");
+            String.format(
+                "Error parsing configuration file %s. "
+                    + "Please make sure its format is compliant with HOCON syntax. "
+                    + "If you are using \\ (backslash) to define a path, "
+                    + "escape it with \\\\ or use / (forward slash) instead.",
+                badJson));
   }
 
   private void assertGlobalHelp(boolean jsonOnly) {

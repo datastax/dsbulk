@@ -19,6 +19,7 @@ import com.google.common.base.Throwables;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigParseOptions;
 import com.typesafe.config.ConfigValueType;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
@@ -185,11 +186,22 @@ public class Main {
       String path = option.getLongOpt();
       String value = option.getValue();
       ConfigValueType type = DEFAULT.getValue(path).valueType();
-      if (type == ConfigValueType.STRING) {
-        value = "\"" + value + "\"";
+      try {
+        if (type == ConfigValueType.STRING) {
+          // all user input is expected to be already valid HOCON;
+          // however if the value is a string, be nice with the user and
+          // surround with quotes if that's not the case.
+          value = ensureQuoted(value);
+        }
+        userSettings =
+            ConfigFactory.parseString(
+                    path + "=" + value, ConfigParseOptions.defaults().setOriginDescription(path))
+                .withFallback(userSettings);
+      } catch (Exception e) {
+        LOGGER.error(e.getMessage(), e);
+        throw new IllegalArgumentException(
+            String.format("%s: Expecting %s, got '%s'", path, type, value), e);
       }
-      value = ConfigUtils.maybeEscapeBackslash(value);
-      userSettings = ConfigFactory.parseString(path + "=" + value).withFallback(userSettings);
     }
     return userSettings;
   }
@@ -204,19 +216,26 @@ public class Main {
       try {
         DEFAULT = ConfigFactory.load().getConfig("dsbulk");
       } catch (ConfigException.Parse e) {
-        // This should only be an issue for user-provided configuration files. Command line options
-        // are escaped
-        if (ConfigUtils.containsBackslashError(e)) {
-          LOGGER.error(
-              "Error parsing configuration file "
-                  + appConfigPath
-                  + " if you are using \\ (backslash) to define a path, use / instead.");
-        }
-        throw e;
+        LOGGER.error(e.getMessage(), e);
+        throw new IllegalArgumentException(
+            String.format(
+                "Error parsing configuration file %s. "
+                    + "Please make sure its format is compliant with HOCON syntax. "
+                    + "If you are using \\ (backslash) to define a path, "
+                    + "escape it with \\\\ or use / (forward slash) instead.",
+                appConfigPath),
+            e);
       }
     }
     ConfigFactory.invalidateCaches();
     DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+  }
+
+  public static String ensureQuoted(String value) {
+    if (value.startsWith("\"") && value.endsWith("\"")) {
+      return value;
+    }
+    return "\"" + value + "\"";
   }
 
   private static Path getAppConfigPath(String[] optionArgs) {
