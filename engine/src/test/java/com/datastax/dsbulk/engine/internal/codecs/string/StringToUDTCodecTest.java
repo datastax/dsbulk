@@ -63,6 +63,8 @@ class StringToUDTCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   // UDT 1
 
   private final UserType udt1 =
@@ -82,11 +84,12 @@ class StringToUDTCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullWords);
   private final ConvertingCodec f1bCodec =
       new JsonNodeToMapCodec<>(
           TypeCodec.map(TypeCodec.varchar(), TypeCodec.cdouble()),
-          new StringToStringCodec(TypeCodec.varchar()),
+          new StringToStringCodec(TypeCodec.varchar(), nullWords),
           new JsonNodeToDoubleCodec(
               numberFormat,
               OverflowStrategy.REJECT,
@@ -95,15 +98,21 @@ class StringToUDTCodecTest {
               MILLISECONDS,
               EPOCH.atZone(UTC),
               ImmutableMap.of("true", true, "false", false),
-              newArrayList(ONE, ZERO)),
-          objectMapper);
+              newArrayList(ONE, ZERO),
+              nullWords),
+          objectMapper,
+          nullWords);
 
   @SuppressWarnings("unchecked")
   private final StringToUDTCodec udtCodec1 =
       new StringToUDTCodec(
           new JsonNodeToUDTCodec(
-              userType(udt1), ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec), objectMapper),
-          objectMapper);
+              userType(udt1),
+              ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec),
+              objectMapper,
+              nullWords),
+          objectMapper,
+          nullWords);
 
   // UDT 2
 
@@ -119,20 +128,28 @@ class StringToUDTCodecTest {
   @SuppressWarnings("unchecked")
   private final ConvertingCodec f2aCodec =
       new JsonNodeToUDTCodec(
-          userType(udt1), ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec), objectMapper);
+          userType(udt1),
+          ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec),
+          objectMapper,
+          nullWords);
 
   private final ConvertingCodec f2bCodec =
       new JsonNodeToListCodec<>(
           TypeCodec.list(LocalDateCodec.instance),
-          new JsonNodeToLocalDateCodec(CQL_DATE_TIME_FORMAT),
-          objectMapper);
+          new JsonNodeToLocalDateCodec(CQL_DATE_TIME_FORMAT, nullWords),
+          objectMapper,
+          nullWords);
 
   @SuppressWarnings("unchecked")
   private final StringToUDTCodec udtCodec2 =
       new StringToUDTCodec(
           new JsonNodeToUDTCodec(
-              userType(udt2), ImmutableMap.of("f2a", f2aCodec, "f2b", f2bCodec), objectMapper),
-          objectMapper);
+              userType(udt2),
+              ImmutableMap.of("f2a", f2aCodec, "f2b", f2bCodec),
+              objectMapper,
+              nullWords),
+          objectMapper,
+          nullWords);
 
   @Test
   void should_convert_from_valid_input() {
@@ -147,6 +164,8 @@ class StringToUDTCodecTest {
         .convertsFrom("{ \"f1b\" :  null , \"f1a\" :  null }")
         .to(udt1Empty)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom("NULL")
         .to(null)
         .convertsFrom("{}")
         .to(null)
@@ -165,6 +184,8 @@ class StringToUDTCodecTest {
         .to(udt2Empty)
         .convertsFrom(null)
         .to(null)
+        .convertsFrom("NULL")
+        .to(null)
         .convertsFrom("{}")
         .to(null)
         .convertsFrom("")
@@ -180,7 +201,7 @@ class StringToUDTCodecTest {
         .convertsTo(udt1.newValue())
         .from("{\"f1a\":null,\"f1b\":{}}")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

@@ -63,7 +63,7 @@ public interface Mapping {
    * @throws CodecNotFoundException if a suitable codec cannot be found.
    */
   @NotNull
-  TypeCodec<Object> codec(
-      @NotNull String variable, @NotNull DataType cqlType, @NotNull TypeToken<?> javaType)
+  <T> TypeCodec<T> codec(
+      @NotNull String variable, @NotNull DataType cqlType, @NotNull TypeToken<? extends T> javaType)
       throws CodecNotFoundException;
 }

@@ -24,16 +24,12 @@ import java.util.function.Supplier;
 
 public class DefaultReadResultMapper implements ReadResultMapper {
 
-  private static final TypeToken<String> STRING_TYPE_TOKEN = TypeToken.of(String.class);
-
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
-  private final String nullWord;
 
-  public DefaultReadResultMapper(Mapping mapping, RecordMetadata recordMetadata, String nullWord) {
+  public DefaultReadResultMapper(Mapping mapping, RecordMetadata recordMetadata) {
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
-    this.nullWord = nullWord;
   }
 
   @Override
@@ -61,11 +57,8 @@ public class DefaultReadResultMapper implements ReadResultMapper {
         if (field != null) {
           TypeToken<?> fieldType = recordMetadata.getFieldType(field, col.getType());
           if (fieldType != null) {
-            TypeCodec<Object> codec = mapping.codec(variable, col.getType(), fieldType);
+            TypeCodec<?> codec = mapping.codec(variable, col.getType(), fieldType);
             Object value = row.get(col.getName(), codec);
-            if (value == null && nullWord != null && fieldType.equals(STRING_TYPE_TOKEN)) {
-              value = nullWord;
-            }
             record.setFieldValue(field, value);
           }
         }

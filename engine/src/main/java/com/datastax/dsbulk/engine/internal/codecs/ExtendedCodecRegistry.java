@@ -109,6 +109,7 @@ public class ExtendedCodecRegistry {
   private static final TypeToken<JsonNode> JSON_NODE_TYPE_TOKEN = TypeToken.of(JsonNode.class);
 
   private final CodecRegistry codecRegistry;
+  private final List<String> nullWords;
   private final Map<String, Boolean> booleanInputWords;
   private final Map<Boolean, String> booleanOutputWords;
   private final List<BigDecimal> booleanNumbers;
@@ -125,6 +126,7 @@ public class ExtendedCodecRegistry {
 
   public ExtendedCodecRegistry(
       CodecRegistry codecRegistry,
+      List<String> nullWords,
       Map<String, Boolean> booleanInputWords,
       Map<Boolean, String> booleanOutputWords,
       List<BigDecimal> booleanNumbers,
@@ -139,6 +141,7 @@ public class ExtendedCodecRegistry {
       TimeUUIDGenerator generator,
       ObjectMapper objectMapper) {
     this.codecRegistry = codecRegistry;
+    this.nullWords = nullWords;
     this.booleanInputWords = booleanInputWords;
     this.booleanOutputWords = booleanOutputWords;
     this.booleanNumbers = booleanNumbers;
@@ -159,20 +162,26 @@ public class ExtendedCodecRegistry {
   @SuppressWarnings("unchecked")
   public <T> TypeCodec<T> codecFor(
       @NotNull DataType cqlType, @NotNull TypeToken<? extends T> javaType) {
+    TypeCodec<T> codec;
     try {
-      return (TypeCodec<T>) codecRegistry.codecFor(cqlType, javaType);
-    } catch (CodecNotFoundException e) {
-      TypeCodec<T> codec = (TypeCodec<T>) maybeCreateConvertingCodec(cqlType, javaType);
-      if (codec != null) {
-        return codec;
+      if (javaType.getRawType().equals(String.class)) {
+        // never return the original varchar codec
+        codec = (TypeCodec<T>) createStringConvertingCodec(cqlType);
+      } else {
+        codec = (TypeCodec<T>) codecRegistry.codecFor(cqlType, javaType);
       }
-      throw e;
+    } catch (CodecNotFoundException e) {
+      codec = (TypeCodec<T>) maybeCreateConvertingCodec(cqlType, javaType);
+      if (codec == null) {
+        throw e;
+      }
     }
+    return codec;
   }
 
   @SuppressWarnings("unchecked")
   public <FROM, TO> ConvertingCodec<FROM, TO> convertingCodecFor(
-      @NotNull DataType cqlType, @NotNull TypeToken<FROM> javaType) {
+      @NotNull DataType cqlType, @NotNull TypeToken<? extends FROM> javaType) {
     ConvertingCodec<FROM, TO> codec =
         (ConvertingCodec<FROM, TO>) maybeCreateConvertingCodec(cqlType, javaType);
     if (codec != null) {
@@ -277,9 +286,9 @@ public class ExtendedCodecRegistry {
       case ASCII:
       case TEXT:
       case VARCHAR:
-        return new StringToStringCodec(codecRegistry.codecFor(cqlType));
+        return new StringToStringCodec(codecRegistry.codecFor(cqlType), nullWords);
       case BOOLEAN:
-        return new StringToBooleanCodec(booleanInputWords, booleanOutputWords);
+        return new StringToBooleanCodec(booleanInputWords, booleanOutputWords, nullWords);
       case TINYINT:
         return new StringToByteCodec(
             numberFormat,
@@ -289,7 +298,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case SMALLINT:
         return new StringToShortCodec(
             numberFormat,
@@ -299,7 +309,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case INT:
         return new StringToIntegerCodec(
             numberFormat,
@@ -309,7 +320,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case BIGINT:
         return new StringToLongCodec(
             numberFormat,
@@ -319,7 +331,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case FLOAT:
         return new StringToFloatCodec(
             numberFormat,
@@ -329,7 +342,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case DOUBLE:
         return new StringToDoubleCodec(
             numberFormat,
@@ -339,7 +353,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case VARINT:
         return new StringToBigIntegerCodec(
             numberFormat,
@@ -349,7 +364,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case DECIMAL:
         return new StringToBigDecimalCodec(
             numberFormat,
@@ -359,65 +375,66 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case DATE:
-        return new StringToLocalDateCodec(localDateFormat);
+        return new StringToLocalDateCodec(localDateFormat, nullWords);
       case TIME:
-        return new StringToLocalTimeCodec(localTimeFormat);
+        return new StringToLocalTimeCodec(localTimeFormat, nullWords);
       case TIMESTAMP:
-        return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch);
+        return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch, nullWords);
       case INET:
-        return StringToInetAddressCodec.INSTANCE;
+        return new StringToInetAddressCodec(nullWords);
       case UUID:
         {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
               (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
-          return new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, generator);
+          return new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, generator, nullWords);
         }
       case TIMEUUID:
         {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
               (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
-          return new StringToUUIDCodec(TypeCodec.timeUUID(), instantCodec, generator);
+          return new StringToUUIDCodec(TypeCodec.timeUUID(), instantCodec, generator, nullWords);
         }
       case BLOB:
-        return StringToBlobCodec.INSTANCE;
+        return new StringToBlobCodec(nullWords);
       case DURATION:
-        return StringToDurationCodec.INSTANCE;
+        return new StringToDurationCodec(nullWords);
       case LIST:
         {
           @SuppressWarnings("unchecked")
           JsonNodeToListCodec<Object> jsonCodec =
               (JsonNodeToListCodec<Object>) createJsonNodeConvertingCodec(cqlType);
-          return new StringToListCodec<>(jsonCodec, objectMapper);
+          return new StringToListCodec<>(jsonCodec, objectMapper, nullWords);
         }
       case SET:
         {
           @SuppressWarnings("unchecked")
           JsonNodeToSetCodec<Object> jsonCodec =
               (JsonNodeToSetCodec<Object>) createJsonNodeConvertingCodec(cqlType);
-          return new StringToSetCodec<>(jsonCodec, objectMapper);
+          return new StringToSetCodec<>(jsonCodec, objectMapper, nullWords);
         }
       case MAP:
         {
           @SuppressWarnings("unchecked")
           JsonNodeToMapCodec<Object, Object> jsonCodec =
               (JsonNodeToMapCodec<Object, Object>) createJsonNodeConvertingCodec(cqlType);
-          return new StringToMapCodec<>(jsonCodec, objectMapper);
+          return new StringToMapCodec<>(jsonCodec, objectMapper, nullWords);
         }
       case TUPLE:
         {
           JsonNodeToTupleCodec jsonCodec =
               (JsonNodeToTupleCodec) createJsonNodeConvertingCodec(cqlType);
-          return new StringToTupleCodec(jsonCodec, objectMapper);
+          return new StringToTupleCodec(jsonCodec, objectMapper, nullWords);
         }
       case UDT:
         {
           JsonNodeToUDTCodec jsonCodec =
               (JsonNodeToUDTCodec) createJsonNodeConvertingCodec(cqlType);
-          return new StringToUDTCodec(jsonCodec, objectMapper);
+          return new StringToUDTCodec(jsonCodec, objectMapper, nullWords);
         }
       case COUNTER:
       case CUSTOM:
@@ -435,9 +452,9 @@ public class ExtendedCodecRegistry {
       case ASCII:
       case TEXT:
       case VARCHAR:
-        return new JsonNodeToStringCodec(codecRegistry.codecFor(cqlType));
+        return new JsonNodeToStringCodec(codecRegistry.codecFor(cqlType), nullWords);
       case BOOLEAN:
-        return new JsonNodeToBooleanCodec(booleanInputWords);
+        return new JsonNodeToBooleanCodec(booleanInputWords, nullWords);
       case TINYINT:
         return new JsonNodeToByteCodec(
             numberFormat,
@@ -447,7 +464,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case SMALLINT:
         return new JsonNodeToShortCodec(
             numberFormat,
@@ -457,7 +475,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case INT:
         return new JsonNodeToIntegerCodec(
             numberFormat,
@@ -467,7 +486,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case BIGINT:
         return new JsonNodeToLongCodec(
             numberFormat,
@@ -477,7 +497,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case FLOAT:
         return new JsonNodeToFloatCodec(
             numberFormat,
@@ -487,7 +508,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case DOUBLE:
         return new JsonNodeToDoubleCodec(
             numberFormat,
@@ -497,7 +519,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case VARINT:
         return new JsonNodeToBigIntegerCodec(
             numberFormat,
@@ -507,7 +530,8 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case DECIMAL:
         return new JsonNodeToBigDecimalCodec(
             numberFormat,
@@ -517,33 +541,35 @@ public class ExtendedCodecRegistry {
             timeUnit,
             epoch,
             booleanInputWords,
-            booleanNumbers);
+            booleanNumbers,
+            nullWords);
       case DATE:
-        return new JsonNodeToLocalDateCodec(localDateFormat);
+        return new JsonNodeToLocalDateCodec(localDateFormat, nullWords);
       case TIME:
-        return new JsonNodeToLocalTimeCodec(localTimeFormat);
+        return new JsonNodeToLocalTimeCodec(localTimeFormat, nullWords);
       case TIMESTAMP:
-        return new JsonNodeToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch);
+        return new JsonNodeToInstantCodec(
+            timestampFormat, numberFormat, timeUnit, epoch, nullWords);
       case INET:
-        return JsonNodeToInetAddressCodec.INSTANCE;
+        return new JsonNodeToInetAddressCodec(nullWords);
       case UUID:
         {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
               (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
-          return new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, generator);
+          return new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, generator, nullWords);
         }
       case TIMEUUID:
         {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
               (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
-          return new JsonNodeToUUIDCodec(TypeCodec.timeUUID(), instantCodec, generator);
+          return new JsonNodeToUUIDCodec(TypeCodec.timeUUID(), instantCodec, generator, nullWords);
         }
       case BLOB:
-        return JsonNodeToBlobCodec.INSTANCE;
+        return new JsonNodeToBlobCodec(nullWords);
       case DURATION:
-        return JsonNodeToDurationCodec.INSTANCE;
+        return new JsonNodeToDurationCodec(nullWords);
       case LIST:
         {
           DataType elementType = cqlType.getTypeArguments().get(0);
@@ -551,7 +577,7 @@ public class ExtendedCodecRegistry {
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> eltCodec =
               (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(elementType);
-          return new JsonNodeToListCodec<>(collectionCodec, eltCodec, objectMapper);
+          return new JsonNodeToListCodec<>(collectionCodec, eltCodec, objectMapper, nullWords);
         }
       case SET:
         {
@@ -560,7 +586,7 @@ public class ExtendedCodecRegistry {
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> eltCodec =
               (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(elementType);
-          return new JsonNodeToSetCodec<>(collectionCodec, eltCodec, objectMapper);
+          return new JsonNodeToSetCodec<>(collectionCodec, eltCodec, objectMapper, nullWords);
         }
       case MAP:
         {
@@ -573,7 +599,7 @@ public class ExtendedCodecRegistry {
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> valueCodec =
               (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(valueType);
-          return new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper);
+          return new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper, nullWords);
         }
       case TUPLE:
         {
@@ -586,7 +612,7 @@ public class ExtendedCodecRegistry {
                 (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(eltType);
             eltCodecs.add(eltCodec);
           }
-          return new JsonNodeToTupleCodec(tupleCodec, eltCodecs.build(), objectMapper);
+          return new JsonNodeToTupleCodec(tupleCodec, eltCodecs.build(), objectMapper, nullWords);
         }
       case UDT:
         {
@@ -599,7 +625,7 @@ public class ExtendedCodecRegistry {
                 (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(field.getType());
             fieldCodecs.put(field.getName(), fieldCodec);
           }
-          return new JsonNodeToUDTCodec(udtCodec, fieldCodecs.build(), objectMapper);
+          return new JsonNodeToUDTCodec(udtCodec, fieldCodecs.build(), objectMapper, nullWords);
         }
       case COUNTER:
       case CUSTOM:

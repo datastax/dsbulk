@@ -41,7 +41,8 @@ class StringToIntegerCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() {
@@ -68,6 +69,8 @@ class StringToIntegerCodecTest {
         .to(0)
         .convertsFrom(null)
         .to(null)
+        .convertsFrom("NULL")
+        .to(null)
         .convertsFrom("")
         .to(null);
   }
@@ -82,7 +85,7 @@ class StringToIntegerCodecTest {
         .convertsTo(Integer.MIN_VALUE)
         .from("-2,147,483,648")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

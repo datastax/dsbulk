@@ -41,7 +41,8 @@ class StringToByteCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() {
@@ -66,6 +67,8 @@ class StringToByteCodecTest {
         .to((byte) 0)
         .convertsFrom(null)
         .to(null)
+        .convertsFrom("NULL")
+        .to(null)
         .convertsFrom("")
         .to(null);
   }
@@ -80,7 +83,7 @@ class StringToByteCodecTest {
         .convertsTo((byte) -128)
         .from("-128")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

@@ -13,24 +13,29 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.nio.ByteBuffer;
 import java.util.Base64;
+import java.util.List;
 
 public class StringToBlobCodec extends ConvertingCodec<String, ByteBuffer> {
 
-  public static final StringToBlobCodec INSTANCE = new StringToBlobCodec();
+  private final List<String> nullWords;
 
-  private StringToBlobCodec() {
+  public StringToBlobCodec(List<String> nullWords) {
     super(blob(), String.class);
+    this.nullWords = nullWords;
   }
 
   @Override
   public ByteBuffer convertFrom(String s) {
+    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+      return null;
+    }
     return CodecUtils.parseByteBuffer(s);
   }
 
   @Override
   public String convertTo(ByteBuffer value) {
     if (value == null) {
-      return null;
+      return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     return Base64.getEncoder().encodeToString(Bytes.getArray(value));
   }

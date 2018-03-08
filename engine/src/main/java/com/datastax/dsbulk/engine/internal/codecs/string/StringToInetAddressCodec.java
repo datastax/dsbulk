@@ -11,18 +11,20 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import java.net.InetAddress;
+import java.util.List;
 
 public class StringToInetAddressCodec extends ConvertingCodec<String, InetAddress> {
 
-  public static final StringToInetAddressCodec INSTANCE = new StringToInetAddressCodec();
+  private final List<String> nullWords;
 
-  private StringToInetAddressCodec() {
+  public StringToInetAddressCodec(List<String> nullWords) {
     super(inet(), String.class);
+    this.nullWords = nullWords;
   }
 
   @Override
   public InetAddress convertFrom(String s) {
-    if (s == null || s.isEmpty()) {
+    if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     try {
@@ -35,7 +37,7 @@ public class StringToInetAddressCodec extends ConvertingCodec<String, InetAddres
   @Override
   public String convertTo(InetAddress value) {
     if (value == null) {
-      return null;
+      return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     return value.getHostAddress();
   }

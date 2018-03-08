@@ -14,18 +14,22 @@ import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.InetAddress;
+import java.util.List;
 
 public class JsonNodeToInetAddressCodec extends ConvertingCodec<JsonNode, InetAddress> {
 
-  public static final JsonNodeToInetAddressCodec INSTANCE = new JsonNodeToInetAddressCodec();
+  private final List<String> nullWords;
 
-  private JsonNodeToInetAddressCodec() {
+  public JsonNodeToInetAddressCodec(List<String> nullWords) {
     super(inet(), JsonNode.class);
+    this.nullWords = nullWords;
   }
 
   @Override
   public InetAddress convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
       return null;
     }
     String s = node.asText();

@@ -16,22 +16,28 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 
 public abstract class StringToCollectionCodec<E, C extends Collection<E>>
     extends ConvertingCodec<String, C> {
 
   private final JsonNodeToCollectionCodec<E, C> jsonCodec;
   private final ObjectMapper objectMapper;
+  private final List<String> nullWords;
 
-  StringToCollectionCodec(JsonNodeToCollectionCodec<E, C> jsonCodec, ObjectMapper objectMapper) {
+  StringToCollectionCodec(
+      JsonNodeToCollectionCodec<E, C> jsonCodec,
+      ObjectMapper objectMapper,
+      List<String> nullWords) {
     super(jsonCodec.getTargetCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
+    this.nullWords = nullWords;
   }
 
   @Override
   public C convertFrom(String s) {
-    if (s == null || s.isEmpty()) {
+    if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     try {
@@ -45,7 +51,7 @@ public abstract class StringToCollectionCodec<E, C extends Collection<E>>
   @Override
   public String convertTo(C collection) {
     if (collection == null) {
-      return null;
+      return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     try {
       JsonNode node = jsonCodec.convertTo(collection);

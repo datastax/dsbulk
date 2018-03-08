@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
@@ -20,7 +21,8 @@ class JsonNodeToBooleanCodecTest {
   private final Map<String, Boolean> inputs =
       ImmutableMap.<String, Boolean>builder().put("foo", true).put("bar", false).build();
 
-  private final JsonNodeToBooleanCodec codec = new JsonNodeToBooleanCodec(inputs);
+  private final JsonNodeToBooleanCodec codec =
+      new JsonNodeToBooleanCodec(inputs, newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() {
@@ -38,6 +40,8 @@ class JsonNodeToBooleanCodecTest {
         .convertsFrom(JSON_NODE_FACTORY.textNode("bar"))
         .to(false)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(JSON_NODE_FACTORY.nullNode())
         .to(null)

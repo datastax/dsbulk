@@ -16,25 +16,31 @@ import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public class JsonNodeToUUIDCodec extends ConvertingCodec<JsonNode, UUID> {
 
   private final ConvertingCodec<String, Instant> instantCodec;
   private final TimeUUIDGenerator generator;
+  private final List<String> nullWords;
 
   public JsonNodeToUUIDCodec(
       TypeCodec<UUID> targetCodec,
       ConvertingCodec<String, Instant> instantCodec,
-      TimeUUIDGenerator generator) {
+      TimeUUIDGenerator generator,
+      List<String> nullWords) {
     super(targetCodec, JsonNode.class);
     this.instantCodec = instantCodec;
     this.generator = generator;
+    this.nullWords = nullWords;
   }
 
   @Override
   public UUID convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
       return null;
     }
     return CodecUtils.parseUUID(node.asText(), instantCodec, generator);

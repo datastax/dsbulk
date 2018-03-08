@@ -19,6 +19,7 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.wrappedStatemen
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
@@ -77,7 +78,6 @@ import org.mockito.ArgumentCaptor;
 @SuppressWarnings("unchecked")
 class SchemaSettingsTest {
 
-  private static final String NULL_STRINGS = "nullStrings";
   private static final String NULL_TO_UNSET = "nullToUnset";
   private static final String C1 = "c1";
   private static final String C2 = "This is column 2, and its name desperately needs quoting";
@@ -106,7 +106,8 @@ class SchemaSettingsTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
   private final StringToInstantCodec codec =
-      new StringToInstantCodec(CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+      new StringToInstantCodec(
+          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), newArrayList(""));
 
   @BeforeEach
   void setUp() {
@@ -166,7 +167,6 @@ class SchemaSettingsTest {
         "2",
         C1);
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -215,7 +215,6 @@ class SchemaSettingsTest {
         "3",
         TIMESTAMP_VARNAME);
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -235,7 +234,6 @@ class SchemaSettingsTest {
         .isEqualTo(String.format("INSERT INTO ks.t1(%1$s,\"%2$s\") VALUES (:%1$s,now())", C1, C2));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"), "2", C1);
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -303,7 +301,8 @@ class SchemaSettingsTest {
         DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneId.of("Europe/Paris"));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(
-        new StringToInstantCodec(formatter, numberFormat, MILLISECONDS, EPOCH.atZone(UTC)));
+        new StringToInstantCodec(
+            formatter, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), newArrayList("")));
     schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -361,7 +360,6 @@ class SchemaSettingsTest {
         "2",
         "c2var");
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -388,7 +386,6 @@ class SchemaSettingsTest {
         "1",
         C1);
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -417,7 +414,6 @@ class SchemaSettingsTest {
         "2",
         C1);
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -437,7 +433,6 @@ class SchemaSettingsTest {
                 C1, C2, C3));
     assertMapping((DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"));
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -468,7 +463,6 @@ class SchemaSettingsTest {
         C4,
         C3);
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -490,7 +484,6 @@ class SchemaSettingsTest {
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"), C1, C1, C3, C3);
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -512,7 +505,6 @@ class SchemaSettingsTest {
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"), C1, C1);
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
   }
 
   @Test
@@ -532,114 +524,6 @@ class SchemaSettingsTest {
                 C1, C2, C3));
     assertMapping((DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"));
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
-    assertThat((Set) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS)).isEmpty();
-  }
-
-  @Test
-  void should_create_record_mapper_when_null_words_are_provided() {
-    LoaderConfig config =
-        makeLoaderConfig("nullToUnset = false, nullStrings = \"NIL, NULL\", keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(codec);
-    RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
-    assertThat(recordMapper).isNotNull();
-    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
-    verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (:%1$s,:\"%2$s\",:%3$s)",
-                C1, C2, C3));
-    assertMapping((DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"));
-    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
-    Set<String> nullStrings =
-        (Set<String>) ReflectionUtils.getInternalState(recordMapper, NULL_STRINGS);
-    assertThat(nullStrings).containsOnly("NIL", "NULL");
-  }
-
-  @Test
-  void should_create_settings_when_null_strings_are_specified() {
-    {
-      LoaderConfig config = makeLoaderConfig("nullStrings = \"null\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
-      schemaSettings.init(codec);
-
-      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
-          .containsOnly("null");
-    }
-
-    {
-      LoaderConfig config = makeLoaderConfig("nullStrings = \"null, NULL\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
-      schemaSettings.init(codec);
-
-      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
-          .containsOnly("null", "NULL");
-    }
-
-    {
-      LoaderConfig config =
-          makeLoaderConfig("nullStrings = \"[NIL, NULL]\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
-      schemaSettings.init(codec);
-
-      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
-          .containsOnly("NIL", "NULL");
-    }
-
-    {
-      LoaderConfig config =
-          makeLoaderConfig("nullStrings = \"\\\"NIL\\\", \\\"NULL\\\"\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
-      schemaSettings.init(codec);
-
-      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
-          .containsOnly("NIL", "NULL");
-    }
-
-    {
-      LoaderConfig config = makeLoaderConfig("nullStrings = \"NIL, NULL\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
-      schemaSettings.init(codec);
-
-      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
-          .containsOnly("NIL", "NULL");
-    }
-
-    {
-      LoaderConfig config = makeLoaderConfig("nullStrings = \"NULL\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
-      schemaSettings.init(codec);
-
-      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
-          .containsOnly("NULL");
-    }
-    {
-      LoaderConfig config = makeLoaderConfig("nullStrings = NULL, keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
-      schemaSettings.init(codec);
-
-      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
-          .containsOnly("NULL");
-    }
-    {
-      LoaderConfig config = makeLoaderConfig("nullStrings = \"[NULL]\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
-      schemaSettings.init(codec);
-
-      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
-          .containsOnly("NULL");
-    }
-    {
-      LoaderConfig config =
-          makeLoaderConfig("nullStrings = \"[\\\"NULL\\\"]\", keyspace=ks, table=t1");
-      SchemaSettings schemaSettings = new SchemaSettings(config);
-      schemaSettings.init(codec);
-
-      assertThat((Set<String>) ReflectionUtils.getInternalState(schemaSettings, NULL_STRINGS))
-          .containsOnly("NULL");
-    }
   }
 
   @Test
@@ -667,7 +551,6 @@ class SchemaSettingsTest {
         C2,
         "2",
         C1);
-    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -695,7 +578,6 @@ class SchemaSettingsTest {
         C2,
         "1",
         C1);
-    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -725,7 +607,6 @@ class SchemaSettingsTest {
         C2,
         C4,
         C3);
-    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -752,7 +633,6 @@ class SchemaSettingsTest {
         C1,
         C3,
         C3);
-    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -774,7 +654,6 @@ class SchemaSettingsTest {
             String.format("SELECT %1$s FROM ks.t1 WHERE token() > :start AND token() <= :end", C1));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"), C1, C1);
-    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -799,7 +678,6 @@ class SchemaSettingsTest {
         C2,
         "2",
         C1);
-    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -818,7 +696,6 @@ class SchemaSettingsTest {
                 "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
                 C1, C2, C3));
     assertMapping((DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"));
-    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
   }
 
   @Test
@@ -837,27 +714,6 @@ class SchemaSettingsTest {
                 "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
                 C1, C2, C3));
     assertMapping((DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"));
-    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isNull();
-  }
-
-  @Test
-  void should_create_row_mapper_when_null_words_are_provided() {
-    LoaderConfig config =
-        makeLoaderConfig("nullToUnset = false, nullStrings = \"NIL, NULL\", keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(codec);
-    ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    assertThat(readResultMapper).isNotNull();
-    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
-    verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
-                C1, C2, C3));
-    assertMapping((DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"));
-    assertThat(ReflectionUtils.getInternalState(readResultMapper, "nullWord")).isEqualTo("NIL");
   }
 
   @Test

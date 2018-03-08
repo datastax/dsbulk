@@ -13,18 +13,22 @@ import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NO
 import com.datastax.driver.core.Duration;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 
 public class JsonNodeToDurationCodec extends ConvertingCodec<JsonNode, Duration> {
 
-  public static final JsonNodeToDurationCodec INSTANCE = new JsonNodeToDurationCodec();
+  private final List<String> nullWords;
 
-  private JsonNodeToDurationCodec() {
+  public JsonNodeToDurationCodec(List<String> nullWords) {
     super(duration(), JsonNode.class);
+    this.nullWords = nullWords;
   }
 
   @Override
   public Duration convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
       return null;
     }
     String s = node.asText();

@@ -410,7 +410,7 @@ class MainTest {
               "ks",
               "-m",
               "{0:\"f1\", 1:\"f2\"}",
-              "-nullStrings",
+              "-nullWords",
               "[nil, nada]",
               "-query",
               "INSERT INTO foo",
@@ -457,7 +457,7 @@ class MainTest {
     assertThat(result.getInt("monitoring.reportRate")).isEqualTo(456);
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
-    assertThat(result.getString("schema.nullStrings")).isEqualTo("[nil, nada]");
+    assertThat(result.getStringList("codec.nullWords")).containsExactly("nil", "nada");
     assertThat(result.getString("schema.query")).isEqualTo("INSERT INTO foo");
     assertThat(result.getString("schema.table")).isEqualTo("table");
 
@@ -716,8 +716,8 @@ class MainTest {
               "98761234",
               "--schema.queryTtl",
               "28",
-              "--schema.nullStrings",
-              "NIL, NADA",
+              "--codec.nullWords",
+              "[NIL, NADA]",
               "--schema.nullToUnset",
               "false",
               "--schema.mapping",
@@ -811,7 +811,7 @@ class MainTest {
     assertThat(result.getString("schema.query")).isEqualTo("SELECT JUNK");
     assertThat(result.getString("schema.queryTimestamp")).isEqualTo("98761234");
     assertThat(result.getInt("schema.queryTtl")).isEqualTo(28);
-    assertThat(result.getString("schema.nullStrings")).isEqualTo("NIL, NADA");
+    assertThat(result.getStringList("codec.nullWords")).containsExactly("NIL", "NADA");
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");

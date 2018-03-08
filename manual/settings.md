@@ -513,17 +513,11 @@ The exact type of mapping to use depends on the connector being used. Some conne
 
 Default: **&lt;unspecified&gt;**.
 
-#### -nullStrings,--schema.nullStrings _&lt;string&gt;_
-
-Comma-separated list of strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, only the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required.
-
-Default: **&lt;unspecified&gt;**.
-
 #### --schema.nullToUnset _&lt;boolean&gt;_
 
 Specify whether to map `null` input values to "unset" in the database, i.e., don't modify a potentially pre-existing value of this field for this row. Valid for load scenarios, otherwise ignore. Note that setting to false creates tombstones to represent `null`.
 
-Note that this setting is applied after the *schema.nullStrings* setting, and may intercept `null`s produced by that setting.
+Note that this setting is applied after the *codec.nullWords* setting, and may intercept `null`s produced by that setting.
 
 Default: **true**.
 
@@ -658,6 +652,18 @@ Default: **false**.
 The locale to use for locale-sensitive conversions.
 
 Default: **"en_US"**.
+
+#### -nullWords,--codec.nullWords _&lt;list&lt;string&gt;&gt;_
+
+Comma-separated list of values that should be mapped to `null`.
+
+For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, only the first string specified will be used to change a row cell containing `null` to the specified string when written out.
+
+By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading.
+
+This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-word can still be left unset if required.
+
+Default: **[""]**.
 
 #### --codec.number _&lt;string&gt;_
 

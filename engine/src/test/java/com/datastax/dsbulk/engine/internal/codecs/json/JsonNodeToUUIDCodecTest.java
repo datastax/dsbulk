@@ -15,6 +15,7 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
@@ -28,6 +29,7 @@ import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -37,11 +39,14 @@ class JsonNodeToUUIDCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   private StringToInstantCodec instantCodec =
-      new StringToInstantCodec(CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+      new StringToInstantCodec(
+          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullWords);
 
   private final JsonNodeToUUIDCodec codec =
-      new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN);
+      new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullWords);
 
   @Test
   void should_convert_from_valid_input() {
@@ -50,21 +55,23 @@ class JsonNodeToUUIDCodecTest {
         .to(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .convertsFrom(null)
         .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
+        .to(null)
         .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
 
-    assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN))
+    assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullWords))
         .convertsFrom(JSON_NODE_FACTORY.textNode("2017-12-05T12:44:36+01:00"))
         .to(
             UUIDs.startOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
-    assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX))
+    assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullWords))
         .convertsFrom(JSON_NODE_FACTORY.textNode("2017-12-05T12:44:36.999999999+01:00"))
         .to(
             UUIDs.endOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36.999+01:00").toInstant().toEpochMilli()));
     assertThat(
-            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED)
+            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullWords)
                 .convertFrom(JSON_NODE_FACTORY.textNode("2017-12-05T12:44:36+01:00"))
                 .timestamp())
         .isEqualTo(
@@ -72,7 +79,7 @@ class JsonNodeToUUIDCodecTest {
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
     assertThat(
-            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM)
+            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullWords)
                 .convertFrom(JSON_NODE_FACTORY.textNode("2017-12-05T12:44:36+01:00"))
                 .timestamp())
         .isEqualTo(
@@ -80,40 +87,40 @@ class JsonNodeToUUIDCodecTest {
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
 
-    assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN))
+    assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullWords))
         .convertsFrom(JSON_NODE_FACTORY.textNode("123456"))
         .to(UUIDs.startOf(123456L));
     Assertions.assertThat(
-            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX)
+            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullWords)
                 .convertFrom(JSON_NODE_FACTORY.textNode("123456"))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     Assertions.assertThat(
-            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED)
+            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullWords)
                 .convertFrom(JSON_NODE_FACTORY.textNode("123456"))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     Assertions.assertThat(
-            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM)
+            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullWords)
                 .convertFrom(JSON_NODE_FACTORY.textNode("123456"))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
 
-    assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN))
+    assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullWords))
         .convertsFrom(JSON_NODE_FACTORY.numberNode(123456L))
         .to(UUIDs.startOf(123456L));
     Assertions.assertThat(
-            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX)
+            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullWords)
                 .convertFrom(JSON_NODE_FACTORY.numberNode(123456L))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     Assertions.assertThat(
-            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED)
+            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullWords)
                 .convertFrom(JSON_NODE_FACTORY.numberNode(123456L))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     Assertions.assertThat(
-            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM)
+            new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullWords)
                 .convertFrom(JSON_NODE_FACTORY.numberNode(123456L))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());

@@ -24,6 +24,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -99,6 +100,7 @@ public class CodecSettings {
   private static final String LOCALE = "locale";
   private static final String BOOLEAN_WORDS = "booleanWords";
   private static final String BOOLEAN_NUMBERS = "booleanNumbers";
+  private static final String NULL_WORDS = "nullWords";
   private static final String NUMBER = "number";
   private static final String FORMAT_NUMERIC_OUTPUT = "formatNumbers";
   private static final String ROUNDING_STRATEGY = "roundingStrategy";
@@ -113,6 +115,7 @@ public class CodecSettings {
 
   private final LoaderConfig config;
 
+  private ImmutableList<String> nullWords;
   private Map<String, Boolean> booleanInputWords;
   private Map<Boolean, String> booleanOutputWords;
   private List<BigDecimal> booleanNumbers;
@@ -135,6 +138,9 @@ public class CodecSettings {
     try {
 
       Locale locale = parseLocale(config.getString(LOCALE));
+
+      // strings
+      nullWords = ImmutableList.copyOf(config.getStringList(NULL_WORDS));
 
       // numeric
       roundingMode = config.getEnum(RoundingMode.class, ROUNDING_STRATEGY);
@@ -178,13 +184,14 @@ public class CodecSettings {
   }
 
   public StringToTemporalCodec<Instant> getTimestampCodec() {
-    return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch);
+    return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch, nullWords);
   }
 
   public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {
     CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
     return new ExtendedCodecRegistry(
         codecRegistry,
+        nullWords,
         booleanInputWords,
         booleanOutputWords,
         booleanNumbers,

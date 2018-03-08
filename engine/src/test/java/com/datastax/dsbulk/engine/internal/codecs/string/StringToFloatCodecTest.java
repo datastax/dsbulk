@@ -41,7 +41,8 @@ class StringToFloatCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
   @SuppressWarnings("FloatingPointLiteralPrecision")
@@ -69,6 +70,8 @@ class StringToFloatCodecTest {
         .to(0f)
         .convertsFrom(null)
         .to(null)
+        .convertsFrom("NULL")
+        .to(null)
         .convertsFrom("")
         .to(null);
   }
@@ -85,7 +88,7 @@ class StringToFloatCodecTest {
         .convertsTo(0.001f)
         .from("0") // decimals truncated
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class JsonNodeToMapCodec<K, V> extends ConvertingCodec<JsonNode, Map<K, V>> {
@@ -23,21 +24,26 @@ public class JsonNodeToMapCodec<K, V> extends ConvertingCodec<JsonNode, Map<K, V
   private final ConvertingCodec<String, K> keyCodec;
   private final ConvertingCodec<JsonNode, V> valueCodec;
   private final ObjectMapper objectMapper;
+  private final List<String> nullWords;
 
   public JsonNodeToMapCodec(
       TypeCodec<Map<K, V>> collectionCodec,
       ConvertingCodec<String, K> keyCodec,
       ConvertingCodec<JsonNode, V> valueCodec,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      List<String> nullWords) {
     super(collectionCodec, JsonNode.class);
     this.keyCodec = keyCodec;
     this.valueCodec = valueCodec;
     this.objectMapper = objectMapper;
+    this.nullWords = nullWords;
   }
 
   @Override
   public Map<K, V> convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
       return null;
     }
     if (!node.isObject()) {

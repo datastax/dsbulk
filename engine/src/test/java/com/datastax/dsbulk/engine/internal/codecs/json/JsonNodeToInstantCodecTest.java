@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
@@ -24,6 +25,7 @@ import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToInstantCodecTest {
@@ -41,10 +43,13 @@ class JsonNodeToInstantCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   @Test
   void should_convert_from_valid_input() {
     JsonNodeToInstantCodec codec =
-        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+        new JsonNodeToInstantCodec(
+            temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), newArrayList("NULL"));
     assertThat(codec)
         .convertsFrom(JSON_NODE_FACTORY.textNode("2016-07-24T20:34"))
         .to(Instant.parse("2016-07-24T20:34:00Z"))
@@ -60,19 +65,25 @@ class JsonNodeToInstantCodecTest {
         .to(Instant.parse("2016-07-24T19:34:12.999Z"))
         .convertsFrom(null)
         .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
+        .to(null)
         .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
     codec =
-        new JsonNodeToInstantCodec(temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+        new JsonNodeToInstantCodec(
+            temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), newArrayList("NULL"));
     assertThat(codec)
         .convertsFrom(JSON_NODE_FACTORY.textNode("20160724203412"))
         .to(Instant.parse("2016-07-24T20:34:12Z"))
         .convertsFrom(null)
         .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
+        .to(null)
         .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
     codec =
-        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC));
+        new JsonNodeToInstantCodec(
+            temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC), newArrayList("NULL"));
     assertThat(codec)
         .convertsFrom(JSON_NODE_FACTORY.textNode("123456"))
         .to(minutesAfterMillennium)
@@ -84,7 +95,8 @@ class JsonNodeToInstantCodecTest {
   @Test
   void should_convert_to_valid_input() {
     JsonNodeToInstantCodec codec =
-        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+        new JsonNodeToInstantCodec(
+            temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), newArrayList("NULL"));
     assertThat(codec)
         .convertsTo(Instant.parse("2016-07-24T20:34:00Z"))
         .from(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:00Z"))
@@ -99,14 +111,16 @@ class JsonNodeToInstantCodecTest {
         .convertsTo(null)
         .from(JSON_NODE_FACTORY.nullNode());
     codec =
-        new JsonNodeToInstantCodec(temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+        new JsonNodeToInstantCodec(
+            temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), newArrayList("NULL"));
     assertThat(codec)
         .convertsTo(Instant.parse("2016-07-24T20:34:12Z"))
         .from(JSON_NODE_FACTORY.textNode("20160724203412"))
         .convertsTo(null)
         .from(JSON_NODE_FACTORY.nullNode());
     codec =
-        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC));
+        new JsonNodeToInstantCodec(
+            temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC), newArrayList("NULL"));
     // conversion back to numeric timestamps is not possible, values are always formatted with full
     // alphanumeric pattern
     assertThat(codec)
@@ -117,7 +131,8 @@ class JsonNodeToInstantCodecTest {
   @Test
   void should_not_convert_from_invalid_input() {
     JsonNodeToInstantCodec codec =
-        new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+        new JsonNodeToInstantCodec(
+            temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), newArrayList("NULL"));
     assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }
 }

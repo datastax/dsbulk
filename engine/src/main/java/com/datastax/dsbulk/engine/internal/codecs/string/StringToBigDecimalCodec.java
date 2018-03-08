@@ -31,7 +31,8 @@ public class StringToBigDecimalCodec extends StringToNumberCodec<BigDecimal> {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      List<BigDecimal> booleanNumbers,
+      List<String> nullWords) {
     super(
         TypeCodec.decimal(),
         numberFormat,
@@ -41,7 +42,8 @@ public class StringToBigDecimalCodec extends StringToNumberCodec<BigDecimal> {
         timeUnit,
         epoch,
         booleanWords,
-        booleanNumbers);
+        booleanNumbers,
+        nullWords);
   }
 
   @Override

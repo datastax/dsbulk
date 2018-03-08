@@ -16,15 +16,19 @@ import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.List;
 
 public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
     extends ConvertingCodec<JsonNode, T> {
 
   final DateTimeFormatter temporalFormat;
+  final List<String> nullWords;
 
-  JsonNodeToTemporalCodec(TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat) {
+  JsonNodeToTemporalCodec(
+      TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat, List<String> nullWords) {
     super(targetCodec, JsonNode.class);
     this.temporalFormat = temporalFormat;
+    this.nullWords = nullWords;
   }
 
   @Override
@@ -36,7 +40,9 @@ public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
   }
 
   TemporalAccessor parseTemporalAccessor(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
       return null;
     }
     String s = node.asText();

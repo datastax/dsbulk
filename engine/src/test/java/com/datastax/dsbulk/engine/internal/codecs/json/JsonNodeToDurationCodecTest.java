@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 
 import com.datastax.driver.core.Duration;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,7 @@ class JsonNodeToDurationCodecTest {
 
   private final Duration duration = Duration.newInstance(15, 0, 130 * nanosPerMinute);
 
-  private final JsonNodeToDurationCodec codec = JsonNodeToDurationCodec.INSTANCE;
+  private final JsonNodeToDurationCodec codec = new JsonNodeToDurationCodec(newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() {
@@ -37,6 +38,8 @@ class JsonNodeToDurationCodecTest {
         .convertsFrom(JSON_NODE_FACTORY.nullNode())
         .to(null)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null);
   }
 

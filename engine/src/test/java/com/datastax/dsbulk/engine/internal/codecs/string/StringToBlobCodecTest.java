@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 
 import com.datastax.driver.core.utils.Bytes;
 import java.nio.ByteBuffer;
@@ -26,7 +27,7 @@ class StringToBlobCodecTest {
   private final String data64 = Base64.getEncoder().encodeToString(data);
   private final String dataHex = Bytes.toHexString(data);
 
-  private final StringToBlobCodec codec = StringToBlobCodec.INSTANCE;
+  private final StringToBlobCodec codec = new StringToBlobCodec(newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() {
@@ -40,6 +41,8 @@ class StringToBlobCodecTest {
         .convertsFrom("")
         .to(null)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom("NULL")
         .to(null);
   }
 
@@ -51,7 +54,7 @@ class StringToBlobCodecTest {
         .convertsTo(emptyBb)
         .from("")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

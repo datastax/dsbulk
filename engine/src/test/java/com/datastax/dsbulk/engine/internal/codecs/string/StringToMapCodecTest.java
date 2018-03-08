@@ -45,6 +45,8 @@ class StringToMapCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   private final StringToDoubleCodec keyCodec =
       new StringToDoubleCodec(
           numberFormat,
@@ -54,20 +56,26 @@ class StringToMapCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullWords);
 
   private final TypeCodec<List<String>> stringListCodec = TypeCodec.list(TypeCodec.varchar());
 
   private final ConvertingCodec<JsonNode, List<String>> valueCodec =
       new JsonNodeToListCodec<>(
-          stringListCodec, new JsonNodeToStringCodec(TypeCodec.varchar()), objectMapper);
+          stringListCodec,
+          new JsonNodeToStringCodec(TypeCodec.varchar(), nullWords),
+          objectMapper,
+          nullWords);
 
   private final TypeCodec<Map<Double, List<String>>> mapCodec =
       TypeCodec.map(TypeCodec.cdouble(), stringListCodec);
 
   private final StringToMapCodec<Double, List<String>> codec =
       new StringToMapCodec<>(
-          new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper), objectMapper);
+          new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper, nullWords),
+          objectMapper,
+          nullWords);
 
   @Test
   void should_convert_from_valid_input() {
@@ -80,7 +88,11 @@ class StringToMapCodecTest {
         .to(map(1234.56d, list("foo"), 0.12d, list("bar")))
         .convertsFrom("{1: , '' :['foo']}")
         .to(map(1d, null, null, list("foo")))
+        .convertsFrom("{1: [\"NULL\"], 2: ['NULL']}")
+        .to(map(1d, list((String) null), 2d, list((String) null)))
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom("NULL")
         .to(null)
         .convertsFrom("{}")
         .to(null)
@@ -98,7 +110,7 @@ class StringToMapCodecTest {
         .convertsTo(map(1d, null, 2d, list()))
         .from("{\"1\":null,\"2\":[]}")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

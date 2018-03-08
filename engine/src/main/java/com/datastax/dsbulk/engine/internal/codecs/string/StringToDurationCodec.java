@@ -10,18 +10,20 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.Duration;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import java.util.List;
 
 public class StringToDurationCodec extends ConvertingCodec<String, Duration> {
 
-  public static final StringToDurationCodec INSTANCE = new StringToDurationCodec();
+  private final List<String> nullWords;
 
-  private StringToDurationCodec() {
+  public StringToDurationCodec(List<String> nullWords) {
     super(duration(), String.class);
+    this.nullWords = nullWords;
   }
 
   @Override
   public Duration convertFrom(String s) {
-    if (s == null || s.isEmpty()) {
+    if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     return Duration.from(s);
@@ -30,7 +32,7 @@ public class StringToDurationCodec extends ConvertingCodec<String, Duration> {
   @Override
   public String convertTo(Duration value) {
     if (value == null) {
-      return null;
+      return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     return value.toString();
   }

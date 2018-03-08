@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 
 import com.datastax.driver.core.Duration;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,7 @@ class StringToDurationCodecTest {
 
   private final Duration duration = Duration.newInstance(15, 0, 130 * nanosPerMinute);
 
-  private final StringToDurationCodec codec = StringToDurationCodec.INSTANCE;
+  private final StringToDurationCodec codec = new StringToDurationCodec(newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() {
@@ -33,12 +34,14 @@ class StringToDurationCodecTest {
         .convertsFrom("")
         .to(null)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom("NULL")
         .to(null);
   }
 
   @Test
   void should_convert_to_valid_input() {
-    assertThat(codec).convertsTo(duration).from("1y3mo2h10m").convertsTo(null).from(null);
+    assertThat(codec).convertsTo(duration).from("1y3mo2h10m").convertsTo(null).from("NULL");
   }
 
   @Test

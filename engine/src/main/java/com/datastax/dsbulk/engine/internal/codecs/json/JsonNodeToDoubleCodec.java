@@ -34,7 +34,8 @@ public class JsonNodeToDoubleCodec extends JsonNodeToNumberCodec<Double> {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      List<BigDecimal> booleanNumbers,
+      List<String> nullWords) {
     super(
         TypeCodec.cdouble(),
         numberFormat,
@@ -44,12 +45,15 @@ public class JsonNodeToDoubleCodec extends JsonNodeToNumberCodec<Double> {
         timeUnit,
         epoch,
         booleanWords,
-        booleanNumbers.stream().map(BigDecimal::doubleValue).collect(toList()));
+        booleanNumbers.stream().map(BigDecimal::doubleValue).collect(toList()),
+        nullWords);
   }
 
   @Override
   public Double convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
       return null;
     }
     if (node.isDouble()) {

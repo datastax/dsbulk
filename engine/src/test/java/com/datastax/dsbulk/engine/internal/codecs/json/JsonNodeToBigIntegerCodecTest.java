@@ -43,7 +43,8 @@ class JsonNodeToBigIntegerCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -67,6 +68,8 @@ class JsonNodeToBigIntegerCodecTest {
         .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
         .to(BigInteger.ZERO)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null)

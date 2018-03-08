@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.driver.core.DataType.bigint;
+import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -20,8 +21,8 @@ import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -44,14 +45,15 @@ import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Set;
 import org.assertj.core.util.Sets;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,14 +79,15 @@ class DefaultRecordMapperTest {
 
   private final int[] pkIndices = {0, 1, 2};
 
+  private final List<String> nullWords = newArrayList("");
+
   private Mapping mapping;
   private Record record;
   private PreparedStatement insertStatement;
   private BoundStatement boundStatement;
   private ColumnDefinitions variables;
   private ArgumentCaptor<String> variableCaptor;
-  private ArgumentCaptor<Object> valueCaptor;
-  private ArgumentCaptor<TypeCodec> codecCaptor;
+  private ArgumentCaptor<ByteBuffer> valueCaptor;
   private RecordMetadata recordMetadata;
   private final FastThreadLocal<NumberFormat> formatter =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
@@ -92,8 +95,7 @@ class DefaultRecordMapperTest {
   @BeforeEach
   void setUp() {
     variableCaptor = ArgumentCaptor.forClass(String.class);
-    valueCaptor = ArgumentCaptor.forClass(Object.class);
-    codecCaptor = ArgumentCaptor.forClass(TypeCodec.class);
+    valueCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
 
     recordMetadata =
         new DefaultRecordMetadata(
@@ -141,6 +143,26 @@ class DefaultRecordMapperTest {
     when(mapping.codec(C1, DataType.cint(), TypeToken.of(String.class))).thenReturn(codec1);
     when(mapping.codec(C2, DataType.bigint(), TypeToken.of(String.class))).thenReturn(codec2);
     when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec3);
+
+    // emulate the behavior of a ConvertingCodec (StringToXCodec)
+    when(codec1.serialize(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              String s = invocation.getArgument(0);
+              if (s == null) {
+                return null;
+              }
+              return TypeCodec.cint().serialize(Integer.parseInt(s), invocation.getArgument(1));
+            });
+    when(codec2.serialize(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              String s = invocation.getArgument(0);
+              if (s == null) {
+                return null;
+              }
+              return TypeCodec.bigint().serialize(Long.parseLong(s), invocation.getArgument(1));
+            });
   }
 
   @Test
@@ -150,18 +172,18 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            V4,
             mapping,
             recordMetadata,
-            ImmutableSet.of(),
             true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement, times(3))
-        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
-    assertParameter(0, C1, "42", codec1);
-    assertParameter(1, C2, "4242", codec2);
-    assertParameter(2, C3, "foo", codec3);
+        .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
+    assertParameter(0, C1, TypeCodec.cint().serialize(42, V4));
+    assertParameter(1, C2, TypeCodec.bigint().serialize(4242L, V4));
+    assertParameter(2, C3, TypeCodec.varchar().serialize("foo", V4));
   }
 
   @Test
@@ -180,20 +202,21 @@ class DefaultRecordMapperTest {
                 MINUTES,
                 EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
-                newArrayList(ONE, ZERO)));
-    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
+                newArrayList(ONE, ZERO),
+                nullWords));
+    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            V4,
             mapping,
             recordMetadata,
-            ImmutableSet.of(),
             true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).set(C1, "-123456", codec);
+    verify(boundStatement).setBytesUnsafe(C1, TypeCodec.bigint().serialize(-123456L, V4));
   }
 
   @Test
@@ -213,20 +236,21 @@ class DefaultRecordMapperTest {
                 MINUTES,
                 millennium.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
-                newArrayList(ONE, ZERO)));
-    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
+                newArrayList(ONE, ZERO),
+                nullWords));
+    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            V4,
             mapping,
             recordMetadata,
-            ImmutableSet.of(),
             true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).set(C1, "-1", codec);
+    verify(boundStatement).setBytesUnsafe(C1, TypeCodec.bigint().serialize(-1L, V4));
   }
 
   @Test
@@ -244,20 +268,24 @@ class DefaultRecordMapperTest {
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
-                newArrayList(ONE, ZERO)));
-    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
+                newArrayList(ONE, ZERO),
+                nullWords));
+    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            V4,
             mapping,
             recordMetadata,
-            ImmutableSet.of(),
             true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).set(C1, "2017-01-02T00:00:02", codec);
+    verify(boundStatement)
+        .setBytesUnsafe(
+            C1,
+            TypeCodec.bigint().serialize(Instant.parse("2017-01-02T00:00:02Z").toEpochMilli(), V4));
   }
 
   @Test
@@ -277,20 +305,24 @@ class DefaultRecordMapperTest {
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
-                newArrayList(ONE, ZERO)));
-    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn((TypeCodec) codec);
+                newArrayList(ONE, ZERO),
+                nullWords));
+    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            V4,
             mapping,
             recordMetadata,
-            ImmutableSet.of(),
             true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).set(C1, "20171123-123456", codec);
+    verify(boundStatement)
+        .setBytesUnsafe(
+            C1,
+            TypeCodec.bigint().serialize(Instant.parse("2017-11-23T12:34:56Z").toEpochMilli(), V4));
   }
 
   @Test
@@ -301,38 +333,17 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             new int[] {0, 2},
+            V4,
             mapping,
             recordMetadata,
-            ImmutableSet.of(),
             true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement, times(2))
-        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
-    assertParameter(0, C1, "42", codec1);
-    assertParameter(1, C3, "foo", codec3);
-  }
-
-  @Test
-  void should_map_null_words_to_unset() {
-    when(record.fields()).thenReturn(set(F1, F2, F3));
-    when(record.getFieldValue(F2)).thenReturn("NIL");
-    when(record.getFieldValue(F3)).thenReturn("NULL");
-    RecordMapper mapper =
-        new DefaultRecordMapper(
-            insertStatement,
-            new int[] {0},
-            mapping,
-            recordMetadata,
-            ImmutableSet.of("NIL", "NULL"),
-            true,
-            (mappedRecord, statement) -> boundStatement);
-    Statement result = mapper.map(record);
-    assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement)
-        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
-    assertParameter(0, C1, "42", codec1);
+        .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
+    assertParameter(0, C1, TypeCodec.cint().serialize(42, V4));
+    assertParameter(1, C3, TypeCodec.varchar().serialize("foo", V4));
   }
 
   @Test
@@ -343,38 +354,15 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             new int[] {1, 2},
+            V4,
             mapping,
             recordMetadata,
-            ImmutableSet.of(),
             false,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement, never())
-        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
-    verify(boundStatement).setToNull(variableCaptor.capture());
-    assertThat(variableCaptor.getValue()).isEqualTo(C1);
-  }
-
-  @Test
-  void should_map_null_word_to_null() {
-    when(record.fields()).thenReturn(set(F1));
-    when(record.getFieldValue(F1)).thenReturn("NIL");
-    RecordMapper mapper =
-        new DefaultRecordMapper(
-            insertStatement,
-            new int[] {1, 2},
-            mapping,
-            recordMetadata,
-            ImmutableSet.of("NIL"),
-            false,
-            (mappedRecord, statement) -> boundStatement);
-    Statement result = mapper.map(record);
-    assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement, never())
-        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
-    verify(boundStatement).setToNull(variableCaptor.capture());
-    assertThat(variableCaptor.getValue()).isEqualTo(C1);
+    verify(boundStatement).setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
+    assertParameter(0, C1, null);
   }
 
   @Test
@@ -386,9 +374,9 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            V4,
             mapping,
             recordMetadata,
-            ImmutableSet.of(),
             false,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
@@ -397,9 +385,9 @@ class DefaultRecordMapperTest {
     assertThat(((UnmappableStatement) result).getLocation().toString())
         .isEqualTo(location.toString() + "&field=field3&My+Fancy+Column+Name=foo&cqlType=varchar");
     verify(boundStatement, times(2))
-        .set(variableCaptor.capture(), valueCaptor.capture(), codecCaptor.capture());
-    assertParameter(0, C1, "42", codec1);
-    assertParameter(1, C2, "4242", codec2);
+        .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
+    assertParameter(0, C1, TypeCodec.cint().serialize(42, V4));
+    assertParameter(1, C2, TypeCodec.bigint().serialize(4242L, V4));
   }
 
   @Test
@@ -410,9 +398,9 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            V4,
             mapping,
             recordMetadata,
-            ImmutableSet.of(),
             false,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
@@ -433,9 +421,9 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            V4,
             mapping,
             recordMetadata,
-            ImmutableSet.of(),
             false,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
@@ -446,12 +434,10 @@ class DefaultRecordMapperTest {
         .hasMessageContaining("Primary key column col1 cannot be left unmapped");
   }
 
-  private void assertParameter(
-      int index, String expectedVariable, Object expectedValue, TypeCodec<?> expectedCodec) {
+  private void assertParameter(int index, String expectedVariable, ByteBuffer expectedValue) {
     assertThat(variableCaptor.getAllValues().get(index))
         .isEqualTo(Metadata.quoteIfNecessary(expectedVariable));
     assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
-    assertThat(codecCaptor.getAllValues().get(index)).isSameAs(expectedCodec);
   }
 
   private static Set<String> set(String... fields) {

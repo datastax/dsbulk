@@ -18,6 +18,7 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newField;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
 import static com.datastax.driver.core.TypeCodec.userType;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -58,6 +59,8 @@ class JsonNodeToUDTCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   // UDT 1
 
   private final UserType udt1 =
@@ -77,11 +80,12 @@ class JsonNodeToUDTCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullWords);
   private final ConvertingCodec f1bCodec =
       new JsonNodeToMapCodec<>(
           TypeCodec.map(TypeCodec.varchar(), TypeCodec.cdouble()),
-          new StringToStringCodec(TypeCodec.varchar()),
+          new StringToStringCodec(TypeCodec.varchar(), nullWords),
           new JsonNodeToDoubleCodec(
               numberFormat,
               OverflowStrategy.REJECT,
@@ -90,13 +94,18 @@ class JsonNodeToUDTCodecTest {
               MILLISECONDS,
               EPOCH.atZone(UTC),
               ImmutableMap.of("true", true, "false", false),
-              newArrayList(ONE, ZERO)),
-          objectMapper);
+              newArrayList(ONE, ZERO),
+              nullWords),
+          objectMapper,
+          nullWords);
 
   @SuppressWarnings("unchecked")
   private final JsonNodeToUDTCodec udtCodec1 =
       new JsonNodeToUDTCodec(
-          userType(udt1), ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec), objectMapper);
+          userType(udt1),
+          ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec),
+          objectMapper,
+          nullWords);
 
   // UDT 2
 
@@ -112,18 +121,25 @@ class JsonNodeToUDTCodecTest {
   @SuppressWarnings("unchecked")
   private final ConvertingCodec f2aCodec =
       new JsonNodeToUDTCodec(
-          userType(udt1), ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec), objectMapper);
+          userType(udt1),
+          ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec),
+          objectMapper,
+          nullWords);
 
   private final ConvertingCodec f2bCodec =
       new JsonNodeToListCodec<>(
           TypeCodec.list(LocalDateCodec.instance),
-          new JsonNodeToLocalDateCodec(CQL_DATE_TIME_FORMAT),
-          objectMapper);
+          new JsonNodeToLocalDateCodec(CQL_DATE_TIME_FORMAT, nullWords),
+          objectMapper,
+          nullWords);
 
   @SuppressWarnings("unchecked")
   private final JsonNodeToUDTCodec udtCodec2 =
       new JsonNodeToUDTCodec(
-          userType(udt2), ImmutableMap.of("f2a", f2aCodec, "f2b", f2bCodec), objectMapper);
+          userType(udt2),
+          ImmutableMap.of("f2a", f2aCodec, "f2b", f2bCodec),
+          objectMapper,
+          nullWords);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -141,6 +157,8 @@ class JsonNodeToUDTCodecTest {
         .convertsFrom(objectMapper.readTree("{ \"f1b\" :  null , \"f1a\" :  null }"))
         .to(udt1Empty)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(objectMapper.readTree("{}"))
         .to(null)
@@ -162,6 +180,8 @@ class JsonNodeToUDTCodecTest {
         .convertsFrom(objectMapper.readTree("{ \"f2b\" :  null , \"f2a\" :  null }"))
         .to(udt2Empty)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(objectMapper.readTree("{}"))
         .to(null)

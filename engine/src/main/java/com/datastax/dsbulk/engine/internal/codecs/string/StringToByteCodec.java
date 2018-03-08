@@ -32,7 +32,8 @@ public class StringToByteCodec extends StringToNumberCodec<Byte> {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      List<BigDecimal> booleanNumbers,
+      List<String> nullWords) {
     super(
         TypeCodec.tinyInt(),
         numberFormat,
@@ -42,7 +43,8 @@ public class StringToByteCodec extends StringToNumberCodec<Byte> {
         timeUnit,
         epoch,
         booleanWords,
-        booleanNumbers.stream().map(BigDecimal::byteValueExact).collect(toList()));
+        booleanNumbers.stream().map(BigDecimal::byteValueExact).collect(toList()),
+        nullWords);
   }
 
   @Override

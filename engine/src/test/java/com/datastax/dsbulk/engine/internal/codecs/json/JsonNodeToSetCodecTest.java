@@ -12,6 +12,7 @@ import static com.datastax.driver.core.TypeCodec.cdouble;
 import static com.datastax.driver.core.TypeCodec.set;
 import static com.datastax.driver.core.TypeCodec.varchar;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -31,6 +32,7 @@ import com.google.common.collect.ImmutableMap;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -41,6 +43,8 @@ class JsonNodeToSetCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   private final JsonNodeToDoubleCodec eltCodec1 =
       new JsonNodeToDoubleCodec(
           numberFormat,
@@ -50,18 +54,20 @@ class JsonNodeToSetCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullWords);
 
-  private final JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final JsonNodeToStringCodec eltCodec2 =
+      new JsonNodeToStringCodec(TypeCodec.varchar(), nullWords);
 
   private final TypeCodec<Set<Double>> setCodec1 = set(cdouble());
   private final TypeCodec<Set<String>> setCodec2 = set(varchar());
 
   private final JsonNodeToSetCodec<Double> codec1 =
-      new JsonNodeToSetCodec<>(setCodec1, eltCodec1, objectMapper);
+      new JsonNodeToSetCodec<>(setCodec1, eltCodec1, objectMapper, nullWords);
 
   private final JsonNodeToSetCodec<String> codec2 =
-      new JsonNodeToSetCodec<>(setCodec2, eltCodec2, objectMapper);
+      new JsonNodeToSetCodec<>(setCodec2, eltCodec2, objectMapper, nullWords);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -77,6 +83,8 @@ class JsonNodeToSetCodecTest {
         .convertsFrom(objectMapper.readTree("[,]"))
         .to(newLinkedHashSet(null, null))
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(objectMapper.readTree(""))
         .to(null);
@@ -96,10 +104,16 @@ class JsonNodeToSetCodecTest {
         .convertsFrom(objectMapper.readTree("[null,null]"))
         .to(newLinkedHashSet(null, null))
         .convertsFrom(objectMapper.readTree("[\"\",\"\"]"))
-        .to(newLinkedHashSet("", ""))
+        .to(newLinkedHashSet(""))
         .convertsFrom(objectMapper.readTree("['','']"))
-        .to(newLinkedHashSet("", ""))
+        .to(newLinkedHashSet(""))
+        .convertsFrom(objectMapper.readTree("[\"NULL\",\"NULL\"]"))
+        .to(newLinkedHashSet((String) null))
+        .convertsFrom(objectMapper.readTree("['NULL','NULL']"))
+        .to(newLinkedHashSet((String) null))
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(objectMapper.readTree("[]"))
         .to(null)

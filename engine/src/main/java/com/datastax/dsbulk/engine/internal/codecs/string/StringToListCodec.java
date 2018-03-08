@@ -15,7 +15,9 @@ import java.util.List;
 public class StringToListCodec<E> extends StringToCollectionCodec<E, List<E>> {
 
   public StringToListCodec(
-      JsonNodeToCollectionCodec<E, List<E>> jsonCodec, ObjectMapper objectMapper) {
-    super(jsonCodec, objectMapper);
+      JsonNodeToCollectionCodec<E, List<E>> jsonCodec,
+      ObjectMapper objectMapper,
+      List<String> nullWords) {
+    super(jsonCodec, objectMapper, nullWords);
   }
 }

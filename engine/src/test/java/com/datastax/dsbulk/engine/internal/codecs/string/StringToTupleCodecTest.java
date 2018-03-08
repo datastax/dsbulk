@@ -14,6 +14,7 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
@@ -49,11 +50,14 @@ class StringToTupleCodecTest {
 
   private final TupleType tupleType = newTupleType(V4, codecRegistry, timestamp(), varchar());
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   private final ConvertingCodec eltCodec1 =
       new JsonNodeToInstantCodec(
-          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullWords);
 
-  private final ConvertingCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final ConvertingCodec eltCodec2 =
+      new JsonNodeToStringCodec(TypeCodec.varchar(), nullWords);
 
   @SuppressWarnings("unchecked")
   private final List<ConvertingCodec<JsonNode, Object>> eltCodecs =
@@ -61,8 +65,9 @@ class StringToTupleCodecTest {
 
   private final StringToTupleCodec codec =
       new StringToTupleCodec(
-          new JsonNodeToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, objectMapper),
-          objectMapper);
+          new JsonNodeToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, objectMapper, nullWords),
+          objectMapper,
+          nullWords);
 
   @Test
   void should_convert_from_valid_input() {
@@ -77,11 +82,15 @@ class StringToTupleCodecTest {
         .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
         .convertsFrom("[\"\",\"\"]")
         .to(tupleType.newValue(null, ""))
+        .convertsFrom("[\"NULL\",\"NULL\"]")
+        .to(tupleType.newValue(null, null))
         .convertsFrom("[null,null]")
         .to(tupleType.newValue(null, null))
         .convertsFrom("[,]")
         .to(tupleType.newValue(null, null))
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom("NULL")
         .to(null)
         .convertsFrom("")
         .to(null);
@@ -95,7 +104,7 @@ class StringToTupleCodecTest {
         .convertsTo(tupleType.newValue(null, null))
         .from("[null,null]")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

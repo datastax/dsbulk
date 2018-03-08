@@ -16,21 +16,25 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.List;
 
 public class StringToTupleCodec extends ConvertingCodec<String, TupleValue> {
 
   private final JsonNodeToTupleCodec jsonCodec;
   private final ObjectMapper objectMapper;
+  private final List<String> nullWords;
 
-  public StringToTupleCodec(JsonNodeToTupleCodec jsonCodec, ObjectMapper objectMapper) {
+  public StringToTupleCodec(
+      JsonNodeToTupleCodec jsonCodec, ObjectMapper objectMapper, List<String> nullWords) {
     super(jsonCodec.getTargetCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
+    this.nullWords = nullWords;
   }
 
   @Override
   public TupleValue convertFrom(String s) {
-    if (s == null || s.isEmpty()) {
+    if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     try {
@@ -44,7 +48,7 @@ public class StringToTupleCodec extends ConvertingCodec<String, TupleValue> {
   @Override
   public String convertTo(TupleValue tuple) {
     if (tuple == null) {
-      return null;
+      return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     try {
       JsonNode node = jsonCodec.convertTo(tuple);

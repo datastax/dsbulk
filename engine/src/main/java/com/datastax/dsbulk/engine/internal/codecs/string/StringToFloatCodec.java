@@ -32,7 +32,8 @@ public class StringToFloatCodec extends StringToNumberCodec<Float> {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      List<BigDecimal> booleanNumbers,
+      List<String> nullWords) {
     super(
         TypeCodec.cfloat(),
         numberFormat,
@@ -42,7 +43,8 @@ public class StringToFloatCodec extends StringToNumberCodec<Float> {
         timeUnit,
         epoch,
         booleanWords,
-        booleanNumbers.stream().map(BigDecimal::floatValue).collect(toList()));
+        booleanNumbers.stream().map(BigDecimal::floatValue).collect(toList()),
+        nullWords);
   }
 
   @Override

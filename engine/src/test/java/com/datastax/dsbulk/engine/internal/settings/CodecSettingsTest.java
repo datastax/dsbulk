@@ -41,6 +41,7 @@ import com.datastax.driver.core.TupleType;
 import com.datastax.driver.core.UserType;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUUIDCodec;
@@ -82,6 +83,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.List;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -383,5 +386,89 @@ class CodecSettingsTest {
     ConvertingCodec<String, Byte> codec =
         codecRegistry.convertingCodecFor(tinyint(), TypeToken.of(String.class));
     assertThat(codec.convertFrom("128")).isEqualTo((byte) 127);
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void should_create_settings_when_null_words_are_specified() {
+    {
+      LoaderConfig config = makeLoaderConfig("nullWords = \"null\"");
+      CodecSettings codecSettings = new CodecSettings(config);
+      codecSettings.init();
+
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+          .containsOnly("null");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullWords = \"null, NULL\"");
+      CodecSettings codecSettings = new CodecSettings(config);
+      codecSettings.init();
+
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+          .containsOnly("null", "NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullWords = \"[NIL, NULL]\"");
+      CodecSettings codecSettings = new CodecSettings(config);
+      codecSettings.init();
+
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+          .containsOnly("NIL", "NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullWords = \"\\\"NIL\\\", \\\"NULL\\\"\"");
+      CodecSettings codecSettings = new CodecSettings(config);
+      codecSettings.init();
+
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+          .containsOnly("NIL", "NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullWords = \"NIL, NULL\"");
+      CodecSettings codecSettings = new CodecSettings(config);
+      codecSettings.init();
+
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+          .containsOnly("NIL", "NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullWords = \"NULL\"");
+      CodecSettings codecSettings = new CodecSettings(config);
+      codecSettings.init();
+
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+          .containsOnly("NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullWords = NULL");
+      CodecSettings codecSettings = new CodecSettings(config);
+      codecSettings.init();
+
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+          .containsOnly("NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullWords = \"[NULL]\"");
+      CodecSettings codecSettings = new CodecSettings(config);
+      codecSettings.init();
+
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+          .containsOnly("NULL");
+    }
+    {
+      LoaderConfig config = makeLoaderConfig("nullWords = \"[\\\"NULL\\\"]\"");
+      CodecSettings codecSettings = new CodecSettings(config);
+      codecSettings.init();
+
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+          .containsOnly("NULL");
+    }
+  }
+
+  @NotNull
+  private static LoaderConfig makeLoaderConfig(String configString) {
+    return new DefaultLoaderConfig(
+        ConfigFactory.parseString(configString)
+            .withFallback(ConfigFactory.load().getConfig("dsbulk.codec")));
   }
 }

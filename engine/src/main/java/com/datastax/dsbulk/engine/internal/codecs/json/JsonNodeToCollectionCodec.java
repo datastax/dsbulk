@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.function.Supplier;
 
 public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
@@ -24,21 +25,26 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
   private final ConvertingCodec<JsonNode, E> eltCodec;
   private final Supplier<C> collectionSupplier;
   private final ObjectMapper objectMapper;
+  private final List<String> nullWords;
 
   JsonNodeToCollectionCodec(
       TypeCodec<C> collectionCodec,
       ConvertingCodec<JsonNode, E> eltCodec,
       ObjectMapper objectMapper,
-      Supplier<C> collectionSupplier) {
+      Supplier<C> collectionSupplier,
+      List<String> nullWords) {
     super(collectionCodec, JsonNode.class);
     this.eltCodec = eltCodec;
     this.objectMapper = objectMapper;
     this.collectionSupplier = collectionSupplier;
+    this.nullWords = nullWords;
   }
 
   @Override
   public C convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
       return null;
     }
     if (!node.isArray()) {

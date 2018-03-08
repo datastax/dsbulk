@@ -32,7 +32,8 @@ public class StringToLongCodec extends StringToNumberCodec<Long> {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      List<BigDecimal> booleanNumbers,
+      List<String> nullWords) {
     super(
         TypeCodec.bigint(),
         numberFormat,
@@ -42,7 +43,8 @@ public class StringToLongCodec extends StringToNumberCodec<Long> {
         timeUnit,
         epoch,
         booleanWords,
-        booleanNumbers.stream().map(BigDecimal::longValueExact).collect(toList()));
+        booleanNumbers.stream().map(BigDecimal::longValueExact).collect(toList()),
+        nullWords);
   }
 
   @Override

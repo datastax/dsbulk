@@ -23,20 +23,25 @@ public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> 
   private final TupleType definition;
   private final List<ConvertingCodec<JsonNode, Object>> eltCodecs;
   private final ObjectMapper objectMapper;
+  private final List<String> nullWords;
 
   public JsonNodeToTupleCodec(
       TypeCodec<TupleValue> tupleCodec,
       List<ConvertingCodec<JsonNode, Object>> eltCodecs,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      List<String> nullWords) {
     super(tupleCodec, JsonNode.class);
     this.eltCodecs = eltCodecs;
     definition = (TupleType) tupleCodec.getCqlType();
     this.objectMapper = objectMapper;
+    this.nullWords = nullWords;
   }
 
   @Override
   public TupleValue convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
       return null;
     }
     if (!node.isArray()) {

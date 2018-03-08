@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
@@ -22,7 +23,8 @@ class StringToBooleanCodecTest {
   private final Map<Boolean, String> outputs =
       ImmutableMap.<Boolean, String>builder().put(true, "foo").put(false, "bar").build();
 
-  private final StringToBooleanCodec codec = new StringToBooleanCodec(inputs, outputs);
+  private final StringToBooleanCodec codec =
+      new StringToBooleanCodec(inputs, outputs, newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() {
@@ -37,6 +39,8 @@ class StringToBooleanCodecTest {
         .to(false)
         .convertsFrom(null)
         .to(null)
+        .convertsFrom("NULL")
+        .to(null)
         .convertsFrom("")
         .to(null);
   }
@@ -49,7 +53,7 @@ class StringToBooleanCodecTest {
         .convertsTo(false)
         .from("bar")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

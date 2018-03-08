@@ -33,6 +33,7 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MAX;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MIN;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.time.Instant.EPOCH;
@@ -1019,7 +1020,8 @@ class CodecUtilsTest {
             timestampFormat1,
             CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
             MILLISECONDS,
-            EPOCH.atZone(UTC));
+            EPOCH.atZone(UTC),
+            newArrayList("NULL"));
     assertThat(CodecUtils.parseUUID(null, instantCodec, MIN)).isNull();
     assertThat(CodecUtils.parseUUID("", instantCodec, MIN)).isNull();
     assertThat(CodecUtils.parseUUID("a15341ec-ebef-4eab-b91d-ff16bf801a79", instantCodec, MIN))

@@ -42,7 +42,8 @@ class JsonNodeToFloatCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
   @SuppressWarnings("FloatingPointLiteralPrecision")
@@ -85,6 +86,8 @@ class JsonNodeToFloatCodecTest {
         .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
         .to(0f)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);

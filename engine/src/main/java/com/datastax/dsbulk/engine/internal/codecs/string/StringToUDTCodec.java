@@ -16,21 +16,25 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.List;
 
 public class StringToUDTCodec extends ConvertingCodec<String, UDTValue> {
 
   private final JsonNodeToUDTCodec jsonCodec;
   private final ObjectMapper objectMapper;
+  private final List<String> nullWords;
 
-  public StringToUDTCodec(JsonNodeToUDTCodec jsonCodec, ObjectMapper objectMapper) {
+  public StringToUDTCodec(
+      JsonNodeToUDTCodec jsonCodec, ObjectMapper objectMapper, List<String> nullWords) {
     super(jsonCodec.getTargetCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
+    this.nullWords = nullWords;
   }
 
   @Override
   public UDTValue convertFrom(String s) {
-    if (s == null || s.isEmpty()) {
+    if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     try {
@@ -44,7 +48,7 @@ public class StringToUDTCodec extends ConvertingCodec<String, UDTValue> {
   @Override
   public String convertTo(UDTValue udt) {
     if (udt == null) {
-      return null;
+      return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     try {
       JsonNode node = jsonCodec.convertTo(udt);

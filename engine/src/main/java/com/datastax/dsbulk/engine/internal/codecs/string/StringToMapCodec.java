@@ -15,22 +15,26 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 public class StringToMapCodec<K, V> extends ConvertingCodec<String, Map<K, V>> {
 
   private final JsonNodeToMapCodec<K, V> jsonCodec;
   private final ObjectMapper objectMapper;
+  private final List<String> nullWords;
 
-  public StringToMapCodec(JsonNodeToMapCodec<K, V> jsonCodec, ObjectMapper objectMapper) {
+  public StringToMapCodec(
+      JsonNodeToMapCodec<K, V> jsonCodec, ObjectMapper objectMapper, List<String> nullWords) {
     super(jsonCodec.getTargetCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
+    this.nullWords = nullWords;
   }
 
   @Override
   public Map<K, V> convertFrom(String s) {
-    if (s == null || s.isEmpty()) {
+    if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     try {
@@ -44,7 +48,7 @@ public class StringToMapCodec<K, V> extends ConvertingCodec<String, Map<K, V>> {
   @Override
   public String convertTo(Map<K, V> map) {
     if (map == null) {
-      return null;
+      return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     try {
       JsonNode node = jsonCodec.convertTo(map);

@@ -88,7 +88,7 @@ public class ReflectionUtils {
     Class<?> c = target.getClass();
     try {
       Field f = locateField(field, c);
-      assert f != null;
+      assert f != null : String.format("Cannot find field %s in target %s", field, target);
       f.setAccessible(true);
       return f.get(target);
     } catch (Exception e) {
@@ -101,7 +101,7 @@ public class ReflectionUtils {
   public static Object getInternalState(Class<?> c, String field) {
     try {
       Field f = locateField(field, c);
-      assert f != null;
+      assert f != null : String.format("Cannot find field %s in target %s", field, c);
       f.setAccessible(true);
       return f.get(null);
     } catch (Exception e) {

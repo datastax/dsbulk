@@ -10,22 +10,26 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import java.util.List;
 import java.util.Map;
 
 public class StringToBooleanCodec extends ConvertingCodec<String, Boolean> {
 
   private final Map<String, Boolean> inputs;
   private final Map<Boolean, String> outputs;
+  private final List<String> nullWords;
 
-  public StringToBooleanCodec(Map<String, Boolean> inputs, Map<Boolean, String> outputs) {
+  public StringToBooleanCodec(
+      Map<String, Boolean> inputs, Map<Boolean, String> outputs, List<String> nullWords) {
     super(cboolean(), String.class);
     this.inputs = inputs;
     this.outputs = outputs;
+    this.nullWords = nullWords;
   }
 
   @Override
   public Boolean convertFrom(String s) {
-    if (s == null || s.isEmpty()) {
+    if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     Boolean b = inputs.get(s.toLowerCase());
@@ -38,7 +42,7 @@ public class StringToBooleanCodec extends ConvertingCodec<String, Boolean> {
   @Override
   public String convertTo(Boolean value) {
     if (value == null) {
-      return null;
+      return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     String s = outputs.get(value);
     if (s == null) {

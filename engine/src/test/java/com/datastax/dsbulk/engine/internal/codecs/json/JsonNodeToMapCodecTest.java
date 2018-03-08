@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -42,6 +43,8 @@ class JsonNodeToMapCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   private final ConvertingCodec<String, Double> keyCodec =
       new StringToDoubleCodec(
           numberFormat,
@@ -51,19 +54,23 @@ class JsonNodeToMapCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullWords);
 
   private final TypeCodec<List<String>> stringListCodec = TypeCodec.list(TypeCodec.varchar());
 
   private final JsonNodeToListCodec<String> valueCodec =
       new JsonNodeToListCodec<>(
-          stringListCodec, new JsonNodeToStringCodec(TypeCodec.varchar()), objectMapper);
+          stringListCodec,
+          new JsonNodeToStringCodec(TypeCodec.varchar(), nullWords),
+          objectMapper,
+          nullWords);
 
   private final TypeCodec<Map<Double, List<String>>> mapCodec =
       TypeCodec.map(TypeCodec.cdouble(), stringListCodec);
 
   private final JsonNodeToMapCodec<Double, List<String>> codec =
-      new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper);
+      new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper, nullWords);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -76,7 +83,11 @@ class JsonNodeToMapCodecTest {
         .to(map(1234.56d, list("foo"), 0.12d, list("bar")))
         .convertsFrom(objectMapper.readTree("{1: , '' :['foo']}"))
         .to(map(1d, null, null, list("foo")))
+        .convertsFrom(objectMapper.readTree("{1: [\"NULL\"], 2: ['NULL']}"))
+        .to(map(1d, list((String) null), 2d, list((String) null)))
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(objectMapper.readTree("{}"))
         .to(null)

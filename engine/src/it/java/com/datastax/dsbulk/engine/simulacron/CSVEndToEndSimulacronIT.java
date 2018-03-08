@@ -459,7 +459,7 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
-      "--schema.nullStrings",
+      "--codec.nullWords",
       "[NULL]",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,

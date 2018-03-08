@@ -13,26 +13,33 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.List;
 
 public abstract class StringToTemporalCodec<T extends TemporalAccessor>
     extends ConvertingCodec<String, T> {
 
   final DateTimeFormatter temporalFormat;
+  final List<String> nullWords;
 
-  StringToTemporalCodec(TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat) {
+  StringToTemporalCodec(
+      TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat, List<String> nullWords) {
     super(targetCodec, String.class);
     this.temporalFormat = temporalFormat;
+    this.nullWords = nullWords;
   }
 
   @Override
   public String convertTo(T value) {
     if (value == null) {
-      return null;
+      return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     return temporalFormat.format(value);
   }
 
   TemporalAccessor parseTemporalAccessor(String s) {
+    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+      return null;
+    }
     return CodecUtils.parseTemporal(s, temporalFormat);
   }
 }

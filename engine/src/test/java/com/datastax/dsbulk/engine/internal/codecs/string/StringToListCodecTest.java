@@ -43,6 +43,8 @@ class StringToListCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   private final JsonNodeToDoubleCodec eltCodec1 =
       new JsonNodeToDoubleCodec(
           numberFormat,
@@ -52,20 +54,26 @@ class StringToListCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullWords);
 
-  private final JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final JsonNodeToStringCodec eltCodec2 =
+      new JsonNodeToStringCodec(TypeCodec.varchar(), nullWords);
 
   private final TypeCodec<List<Double>> listCodec1 = list(cdouble());
   private final TypeCodec<List<String>> listCodec2 = list(varchar());
 
   private final StringToListCodec<Double> codec1 =
       new StringToListCodec<>(
-          new JsonNodeToListCodec<>(listCodec1, eltCodec1, objectMapper), objectMapper);
+          new JsonNodeToListCodec<>(listCodec1, eltCodec1, objectMapper, nullWords),
+          objectMapper,
+          nullWords);
 
   private final StringToListCodec<String> codec2 =
       new StringToListCodec<>(
-          new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper), objectMapper);
+          new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper, nullWords),
+          objectMapper,
+          nullWords);
 
   @Test
   void should_convert_from_valid_input() {
@@ -81,6 +89,8 @@ class StringToListCodecTest {
         .convertsFrom("[,]")
         .to(newArrayList(null, null))
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom("NULL")
         .to(null)
         .convertsFrom("")
         .to(null);
@@ -103,7 +113,13 @@ class StringToListCodecTest {
         .to(newArrayList("", ""))
         .convertsFrom("['','']")
         .to(newArrayList("", ""))
+        .convertsFrom("[\"NULL\",\"NULL\"]")
+        .to(newArrayList(null, null))
+        .convertsFrom("['NULL','NULL']")
+        .to(newArrayList(null, null))
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom("NULL")
         .to(null)
         .convertsFrom("[]")
         .to(null)
@@ -125,7 +141,7 @@ class StringToListCodecTest {
         .convertsTo(newArrayList(null, null))
         .from("[null,null]")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
     assertThat(codec2)
         .convertsTo(newArrayList("foo", "bar"))
         .from("[\"foo\",\"bar\"]")
@@ -138,7 +154,7 @@ class StringToListCodecTest {
         .convertsTo(newArrayList(null, null))
         .from("[null,null]")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

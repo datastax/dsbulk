@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.writetime;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
@@ -27,6 +28,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
@@ -42,12 +44,14 @@ class WriteTimeCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   @Test
   void should_convert_to_timestamp_micros() {
 
     assertThat(
             new WriteTimeCodec<>(
-                new StringToInstantCodec(temporalFormat, numberFormat, unit, epoch)))
+                new StringToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
         .convertsFrom("2017-11-30T14:46:56+01:00")
         .to(
             MILLISECONDS.toMicros(
@@ -55,13 +59,13 @@ class WriteTimeCodecTest {
 
     assertThat(
             new WriteTimeCodec<>(
-                new StringToInstantCodec(temporalFormat, numberFormat, unit, epoch)))
+                new StringToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
         .convertsFrom("123456")
         .to(MILLISECONDS.toMicros(123456L));
 
     assertThat(
             new WriteTimeCodec<>(
-                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch)))
+                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
         .convertsFrom(CodecSettings.JSON_NODE_FACTORY.textNode("2017-11-30T14:46:56+01:00"))
         .to(
             MILLISECONDS.toMicros(
@@ -69,13 +73,13 @@ class WriteTimeCodecTest {
 
     assertThat(
             new WriteTimeCodec<>(
-                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch)))
+                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
         .convertsFrom(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
         .to(MILLISECONDS.toMicros(123456L));
 
     assertThat(
             new WriteTimeCodec<>(
-                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch)))
+                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
         .convertsFrom(CodecSettings.JSON_NODE_FACTORY.numberNode(123456L))
         .to(MILLISECONDS.toMicros(123456L));
 

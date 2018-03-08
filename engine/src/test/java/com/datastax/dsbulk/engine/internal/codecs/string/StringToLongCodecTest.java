@@ -25,12 +25,15 @@ import com.google.common.collect.ImmutableMap;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class StringToLongCodecTest {
 
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+
+  private final List<String> nullWords = newArrayList("NULL");
 
   private final StringToLongCodec codec =
       new StringToLongCodec(
@@ -41,7 +44,8 @@ class StringToLongCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullWords);
 
   @Test
   void should_convert_from_valid_input() {
@@ -66,6 +70,8 @@ class StringToLongCodecTest {
         .to(0L)
         .convertsFrom(null)
         .to(null)
+        .convertsFrom("NULL")
+        .to(null)
         .convertsFrom("")
         .to(null);
   }
@@ -80,7 +86,7 @@ class StringToLongCodecTest {
         .convertsTo(Long.MIN_VALUE)
         .from("-9,223,372,036,854,775,808")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

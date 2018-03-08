@@ -31,7 +31,8 @@ public class StringToShortCodec extends StringToNumberCodec<Short> {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      List<BigDecimal> booleanNumbers,
+      List<String> nullWords) {
     super(
         smallInt(),
         numberFormat,
@@ -41,7 +42,8 @@ public class StringToShortCodec extends StringToNumberCodec<Short> {
         timeUnit,
         epoch,
         booleanWords,
-        booleanNumbers.stream().map(BigDecimal::shortValueExact).collect(toList()));
+        booleanNumbers.stream().map(BigDecimal::shortValueExact).collect(toList()),
+        nullWords);
   }
 
   @Override

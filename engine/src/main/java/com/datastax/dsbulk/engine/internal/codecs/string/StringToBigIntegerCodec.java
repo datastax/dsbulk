@@ -33,7 +33,8 @@ public class StringToBigIntegerCodec extends StringToNumberCodec<BigInteger> {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      List<BigDecimal> booleanNumbers,
+      List<String> nullWords) {
     super(
         TypeCodec.varint(),
         numberFormat,
@@ -43,7 +44,8 @@ public class StringToBigIntegerCodec extends StringToNumberCodec<BigInteger> {
         timeUnit,
         epoch,
         booleanWords,
-        booleanNumbers.stream().map(BigDecimal::toBigInteger).collect(toList()));
+        booleanNumbers.stream().map(BigDecimal::toBigInteger).collect(toList()),
+        nullWords);
   }
 
   @Override

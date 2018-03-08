@@ -26,12 +26,15 @@ import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class StringToBigIntegerCodecTest {
 
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+
+  private final List<String> nullWords = newArrayList("NULL");
 
   private final StringToBigIntegerCodec codec =
       new StringToBigIntegerCodec(
@@ -42,7 +45,8 @@ class StringToBigIntegerCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() {
@@ -60,6 +64,10 @@ class StringToBigIntegerCodecTest {
         .convertsFrom("FALSE")
         .to(BigInteger.ZERO)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom("NULL")
+        .to(null)
+        .convertsFrom("")
         .to(null);
   }
 
@@ -71,7 +79,7 @@ class StringToBigIntegerCodecTest {
         .convertsTo(new BigInteger("-1234"))
         .from("-1,234")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

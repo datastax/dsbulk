@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 
 import com.datastax.driver.core.utils.Bytes;
 import java.nio.ByteBuffer;
@@ -27,7 +28,7 @@ class JsonNodeToBlobCodecTest {
   private final String data64 = Base64.getEncoder().encodeToString(data);
   private final String dataHex = Bytes.toHexString(data);
 
-  private final JsonNodeToBlobCodec codec = JsonNodeToBlobCodec.INSTANCE;
+  private final JsonNodeToBlobCodec codec = new JsonNodeToBlobCodec(newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() {
@@ -47,6 +48,8 @@ class JsonNodeToBlobCodecTest {
         .convertsFrom(JSON_NODE_FACTORY.nullNode())
         .to(null)
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null);
   }
 

@@ -13,7 +13,9 @@ import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
@@ -46,18 +48,21 @@ class JsonNodeToTupleCodecTest {
 
   private final TupleType tupleType = newTupleType(V4, codecRegistry, timestamp(), varchar());
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   private final ConvertingCodec eltCodec1 =
       new JsonNodeToInstantCodec(
-          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullWords);
 
-  private final ConvertingCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final ConvertingCodec eltCodec2 =
+      new JsonNodeToStringCodec(TypeCodec.varchar(), nullWords);
 
   @SuppressWarnings("unchecked")
   private final List<ConvertingCodec<JsonNode, Object>> eltCodecs =
       Lists.newArrayList(eltCodec1, eltCodec2);
 
   private final JsonNodeToTupleCodec codec =
-      new JsonNodeToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, objectMapper);
+      new JsonNodeToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, objectMapper, nullWords);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -72,11 +77,15 @@ class JsonNodeToTupleCodecTest {
         .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
         .convertsFrom(objectMapper.readTree("[\"\",\"\"]"))
         .to(tupleType.newValue(null, ""))
+        .convertsFrom(objectMapper.readTree("[\"NULL\",\"NULL\"]"))
+        .to(tupleType.newValue(null, null))
         .convertsFrom(objectMapper.readTree("[null,null]"))
         .to(tupleType.newValue(null, null))
         .convertsFrom(objectMapper.readTree("[,]"))
         .to(tupleType.newValue(null, null))
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(objectMapper.readTree(""))
         .to(null);

@@ -42,7 +42,8 @@ class StringToBigDecimalCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
   void should_convert_from_valid_input() {
@@ -65,6 +66,8 @@ class StringToBigDecimalCodecTest {
         .to(ZERO)
         .convertsFrom(null)
         .to(null)
+        .convertsFrom("NULL")
+        .to(null)
         .convertsFrom("")
         .to(null);
   }
@@ -77,7 +80,7 @@ class StringToBigDecimalCodecTest {
         .convertsTo(new BigDecimal("1234.56"))
         .from("1,234.56")
         .convertsTo(null)
-        .from(null);
+        .from("NULL");
   }
 
   @Test

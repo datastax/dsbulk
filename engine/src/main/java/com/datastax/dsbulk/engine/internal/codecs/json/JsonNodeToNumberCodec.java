@@ -32,6 +32,7 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends ConvertingCodec<J
   private final ZonedDateTime epoch;
   private final Map<String, Boolean> booleanWords;
   private final List<N> booleanNumbers;
+  protected final List<String> nullWords;
 
   JsonNodeToNumberCodec(
       TypeCodec<N> targetCodec,
@@ -42,7 +43,8 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends ConvertingCodec<J
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
-      List<N> booleanNumbers) {
+      List<N> booleanNumbers,
+      List<String> nullWords) {
     super(targetCodec, JsonNode.class);
     this.numberFormat = numberFormat;
     this.overflowStrategy = overflowStrategy;
@@ -52,9 +54,15 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends ConvertingCodec<J
     this.epoch = epoch;
     this.booleanWords = booleanWords;
     this.booleanNumbers = booleanNumbers;
+    this.nullWords = nullWords;
   }
 
   Number parseNumber(JsonNode node) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+      return null;
+    }
     return CodecUtils.parseNumber(
         node.asText(),
         numberFormat.get(),

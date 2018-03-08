@@ -33,7 +33,8 @@ public class JsonNodeToShortCodec extends JsonNodeToNumberCodec<Short> {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      List<BigDecimal> booleanNumbers,
+      List<String> nullWords) {
     super(
         smallInt(),
         numberFormat,
@@ -43,12 +44,15 @@ public class JsonNodeToShortCodec extends JsonNodeToNumberCodec<Short> {
         timeUnit,
         epoch,
         booleanWords,
-        booleanNumbers.stream().map(BigDecimal::shortValueExact).collect(toList()));
+        booleanNumbers.stream().map(BigDecimal::shortValueExact).collect(toList()),
+        nullWords);
   }
 
   @Override
   public Short convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
       return null;
     }
     if (node.isShort()) {

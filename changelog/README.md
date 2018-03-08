@@ -7,6 +7,7 @@
 - [improvement] DAT-237: Numeric overflows should display the original input that caused the overflow.
 - [bug] DAT-245: Addresses should be properly translated when cluster has custom native port.
 - [improvement] DAT-235: Improve error message when mapping is wrong.
+- [bug] DAT-241: Null words should be supported by all connectors.
 
 
 ### 1.0.0

@@ -31,6 +31,7 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
   private final ZonedDateTime epoch;
   private final Map<String, Boolean> booleanWords;
   private final List<N> booleanNumbers;
+  private final List<String> nullWords;
 
   StringToNumberCodec(
       TypeCodec<N> targetCodec,
@@ -41,7 +42,8 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanWords,
-      List<N> booleanNumbers) {
+      List<N> booleanNumbers,
+      List<String> nullWords) {
     super(targetCodec, String.class);
     this.numberFormat = numberFormat;
     this.overflowStrategy = overflowStrategy;
@@ -51,17 +53,21 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
     this.epoch = epoch;
     this.booleanWords = booleanWords;
     this.booleanNumbers = booleanNumbers;
+    this.nullWords = nullWords;
   }
 
   @Override
   public String convertTo(N value) {
     if (value == null) {
-      return null;
+      return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     return CodecUtils.formatNumber(value, numberFormat.get());
   }
 
   Number parseNumber(String s) {
+    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+      return null;
+    }
     return CodecUtils.parseNumber(
         s, numberFormat.get(), temporalFormat, timeUnit, epoch, booleanWords, booleanNumbers);
   }

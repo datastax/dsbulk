@@ -15,18 +15,22 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class JsonNodeToBlobCodec extends ConvertingCodec<JsonNode, ByteBuffer> {
 
-  public static final JsonNodeToBlobCodec INSTANCE = new JsonNodeToBlobCodec();
+  private final List<String> nullWords;
 
-  private JsonNodeToBlobCodec() {
+  public JsonNodeToBlobCodec(List<String> nullWords) {
     super(blob(), JsonNode.class);
+    this.nullWords = nullWords;
   }
 
   @Override
   public ByteBuffer convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (node == null
+        || node.isNull()
+        || (node.isValueNode() && nullWords.contains(node.asText()))) {
       return null;
     }
     String s = node.asText();

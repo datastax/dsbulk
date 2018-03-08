@@ -12,6 +12,7 @@ import static com.datastax.driver.core.TypeCodec.cdouble;
 import static com.datastax.driver.core.TypeCodec.list;
 import static com.datastax.driver.core.TypeCodec.varchar;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -40,6 +41,8 @@ class JsonNodeToListCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullWords = newArrayList("NULL");
+
   private final JsonNodeToDoubleCodec eltCodec1 =
       new JsonNodeToDoubleCodec(
           numberFormat,
@@ -49,18 +52,20 @@ class JsonNodeToListCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullWords);
 
-  private final JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final JsonNodeToStringCodec eltCodec2 =
+      new JsonNodeToStringCodec(TypeCodec.varchar(), nullWords);
 
   private final TypeCodec<List<Double>> listCodec1 = list(cdouble());
   private final TypeCodec<List<String>> listCodec2 = list(varchar());
 
   private final JsonNodeToListCodec<Double> codec1 =
-      new JsonNodeToListCodec<>(listCodec1, eltCodec1, objectMapper);
+      new JsonNodeToListCodec<>(listCodec1, eltCodec1, objectMapper, nullWords);
 
   private final JsonNodeToListCodec<String> codec2 =
-      new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper);
+      new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper, nullWords);
 
   @Test
   void should_convert_from_valid_input() throws Exception {
@@ -76,6 +81,8 @@ class JsonNodeToListCodecTest {
         .convertsFrom(objectMapper.readTree("[,]"))
         .to(newArrayList(null, null))
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(objectMapper.readTree(""))
         .to(null);
@@ -98,7 +105,13 @@ class JsonNodeToListCodecTest {
         .to(newArrayList("", ""))
         .convertsFrom(objectMapper.readTree("['','']"))
         .to(newArrayList("", ""))
+        .convertsFrom(objectMapper.readTree("[\"NULL\",\"NULL\"]"))
+        .to(newArrayList(null, null))
+        .convertsFrom(objectMapper.readTree("['NULL','NULL']"))
+        .to(newArrayList(null, null))
         .convertsFrom(null)
+        .to(null)
+        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
         .to(null)
         .convertsFrom(objectMapper.readTree("[]"))
         .to(null)

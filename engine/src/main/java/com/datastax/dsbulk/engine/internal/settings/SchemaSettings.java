@@ -47,7 +47,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.ImmutableSet;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
@@ -86,7 +85,6 @@ public class SchemaSettings {
 
   private static final String INFERRED_MAPPING_TOKEN = "__INFERRED_MAPPING";
   private static final String NULL_TO_UNSET = "nullToUnset";
-  private static final String NULL_STRINGS = "nullStrings";
   private static final String KEYSPACE = "keyspace";
   private static final String TABLE = "table";
   private static final String MAPPING = "mapping";
@@ -102,7 +100,6 @@ public class SchemaSettings {
 
   private final LoaderConfig config;
 
-  private ImmutableSet<String> nullStrings;
   private boolean nullToUnset;
   private Config mapping;
   private BiMap<String, String> explicitVariables;
@@ -122,7 +119,6 @@ public class SchemaSettings {
   public void init(StringToTemporalCodec<Instant> timestampCodec) {
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
-      nullStrings = ImmutableSet.copyOf(config.getStringList(NULL_STRINGS));
       ttlSeconds = config.getInt(QUERY_TTL);
       String timestampStr = config.getString(QUERY_TIMESTAMP);
       if (timestampStr.isEmpty()) {
@@ -269,16 +265,14 @@ public class SchemaSettings {
       Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, LOAD);
-    return new DefaultRecordMapper(
-        preparedStatement, mapping, recordMetadata, nullStrings, nullToUnset);
+    return new DefaultRecordMapper(preparedStatement, mapping, recordMetadata, nullToUnset);
   }
 
   public ReadResultMapper createReadResultMapper(
       Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, UNLOAD);
-    return new DefaultReadResultMapper(
-        mapping, recordMetadata, nullStrings.isEmpty() ? null : nullStrings.iterator().next());
+    return new DefaultReadResultMapper(mapping, recordMetadata);
   }
 
   public List<Statement> createReadStatements(Cluster cluster) {

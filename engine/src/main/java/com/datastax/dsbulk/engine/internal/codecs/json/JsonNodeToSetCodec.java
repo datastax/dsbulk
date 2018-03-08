@@ -13,6 +13,7 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 public class JsonNodeToSetCodec<E> extends JsonNodeToCollectionCodec<E, Set<E>> {
@@ -20,7 +21,8 @@ public class JsonNodeToSetCodec<E> extends JsonNodeToCollectionCodec<E, Set<E>> 
   public JsonNodeToSetCodec(
       TypeCodec<Set<E>> collectionCodec,
       ConvertingCodec<JsonNode, E> eltCodec,
-      ObjectMapper objectMapper) {
-    super(collectionCodec, eltCodec, objectMapper, LinkedHashSet::new);
+      ObjectMapper objectMapper,
+      List<String> nullWords) {
+    super(collectionCodec, eltCodec, objectMapper, LinkedHashSet::new, nullWords);
   }
 }

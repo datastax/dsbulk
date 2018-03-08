@@ -47,7 +47,7 @@ class DefaultReadResultMapperTest {
 
   @BeforeEach
   @SuppressWarnings("unchecked")
-  void setUp() throws Exception {
+  void setUp() {
     recordMetadata =
         new DefaultRecordMetadata(
             ImmutableMap.of(
@@ -101,8 +101,8 @@ class DefaultReadResultMapperTest {
   }
 
   @Test
-  void should_map_result_to_mapped_record_when_mapping_succeeds() throws Exception {
-    DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata, null);
+  void should_map_result_to_mapped_record_when_mapping_succeeds() {
+    DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
     Record record = mapper.map(result);
     assertThat(record.fields()).containsOnly("f0", "f1", "f2");
     assertThat(record.getFieldValue("f0")).isEqualTo(42);
@@ -111,11 +111,11 @@ class DefaultReadResultMapperTest {
   }
 
   @Test
-  void should_map_result_to_error_record_when_mapping_fails() throws Exception {
+  void should_map_result_to_error_record_when_mapping_fails() {
     CodecNotFoundException exception =
         new CodecNotFoundException("not really", DataType.varchar(), TypeToken.of(String.class));
     when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenThrow(exception);
-    DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata, null);
+    DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError()).isSameAs(exception);
     assertThat(record.getSource()).isSameAs(result);
