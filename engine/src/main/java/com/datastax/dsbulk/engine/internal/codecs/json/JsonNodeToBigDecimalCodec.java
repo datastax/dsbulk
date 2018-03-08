@@ -50,7 +50,7 @@ public class JsonNodeToBigDecimalCodec extends JsonNodeToNumberCodec<BigDecimal>
   }
 
   @Override
-  public BigDecimal convertFrom(JsonNode node) {
+  public BigDecimal externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -72,7 +72,7 @@ public class JsonNodeToBigDecimalCodec extends JsonNodeToNumberCodec<BigDecimal>
   }
 
   @Override
-  public JsonNode convertTo(BigDecimal value) {
+  public JsonNode internalToExternal(BigDecimal value) {
     return JSON_NODE_FACTORY.numberNode(value);
   }
 }

@@ -19,33 +19,33 @@ class StringToInetAddressCodecTest {
   private StringToInetAddressCodec codec = new StringToInetAddressCodec(newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_external() throws Exception {
     assertThat(codec)
-        .convertsFrom("1.2.3.4")
-        .to(InetAddress.getByName("1.2.3.4"))
-        .convertsFrom("127.0.0.1")
-        .to(InetAddress.getByName("127.0.0.1"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("NULL")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("1.2.3.4")
+        .toInternal(InetAddress.getByName("1.2.3.4"))
+        .convertsFromExternal("127.0.0.1")
+        .toInternal(InetAddress.getByName("127.0.0.1"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_from_valid_internal() throws Exception {
     assertThat(codec)
-        .convertsTo(InetAddress.getByName("1.2.3.4"))
-        .from("1.2.3.4")
-        .convertsTo(InetAddress.getByName("127.0.0.1"))
-        .from("127.0.0.1")
-        .convertsTo(null)
-        .from("NULL");
+        .convertsFromInternal(InetAddress.getByName("1.2.3.4"))
+        .toExternal("1.2.3.4")
+        .convertsFromInternal(InetAddress.getByName("127.0.0.1"))
+        .toExternal("127.0.0.1")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom("not a valid inet address");
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal("not a valid inet address");
   }
 }

@@ -21,13 +21,13 @@ public class NumberToNumberCodec<FROM extends Number, TO extends Number>
 
   @SuppressWarnings("unchecked")
   @Override
-  public FROM convertTo(TO value) {
+  public FROM internalToExternal(TO value) {
     return CodecUtils.convertNumber(value, (Class<FROM>) getJavaType().getRawType());
   }
 
   @SuppressWarnings("unchecked")
   @Override
-  public TO convertFrom(FROM value) {
-    return CodecUtils.convertNumber(value, (Class<TO>) targetCodec.getJavaType().getRawType());
+  public TO externalToInternal(FROM value) {
+    return CodecUtils.convertNumber(value, (Class<TO>) internalCodec.getJavaType().getRawType());
   }
 }

@@ -27,7 +27,7 @@ public class JsonNodeToBlobCodec extends ConvertingCodec<JsonNode, ByteBuffer> {
   }
 
   @Override
-  public ByteBuffer convertFrom(JsonNode node) {
+  public ByteBuffer externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -38,7 +38,7 @@ public class JsonNodeToBlobCodec extends ConvertingCodec<JsonNode, ByteBuffer> {
   }
 
   @Override
-  public JsonNode convertTo(ByteBuffer value) {
+  public JsonNode internalToExternal(ByteBuffer value) {
     if (value == null) {
       return JSON_NODE_FACTORY.nullNode();
     }

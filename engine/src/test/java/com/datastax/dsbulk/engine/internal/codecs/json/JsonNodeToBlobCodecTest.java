@@ -31,41 +31,41 @@ class JsonNodeToBlobCodecTest {
   private final JsonNodeToBlobCodec codec = new JsonNodeToBlobCodec(newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.binaryNode(data))
-        .to(dataBb)
-        .convertsFrom(JSON_NODE_FACTORY.binaryNode(empty))
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(data64))
-        .to(dataBb)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(dataHex))
-        .to(dataBb)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("0x"))
-        .to(emptyBb)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.nullNode())
-        .to(null)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.binaryNode(data))
+        .toInternal(dataBb)
+        .convertsFromExternal(JSON_NODE_FACTORY.binaryNode(empty))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(data64))
+        .toInternal(dataBb)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(dataHex))
+        .toInternal(dataBb)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("0x"))
+        .toInternal(emptyBb)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .toInternal(null)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(dataBb)
-        .from(JSON_NODE_FACTORY.binaryNode(data))
-        .convertsTo(emptyBb)
-        .from(JSON_NODE_FACTORY.binaryNode(empty))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(dataBb)
+        .toExternal(JSON_NODE_FACTORY.binaryNode(data))
+        .convertsFromInternal(emptyBb)
+        .toExternal(JSON_NODE_FACTORY.binaryNode(empty))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid binary"));
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid binary"));
   }
 }

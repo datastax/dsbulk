@@ -25,7 +25,7 @@ public class JsonNodeToStringCodec extends ConvertingCodec<JsonNode, String> {
   }
 
   @Override
-  public String convertFrom(JsonNode node) {
+  public String externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -35,7 +35,7 @@ public class JsonNodeToStringCodec extends ConvertingCodec<JsonNode, String> {
   }
 
   @Override
-  public JsonNode convertTo(String value) {
+  public JsonNode internalToExternal(String value) {
     if (value == null) {
       return null;
     }

@@ -57,7 +57,7 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
   }
 
   @Override
-  public String convertTo(N value) {
+  public String internalToExternal(N value) {
     if (value == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }

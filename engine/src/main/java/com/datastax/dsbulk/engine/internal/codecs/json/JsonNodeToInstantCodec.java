@@ -39,7 +39,7 @@ public class JsonNodeToInstantCodec extends JsonNodeToTemporalCodec<Instant> {
   }
 
   @Override
-  public Instant convertFrom(JsonNode node) {
+  public Instant externalToInternal(JsonNode node) {
     TemporalAccessor temporal = parseTemporalAccessor(node);
     if (temporal == null) {
       return null;

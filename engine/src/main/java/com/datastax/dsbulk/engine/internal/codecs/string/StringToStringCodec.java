@@ -22,7 +22,7 @@ public class StringToStringCodec extends ConvertingCodec<String, String> {
   }
 
   @Override
-  public String convertFrom(String s) {
+  public String externalToInternal(String s) {
     if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
@@ -30,7 +30,7 @@ public class StringToStringCodec extends ConvertingCodec<String, String> {
   }
 
   @Override
-  public String convertTo(String value) {
+  public String internalToExternal(String value) {
     if (value == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }

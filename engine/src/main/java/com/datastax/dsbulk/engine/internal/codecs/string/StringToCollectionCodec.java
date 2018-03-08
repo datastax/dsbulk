@@ -29,32 +29,32 @@ public abstract class StringToCollectionCodec<E, C extends Collection<E>>
       JsonNodeToCollectionCodec<E, C> jsonCodec,
       ObjectMapper objectMapper,
       List<String> nullWords) {
-    super(jsonCodec.getTargetCodec(), String.class);
+    super(jsonCodec.getInternalCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
     this.nullWords = nullWords;
   }
 
   @Override
-  public C convertFrom(String s) {
+  public C externalToInternal(String s) {
     if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     try {
       JsonNode node = objectMapper.readTree(s);
-      return jsonCodec.convertFrom(node);
+      return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
       throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
     }
   }
 
   @Override
-  public String convertTo(C collection) {
+  public String internalToExternal(C collection) {
     if (collection == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     try {
-      JsonNode node = jsonCodec.convertTo(collection);
+      JsonNode node = jsonCodec.internalToExternal(collection);
       return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
       throw new InvalidTypeException(String.format("Could not format '%s' to Json", collection), e);

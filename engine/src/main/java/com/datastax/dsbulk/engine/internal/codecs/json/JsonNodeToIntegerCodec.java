@@ -50,7 +50,7 @@ public class JsonNodeToIntegerCodec extends JsonNodeToNumberCodec<Integer> {
   }
 
   @Override
-  public Integer convertFrom(JsonNode node) {
+  public Integer externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -69,7 +69,7 @@ public class JsonNodeToIntegerCodec extends JsonNodeToNumberCodec<Integer> {
   }
 
   @Override
-  public JsonNode convertTo(Integer value) {
+  public JsonNode internalToExternal(Integer value) {
     return JSON_NODE_FACTORY.numberNode(value);
   }
 }

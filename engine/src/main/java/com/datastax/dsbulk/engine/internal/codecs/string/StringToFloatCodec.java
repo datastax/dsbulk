@@ -48,7 +48,7 @@ public class StringToFloatCodec extends StringToNumberCodec<Float> {
   }
 
   @Override
-  public Float convertFrom(String s) {
+  public Float externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

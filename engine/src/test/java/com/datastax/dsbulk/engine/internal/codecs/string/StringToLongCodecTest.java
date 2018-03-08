@@ -48,53 +48,53 @@ class StringToLongCodecTest {
           nullWords);
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("0")
-        .to(0L)
-        .convertsFrom("9223372036854775807")
-        .to(Long.MAX_VALUE)
-        .convertsFrom("-9223372036854775808")
-        .to(Long.MIN_VALUE)
-        .convertsFrom("9,223,372,036,854,775,807")
-        .to(Long.MAX_VALUE)
-        .convertsFrom("-9,223,372,036,854,775,808")
-        .to(Long.MIN_VALUE)
-        .convertsFrom("1970-01-01T00:00:00Z")
-        .to(0L)
-        .convertsFrom("2000-01-01T00:00:00Z")
-        .to(946684800000L)
-        .convertsFrom("TRUE")
-        .to(1L)
-        .convertsFrom("FALSE")
-        .to(0L)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("NULL")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("0")
+        .toInternal(0L)
+        .convertsFromExternal("9223372036854775807")
+        .toInternal(Long.MAX_VALUE)
+        .convertsFromExternal("-9223372036854775808")
+        .toInternal(Long.MIN_VALUE)
+        .convertsFromExternal("9,223,372,036,854,775,807")
+        .toInternal(Long.MAX_VALUE)
+        .convertsFromExternal("-9,223,372,036,854,775,808")
+        .toInternal(Long.MIN_VALUE)
+        .convertsFromExternal("1970-01-01T00:00:00Z")
+        .toInternal(0L)
+        .convertsFromExternal("2000-01-01T00:00:00Z")
+        .toInternal(946684800000L)
+        .convertsFromExternal("TRUE")
+        .toInternal(1L)
+        .convertsFromExternal("FALSE")
+        .toInternal(0L)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(0L)
-        .from("0")
-        .convertsTo(Long.MAX_VALUE)
-        .from("9,223,372,036,854,775,807")
-        .convertsTo(Long.MIN_VALUE)
-        .from("-9,223,372,036,854,775,808")
-        .convertsTo(null)
-        .from("NULL");
+        .convertsFromInternal(0L)
+        .toExternal("0")
+        .convertsFromInternal(Long.MAX_VALUE)
+        .toExternal("9,223,372,036,854,775,807")
+        .convertsFromInternal(Long.MIN_VALUE)
+        .toExternal("-9,223,372,036,854,775,808")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFrom("not a valid long")
-        .cannotConvertFrom("1.2")
-        .cannotConvertFrom("9223372036854775808")
-        .cannotConvertFrom("-9223372036854775809");
+        .cannotConvertFromExternal("not a valid long")
+        .cannotConvertFromExternal("1.2")
+        .cannotConvertFromExternal("9223372036854775808")
+        .cannotConvertFromExternal("-9223372036854775809");
   }
 }

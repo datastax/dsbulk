@@ -152,64 +152,65 @@ class StringToUDTCodecTest {
           nullWords);
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(udtCodec1)
-        .convertsFrom("{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}}")
-        .to(udt1Value)
-        .convertsFrom("{'f1a':42,'f1b':{'foo':1234.56,'bar':0.12}}")
-        .to(udt1Value)
-        .convertsFrom(
+        .convertsFromExternal("{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}}")
+        .toInternal(udt1Value)
+        .convertsFromExternal("{'f1a':42,'f1b':{'foo':1234.56,'bar':0.12}}")
+        .toInternal(udt1Value)
+        .convertsFromExternal(
             "{ \"f1b\" :  { \"foo\" : \"1,234.56\" , \"bar\" : \"0000.12000\" } , \"f1a\" : \"42.00\" }")
-        .to(udt1Value)
-        .convertsFrom("{ \"f1b\" :  null , \"f1a\" :  null }")
-        .to(udt1Empty)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("NULL")
-        .to(null)
-        .convertsFrom("{}")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .toInternal(udt1Value)
+        .convertsFromExternal("{ \"f1b\" :  null , \"f1a\" :  null }")
+        .toInternal(udt1Empty)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("{}")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
     assertThat(udtCodec2)
-        .convertsFrom(
+        .convertsFromExternal(
             "{\"f2a\":{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}},\"f2b\":[\"2017-09-22\"]}")
-        .to(udt2Value)
-        .convertsFrom("{'f2a':{'f1a':42,'f1b':{'foo':1234.56,'bar':0.12}},'f2b':['2017-09-22']}")
-        .to(udt2Value)
-        .convertsFrom(
+        .toInternal(udt2Value)
+        .convertsFromExternal(
+            "{'f2a':{'f1a':42,'f1b':{'foo':1234.56,'bar':0.12}},'f2b':['2017-09-22']}")
+        .toInternal(udt2Value)
+        .convertsFromExternal(
             "{ \"f2b\" :  [ \"2017-09-22\" ] , \"f2a\" : { \"f1b\" :  { \"foo\" : \"1,234.56\" , \"bar\" : \"0000.12000\" } , \"f1a\" : \"42.00\" } }")
-        .to(udt2Value)
-        .convertsFrom("{ \"f2b\" :  null , \"f2a\" :  null }")
-        .to(udt2Empty)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("NULL")
-        .to(null)
-        .convertsFrom("{}")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .toInternal(udt2Value)
+        .convertsFromExternal("{ \"f2b\" :  null , \"f2a\" :  null }")
+        .toInternal(udt2Empty)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("{}")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(udtCodec1)
-        .convertsTo(
+        .convertsFromInternal(
             udt1.newValue().setInt("f1a", 42).setMap("f1b", newMap("foo", 1234.56d, "bar", 0.12d)))
-        .from("{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}}")
-        .convertsTo(udt1.newValue())
-        .from("{\"f1a\":null,\"f1b\":{}}")
-        .convertsTo(null)
-        .from("NULL");
+        .toExternal("{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}}")
+        .convertsFromInternal(udt1.newValue())
+        .toExternal("{\"f1a\":null,\"f1b\":{}}")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     assertThat(udtCodec1)
-        .cannotConvertFrom("{\"f1a\":42}")
-        .cannotConvertFrom("[42]")
-        .cannotConvertFrom("{\"not a valid input\":\"foo\"}");
+        .cannotConvertFromExternal("{\"f1a\":42}")
+        .cannotConvertFromExternal("[42]")
+        .cannotConvertFromExternal("{\"not a valid input\":\"foo\"}");
   }
 
   @SuppressWarnings("SameParameterValue")

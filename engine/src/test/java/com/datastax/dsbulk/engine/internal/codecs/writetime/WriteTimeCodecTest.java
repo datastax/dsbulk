@@ -52,42 +52,42 @@ class WriteTimeCodecTest {
     assertThat(
             new WriteTimeCodec<>(
                 new StringToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
-        .convertsFrom("2017-11-30T14:46:56+01:00")
-        .to(
+        .convertsFromExternal("2017-11-30T14:46:56+01:00")
+        .toInternal(
             MILLISECONDS.toMicros(
                 ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant().toEpochMilli()));
 
     assertThat(
             new WriteTimeCodec<>(
                 new StringToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
-        .convertsFrom("123456")
-        .to(MILLISECONDS.toMicros(123456L));
+        .convertsFromExternal("123456")
+        .toInternal(MILLISECONDS.toMicros(123456L));
 
     assertThat(
             new WriteTimeCodec<>(
                 new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
-        .convertsFrom(CodecSettings.JSON_NODE_FACTORY.textNode("2017-11-30T14:46:56+01:00"))
-        .to(
+        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("2017-11-30T14:46:56+01:00"))
+        .toInternal(
             MILLISECONDS.toMicros(
                 ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant().toEpochMilli()));
 
     assertThat(
             new WriteTimeCodec<>(
                 new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
-        .convertsFrom(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
-        .to(MILLISECONDS.toMicros(123456L));
+        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
+        .toInternal(MILLISECONDS.toMicros(123456L));
 
     assertThat(
             new WriteTimeCodec<>(
                 new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
-        .convertsFrom(CodecSettings.JSON_NODE_FACTORY.numberNode(123456L))
-        .to(MILLISECONDS.toMicros(123456L));
+        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.numberNode(123456L))
+        .toInternal(MILLISECONDS.toMicros(123456L));
 
     assertThat(
             new WriteTimeCodec<>(
                 new TemporalToTemporalCodec<>(Instant.class, InstantCodec.instance, UTC, epoch)))
-        .convertsFrom(ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant())
-        .to(
+        .convertsFromExternal(ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant())
+        .toInternal(
             MILLISECONDS.toMicros(
                 ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant().toEpochMilli()));
 
@@ -95,24 +95,26 @@ class WriteTimeCodecTest {
             new WriteTimeCodec<>(
                 new TemporalToTemporalCodec<>(
                     ZonedDateTime.class, InstantCodec.instance, UTC, epoch)))
-        .convertsFrom(ZonedDateTime.parse("2017-11-30T14:46:56+01:00"))
-        .to(
+        .convertsFromExternal(ZonedDateTime.parse("2017-11-30T14:46:56+01:00"))
+        .toInternal(
             MILLISECONDS.toMicros(
                 ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant().toEpochMilli()));
 
     assertThat(
             new WriteTimeCodec<>(
                 new DateToTemporalCodec<>(java.util.Date.class, InstantCodec.instance, UTC)))
-        .convertsFrom(Date.from(ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant()))
-        .to(
+        .convertsFromExternal(
+            Date.from(ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant()))
+        .toInternal(
             MILLISECONDS.toMicros(
                 ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant().toEpochMilli()));
 
     assertThat(
             new WriteTimeCodec<>(
                 new DateToTemporalCodec<>(java.sql.Timestamp.class, InstantCodec.instance, UTC)))
-        .convertsFrom(Timestamp.from(ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant()))
-        .to(
+        .convertsFromExternal(
+            Timestamp.from(ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant()))
+        .toInternal(
             MILLISECONDS.toMicros(
                 ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant().toEpochMilli()));
   }

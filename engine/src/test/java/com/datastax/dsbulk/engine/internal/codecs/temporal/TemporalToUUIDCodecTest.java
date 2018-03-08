@@ -33,28 +33,28 @@ class TemporalToUUIDCodecTest {
   void should_convert_when_valid_input() {
 
     assertThat(new TemporalToUUIDCodec<>(TypeCodec.timeUUID(), instantCodec, MIN))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToUUIDCodec<>(TypeCodec.timeUUID(), instantCodec, MIN)
-                .convertFrom(ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00")))
+                .externalToInternal(ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00")))
         .isEqualTo(
             UUIDs.startOf(
                 ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli()));
 
     assertThat(
             new TemporalToUUIDCodec<>(TypeCodec.timeUUID(), instantCodec, MAX)
-                .convertFrom(ZonedDateTime.parse("2010-06-30T00:00:00.999999999+01:00")))
+                .externalToInternal(ZonedDateTime.parse("2010-06-30T00:00:00.999999999+01:00")))
         .isEqualTo(
             UUIDs.endOf(
                 ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli()));
 
     assertThat(
             new TemporalToUUIDCodec<>(TypeCodec.timeUUID(), instantCodec, FIXED)
-                .convertFrom(ZonedDateTime.parse("2010-06-30T00:00:00.999999999+01:00"))
+                .externalToInternal(ZonedDateTime.parse("2010-06-30T00:00:00.999999999+01:00"))
                 .timestamp())
         .isEqualTo(
             UUIDs.endOf(
@@ -65,7 +65,7 @@ class TemporalToUUIDCodecTest {
 
     assertThat(
             new TemporalToUUIDCodec<>(TypeCodec.timeUUID(), instantCodec, RANDOM)
-                .convertFrom(ZonedDateTime.parse("2010-06-30T00:00:00.999999999+01:00"))
+                .externalToInternal(ZonedDateTime.parse("2010-06-30T00:00:00.999999999+01:00"))
                 .timestamp())
         .isEqualTo(
             UUIDs.endOf(
@@ -76,7 +76,7 @@ class TemporalToUUIDCodecTest {
 
     assertThat(
             new TemporalToUUIDCodec<>(TypeCodec.timeUUID(), instantCodec, MIN)
-                .convertTo(
+                .internalToExternal(
                     UUIDs.startOf(
                         ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00")
                             .toInstant()
@@ -85,7 +85,7 @@ class TemporalToUUIDCodecTest {
 
     assertThat(
             new TemporalToUUIDCodec<>(TypeCodec.timeUUID(), instantCodec, MAX)
-                .convertTo(
+                .internalToExternal(
                     UUIDs.startOf(
                         ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00")
                             .toInstant()
@@ -94,7 +94,7 @@ class TemporalToUUIDCodecTest {
 
     assertThat(
             new TemporalToUUIDCodec<>(TypeCodec.timeUUID(), instantCodec, FIXED)
-                .convertTo(
+                .internalToExternal(
                     UUIDs.startOf(
                         ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00")
                             .toInstant()
@@ -103,7 +103,7 @@ class TemporalToUUIDCodecTest {
 
     assertThat(
             new TemporalToUUIDCodec<>(TypeCodec.timeUUID(), instantCodec, RANDOM)
-                .convertTo(
+                .internalToExternal(
                     UUIDs.startOf(
                         ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00")
                             .toInstant()

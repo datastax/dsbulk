@@ -40,7 +40,7 @@ public class JsonNodeToMapCodec<K, V> extends ConvertingCodec<JsonNode, Map<K, V
   }
 
   @Override
-  public Map<K, V> convertFrom(JsonNode node) {
+  public Map<K, V> externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -56,20 +56,22 @@ public class JsonNodeToMapCodec<K, V> extends ConvertingCodec<JsonNode, Map<K, V
     Iterator<Map.Entry<String, JsonNode>> it = node.fields();
     while (it.hasNext()) {
       Map.Entry<String, JsonNode> entry = it.next();
-      map.put(keyCodec.convertFrom(entry.getKey()), valueCodec.convertFrom(entry.getValue()));
+      map.put(
+          keyCodec.externalToInternal(entry.getKey()),
+          valueCodec.externalToInternal(entry.getValue()));
     }
     return map;
   }
 
   @Override
-  public JsonNode convertTo(Map<K, V> map) {
+  public JsonNode internalToExternal(Map<K, V> map) {
     if (map == null) {
       return objectMapper.getNodeFactory().nullNode();
     }
     ObjectNode root = objectMapper.createObjectNode();
     for (Map.Entry<K, V> entry : map.entrySet()) {
-      String key = keyCodec.convertTo(entry.getKey());
-      JsonNode value = valueCodec.convertTo(entry.getValue());
+      String key = keyCodec.internalToExternal(entry.getKey());
+      JsonNode value = valueCodec.internalToExternal(entry.getValue());
       root.set(key, value);
     }
     return root;

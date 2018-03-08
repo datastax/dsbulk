@@ -28,7 +28,7 @@ public class JsonNodeToBooleanCodec extends ConvertingCodec<JsonNode, Boolean> {
   }
 
   @Override
-  public Boolean convertFrom(JsonNode node) {
+  public Boolean externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -49,7 +49,7 @@ public class JsonNodeToBooleanCodec extends ConvertingCodec<JsonNode, Boolean> {
   }
 
   @Override
-  public JsonNode convertTo(Boolean value) {
+  public JsonNode internalToExternal(Boolean value) {
     if (value == null) {
       return JSON_NODE_FACTORY.nullNode();
     }

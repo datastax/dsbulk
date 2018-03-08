@@ -18,21 +18,21 @@ import org.junit.jupiter.api.Test;
 class BooleanToNumberCodecTest {
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
 
     assertThat(new BooleanToNumberCodec<>(tinyInt(), newArrayList(ONE, ONE.negate())))
-        .convertsFrom(true)
-        .to((byte) 1)
-        .convertsFrom(false)
-        .to((byte) -1)
-        .convertsTo((byte) 1)
-        .from(true)
-        .convertsTo((byte) -1)
-        .from(false)
-        .cannotConvertTo((byte) 0)
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(true)
+        .toInternal((byte) 1)
+        .convertsFromExternal(false)
+        .toInternal((byte) -1)
+        .convertsFromInternal((byte) 1)
+        .toExternal(true)
+        .convertsFromInternal((byte) -1)
+        .toExternal(false)
+        .cannotConvertFromInternal((byte) 0)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
   }
 }

@@ -49,7 +49,7 @@ public class JsonNodeToShortCodec extends JsonNodeToNumberCodec<Short> {
   }
 
   @Override
-  public Short convertFrom(JsonNode node) {
+  public Short externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -68,7 +68,7 @@ public class JsonNodeToShortCodec extends JsonNodeToNumberCodec<Short> {
   }
 
   @Override
-  public JsonNode convertTo(Short value) {
+  public JsonNode internalToExternal(Short value) {
     return JSON_NODE_FACTORY.numberNode(value);
   }
 }

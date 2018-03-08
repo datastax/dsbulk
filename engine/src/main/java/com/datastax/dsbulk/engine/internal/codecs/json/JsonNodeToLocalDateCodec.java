@@ -24,7 +24,7 @@ public class JsonNodeToLocalDateCodec extends JsonNodeToTemporalCodec<LocalDate>
   }
 
   @Override
-  public LocalDate convertFrom(JsonNode node) {
+  public LocalDate externalToInternal(JsonNode node) {
     TemporalAccessor temporal = parseTemporalAccessor(node);
     if (temporal == null) {
       return null;

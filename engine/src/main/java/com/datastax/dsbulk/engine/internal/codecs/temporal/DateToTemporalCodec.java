@@ -34,14 +34,14 @@ public class DateToTemporalCodec<FROM extends Date, TO extends TemporalAccessor>
 
   @SuppressWarnings("unchecked")
   @Override
-  public FROM convertTo(TO value) {
+  public FROM internalToExternal(TO value) {
     return (FROM) convert(value, getJavaType());
   }
 
   @SuppressWarnings("unchecked")
   @Override
-  public TO convertFrom(FROM value) {
-    return (TO) convert(value, targetCodec.getJavaType());
+  public TO externalToInternal(FROM value) {
+    return (TO) convert(value, internalCodec.getJavaType());
   }
 
   private TemporalAccessor convert(Date value, TypeToken<? extends TemporalAccessor> targetType) {

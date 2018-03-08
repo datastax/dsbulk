@@ -46,30 +46,30 @@ class StringToUUIDCodecTest {
       new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullWords);
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("a15341ec-ebef-4eab-b91d-ff16bf801a79")
-        .to(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("NULL")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("a15341ec-ebef-4eab-b91d-ff16bf801a79")
+        .toInternal(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
 
     assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullWords))
-        .convertsFrom("2017-12-05T12:44:36+01:00")
-        .to(
+        .convertsFromExternal("2017-12-05T12:44:36+01:00")
+        .toInternal(
             UUIDs.startOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
     assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullWords))
-        .convertsFrom("2017-12-05T12:44:36.999999999+01:00")
-        .to(
+        .convertsFromExternal("2017-12-05T12:44:36.999999999+01:00")
+        .toInternal(
             UUIDs.endOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36.999+01:00").toInstant().toEpochMilli()));
     assertThat(
             new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullWords)
-                .convertFrom("2017-12-05T12:44:36+01:00")
+                .externalToInternal("2017-12-05T12:44:36+01:00")
                 .timestamp())
         .isEqualTo(
             UUIDs.startOf(
@@ -77,7 +77,7 @@ class StringToUUIDCodecTest {
                 .timestamp());
     assertThat(
             new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullWords)
-                .convertFrom("2017-12-05T12:44:36+01:00")
+                .externalToInternal("2017-12-05T12:44:36+01:00")
                 .timestamp())
         .isEqualTo(
             UUIDs.startOf(
@@ -85,34 +85,34 @@ class StringToUUIDCodecTest {
                 .timestamp());
 
     assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullWords))
-        .convertsFrom("123456")
-        .to(UUIDs.startOf(123456L));
+        .convertsFromExternal("123456")
+        .toInternal(UUIDs.startOf(123456L));
     assertThat(
             new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullWords)
-                .convertFrom("123456")
+                .externalToInternal("123456")
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     assertThat(
             new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullWords)
-                .convertFrom("123456")
+                .externalToInternal("123456")
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     assertThat(
             new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullWords)
-                .convertFrom("123456")
+                .externalToInternal("123456")
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
-        .from("a15341ec-ebef-4eab-b91d-ff16bf801a79");
+        .convertsFromInternal(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
+        .toExternal("a15341ec-ebef-4eab-b91d-ff16bf801a79");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom("not a valid UUID");
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal("not a valid UUID");
   }
 }

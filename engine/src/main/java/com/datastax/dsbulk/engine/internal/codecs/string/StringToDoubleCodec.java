@@ -48,7 +48,7 @@ public class StringToDoubleCodec extends StringToNumberCodec<Double> {
   }
 
   @Override
-  public Double convertFrom(String s) {
+  public Double externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

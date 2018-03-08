@@ -25,7 +25,7 @@ public class JsonNodeToDurationCodec extends ConvertingCodec<JsonNode, Duration>
   }
 
   @Override
-  public Duration convertFrom(JsonNode node) {
+  public Duration externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -39,7 +39,7 @@ public class JsonNodeToDurationCodec extends ConvertingCodec<JsonNode, Duration>
   }
 
   @Override
-  public JsonNode convertTo(Duration value) {
+  public JsonNode internalToExternal(Duration value) {
     if (value == null) {
       return null;
     }

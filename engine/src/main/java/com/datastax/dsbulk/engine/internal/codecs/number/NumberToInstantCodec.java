@@ -27,7 +27,7 @@ public class NumberToInstantCodec<FROM extends Number> extends ConvertingCodec<F
   }
 
   @Override
-  public FROM convertTo(Instant value) {
+  public FROM internalToExternal(Instant value) {
     if (value == null) {
       return null;
     }
@@ -38,7 +38,7 @@ public class NumberToInstantCodec<FROM extends Number> extends ConvertingCodec<F
   }
 
   @Override
-  public Instant convertFrom(FROM value) {
+  public Instant externalToInternal(FROM value) {
     if (value == null) {
       return null;
     }

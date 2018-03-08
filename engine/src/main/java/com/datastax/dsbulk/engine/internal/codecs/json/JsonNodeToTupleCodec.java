@@ -38,7 +38,7 @@ public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> 
   }
 
   @Override
-  public TupleValue convertFrom(JsonNode node) {
+  public TupleValue externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -58,14 +58,14 @@ public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> 
     TupleValue tuple = definition.newValue();
     for (int i = 0; i < size; i++) {
       ConvertingCodec<JsonNode, Object> eltCodec = eltCodecs.get(i);
-      Object o = eltCodec.convertFrom(node.get(i));
-      tuple.set(i, o, eltCodec.getTargetJavaType());
+      Object o = eltCodec.externalToInternal(node.get(i));
+      tuple.set(i, o, eltCodec.getInternalJavaType());
     }
     return tuple;
   }
 
   @Override
-  public JsonNode convertTo(TupleValue tuple) {
+  public JsonNode internalToExternal(TupleValue tuple) {
     if (tuple == null) {
       return objectMapper.getNodeFactory().nullNode();
     }
@@ -73,8 +73,8 @@ public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> 
     int size = definition.getComponentTypes().size();
     for (int i = 0; i < size; i++) {
       ConvertingCodec<JsonNode, Object> eltCodec = eltCodecs.get(i);
-      Object o = tuple.get(i, eltCodec.getTargetJavaType());
-      JsonNode element = eltCodec.convertTo(o);
+      Object o = tuple.get(i, eltCodec.getInternalJavaType());
+      JsonNode element = eltCodec.internalToExternal(o);
       root.add(element);
     }
     return root;

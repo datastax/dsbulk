@@ -22,7 +22,7 @@ public class StringToLocalTimeCodec extends StringToTemporalCodec<LocalTime> {
   }
 
   @Override
-  public LocalTime convertFrom(String s) {
+  public LocalTime externalToInternal(String s) {
     TemporalAccessor temporal = parseTemporalAccessor(s);
     if (temporal == null) {
       return null;

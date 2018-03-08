@@ -45,55 +45,55 @@ class JsonNodeToByteCodecTest {
           newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode((byte) 0))
-        .to((byte) 0)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode((byte) 127))
-        .to((byte) 127)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode((byte) -128))
-        .to((byte) -128)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("0"))
-        .to((byte) 0)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("127"))
-        .to((byte) 127)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("-128"))
-        .to((byte) -128)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
-        .to((byte) 0)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
-        .to((byte) 1)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
-        .to((byte) 0)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode((byte) 0))
+        .toInternal((byte) 0)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode((byte) 127))
+        .toInternal((byte) 127)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode((byte) -128))
+        .toInternal((byte) -128)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("0"))
+        .toInternal((byte) 0)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("127"))
+        .toInternal((byte) 127)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("-128"))
+        .toInternal((byte) -128)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
+        .toInternal((byte) 0)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("TRUE"))
+        .toInternal((byte) 1)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
+        .toInternal((byte) 0)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo((byte) 0)
-        .from(JSON_NODE_FACTORY.numberNode((byte) 0))
-        .convertsTo((byte) 127)
-        .from(JSON_NODE_FACTORY.numberNode((byte) 127))
-        .convertsTo((byte) -128)
-        .from(JSON_NODE_FACTORY.numberNode((byte) -128))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal((byte) 0)
+        .toExternal(JSON_NODE_FACTORY.numberNode((byte) 0))
+        .convertsFromInternal((byte) 127)
+        .toExternal(JSON_NODE_FACTORY.numberNode((byte) 127))
+        .convertsFromInternal((byte) -128)
+        .toExternal(JSON_NODE_FACTORY.numberNode((byte) -128))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid byte"))
-        .cannotConvertFrom(JSON_NODE_FACTORY.numberNode(1.2))
-        .cannotConvertFrom(JSON_NODE_FACTORY.numberNode(128))
-        .cannotConvertFrom(JSON_NODE_FACTORY.numberNode(-129))
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z")) // overflow
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid byte"))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.numberNode(1.2))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.numberNode(128))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.numberNode(-129))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z")) // overflow
     ;
   }
 }

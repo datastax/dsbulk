@@ -48,7 +48,7 @@ public class StringToByteCodec extends StringToNumberCodec<Byte> {
   }
 
   @Override
-  public Byte convertFrom(String s) {
+  public Byte externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

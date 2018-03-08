@@ -47,7 +47,7 @@ public class StringToShortCodec extends StringToNumberCodec<Short> {
   }
 
   @Override
-  public Short convertFrom(String s) {
+  public Short externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

@@ -31,7 +31,7 @@ public class NumberToBooleanCodec<FROM extends Number> extends ConvertingCodec<F
   }
 
   @Override
-  public Boolean convertFrom(FROM value) {
+  public Boolean externalToInternal(FROM value) {
     if (value == null) {
       return null;
     }
@@ -46,7 +46,7 @@ public class NumberToBooleanCodec<FROM extends Number> extends ConvertingCodec<F
   }
 
   @Override
-  public FROM convertTo(Boolean value) {
+  public FROM internalToExternal(Boolean value) {
     if (value == null) {
       return null;
     }

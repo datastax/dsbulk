@@ -50,7 +50,7 @@ public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
   }
 
   @Override
-  public Float convertFrom(JsonNode node) {
+  public Float externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -72,7 +72,7 @@ public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
   }
 
   @Override
-  public JsonNode convertTo(Float value) {
+  public JsonNode internalToExternal(Float value) {
     return JSON_NODE_FACTORY.numberNode(value);
   }
 }

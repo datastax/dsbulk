@@ -23,7 +23,7 @@ public class StringToInetAddressCodec extends ConvertingCodec<String, InetAddres
   }
 
   @Override
-  public InetAddress convertFrom(String s) {
+  public InetAddress externalToInternal(String s) {
     if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
@@ -35,7 +35,7 @@ public class StringToInetAddressCodec extends ConvertingCodec<String, InetAddres
   }
 
   @Override
-  public String convertTo(InetAddress value) {
+  public String internalToExternal(InetAddress value) {
     if (value == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }

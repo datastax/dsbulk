@@ -22,7 +22,7 @@ public class StringToDurationCodec extends ConvertingCodec<String, Duration> {
   }
 
   @Override
-  public Duration convertFrom(String s) {
+  public Duration externalToInternal(String s) {
     if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
@@ -30,7 +30,7 @@ public class StringToDurationCodec extends ConvertingCodec<String, Duration> {
   }
 
   @Override
-  public String convertTo(Duration value) {
+  public String internalToExternal(Duration value) {
     if (value == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }

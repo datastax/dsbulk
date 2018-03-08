@@ -26,32 +26,32 @@ public class StringToTupleCodec extends ConvertingCodec<String, TupleValue> {
 
   public StringToTupleCodec(
       JsonNodeToTupleCodec jsonCodec, ObjectMapper objectMapper, List<String> nullWords) {
-    super(jsonCodec.getTargetCodec(), String.class);
+    super(jsonCodec.getInternalCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
     this.nullWords = nullWords;
   }
 
   @Override
-  public TupleValue convertFrom(String s) {
+  public TupleValue externalToInternal(String s) {
     if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     try {
       JsonNode node = objectMapper.readTree(s);
-      return jsonCodec.convertFrom(node);
+      return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
       throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
     }
   }
 
   @Override
-  public String convertTo(TupleValue tuple) {
+  public String internalToExternal(TupleValue tuple) {
     if (tuple == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     try {
-      JsonNode node = jsonCodec.convertTo(tuple);
+      JsonNode node = jsonCodec.internalToExternal(tuple);
       return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
       throw new InvalidTypeException(String.format("Could not format '%s' to Json", tuple), e);

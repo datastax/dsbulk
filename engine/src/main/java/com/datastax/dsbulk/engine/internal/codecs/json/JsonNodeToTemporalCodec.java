@@ -32,7 +32,7 @@ public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
   }
 
   @Override
-  public JsonNode convertTo(T value) {
+  public JsonNode internalToExternal(T value) {
     if (value == null) {
       return JSON_NODE_FACTORY.nullNode();
     }

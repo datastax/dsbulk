@@ -50,7 +50,7 @@ public class JsonNodeToDoubleCodec extends JsonNodeToNumberCodec<Double> {
   }
 
   @Override
-  public Double convertFrom(JsonNode node) {
+  public Double externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -72,7 +72,7 @@ public class JsonNodeToDoubleCodec extends JsonNodeToNumberCodec<Double> {
   }
 
   @Override
-  public JsonNode convertTo(Double value) {
+  public JsonNode internalToExternal(Double value) {
     return JSON_NODE_FACTORY.numberNode(value);
   }
 }

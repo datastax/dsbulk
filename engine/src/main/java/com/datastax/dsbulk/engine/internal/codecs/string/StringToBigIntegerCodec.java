@@ -49,7 +49,7 @@ public class StringToBigIntegerCodec extends StringToNumberCodec<BigInteger> {
   }
 
   @Override
-  public BigInteger convertFrom(String s) {
+  public BigInteger externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

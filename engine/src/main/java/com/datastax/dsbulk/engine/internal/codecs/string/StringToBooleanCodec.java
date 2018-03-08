@@ -28,7 +28,7 @@ public class StringToBooleanCodec extends ConvertingCodec<String, Boolean> {
   }
 
   @Override
-  public Boolean convertFrom(String s) {
+  public Boolean externalToInternal(String s) {
     if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
@@ -40,7 +40,7 @@ public class StringToBooleanCodec extends ConvertingCodec<String, Boolean> {
   }
 
   @Override
-  public String convertTo(Boolean value) {
+  public String internalToExternal(Boolean value) {
     if (value == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }

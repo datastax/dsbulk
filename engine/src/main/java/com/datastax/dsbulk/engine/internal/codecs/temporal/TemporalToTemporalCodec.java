@@ -29,16 +29,17 @@ public class TemporalToTemporalCodec<FROM extends TemporalAccessor, TO extends T
   }
 
   @Override
-  public FROM convertTo(TO value) {
+  public FROM internalToExternal(TO value) {
     @SuppressWarnings("unchecked")
     Class<? extends FROM> targetClass = (Class<? extends FROM>) getJavaType().getRawType();
     return CodecUtils.convertTemporal(value, targetClass, timeZone, epoch.toLocalDate());
   }
 
   @Override
-  public TO convertFrom(FROM value) {
+  public TO externalToInternal(FROM value) {
     @SuppressWarnings("unchecked")
-    Class<? extends TO> targetClass = (Class<? extends TO>) targetCodec.getJavaType().getRawType();
+    Class<? extends TO> targetClass =
+        (Class<? extends TO>) internalCodec.getJavaType().getRawType();
     return CodecUtils.convertTemporal(value, targetClass, timeZone, epoch.toLocalDate());
   }
 }

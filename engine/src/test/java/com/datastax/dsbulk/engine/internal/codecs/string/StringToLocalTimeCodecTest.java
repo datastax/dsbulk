@@ -31,34 +31,40 @@ class StringToLocalTimeCodecTest {
   private final List<String> nullWords = newArrayList("NULL");
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullWords);
     assertThat(codec)
-        .convertsFrom("12:24:46")
-        .to(LocalTime.parse("12:24:46"))
-        .convertsFrom("12:24:46.999")
-        .to(LocalTime.parse("12:24:46.999"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("NULL")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("12:24:46")
+        .toInternal(LocalTime.parse("12:24:46"))
+        .convertsFromExternal("12:24:46.999")
+        .toInternal(LocalTime.parse("12:24:46.999"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
     codec = new StringToLocalTimeCodec(format2, nullWords);
-    assertThat(codec).convertsFrom("122446.999").to(LocalTime.parse("12:24:46.999"));
+    assertThat(codec)
+        .convertsFromExternal("122446.999")
+        .toInternal(LocalTime.parse("12:24:46.999"));
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullWords);
-    assertThat(codec).convertsTo(LocalTime.parse("12:24:46.999")).from("12:24:46.999");
+    assertThat(codec)
+        .convertsFromInternal(LocalTime.parse("12:24:46.999"))
+        .toExternal("12:24:46.999");
     codec = new StringToLocalTimeCodec(format2, nullWords);
-    assertThat(codec).convertsTo(LocalTime.parse("12:24:46.999")).from("122446.999");
+    assertThat(codec)
+        .convertsFromInternal(LocalTime.parse("12:24:46.999"))
+        .toExternal("122446.999");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullWords);
-    assertThat(codec).cannotConvertFrom("not a valid date format");
+    assertThat(codec).cannotConvertFromExternal("not a valid date format");
   }
 }

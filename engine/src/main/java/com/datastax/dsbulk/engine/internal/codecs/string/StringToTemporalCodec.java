@@ -29,7 +29,7 @@ public abstract class StringToTemporalCodec<T extends TemporalAccessor>
   }
 
   @Override
-  public String convertTo(T value) {
+  public String internalToExternal(T value) {
     if (value == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }

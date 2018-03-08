@@ -25,7 +25,7 @@ public class StringToBlobCodec extends ConvertingCodec<String, ByteBuffer> {
   }
 
   @Override
-  public ByteBuffer convertFrom(String s) {
+  public ByteBuffer externalToInternal(String s) {
     if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
@@ -33,7 +33,7 @@ public class StringToBlobCodec extends ConvertingCodec<String, ByteBuffer> {
   }
 
   @Override
-  public String convertTo(ByteBuffer value) {
+  public String internalToExternal(ByteBuffer value) {
     if (value == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }

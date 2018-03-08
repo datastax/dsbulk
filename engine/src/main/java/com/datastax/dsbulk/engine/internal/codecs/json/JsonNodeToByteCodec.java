@@ -50,7 +50,7 @@ public class JsonNodeToByteCodec extends JsonNodeToNumberCodec<Byte> {
   }
 
   @Override
-  public Byte convertFrom(JsonNode node) {
+  public Byte externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -69,7 +69,7 @@ public class JsonNodeToByteCodec extends JsonNodeToNumberCodec<Byte> {
   }
 
   @Override
-  public JsonNode convertTo(Byte value) {
+  public JsonNode internalToExternal(Byte value) {
     return JSON_NODE_FACTORY.numberNode(value);
   }
 }

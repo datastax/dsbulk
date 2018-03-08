@@ -26,32 +26,32 @@ public class StringToMapCodec<K, V> extends ConvertingCodec<String, Map<K, V>> {
 
   public StringToMapCodec(
       JsonNodeToMapCodec<K, V> jsonCodec, ObjectMapper objectMapper, List<String> nullWords) {
-    super(jsonCodec.getTargetCodec(), String.class);
+    super(jsonCodec.getInternalCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
     this.nullWords = nullWords;
   }
 
   @Override
-  public Map<K, V> convertFrom(String s) {
+  public Map<K, V> externalToInternal(String s) {
     if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     try {
       JsonNode node = objectMapper.readTree(s);
-      return jsonCodec.convertFrom(node);
+      return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
       throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
     }
   }
 
   @Override
-  public String convertTo(Map<K, V> map) {
+  public String internalToExternal(Map<K, V> map) {
     if (map == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     try {
-      JsonNode node = jsonCodec.convertTo(map);
+      JsonNode node = jsonCodec.internalToExternal(map);
       return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
       throw new InvalidTypeException(String.format("Could not format '%s' to Json", map), e);

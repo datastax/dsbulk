@@ -26,32 +26,32 @@ public class StringToUDTCodec extends ConvertingCodec<String, UDTValue> {
 
   public StringToUDTCodec(
       JsonNodeToUDTCodec jsonCodec, ObjectMapper objectMapper, List<String> nullWords) {
-    super(jsonCodec.getTargetCodec(), String.class);
+    super(jsonCodec.getInternalCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
     this.nullWords = nullWords;
   }
 
   @Override
-  public UDTValue convertFrom(String s) {
+  public UDTValue externalToInternal(String s) {
     if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
     try {
       JsonNode node = objectMapper.readTree(s);
-      return jsonCodec.convertFrom(node);
+      return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
       throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
     }
   }
 
   @Override
-  public String convertTo(UDTValue udt) {
+  public String internalToExternal(UDTValue udt) {
     if (udt == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }
     try {
-      JsonNode node = jsonCodec.convertTo(udt);
+      JsonNode node = jsonCodec.internalToExternal(udt);
       return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
       throw new InvalidTypeException(String.format("Could not format '%s' to Json", udt), e);

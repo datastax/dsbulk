@@ -882,7 +882,7 @@ public class CodecUtils {
     } catch (IllegalArgumentException e1) {
       Instant instant;
       try {
-        instant = instantCodec.convertFrom(s);
+        instant = instantCodec.externalToInternal(s);
       } catch (Exception e2) {
         e2.addSuppressed(e1);
         throw new IllegalArgumentException("Invalid UUID string: " + s, e2);

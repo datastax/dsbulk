@@ -50,7 +50,7 @@ public class JsonNodeToLongCodec extends JsonNodeToNumberCodec<Long> {
   }
 
   @Override
-  public Long convertFrom(JsonNode node) {
+  public Long externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -69,7 +69,7 @@ public class JsonNodeToLongCodec extends JsonNodeToNumberCodec<Long> {
   }
 
   @Override
-  public JsonNode convertTo(Long value) {
+  public JsonNode internalToExternal(Long value) {
     return JSON_NODE_FACTORY.numberNode(value);
   }
 }

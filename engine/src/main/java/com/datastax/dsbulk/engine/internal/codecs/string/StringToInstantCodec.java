@@ -38,7 +38,7 @@ public class StringToInstantCodec extends StringToTemporalCodec<Instant> {
   }
 
   @Override
-  public Instant convertFrom(String s) {
+  public Instant externalToInternal(String s) {
     TemporalAccessor temporal = parseTemporalAccessor(s);
     if (temporal == null) {
       return null;

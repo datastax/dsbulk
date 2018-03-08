@@ -44,76 +44,80 @@ class StringToInstantCodecTest {
   private final List<String> nullWords = newArrayList("NULL");
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     StringToInstantCodec codec =
         new StringToInstantCodec(
             temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullWords);
     assertThat(codec)
-        .convertsFrom("2016-07-24T20:34")
-        .to(Instant.parse("2016-07-24T20:34:00Z"))
-        .convertsFrom("2016-07-24T20:34:12")
-        .to(Instant.parse("2016-07-24T20:34:12Z"))
-        .convertsFrom("2016-07-24T20:34:12.999")
-        .to(Instant.parse("2016-07-24T20:34:12.999Z"))
-        .convertsFrom("2016-07-24T20:34+01:00")
-        .to(Instant.parse("2016-07-24T19:34:00Z"))
-        .convertsFrom("2016-07-24T20:34:12.999+01:00")
-        .to(Instant.parse("2016-07-24T19:34:12.999Z"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("NULL")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("2016-07-24T20:34")
+        .toInternal(Instant.parse("2016-07-24T20:34:00Z"))
+        .convertsFromExternal("2016-07-24T20:34:12")
+        .toInternal(Instant.parse("2016-07-24T20:34:12Z"))
+        .convertsFromExternal("2016-07-24T20:34:12.999")
+        .toInternal(Instant.parse("2016-07-24T20:34:12.999Z"))
+        .convertsFromExternal("2016-07-24T20:34+01:00")
+        .toInternal(Instant.parse("2016-07-24T19:34:00Z"))
+        .convertsFromExternal("2016-07-24T20:34:12.999+01:00")
+        .toInternal(Instant.parse("2016-07-24T19:34:12.999Z"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
     codec =
         new StringToInstantCodec(
             temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullWords);
-    assertThat(codec).convertsFrom("20160724203412").to(Instant.parse("2016-07-24T20:34:12Z"));
+    assertThat(codec)
+        .convertsFromExternal("20160724203412")
+        .toInternal(Instant.parse("2016-07-24T20:34:12Z"));
     codec =
         new StringToInstantCodec(
             temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC), nullWords);
     assertThat(codec)
-        .convertsFrom("123456")
-        .to(minutesAfterMillennium)
-        .convertsFrom(temporalFormat1.format(minutesAfterMillennium))
-        .to(minutesAfterMillennium);
+        .convertsFromExternal("123456")
+        .toInternal(minutesAfterMillennium)
+        .convertsFromExternal(temporalFormat1.format(minutesAfterMillennium))
+        .toInternal(minutesAfterMillennium);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     StringToInstantCodec codec =
         new StringToInstantCodec(
             temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullWords);
     assertThat(codec)
-        .convertsTo(Instant.parse("2016-07-24T20:34:00Z"))
-        .from("2016-07-24T20:34:00Z")
-        .convertsTo(Instant.parse("2016-07-24T20:34:12Z"))
-        .from("2016-07-24T20:34:12Z")
-        .convertsTo(Instant.parse("2016-07-24T20:34:12.999Z"))
-        .from("2016-07-24T20:34:12.999Z")
-        .convertsTo(Instant.parse("2016-07-24T19:34:00Z"))
-        .from("2016-07-24T19:34:00Z")
-        .convertsTo(Instant.parse("2016-07-24T19:34:12.999Z"))
-        .from("2016-07-24T19:34:12.999Z");
+        .convertsFromInternal(Instant.parse("2016-07-24T20:34:00Z"))
+        .toExternal("2016-07-24T20:34:00Z")
+        .convertsFromInternal(Instant.parse("2016-07-24T20:34:12Z"))
+        .toExternal("2016-07-24T20:34:12Z")
+        .convertsFromInternal(Instant.parse("2016-07-24T20:34:12.999Z"))
+        .toExternal("2016-07-24T20:34:12.999Z")
+        .convertsFromInternal(Instant.parse("2016-07-24T19:34:00Z"))
+        .toExternal("2016-07-24T19:34:00Z")
+        .convertsFromInternal(Instant.parse("2016-07-24T19:34:12.999Z"))
+        .toExternal("2016-07-24T19:34:12.999Z");
     codec =
         new StringToInstantCodec(
             temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullWords);
-    assertThat(codec).convertsTo(Instant.parse("2016-07-24T20:34:12Z")).from("20160724203412");
+    assertThat(codec)
+        .convertsFromInternal(Instant.parse("2016-07-24T20:34:12Z"))
+        .toExternal("20160724203412");
     codec =
         new StringToInstantCodec(
             temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC), nullWords);
     // conversion back to numeric timestamps is not possible, values are always formatted with full
     // alphanumeric pattern
     assertThat(codec)
-        .convertsTo(minutesAfterMillennium)
-        .from(temporalFormat1.format(minutesAfterMillennium));
+        .convertsFromInternal(minutesAfterMillennium)
+        .toExternal(temporalFormat1.format(minutesAfterMillennium));
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     StringToInstantCodec codec =
         new StringToInstantCodec(
             temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullWords);
-    assertThat(codec).cannotConvertFrom("not a valid date format");
+    assertThat(codec).cannotConvertFromExternal("not a valid date format");
   }
 }

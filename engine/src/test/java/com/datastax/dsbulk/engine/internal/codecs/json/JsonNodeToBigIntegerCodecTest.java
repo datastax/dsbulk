@@ -47,49 +47,50 @@ class JsonNodeToBigIntegerCodecTest {
           newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_external() throws Exception {
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(0))
-        .to(BigInteger.ZERO)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(0d))
-        .to(new BigInteger("0"))
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(BigInteger.ONE))
-        .to(BigInteger.ONE)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(-1234))
-        .to(new BigInteger("-1234"))
-        .convertsFrom(JSON_NODE_FACTORY.textNode("-1,234"))
-        .to(new BigInteger("-1234"))
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
-        .to(new BigInteger("0"))
-        .convertsFrom(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z"))
-        .to(new BigInteger("946684800000"))
-        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
-        .to(BigInteger.ONE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
-        .to(BigInteger.ZERO)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.nullNode())
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(0))
+        .toInternal(BigInteger.ZERO)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(0d))
+        .toInternal(new BigInteger("0"))
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(BigInteger.ONE))
+        .toInternal(BigInteger.ONE)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(-1234))
+        .toInternal(new BigInteger("-1234"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("-1,234"))
+        .toInternal(new BigInteger("-1234"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
+        .toInternal(new BigInteger("0"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z"))
+        .toInternal(new BigInteger("946684800000"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("TRUE"))
+        .toInternal(BigInteger.ONE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
+        .toInternal(BigInteger.ZERO)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(BigInteger.ZERO)
-        .from(JSON_NODE_FACTORY.numberNode(BigInteger.ZERO))
-        .convertsTo(new BigInteger("-1234"))
-        .from(JSON_NODE_FACTORY.numberNode(new BigInteger("-1234")))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(BigInteger.ZERO)
+        .toExternal(JSON_NODE_FACTORY.numberNode(BigInteger.ZERO))
+        .convertsFromInternal(new BigInteger("-1234"))
+        .toExternal(JSON_NODE_FACTORY.numberNode(new BigInteger("-1234")))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid biginteger"));
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec)
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid biginteger"));
   }
 }

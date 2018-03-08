@@ -33,7 +33,7 @@ public class BooleanToNumberCodec<TO extends Number> extends ConvertingCodec<Boo
   }
 
   @Override
-  public TO convertFrom(Boolean value) {
+  public TO externalToInternal(Boolean value) {
     if (value == null) {
       return null;
     }
@@ -41,7 +41,7 @@ public class BooleanToNumberCodec<TO extends Number> extends ConvertingCodec<Boo
   }
 
   @Override
-  public Boolean convertTo(TO value) {
+  public Boolean internalToExternal(TO value) {
     if (value == null) {
       return null;
     }

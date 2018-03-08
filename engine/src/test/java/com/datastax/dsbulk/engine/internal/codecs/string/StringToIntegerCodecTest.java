@@ -45,57 +45,57 @@ class StringToIntegerCodecTest {
           newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("0")
-        .to(0)
-        .convertsFrom("2147483647")
-        .to(Integer.MAX_VALUE)
-        .convertsFrom("-2147483648")
-        .to(Integer.MIN_VALUE)
-        .convertsFrom("2,147,483,647")
-        .to(Integer.MAX_VALUE)
-        .convertsFrom("-2,147,483,648")
-        .to(Integer.MIN_VALUE)
-        .convertsFrom("2,147,483,647")
-        .to(Integer.MAX_VALUE)
-        .convertsFrom("-2,147,483,648")
-        .to(Integer.MIN_VALUE)
-        .convertsFrom("1970-01-01T00:00:00Z")
-        .to(0)
-        .convertsFrom("TRUE")
-        .to(1)
-        .convertsFrom("FALSE")
-        .to(0)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("NULL")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("0")
+        .toInternal(0)
+        .convertsFromExternal("2147483647")
+        .toInternal(Integer.MAX_VALUE)
+        .convertsFromExternal("-2147483648")
+        .toInternal(Integer.MIN_VALUE)
+        .convertsFromExternal("2,147,483,647")
+        .toInternal(Integer.MAX_VALUE)
+        .convertsFromExternal("-2,147,483,648")
+        .toInternal(Integer.MIN_VALUE)
+        .convertsFromExternal("2,147,483,647")
+        .toInternal(Integer.MAX_VALUE)
+        .convertsFromExternal("-2,147,483,648")
+        .toInternal(Integer.MIN_VALUE)
+        .convertsFromExternal("1970-01-01T00:00:00Z")
+        .toInternal(0)
+        .convertsFromExternal("TRUE")
+        .toInternal(1)
+        .convertsFromExternal("FALSE")
+        .toInternal(0)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(0)
-        .from("0")
-        .convertsTo(Integer.MAX_VALUE)
-        .from("2,147,483,647")
-        .convertsTo(Integer.MIN_VALUE)
-        .from("-2,147,483,648")
-        .convertsTo(null)
-        .from("NULL");
+        .convertsFromInternal(0)
+        .toExternal("0")
+        .convertsFromInternal(Integer.MAX_VALUE)
+        .toExternal("2,147,483,647")
+        .convertsFromInternal(Integer.MIN_VALUE)
+        .toExternal("-2,147,483,648")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFrom("not a valid integer")
-        .cannotConvertFrom("1.2")
-        .cannotConvertFrom("2147483648")
-        .cannotConvertFrom("-2147483649")
-        .cannotConvertFrom("2000-01-01T00:00:00Z") // overflow
+        .cannotConvertFromExternal("not a valid integer")
+        .cannotConvertFromExternal("1.2")
+        .cannotConvertFromExternal("2147483648")
+        .cannotConvertFromExternal("-2147483649")
+        .cannotConvertFromExternal("2000-01-01T00:00:00Z") // overflow
     ;
   }
 }

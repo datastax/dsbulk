@@ -46,59 +46,59 @@ class JsonNodeToLongCodecTest {
           newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(0L))
-        .to(0L)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(9_223_372_036_854_775_807L))
-        .to(Long.MAX_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(-9_223_372_036_854_775_808L))
-        .to(Long.MIN_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("0"))
-        .to(0L)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("9223372036854775807"))
-        .to(Long.MAX_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("-9223372036854775808"))
-        .to(Long.MIN_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("9,223,372,036,854,775,807"))
-        .to(Long.MAX_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("-9,223,372,036,854,775,808"))
-        .to(Long.MIN_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
-        .to(0L)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z"))
-        .to(946684800000L)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
-        .to(1L)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
-        .to(0L)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(0L))
+        .toInternal(0L)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(9_223_372_036_854_775_807L))
+        .toInternal(Long.MAX_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(-9_223_372_036_854_775_808L))
+        .toInternal(Long.MIN_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("0"))
+        .toInternal(0L)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("9223372036854775807"))
+        .toInternal(Long.MAX_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("-9223372036854775808"))
+        .toInternal(Long.MIN_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("9,223,372,036,854,775,807"))
+        .toInternal(Long.MAX_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("-9,223,372,036,854,775,808"))
+        .toInternal(Long.MIN_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
+        .toInternal(0L)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z"))
+        .toInternal(946684800000L)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("TRUE"))
+        .toInternal(1L)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
+        .toInternal(0L)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(0L)
-        .from(JSON_NODE_FACTORY.numberNode(0L))
-        .convertsTo(Long.MAX_VALUE)
-        .from(JSON_NODE_FACTORY.numberNode(9_223_372_036_854_775_807L))
-        .convertsTo(Long.MIN_VALUE)
-        .from(JSON_NODE_FACTORY.numberNode(-9_223_372_036_854_775_808L))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(0L)
+        .toExternal(JSON_NODE_FACTORY.numberNode(0L))
+        .convertsFromInternal(Long.MAX_VALUE)
+        .toExternal(JSON_NODE_FACTORY.numberNode(9_223_372_036_854_775_807L))
+        .convertsFromInternal(Long.MIN_VALUE)
+        .toExternal(JSON_NODE_FACTORY.numberNode(-9_223_372_036_854_775_808L))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid long"))
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("1.2"))
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("9223372036854775808"))
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("-9223372036854775809"));
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid long"))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("1.2"))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("9223372036854775808"))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("-9223372036854775809"));
   }
 }

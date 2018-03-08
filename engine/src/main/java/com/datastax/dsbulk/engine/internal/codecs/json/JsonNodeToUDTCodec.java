@@ -41,7 +41,7 @@ public class JsonNodeToUDTCodec extends ConvertingCodec<JsonNode, UDTValue> {
   }
 
   @Override
-  public UDTValue convertFrom(JsonNode node) {
+  public UDTValue externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -68,14 +68,14 @@ public class JsonNodeToUDTCodec extends ConvertingCodec<JsonNode, UDTValue> {
             String.format("Unknown field %s in UDT %s", name, definition.getName()));
       }
       ConvertingCodec<JsonNode, Object> fieldCodec = fieldCodecs.get(name);
-      Object o = fieldCodec.convertFrom(entry.getValue());
-      value.set(name, o, fieldCodec.getTargetJavaType());
+      Object o = fieldCodec.externalToInternal(entry.getValue());
+      value.set(name, o, fieldCodec.getInternalJavaType());
     }
     return value;
   }
 
   @Override
-  public JsonNode convertTo(UDTValue value) {
+  public JsonNode internalToExternal(UDTValue value) {
     if (value == null) {
       return objectMapper.getNodeFactory().nullNode();
     }
@@ -83,8 +83,8 @@ public class JsonNodeToUDTCodec extends ConvertingCodec<JsonNode, UDTValue> {
     for (UserType.Field field : definition) {
       String name = field.getName();
       ConvertingCodec<JsonNode, Object> eltCodec = fieldCodecs.get(name);
-      Object o = value.get(name, eltCodec.getTargetJavaType());
-      JsonNode node = eltCodec.convertTo(o);
+      Object o = value.get(name, eltCodec.getInternalJavaType());
+      JsonNode node = eltCodec.internalToExternal(o);
       root.set(name, node);
     }
     return root;

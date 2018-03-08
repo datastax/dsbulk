@@ -48,7 +48,7 @@ public class StringToIntegerCodec extends StringToNumberCodec<Integer> {
   }
 
   @Override
-  public Integer convertFrom(String s) {
+  public Integer externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

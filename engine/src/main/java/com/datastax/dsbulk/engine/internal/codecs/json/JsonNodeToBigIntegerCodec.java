@@ -51,7 +51,7 @@ public class JsonNodeToBigIntegerCodec extends JsonNodeToNumberCodec<BigInteger>
   }
 
   @Override
-  public BigInteger convertFrom(JsonNode node) {
+  public BigInteger externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -70,7 +70,7 @@ public class JsonNodeToBigIntegerCodec extends JsonNodeToNumberCodec<BigInteger>
   }
 
   @Override
-  public JsonNode convertTo(BigInteger value) {
+  public JsonNode internalToExternal(BigInteger value) {
     return JSON_NODE_FACTORY.numberNode(value);
   }
 }

@@ -48,7 +48,7 @@ public class StringToLongCodec extends StringToNumberCodec<Long> {
   }
 
   @Override
-  public Long convertFrom(String s) {
+  public Long externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

@@ -125,7 +125,7 @@ public class SchemaSettings {
         this.timestampMicros = -1L;
       } else {
         try {
-          Instant instant = timestampCodec.convertFrom(timestampStr);
+          Instant instant = timestampCodec.externalToInternal(timestampStr);
           this.timestampMicros = instantToNumber(instant, MICROSECONDS, EPOCH);
         } catch (Exception e) {
           throw new BulkConfigurationException(

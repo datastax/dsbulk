@@ -31,20 +31,20 @@ public class TemporalToUUIDCodec<FROM extends TemporalAccessor>
   }
 
   @Override
-  public FROM convertTo(UUID value) {
+  public FROM internalToExternal(UUID value) {
     if (value == null) {
       return null;
     }
     Instant instant = TimeUUIDGenerator.fromUUIDTimestamp(value.timestamp());
-    return instantCodec.convertTo(instant);
+    return instantCodec.internalToExternal(instant);
   }
 
   @Override
-  public UUID convertFrom(FROM value) {
+  public UUID externalToInternal(FROM value) {
     if (value == null) {
       return null;
     }
-    Instant instant = instantCodec.convertFrom(value);
+    Instant instant = instantCodec.externalToInternal(value);
     return generator.generate(instant);
   }
 }

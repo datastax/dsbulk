@@ -32,48 +32,49 @@ class JsonNodeToLocalDateCodecTest {
   private final List<String> nullWords = newArrayList("NULL");
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, nullWords);
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("2016-07-24"))
-        .to(LocalDate.parse("2016-07-24"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("2016-07-24"))
+        .toInternal(LocalDate.parse("2016-07-24"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
     codec = new JsonNodeToLocalDateCodec(format2, nullWords);
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("20160724"))
-        .to(LocalDate.parse("2016-07-24"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("20160724"))
+        .toInternal(LocalDate.parse("2016-07-24"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, nullWords);
     assertThat(codec)
-        .convertsTo(LocalDate.parse("2016-07-24"))
-        .from(JSON_NODE_FACTORY.textNode("2016-07-24"))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(LocalDate.parse("2016-07-24"))
+        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24"))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
     codec = new JsonNodeToLocalDateCodec(format2, nullWords);
     assertThat(codec)
-        .convertsTo(LocalDate.parse("2016-07-24"))
-        .from(JSON_NODE_FACTORY.textNode("20160724"))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(LocalDate.parse("2016-07-24"))
+        .toExternal(JSON_NODE_FACTORY.textNode("20160724"))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, nullWords);
-    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid date format"));
+    assertThat(codec)
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }
 }

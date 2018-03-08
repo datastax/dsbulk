@@ -47,7 +47,7 @@ public class StringToBigDecimalCodec extends StringToNumberCodec<BigDecimal> {
   }
 
   @Override
-  public BigDecimal convertFrom(String s) {
+  public BigDecimal externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

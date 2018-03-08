@@ -34,7 +34,7 @@ public class StringToUUIDCodec extends ConvertingCodec<String, UUID> {
   }
 
   @Override
-  public UUID convertFrom(String s) {
+  public UUID externalToInternal(String s) {
     if (s == null || s.isEmpty() || nullWords.contains(s)) {
       return null;
     }
@@ -42,7 +42,7 @@ public class StringToUUIDCodec extends ConvertingCodec<String, UUID> {
   }
 
   @Override
-  public String convertTo(UUID value) {
+  public String internalToExternal(UUID value) {
     if (value == null) {
       return nullWords.isEmpty() ? null : nullWords.get(0);
     }

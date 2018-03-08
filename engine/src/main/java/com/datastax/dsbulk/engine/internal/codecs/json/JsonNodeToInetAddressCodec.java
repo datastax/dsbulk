@@ -26,7 +26,7 @@ public class JsonNodeToInetAddressCodec extends ConvertingCodec<JsonNode, InetAd
   }
 
   @Override
-  public InetAddress convertFrom(JsonNode node) {
+  public InetAddress externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -44,7 +44,7 @@ public class JsonNodeToInetAddressCodec extends ConvertingCodec<JsonNode, InetAd
   }
 
   @Override
-  public JsonNode convertTo(InetAddress value) {
+  public JsonNode internalToExternal(InetAddress value) {
     if (value == null) {
       return JSON_NODE_FACTORY.nullNode();
     }

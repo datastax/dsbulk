@@ -195,73 +195,73 @@ class CodecSettingsTest {
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
 
     assertThat(codecRegistry.convertingCodecFor(date(), TypeToken.of(ZonedDateTime.class)))
-        .convertsFrom(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
-        .to(LocalDate.parse("2017-11-30"))
+        .convertsFromExternal(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
+        .toInternal(LocalDate.parse("2017-11-30"))
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(time(), TypeToken.of(ZonedDateTime.class)))
-        .convertsFrom(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
-        .to(LocalTime.parse("00:00:00"))
+        .convertsFromExternal(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
+        .toInternal(LocalTime.parse("00:00:00"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(ZonedDateTime.class)))
-        .convertsFrom(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
-        .to(Instant.parse("2017-11-29T23:00:00Z"))
+        .convertsFromExternal(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
+        .toInternal(Instant.parse("2017-11-29T23:00:00Z"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(date(), TypeToken.of(Instant.class)))
-        .convertsFrom(Instant.parse("2017-11-29T23:00:00Z"))
-        .to(LocalDate.parse("2017-11-29"))
+        .convertsFromExternal(Instant.parse("2017-11-29T23:00:00Z"))
+        .toInternal(LocalDate.parse("2017-11-29"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(time(), TypeToken.of(Instant.class)))
-        .convertsFrom(Instant.parse("2017-11-29T23:00:00Z"))
-        .to(LocalTime.parse("23:00:00"))
+        .convertsFromExternal(Instant.parse("2017-11-29T23:00:00Z"))
+        .toInternal(LocalTime.parse("23:00:00"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(date(), TypeToken.of(LocalDateTime.class)))
-        .convertsFrom(LocalDateTime.parse("2017-11-30T00:00:00"))
-        .to(LocalDate.parse("2017-11-30"))
+        .convertsFromExternal(LocalDateTime.parse("2017-11-30T00:00:00"))
+        .toInternal(LocalDate.parse("2017-11-30"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(time(), TypeToken.of(LocalDateTime.class)))
-        .convertsFrom(LocalDateTime.parse("2017-11-30T23:00:00"))
-        .to(LocalTime.parse("23:00:00"))
+        .convertsFromExternal(LocalDateTime.parse("2017-11-30T23:00:00"))
+        .toInternal(LocalTime.parse("23:00:00"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(LocalDateTime.class)))
-        .convertsFrom(LocalDateTime.parse("2017-11-30T00:00:00"))
-        .to(Instant.parse("2017-11-30T00:00:00Z"))
+        .convertsFromExternal(LocalDateTime.parse("2017-11-30T00:00:00"))
+        .toInternal(Instant.parse("2017-11-30T00:00:00Z"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(LocalDate.class)))
-        .convertsFrom(LocalDate.parse("2017-11-30"))
-        .to(Instant.parse("2017-11-30T00:00:00Z"))
+        .convertsFromExternal(LocalDate.parse("2017-11-30"))
+        .toInternal(Instant.parse("2017-11-30T00:00:00Z"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(LocalTime.class)))
-        .convertsFrom(LocalTime.parse("23:00:00"))
-        .to(Instant.parse("1970-01-01T23:00:00Z"))
+        .convertsFromExternal(LocalTime.parse("23:00:00"))
+        .toInternal(Instant.parse("1970-01-01T23:00:00Z"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(java.util.Date.class)))
-        .convertsFrom(Date.from(Instant.parse("2017-11-29T23:00:00Z")))
-        .to(Instant.parse("2017-11-29T23:00:00Z"))
+        .convertsFromExternal(Date.from(Instant.parse("2017-11-29T23:00:00Z")))
+        .toInternal(Instant.parse("2017-11-29T23:00:00Z"))
         .isNotNull()
         .isInstanceOf(DateToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(date(), TypeToken.of(java.sql.Date.class)))
-        .convertsFrom(java.sql.Date.valueOf(LocalDate.parse("2017-11-29")))
-        .to(LocalDate.parse("2017-11-29"))
+        .convertsFromExternal(java.sql.Date.valueOf(LocalDate.parse("2017-11-29")))
+        .toInternal(LocalDate.parse("2017-11-29"))
         .isNotNull()
         .isInstanceOf(DateToTemporalCodec.class);
     assertThat(codecRegistry.convertingCodecFor(time(), TypeToken.of(java.sql.Time.class)))
-        .convertsFrom(java.sql.Time.valueOf(LocalTime.parse("23:00:00")))
-        .to(LocalTime.parse("23:00:00"))
+        .convertsFromExternal(java.sql.Time.valueOf(LocalTime.parse("23:00:00")))
+        .toInternal(LocalTime.parse("23:00:00"))
         .isNotNull()
         .isInstanceOf(DateToTemporalCodec.class);
     assertThat(
             codecRegistry.convertingCodecFor(timestamp(), TypeToken.of(java.sql.Timestamp.class)))
-        .convertsFrom(Timestamp.from(Instant.parse("2017-11-29T23:00:00Z")))
-        .to(Instant.parse("2017-11-29T23:00:00Z"))
+        .convertsFromExternal(Timestamp.from(Instant.parse("2017-11-29T23:00:00Z")))
+        .toInternal(Instant.parse("2017-11-29T23:00:00Z"))
         .isNotNull()
         .isInstanceOf(DateToTemporalCodec.class);
   }
@@ -307,38 +307,38 @@ class CodecSettingsTest {
     assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(Long.class)))
         .isNotNull()
         .isInstanceOf(NumberToUUIDCodec.class)
-        .convertsFrom(123456L)
-        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+        .convertsFromExternal(123456L)
+        .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
     assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(Instant.class)))
         .isNotNull()
         .isInstanceOf(TemporalToUUIDCodec.class)
-        .convertsFrom(Instant.ofEpochMilli(123456L))
-        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+        .convertsFromExternal(Instant.ofEpochMilli(123456L))
+        .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
     assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(ZonedDateTime.class)))
         .isNotNull()
         .isInstanceOf(TemporalToUUIDCodec.class)
-        .convertsFrom(Instant.ofEpochMilli(123456L).atZone(UTC))
-        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+        .convertsFromExternal(Instant.ofEpochMilli(123456L).atZone(UTC))
+        .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
     assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(Date.class)))
         .isNotNull()
         .isInstanceOf(DateToUUIDCodec.class)
-        .convertsFrom(Date.from(Instant.ofEpochMilli(123456L)))
-        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+        .convertsFromExternal(Date.from(Instant.ofEpochMilli(123456L)))
+        .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
     assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(java.sql.Timestamp.class)))
         .isNotNull()
         .isInstanceOf(DateToUUIDCodec.class)
-        .convertsFrom(Timestamp.from(Instant.ofEpochMilli(123456L)))
-        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+        .convertsFromExternal(Timestamp.from(Instant.ofEpochMilli(123456L)))
+        .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
     assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(String.class)))
         .isNotNull()
         .isInstanceOf(StringToUUIDCodec.class)
-        .convertsFrom("123456")
-        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+        .convertsFromExternal("123456")
+        .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
     assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(JsonNode.class)))
         .isNotNull()
         .isInstanceOf(JsonNodeToUUIDCodec.class)
-        .convertsFrom(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
-        .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
+        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
+        .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
   }
 
   @Test
@@ -351,13 +351,13 @@ class CodecSettingsTest {
     assertThat(codecRegistry.convertingCodecFor(tinyint(), TypeToken.of(Boolean.class)))
         .isNotNull()
         .isInstanceOf(BooleanToNumberCodec.class)
-        .convertsFrom(true)
-        .to((byte) 1);
+        .convertsFromExternal(true)
+        .toInternal((byte) 1);
     assertThat(codecRegistry.convertingCodecFor(cboolean(), TypeToken.of(Byte.class)))
         .isNotNull()
         .isInstanceOf(NumberToBooleanCodec.class)
-        .convertsFrom((byte) 1)
-        .to(true);
+        .convertsFromExternal((byte) 1)
+        .toInternal(true);
   }
 
   @Test
@@ -371,7 +371,7 @@ class CodecSettingsTest {
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
     ConvertingCodec<String, Float> codec =
         codecRegistry.convertingCodecFor(cfloat(), TypeToken.of(String.class));
-    assertThat(codec.convertTo(0.123f)).isEqualTo("0.13");
+    assertThat(codec.internalToExternal(0.123f)).isEqualTo("0.13");
   }
 
   @Test
@@ -385,7 +385,7 @@ class CodecSettingsTest {
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(cluster);
     ConvertingCodec<String, Byte> codec =
         codecRegistry.convertingCodecFor(tinyint(), TypeToken.of(String.class));
-    assertThat(codec.convertFrom("128")).isEqualTo((byte) 127);
+    assertThat(codec.externalToInternal("128")).isEqualTo((byte) 127);
   }
 
   @SuppressWarnings("unchecked")

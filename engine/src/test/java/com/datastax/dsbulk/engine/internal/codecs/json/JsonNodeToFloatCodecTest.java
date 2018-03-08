@@ -47,70 +47,71 @@ class JsonNodeToFloatCodecTest {
 
   @Test
   @SuppressWarnings("FloatingPointLiteralPrecision")
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(0f))
-        .to(0f)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(1234.56f))
-        .to(1234.56f)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(3.4028235E38f))
-        .to(Float.MAX_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(1.4E-45f))
-        .to(Float.MIN_VALUE)
-        .convertsFrom(
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(0f))
+        .toInternal(0f)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(1234.56f))
+        .toInternal(1234.56f)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(3.4028235E38f))
+        .toInternal(Float.MAX_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(1.4E-45f))
+        .toInternal(Float.MIN_VALUE)
+        .convertsFromExternal(
             JSON_NODE_FACTORY.numberNode(340_282_346_638_528_860_000_000_000_000_000_000_000f))
-        .to(Float.MAX_VALUE)
-        .convertsFrom(
+        .toInternal(Float.MAX_VALUE)
+        .convertsFromExternal(
             JSON_NODE_FACTORY.numberNode(0.0000000000000000000000000000000000000000000014f))
-        .to(Float.MIN_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("0"))
-        .to(0f)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1234.56"))
-        .to(1234.56f)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1,234.56"))
-        .to(1234.56f)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("3.4028235E38"))
-        .to(Float.MAX_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1.4E-45"))
-        .to(Float.MIN_VALUE)
-        .convertsFrom(
+        .toInternal(Float.MIN_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("0"))
+        .toInternal(0f)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1234.56"))
+        .toInternal(1234.56f)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1,234.56"))
+        .toInternal(1234.56f)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("3.4028235E38"))
+        .toInternal(Float.MAX_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1.4E-45"))
+        .toInternal(Float.MIN_VALUE)
+        .convertsFromExternal(
             JSON_NODE_FACTORY.textNode("340,282,350,000,000,000,000,000,000,000,000,000,000"))
-        .to(Float.MAX_VALUE)
-        .convertsFrom(
+        .toInternal(Float.MAX_VALUE)
+        .convertsFromExternal(
             JSON_NODE_FACTORY.textNode("0.0000000000000000000000000000000000000000000014"))
-        .to(Float.MIN_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
-        .to(0f)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
-        .to(1f)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
-        .to(0f)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("NULL"))
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
+        .toInternal(Float.MIN_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
+        .toInternal(0f)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("TRUE"))
+        .toInternal(1f)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
+        .toInternal(0f)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
   }
 
   @Test
   @SuppressWarnings("FloatingPointLiteralPrecision")
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(0f)
-        .from(JSON_NODE_FACTORY.numberNode(0f))
-        .convertsTo(1234.56f)
-        .from(JSON_NODE_FACTORY.numberNode(1234.56f))
-        .convertsTo(Float.MAX_VALUE)
-        .from(JSON_NODE_FACTORY.numberNode(340_282_350_000_000_000_000_000_000_000_000_000_000f))
-        .convertsTo(0.001f)
-        .from(JSON_NODE_FACTORY.numberNode(0.001f))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(0f)
+        .toExternal(JSON_NODE_FACTORY.numberNode(0f))
+        .convertsFromInternal(1234.56f)
+        .toExternal(JSON_NODE_FACTORY.numberNode(1234.56f))
+        .convertsFromInternal(Float.MAX_VALUE)
+        .toExternal(
+            JSON_NODE_FACTORY.numberNode(340_282_350_000_000_000_000_000_000_000_000_000_000f))
+        .convertsFromInternal(0.001f)
+        .toExternal(JSON_NODE_FACTORY.numberNode(0.001f))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid float"));
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid float"));
   }
 }

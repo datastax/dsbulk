@@ -46,53 +46,53 @@ class StringToFloatCodecTest {
 
   @Test
   @SuppressWarnings("FloatingPointLiteralPrecision")
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("0")
-        .to(0f)
-        .convertsFrom("1234.56")
-        .to(1234.56f)
-        .convertsFrom("1,234.56")
-        .to(1234.56f)
-        .convertsFrom("3.4028235E38")
-        .to(Float.MAX_VALUE)
-        .convertsFrom("1.4E-45")
-        .to(Float.MIN_VALUE)
-        .convertsFrom("340,282,350,000,000,000,000,000,000,000,000,000,000")
-        .to(Float.MAX_VALUE)
-        .convertsFrom("0.0000000000000000000000000000000000000000000014")
-        .to(Float.MIN_VALUE)
-        .convertsFrom("1970-01-01T00:00:00Z")
-        .to(0f)
-        .convertsFrom("TRUE")
-        .to(1f)
-        .convertsFrom("FALSE")
-        .to(0f)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("NULL")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("0")
+        .toInternal(0f)
+        .convertsFromExternal("1234.56")
+        .toInternal(1234.56f)
+        .convertsFromExternal("1,234.56")
+        .toInternal(1234.56f)
+        .convertsFromExternal("3.4028235E38")
+        .toInternal(Float.MAX_VALUE)
+        .convertsFromExternal("1.4E-45")
+        .toInternal(Float.MIN_VALUE)
+        .convertsFromExternal("340,282,350,000,000,000,000,000,000,000,000,000,000")
+        .toInternal(Float.MAX_VALUE)
+        .convertsFromExternal("0.0000000000000000000000000000000000000000000014")
+        .toInternal(Float.MIN_VALUE)
+        .convertsFromExternal("1970-01-01T00:00:00Z")
+        .toInternal(0f)
+        .convertsFromExternal("TRUE")
+        .toInternal(1f)
+        .convertsFromExternal("FALSE")
+        .toInternal(0f)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(0f)
-        .from("0")
-        .convertsTo(1234.56f)
-        .from("1,234.56")
-        .convertsTo(Float.MAX_VALUE)
-        .from("340,282,350,000,000,000,000,000,000,000,000,000,000")
-        .convertsTo(0.001f)
-        .from("0") // decimals truncated
-        .convertsTo(null)
-        .from("NULL");
+        .convertsFromInternal(0f)
+        .toExternal("0")
+        .convertsFromInternal(1234.56f)
+        .toExternal("1,234.56")
+        .convertsFromInternal(Float.MAX_VALUE)
+        .toExternal("340,282,350,000,000,000,000,000,000,000,000,000,000")
+        .convertsFromInternal(0.001f)
+        .toExternal("0") // decimals truncated
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom("not a valid float");
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal("not a valid float");
   }
 }

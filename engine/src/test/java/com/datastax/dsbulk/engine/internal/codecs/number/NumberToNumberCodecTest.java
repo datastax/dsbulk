@@ -21,80 +21,80 @@ class NumberToNumberCodecTest {
   void should_convert_when_valid_input() {
 
     assertThat(new NumberToNumberCodec<>(Byte.class, TypeCodec.cdouble()))
-        .convertsFrom((byte) 123)
-        .to(123d)
-        .convertsTo(123d)
-        .from((byte) 123)
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal((byte) 123)
+        .toInternal(123d)
+        .convertsFromInternal(123d)
+        .toExternal((byte) 123)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(new NumberToNumberCodec<>(Byte.class, TypeCodec.varint()))
-        .convertsFrom((byte) 123)
-        .to(new BigInteger("123"))
-        .convertsTo(new BigInteger("123"))
-        .from((byte) 123)
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal((byte) 123)
+        .toInternal(new BigInteger("123"))
+        .convertsFromInternal(new BigInteger("123"))
+        .toExternal((byte) 123)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(new NumberToNumberCodec<>(BigInteger.class, TypeCodec.cint()))
-        .convertsFrom(new BigInteger("123456"))
-        .to(123456)
-        .convertsTo(123456)
-        .from(new BigInteger("123456"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(new BigInteger("123456"))
+        .toInternal(123456)
+        .convertsFromInternal(123456)
+        .toExternal(new BigInteger("123456"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(new NumberToNumberCodec<>(Integer.class, TypeCodec.bigint()))
-        .convertsFrom(123456)
-        .to(123456L)
-        .convertsTo(123456L)
-        .from(123456)
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(123456)
+        .toInternal(123456L)
+        .convertsFromInternal(123456L)
+        .toExternal(123456)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(new NumberToNumberCodec<>(Float.class, TypeCodec.decimal()))
-        .convertsFrom(-123.456f)
-        .to(new BigDecimal("-123.456"))
-        .convertsTo(new BigDecimal("-123.456"))
-        .from(-123.456f)
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(-123.456f)
+        .toInternal(new BigDecimal("-123.456"))
+        .convertsFromInternal(new BigDecimal("-123.456"))
+        .toExternal(-123.456f)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(new NumberToNumberCodec<>(BigDecimal.class, TypeCodec.cint()))
-        .convertsFrom(new BigDecimal("123"))
-        .to(123)
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(new BigDecimal("123"))
+        .toInternal(123)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
   }
 
   @Test
   void should_not_convert_when_invalid_input() {
 
     assertThat(new NumberToNumberCodec<>(Double.class, TypeCodec.cint()))
-        .cannotConvertFrom(123.45d);
+        .cannotConvertFromExternal(123.45d);
 
     assertThat(new NumberToNumberCodec<>(Long.class, TypeCodec.cint()))
-        .cannotConvertFrom(Long.MAX_VALUE);
+        .cannotConvertFromExternal(Long.MAX_VALUE);
 
     assertThat(new NumberToNumberCodec<>(Short.class, TypeCodec.tinyInt()))
-        .cannotConvertFrom((short) 1234);
+        .cannotConvertFromExternal((short) 1234);
 
     assertThat(new NumberToNumberCodec<>(BigInteger.class, TypeCodec.cint()))
-        .cannotConvertFrom(new BigInteger("123000000000000000000000"));
+        .cannotConvertFromExternal(new BigInteger("123000000000000000000000"));
 
     assertThat(new NumberToNumberCodec<>(BigDecimal.class, TypeCodec.cint()))
-        .cannotConvertFrom(new BigDecimal("123.1"));
+        .cannotConvertFromExternal(new BigDecimal("123.1"));
   }
 }

@@ -41,7 +41,7 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
   }
 
   @Override
-  public C convertFrom(JsonNode node) {
+  public C externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -57,19 +57,19 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
     C collection = collectionSupplier.get();
     while (elements.hasNext()) {
       JsonNode element = elements.next();
-      collection.add(eltCodec.convertFrom(element));
+      collection.add(eltCodec.externalToInternal(element));
     }
     return collection;
   }
 
   @Override
-  public JsonNode convertTo(C value) {
+  public JsonNode internalToExternal(C value) {
     if (value == null) {
       return objectMapper.getNodeFactory().nullNode();
     }
     ArrayNode root = objectMapper.createArrayNode();
     for (E element : value) {
-      root.add(eltCodec.convertTo(element));
+      root.add(eltCodec.internalToExternal(element));
     }
     return root;
   }

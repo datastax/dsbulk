@@ -37,7 +37,7 @@ public class JsonNodeToUUIDCodec extends ConvertingCodec<JsonNode, UUID> {
   }
 
   @Override
-  public UUID convertFrom(JsonNode node) {
+  public UUID externalToInternal(JsonNode node) {
     if (node == null
         || node.isNull()
         || (node.isValueNode() && nullWords.contains(node.asText()))) {
@@ -47,7 +47,7 @@ public class JsonNodeToUUIDCodec extends ConvertingCodec<JsonNode, UUID> {
   }
 
   @Override
-  public JsonNode convertTo(UUID value) {
+  public JsonNode internalToExternal(UUID value) {
     if (value == null) {
       return JSON_NODE_FACTORY.nullNode();
     }
