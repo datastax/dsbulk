@@ -8,12 +8,15 @@
  */
 package com.datastax.dsbulk.engine.internal.metrics;
 
+import static com.datastax.driver.core.ProtocolVersion.V4;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.CodecRegistry;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -38,6 +41,9 @@ class MetricsManagerTest {
   private Statement stmt3;
 
   private BatchStatement batch;
+
+  private ProtocolVersion protocolVersion = V4;
+  private CodecRegistry codecRegistry = new CodecRegistry();
 
   @BeforeEach
   void setUp() throws Exception {
@@ -76,7 +82,9 @@ class MetricsManagerTest {
             false,
             null,
             Duration.ofSeconds(5),
-            false);
+            false,
+            protocolVersion,
+            codecRegistry);
     manager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
     records
@@ -106,7 +114,9 @@ class MetricsManagerTest {
             false,
             null,
             Duration.ofSeconds(5),
-            true);
+            true,
+            protocolVersion,
+            codecRegistry);
     manager.init();
     Flux<Statement> statements = Flux.just(batch, stmt3);
     statements.transform(manager.newBatcherMonitor()).blockLast();

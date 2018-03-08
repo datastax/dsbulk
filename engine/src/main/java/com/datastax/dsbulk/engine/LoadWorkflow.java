@@ -115,7 +115,9 @@ public class LoadWorkflow implements Workflow {
             WorkflowType.LOAD,
             batchingEnabled,
             logManager.getExecutionDirectory(),
-            cluster.getMetrics().getRegistry());
+            cluster.getMetrics().getRegistry(),
+            cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
+            cluster.getConfiguration().getCodecRegistry());
     metricsManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     recordMapper =

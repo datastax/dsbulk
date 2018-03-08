@@ -109,7 +109,9 @@ public class UnloadWorkflow implements Workflow {
             WorkflowType.UNLOAD,
             false,
             logManager.getExecutionDirectory(),
-            cluster.getMetrics().getRegistry());
+            cluster.getMetrics().getRegistry(),
+            cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
+            cluster.getConfiguration().getCodecRegistry());
     metricsManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     RecordMetadata recordMetadata = connector.getRecordMetadata();

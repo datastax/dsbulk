@@ -8,12 +8,15 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.driver.core.ProtocolVersion.V4;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.codahale.metrics.MetricRegistry;
+import com.datastax.driver.core.CodecRegistry;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
@@ -27,6 +30,9 @@ import org.junit.jupiter.api.Test;
 
 class MonitoringSettingsTest {
 
+  private ProtocolVersion protocolVersion = V4;
+  private CodecRegistry codecRegistry = new CodecRegistry();
+
   @Test
   void should_create_metrics_manager_with_default_settings() {
     LoaderConfig config =
@@ -34,7 +40,8 @@ class MonitoringSettingsTest {
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     settings.init();
     MetricsManager metricsManager =
-        settings.newMetricsManager(WorkflowType.UNLOAD, true, null, new MetricRegistry());
+        settings.newMetricsManager(
+            WorkflowType.UNLOAD, true, null, new MetricRegistry(), protocolVersion, codecRegistry);
     assertThat(metricsManager).isNotNull();
     assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "durationUnit"))
@@ -63,7 +70,13 @@ class MonitoringSettingsTest {
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     settings.init();
     MetricsManager metricsManager =
-        settings.newMetricsManager(WorkflowType.UNLOAD, true, tmpPath, new MetricRegistry());
+        settings.newMetricsManager(
+            WorkflowType.UNLOAD,
+            true,
+            tmpPath,
+            new MetricRegistry(),
+            protocolVersion,
+            codecRegistry);
     assertThat(metricsManager).isNotNull();
     assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "durationUnit")).isEqualTo(SECONDS);
