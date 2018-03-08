@@ -177,13 +177,15 @@ Default: **false**.
 
 #### -h,--driver.hosts _&lt;string&gt;_
 
-The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). Note that each host entry may optionally be followed by `:port` to specify the port to connect to. When not specified, this value falls back to the *port* setting.
+The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
 Default: **"127.0.0.1"**.
 
 #### -port,--driver.port _&lt;number&gt;_
 
-The port to connect to at initial contact points. Note that all nodes in a cluster must accept connections on the same port number.
+The native transport port to connect to. This must match DSE's [native_transport_port](https://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configCassandra_yaml_r.html#configCassandra_yaml_r__native_transport_port) configuration option.
+
+Note that all nodes in a cluster must accept connections on the same port number. Mixed-port cluster are not supported.
 
 Default: **9042**.
 
@@ -810,13 +812,15 @@ Driver-specific configuration.
 
 #### -h,--driver.hosts _&lt;string&gt;_
 
-The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). Note that each host entry may optionally be followed by `:port` to specify the port to connect to. When not specified, this value falls back to the *port* setting.
+The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
 Default: **"127.0.0.1"**.
 
 #### -port,--driver.port _&lt;number&gt;_
 
-The port to connect to at initial contact points. Note that all nodes in a cluster must accept connections on the same port number.
+The native transport port to connect to. This must match DSE's [native_transport_port](https://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configCassandra_yaml_r.html#configCassandra_yaml_r__native_transport_port) configuration option.
+
+Note that all nodes in a cluster must accept connections on the same port number. Mixed-port cluster are not supported.
 
 Default: **9042**.
 

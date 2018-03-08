@@ -14,7 +14,6 @@ import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAP
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.fetchContactPoints;
 import static java.nio.file.Files.createTempDirectory;
 import static org.slf4j.event.Level.ERROR;
 
@@ -81,7 +80,9 @@ class CassLoadEndToEndSimulacronIT {
       "--connector.csv.url",
       escapeUserInput(CSV_RECORDS_UNIQUE),
       "--driver.hosts",
-      fetchContactPoints(simulacron),
+      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      "--driver.port",
+      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",

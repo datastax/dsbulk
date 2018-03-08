@@ -77,7 +77,7 @@ class DriverSettingsTest {
   void should_create_mapper_when_hosts_provided() {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("port = 9876, hosts = \"1.2.3.4:9042, 2.3.4.5,9.8.7.6\"")
+            ConfigFactory.parseString("port = 9876, hosts = \"1.2.3.4, 2.3.4.5, 9.8.7.6\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -90,7 +90,7 @@ class DriverSettingsTest {
         (List<InetSocketAddress>) getInternalState(manager, "contactPoints");
     assertThat(contactPoints)
         .containsExactly(
-            new InetSocketAddress("1.2.3.4", 9042),
+            new InetSocketAddress("1.2.3.4", 9876),
             new InetSocketAddress("2.3.4.5", 9876),
             new InetSocketAddress("9.8.7.6", 9876));
     DseConfiguration configuration = cluster.getConfiguration();
@@ -408,7 +408,7 @@ class DriverSettingsTest {
                         + "    }, "
                         + "    whiteList {"
                         + "      childPolicy = tokenAware,"
-                        + "      hosts = \"127.0.0.4:9000, 127.0.0.1\","
+                        + "      hosts = \"127.0.0.4, 127.0.0.1\","
                         + "    }, "
                         + "  }"
                         + "}")
@@ -433,8 +433,8 @@ class DriverSettingsTest {
     @SuppressWarnings({"unchecked", "Guava"})
     Predicate<Host> predicate = (Predicate<Host>) getInternalState(whiteListPolicy, "predicate");
     assertThat(predicate.apply(makeHostWithAddress("127.0.0.1", 9123))).isTrue();
-    assertThat(predicate.apply(makeHostWithAddress("127.0.0.4", 9123))).isFalse();
-    assertThat(predicate.apply(makeHostWithAddress("127.0.0.4", 9000))).isTrue();
+    assertThat(predicate.apply(makeHostWithAddress("127.0.0.3", 9123))).isFalse();
+    assertThat(predicate.apply(makeHostWithAddress("127.0.0.4", 9123))).isTrue();
 
     // The whitelist policy chains to a token-aware policy.
     assertThat(whiteListPolicy.getChildPolicy()).isInstanceOf(TokenAwarePolicy.class);
