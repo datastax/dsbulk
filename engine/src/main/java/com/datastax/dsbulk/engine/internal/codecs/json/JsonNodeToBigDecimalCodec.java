@@ -8,11 +8,12 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
+
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -68,6 +69,6 @@ public class JsonNodeToBigDecimalCodec extends JsonNodeToNumberCodec<BigDecimal>
 
   @Override
   public JsonNode convertTo(BigDecimal value) {
-    return JsonNodeFactory.instance.numberNode(value);
+    return JSON_NODE_FACTORY.numberNode(value);
   }
 }

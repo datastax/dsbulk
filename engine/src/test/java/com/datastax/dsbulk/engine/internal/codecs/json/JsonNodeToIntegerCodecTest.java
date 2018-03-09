@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -21,7 +22,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.collect.ImmutableMap;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.RoundingMode;
@@ -47,31 +47,31 @@ class JsonNodeToIntegerCodecTest {
   @Test
   void should_convert_from_valid_input() {
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.numberNode(0))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode(0))
         .to(0)
-        .convertsFrom(JsonNodeFactory.instance.numberNode(2_147_483_647))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode(2_147_483_647))
         .to(Integer.MAX_VALUE)
-        .convertsFrom(JsonNodeFactory.instance.numberNode(-2_147_483_648))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode(-2_147_483_648))
         .to(Integer.MIN_VALUE)
-        .convertsFrom(JsonNodeFactory.instance.textNode("0"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("0"))
         .to(0)
-        .convertsFrom(JsonNodeFactory.instance.textNode("2147483647"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2147483647"))
         .to(Integer.MAX_VALUE)
-        .convertsFrom(JsonNodeFactory.instance.textNode("-2147483648"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("-2147483648"))
         .to(Integer.MIN_VALUE)
-        .convertsFrom(JsonNodeFactory.instance.textNode("2,147,483,647"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2,147,483,647"))
         .to(Integer.MAX_VALUE)
-        .convertsFrom(JsonNodeFactory.instance.textNode("-2,147,483,648"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("-2,147,483,648"))
         .to(Integer.MIN_VALUE)
-        .convertsFrom(JsonNodeFactory.instance.textNode("1970-01-01T00:00:00Z"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
         .to(0)
-        .convertsFrom(JsonNodeFactory.instance.textNode("TRUE"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
         .to(1)
-        .convertsFrom(JsonNodeFactory.instance.textNode("FALSE"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
         .to(0)
         .convertsFrom(null)
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
   }
 
@@ -79,23 +79,23 @@ class JsonNodeToIntegerCodecTest {
   void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(0)
-        .from(JsonNodeFactory.instance.numberNode(0))
+        .from(JSON_NODE_FACTORY.numberNode(0))
         .convertsTo(Integer.MAX_VALUE)
-        .from(JsonNodeFactory.instance.numberNode(2_147_483_647))
+        .from(JSON_NODE_FACTORY.numberNode(2_147_483_647))
         .convertsTo(Integer.MIN_VALUE)
-        .from(JsonNodeFactory.instance.numberNode(-2_147_483_648))
+        .from(JSON_NODE_FACTORY.numberNode(-2_147_483_648))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
   void should_not_convert_from_invalid_input() {
     assertThat(codec)
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid integer"))
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("1.2"))
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("2147483648"))
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("-2147483649"))
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("2000-01-01T00:00:00Z")) // overflow
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid integer"))
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("1.2"))
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("2147483648"))
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("-2147483649"))
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z")) // overflow
     ;
   }
 }

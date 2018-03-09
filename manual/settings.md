@@ -156,10 +156,7 @@ The field-to-column mapping to use, that applies to both loading and unloading. 
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 
-To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`. Note that TTL fields are parsed as integers representing seconds. Timestamp fields can be parsed as:
-
-* An integer representing the number of microseconds since epoch.
-* A valid date-time format specified in the options `codec.timestamp` and `codec.timeZone`.
+To specify that a field should be used as the timestamp (a.k.a. write-time) or ttl (a.k.a. time-to-live) of the inserted row, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __timestamp, fieldB = __ttl`. Note that Timestamp fields are parsed as regular CQL timestamp columns and must comply with either `codec.timestamp`, or alternatively, with `codec.unit` + `codec.epoch`. TTL fields are parsed as integers representing durations in seconds, and must comply with `codec.number`.
 
 To specify that a column should be populated with the result of a function call, specify the function call as the input field (e.g. `now() = c4`). Note, this is only relevant for load operations. In addition, for mapped data sources, it is also possible to specify that the mapping be partly auto-generated and partly explicitly specified. For example, if a source row has fields `c1`, `c2`, `c3`, and `c5`, and the table has columns `c1`, `c2`, `c3`, `c4`, one can map all like-named columns and specify that `c5` in the source maps to `c4` in the table as follows: `* = *, c5 = c4`.
 
@@ -506,10 +503,7 @@ The field-to-column mapping to use, that applies to both loading and unloading. 
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
 
-To specify that a field should be used for the query timestamp or ttl, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __ttl`. Note that TTL fields are parsed as integers representing seconds. Timestamp fields can be parsed as:
-
-* An integer representing the number of microseconds since epoch.
-* A valid date-time format specified in the options `codec.timestamp` and `codec.timeZone`.
+To specify that a field should be used as the timestamp (a.k.a. write-time) or ttl (a.k.a. time-to-live) of the inserted row, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __timestamp, fieldB = __ttl`. Note that Timestamp fields are parsed as regular CQL timestamp columns and must comply with either `codec.timestamp`, or alternatively, with `codec.unit` + `codec.epoch`. TTL fields are parsed as integers representing durations in seconds, and must comply with `codec.number`.
 
 To specify that a column should be populated with the result of a function call, specify the function call as the input field (e.g. `now() = c4`). Note, this is only relevant for load operations. In addition, for mapped data sources, it is also possible to specify that the mapping be partly auto-generated and partly explicitly specified. For example, if a source row has fields `c1`, `c2`, `c3`, and `c5`, and the table has columns `c1`, `c2`, `c3`, `c4`, one can map all like-named columns and specify that `c5` in the source maps to `c4` in the table as follows: `* = *, c5 = c4`.
 
