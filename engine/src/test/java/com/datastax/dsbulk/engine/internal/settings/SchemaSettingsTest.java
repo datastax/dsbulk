@@ -8,10 +8,14 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.driver.core.DataType.bigint;
 import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newPreparedId;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newToken;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTokenRange;
+import static com.datastax.driver.core.DriverCoreEngineTestHooks.wrappedStatement;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
@@ -22,12 +26,14 @@ import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
@@ -35,7 +41,11 @@ import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.StatementWrapper;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.driver.core.Token;
+import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
@@ -48,6 +58,7 @@ import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.typesafe.config.ConfigFactory;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
@@ -77,7 +88,17 @@ class SchemaSettingsTest {
   private static final String TIMESTAMP_VARNAME =
       (String) ReflectionUtils.getInternalState(SchemaSettings.class, "TIMESTAMP_VARNAME");
 
+  private final Token token1 = newToken(-9223372036854775808L);
+  private final Token token2 = newToken(-3074457345618258603L);
+  private final Token token3 = newToken(3074457345618258602L);
+  private final Set<TokenRange> tokenRanges =
+      Sets.newHashSet(
+          newTokenRange(token1, token2),
+          newTokenRange(token2, token3),
+          newTokenRange(token3, token1));
+
   private Session session;
+  private Cluster cluster;
   private PreparedStatement ps;
 
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
@@ -90,7 +111,7 @@ class SchemaSettingsTest {
   @BeforeEach
   void setUp() {
     session = mock(Session.class);
-    Cluster cluster = mock(Cluster.class);
+    cluster = mock(Cluster.class);
     Metadata metadata = mock(Metadata.class);
     KeyspaceMetadata keyspace = mock(KeyspaceMetadata.class);
     TableMetadata table = mock(TableMetadata.class);
@@ -102,6 +123,7 @@ class SchemaSettingsTest {
     when(session.getCluster()).thenReturn(cluster);
     when(cluster.getMetadata()).thenReturn(metadata);
     when(metadata.getKeyspace(anyString())).thenReturn(keyspace);
+    when(metadata.getTokenRanges()).thenReturn(tokenRanges);
     when(keyspace.getTable(anyString())).thenReturn(table);
     when(session.prepare(anyString())).thenReturn(ps);
     when(table.getColumns()).thenReturn(columns);
@@ -472,7 +494,7 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_create_record_mapper_with_infered_mapping_and_skip_multiple() {
+  void should_create_record_mapper_with_inferred_mapping_and_skip_multiple() {
     // Infer mapping, but skip C2 and C3.
     LoaderConfig config =
         makeLoaderConfig(
@@ -707,7 +729,7 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_create_row_mapper_with_infered_mapping_and_skip() {
+  void should_create_row_mapper_with_inferred_mapping_and_skip() {
     // Infer mapping, but skip C2.
     LoaderConfig config =
         makeLoaderConfig(
@@ -734,7 +756,7 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_create_row_mapper_with_infered_mapping_and_skip_multiple() {
+  void should_create_row_mapper_with_inferred_mapping_and_skip_multiple() {
     // Infer mapping, but skip C2 and C3.
     LoaderConfig config =
         makeLoaderConfig(
@@ -889,6 +911,99 @@ class SchemaSettingsTest {
     assertThat(mapping).isNotNull();
     assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable"))
         .isEqualTo("This is a quoted \" variable name");
+  }
+
+  @Test
+  void should_create_single_read_statement_when_no_variables() {
+    when(ps.getVariables()).thenReturn(newColumnDefinitions());
+    BoundStatement bs = mock(BoundStatement.class);
+    when(ps.bind()).thenReturn(bs);
+    LoaderConfig config = makeLoaderConfig("query = \"SELECT a,b,c FROM table1\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(codec);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    List<Statement> statements = schemaSettings.createReadStatements(cluster);
+    assertThat(statements).hasSize(1).containsExactly(bs);
+  }
+
+  @Test
+  void should_create_multiple_read_statements_when_token_range_provided() {
+    ColumnDefinitions definitions =
+        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    when(ps.getVariables()).thenReturn(definitions);
+    BoundStatement bs1 = mock(BoundStatement.class);
+    when(bs1.setToken("start", token1)).thenReturn(bs1);
+    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    when(bs1.getKeyspace()).thenReturn("ks1");
+    BoundStatement bs2 = mock(BoundStatement.class);
+    when(bs2.setToken("start", token2)).thenReturn(bs2);
+    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    when(bs2.getKeyspace()).thenReturn("ks1");
+    BoundStatement bs3 = mock(BoundStatement.class);
+    when(bs3.setToken("start", token3)).thenReturn(bs3);
+    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(bs3.getKeyspace()).thenReturn("ks1");
+    when(ps.bind()).thenReturn(bs1, bs2, bs3);
+    LoaderConfig config =
+        makeLoaderConfig(
+            "keyspace = ks1, query = \"SELECT a,b,c FROM table1 WHERE token(a) > :start and token(a) <= :end \"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(codec);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    List<Statement> statements = schemaSettings.createReadStatements(cluster);
+    assertThat(statements)
+        .hasSize(3)
+        .anySatisfy(
+            // token range 1
+            stmt -> {
+              assertThat(stmt).isInstanceOf(StatementWrapper.class);
+              Statement wrapped = wrappedStatement((StatementWrapper) stmt);
+              assertThat(wrapped).isInstanceOf(BoundStatement.class);
+              BoundStatement bs = (BoundStatement) wrapped;
+              assertThat(bs).isSameAs(bs1);
+              assertThat(stmt.getRoutingToken()).isEqualTo(token2);
+              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+            })
+        .anySatisfy(
+            // token range 2
+            stmt -> {
+              assertThat(stmt).isInstanceOf(StatementWrapper.class);
+              Statement wrapped = wrappedStatement((StatementWrapper) stmt);
+              assertThat(wrapped).isInstanceOf(BoundStatement.class);
+              BoundStatement bs = (BoundStatement) wrapped;
+              assertThat(bs).isSameAs(bs2);
+              assertThat(stmt.getRoutingToken()).isEqualTo(token3);
+              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+            })
+        .anySatisfy(
+            // token range 3
+            stmt -> {
+              assertThat(stmt).isInstanceOf(StatementWrapper.class);
+              Statement wrapped = wrappedStatement((StatementWrapper) stmt);
+              assertThat(wrapped).isInstanceOf(BoundStatement.class);
+              BoundStatement bs = (BoundStatement) wrapped;
+              assertThat(bs).isSameAs(bs3);
+              assertThat(stmt.getRoutingToken()).isEqualTo(token1);
+              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+            });
+  }
+
+  @Test
+  void should_throw_configuration_exception_when_read_statement_variables_not_recognized() {
+    ColumnDefinitions definitions =
+        newColumnDefinitions(newDefinition("foo", bigint()), newDefinition("bar", bigint()));
+    when(ps.getVariables()).thenReturn(definitions);
+    LoaderConfig config =
+        makeLoaderConfig(
+            "keyspace = ks1, query = \"SELECT a,b,c FROM table1 WHERE token(a) > :foo and token(a) <= :bar \"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(codec);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "The provided statement (schema.query) contains unrecognized bound variables: [foo, bar]; "
+                + "only 'start' and 'end' can be used to define a token range");
   }
 
   @NotNull

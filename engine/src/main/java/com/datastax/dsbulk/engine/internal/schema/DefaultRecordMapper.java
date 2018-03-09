@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
@@ -23,6 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
+import java.util.Arrays;
 import java.util.function.BiFunction;
 
 public class DefaultRecordMapper implements RecordMapper {
@@ -30,6 +32,7 @@ public class DefaultRecordMapper implements RecordMapper {
   private static final String FIELD = "field";
   private static final String CQL_TYPE = "cqlType";
   private final PreparedStatement insertStatement;
+  private int[] pkIndices;
 
   private final Mapping mapping;
 
@@ -51,6 +54,7 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean nullToUnset) {
     this(
         insertStatement,
+        DriverCoreHooks.primaryKeyIndices(insertStatement.getPreparedId()),
         mapping,
         recordMetadata,
         nullStrings,
@@ -61,12 +65,14 @@ public class DefaultRecordMapper implements RecordMapper {
   @VisibleForTesting
   DefaultRecordMapper(
       PreparedStatement insertStatement,
+      int[] pkIndices,
       Mapping mapping,
       RecordMetadata recordMetadata,
       ImmutableSet<String> nullStrings,
       boolean nullToUnset,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
+    this.pkIndices = pkIndices;
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
     this.nullStrings = nullStrings;
@@ -94,6 +100,7 @@ public class DefaultRecordMapper implements RecordMapper {
           }
         }
       }
+      ensurePrimaryKeySet(bs);
       record.clear();
       return bs;
     } catch (Exception e) {
@@ -125,8 +132,17 @@ public class DefaultRecordMapper implements RecordMapper {
       convertedValue = null;
     }
     // Account for nullToUnset.
-    if (convertedValue == null && nullToUnset) {
-      return;
+    if (convertedValue == null) {
+      if (isPrimaryKey(variable)) {
+        throw new IllegalStateException(
+            "Primary key column "
+                + Metadata.quoteIfNecessary(variable)
+                + " cannot be mapped to null. "
+                + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
+      }
+      if (nullToUnset) {
+        return;
+      }
     }
     // the mapping provides unquoted variable names,
     // so we need to quote them now
@@ -136,6 +152,25 @@ public class DefaultRecordMapper implements RecordMapper {
     } else {
       TypeCodec<Object> codec = mapping.codec(variable, cqlType, javaType);
       bs.set(name, convertedValue, codec);
+    }
+  }
+
+  private boolean isPrimaryKey(String variable) {
+    return Arrays.binarySearch(pkIndices, insertStatement.getVariables().getIndexOf(variable)) >= 0;
+  }
+
+  private void ensurePrimaryKeySet(BoundStatement bs) {
+    for (int pkIndex : pkIndices) {
+      if (!bs.isSet(pkIndex)) {
+        String variable = insertStatement.getVariables().getName(pkIndex);
+        throw new IllegalStateException(
+            String.format(
+                "Primary key column "
+                    + Metadata.quoteIfNecessary(variable)
+                    + " cannot be left unmapped. "
+                    + "Check that your settings (schema.mapping or schema.query) match your dataset contents.",
+                variable));
+      }
     }
   }
 }

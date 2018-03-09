@@ -9,12 +9,15 @@
 package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.CSV_RECORDS;
+import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_COMPLEX_MAPPING;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
+import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY_COMPLEX;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createComplexTable;
+import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryCaseSensitiveTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createWithSpacesTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
@@ -88,6 +91,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     createIpByCountryTable(session);
     createComplexTable(session);
     createWithSpacesTable(session);
+    createIpByCountryCaseSensitiveTable(session);
   }
 
   @BeforeEach
@@ -628,7 +632,70 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
-    validateErrorMessageLogged(logs, "Missing required key column of", "country_code");
+    validateErrorMessageLogged(logs, "Missing required primary key column country_code");
+  }
+
+  @Test
+  void missing_key_with_custom_query(
+      @LogCapture(value = Main.class, level = ERROR) LogInterceptor logs) {
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(CSV_RECORDS_HEADER));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add(INSERT_INTO_IP_BY_COUNTRY);
+    args.add("--schema.mapping");
+    args.add(
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number, 5=country_name");
+
+    int status = new Main(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    validateErrorMessageLogged(logs, "Missing required primary key column country_code");
+  }
+
+  @Test
+  void error_load_primary_key_cannot_be_null_case_sensitive(@LogCapture LogInterceptor logs)
+      throws Exception {
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--log.maxErrors");
+    args.add("9");
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(getClass().getResource("/ip-by-country-pk-null.csv")));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add("MYKS");
+    args.add("--schema.table");
+    args.add("IPBYCOUNTRY");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE);
+    args.add("--schema.nullStrings");
+    args.add("[NULL]");
+
+    int status = new Main(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("aborted: Too many errors, the maximum allowed is 9")
+        .contains("Records: total: 24, successful: 14, failed: 10");
+    // the number of writes may vary due to the abortion
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    validateBadOps(10, logPath);
+    validateExceptionsLog(
+        10,
+        "Primary key column \"COUNTRY CODE\" cannot be mapped to null",
+        "mapping-errors.log",
+        logPath);
   }
 
   @Test
