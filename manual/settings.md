@@ -519,6 +519,24 @@ The exact type of mapping to use depends on the connector being used. Some conne
 
 Default: **&lt;unspecified&gt;**.
 
+#### --schema.allowExtraFields _&lt;boolean&gt;_
+
+Whether or not to accept records that contain extra fields that are not declared in the mapping. Only applicable for loads, ignored otherwise.
+
+For example, if a record contains 3 fields A, B, C, but the mapping only declares fields A and B, then if this option is `true`, C will be silently ignored and the record will be considered valid; if it is `false`, the record will be rejected.
+
+Default: **true**.
+
+#### --schema.allowMissingFields _&lt;boolean&gt;_
+
+Whether or not to accept records that are missing fields declared in the mapping. Only applicable for loads, ignored otherwise.
+
+For example, if the mapping declares 3 fields A, B, C, but a record contains only A and B, then if this option is `true`, C will be silently assigned `null` and the record will be considered valid; if it is `false`, the record will be rejected.
+
+Note: if the missing field is mapped to a primary key column, the record will be rejected regardless of this option's value, since such a record would be rejected by the database anyway.
+
+Default: **false**.
+
 #### -nullStrings,--schema.nullStrings _&lt;string&gt;_
 
 Comma-separated list of strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, only the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required.

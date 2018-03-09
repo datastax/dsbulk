@@ -126,6 +126,7 @@ class DefaultRecordMapperTest {
     when(variables.getName(0)).thenReturn(C1);
     when(variables.getName(1)).thenReturn(C2);
     when(variables.getName(2)).thenReturn(C3);
+    when(variables.size()).thenReturn(3);
 
     when(record.getFieldValue(F1)).thenReturn("42");
     when(record.getFieldValue(F2)).thenReturn("4242");
@@ -137,6 +138,10 @@ class DefaultRecordMapperTest {
     when(mapping.fieldToVariable(F1)).thenReturn(C1);
     when(mapping.fieldToVariable(F2)).thenReturn(C2);
     when(mapping.fieldToVariable(F3)).thenReturn(C3);
+
+    when(mapping.variableToField(C1)).thenReturn(F1);
+    when(mapping.variableToField(C2)).thenReturn(F2);
+    when(mapping.variableToField(C3)).thenReturn(F3);
 
     when(mapping.codec(C1, DataType.cint(), TypeToken.of(String.class))).thenReturn(codec1);
     when(mapping.codec(C2, DataType.bigint(), TypeToken.of(String.class))).thenReturn(codec2);
@@ -154,6 +159,8 @@ class DefaultRecordMapperTest {
             recordMetadata,
             ImmutableSet.of(),
             true,
+            true,
+            false,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -190,6 +197,8 @@ class DefaultRecordMapperTest {
             recordMetadata,
             ImmutableSet.of(),
             true,
+            true,
+            true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -223,6 +232,8 @@ class DefaultRecordMapperTest {
             recordMetadata,
             ImmutableSet.of(),
             true,
+            true,
+            true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -253,6 +264,8 @@ class DefaultRecordMapperTest {
             mapping,
             recordMetadata,
             ImmutableSet.of(),
+            true,
+            true,
             true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
@@ -287,6 +300,8 @@ class DefaultRecordMapperTest {
             recordMetadata,
             ImmutableSet.of(),
             true,
+            true,
+            true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -305,6 +320,8 @@ class DefaultRecordMapperTest {
             recordMetadata,
             ImmutableSet.of(),
             true,
+            true,
+            false,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -327,6 +344,8 @@ class DefaultRecordMapperTest {
             recordMetadata,
             ImmutableSet.of("NIL", "NULL"),
             true,
+            true,
+            false,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -347,6 +366,8 @@ class DefaultRecordMapperTest {
             recordMetadata,
             ImmutableSet.of(),
             false,
+            true,
+            true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -368,6 +389,8 @@ class DefaultRecordMapperTest {
             recordMetadata,
             ImmutableSet.of("NIL"),
             false,
+            true,
+            true,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
@@ -389,6 +412,8 @@ class DefaultRecordMapperTest {
             mapping,
             recordMetadata,
             ImmutableSet.of(),
+            false,
+            true,
             false,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
@@ -414,6 +439,8 @@ class DefaultRecordMapperTest {
             recordMetadata,
             ImmutableSet.of(),
             false,
+            true,
+            false,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
@@ -437,6 +464,8 @@ class DefaultRecordMapperTest {
             recordMetadata,
             ImmutableSet.of(),
             false,
+            true,
+            false,
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
@@ -444,6 +473,57 @@ class DefaultRecordMapperTest {
     assertThat(unmappableStatement.getError())
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Primary key column col1 cannot be left unmapped");
+  }
+
+  @Test
+  void should_return_unmappable_statement_when_extra_field() {
+    when(record.fields()).thenReturn(set(F1, F2, F3));
+    when(mapping.fieldToVariable(F3)).thenReturn(null);
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            pkIndices,
+            mapping,
+            recordMetadata,
+            ImmutableSet.of(),
+            false,
+            false,
+            false,
+            (mappedRecord, statement) -> boundStatement);
+    Statement result = mapper.map(record);
+    assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
+    UnmappableStatement unmappableStatement = (UnmappableStatement) result;
+    assertThat(unmappableStatement.getError())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(
+            "Extraneous field field3 was found in record. "
+                + "Please declare it explicitly in the mapping "
+                + "or set schema.allowExtraFields to true.");
+  }
+
+  @Test
+  void should_return_unmappable_statement_when_missing_field() {
+    when(record.fields()).thenReturn(set(F1, F2));
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            pkIndices,
+            mapping,
+            recordMetadata,
+            ImmutableSet.of(),
+            false,
+            true,
+            false,
+            (mappedRecord, statement) -> boundStatement);
+    Statement result = mapper.map(record);
+    assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
+    UnmappableStatement unmappableStatement = (UnmappableStatement) result;
+    assertThat(unmappableStatement.getError())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(
+            "Required field field3 (mapped to column \"My Fancy Column Name\") was missing from record. "
+                + "Please remove it from the mapping "
+                + "or set schema.allowMissingFields to true.");
   }
 
   private void assertParameter(

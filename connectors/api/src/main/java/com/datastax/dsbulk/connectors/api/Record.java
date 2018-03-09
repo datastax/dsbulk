@@ -83,6 +83,9 @@ public interface Record {
   /**
    * Returns the value associated with the given field.
    *
+   * <p>Note that a return value of {@code null} may indicate that the record contains no such
+   * field, or that the field value was {@code null}.
+   *
    * @param field the field name.
    * @return the value associated with the given field.
    */

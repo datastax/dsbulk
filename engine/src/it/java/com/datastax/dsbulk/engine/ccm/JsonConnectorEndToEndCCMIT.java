@@ -397,6 +397,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("3");
     args.add("--connector.json.maxRecords");
     args.add("24");
+    args.add("--schema.allowMissingFields");
+    args.add("true");
 
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);

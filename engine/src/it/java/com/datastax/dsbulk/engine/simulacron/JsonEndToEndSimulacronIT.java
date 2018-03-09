@@ -33,6 +33,8 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.SELECT_FROM_IP_BY
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
 import static java.nio.file.Files.createTempDirectory;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.slf4j.event.Level.ERROR;
 
@@ -55,6 +57,7 @@ import com.datastax.dsbulk.engine.tests.utils.EndToEndUtils;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
+import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.FunctionFailureResult;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.result.SyntaxErrorResult;
@@ -70,8 +73,8 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -235,7 +238,9 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING,
+      "--schema.allowMissingFields",
+      "true"
     };
 
     int status = new Main(args).run();
@@ -250,13 +255,11 @@ class JsonEndToEndSimulacronIT {
   void load_errors() throws Exception {
     simulacron.clearPrimes(true);
 
-    HashMap<String, Object> params = new HashMap<>();
+    Map<String, Object> params = new HashMap<>();
     params.put("country_name", "Sweden");
     RequestPrime prime1 =
         createParameterizedQuery(
-            INSERT_INTO_IP_BY_COUNTRY,
-            params,
-            new SuccessResult(new ArrayList<>(), new HashMap<>()));
+            INSERT_INTO_IP_BY_COUNTRY, params, new SuccessResult(emptyList(), emptyMap()));
     simulacron.prime(new Prime(prime1));
 
     // recoverable errors only
@@ -278,7 +281,7 @@ class JsonEndToEndSimulacronIT {
         createParameterizedQuery(
             INSERT_INTO_IP_BY_COUNTRY,
             params,
-            new WriteFailureResult(ONE, 0, 0, new HashMap<>(), WriteType.BATCH));
+            new WriteFailureResult(ONE, 0, 0, emptyMap(), WriteType.BATCH));
     simulacron.prime(new Prime(prime1));
 
     params = new HashMap<>();
@@ -287,8 +290,7 @@ class JsonEndToEndSimulacronIT {
         createParameterizedQuery(
             INSERT_INTO_IP_BY_COUNTRY,
             params,
-            new FunctionFailureResult(
-                "keyspace", "function", new ArrayList<>(), "bad function call"));
+            new FunctionFailureResult("keyspace", "function", emptyList(), "bad function call"));
     simulacron.prime(new Prime(prime1));
 
     String[] args = {
@@ -351,7 +353,9 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING,
+      "--schema.allowMissingFields",
+      "true"
     };
 
     int status = new Main(args).run();
@@ -360,6 +364,105 @@ class JsonEndToEndSimulacronIT {
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
     validateExceptionsLog(3, "Source  :", "mapping-errors.log", logPath);
+  }
+
+  @Test
+  void error_load_missing_field(@LogCapture LogInterceptor logs) throws Exception {
+    String query = "INSERT INTO table1 (a,b,c,d) VALUES (:a, :b, :c, :d)";
+    Map<String, String> types =
+        ImmutableMap.of("a", "int", "b", "varchar", "c", "boolean", "d", "int");
+    Query when = new Query(query, emptyList(), emptyMap(), types);
+    SuccessResult then = new SuccessResult(emptyList(), emptyMap());
+    simulacron.prime(new Prime(new RequestPrime(when, then)));
+
+    String[] args = {
+      "load",
+      "-c",
+      "json",
+      "--log.directory",
+      escapeUserInput(logDir),
+      "--log.maxErrors",
+      "2",
+      "--connector.json.url",
+      escapeUserInput(getClass().getResource("/missing-extra.json")),
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.query",
+      query,
+      "--schema.mapping",
+      "A = a, B = b, C = c, D = d",
+      "--schema.allowMissingFields",
+      "false"
+    };
+    int status = new Main(args).run();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("aborted: Too many errors, the maximum allowed is 2")
+        .contains("Records: total: 3, successful: 0, failed: 3");
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    validateBadOps(3, logPath);
+    validateExceptionsLog(
+        2,
+        "Required field C (mapped to column c) was missing from record",
+        "mapping-errors.log",
+        logPath);
+    validateExceptionsLog(
+        1,
+        "Required field D (mapped to column d) was missing from record",
+        "mapping-errors.log",
+        logPath);
+  }
+
+  @Test
+  void error_load_extra_field(@LogCapture LogInterceptor logs) throws Exception {
+    String query = "INSERT INTO table1 (a,b) VALUES (:a, :b)";
+    Map<String, String> types = ImmutableMap.of("a", "int", "b", "varchar");
+    Query when = new Query(query, emptyList(), emptyMap(), types);
+    SuccessResult then = new SuccessResult(emptyList(), emptyMap());
+    simulacron.prime(new Prime(new RequestPrime(when, then)));
+
+    String[] args = {
+      "load",
+      "-c",
+      "json",
+      "--log.directory",
+      escapeUserInput(logDir),
+      "--log.maxErrors",
+      "1",
+      "--connector.json.url",
+      escapeUserInput(getClass().getResource("/missing-extra.json")),
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.query",
+      query,
+      "--schema.mapping",
+      "A = a, B = b",
+      "--schema.allowExtraFields",
+      "false"
+    };
+    int status = new Main(args).run();
+    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("aborted: Too many errors, the maximum allowed is 1")
+        .contains("Records: total: 3, successful: 1, failed: 2");
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    validateBadOps(2, logPath);
+    validateExceptionsLog(
+        1, "Extraneous field C was found in record", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Extraneous field D was found in record", "mapping-errors.log", logPath);
   }
 
   @Test

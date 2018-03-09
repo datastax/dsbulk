@@ -45,18 +45,23 @@ public class URIUtils {
     if (rest.length % 2 == 1) {
       throw new IllegalArgumentException("params list must have an even number of elements");
     }
-
     StringBuilder sb = new StringBuilder(uri.toString());
     sb.append(uri.getQuery() == null ? '?' : '&');
     try {
-      sb.append(URLEncoder.encode(key, "UTF-8"))
-          .append("=")
-          .append(URLEncoder.encode(value, "UTF-8"));
+      if (key != null && value != null) {
+        sb.append(URLEncoder.encode(key, "UTF-8"))
+            .append("=")
+            .append(URLEncoder.encode(value, "UTF-8"));
+      }
       for (int i = 0; i < rest.length; i += 2) {
-        sb.append('&')
-            .append(URLEncoder.encode(rest[i], "UTF-8"))
-            .append('=')
-            .append(URLEncoder.encode(rest[i + 1], "UTF-8"));
+        String key2 = rest[i];
+        String value2 = rest[i + 1];
+        if (key2 != null && value2 != null) {
+          sb.append('&')
+              .append(URLEncoder.encode(key2, "UTF-8"))
+              .append('=')
+              .append(URLEncoder.encode(value2, "UTF-8"));
+        }
       }
     } catch (UnsupportedEncodingException e) {
       // swallow, this should never happen for UTF-8
