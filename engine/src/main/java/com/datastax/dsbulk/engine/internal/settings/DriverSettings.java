@@ -58,7 +58,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
@@ -358,8 +357,12 @@ public class DriverSettings {
 
   public DseCluster newCluster() throws BulkConfigurationException {
     DseCluster.Builder builder = DseCluster.builder().withClusterName(executionId + "-driver");
-    getHostsStream(hosts).forEach(builder::addContactPointsWithPorts);
+    getHostsList(hosts)
+        .stream()
+        .map(InetSocketAddress::getAddress)
+        .forEach(builder::addContactPoints);
     builder
+        .withPort(port)
         .withCodecRegistry(new CodecRegistry())
         .withCompression(compression)
         .withPoolingOptions(
@@ -460,8 +463,7 @@ public class DriverSettings {
         break;
       case whiteList:
         String WLHosts = config.getString("policy.lbp.whiteList.hosts");
-        policy =
-            new WhiteListPolicy(childPolicy, getHostsStream(WLHosts).collect(Collectors.toList()));
+        policy = new WhiteListPolicy(childPolicy, getHostsList(WLHosts));
 
         break;
       case tokenAware:
@@ -570,19 +572,12 @@ public class DriverSettings {
     }
   }
 
-  private Stream<InetSocketAddress> getHostsStream(String hosts) {
+  private List<InetSocketAddress> getHostsList(String hosts) {
     return Splitter.onPattern(",\\s*")
         .splitToList(hosts)
         .stream()
-        .map(
-            host -> {
-              List<String> tokens = Splitter.on(":").splitToList(host);
-              if (tokens.size() < 1 || tokens.size() > 2) {
-                throw new IllegalArgumentException("Expecting or host or host:port, got " + host);
-              }
-              int inetPort = tokens.size() > 1 ? Integer.parseInt(tokens.get(1)) : port;
-              return new InetSocketAddress(tokens.get(0), inetPort);
-            });
+        .map(host -> new InetSocketAddress(host, port))
+        .collect(Collectors.toList());
   }
 
   @VisibleForTesting

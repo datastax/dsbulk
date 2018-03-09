@@ -14,7 +14,6 @@ import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAP
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.fetchContactPoints;
 import static java.nio.file.Files.createTempDirectory;
 import static org.slf4j.event.Level.ERROR;
 
@@ -29,6 +28,7 @@ import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.engine.tests.utils.EndToEndUtils;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,16 +43,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @SimulacronConfig(dse = false)
 class CassLoadEndToEndSimulacronIT {
 
-  private final BoundCluster simulacron;
   private final LogInterceptor interceptor;
+  private final String hostname;
+  private final String port;
 
   private Path logDir;
 
   CassLoadEndToEndSimulacronIT(
       BoundCluster simulacron,
       @LogCapture(value = WorkflowUtils.class, level = ERROR) LogInterceptor interceptor) {
-    this.simulacron = simulacron;
     this.interceptor = interceptor;
+    InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
+    hostname = node.getHostName();
+    port = Integer.toString(node.getPort());
   }
 
   @AfterEach
@@ -81,7 +84,9 @@ class CassLoadEndToEndSimulacronIT {
       "--connector.csv.url",
       escapeUserInput(CSV_RECORDS_UNIQUE),
       "--driver.hosts",
-      fetchContactPoints(simulacron),
+      hostname,
+      "--driver.port",
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
