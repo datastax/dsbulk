@@ -37,6 +37,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.base.Suppliers;
 import com.typesafe.config.ConfigException;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -179,6 +180,7 @@ public class JsonConnector implements Connector {
       tryWriteToDirectory();
     }
     objectMapper = new ObjectMapper();
+    objectMapper.setNodeFactory(JsonNodeFactory.withExactBigDecimals(true));
     jsonNodeMapType = objectMapper.constructType(JSON_NODE_MAP_TYPE_REFERENCE.getType());
     for (MapperFeature mapperFeature : mapperFeatures.keySet()) {
       objectMapper.configure(mapperFeature, mapperFeatures.get(mapperFeature));

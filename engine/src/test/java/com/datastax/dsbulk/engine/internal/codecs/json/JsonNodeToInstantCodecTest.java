@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
@@ -18,7 +19,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.Duration;
@@ -46,38 +46,38 @@ class JsonNodeToInstantCodecTest {
     JsonNodeToInstantCodec codec =
         new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.textNode("2016-07-24T20:34"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2016-07-24T20:34"))
         .to(Instant.parse("2016-07-24T20:34:00Z"))
-        .convertsFrom(JsonNodeFactory.instance.textNode("2016-07-24T20:34:12"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:12"))
         .to(Instant.parse("2016-07-24T20:34:12Z"))
-        .convertsFrom(JsonNodeFactory.instance.textNode("2016-07-24T20:34:12.999"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:12.999"))
         .to(Instant.parse("2016-07-24T20:34:12.999Z"))
-        .convertsFrom(JsonNodeFactory.instance.textNode("2016-07-24T20:34+01:00"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2016-07-24T20:34+01:00"))
         .to(Instant.parse("2016-07-24T19:34:00Z"))
-        .convertsFrom(JsonNodeFactory.instance.textNode("2016-07-24T20:34:12.999+01:00"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:12.999+01:00"))
         .to(Instant.parse("2016-07-24T19:34:12.999Z"))
-        .convertsFrom(JsonNodeFactory.instance.numberNode(1469388852999L))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode(1469388852999L))
         .to(Instant.parse("2016-07-24T19:34:12.999Z"))
         .convertsFrom(null)
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
     codec =
         new JsonNodeToInstantCodec(temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.textNode("20160724203412"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("20160724203412"))
         .to(Instant.parse("2016-07-24T20:34:12Z"))
         .convertsFrom(null)
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
     codec =
         new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC));
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.textNode("123456"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("123456"))
         .to(minutesAfterMillennium)
         .convertsFrom(
-            JsonNodeFactory.instance.textNode(CQL_DATE_TIME_FORMAT.format(minutesAfterMillennium)))
+            JSON_NODE_FACTORY.textNode(CQL_DATE_TIME_FORMAT.format(minutesAfterMillennium)))
         .to(minutesAfterMillennium);
   }
 
@@ -87,38 +87,37 @@ class JsonNodeToInstantCodecTest {
         new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec)
         .convertsTo(Instant.parse("2016-07-24T20:34:00Z"))
-        .from(JsonNodeFactory.instance.textNode("2016-07-24T20:34:00Z"))
+        .from(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:00Z"))
         .convertsTo(Instant.parse("2016-07-24T20:34:12Z"))
-        .from(JsonNodeFactory.instance.textNode("2016-07-24T20:34:12Z"))
+        .from(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:12Z"))
         .convertsTo(Instant.parse("2016-07-24T20:34:12.999Z"))
-        .from(JsonNodeFactory.instance.textNode("2016-07-24T20:34:12.999Z"))
+        .from(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:12.999Z"))
         .convertsTo(Instant.parse("2016-07-24T19:34:00Z"))
-        .from(JsonNodeFactory.instance.textNode("2016-07-24T19:34:00Z"))
+        .from(JSON_NODE_FACTORY.textNode("2016-07-24T19:34:00Z"))
         .convertsTo(Instant.parse("2016-07-24T19:34:12.999Z"))
-        .from(JsonNodeFactory.instance.textNode("2016-07-24T19:34:12.999Z"))
+        .from(JSON_NODE_FACTORY.textNode("2016-07-24T19:34:12.999Z"))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
     codec =
         new JsonNodeToInstantCodec(temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
     assertThat(codec)
         .convertsTo(Instant.parse("2016-07-24T20:34:12Z"))
-        .from(JsonNodeFactory.instance.textNode("20160724203412"))
+        .from(JSON_NODE_FACTORY.textNode("20160724203412"))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
     codec =
         new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC));
     // conversion back to numeric timestamps is not possible, values are always formatted with full
     // alphanumeric pattern
     assertThat(codec)
         .convertsTo(minutesAfterMillennium)
-        .from(JsonNodeFactory.instance.textNode(temporalFormat1.format(minutesAfterMillennium)));
+        .from(JSON_NODE_FACTORY.textNode(temporalFormat1.format(minutesAfterMillennium)));
   }
 
   @Test
   void should_not_convert_from_invalid_input() {
     JsonNodeToInstantCodec codec =
         new JsonNodeToInstantCodec(temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
-    assertThat(codec)
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid date format"));
+    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }
 }
