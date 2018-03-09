@@ -7,6 +7,7 @@
 - [improvement] DAT-237: Numeric overflows should display the original input that caused the overflow.
 - [bug] DAT-245: Addresses should be properly translated when cluster has custom native port.
 - [improvement] DAT-235: Improve error message when mapping is wrong.
+- [improvement] DAT-243: Improve message when DSBulk completes with errors.
 
 
 ### 1.0.0
