@@ -23,6 +23,8 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableList;
 import com.typesafe.config.ConfigException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -37,6 +39,34 @@ public class LogSettings {
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
   public static final String MAIN_LOG_FILE_APPENDER = "MAIN_LOG_FILE_APPENDER";
   public static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
+
+  /** The options for stack trace printing. */
+  public static final ImmutableList<String> STACK_TRACE_PRINTER_OPTIONS =
+      ImmutableList.of(
+          // number of stack elements to print
+          "5",
+          // packages to exclude from stack traces
+          "reactor.core",
+          "com.google",
+          "io.netty",
+          "java.util.concurrent");
+
+  /**
+   * The layout pattern to use for the main log file.
+   *
+   * <p>Example of formatted message:
+   *
+   * <pre>
+   * 2018-03-09 14:41:02 ERROR Unload workflow engine execution UNLOAD_20180309-144101-093338 aborted: Invalid table
+   * com.datastax.driver.core.exceptions.SyntaxError: Invalid table
+   *     at com.datastax.driver.core.exceptions.SyntaxError.copy(SyntaxError.java:49)
+   * 	   ...
+   * </pre>
+   */
+  private static final String LAYOUT_PATTERN =
+      "%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg%n%ex{"
+          + Joiner.on(',').join(STACK_TRACE_PRINTER_OPTIONS)
+          + "}";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
 
@@ -158,7 +188,7 @@ public class LogSettings {
     String production = lc.getProperty(PRODUCTION_KEY);
     if (production != null && production.equalsIgnoreCase("true")) {
       PatternLayoutEncoder ple = new PatternLayoutEncoder();
-      ple.setPattern("%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg%n");
+      ple.setPattern(LAYOUT_PATTERN);
       ple.setContext(lc);
       ple.setCharset(StandardCharsets.UTF_8);
       ple.start();

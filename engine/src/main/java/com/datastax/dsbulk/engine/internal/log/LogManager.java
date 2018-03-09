@@ -16,6 +16,9 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.pattern.ThrowableProxyConverter;
+import ch.qos.logback.classic.spi.ThrowableProxy;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
@@ -31,6 +34,7 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.statement.BulkStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
@@ -104,6 +108,7 @@ public class LogManager implements AutoCloseable {
 
   private CodecRegistry codecRegistry;
   private ProtocolVersion protocolVersion;
+  private StackTracePrinter stackTracePrinter;
   private PrintWriter positionsPrinter;
 
   public LogManager(
@@ -148,6 +153,9 @@ public class LogManager implements AutoCloseable {
   public void init() throws IOException {
     codecRegistry = cluster.getConfiguration().getCodecRegistry();
     protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
+    stackTracePrinter = new StackTracePrinter();
+    stackTracePrinter.setOptionList(LogSettings.STACK_TRACE_PRINTER_OPTIONS);
+    stackTracePrinter.start();
     if (workflowType == WorkflowType.LOAD) {
       positionsPrinter =
           new PrintWriter(
@@ -181,6 +189,7 @@ public class LogManager implements AutoCloseable {
 
   @Override
   public void close() {
+    stackTracePrinter.stop();
     openFiles.invalidateAll();
     openFiles.cleanUp();
     if (workflowType == WorkflowType.LOAD && positionsPrinter != null) {
@@ -554,9 +563,8 @@ public class LogManager implements AutoCloseable {
     String format =
         formatter.format(result.getStatement(), verbosity, protocolVersion, codecRegistry);
     printAndMaybeAddNewLine(format, writer);
-    result.getError().orElseThrow(IllegalStateException::new).printStackTrace(writer);
-    writer.println();
-    writer.flush();
+    stackTracePrinter.printStackTrace(
+        result.getError().orElseThrow(IllegalStateException::new), writer);
   }
 
   private void appendToDebugFile(UnmappableStatement statement) {
@@ -564,9 +572,7 @@ public class LogManager implements AutoCloseable {
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     appendStatementInfo(statement, writer);
-    statement.getError().printStackTrace(writer);
-    writer.println();
-    writer.flush();
+    stackTracePrinter.printStackTrace(statement.getError(), writer);
   }
 
   private void appendToDebugFile(ErrorRecord record) {
@@ -574,9 +580,7 @@ public class LogManager implements AutoCloseable {
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     appendRecordInfo(record, writer);
-    record.getError().printStackTrace(writer);
-    writer.println();
-    writer.flush();
+    stackTracePrinter.printStackTrace(record.getError(), writer);
   }
 
   private void appendToPositionsFile(URI resource, List<Range<Long>> positions) {
@@ -730,5 +734,20 @@ public class LogManager implements AutoCloseable {
         || error instanceof OperationTimedOutException
         || error instanceof BusyPoolException
         || error instanceof BusyConnectionException);
+  }
+
+  /** A small utility to print stack traces, leveraging Logback's filtering capabilities. */
+  private static class StackTracePrinter extends ThrowableProxyConverter {
+
+    @Override
+    public void start() {
+      setContext(new LoggerContext());
+      super.start();
+    }
+
+    private void printStackTrace(Throwable t, PrintWriter writer) {
+      writer.println(throwableProxyToString(new ThrowableProxy(t)));
+      writer.flush();
+    }
   }
 }

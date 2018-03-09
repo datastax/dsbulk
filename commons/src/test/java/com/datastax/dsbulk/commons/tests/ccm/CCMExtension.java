@@ -77,7 +77,7 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
     Class<?> type = parameter.getType();
     if (type.isAssignableFrom(DefaultCCMCluster.class)) {
       CCMCluster ccm = getOrCreateCCM(extensionContext);
-      LOGGER.warn(String.format("Returning %s for parameter %s", ccm, parameter));
+      LOGGER.debug(String.format("Returning %s for parameter %s", ccm, parameter));
       return ccm;
     } else {
       return super.resolveParameter(parameterContext, extensionContext);
