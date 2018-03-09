@@ -28,6 +28,7 @@ import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.engine.tests.utils.EndToEndUtils;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,16 +43,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @SimulacronConfig(dse = false)
 class CassLoadEndToEndSimulacronIT {
 
-  private final BoundCluster simulacron;
   private final LogInterceptor interceptor;
+  private final String hostname;
+  private final String port;
 
   private Path logDir;
 
   CassLoadEndToEndSimulacronIT(
       BoundCluster simulacron,
       @LogCapture(value = WorkflowUtils.class, level = ERROR) LogInterceptor interceptor) {
-    this.simulacron = simulacron;
     this.interceptor = interceptor;
+    InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
+    hostname = node.getHostName();
+    port = Integer.toString(node.getPort());
   }
 
   @AfterEach
@@ -80,9 +84,9 @@ class CassLoadEndToEndSimulacronIT {
       "--connector.csv.url",
       escapeUserInput(CSV_RECORDS_UNIQUE),
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",

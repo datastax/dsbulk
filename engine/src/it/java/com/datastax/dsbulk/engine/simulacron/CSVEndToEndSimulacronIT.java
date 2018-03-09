@@ -71,6 +71,7 @@ import com.datastax.oss.simulacron.server.BoundCluster;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -93,12 +94,17 @@ import reactor.core.publisher.Mono;
 class CSVEndToEndSimulacronIT {
 
   private final BoundCluster simulacron;
+  private final String hostname;
+  private final String port;
 
   private Path unloadDir;
   private Path logDir;
 
   CSVEndToEndSimulacronIT(BoundCluster simulacron) {
     this.simulacron = simulacron;
+    InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
+    hostname = node.getHostName();
+    port = Integer.toString(node.getPort());
   }
 
   @BeforeEach
@@ -137,9 +143,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -173,9 +179,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -203,9 +209,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -233,9 +239,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -310,9 +316,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.policy.maxRetries",
       "1",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -345,9 +351,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--connector.csv.skipRecords",
@@ -384,9 +390,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -415,9 +421,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -453,9 +459,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -501,9 +507,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -540,9 +546,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -578,9 +584,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -616,9 +622,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -673,9 +679,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -715,9 +721,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      simulacron.dc(0).node(0).inetSocketAddress().getHostName(),
+      hostname,
       "--driver.port",
-      Integer.toString(simulacron.dc(0).node(0).inetSocketAddress().getPort()),
+      port,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
