@@ -28,7 +28,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-/** */
 public final class IOUtils {
 
   private static final int BUFFER_SIZE = 8192 * 2;

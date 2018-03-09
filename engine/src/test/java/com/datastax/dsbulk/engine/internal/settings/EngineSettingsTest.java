@@ -15,7 +15,6 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.Test;
 
-/** */
 class EngineSettingsTest {
 
   @Test

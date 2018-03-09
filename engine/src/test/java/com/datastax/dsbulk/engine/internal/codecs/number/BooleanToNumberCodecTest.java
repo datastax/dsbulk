@@ -15,7 +15,6 @@ import static java.math.BigDecimal.ONE;
 
 import org.junit.jupiter.api.Test;
 
-/** */
 class BooleanToNumberCodecTest {
 
   @Test

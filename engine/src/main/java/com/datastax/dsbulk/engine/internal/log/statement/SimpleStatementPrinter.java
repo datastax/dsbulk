@@ -14,7 +14,6 @@ import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import java.util.List;
 
-/** */
 public class SimpleStatementPrinter<T extends SimpleStatement> extends RegularStatementPrinter<T> {
 
   @Override
@@ -39,14 +38,18 @@ public class SimpleStatementPrinter<T extends SimpleStatement> extends RegularSt
           out.newLine();
           out.indent();
           out.appendBoundValue(valueName, statement.getObject(valueName), null);
-          if (out.maxAppendedBoundValuesExceeded()) break;
+          if (out.maxAppendedBoundValuesExceeded()) {
+            break;
+          }
         }
       } else {
         for (int i = 0; i < statement.valuesCount(); i++) {
           out.newLine();
           out.indent();
           out.appendBoundValue(i, statement.getObject(i), null);
-          if (out.maxAppendedBoundValuesExceeded()) break;
+          if (out.maxAppendedBoundValuesExceeded()) {
+            break;
+          }
         }
       }
     }

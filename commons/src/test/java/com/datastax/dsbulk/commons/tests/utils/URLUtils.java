@@ -11,7 +11,6 @@ package com.datastax.dsbulk.commons.tests.utils;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import java.net.URL;
 
-/** */
 public class URLUtils {
 
   public static void setURLFactoryIfNeeded() {

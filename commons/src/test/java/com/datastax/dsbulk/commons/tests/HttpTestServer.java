@@ -16,7 +16,6 @@ import io.undertow.server.handlers.form.MultiPartParserDefinition;
 import java.io.IOException;
 import java.net.ServerSocket;
 
-/** */
 public class HttpTestServer {
 
   private int port;

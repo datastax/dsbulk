@@ -16,7 +16,6 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** */
 public class LogUtils {
 
   private static final Pattern NEW_LINE = Pattern.compile("\\R");
@@ -44,15 +43,20 @@ public class LogUtils {
   }
 
   private static String formatSource(Record record) {
-    if (record == null) return "<NULL>";
+    if (record == null) {
+      return "<NULL>";
+    }
     String source = record.getSource().toString();
     return formatSingleLine(source);
   }
 
   public static String formatSingleLine(String string) {
-    if (string == null) return "<NULL>";
-    if (string.length() > MAX_SOURCE_LENGTH)
+    if (string == null) {
+      return "<NULL>";
+    }
+    if (string.length() > MAX_SOURCE_LENGTH) {
       string = string.substring(0, MAX_SOURCE_LENGTH) + "...";
+    }
     Matcher matcher = NEW_LINE.matcher(string);
     StringBuffer sb = new StringBuffer();
     while (matcher.find()) {

@@ -15,7 +15,6 @@ import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import java.util.Optional;
 
-/** */
 public final class DefaultReadResult extends DefaultResult implements ReadResult {
 
   private final Row row;

@@ -15,7 +15,6 @@ import io.reactivex.Flowable;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** */
 class RxJavaUnsortedStatementBatcherTest extends RxJavaStatementBatcherTest {
 
   @Test

@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.tests.utils;
 
 import java.net.URL;
 
-/** */
 public class CsvUtils {
 
   public static final URL CSV_RECORDS_UNIQUE =

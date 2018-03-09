@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.internal.utils;
 
 import java.util.Collections;
 
-/** */
 public class StringUtils {
 
   public static final String DELIMITER = ".";

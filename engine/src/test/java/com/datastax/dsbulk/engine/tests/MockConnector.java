@@ -17,7 +17,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import org.reactivestreams.Publisher;
 
-/** */
 public final class MockConnector implements Connector {
 
   private static Connector delegate;

@@ -13,7 +13,6 @@ import static com.datastax.driver.core.DriverCoreHooks.wrappedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.StatementWrapper;
 
-/** */
 public class StatementWrapperPrinter implements StatementPrinter<StatementWrapper> {
 
   @Override

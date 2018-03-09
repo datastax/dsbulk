@@ -25,7 +25,6 @@ import java.time.Duration;
 import org.assertj.core.util.Files;
 import org.junit.jupiter.api.Test;
 
-/** */
 class MonitoringSettingsTest {
 
   @Test

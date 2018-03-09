@@ -10,7 +10,6 @@ package com.datastax.driver.core;
 
 import java.util.Arrays;
 
-/** */
 @SuppressWarnings("SameParameterValue")
 public class DriverCoreEngineTestHooks {
 

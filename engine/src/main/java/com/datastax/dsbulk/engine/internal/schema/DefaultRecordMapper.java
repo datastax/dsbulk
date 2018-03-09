@@ -27,7 +27,6 @@ import com.google.common.reflect.TypeToken;
 import java.util.Arrays;
 import java.util.function.BiFunction;
 
-/** */
 public class DefaultRecordMapper implements RecordMapper {
 
   private static final String FIELD = "field";

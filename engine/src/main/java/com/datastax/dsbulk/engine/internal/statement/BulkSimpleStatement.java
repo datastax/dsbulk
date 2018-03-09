@@ -11,7 +11,6 @@ package com.datastax.dsbulk.engine.internal.statement;
 import com.datastax.driver.core.SimpleStatement;
 import java.util.Map;
 
-/** */
 public class BulkSimpleStatement<T> extends SimpleStatement implements BulkStatement<T> {
 
   private final T source;

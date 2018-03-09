@@ -13,7 +13,6 @@ import com.google.common.base.MoreObjects;
 import java.net.URI;
 import java.util.function.Supplier;
 
-/** */
 public class UnmappableStatement extends BulkSimpleStatement<Record> {
 
   private final Supplier<URI> location;

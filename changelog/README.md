@@ -5,6 +5,7 @@
 - [improvement] DAT-240: Detect console width on Windows.
 - [improvement] DAT-229: Allow user-supplied options to contain control characters.
 - [improvement] DAT-237: Numeric overflows should display the original input that caused the overflow.
+- [bug] DAT-245: Addresses should be properly translated when cluster has custom native port.
 - [improvement] DAT-235: Improve error message when mapping is wrong.
 
 

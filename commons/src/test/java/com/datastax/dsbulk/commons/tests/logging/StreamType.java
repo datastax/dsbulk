@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.commons.tests.logging;
 
-/** */
 public enum StreamType {
   STDOUT,
   STDERR

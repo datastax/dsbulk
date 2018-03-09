@@ -21,7 +21,6 @@ import io.reactivex.Flowable;
 import java.util.HashSet;
 import org.junit.jupiter.api.Test;
 
-/** */
 class RxJavaStatementBatcherTest extends StatementBatcherTest {
 
   @Test

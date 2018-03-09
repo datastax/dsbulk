@@ -13,7 +13,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
 
-/** */
 public class DefaultStreamInterceptor implements StreamInterceptor {
 
   static {

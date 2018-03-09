@@ -14,7 +14,6 @@ import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 
-/** */
 public class BulkSimpleStatementPrinter
     extends SimpleStatementPrinter<BulkSimpleStatement<Record>> {
 

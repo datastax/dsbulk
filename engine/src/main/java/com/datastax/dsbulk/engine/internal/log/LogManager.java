@@ -68,7 +68,6 @@ import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.concurrent.Queues;
 
-/** */
 public class LogManager implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogManager.class);

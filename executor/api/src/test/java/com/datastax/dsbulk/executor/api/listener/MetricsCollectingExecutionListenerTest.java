@@ -19,7 +19,6 @@ import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.listener.DefaultExecutionContext;
 import org.junit.jupiter.api.Test;
 
-/** */
 class MetricsCollectingExecutionListenerTest {
 
   private final Statement successfulRead = new SimpleStatement("irrelevant");

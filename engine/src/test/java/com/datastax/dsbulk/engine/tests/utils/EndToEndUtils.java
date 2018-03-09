@@ -24,7 +24,6 @@ import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -40,7 +39,6 @@ import org.assertj.core.api.Assertions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** */
 public class EndToEndUtils {
 
   public static RequestPrime createSimpleParametrizedQuery(String query) {
@@ -156,11 +154,6 @@ public class EndToEndUtils {
     long totalLines =
         FileUtils.readAllLinesInDirectoryAsStream(dir, StandardCharsets.UTF_8).count();
     assertThat(totalLines).isEqualTo(numOfRecords);
-  }
-
-  public static String fetchContactPoints(BoundCluster simulacron) {
-    InetSocketAddress address = simulacron.dc(0).node(0).inetSocketAddress();
-    return address.getHostName() + ':' + address.getPort();
   }
 
   public static void validateQueryCount(
