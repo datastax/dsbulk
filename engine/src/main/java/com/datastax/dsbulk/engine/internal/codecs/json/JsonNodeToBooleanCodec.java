@@ -8,10 +8,11 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
+
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.util.Map;
 
 public class JsonNodeToBooleanCodec extends ConvertingCodec<JsonNode, Boolean> {
@@ -45,8 +46,8 @@ public class JsonNodeToBooleanCodec extends ConvertingCodec<JsonNode, Boolean> {
   @Override
   public JsonNode convertTo(Boolean value) {
     if (value == null) {
-      return JsonNodeFactory.instance.nullNode();
+      return JSON_NODE_FACTORY.nullNode();
     }
-    return JsonNodeFactory.instance.booleanNode(value);
+    return JSON_NODE_FACTORY.booleanNode(value);
   }
 }

@@ -8,12 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
+
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -42,8 +43,8 @@ public class JsonNodeToUUIDCodec extends ConvertingCodec<JsonNode, UUID> {
   @Override
   public JsonNode convertTo(UUID value) {
     if (value == null) {
-      return JsonNodeFactory.instance.nullNode();
+      return JSON_NODE_FACTORY.nullNode();
     }
-    return JsonNodeFactory.instance.textNode(value.toString());
+    return JSON_NODE_FACTORY.textNode(value.toString());
   }
 }

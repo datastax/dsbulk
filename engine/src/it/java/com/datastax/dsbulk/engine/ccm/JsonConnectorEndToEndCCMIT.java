@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.ccm;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkNumbersWritten;
+import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkTemporalsWritten;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
@@ -432,79 +433,77 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void should_truncate_and_round() throws Exception {
 
-    session.execute("DROP TABLE IF EXISTS dat224");
+    session.execute("DROP TABLE IF EXISTS numbers");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS dat224 (key varchar PRIMARY KEY, vdouble double, vdecimal decimal)");
+        "CREATE TABLE IF NOT EXISTS numbers (key varchar PRIMARY KEY, vdouble double, vdecimal decimal)");
 
-    List<String> loadArgs = new ArrayList<>();
-    loadArgs.add("load");
-    loadArgs.add("--connector.name");
-    loadArgs.add("json");
-    loadArgs.add("--log.directory");
-    loadArgs.add(escapeUserInput(logDir));
-    loadArgs.add("--connector.json.url");
-    loadArgs.add(escapeUserInput(ClassLoader.getSystemResource("number.json").toExternalForm()));
-    loadArgs.add("--connector.json.mode");
-    loadArgs.add("SINGLE_DOCUMENT");
-    loadArgs.add("--codec.overflowStrategy");
-    loadArgs.add("TRUNCATE");
-    loadArgs.add("--schema.keyspace");
-    loadArgs.add(session.getLoggedKeyspace());
-    loadArgs.add("--schema.table");
-    loadArgs.add("dat224");
-    loadArgs.add("--schema.mapping");
-    loadArgs.add("*=*");
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(ClassLoader.getSystemResource("number.json").toExternalForm()));
+    args.add("--connector.json.mode");
+    args.add("SINGLE_DOCUMENT");
+    args.add("--codec.overflowStrategy");
+    args.add("TRUNCATE");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("numbers");
+    args.add("--schema.mapping");
+    args.add("*=*");
 
-    int loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
+    int loadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
     deleteDirectory(logDir);
 
-    List<String> unloadArgs = new ArrayList<>();
-    unloadArgs.add("unload");
-    unloadArgs.add("--connector.name");
-    unloadArgs.add("json");
-    unloadArgs.add("--log.directory");
-    unloadArgs.add(escapeUserInput(logDir));
-    unloadArgs.add("--connector.json.url");
-    unloadArgs.add(escapeUserInput(unloadDir));
-    unloadArgs.add("--connector.json.mode");
-    unloadArgs.add("MULTI_DOCUMENT");
-    unloadArgs.add("--connector.csv.maxConcurrentFiles");
-    unloadArgs.add("1");
-    unloadArgs.add("--codec.roundingStrategy");
-    unloadArgs.add("FLOOR");
-    unloadArgs.add("--schema.keyspace");
-    unloadArgs.add(session.getLoggedKeyspace());
-    unloadArgs.add("--schema.query");
-    unloadArgs.add("SELECT key, vdouble, vdecimal FROM dat224");
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.json.mode");
+    args.add("MULTI_DOCUMENT");
+    args.add("--connector.json.maxConcurrentFiles");
+    args.add("1");
+    args.add("--codec.roundingStrategy");
+    args.add("FLOOR");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
+    int unloadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
     checkNumbersRead(TRUNCATE, unloadDir);
     deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
-    loadArgs = new ArrayList<>();
-    loadArgs.add("load");
-    loadArgs.add("--log.directory");
-    loadArgs.add(escapeUserInput(logDir));
-    loadArgs.add("--connector.csv.url");
-    loadArgs.add(escapeUserInput(unloadDir));
-    loadArgs.add("--connector.csv.header");
-    loadArgs.add("false");
-    loadArgs.add("--connector.csv.delimiter");
-    loadArgs.add(";");
-    loadArgs.add("--codec.overflowStrategy");
-    loadArgs.add("TRUNCATE");
-    loadArgs.add("--schema.keyspace");
-    loadArgs.add(session.getLoggedKeyspace());
-    loadArgs.add("--schema.table");
-    loadArgs.add("dat224");
-    loadArgs.add("--schema.mapping");
-    loadArgs.add("key,vdouble,vdecimal");
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--codec.overflowStrategy");
+    args.add("TRUNCATE");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("numbers");
+    args.add("--schema.mapping");
+    args.add("*=*");
 
-    loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
+    loadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
     // no rounding possible in json
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
@@ -514,30 +513,30 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void should_not_truncate_nor_round() throws Exception {
 
-    session.execute("DROP TABLE IF EXISTS dat224");
+    session.execute("DROP TABLE IF EXISTS numbers");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS dat224 (key varchar PRIMARY KEY, vdouble double, vdecimal decimal)");
+        "CREATE TABLE IF NOT EXISTS numbers (key varchar PRIMARY KEY, vdouble double, vdecimal decimal)");
 
-    List<String> loadArgs = new ArrayList<>();
-    loadArgs.add("load");
-    loadArgs.add("--connector.name");
-    loadArgs.add("json");
-    loadArgs.add("--log.directory");
-    loadArgs.add(escapeUserInput(logDir));
-    loadArgs.add("--connector.json.url");
-    loadArgs.add(escapeUserInput(ClassLoader.getSystemResource("number.json").toExternalForm()));
-    loadArgs.add("--connector.json.mode");
-    loadArgs.add("SINGLE_DOCUMENT");
-    loadArgs.add("--codec.overflowStrategy");
-    loadArgs.add("REJECT");
-    loadArgs.add("--schema.keyspace");
-    loadArgs.add(session.getLoggedKeyspace());
-    loadArgs.add("--schema.table");
-    loadArgs.add("dat224");
-    loadArgs.add("--schema.mapping");
-    loadArgs.add("*=*");
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(ClassLoader.getSystemResource("number.json").toExternalForm()));
+    args.add("--connector.json.mode");
+    args.add("SINGLE_DOCUMENT");
+    args.add("--codec.overflowStrategy");
+    args.add("REJECT");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("numbers");
+    args.add("--schema.mapping");
+    args.add("*=*");
 
-    int loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
+    int loadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateExceptionsLog(
@@ -548,53 +547,156 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     checkNumbersWritten(REJECT, UNNECESSARY, session);
     deleteDirectory(logDir);
 
-    List<String> unloadArgs = new ArrayList<>();
-    unloadArgs.add("unload");
-    unloadArgs.add("--connector.name");
-    unloadArgs.add("json");
-    unloadArgs.add("--log.directory");
-    unloadArgs.add(escapeUserInput(logDir));
-    unloadArgs.add("--connector.json.url");
-    unloadArgs.add(escapeUserInput(unloadDir));
-    unloadArgs.add("--connector.json.mode");
-    unloadArgs.add("MULTI_DOCUMENT");
-    unloadArgs.add("--connector.csv.maxConcurrentFiles");
-    unloadArgs.add("1");
-    unloadArgs.add("--codec.roundingStrategy");
-    unloadArgs.add("UNNECESSARY");
-    unloadArgs.add("--schema.keyspace");
-    unloadArgs.add(session.getLoggedKeyspace());
-    unloadArgs.add("--schema.query");
-    unloadArgs.add("SELECT key, vdouble, vdecimal FROM dat224");
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.json.mode");
+    args.add("MULTI_DOCUMENT");
+    args.add("--connector.json.maxConcurrentFiles");
+    args.add("1");
+    args.add("--codec.roundingStrategy");
+    args.add("UNNECESSARY");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
+    int unloadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
     checkNumbersRead(REJECT, unloadDir);
     deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
-    loadArgs = new ArrayList<>();
-    loadArgs.add("load");
-    loadArgs.add("--log.directory");
-    loadArgs.add(escapeUserInput(logDir));
-    loadArgs.add("--connector.csv.url");
-    loadArgs.add(escapeUserInput(unloadDir));
-    loadArgs.add("--connector.csv.header");
-    loadArgs.add("false");
-    loadArgs.add("--connector.csv.delimiter");
-    loadArgs.add(";");
-    loadArgs.add("--codec.overflowStrategy");
-    loadArgs.add("REJECT");
-    loadArgs.add("--schema.keyspace");
-    loadArgs.add(session.getLoggedKeyspace());
-    loadArgs.add("--schema.table");
-    loadArgs.add("dat224");
-    loadArgs.add("--schema.mapping");
-    loadArgs.add("key,vdouble,vdecimal");
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--codec.overflowStrategy");
+    args.add("REJECT");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("numbers");
+    args.add("--schema.mapping");
+    args.add("*=*");
 
-    loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
+    loadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
     checkNumbersWritten(REJECT, UNNECESSARY, session);
+  }
+
+  /** Test for DAT-236. */
+  @Test
+  void temporal_roundtrip() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS temporals");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS temporals (key int PRIMARY KEY, vdate date, vtime time, vtimestamp timestamp, vseconds timestamp)");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(ClassLoader.getSystemResource("temporal.json").toExternalForm());
+    args.add("--codec.locale");
+    args.add("fr_FR");
+    args.add("--codec.timeZone");
+    args.add("Europe/Paris");
+    args.add("--codec.date");
+    args.add("cccc, d MMMM uuuu");
+    args.add("--codec.time");
+    args.add("HHmmssSSS");
+    args.add("--codec.timestamp");
+    args.add("ISO_ZONED_DATE_TIME");
+    args.add("--codec.unit");
+    args.add("SECONDS");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("temporals");
+    args.add("--schema.mapping");
+    args.add("*=*");
+
+    int loadStatus = new Main(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    checkTemporalsWritten(session);
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--codec.locale");
+    args.add("fr_FR");
+    args.add("--codec.timeZone");
+    args.add("Europe/Paris");
+    args.add("--codec.date");
+    args.add("cccc, d MMMM uuuu");
+    args.add("--codec.time");
+    args.add("HHmmssSSS");
+    args.add("--codec.timestamp");
+    args.add("ISO_ZONED_DATE_TIME");
+    args.add("--codec.unit");
+    args.add("SECONDS");
+    args.add("--connector.json.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("SELECT key, vdate, vtime, vtimestamp, vseconds FROM temporals");
+
+    int unloadStatus = new Main(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
+    checkTemporalsRead(unloadDir);
+    deleteDirectory(logDir);
+
+    // check we can load from the unloaded dataset
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--codec.locale");
+    args.add("fr_FR");
+    args.add("--codec.timeZone");
+    args.add("Europe/Paris");
+    args.add("--codec.date");
+    args.add("cccc, d MMMM uuuu");
+    args.add("--codec.time");
+    args.add("HHmmssSSS");
+    args.add("--codec.timestamp");
+    args.add("ISO_ZONED_DATE_TIME");
+    args.add("--codec.unit");
+    args.add("SECONDS");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("temporals");
+    args.add("--schema.mapping");
+    args.add("*=*");
+
+    loadStatus = new Main(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    checkTemporalsWritten(session);
   }
 
   private static void checkNumbersRead(OverflowStrategy overflowStrategy, Path unloadDir)
@@ -612,44 +714,73 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
       }
     }
     // no rounding possible in Json, the nodes are numeric
-    checkNumbers(doubles, overflowStrategy, true);
-    checkNumbers(bigdecimals, overflowStrategy, false);
+    checkDoubles(doubles, overflowStrategy);
+    checkBigDecimals(bigdecimals, overflowStrategy);
   }
 
   @SuppressWarnings("FloatingPointLiteralPrecision")
-  private static void checkNumbers(
-      Map<String, String> numbers, OverflowStrategy overflowStrategy, boolean isDouble) {
-    // when USE_BIG_DECIMAL_FOR_FLOATS is true Jackson tends to favor scientific notation for
-    // decimal nodes, but apart from that the values are correct after all
-    assertThat(numbers.get("scientific_notation")).isIn("1.0E7", "1E+7");
+  private static void checkDoubles(Map<String, String> numbers, OverflowStrategy overflowStrategy) {
+    assertThat(numbers.get("scientific_notation")).isEqualTo("1.0E7");
     assertThat(Double.valueOf(numbers.get("scientific_notation"))).isEqualTo(10_000_000d);
-    assertThat(numbers.get("regular_notation")).isIn("1.0E7", "1E+7");
+    assertThat(numbers.get("regular_notation")).isEqualTo("1.0E7");
     assertThat(Double.valueOf(numbers.get("regular_notation"))).isEqualTo(10_000_000d);
-    assertThat(numbers.get("hex_notation"))
-        .isIn("1.7976931348623157E308", "1.7976931348623157E+308");
+    assertThat(numbers.get("hex_notation")).isEqualTo("1.7976931348623157E308");
     assertThat(Double.valueOf(numbers.get("hex_notation"))).isEqualTo(Double.MAX_VALUE);
     assertThat(numbers.get("irrational")).isEqualTo("0.1");
-    if (isDouble) {
-      assertThat(numbers.get("Double.NaN")).isEqualTo("\"NaN\"");
-      assertThat(numbers.get("Double.POSITIVE_INFINITY")).isEqualTo("\"Infinity\"");
-      assertThat(numbers.get("Double.NEGATIVE_INFINITY")).isEqualTo("\"-Infinity\"");
-    }
-    assertThat(numbers.get("Double.MAX_VALUE"))
-        .isIn("1.7976931348623157E308", "1.7976931348623157E+308");
+    assertThat(numbers.get("Double.NaN")).isEqualTo("\"NaN\"");
+    assertThat(numbers.get("Double.POSITIVE_INFINITY")).isEqualTo("\"Infinity\"");
+    assertThat(numbers.get("Double.NEGATIVE_INFINITY")).isEqualTo("\"-Infinity\"");
+    assertThat(numbers.get("Double.MAX_VALUE")).isEqualTo("1.7976931348623157E308");
     assertThat(Double.valueOf(numbers.get("Double.MAX_VALUE"))).isEqualTo(Double.MAX_VALUE);
     assertThat(numbers.get("Double.MIN_VALUE")).isEqualTo("4.9E-324");
     assertThat(Double.valueOf(numbers.get("Double.MIN_VALUE"))).isEqualTo(Double.MIN_VALUE);
     assertThat(numbers.get("Double.MIN_NORMAL")).isEqualTo("2.2250738585072014E-308");
     assertThat(Double.valueOf(numbers.get("Double.MIN_NORMAL"))).isEqualTo(Double.MIN_NORMAL);
-    assertThat(numbers.get("Float.MAX_VALUE")).isIn("3.4028235E38", "3.4028235E+38");
+    assertThat(numbers.get("Float.MAX_VALUE")).isEqualTo("3.4028235E38");
     assertThat(Float.valueOf(numbers.get("Float.MAX_VALUE"))).isEqualTo(Float.MAX_VALUE);
     assertThat(numbers.get("Float.MIN_VALUE")).isEqualTo("1.4E-45");
     if (overflowStrategy == TRUNCATE) {
-      if (isDouble) {
-        assertThat(numbers.get("too_many_digits")).isEqualTo("0.12345678901234568");
-      } else {
-        assertThat(numbers.get("too_many_digits")).isEqualTo("0.12345678901234567890123456789");
-      }
+      assertThat(numbers.get("too_many_digits")).isEqualTo("0.12345678901234568");
     }
+  }
+
+  @SuppressWarnings("FloatingPointLiteralPrecision")
+  private static void checkBigDecimals(
+      Map<String, String> numbers, OverflowStrategy overflowStrategy) {
+    assertThat(numbers.get("scientific_notation")).isEqualTo("1.0E+7");
+    assertThat(Double.valueOf(numbers.get("scientific_notation"))).isEqualTo(10_000_000d);
+    assertThat(numbers.get("regular_notation")).isEqualTo("10000000");
+    assertThat(Double.valueOf(numbers.get("regular_notation"))).isEqualTo(10_000_000d);
+    assertThat(numbers.get("hex_notation")).isEqualTo("1.7976931348623157E+308");
+    assertThat(Double.valueOf(numbers.get("hex_notation"))).isEqualTo(Double.MAX_VALUE);
+    assertThat(numbers.get("irrational")).isEqualTo("0.1");
+    assertThat(numbers.get("Double.MAX_VALUE")).isEqualTo("1.7976931348623157E+308");
+    assertThat(Double.valueOf(numbers.get("Double.MAX_VALUE"))).isEqualTo(Double.MAX_VALUE);
+    assertThat(numbers.get("Double.MIN_VALUE")).isEqualTo("4.9E-324");
+    assertThat(Double.valueOf(numbers.get("Double.MIN_VALUE"))).isEqualTo(Double.MIN_VALUE);
+    assertThat(numbers.get("Double.MIN_NORMAL")).isEqualTo("2.2250738585072014E-308");
+    assertThat(Double.valueOf(numbers.get("Double.MIN_NORMAL"))).isEqualTo(Double.MIN_NORMAL);
+    assertThat(numbers.get("Float.MAX_VALUE")).isEqualTo("340282350000000000000000000000000000000");
+    assertThat(Float.valueOf(numbers.get("Float.MAX_VALUE"))).isEqualTo(Float.MAX_VALUE);
+    assertThat(numbers.get("Float.MIN_VALUE")).isEqualTo("1.4E-45");
+    if (overflowStrategy == TRUNCATE) {
+      assertThat(numbers.get("too_many_digits")).isEqualTo("0.12345678901234567890123456789");
+    }
+  }
+
+  private static void checkTemporalsRead(Path unloadDir) throws IOException {
+    String line =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir, UTF_8)
+            .collect(Collectors.toList())
+            .get(0);
+    Pattern pattern =
+        Pattern.compile(
+            "\\{\"key\":(.+?),\"vdate\":\"(.+?)\",\"vtime\":\"(.+?)\",\"vtimestamp\":\"(.+?)\",\"vseconds\":\"(.+?)\"}");
+    Matcher matcher = pattern.matcher(line);
+    assertThat(matcher.find()).isTrue();
+    assertThat(matcher.group(2)).isEqualTo("vendredi, 9 mars 2018");
+    assertThat(matcher.group(3)).isEqualTo("171232584");
+    assertThat(matcher.group(4)).isEqualTo("2018-03-09T17:12:32.584+01:00[Europe/Paris]");
+    assertThat(matcher.group(5)).isEqualTo("2018-03-09T17:12:32+01:00[Europe/Paris]");
   }
 }

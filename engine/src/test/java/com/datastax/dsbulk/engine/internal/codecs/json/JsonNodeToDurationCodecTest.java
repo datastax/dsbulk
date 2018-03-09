@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
 import com.datastax.driver.core.Duration;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToDurationCodecTest {
@@ -25,17 +25,16 @@ class JsonNodeToDurationCodecTest {
   @Test
   void should_convert_from_valid_input() {
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.textNode("1y3mo2h10m")) // standard pattern
+        .convertsFrom(JSON_NODE_FACTORY.textNode("1y3mo2h10m")) // standard pattern
         .to(duration)
-        .convertsFrom(JsonNodeFactory.instance.textNode("P1Y3MT2H10M")) // ISO 8601 pattern
+        .convertsFrom(JSON_NODE_FACTORY.textNode("P1Y3MT2H10M")) // ISO 8601 pattern
         .to(duration)
         .convertsFrom(
-            JsonNodeFactory.instance.textNode(
-                "P0001-03-00T02:10:00")) // alternative ISO 8601 pattern
+            JSON_NODE_FACTORY.textNode("P0001-03-00T02:10:00")) // alternative ISO 8601 pattern
         .to(duration)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.nullNode())
+        .convertsFrom(JSON_NODE_FACTORY.nullNode())
         .to(null)
         .convertsFrom(null)
         .to(null);
@@ -45,7 +44,7 @@ class JsonNodeToDurationCodecTest {
   void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(duration)
-        .from(JsonNodeFactory.instance.textNode("1y3mo2h10m"))
+        .from(JSON_NODE_FACTORY.textNode("1y3mo2h10m"))
         .convertsTo(null)
         .from(null);
   }
@@ -53,8 +52,7 @@ class JsonNodeToDurationCodecTest {
   @Test
   void should_not_convert_from_invalid_input() {
     assertThat(codec)
-        .cannotConvertFrom(
-            JsonNodeFactory.instance.textNode("1Y3M4D")) // The minutes should be after days
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid duration"));
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("1Y3M4D")) // The minutes should be after days
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid duration"));
   }
 }

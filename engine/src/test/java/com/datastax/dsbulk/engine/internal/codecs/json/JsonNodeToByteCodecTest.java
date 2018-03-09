@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -21,7 +22,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.collect.ImmutableMap;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
@@ -46,27 +46,27 @@ class JsonNodeToByteCodecTest {
   @Test
   void should_convert_from_valid_input() {
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.numberNode((byte) 0))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode((byte) 0))
         .to((byte) 0)
-        .convertsFrom(JsonNodeFactory.instance.numberNode((byte) 127))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode((byte) 127))
         .to((byte) 127)
-        .convertsFrom(JsonNodeFactory.instance.numberNode((byte) -128))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode((byte) -128))
         .to((byte) -128)
-        .convertsFrom(JsonNodeFactory.instance.textNode("0"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("0"))
         .to((byte) 0)
-        .convertsFrom(JsonNodeFactory.instance.textNode("127"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("127"))
         .to((byte) 127)
-        .convertsFrom(JsonNodeFactory.instance.textNode("-128"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("-128"))
         .to((byte) -128)
-        .convertsFrom(JsonNodeFactory.instance.textNode("1970-01-01T00:00:00Z"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
         .to((byte) 0)
-        .convertsFrom(JsonNodeFactory.instance.textNode("TRUE"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
         .to((byte) 1)
-        .convertsFrom(JsonNodeFactory.instance.textNode("FALSE"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
         .to((byte) 0)
         .convertsFrom(null)
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
   }
 
@@ -74,23 +74,23 @@ class JsonNodeToByteCodecTest {
   void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo((byte) 0)
-        .from(JsonNodeFactory.instance.numberNode((byte) 0))
+        .from(JSON_NODE_FACTORY.numberNode((byte) 0))
         .convertsTo((byte) 127)
-        .from(JsonNodeFactory.instance.numberNode((byte) 127))
+        .from(JSON_NODE_FACTORY.numberNode((byte) 127))
         .convertsTo((byte) -128)
-        .from(JsonNodeFactory.instance.numberNode((byte) -128))
+        .from(JSON_NODE_FACTORY.numberNode((byte) -128))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
   void should_not_convert_from_invalid_input() {
     assertThat(codec)
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid byte"))
-        .cannotConvertFrom(JsonNodeFactory.instance.numberNode(1.2))
-        .cannotConvertFrom(JsonNodeFactory.instance.numberNode(128))
-        .cannotConvertFrom(JsonNodeFactory.instance.numberNode(-129))
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("2000-01-01T00:00:00Z")) // overflow
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid byte"))
+        .cannotConvertFrom(JSON_NODE_FACTORY.numberNode(1.2))
+        .cannotConvertFrom(JSON_NODE_FACTORY.numberNode(128))
+        .cannotConvertFrom(JSON_NODE_FACTORY.numberNode(-129))
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z")) // overflow
     ;
   }
 }

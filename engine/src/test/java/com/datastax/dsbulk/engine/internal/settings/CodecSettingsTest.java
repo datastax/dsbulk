@@ -72,7 +72,6 @@ import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCod
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.math.BigDecimal;
@@ -335,7 +334,7 @@ class CodecSettingsTest {
     assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(JsonNode.class)))
         .isNotNull()
         .isInstanceOf(JsonNodeToUUIDCodec.class)
-        .convertsFrom(JsonNodeFactory.instance.textNode("123456"))
+        .convertsFrom(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
         .to(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
   }
 

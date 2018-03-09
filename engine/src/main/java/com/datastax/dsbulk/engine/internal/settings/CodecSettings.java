@@ -22,6 +22,7 @@ import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.datastax.dsbulk.engine.internal.codecs.util.ToStringNumberFormat;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
@@ -89,6 +90,10 @@ public class CodecSettings {
           .parseDefaulting(ChronoField.NANO_OF_SECOND, 0)
           .toFormatter(Locale.US)
           .withZone(ZoneOffset.UTC);
+
+  /** A {@link JsonNodeFactory} that preserves {@link BigDecimal} scales. */
+  public static final JsonNodeFactory JSON_NODE_FACTORY =
+      JsonNodeFactory.withExactBigDecimals(true);
 
   private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
   private static final String LOCALE = "locale";

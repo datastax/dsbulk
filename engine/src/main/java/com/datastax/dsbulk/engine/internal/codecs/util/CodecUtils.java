@@ -142,36 +142,42 @@ public class CodecUtils {
       number = parseNumber(s, numberFormat);
     } catch (ParseException e1) {
       try {
-        // 2) try Double.valueOf(s)
-        number = Double.valueOf(s);
+        // 2) try new BigDecimal(s)
+        number = new BigDecimal(s);
       } catch (NumberFormatException e2) {
         e2.addSuppressed(e1);
         try {
-          // 3) try a temporal, then convert to units since epoch
-          TemporalAccessor temporal = parseTemporal(s, temporalFormat);
-          assert temporal != null;
-          Instant instant = toInstant(temporal, temporalFormat.getZone(), epoch.toLocalDate());
-          number = instantToNumber(instant, timeUnit, epoch.toInstant());
-        } catch (DateTimeException e3) {
-          // 4) Lastly, try a boolean word, then convert to number
-          Boolean b = booleanWords.get(s.toLowerCase());
-          if (b != null) {
-            number = booleanNumbers.get(b ? 0 : 1);
-          } else {
-            e3.addSuppressed(e2);
-            IllegalArgumentException e4 =
-                new IllegalArgumentException(
-                    String.format(
-                        "Could not parse '%s'; accepted formats are: "
-                            + "a valid number (e.g. '%s'), "
-                            + "a valid Java numeric format (e.g. '-123.45e6'), "
-                            + "a valid date-time pattern (e.g. '%s'), "
-                            + "or a valid boolean word",
-                        s,
-                        formatNumber(1234.56, numberFormat),
-                        formatTemporal(Instant.now(), temporalFormat)));
-            e4.addSuppressed(e3);
-            throw e4;
+          // 3) try Double.valueOf(s)
+          number = Double.valueOf(s);
+        } catch (NumberFormatException e3) {
+          e3.addSuppressed(e2);
+          try {
+            // 4) try a temporal, then convert to units since epoch
+            TemporalAccessor temporal = parseTemporal(s, temporalFormat);
+            assert temporal != null;
+            Instant instant = toInstant(temporal, temporalFormat.getZone(), epoch.toLocalDate());
+            number = instantToNumber(instant, timeUnit, epoch.toInstant());
+          } catch (DateTimeException e4) {
+            // 5) Lastly, try a boolean word, then convert to number
+            Boolean b = booleanWords.get(s.toLowerCase());
+            if (b != null) {
+              number = booleanNumbers.get(b ? 0 : 1);
+            } else {
+              e4.addSuppressed(e3);
+              IllegalArgumentException e5 =
+                  new IllegalArgumentException(
+                      String.format(
+                          "Could not parse '%s'; accepted formats are: "
+                              + "a valid number (e.g. '%s'), "
+                              + "a valid Java numeric format (e.g. '-123.45e6'), "
+                              + "a valid date-time pattern (e.g. '%s'), "
+                              + "or a valid boolean word",
+                          s,
+                          formatNumber(1234.56, numberFormat),
+                          formatTemporal(Instant.now(), temporalFormat)));
+              e5.addSuppressed(e4);
+              throw e5;
+            }
           }
         }
       }

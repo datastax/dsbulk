@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
 import com.datastax.driver.core.utils.Bytes;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.nio.ByteBuffer;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
@@ -32,19 +32,19 @@ class JsonNodeToBlobCodecTest {
   @Test
   void should_convert_from_valid_input() {
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.binaryNode(data))
+        .convertsFrom(JSON_NODE_FACTORY.binaryNode(data))
         .to(dataBb)
-        .convertsFrom(JsonNodeFactory.instance.binaryNode(empty))
+        .convertsFrom(JSON_NODE_FACTORY.binaryNode(empty))
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(data64))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(data64))
         .to(dataBb)
-        .convertsFrom(JsonNodeFactory.instance.textNode(dataHex))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(dataHex))
         .to(dataBb)
-        .convertsFrom(JsonNodeFactory.instance.textNode("0x"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("0x"))
         .to(emptyBb)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.nullNode())
+        .convertsFrom(JSON_NODE_FACTORY.nullNode())
         .to(null)
         .convertsFrom(null)
         .to(null);
@@ -54,15 +54,15 @@ class JsonNodeToBlobCodecTest {
   void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(dataBb)
-        .from(JsonNodeFactory.instance.binaryNode(data))
+        .from(JSON_NODE_FACTORY.binaryNode(data))
         .convertsTo(emptyBb)
-        .from(JsonNodeFactory.instance.binaryNode(empty))
+        .from(JSON_NODE_FACTORY.binaryNode(empty))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
   void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid binary"));
+    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid binary"));
   }
 }
