@@ -16,7 +16,7 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.CCMExtension;
-import com.datastax.dsbulk.engine.tests.utils.EndToEndUtils;
+import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
@@ -42,7 +42,7 @@ abstract class EndToEndCCMITBase {
 
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
-    EndToEndUtils.resetLogbackConfiguration();
+    LogUtils.resetLogbackConfiguration();
   }
 
   void validateResultSetSize(int numOfQueries, String statement) {

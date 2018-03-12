@@ -58,7 +58,7 @@ import com.datastax.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
-import com.datastax.dsbulk.engine.tests.utils.EndToEndUtils;
+import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
@@ -130,7 +130,7 @@ class CSVEndToEndSimulacronIT {
 
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
-    EndToEndUtils.resetLogbackConfiguration();
+    LogUtils.resetLogbackConfiguration();
   }
 
   @Test
@@ -844,7 +844,7 @@ class CSVEndToEndSimulacronIT {
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
     simulacron.prime(new Prime(prime));
 
-    EndToEndUtils.setProductionKey();
+    LogUtils.setProductionKey();
 
     String[] args = {
       "unload",

@@ -20,21 +20,21 @@ import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RecordReporter extends ScheduledReporter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RecordReporter.class);
-
   private final String msg;
   private final long expectedTotal;
+  private final Logger logger;
 
-  public RecordReporter(
+  RecordReporter(
       MetricRegistry registry,
+      Logger logger,
       TimeUnit rateUnit,
       ScheduledExecutorService scheduler,
       long expectedTotal) {
     super(registry, "record-reporter", createFilter(), rateUnit, TimeUnit.MILLISECONDS, scheduler);
+    this.logger = logger;
     this.expectedTotal = expectedTotal;
     if (expectedTotal < 0) {
       msg = "Records: total: %,d, successful: %,d, failed: %,d, mean: %,.0f records/%s";
@@ -72,7 +72,7 @@ public class RecordReporter extends ScheduledReporter {
   private void reportWithoutExpectedTotal(Meter totalMeter, Counter failedMeter) {
     long total = totalMeter.getCount();
     long failed = failedMeter.getCount();
-    LOGGER.info(
+    logger.info(
         String.format(
             msg,
             total,
@@ -86,7 +86,7 @@ public class RecordReporter extends ScheduledReporter {
     long total = totalMeter.getCount();
     long failed = failedMeter.getCount();
     float progression = (float) total / (float) expectedTotal * 100f;
-    LOGGER.info(
+    logger.info(
         String.format(
             msg,
             total,

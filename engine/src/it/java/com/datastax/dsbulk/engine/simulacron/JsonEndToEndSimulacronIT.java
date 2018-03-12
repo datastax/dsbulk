@@ -16,7 +16,6 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createParamet
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithError;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSet;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createSimpleParametrizedQuery;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.setProductionKey;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
@@ -30,6 +29,7 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_PART
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.SELECT_FROM_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.engine.tests.utils.LogUtils.setProductionKey;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
 import static java.nio.file.Files.createTempDirectory;
@@ -53,7 +53,7 @@ import com.datastax.dsbulk.connectors.json.JsonConnector;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
-import com.datastax.dsbulk.engine.tests.utils.EndToEndUtils;
+import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
@@ -123,7 +123,7 @@ class JsonEndToEndSimulacronIT {
 
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
-    EndToEndUtils.resetLogbackConfiguration();
+    LogUtils.resetLogbackConfiguration();
   }
 
   @Test

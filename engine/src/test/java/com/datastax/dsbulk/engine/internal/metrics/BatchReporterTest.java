@@ -18,9 +18,13 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(LogInterceptingExtension.class)
 class BatchReporterTest {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(BatchReporter.class);
 
   private MetricRegistry registry = new MetricRegistry();
 
@@ -29,7 +33,7 @@ class BatchReporterTest {
       throws Exception {
     Histogram size = registry.histogram("batches/size");
     BatchReporter reporter =
-        new BatchReporter(registry, Executors.newSingleThreadScheduledExecutor());
+        new BatchReporter(registry, LOGGER, Executors.newSingleThreadScheduledExecutor());
     reporter.report();
     assertThat(interceptor).hasMessageMatching("Batches: total: 0, size: 0.00 mean, 0 min, 0 max");
     size.update(2);
