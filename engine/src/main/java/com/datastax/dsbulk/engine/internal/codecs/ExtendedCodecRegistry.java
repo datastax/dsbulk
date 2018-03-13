@@ -165,7 +165,8 @@ public class ExtendedCodecRegistry {
     TypeCodec<T> codec;
     try {
       if (javaType.getRawType().equals(String.class)) {
-        // never return the original varchar codec
+        // Never return the driver's built-in StringCodec because it does not handle
+        // null words. We need StringToStringCodec here.
         codec = (TypeCodec<T>) createStringConvertingCodec(cqlType);
       } else {
         codec = (TypeCodec<T>) codecRegistry.codecFor(cqlType, javaType);
