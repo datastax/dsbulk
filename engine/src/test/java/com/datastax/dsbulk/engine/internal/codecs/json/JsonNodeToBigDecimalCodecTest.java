@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -21,7 +22,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.collect.ImmutableMap;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
@@ -48,29 +48,29 @@ class JsonNodeToBigDecimalCodecTest {
   @Test
   void should_convert_from_valid_input() throws Exception {
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.numberNode(0))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode(0))
         .to(ZERO)
-        .convertsFrom(JsonNodeFactory.instance.numberNode(0d))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode(0d))
         .to(new BigDecimal("0.0"))
-        .convertsFrom(JsonNodeFactory.instance.numberNode(ONE))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode(ONE))
         .to(ONE)
-        .convertsFrom(JsonNodeFactory.instance.numberNode(-1234.56))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode(-1234.56))
         .to(new BigDecimal("-1234.56"))
-        .convertsFrom(JsonNodeFactory.instance.textNode("-1,234.56"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("-1,234.56"))
         .to(new BigDecimal("-1234.56"))
-        .convertsFrom(JsonNodeFactory.instance.textNode("1970-01-01T00:00:00Z"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
         .to(new BigDecimal("0"))
-        .convertsFrom(JsonNodeFactory.instance.textNode("2000-01-01T00:00:00Z"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z"))
         .to(new BigDecimal("946684800000"))
-        .convertsFrom(JsonNodeFactory.instance.textNode("TRUE"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
         .to(ONE)
-        .convertsFrom(JsonNodeFactory.instance.textNode("FALSE"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
         .to(ZERO)
         .convertsFrom(null)
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.nullNode())
+        .convertsFrom(JSON_NODE_FACTORY.nullNode())
         .to(null);
   }
 
@@ -78,15 +78,15 @@ class JsonNodeToBigDecimalCodecTest {
   void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(ZERO)
-        .from(JsonNodeFactory.instance.numberNode(ZERO))
+        .from(JSON_NODE_FACTORY.numberNode(ZERO))
         .convertsTo(new BigDecimal("1234.56"))
-        .from(JsonNodeFactory.instance.numberNode(new BigDecimal("1234.56")))
+        .from(JSON_NODE_FACTORY.numberNode(new BigDecimal("1234.56")))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
   void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid decimal"));
+    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid decimal"));
   }
 }

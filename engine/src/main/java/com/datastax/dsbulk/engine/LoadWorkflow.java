@@ -147,7 +147,16 @@ public class LoadWorkflow implements Workflow {
     flux.blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
-    LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+    if (logManager.getTotalErrors() == 0) {
+      LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+    } else {
+      LOGGER.info(
+          "{} completed with {} errors in {}. Check log files under {} for details.",
+          this,
+          logManager.getTotalErrors(),
+          WorkflowUtils.formatElapsed(seconds),
+          logManager.getExecutionDirectory());
+    }
     return logManager.getTotalErrors() == 0;
   }
 

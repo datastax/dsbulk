@@ -8,10 +8,11 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
+
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.net.InetAddress;
 
 public class JsonNodeToInetAddressCodec extends ConvertingCodec<JsonNode, InetAddress> {
@@ -41,8 +42,8 @@ public class JsonNodeToInetAddressCodec extends ConvertingCodec<JsonNode, InetAd
   @Override
   public JsonNode convertTo(InetAddress value) {
     if (value == null) {
-      return JsonNodeFactory.instance.nullNode();
+      return JSON_NODE_FACTORY.nullNode();
     }
-    return JsonNodeFactory.instance.textNode(value.getHostAddress());
+    return JSON_NODE_FACTORY.textNode(value.getHostAddress());
   }
 }

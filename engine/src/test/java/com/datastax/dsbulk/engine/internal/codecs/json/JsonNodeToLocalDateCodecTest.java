@@ -8,13 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
 
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import org.junit.jupiter.api.Test;
@@ -31,19 +31,19 @@ class JsonNodeToLocalDateCodecTest {
   void should_convert_from_valid_input() {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1);
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.textNode("2016-07-24"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2016-07-24"))
         .to(LocalDate.parse("2016-07-24"))
         .convertsFrom(null)
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
     codec = new JsonNodeToLocalDateCodec(format2);
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.textNode("20160724"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("20160724"))
         .to(LocalDate.parse("2016-07-24"))
         .convertsFrom(null)
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
   }
 
@@ -52,21 +52,20 @@ class JsonNodeToLocalDateCodecTest {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1);
     assertThat(codec)
         .convertsTo(LocalDate.parse("2016-07-24"))
-        .from(JsonNodeFactory.instance.textNode("2016-07-24"))
+        .from(JSON_NODE_FACTORY.textNode("2016-07-24"))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
     codec = new JsonNodeToLocalDateCodec(format2);
     assertThat(codec)
         .convertsTo(LocalDate.parse("2016-07-24"))
-        .from(JsonNodeFactory.instance.textNode("20160724"))
+        .from(JSON_NODE_FACTORY.textNode("20160724"))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
   void should_not_convert_from_invalid_input() {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1);
-    assertThat(codec)
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid date format"));
+    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }
 }

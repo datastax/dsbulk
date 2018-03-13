@@ -44,6 +44,9 @@ import static org.slf4j.event.Level.ERROR;
 
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
+import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
+import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
 import com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
@@ -61,6 +64,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -727,83 +733,83 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void should_truncate_and_round() throws Exception {
 
-    session.execute("DROP TABLE IF EXISTS dat224");
+    session.execute("DROP TABLE IF EXISTS numbers");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS dat224 (key varchar PRIMARY KEY, vdouble double, vdecimal decimal)");
+        "CREATE TABLE IF NOT EXISTS numbers (key varchar PRIMARY KEY, vdouble double, vdecimal decimal)");
 
-    List<String> loadArgs = new ArrayList<>();
-    loadArgs.add("load");
-    loadArgs.add("--log.directory");
-    loadArgs.add(escapeUserInput(logDir));
-    loadArgs.add("--connector.csv.url");
-    loadArgs.add(ClassLoader.getSystemResource("number.csv").toExternalForm());
-    loadArgs.add("--connector.csv.header");
-    loadArgs.add("true");
-    loadArgs.add("--connector.csv.delimiter");
-    loadArgs.add(";");
-    loadArgs.add("--connector.csv.comment");
-    loadArgs.add("#");
-    loadArgs.add("--codec.overflowStrategy");
-    loadArgs.add("TRUNCATE");
-    loadArgs.add("--schema.keyspace");
-    loadArgs.add(session.getLoggedKeyspace());
-    loadArgs.add("--schema.table");
-    loadArgs.add("dat224");
-    loadArgs.add("--schema.mapping");
-    loadArgs.add("*=*");
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(ClassLoader.getSystemResource("number.csv").toExternalForm());
+    args.add("--connector.csv.header");
+    args.add("true");
+    args.add("--connector.csv.delimiter");
+    args.add(";");
+    args.add("--connector.csv.comment");
+    args.add("#");
+    args.add("--codec.overflowStrategy");
+    args.add("TRUNCATE");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("numbers");
+    args.add("--schema.mapping");
+    args.add("*=*");
 
-    int loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
+    int loadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
     deleteDirectory(logDir);
 
-    List<String> unloadArgs = new ArrayList<>();
-    unloadArgs.add("unload");
-    unloadArgs.add("--log.directory");
-    unloadArgs.add(escapeUserInput(logDir));
-    unloadArgs.add("--connector.csv.url");
-    unloadArgs.add(escapeUserInput(unloadDir));
-    unloadArgs.add("--connector.csv.header");
-    unloadArgs.add("false");
-    unloadArgs.add("--connector.csv.delimiter");
-    unloadArgs.add(";");
-    unloadArgs.add("--connector.csv.maxConcurrentFiles");
-    unloadArgs.add("1");
-    unloadArgs.add("--codec.roundingStrategy");
-    unloadArgs.add("FLOOR");
-    unloadArgs.add("--codec.formatNumbers");
-    unloadArgs.add("true");
-    unloadArgs.add("--schema.keyspace");
-    unloadArgs.add(session.getLoggedKeyspace());
-    unloadArgs.add("--schema.query");
-    unloadArgs.add("SELECT key, vdouble, vdecimal FROM dat224");
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.delimiter");
+    args.add(";");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--codec.roundingStrategy");
+    args.add("FLOOR");
+    args.add("--codec.formatNumbers");
+    args.add("true");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
+    int unloadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
     checkNumbersRead(TRUNCATE, FLOOR, true, unloadDir);
     deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
-    loadArgs = new ArrayList<>();
-    loadArgs.add("load");
-    loadArgs.add("--log.directory");
-    loadArgs.add(escapeUserInput(logDir));
-    loadArgs.add("--connector.csv.url");
-    loadArgs.add(escapeUserInput(unloadDir));
-    loadArgs.add("--connector.csv.header");
-    loadArgs.add("false");
-    loadArgs.add("--connector.csv.delimiter");
-    loadArgs.add(";");
-    loadArgs.add("--codec.overflowStrategy");
-    loadArgs.add("TRUNCATE");
-    loadArgs.add("--schema.keyspace");
-    loadArgs.add(session.getLoggedKeyspace());
-    loadArgs.add("--schema.table");
-    loadArgs.add("dat224");
-    loadArgs.add("--schema.mapping");
-    loadArgs.add("key,vdouble,vdecimal");
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.delimiter");
+    args.add(";");
+    args.add("--codec.overflowStrategy");
+    args.add("TRUNCATE");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("numbers");
+    args.add("--schema.mapping");
+    args.add("key,vdouble,vdecimal");
 
-    loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
+    loadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
     checkNumbersWritten(TRUNCATE, FLOOR, session);
   }
@@ -812,32 +818,32 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void should_not_truncate_nor_round() throws Exception {
 
-    session.execute("DROP TABLE IF EXISTS dat224");
+    session.execute("DROP TABLE IF EXISTS numbers");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS dat224 (key varchar PRIMARY KEY, vdouble double, vdecimal decimal)");
+        "CREATE TABLE IF NOT EXISTS numbers (key varchar PRIMARY KEY, vdouble double, vdecimal decimal)");
 
-    List<String> loadArgs = new ArrayList<>();
-    loadArgs.add("load");
-    loadArgs.add("--log.directory");
-    loadArgs.add(escapeUserInput(logDir));
-    loadArgs.add("--connector.csv.url");
-    loadArgs.add(ClassLoader.getSystemResource("number.csv").toExternalForm());
-    loadArgs.add("--connector.csv.header");
-    loadArgs.add("true");
-    loadArgs.add("--connector.csv.delimiter");
-    loadArgs.add(";");
-    loadArgs.add("--connector.csv.comment");
-    loadArgs.add("#");
-    loadArgs.add("--codec.overflowStrategy");
-    loadArgs.add("REJECT");
-    loadArgs.add("--schema.keyspace");
-    loadArgs.add(session.getLoggedKeyspace());
-    loadArgs.add("--schema.table");
-    loadArgs.add("dat224");
-    loadArgs.add("--schema.mapping");
-    loadArgs.add("*=*");
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(ClassLoader.getSystemResource("number.csv").toExternalForm());
+    args.add("--connector.csv.header");
+    args.add("true");
+    args.add("--connector.csv.delimiter");
+    args.add(";");
+    args.add("--connector.csv.comment");
+    args.add("#");
+    args.add("--codec.overflowStrategy");
+    args.add("REJECT");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("numbers");
+    args.add("--schema.mapping");
+    args.add("*=*");
 
-    int loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
+    int loadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateExceptionsLog(
@@ -848,53 +854,162 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     checkNumbersWritten(REJECT, UNNECESSARY, session);
     deleteDirectory(logDir);
 
-    List<String> unloadArgs = new ArrayList<>();
-    unloadArgs.add("unload");
-    unloadArgs.add("--log.directory");
-    unloadArgs.add(escapeUserInput(logDir));
-    unloadArgs.add("--connector.csv.url");
-    unloadArgs.add(escapeUserInput(unloadDir));
-    unloadArgs.add("--connector.csv.header");
-    unloadArgs.add("false");
-    unloadArgs.add("--connector.csv.delimiter");
-    unloadArgs.add(";");
-    unloadArgs.add("--connector.csv.maxConcurrentFiles");
-    unloadArgs.add("1");
-    unloadArgs.add("--codec.roundingStrategy");
-    unloadArgs.add("UNNECESSARY");
-    unloadArgs.add("--schema.keyspace");
-    unloadArgs.add(session.getLoggedKeyspace());
-    unloadArgs.add("--schema.query");
-    unloadArgs.add("SELECT key, vdouble, vdecimal FROM dat224");
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.delimiter");
+    args.add(";");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--codec.roundingStrategy");
+    args.add("UNNECESSARY");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new Main(addContactPointAndPort(unloadArgs)).run();
+    int unloadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
     checkNumbersRead(REJECT, UNNECESSARY, false, unloadDir);
     deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
-    loadArgs = new ArrayList<>();
-    loadArgs.add("load");
-    loadArgs.add("--log.directory");
-    loadArgs.add(escapeUserInput(logDir));
-    loadArgs.add("--connector.csv.url");
-    loadArgs.add(escapeUserInput(unloadDir));
-    loadArgs.add("--connector.csv.header");
-    loadArgs.add("false");
-    loadArgs.add("--connector.csv.delimiter");
-    loadArgs.add(";");
-    loadArgs.add("--codec.overflowStrategy");
-    loadArgs.add("REJECT");
-    loadArgs.add("--schema.keyspace");
-    loadArgs.add(session.getLoggedKeyspace());
-    loadArgs.add("--schema.table");
-    loadArgs.add("dat224");
-    loadArgs.add("--schema.mapping");
-    loadArgs.add("key,vdouble,vdecimal");
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.delimiter");
+    args.add(";");
+    args.add("--codec.overflowStrategy");
+    args.add("REJECT");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("numbers");
+    args.add("--schema.mapping");
+    args.add("key,vdouble,vdecimal");
 
-    loadStatus = new Main(addContactPointAndPort(loadArgs)).run();
+    loadStatus = new Main(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
     checkNumbersWritten(REJECT, UNNECESSARY, session);
+  }
+
+  /** Test for DAT-236. */
+  @Test
+  void temporal_roundtrip() throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS temporals");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS temporals (key int PRIMARY KEY, vdate date, vtime time, vtimestamp timestamp, vseconds timestamp)");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(ClassLoader.getSystemResource("temporal.csv").toExternalForm());
+    args.add("--connector.csv.header");
+    args.add("true");
+    args.add("--codec.locale");
+    args.add("fr_FR");
+    args.add("--codec.timeZone");
+    args.add("Europe/Paris");
+    args.add("--codec.date");
+    args.add("cccc, d MMMM uuuu");
+    args.add("--codec.time");
+    args.add("HHmmssSSS");
+    args.add("--codec.timestamp");
+    args.add("ISO_ZONED_DATE_TIME");
+    args.add("--codec.unit");
+    args.add("SECONDS");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("temporals");
+    args.add("--schema.mapping");
+    args.add("*=*");
+
+    int loadStatus = new Main(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    checkTemporalsWritten(session);
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.delimiter");
+    args.add(";");
+    args.add("--codec.locale");
+    args.add("fr_FR");
+    args.add("--codec.timeZone");
+    args.add("Europe/Paris");
+    args.add("--codec.date");
+    args.add("cccc, d MMMM uuuu");
+    args.add("--codec.time");
+    args.add("HHmmssSSS");
+    args.add("--codec.timestamp");
+    args.add("ISO_ZONED_DATE_TIME");
+    args.add("--codec.unit");
+    args.add("SECONDS");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("SELECT key, vdate, vtime, vtimestamp, vseconds FROM temporals");
+
+    int unloadStatus = new Main(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
+    checkTemporalsRead(unloadDir);
+    deleteDirectory(logDir);
+
+    // check we can load from the unloaded dataset
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.delimiter");
+    args.add(";");
+    args.add("--codec.locale");
+    args.add("fr_FR");
+    args.add("--codec.timeZone");
+    args.add("Europe/Paris");
+    args.add("--codec.date");
+    args.add("cccc, d MMMM uuuu");
+    args.add("--codec.time");
+    args.add("HHmmssSSS");
+    args.add("--codec.timestamp");
+    args.add("ISO_ZONED_DATE_TIME");
+    args.add("--codec.unit");
+    args.add("SECONDS");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("temporals");
+    args.add("--schema.mapping");
+    args.add("key, vdate, vtime, vtimestamp, vseconds");
+
+    loadStatus = new Main(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    checkTemporalsWritten(session);
   }
 
   static void checkNumbersWritten(
@@ -902,7 +1017,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Map<String, Double> doubles = new HashMap<>();
     Map<String, BigDecimal> bigdecimals = new HashMap<>();
     session
-        .execute("SELECT * FROM dat224")
+        .execute("SELECT * FROM numbers")
         .iterator()
         .forEachRemaining(
             row -> {
@@ -1165,6 +1280,30 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         assertThat(numbers.get("too_many_digits")).isNull();
       }
     }
+  }
+
+  static void checkTemporalsWritten(Session session) {
+    Row row = session.execute("SELECT * FROM temporals WHERE key = 0").one();
+    LocalDate date = row.get("vdate", LocalDateCodec.instance);
+    LocalTime time = row.get("vtime", LocalTimeCodec.instance);
+    Instant timestamp = row.get("vtimestamp", InstantCodec.instance);
+    Instant seconds = row.get("vseconds", InstantCodec.instance);
+    assertThat(date).isEqualTo(LocalDate.of(2018, 3, 9));
+    assertThat(time).isEqualTo(LocalTime.of(17, 12, 32, 584_000_000));
+    assertThat(timestamp).isEqualTo(Instant.parse("2018-03-09T16:12:32.584Z"));
+    assertThat(seconds).isEqualTo(Instant.parse("2018-03-09T16:12:32Z"));
+  }
+
+  private static void checkTemporalsRead(Path unloadDir) throws IOException {
+    String line =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir, UTF_8)
+            .collect(Collectors.toList())
+            .get(0);
+    List<String> cols = Splitter.on(';').splitToList(line);
+    assertThat(cols.get(1)).isEqualTo("vendredi, 9 mars 2018");
+    assertThat(cols.get(2)).isEqualTo("171232584");
+    assertThat(cols.get(3)).isEqualTo("2018-03-09T17:12:32.584+01:00[Europe/Paris]");
+    assertThat(cols.get(4)).isEqualTo("2018-03-09T17:12:32+01:00[Europe/Paris]");
   }
 
   private void validateErrorMessageLogged(LogInterceptor logs, String... msg) {

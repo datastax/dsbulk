@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MIN;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
@@ -24,7 +25,6 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.utils.UUIDs;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.ZonedDateTime;
@@ -46,26 +46,26 @@ class JsonNodeToUUIDCodecTest {
   @Test
   void should_convert_from_valid_input() {
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.textNode("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .to(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .convertsFrom(null)
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
 
     assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN))
-        .convertsFrom(JsonNodeFactory.instance.textNode("2017-12-05T12:44:36+01:00"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2017-12-05T12:44:36+01:00"))
         .to(
             UUIDs.startOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
     assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX))
-        .convertsFrom(JsonNodeFactory.instance.textNode("2017-12-05T12:44:36.999999999+01:00"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("2017-12-05T12:44:36.999999999+01:00"))
         .to(
             UUIDs.endOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36.999+01:00").toInstant().toEpochMilli()));
     assertThat(
             new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED)
-                .convertFrom(JsonNodeFactory.instance.textNode("2017-12-05T12:44:36+01:00"))
+                .convertFrom(JSON_NODE_FACTORY.textNode("2017-12-05T12:44:36+01:00"))
                 .timestamp())
         .isEqualTo(
             UUIDs.startOf(
@@ -73,7 +73,7 @@ class JsonNodeToUUIDCodecTest {
                 .timestamp());
     assertThat(
             new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM)
-                .convertFrom(JsonNodeFactory.instance.textNode("2017-12-05T12:44:36+01:00"))
+                .convertFrom(JSON_NODE_FACTORY.textNode("2017-12-05T12:44:36+01:00"))
                 .timestamp())
         .isEqualTo(
             UUIDs.startOf(
@@ -81,40 +81,40 @@ class JsonNodeToUUIDCodecTest {
                 .timestamp());
 
     assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN))
-        .convertsFrom(JsonNodeFactory.instance.textNode("123456"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("123456"))
         .to(UUIDs.startOf(123456L));
     Assertions.assertThat(
             new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX)
-                .convertFrom(JsonNodeFactory.instance.textNode("123456"))
+                .convertFrom(JSON_NODE_FACTORY.textNode("123456"))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     Assertions.assertThat(
             new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED)
-                .convertFrom(JsonNodeFactory.instance.textNode("123456"))
+                .convertFrom(JSON_NODE_FACTORY.textNode("123456"))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     Assertions.assertThat(
             new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM)
-                .convertFrom(JsonNodeFactory.instance.textNode("123456"))
+                .convertFrom(JSON_NODE_FACTORY.textNode("123456"))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
 
     assertThat(new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN))
-        .convertsFrom(JsonNodeFactory.instance.numberNode(123456L))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode(123456L))
         .to(UUIDs.startOf(123456L));
     Assertions.assertThat(
             new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX)
-                .convertFrom(JsonNodeFactory.instance.numberNode(123456L))
+                .convertFrom(JSON_NODE_FACTORY.numberNode(123456L))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     Assertions.assertThat(
             new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED)
-                .convertFrom(JsonNodeFactory.instance.numberNode(123456L))
+                .convertFrom(JSON_NODE_FACTORY.numberNode(123456L))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     Assertions.assertThat(
             new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM)
-                .convertFrom(JsonNodeFactory.instance.numberNode(123456L))
+                .convertFrom(JSON_NODE_FACTORY.numberNode(123456L))
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
   }
@@ -123,13 +123,13 @@ class JsonNodeToUUIDCodecTest {
   void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
-        .from(JsonNodeFactory.instance.textNode("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
+        .from(JSON_NODE_FACTORY.textNode("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
   void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid UUID"));
+    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid UUID"));
   }
 }

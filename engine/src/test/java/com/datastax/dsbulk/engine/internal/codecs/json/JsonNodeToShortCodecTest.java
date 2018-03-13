@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -21,7 +22,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.collect.ImmutableMap;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.RoundingMode;
@@ -47,31 +47,31 @@ class JsonNodeToShortCodecTest {
   @Test
   void should_convert_from_valid_input() {
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.numberNode((short) 0))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode((short) 0))
         .to((short) 0)
-        .convertsFrom(JsonNodeFactory.instance.numberNode((short) 32767))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode((short) 32767))
         .to((short) 32767)
-        .convertsFrom(JsonNodeFactory.instance.numberNode((short) -32768))
+        .convertsFrom(JSON_NODE_FACTORY.numberNode((short) -32768))
         .to((short) -32768)
-        .convertsFrom(JsonNodeFactory.instance.textNode("0"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("0"))
         .to((short) 0)
-        .convertsFrom(JsonNodeFactory.instance.textNode("32767"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("32767"))
         .to((short) 32767)
-        .convertsFrom(JsonNodeFactory.instance.textNode("-32768"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("-32768"))
         .to((short) -32768)
-        .convertsFrom(JsonNodeFactory.instance.textNode("32,767"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("32,767"))
         .to((short) 32767)
-        .convertsFrom(JsonNodeFactory.instance.textNode("-32,768"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("-32,768"))
         .to((short) -32768)
-        .convertsFrom(JsonNodeFactory.instance.textNode("1970-01-01T00:00:00Z"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
         .to((short) 0)
-        .convertsFrom(JsonNodeFactory.instance.textNode("TRUE"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
         .to((short) 1)
-        .convertsFrom(JsonNodeFactory.instance.textNode("FALSE"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
         .to((short) 0)
         .convertsFrom(null)
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
   }
 
@@ -79,23 +79,23 @@ class JsonNodeToShortCodecTest {
   void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo((short) 0)
-        .from(JsonNodeFactory.instance.numberNode((short) 0))
+        .from(JSON_NODE_FACTORY.numberNode((short) 0))
         .convertsTo(Short.MAX_VALUE)
-        .from(JsonNodeFactory.instance.numberNode((short) 32_767))
+        .from(JSON_NODE_FACTORY.numberNode((short) 32_767))
         .convertsTo(Short.MIN_VALUE)
-        .from(JsonNodeFactory.instance.numberNode((short) -32_768))
+        .from(JSON_NODE_FACTORY.numberNode((short) -32_768))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
   void should_not_convert_from_invalid_input() {
     assertThat(codec)
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid short"))
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("1.2"))
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("32768"))
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("-32769"))
-        .cannotConvertFrom(JsonNodeFactory.instance.textNode("2000-01-01T00:00:00Z")) // overflow
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid short"))
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("1.2"))
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("32768"))
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("-32769"))
+        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z")) // overflow
     ;
   }
 }

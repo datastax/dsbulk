@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -25,23 +25,23 @@ class JsonNodeToBooleanCodecTest {
   @Test
   void should_convert_from_valid_input() {
     assertThat(codec)
-        .convertsFrom(JsonNodeFactory.instance.booleanNode(true))
+        .convertsFrom(JSON_NODE_FACTORY.booleanNode(true))
         .to(true)
-        .convertsFrom(JsonNodeFactory.instance.booleanNode(false))
+        .convertsFrom(JSON_NODE_FACTORY.booleanNode(false))
         .to(false)
-        .convertsFrom(JsonNodeFactory.instance.textNode("FOO"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("FOO"))
         .to(true)
-        .convertsFrom(JsonNodeFactory.instance.textNode("BAR"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("BAR"))
         .to(false)
-        .convertsFrom(JsonNodeFactory.instance.textNode("foo"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("foo"))
         .to(true)
-        .convertsFrom(JsonNodeFactory.instance.textNode("bar"))
+        .convertsFrom(JSON_NODE_FACTORY.textNode("bar"))
         .to(false)
         .convertsFrom(null)
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.nullNode())
+        .convertsFrom(JSON_NODE_FACTORY.nullNode())
         .to(null)
-        .convertsFrom(JsonNodeFactory.instance.textNode(""))
+        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
         .to(null);
   }
 
@@ -49,15 +49,15 @@ class JsonNodeToBooleanCodecTest {
   void should_convert_to_valid_input() {
     assertThat(codec)
         .convertsTo(true)
-        .from(JsonNodeFactory.instance.booleanNode(true))
+        .from(JSON_NODE_FACTORY.booleanNode(true))
         .convertsTo(false)
-        .from(JsonNodeFactory.instance.booleanNode(false))
+        .from(JSON_NODE_FACTORY.booleanNode(false))
         .convertsTo(null)
-        .from(JsonNodeFactory.instance.nullNode());
+        .from(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
   void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom(JsonNodeFactory.instance.textNode("not a valid boolean"));
+    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid boolean"));
   }
 }

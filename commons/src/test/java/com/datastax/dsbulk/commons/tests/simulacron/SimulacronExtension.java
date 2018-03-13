@@ -56,7 +56,7 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
     Class<?> type = parameter.getType();
     if (BoundCluster.class.equals(type)) {
       BoundCluster boundCluster = getOrCreateBoundCluster(extensionContext);
-      LOGGER.warn(String.format("Returning %s for parameter %s", boundCluster, parameter));
+      LOGGER.debug(String.format("Returning %s for parameter %s", boundCluster, parameter));
       return boundCluster;
     } else {
       return super.resolveParameter(parameterContext, extensionContext);
