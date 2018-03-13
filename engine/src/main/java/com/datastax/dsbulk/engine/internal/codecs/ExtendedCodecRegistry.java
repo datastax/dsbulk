@@ -181,10 +181,10 @@ public class ExtendedCodecRegistry {
   }
 
   @SuppressWarnings("unchecked")
-  public <FROM, TO> ConvertingCodec<FROM, TO> convertingCodecFor(
-      @NotNull DataType cqlType, @NotNull TypeToken<? extends FROM> javaType) {
-    ConvertingCodec<FROM, TO> codec =
-        (ConvertingCodec<FROM, TO>) maybeCreateConvertingCodec(cqlType, javaType);
+  public <EXTERNAL, INTERNAL> ConvertingCodec<EXTERNAL, INTERNAL> convertingCodecFor(
+      @NotNull DataType cqlType, @NotNull TypeToken<? extends EXTERNAL> javaType) {
+    ConvertingCodec<EXTERNAL, INTERNAL> codec =
+        (ConvertingCodec<EXTERNAL, INTERNAL>) maybeCreateConvertingCodec(cqlType, javaType);
     if (codec != null) {
       return codec;
     }

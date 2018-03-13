@@ -15,14 +15,14 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
-public class DateToUUIDCodec<FROM extends Date> extends ConvertingCodec<FROM, UUID> {
+public class DateToUUIDCodec<EXTERNAL extends Date> extends ConvertingCodec<EXTERNAL, UUID> {
 
-  private final DateToTemporalCodec<FROM, Instant> instantCodec;
+  private final DateToTemporalCodec<EXTERNAL, Instant> instantCodec;
   private final TimeUUIDGenerator generator;
 
   public DateToUUIDCodec(
       TypeCodec<UUID> targetCodec,
-      DateToTemporalCodec<FROM, Instant> instantCodec,
+      DateToTemporalCodec<EXTERNAL, Instant> instantCodec,
       TimeUUIDGenerator generator) {
     super(targetCodec, instantCodec.getJavaType());
     this.instantCodec = instantCodec;
@@ -30,7 +30,7 @@ public class DateToUUIDCodec<FROM extends Date> extends ConvertingCodec<FROM, UU
   }
 
   @Override
-  public FROM internalToExternal(UUID value) {
+  public EXTERNAL internalToExternal(UUID value) {
     if (value == null) {
       return null;
     }
@@ -39,7 +39,7 @@ public class DateToUUIDCodec<FROM extends Date> extends ConvertingCodec<FROM, UU
   }
 
   @Override
-  public UUID externalToInternal(FROM value) {
+  public UUID externalToInternal(EXTERNAL value) {
     if (value == null) {
       return null;
     }

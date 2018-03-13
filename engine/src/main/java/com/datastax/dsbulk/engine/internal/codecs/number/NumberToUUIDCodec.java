@@ -14,14 +14,14 @@ import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import java.time.Instant;
 import java.util.UUID;
 
-public class NumberToUUIDCodec<FROM extends Number> extends ConvertingCodec<FROM, UUID> {
+public class NumberToUUIDCodec<EXTERNAL extends Number> extends ConvertingCodec<EXTERNAL, UUID> {
 
-  private final NumberToInstantCodec<FROM> instantCodec;
+  private final NumberToInstantCodec<EXTERNAL> instantCodec;
   private final TimeUUIDGenerator generator;
 
   public NumberToUUIDCodec(
       TypeCodec<UUID> targetCodec,
-      NumberToInstantCodec<FROM> instantCodec,
+      NumberToInstantCodec<EXTERNAL> instantCodec,
       TimeUUIDGenerator generator) {
     super(targetCodec, instantCodec.getJavaType());
     this.instantCodec = instantCodec;
@@ -29,7 +29,7 @@ public class NumberToUUIDCodec<FROM extends Number> extends ConvertingCodec<FROM
   }
 
   @Override
-  public FROM internalToExternal(UUID value) {
+  public EXTERNAL internalToExternal(UUID value) {
     if (value == null) {
       return null;
     }
@@ -38,7 +38,7 @@ public class NumberToUUIDCodec<FROM extends Number> extends ConvertingCodec<FROM
   }
 
   @Override
-  public UUID externalToInternal(FROM value) {
+  public UUID externalToInternal(EXTERNAL value) {
     if (value == null) {
       return null;
     }

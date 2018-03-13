@@ -15,15 +15,15 @@ import java.time.Instant;
 import java.time.temporal.TemporalAccessor;
 import java.util.UUID;
 
-public class TemporalToUUIDCodec<FROM extends TemporalAccessor>
-    extends ConvertingCodec<FROM, UUID> {
+public class TemporalToUUIDCodec<EXTERNAL extends TemporalAccessor>
+    extends ConvertingCodec<EXTERNAL, UUID> {
 
-  private final TemporalToTemporalCodec<FROM, Instant> instantCodec;
+  private final TemporalToTemporalCodec<EXTERNAL, Instant> instantCodec;
   private final TimeUUIDGenerator generator;
 
   public TemporalToUUIDCodec(
       TypeCodec<UUID> targetCodec,
-      TemporalToTemporalCodec<FROM, Instant> instantCodec,
+      TemporalToTemporalCodec<EXTERNAL, Instant> instantCodec,
       TimeUUIDGenerator generator) {
     super(targetCodec, instantCodec.getJavaType());
     this.instantCodec = instantCodec;
@@ -31,7 +31,7 @@ public class TemporalToUUIDCodec<FROM extends TemporalAccessor>
   }
 
   @Override
-  public FROM internalToExternal(UUID value) {
+  public EXTERNAL internalToExternal(UUID value) {
     if (value == null) {
       return null;
     }
@@ -40,7 +40,7 @@ public class TemporalToUUIDCodec<FROM extends TemporalAccessor>
   }
 
   @Override
-  public UUID externalToInternal(FROM value) {
+  public UUID externalToInternal(EXTERNAL value) {
     if (value == null) {
       return null;
     }

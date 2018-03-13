@@ -22,26 +22,27 @@ import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
 import java.util.Date;
 
-public class DateToTemporalCodec<FROM extends Date, TO extends TemporalAccessor>
-    extends ConvertingCodec<FROM, TO> {
+public class DateToTemporalCodec<EXTERNAL extends Date, INTERNAL extends TemporalAccessor>
+    extends ConvertingCodec<EXTERNAL, INTERNAL> {
 
   private final ZoneId timeZone;
 
-  public DateToTemporalCodec(Class<FROM> javaType, TypeCodec<TO> targetCodec, ZoneId timeZone) {
+  public DateToTemporalCodec(
+      Class<EXTERNAL> javaType, TypeCodec<INTERNAL> targetCodec, ZoneId timeZone) {
     super(targetCodec, javaType);
     this.timeZone = timeZone;
   }
 
   @SuppressWarnings("unchecked")
   @Override
-  public FROM internalToExternal(TO value) {
-    return (FROM) convert(value, getJavaType());
+  public EXTERNAL internalToExternal(INTERNAL value) {
+    return (EXTERNAL) convert(value, getJavaType());
   }
 
   @SuppressWarnings("unchecked")
   @Override
-  public TO externalToInternal(FROM value) {
-    return (TO) convert(value, internalCodec.getJavaType());
+  public INTERNAL externalToInternal(EXTERNAL value) {
+    return (INTERNAL) convert(value, internalCodec.getJavaType());
   }
 
   private TemporalAccessor convert(Date value, TypeToken<? extends TemporalAccessor> targetType) {

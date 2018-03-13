@@ -15,31 +15,35 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
 
-public class TemporalToTemporalCodec<FROM extends TemporalAccessor, TO extends TemporalAccessor>
-    extends ConvertingCodec<FROM, TO> {
+public class TemporalToTemporalCodec<
+        EXTERNAL extends TemporalAccessor, INTERNAL extends TemporalAccessor>
+    extends ConvertingCodec<EXTERNAL, INTERNAL> {
 
   private final ZoneId timeZone;
   private final ZonedDateTime epoch;
 
   public TemporalToTemporalCodec(
-      Class<FROM> javaType, TypeCodec<TO> targetCodec, ZoneId timeZone, ZonedDateTime epoch) {
+      Class<EXTERNAL> javaType,
+      TypeCodec<INTERNAL> targetCodec,
+      ZoneId timeZone,
+      ZonedDateTime epoch) {
     super(targetCodec, javaType);
     this.timeZone = timeZone;
     this.epoch = epoch;
   }
 
   @Override
-  public FROM internalToExternal(TO value) {
+  public EXTERNAL internalToExternal(INTERNAL value) {
     @SuppressWarnings("unchecked")
-    Class<? extends FROM> targetClass = (Class<? extends FROM>) getJavaType().getRawType();
+    Class<? extends EXTERNAL> targetClass = (Class<? extends EXTERNAL>) getJavaType().getRawType();
     return CodecUtils.convertTemporal(value, targetClass, timeZone, epoch.toLocalDate());
   }
 
   @Override
-  public TO externalToInternal(FROM value) {
+  public INTERNAL externalToInternal(EXTERNAL value) {
     @SuppressWarnings("unchecked")
-    Class<? extends TO> targetClass =
-        (Class<? extends TO>) internalCodec.getJavaType().getRawType();
+    Class<? extends INTERNAL> targetClass =
+        (Class<? extends INTERNAL>) internalCodec.getJavaType().getRawType();
     return CodecUtils.convertTemporal(value, targetClass, timeZone, epoch.toLocalDate());
   }
 }

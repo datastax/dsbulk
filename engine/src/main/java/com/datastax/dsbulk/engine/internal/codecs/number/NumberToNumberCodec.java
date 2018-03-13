@@ -12,22 +12,23 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 
-public class NumberToNumberCodec<FROM extends Number, TO extends Number>
-    extends ConvertingCodec<FROM, TO> {
+public class NumberToNumberCodec<EXTERNAL extends Number, INTERNAL extends Number>
+    extends ConvertingCodec<EXTERNAL, INTERNAL> {
 
-  public NumberToNumberCodec(Class<FROM> javaType, TypeCodec<TO> targetCodec) {
+  public NumberToNumberCodec(Class<EXTERNAL> javaType, TypeCodec<INTERNAL> targetCodec) {
     super(targetCodec, javaType);
   }
 
   @SuppressWarnings("unchecked")
   @Override
-  public FROM internalToExternal(TO value) {
-    return CodecUtils.convertNumber(value, (Class<FROM>) getJavaType().getRawType());
+  public EXTERNAL internalToExternal(INTERNAL value) {
+    return CodecUtils.convertNumber(value, (Class<EXTERNAL>) getJavaType().getRawType());
   }
 
   @SuppressWarnings("unchecked")
   @Override
-  public TO externalToInternal(FROM value) {
-    return CodecUtils.convertNumber(value, (Class<TO>) internalCodec.getJavaType().getRawType());
+  public INTERNAL externalToInternal(EXTERNAL value) {
+    return CodecUtils.convertNumber(
+        value, (Class<INTERNAL>) internalCodec.getJavaType().getRawType());
   }
 }
