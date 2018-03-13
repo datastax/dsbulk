@@ -19,12 +19,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class JsonNodeToMapCodec<K, V> extends ConvertingCodec<JsonNode, Map<K, V>> {
+public class JsonNodeToMapCodec<K, V> extends JsonNodeConvertingCodec<Map<K, V>> {
 
   private final ConvertingCodec<String, K> keyCodec;
   private final ConvertingCodec<JsonNode, V> valueCodec;
   private final ObjectMapper objectMapper;
-  private final List<String> nullWords;
 
   public JsonNodeToMapCodec(
       TypeCodec<Map<K, V>> collectionCodec,
@@ -32,18 +31,15 @@ public class JsonNodeToMapCodec<K, V> extends ConvertingCodec<JsonNode, Map<K, V
       ConvertingCodec<JsonNode, V> valueCodec,
       ObjectMapper objectMapper,
       List<String> nullWords) {
-    super(collectionCodec, JsonNode.class);
+    super(collectionCodec, nullWords);
     this.keyCodec = keyCodec;
     this.valueCodec = valueCodec;
     this.objectMapper = objectMapper;
-    this.nullWords = nullWords;
   }
 
   @Override
   public Map<K, V> externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     if (!node.isObject()) {

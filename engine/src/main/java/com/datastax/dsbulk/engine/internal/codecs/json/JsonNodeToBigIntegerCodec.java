@@ -52,9 +52,7 @@ public class JsonNodeToBigIntegerCodec extends JsonNodeToNumberCodec<BigInteger>
 
   @Override
   public BigInteger externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     if (node.isBigInteger()) {

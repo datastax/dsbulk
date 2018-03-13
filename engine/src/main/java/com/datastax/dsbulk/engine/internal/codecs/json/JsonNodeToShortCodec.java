@@ -50,9 +50,7 @@ public class JsonNodeToShortCodec extends JsonNodeToNumberCodec<Short> {
 
   @Override
   public Short externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     if (node.isShort()) {

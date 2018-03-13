@@ -11,27 +11,22 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
 
-public class JsonNodeToBooleanCodec extends ConvertingCodec<JsonNode, Boolean> {
+public class JsonNodeToBooleanCodec extends JsonNodeConvertingCodec<Boolean> {
 
   private final Map<String, Boolean> inputs;
-  private final List<String> nullWords;
 
   public JsonNodeToBooleanCodec(Map<String, Boolean> inputs, List<String> nullWords) {
-    super(cboolean(), JsonNode.class);
+    super(cboolean(), nullWords);
     this.inputs = inputs;
-    this.nullWords = nullWords;
   }
 
   @Override
   public Boolean externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     if (node.isBoolean()) {

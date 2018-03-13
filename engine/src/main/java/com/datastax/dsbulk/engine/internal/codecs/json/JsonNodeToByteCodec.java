@@ -51,9 +51,7 @@ public class JsonNodeToByteCodec extends JsonNodeToNumberCodec<Byte> {
 
   @Override
   public Byte externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     Number number;

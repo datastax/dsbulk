@@ -19,28 +19,24 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-public class JsonNodeToUUIDCodec extends ConvertingCodec<JsonNode, UUID> {
+public class JsonNodeToUUIDCodec extends JsonNodeConvertingCodec<UUID> {
 
   private final ConvertingCodec<String, Instant> instantCodec;
   private final TimeUUIDGenerator generator;
-  private final List<String> nullWords;
 
   public JsonNodeToUUIDCodec(
       TypeCodec<UUID> targetCodec,
       ConvertingCodec<String, Instant> instantCodec,
       TimeUUIDGenerator generator,
       List<String> nullWords) {
-    super(targetCodec, JsonNode.class);
+    super(targetCodec, nullWords);
     this.instantCodec = instantCodec;
     this.generator = generator;
-    this.nullWords = nullWords;
   }
 
   @Override
   public UUID externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     return CodecUtils.parseUUID(node.asText(), instantCodec, generator);

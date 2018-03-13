@@ -50,9 +50,7 @@ public class JsonNodeToInstantCodec extends JsonNodeToTemporalCodec<Instant> {
 
   @Override
   TemporalAccessor parseTemporalAccessor(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     String s = node.asText();

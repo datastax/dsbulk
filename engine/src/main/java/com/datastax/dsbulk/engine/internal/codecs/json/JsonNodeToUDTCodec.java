@@ -21,30 +21,26 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-public class JsonNodeToUDTCodec extends ConvertingCodec<JsonNode, UDTValue> {
+public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
 
   private final Map<String, ConvertingCodec<JsonNode, Object>> fieldCodecs;
   private final UserType definition;
   private final ObjectMapper objectMapper;
-  private final List<String> nullWords;
 
   public JsonNodeToUDTCodec(
       TypeCodec<UDTValue> udtCodec,
       Map<String, ConvertingCodec<JsonNode, Object>> fieldCodecs,
       ObjectMapper objectMapper,
       List<String> nullWords) {
-    super(udtCodec, JsonNode.class);
+    super(udtCodec, nullWords);
     this.fieldCodecs = fieldCodecs;
     definition = (UserType) udtCodec.getCqlType();
     this.objectMapper = objectMapper;
-    this.nullWords = nullWords;
   }
 
   @Override
   public UDTValue externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     if (!node.isObject()) {

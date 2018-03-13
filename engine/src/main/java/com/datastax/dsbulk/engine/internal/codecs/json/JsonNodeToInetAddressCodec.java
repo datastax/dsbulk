@@ -11,25 +11,19 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.InetAddress;
 import java.util.List;
 
-public class JsonNodeToInetAddressCodec extends ConvertingCodec<JsonNode, InetAddress> {
-
-  private final List<String> nullWords;
+public class JsonNodeToInetAddressCodec extends JsonNodeConvertingCodec<InetAddress> {
 
   public JsonNodeToInetAddressCodec(List<String> nullWords) {
-    super(inet(), JsonNode.class);
-    this.nullWords = nullWords;
+    super(inet(), nullWords);
   }
 
   @Override
   public InetAddress externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     String s = node.asText();

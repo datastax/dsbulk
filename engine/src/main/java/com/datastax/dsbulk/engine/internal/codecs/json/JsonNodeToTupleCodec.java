@@ -18,30 +18,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.List;
 
-public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> {
+public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
 
   private final TupleType definition;
   private final List<ConvertingCodec<JsonNode, Object>> eltCodecs;
   private final ObjectMapper objectMapper;
-  private final List<String> nullWords;
 
   public JsonNodeToTupleCodec(
       TypeCodec<TupleValue> tupleCodec,
       List<ConvertingCodec<JsonNode, Object>> eltCodecs,
       ObjectMapper objectMapper,
       List<String> nullWords) {
-    super(tupleCodec, JsonNode.class);
+    super(tupleCodec, nullWords);
     this.eltCodecs = eltCodecs;
     definition = (TupleType) tupleCodec.getCqlType();
     this.objectMapper = objectMapper;
-    this.nullWords = nullWords;
   }
 
   @Override
   public TupleValue externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     if (!node.isArray()) {

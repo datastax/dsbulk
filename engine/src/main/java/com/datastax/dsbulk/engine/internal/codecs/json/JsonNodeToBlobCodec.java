@@ -11,26 +11,20 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
 import com.datastax.driver.core.utils.Bytes;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class JsonNodeToBlobCodec extends ConvertingCodec<JsonNode, ByteBuffer> {
-
-  private final List<String> nullWords;
+public class JsonNodeToBlobCodec extends JsonNodeConvertingCodec<ByteBuffer> {
 
   public JsonNodeToBlobCodec(List<String> nullWords) {
-    super(blob(), JsonNode.class);
-    this.nullWords = nullWords;
+    super(blob(), nullWords);
   }
 
   @Override
   public ByteBuffer externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     String s = node.asText();

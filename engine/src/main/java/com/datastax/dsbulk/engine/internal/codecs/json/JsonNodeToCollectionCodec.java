@@ -20,12 +20,11 @@ import java.util.List;
 import java.util.function.Supplier;
 
 public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
-    extends ConvertingCodec<JsonNode, C> {
+    extends JsonNodeConvertingCodec<C> {
 
   private final ConvertingCodec<JsonNode, E> eltCodec;
   private final Supplier<C> collectionSupplier;
   private final ObjectMapper objectMapper;
-  private final List<String> nullWords;
 
   JsonNodeToCollectionCodec(
       TypeCodec<C> collectionCodec,
@@ -33,18 +32,15 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
       ObjectMapper objectMapper,
       Supplier<C> collectionSupplier,
       List<String> nullWords) {
-    super(collectionCodec, JsonNode.class);
+    super(collectionCodec, nullWords);
     this.eltCodec = eltCodec;
     this.objectMapper = objectMapper;
     this.collectionSupplier = collectionSupplier;
-    this.nullWords = nullWords;
   }
 
   @Override
   public C externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     if (!node.isArray()) {

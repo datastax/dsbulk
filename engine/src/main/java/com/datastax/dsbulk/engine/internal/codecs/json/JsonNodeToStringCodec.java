@@ -11,24 +11,18 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 
-public class JsonNodeToStringCodec extends ConvertingCodec<JsonNode, String> {
-
-  private final List<String> nullWords;
+public class JsonNodeToStringCodec extends JsonNodeConvertingCodec<String> {
 
   public JsonNodeToStringCodec(TypeCodec<String> innerCodec, List<String> nullWords) {
-    super(innerCodec, JsonNode.class);
-    this.nullWords = nullWords;
+    super(innerCodec, nullWords);
   }
 
   @Override
   public String externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     return node.asText();

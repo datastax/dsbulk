@@ -11,24 +11,18 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
 import com.datastax.driver.core.Duration;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 
-public class JsonNodeToDurationCodec extends ConvertingCodec<JsonNode, Duration> {
-
-  private final List<String> nullWords;
+public class JsonNodeToDurationCodec extends JsonNodeConvertingCodec<Duration> {
 
   public JsonNodeToDurationCodec(List<String> nullWords) {
-    super(duration(), JsonNode.class);
-    this.nullWords = nullWords;
+    super(duration(), nullWords);
   }
 
   @Override
   public Duration externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     String s = node.asText();

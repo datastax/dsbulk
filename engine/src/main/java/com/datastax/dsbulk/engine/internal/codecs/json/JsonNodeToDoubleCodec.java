@@ -51,9 +51,7 @@ public class JsonNodeToDoubleCodec extends JsonNodeToNumberCodec<Double> {
 
   @Override
   public Double externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     if (node.isDouble()) {

@@ -51,9 +51,7 @@ public class JsonNodeToBigDecimalCodec extends JsonNodeToNumberCodec<BigDecimal>
 
   @Override
   public BigDecimal externalToInternal(JsonNode node) {
-    if (node == null
-        || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()))) {
+    if (isNull(node)) {
       return null;
     }
     if (node.isBigDecimal()) {
