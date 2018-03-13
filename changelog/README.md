@@ -9,6 +9,7 @@
 - [improvement] DAT-235: Improve error message when mapping is wrong.
 - [improvement] DAT-243: Improve message when DSBulk completes with errors.
 - [improvement] DAT-242: Reduce and filter stack traces.
+- [improvement] DAT-244: Validate that mapped fields are present in the record.
 
 
 ### 1.0.0
