@@ -88,6 +88,8 @@ public class SchemaSettings {
   private static final String KEYSPACE = "keyspace";
   private static final String TABLE = "table";
   private static final String MAPPING = "mapping";
+  private static final String ALLOW_EXTRA_FIELDS = "allowExtraFields";
+  private static final String ALLOW_MISSING_FIELDS = "allowMissingFields";
   private static final String QUERY = "query";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
@@ -101,6 +103,8 @@ public class SchemaSettings {
   private final LoaderConfig config;
 
   private boolean nullToUnset;
+  private boolean allowExtraFields;
+  private boolean allowMissingFields;
   private Config mapping;
   private BiMap<String, String> explicitVariables;
   private String tableName;
@@ -120,6 +124,8 @@ public class SchemaSettings {
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       ttlSeconds = config.getInt(QUERY_TTL);
+      allowExtraFields = config.getBoolean(ALLOW_EXTRA_FIELDS);
+      allowMissingFields = config.getBoolean(ALLOW_MISSING_FIELDS);
       String timestampStr = config.getString(QUERY_TIMESTAMP);
       if (timestampStr.isEmpty()) {
         this.timestampMicros = -1L;
@@ -265,7 +271,13 @@ public class SchemaSettings {
       Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, LOAD);
-    return new DefaultRecordMapper(preparedStatement, mapping, recordMetadata, nullToUnset);
+    return new DefaultRecordMapper(
+        preparedStatement,
+        mapping,
+        recordMetadata,
+        nullToUnset,
+        allowExtraFields,
+        allowMissingFields);
   }
 
   public ReadResultMapper createReadResultMapper(

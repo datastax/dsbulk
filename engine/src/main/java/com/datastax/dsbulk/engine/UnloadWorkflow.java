@@ -109,7 +109,9 @@ public class UnloadWorkflow implements Workflow {
             WorkflowType.UNLOAD,
             false,
             logManager.getExecutionDirectory(),
-            cluster.getMetrics().getRegistry());
+            cluster.getMetrics().getRegistry(),
+            cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
+            cluster.getConfiguration().getCodecRegistry());
     metricsManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     RecordMetadata recordMetadata = connector.getRecordMetadata();
@@ -136,7 +138,16 @@ public class UnloadWorkflow implements Workflow {
         .blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
-    LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+    if (logManager.getTotalErrors() == 0) {
+      LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+    } else {
+      LOGGER.info(
+          "{} completed with {} errors in {}. Check log files under {} for details.",
+          this,
+          logManager.getTotalErrors(),
+          WorkflowUtils.formatElapsed(seconds),
+          logManager.getExecutionDirectory());
+    }
     return logManager.getTotalErrors() == 0;
   }
 

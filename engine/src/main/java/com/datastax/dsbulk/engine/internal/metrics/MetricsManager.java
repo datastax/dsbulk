@@ -19,12 +19,16 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.UniformReservoir;
 import com.codahale.metrics.jmx.JmxReporter;
 import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.CodecRegistry;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
+import com.datastax.dsbulk.executor.api.listener.AbstractMetricsReportingExecutionListenerBuilder;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
-import com.datastax.dsbulk.executor.api.listener.MetricsReportingExecutionListener;
+import com.datastax.dsbulk.executor.api.listener.ReadsReportingExecutionListener;
+import com.datastax.dsbulk.executor.api.listener.WritesReportingExecutionListener;
 import com.datastax.dsbulk.executor.api.result.Result;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -66,8 +70,8 @@ public class MetricsManager implements AutoCloseable {
   private RecordReporter recordReporter;
   private BatchReporter batchesReporter;
   private MemoryReporter memoryReporter;
-  private MetricsReportingExecutionListener writesReporter;
-  private MetricsReportingExecutionListener readsReporter;
+  private WritesReportingExecutionListener writesReporter;
+  private ReadsReportingExecutionListener readsReporter;
   private JmxReporter jmxReporter;
   private CsvReporter csvReporter;
 
@@ -84,12 +88,15 @@ public class MetricsManager implements AutoCloseable {
       boolean csv,
       Path executionDirectory,
       Duration reportInterval,
-      boolean batchingEnabled) {
+      boolean batchingEnabled,
+      ProtocolVersion protocolVersion,
+      CodecRegistry codecRegistry) {
     this.registry = new MetricRegistry();
     driverRegistry
         .getMetrics()
         .forEach((name, metric) -> this.registry.register("driver/" + name, metric));
-    this.listener = new MetricsCollectingExecutionListener(registry);
+    this.listener =
+        new MetricsCollectingExecutionListener(registry, protocolVersion, codecRegistry);
     this.workflowType = workflowType;
     this.executionId = executionId;
     this.scheduler = scheduler;
@@ -254,9 +261,8 @@ public class MetricsManager implements AutoCloseable {
   }
 
   private void startWritesReporter() {
-    MetricsReportingExecutionListener.Builder builder =
-        MetricsReportingExecutionListener.builder()
-            .reportingWrites()
+    AbstractMetricsReportingExecutionListenerBuilder<WritesReportingExecutionListener> builder =
+        WritesReportingExecutionListener.builder()
             .withScheduler(scheduler)
             .convertRatesTo(rateUnit)
             .convertDurationsTo(durationUnit)
@@ -269,15 +275,14 @@ public class MetricsManager implements AutoCloseable {
   }
 
   private void startReadsReporter() {
-    MetricsReportingExecutionListener.Builder builder =
-        MetricsReportingExecutionListener.builder()
-            .reportingReads()
+    AbstractMetricsReportingExecutionListenerBuilder<ReadsReportingExecutionListener> builder =
+        ReadsReportingExecutionListener.builder()
             .withScheduler(scheduler)
             .convertRatesTo(rateUnit)
             .convertDurationsTo(durationUnit)
             .extractingMetricsFrom(listener);
     if (expectedReads > 0) {
-      builder.expectingTotalEvents(expectedWrites);
+      builder.expectingTotalEvents(expectedReads);
     }
     readsReporter = builder.build();
     readsReporter.start(reportInterval.getSeconds(), SECONDS);

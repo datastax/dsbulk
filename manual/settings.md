@@ -513,6 +513,24 @@ The exact type of mapping to use depends on the connector being used. Some conne
 
 Default: **&lt;unspecified&gt;**.
 
+#### --schema.allowExtraFields _&lt;boolean&gt;_
+
+Whether or not to accept records that contain extra fields that are not declared in the mapping. Only applicable for loads, ignored otherwise.
+
+For example, if a record contains 3 fields A, B, C, but the mapping only declares fields A and B, then if this option is `true`, C will be silently ignored and the record will be considered valid; if it is `false`, the record will be rejected.
+
+Default: **true**.
+
+#### --schema.allowMissingFields _&lt;boolean&gt;_
+
+Whether or not to accept records that are missing fields declared in the mapping. Only applicable for loads, ignored otherwise.
+
+For example, if the mapping declares 3 fields A, B, C, but a record contains only A and B, then if this option is `true`, C will be silently assigned `null` and the record will be considered valid; if it is `false`, the record will be rejected.
+
+Note: if the missing field is mapped to a primary key column, the record will be rejected regardless of this option's value, since such a record would be rejected by the database anyway.
+
+Default: **false**.
+
 #### --schema.nullToUnset _&lt;boolean&gt;_
 
 Specify whether to map `null` input values to "unset" in the database, i.e., don't modify a potentially pre-existing value of this field for this row. Valid for load scenarios, otherwise ignore. Note that setting to false creates tombstones to represent `null`.

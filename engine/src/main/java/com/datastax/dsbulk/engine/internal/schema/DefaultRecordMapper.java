@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.driver.core.BoundStatement;
+import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.driver.core.Metadata;
@@ -26,6 +27,7 @@ import com.google.common.base.Suppliers;
 import com.google.common.reflect.TypeToken;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 public class DefaultRecordMapper implements RecordMapper {
@@ -34,13 +36,12 @@ public class DefaultRecordMapper implements RecordMapper {
   private static final String CQL_TYPE = "cqlType";
 
   private final PreparedStatement insertStatement;
-  private int[] pkIndices;
-
+  private final int[] pkIndices;
   private final ProtocolVersion protocolVersion;
-
   private final Mapping mapping;
-
   private final RecordMetadata recordMetadata;
+  private final boolean allowExtraFields;
+  private final boolean allowMissingFields;
 
   /** Whether to map null input to "unset" */
   private final boolean nullToUnset;
@@ -51,7 +52,9 @@ public class DefaultRecordMapper implements RecordMapper {
       PreparedStatement insertStatement,
       Mapping mapping,
       RecordMetadata recordMetadata,
-      boolean nullToUnset) {
+      boolean nullToUnset,
+      boolean allowExtraFields,
+      boolean allowMissingFields) {
     this(
         insertStatement,
         DriverCoreHooks.primaryKeyIndices(insertStatement.getPreparedId()),
@@ -59,6 +62,8 @@ public class DefaultRecordMapper implements RecordMapper {
         mapping,
         recordMetadata,
         nullToUnset,
+        allowExtraFields,
+        allowMissingFields,
         (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
   }
 
@@ -70,6 +75,8 @@ public class DefaultRecordMapper implements RecordMapper {
       Mapping mapping,
       RecordMetadata recordMetadata,
       boolean nullToUnset,
+      boolean allowExtraFields,
+      boolean allowMissingFields,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
     this.pkIndices = pkIndices;
@@ -77,6 +84,8 @@ public class DefaultRecordMapper implements RecordMapper {
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
     this.nullToUnset = nullToUnset;
+    this.allowExtraFields = allowExtraFields;
+    this.allowMissingFields = allowMissingFields;
     this.boundStatementFactory = boundStatementFactory;
   }
 
@@ -87,6 +96,9 @@ public class DefaultRecordMapper implements RecordMapper {
     Object raw = null;
     DataType cqlType = null;
     try {
+      if (!allowMissingFields) {
+        ensureAllFieldsPresent(record.fields());
+      }
       BoundStatement bs = boundStatementFactory.apply(record, insertStatement);
       for (String field : record.fields()) {
         currentField = field;
@@ -98,6 +110,13 @@ public class DefaultRecordMapper implements RecordMapper {
             raw = record.getFieldValue(field);
             bindColumn(bs, variable, raw, cqlType, fieldType);
           }
+        } else if (!allowExtraFields) {
+          throw new IllegalStateException(
+              "Extraneous field "
+                  + field
+                  + " was found in record. "
+                  + "Please declare it explicitly in the mapping "
+                  + "or set schema.allowExtraFields to true.");
         }
       }
       ensurePrimaryKeySet(bs);
@@ -117,9 +136,9 @@ public class DefaultRecordMapper implements RecordMapper {
                       FIELD,
                       finalCurrentField,
                       finalVariable,
-                      finalRaw == null ? null : finalRaw.toString(),
+                      finalRaw == null ? "" : finalRaw.toString(),
                       CQL_TYPE,
-                      finalCqlType == null ? null : finalCqlType.toString())),
+                      finalCqlType == null ? "" : finalCqlType.toString())),
           e);
     }
   }
@@ -159,17 +178,33 @@ public class DefaultRecordMapper implements RecordMapper {
     return Arrays.binarySearch(pkIndices, insertStatement.getVariables().getIndexOf(variable)) >= 0;
   }
 
+  private void ensureAllFieldsPresent(Set<String> recordFields) {
+    ColumnDefinitions variables = insertStatement.getVariables();
+    for (int i = 0; i < variables.size(); i++) {
+      String variable = variables.getName(i);
+      String field = mapping.variableToField(variable);
+      if (!recordFields.contains(field)) {
+        throw new IllegalStateException(
+            "Required field "
+                + field
+                + " (mapped to column "
+                + Metadata.quoteIfNecessary(variable)
+                + ") was missing from record. "
+                + "Please remove it from the mapping "
+                + "or set schema.allowMissingFields to true.");
+      }
+    }
+  }
+
   private void ensurePrimaryKeySet(BoundStatement bs) {
     for (int pkIndex : pkIndices) {
       if (!bs.isSet(pkIndex)) {
         String variable = insertStatement.getVariables().getName(pkIndex);
         throw new IllegalStateException(
-            String.format(
-                "Primary key column "
-                    + Metadata.quoteIfNecessary(variable)
-                    + " cannot be left unmapped. "
-                    + "Check that your settings (schema.mapping or schema.query) match your dataset contents.",
-                variable));
+            "Primary key column "
+                + Metadata.quoteIfNecessary(variable)
+                + " cannot be left unmapped. "
+                + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
       }
     }
   }
