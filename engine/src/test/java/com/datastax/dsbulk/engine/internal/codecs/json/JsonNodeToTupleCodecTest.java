@@ -48,21 +48,21 @@ class JsonNodeToTupleCodecTest {
 
   private final TupleType tupleType = newTupleType(V4, codecRegistry, timestamp(), varchar());
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   private final ConvertingCodec eltCodec1 =
       new JsonNodeToInstantCodec(
-          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullWords);
+          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
 
   private final ConvertingCodec eltCodec2 =
-      new JsonNodeToStringCodec(TypeCodec.varchar(), nullWords);
+      new JsonNodeToStringCodec(TypeCodec.varchar(), nullStrings);
 
   @SuppressWarnings("unchecked")
   private final List<ConvertingCodec<JsonNode, Object>> eltCodecs =
       Lists.newArrayList(eltCodec1, eltCodec2);
 
   private final JsonNodeToTupleCodec codec =
-      new JsonNodeToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, objectMapper, nullWords);
+      new JsonNodeToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, objectMapper, nullStrings);
 
   @Test
   void should_convert_from_valid_external() throws Exception {

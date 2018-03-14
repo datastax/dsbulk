@@ -28,11 +28,11 @@ class StringToLocalDateCodecTest {
   private DateTimeFormatter format2 =
       CodecSettings.getDateTimeFormat("yyyyMMdd", UTC, US, EPOCH.atZone(UTC));
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   @Test
   void should_convert_from_valid_external() {
-    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, nullWords);
+    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, nullStrings);
     assertThat(codec)
         .convertsFromExternal("2016-07-24")
         .toInternal(LocalDate.parse("2016-07-24"))
@@ -42,21 +42,21 @@ class StringToLocalDateCodecTest {
         .toInternal(null)
         .convertsFromExternal("")
         .toInternal(null);
-    codec = new StringToLocalDateCodec(format2, nullWords);
+    codec = new StringToLocalDateCodec(format2, nullStrings);
     assertThat(codec).convertsFromExternal("20160724").toInternal(LocalDate.parse("2016-07-24"));
   }
 
   @Test
   void should_convert_from_valid_internal() {
-    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, nullWords);
+    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, nullStrings);
     assertThat(codec).convertsFromInternal(LocalDate.parse("2016-07-24")).toExternal("2016-07-24");
-    codec = new StringToLocalDateCodec(format2, nullWords);
+    codec = new StringToLocalDateCodec(format2, nullStrings);
     assertThat(codec).convertsFromInternal(LocalDate.parse("2016-07-24")).toExternal("20160724");
   }
 
   @Test
   void should_not_convert_from_invalid_external() {
-    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, nullWords);
+    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, nullStrings);
     assertThat(codec).cannotConvertFromExternal("not a valid date format");
   }
 }

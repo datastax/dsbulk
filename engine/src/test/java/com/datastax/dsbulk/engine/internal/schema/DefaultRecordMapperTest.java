@@ -79,7 +79,7 @@ class DefaultRecordMapperTest {
 
   private final int[] pkIndices = {0, 1, 2};
 
-  private final List<String> nullWords = newArrayList("");
+  private final List<String> nullStrings = newArrayList("");
 
   private Mapping mapping;
   private Record record;
@@ -203,7 +203,7 @@ class DefaultRecordMapperTest {
                 EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
-                nullWords));
+                nullStrings));
     when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -237,7 +237,7 @@ class DefaultRecordMapperTest {
                 millennium.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
-                nullWords));
+                nullStrings));
     when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -269,7 +269,7 @@ class DefaultRecordMapperTest {
                 EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
-                nullWords));
+                nullStrings));
     when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -306,7 +306,7 @@ class DefaultRecordMapperTest {
                 EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
-                nullWords));
+                nullStrings));
     when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(

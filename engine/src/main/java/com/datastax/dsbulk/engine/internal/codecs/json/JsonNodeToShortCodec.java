@@ -32,9 +32,9 @@ public class JsonNodeToShortCodec extends JsonNodeToNumberCodec<Short> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
+      Map<String, Boolean> booleanStrings,
       List<BigDecimal> booleanNumbers,
-      List<String> nullWords) {
+      List<String> nullStrings) {
     super(
         smallInt(),
         numberFormat,
@@ -43,9 +43,9 @@ public class JsonNodeToShortCodec extends JsonNodeToNumberCodec<Short> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
+        booleanStrings,
         booleanNumbers.stream().map(BigDecimal::shortValueExact).collect(toList()),
-        nullWords);
+        nullStrings);
   }
 
   @Override

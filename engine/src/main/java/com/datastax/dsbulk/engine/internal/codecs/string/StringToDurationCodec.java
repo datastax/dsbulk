@@ -14,16 +14,16 @@ import java.util.List;
 
 public class StringToDurationCodec extends ConvertingCodec<String, Duration> {
 
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
-  public StringToDurationCodec(List<String> nullWords) {
+  public StringToDurationCodec(List<String> nullStrings) {
     super(duration(), String.class);
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public Duration externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     return Duration.from(s);
@@ -32,7 +32,7 @@ public class StringToDurationCodec extends ConvertingCodec<String, Duration> {
   @Override
   public String internalToExternal(Duration value) {
     if (value == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     return value.toString();
   }

@@ -43,7 +43,7 @@ class JsonNodeToInstantCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   @Test
   void should_convert_from_valid_external() {

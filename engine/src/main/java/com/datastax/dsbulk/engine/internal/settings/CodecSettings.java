@@ -98,9 +98,9 @@ public class CodecSettings {
 
   private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
   private static final String LOCALE = "locale";
-  private static final String BOOLEAN_WORDS = "booleanWords";
+  private static final String BOOLEAN_WORDS = "booleanStrings";
   private static final String BOOLEAN_NUMBERS = "booleanNumbers";
-  private static final String NULL_WORDS = "nullWords";
+  private static final String NULL_WORDS = "nullStrings";
   private static final String NUMBER = "number";
   private static final String FORMAT_NUMERIC_OUTPUT = "formatNumbers";
   private static final String ROUNDING_STRATEGY = "roundingStrategy";
@@ -115,7 +115,7 @@ public class CodecSettings {
 
   private final LoaderConfig config;
 
-  private ImmutableList<String> nullWords;
+  private ImmutableList<String> nullStrings;
   private Map<String, Boolean> booleanInputWords;
   private Map<Boolean, String> booleanOutputWords;
   private List<BigDecimal> booleanNumbers;
@@ -140,7 +140,7 @@ public class CodecSettings {
       Locale locale = parseLocale(config.getString(LOCALE));
 
       // strings
-      nullWords = ImmutableList.copyOf(config.getStringList(NULL_WORDS));
+      nullStrings = ImmutableList.copyOf(config.getStringList(NULL_WORDS));
 
       // numeric
       roundingMode = config.getEnum(RoundingMode.class, ROUNDING_STRATEGY);
@@ -168,9 +168,9 @@ public class CodecSettings {
         throw new BulkConfigurationException(
             "Invalid boolean numbers list, expecting two elements, got " + booleanNumbers);
       }
-      List<String> booleanWords = config.getStringList(BOOLEAN_WORDS);
-      booleanInputWords = getBooleanInputWords(booleanWords);
-      booleanOutputWords = getBooleanOutputWords(booleanWords);
+      List<String> booleanStrings = config.getStringList(BOOLEAN_WORDS);
+      booleanInputWords = getBooleanInputWords(booleanStrings);
+      booleanOutputWords = getBooleanOutputWords(booleanStrings);
 
       // UUID
       generator = config.getEnum(TimeUUIDGenerator.class, TIME_UUID_GENERATOR);
@@ -184,14 +184,14 @@ public class CodecSettings {
   }
 
   public StringToTemporalCodec<Instant> getTimestampCodec() {
-    return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch, nullWords);
+    return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch, nullStrings);
   }
 
   public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {
     CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
     return new ExtendedCodecRegistry(
         codecRegistry,
-        nullWords,
+        nullStrings,
         booleanInputWords,
         booleanOutputWords,
         booleanNumbers,

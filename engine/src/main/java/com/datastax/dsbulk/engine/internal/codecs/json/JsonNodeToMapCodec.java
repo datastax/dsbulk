@@ -30,8 +30,8 @@ public class JsonNodeToMapCodec<K, V> extends JsonNodeConvertingCodec<Map<K, V>>
       ConvertingCodec<String, K> keyCodec,
       ConvertingCodec<JsonNode, V> valueCodec,
       ObjectMapper objectMapper,
-      List<String> nullWords) {
-    super(collectionCodec, nullWords);
+      List<String> nullStrings) {
+    super(collectionCodec, nullStrings);
     this.keyCodec = keyCodec;
     this.valueCodec = valueCodec;
     this.objectMapper = objectMapper;

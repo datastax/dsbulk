@@ -33,7 +33,7 @@ class StringToLongCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   private final StringToLongCodec codec =
       new StringToLongCodec(
@@ -45,7 +45,7 @@ class StringToLongCodecTest {
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
           newArrayList(ONE, ZERO),
-          nullWords);
+          nullStrings);
 
   @Test
   void should_convert_from_valid_external() {

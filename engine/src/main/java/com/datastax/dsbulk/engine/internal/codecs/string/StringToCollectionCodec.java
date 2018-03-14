@@ -23,21 +23,21 @@ public abstract class StringToCollectionCodec<E, C extends Collection<E>>
 
   private final JsonNodeToCollectionCodec<E, C> jsonCodec;
   private final ObjectMapper objectMapper;
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
   StringToCollectionCodec(
       JsonNodeToCollectionCodec<E, C> jsonCodec,
       ObjectMapper objectMapper,
-      List<String> nullWords) {
+      List<String> nullStrings) {
     super(jsonCodec.getInternalCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public C externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     try {
@@ -51,7 +51,7 @@ public abstract class StringToCollectionCodec<E, C extends Collection<E>>
   @Override
   public String internalToExternal(C collection) {
     if (collection == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     try {
       JsonNode node = jsonCodec.internalToExternal(collection);

@@ -17,16 +17,16 @@ import java.util.List;
 
 public class StringToBlobCodec extends ConvertingCodec<String, ByteBuffer> {
 
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
-  public StringToBlobCodec(List<String> nullWords) {
+  public StringToBlobCodec(List<String> nullStrings) {
     super(blob(), String.class);
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public ByteBuffer externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     return CodecUtils.parseByteBuffer(s);
@@ -35,7 +35,7 @@ public class StringToBlobCodec extends ConvertingCodec<String, ByteBuffer> {
   @Override
   public String internalToExternal(ByteBuffer value) {
     if (value == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     return Base64.getEncoder().encodeToString(Bytes.getArray(value));
   }

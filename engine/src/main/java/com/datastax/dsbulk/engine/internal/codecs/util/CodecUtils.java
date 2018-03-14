@@ -114,7 +114,7 @@ public class CodecUtils {
    *     timestamp; cannot be {@code null}.
    * @param epoch the epoch to use to convert the alphanumeric temporal to a numeric timestamp;
    *     cannot be {@code null}.
-   * @param booleanWords A mapping between booleans and words.
+   * @param booleanStrings A mapping between booleans and words.
    * @param booleanNumbers A mapping between booleans and numbers.
    * @return a {@link TemporalAccessor} or {@code null} if the string was {@code null} or empty.
    * @throws IllegalArgumentException if the string cannot be parsed.
@@ -125,13 +125,13 @@ public class CodecUtils {
       @NotNull DateTimeFormatter temporalFormat,
       @NotNull TimeUnit timeUnit,
       @NotNull ZonedDateTime epoch,
-      @NotNull Map<String, Boolean> booleanWords,
+      @NotNull Map<String, Boolean> booleanStrings,
       @NotNull List<? extends Number> booleanNumbers) {
     Objects.requireNonNull(numberFormat);
     Objects.requireNonNull(temporalFormat);
     Objects.requireNonNull(timeUnit);
     Objects.requireNonNull(epoch);
-    Objects.requireNonNull(booleanWords);
+    Objects.requireNonNull(booleanStrings);
     Objects.requireNonNull(booleanNumbers);
     if (s == null || s.isEmpty()) {
       return null;
@@ -159,7 +159,7 @@ public class CodecUtils {
             number = instantToNumber(instant, timeUnit, epoch.toInstant());
           } catch (DateTimeException e4) {
             // 5) Lastly, try a boolean word, then convert to number
-            Boolean b = booleanWords.get(s.toLowerCase());
+            Boolean b = booleanStrings.get(s.toLowerCase());
             if (b != null) {
               number = booleanNumbers.get(b ? 0 : 1);
             } else {

@@ -29,7 +29,7 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends JsonNodeConvertin
   private final DateTimeFormatter temporalFormat;
   private final TimeUnit timeUnit;
   private final ZonedDateTime epoch;
-  private final Map<String, Boolean> booleanWords;
+  private final Map<String, Boolean> booleanStrings;
   private final List<N> booleanNumbers;
 
   JsonNodeToNumberCodec(
@@ -40,17 +40,17 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends JsonNodeConvertin
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
+      Map<String, Boolean> booleanStrings,
       List<N> booleanNumbers,
-      List<String> nullWords) {
-    super(targetCodec, nullWords);
+      List<String> nullStrings) {
+    super(targetCodec, nullStrings);
     this.numberFormat = numberFormat;
     this.overflowStrategy = overflowStrategy;
     this.roundingMode = roundingMode;
     this.temporalFormat = temporalFormat;
     this.timeUnit = timeUnit;
     this.epoch = epoch;
-    this.booleanWords = booleanWords;
+    this.booleanStrings = booleanStrings;
     this.booleanNumbers = booleanNumbers;
   }
 
@@ -64,7 +64,7 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends JsonNodeConvertin
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
+        booleanStrings,
         booleanNumbers);
   }
 

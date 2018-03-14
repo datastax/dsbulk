@@ -30,8 +30,8 @@ public class StringToInstantCodec extends StringToTemporalCodec<Instant> {
       FastThreadLocal<NumberFormat> numberFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      List<String> nullWords) {
-    super(InstantCodec.instance, temporalFormat, nullWords);
+      List<String> nullStrings) {
+    super(InstantCodec.instance, temporalFormat, nullStrings);
     this.numberFormat = numberFormat;
     this.timeUnit = timeUnit;
     this.epoch = epoch;
@@ -49,7 +49,7 @@ public class StringToInstantCodec extends StringToTemporalCodec<Instant> {
 
   @Override
   TemporalAccessor parseTemporalAccessor(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     // For timestamps, the conversion is more complex than for other temporals

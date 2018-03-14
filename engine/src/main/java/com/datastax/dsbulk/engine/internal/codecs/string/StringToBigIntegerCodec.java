@@ -32,9 +32,9 @@ public class StringToBigIntegerCodec extends StringToNumberCodec<BigInteger> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
+      Map<String, Boolean> booleanStrings,
       List<BigDecimal> booleanNumbers,
-      List<String> nullWords) {
+      List<String> nullStrings) {
     super(
         TypeCodec.varint(),
         numberFormat,
@@ -43,9 +43,9 @@ public class StringToBigIntegerCodec extends StringToNumberCodec<BigInteger> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
+        booleanStrings,
         booleanNumbers.stream().map(BigDecimal::toBigInteger).collect(toList()),
-        nullWords);
+        nullStrings);
   }
 
   @Override

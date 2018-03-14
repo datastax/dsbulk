@@ -44,14 +44,14 @@ class WriteTimeCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   @Test
   void should_convert_to_timestamp_micros() {
 
     assertThat(
             new WriteTimeCodec<>(
-                new StringToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
+                new StringToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullStrings)))
         .convertsFromExternal("2017-11-30T14:46:56+01:00")
         .toInternal(
             MILLISECONDS.toMicros(
@@ -59,13 +59,13 @@ class WriteTimeCodecTest {
 
     assertThat(
             new WriteTimeCodec<>(
-                new StringToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
+                new StringToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullStrings)))
         .convertsFromExternal("123456")
         .toInternal(MILLISECONDS.toMicros(123456L));
 
     assertThat(
             new WriteTimeCodec<>(
-                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
+                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullStrings)))
         .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("2017-11-30T14:46:56+01:00"))
         .toInternal(
             MILLISECONDS.toMicros(
@@ -73,13 +73,13 @@ class WriteTimeCodecTest {
 
     assertThat(
             new WriteTimeCodec<>(
-                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
+                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullStrings)))
         .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
         .toInternal(MILLISECONDS.toMicros(123456L));
 
     assertThat(
             new WriteTimeCodec<>(
-                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullWords)))
+                new JsonNodeToInstantCodec(temporalFormat, numberFormat, unit, epoch, nullStrings)))
         .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.numberNode(123456L))
         .toInternal(MILLISECONDS.toMicros(123456L));
 

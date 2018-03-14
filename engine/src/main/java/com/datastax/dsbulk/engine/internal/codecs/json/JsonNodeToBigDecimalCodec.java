@@ -33,9 +33,9 @@ public class JsonNodeToBigDecimalCodec extends JsonNodeToNumberCodec<BigDecimal>
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
+      Map<String, Boolean> booleanStrings,
       List<BigDecimal> booleanNumbers,
-      List<String> nullWords) {
+      List<String> nullStrings) {
     super(
         TypeCodec.decimal(),
         numberFormat,
@@ -44,9 +44,9 @@ public class JsonNodeToBigDecimalCodec extends JsonNodeToNumberCodec<BigDecimal>
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
+        booleanStrings,
         booleanNumbers,
-        nullWords);
+        nullStrings);
   }
 
   @Override

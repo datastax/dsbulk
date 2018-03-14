@@ -22,19 +22,19 @@ public class StringToTupleCodec extends ConvertingCodec<String, TupleValue> {
 
   private final JsonNodeToTupleCodec jsonCodec;
   private final ObjectMapper objectMapper;
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
   public StringToTupleCodec(
-      JsonNodeToTupleCodec jsonCodec, ObjectMapper objectMapper, List<String> nullWords) {
+      JsonNodeToTupleCodec jsonCodec, ObjectMapper objectMapper, List<String> nullStrings) {
     super(jsonCodec.getInternalCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public TupleValue externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     try {
@@ -48,7 +48,7 @@ public class StringToTupleCodec extends ConvertingCodec<String, TupleValue> {
   @Override
   public String internalToExternal(TupleValue tuple) {
     if (tuple == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     try {
       JsonNode node = jsonCodec.internalToExternal(tuple);

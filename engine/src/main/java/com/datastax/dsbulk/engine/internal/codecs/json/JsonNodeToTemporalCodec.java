@@ -23,8 +23,8 @@ public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
   final DateTimeFormatter temporalFormat;
 
   JsonNodeToTemporalCodec(
-      TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat, List<String> nullWords) {
-    super(targetCodec, nullWords);
+      TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat, List<String> nullStrings) {
+    super(targetCodec, nullStrings);
     this.temporalFormat = temporalFormat;
   }
 

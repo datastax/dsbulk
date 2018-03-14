@@ -28,8 +28,8 @@ public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
       TypeCodec<TupleValue> tupleCodec,
       List<ConvertingCodec<JsonNode, Object>> eltCodecs,
       ObjectMapper objectMapper,
-      List<String> nullWords) {
-    super(tupleCodec, nullWords);
+      List<String> nullStrings) {
+    super(tupleCodec, nullStrings);
     this.eltCodecs = eltCodecs;
     definition = (TupleType) tupleCodec.getCqlType();
     this.objectMapper = objectMapper;

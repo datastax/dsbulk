@@ -517,7 +517,7 @@ Default: **&lt;unspecified&gt;**.
 
 Specify whether to map `null` input values to "unset" in the database, i.e., don't modify a potentially pre-existing value of this field for this row. Valid for load scenarios, otherwise ignore. Note that setting to false creates tombstones to represent `null`.
 
-Note that this setting is applied after the *codec.nullWords* setting, and may intercept `null`s produced by that setting.
+Note that this setting is applied after the *codec.nullStrings* setting, and may intercept `null`s produced by that setting.
 
 Default: **true**.
 
@@ -604,9 +604,9 @@ Set how true and false representations of numbers are interpreted. The represent
 
 Default: **[1,0]**.
 
-#### --codec.booleanWords _&lt;list&lt;string&gt;&gt;_
+#### --codec.booleanStrings _&lt;list&lt;string&gt;&gt;_
 
-Specify how true and false representations can be used by dsbulk. Each representation is of the form `true-value:false-value`, case-insensitive. For loading, all representations are honored. For unloading, the first representation will be used and all others ignored.
+Specify how true and false representations can be used by dsbulk. Each representation is of the form `true-value:false-value`, case-insensitive. For loading, all representations are honored: when a record field value exactly matches one of the specified strings, the value is replaced with `true` of `false` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first representation will be used to format booleans before they are written out, and all others are ignored.
 
 Default: **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
 
@@ -653,15 +653,9 @@ The locale to use for locale-sensitive conversions.
 
 Default: **"en_US"**.
 
-#### -nullWords,--codec.nullWords _&lt;list&lt;string&gt;&gt;_
+#### -nullStrings,--codec.nullStrings _&lt;list&lt;string&gt;&gt;_
 
-Comma-separated list of values that should be mapped to `null`.
-
-For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, only the first string specified will be used to change a row cell containing `null` to the specified string when written out.
-
-By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading.
-
-This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-word can still be left unset if required.
+Comma-separated list of values that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-word can still be left unset if required.
 
 Default: **[""]**.
 

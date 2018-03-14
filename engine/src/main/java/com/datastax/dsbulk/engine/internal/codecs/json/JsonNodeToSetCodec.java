@@ -22,7 +22,7 @@ public class JsonNodeToSetCodec<E> extends JsonNodeToCollectionCodec<E, Set<E>> 
       TypeCodec<Set<E>> collectionCodec,
       ConvertingCodec<JsonNode, E> eltCodec,
       ObjectMapper objectMapper,
-      List<String> nullWords) {
-    super(collectionCodec, eltCodec, objectMapper, LinkedHashSet::new, nullWords);
+      List<String> nullStrings) {
+    super(collectionCodec, eltCodec, objectMapper, LinkedHashSet::new, nullStrings);
   }
 }

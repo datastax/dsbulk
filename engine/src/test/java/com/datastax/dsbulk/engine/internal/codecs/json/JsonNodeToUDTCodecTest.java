@@ -59,7 +59,7 @@ class JsonNodeToUDTCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   // UDT 1
 
@@ -81,11 +81,11 @@ class JsonNodeToUDTCodecTest {
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
           newArrayList(ONE, ZERO),
-          nullWords);
+          nullStrings);
   private final ConvertingCodec f1bCodec =
       new JsonNodeToMapCodec<>(
           TypeCodec.map(TypeCodec.varchar(), TypeCodec.cdouble()),
-          new StringToStringCodec(TypeCodec.varchar(), nullWords),
+          new StringToStringCodec(TypeCodec.varchar(), nullStrings),
           new JsonNodeToDoubleCodec(
               numberFormat,
               OverflowStrategy.REJECT,
@@ -95,9 +95,9 @@ class JsonNodeToUDTCodecTest {
               EPOCH.atZone(UTC),
               ImmutableMap.of("true", true, "false", false),
               newArrayList(ONE, ZERO),
-              nullWords),
+              nullStrings),
           objectMapper,
-          nullWords);
+          nullStrings);
 
   @SuppressWarnings("unchecked")
   private final JsonNodeToUDTCodec udtCodec1 =
@@ -105,7 +105,7 @@ class JsonNodeToUDTCodecTest {
           userType(udt1),
           ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec),
           objectMapper,
-          nullWords);
+          nullStrings);
 
   // UDT 2
 
@@ -124,14 +124,14 @@ class JsonNodeToUDTCodecTest {
           userType(udt1),
           ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec),
           objectMapper,
-          nullWords);
+          nullStrings);
 
   private final ConvertingCodec f2bCodec =
       new JsonNodeToListCodec<>(
           TypeCodec.list(LocalDateCodec.instance),
-          new JsonNodeToLocalDateCodec(CQL_DATE_TIME_FORMAT, nullWords),
+          new JsonNodeToLocalDateCodec(CQL_DATE_TIME_FORMAT, nullStrings),
           objectMapper,
-          nullWords);
+          nullStrings);
 
   @SuppressWarnings("unchecked")
   private final JsonNodeToUDTCodec udtCodec2 =
@@ -139,7 +139,7 @@ class JsonNodeToUDTCodecTest {
           userType(udt2),
           ImmutableMap.of("f2a", f2aCodec, "f2b", f2bCodec),
           objectMapper,
-          nullWords);
+          nullStrings);
 
   @Test
   void should_convert_from_valid_external() throws Exception {

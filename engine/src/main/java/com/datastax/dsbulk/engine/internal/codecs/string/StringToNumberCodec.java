@@ -29,9 +29,9 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
   private final DateTimeFormatter temporalFormat;
   private final TimeUnit timeUnit;
   private final ZonedDateTime epoch;
-  private final Map<String, Boolean> booleanWords;
+  private final Map<String, Boolean> booleanStrings;
   private final List<N> booleanNumbers;
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
   StringToNumberCodec(
       TypeCodec<N> targetCodec,
@@ -41,9 +41,9 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
+      Map<String, Boolean> booleanStrings,
       List<N> booleanNumbers,
-      List<String> nullWords) {
+      List<String> nullStrings) {
     super(targetCodec, String.class);
     this.numberFormat = numberFormat;
     this.overflowStrategy = overflowStrategy;
@@ -51,25 +51,25 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
     this.temporalFormat = temporalFormat;
     this.timeUnit = timeUnit;
     this.epoch = epoch;
-    this.booleanWords = booleanWords;
+    this.booleanStrings = booleanStrings;
     this.booleanNumbers = booleanNumbers;
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public String internalToExternal(N value) {
     if (value == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     return CodecUtils.formatNumber(value, numberFormat.get());
   }
 
   Number parseNumber(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     return CodecUtils.parseNumber(
-        s, numberFormat.get(), temporalFormat, timeUnit, epoch, booleanWords, booleanNumbers);
+        s, numberFormat.get(), temporalFormat, timeUnit, epoch, booleanStrings, booleanNumbers);
   }
 
   N narrowNumber(Number number, Class<? extends N> targetClass) {

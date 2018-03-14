@@ -18,8 +18,8 @@ import java.util.List;
 
 public class JsonNodeToBlobCodec extends JsonNodeConvertingCodec<ByteBuffer> {
 
-  public JsonNodeToBlobCodec(List<String> nullWords) {
-    super(blob(), nullWords);
+  public JsonNodeToBlobCodec(List<String> nullStrings) {
+    super(blob(), nullStrings);
   }
 
   @Override

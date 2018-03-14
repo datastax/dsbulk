@@ -45,7 +45,7 @@ class StringToMapCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   private final StringToDoubleCodec keyCodec =
       new StringToDoubleCodec(
@@ -57,25 +57,25 @@ class StringToMapCodecTest {
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
           newArrayList(ONE, ZERO),
-          nullWords);
+          nullStrings);
 
   private final TypeCodec<List<String>> stringListCodec = TypeCodec.list(TypeCodec.varchar());
 
   private final ConvertingCodec<JsonNode, List<String>> valueCodec =
       new JsonNodeToListCodec<>(
           stringListCodec,
-          new JsonNodeToStringCodec(TypeCodec.varchar(), nullWords),
+          new JsonNodeToStringCodec(TypeCodec.varchar(), nullStrings),
           objectMapper,
-          nullWords);
+          nullStrings);
 
   private final TypeCodec<Map<Double, List<String>>> mapCodec =
       TypeCodec.map(TypeCodec.cdouble(), stringListCodec);
 
   private final StringToMapCodec<Double, List<String>> codec =
       new StringToMapCodec<>(
-          new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper, nullWords),
+          new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper, nullStrings),
           objectMapper,
-          nullWords);
+          nullStrings);
 
   @Test
   void should_convert_from_valid_external() {

@@ -21,7 +21,7 @@ public class JsonNodeToListCodec<E> extends JsonNodeToCollectionCodec<E, List<E>
       TypeCodec<List<E>> collectionCodec,
       ConvertingCodec<JsonNode, E> eltCodec,
       ObjectMapper objectMapper,
-      List<String> nullWords) {
-    super(collectionCodec, eltCodec, objectMapper, ArrayList::new, nullWords);
+      List<String> nullStrings) {
+    super(collectionCodec, eltCodec, objectMapper, ArrayList::new, nullStrings);
   }
 }

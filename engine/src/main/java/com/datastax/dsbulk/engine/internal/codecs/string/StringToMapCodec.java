@@ -22,19 +22,19 @@ public class StringToMapCodec<K, V> extends ConvertingCodec<String, Map<K, V>> {
 
   private final JsonNodeToMapCodec<K, V> jsonCodec;
   private final ObjectMapper objectMapper;
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
   public StringToMapCodec(
-      JsonNodeToMapCodec<K, V> jsonCodec, ObjectMapper objectMapper, List<String> nullWords) {
+      JsonNodeToMapCodec<K, V> jsonCodec, ObjectMapper objectMapper, List<String> nullStrings) {
     super(jsonCodec.getInternalCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public Map<K, V> externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     try {
@@ -48,7 +48,7 @@ public class StringToMapCodec<K, V> extends ConvertingCodec<String, Map<K, V>> {
   @Override
   public String internalToExternal(Map<K, V> map) {
     if (map == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     try {
       JsonNode node = jsonCodec.internalToExternal(map);

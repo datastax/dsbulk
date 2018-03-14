@@ -33,9 +33,9 @@ public class JsonNodeToLongCodec extends JsonNodeToNumberCodec<Long> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
+      Map<String, Boolean> booleanStrings,
       List<BigDecimal> booleanNumbers,
-      List<String> nullWords) {
+      List<String> nullStrings) {
     super(
         TypeCodec.bigint(),
         numberFormat,
@@ -44,9 +44,9 @@ public class JsonNodeToLongCodec extends JsonNodeToNumberCodec<Long> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
+        booleanStrings,
         booleanNumbers.stream().map(BigDecimal::longValueExact).collect(toList()),
-        nullWords);
+        nullStrings);
   }
 
   @Override

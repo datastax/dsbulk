@@ -17,8 +17,8 @@ import java.util.List;
 
 public class JsonNodeToInetAddressCodec extends JsonNodeConvertingCodec<InetAddress> {
 
-  public JsonNodeToInetAddressCodec(List<String> nullWords) {
-    super(inet(), nullWords);
+  public JsonNodeToInetAddressCodec(List<String> nullStrings) {
+    super(inet(), nullStrings);
   }
 
   @Override

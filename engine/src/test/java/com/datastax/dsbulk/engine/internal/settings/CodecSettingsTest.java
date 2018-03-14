@@ -392,75 +392,75 @@ class CodecSettingsTest {
   @Test
   void should_create_settings_when_null_words_are_specified() {
     {
-      LoaderConfig config = makeLoaderConfig("nullWords = \"null\"");
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"null\"");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
           .containsOnly("null");
     }
     {
-      LoaderConfig config = makeLoaderConfig("nullWords = \"null, NULL\"");
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"null, NULL\"");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
           .containsOnly("null", "NULL");
     }
     {
-      LoaderConfig config = makeLoaderConfig("nullWords = \"[NIL, NULL]\"");
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"[NIL, NULL]\"");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
           .containsOnly("NIL", "NULL");
     }
     {
-      LoaderConfig config = makeLoaderConfig("nullWords = \"\\\"NIL\\\", \\\"NULL\\\"\"");
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"\\\"NIL\\\", \\\"NULL\\\"\"");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
           .containsOnly("NIL", "NULL");
     }
     {
-      LoaderConfig config = makeLoaderConfig("nullWords = \"NIL, NULL\"");
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"NIL, NULL\"");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
           .containsOnly("NIL", "NULL");
     }
     {
-      LoaderConfig config = makeLoaderConfig("nullWords = \"NULL\"");
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"NULL\"");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
           .containsOnly("NULL");
     }
     {
-      LoaderConfig config = makeLoaderConfig("nullWords = NULL");
+      LoaderConfig config = makeLoaderConfig("nullStrings = NULL");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
           .containsOnly("NULL");
     }
     {
-      LoaderConfig config = makeLoaderConfig("nullWords = \"[NULL]\"");
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"[NULL]\"");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
           .containsOnly("NULL");
     }
     {
-      LoaderConfig config = makeLoaderConfig("nullWords = \"[\\\"NULL\\\"]\"");
+      LoaderConfig config = makeLoaderConfig("nullStrings = \"[\\\"NULL\\\"]\"");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullWords"))
+      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
           .containsOnly("NULL");
     }
   }

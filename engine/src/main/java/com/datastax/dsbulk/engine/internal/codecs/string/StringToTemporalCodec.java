@@ -19,25 +19,25 @@ public abstract class StringToTemporalCodec<T extends TemporalAccessor>
     extends ConvertingCodec<String, T> {
 
   final DateTimeFormatter temporalFormat;
-  final List<String> nullWords;
+  final List<String> nullStrings;
 
   StringToTemporalCodec(
-      TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat, List<String> nullWords) {
+      TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat, List<String> nullStrings) {
     super(targetCodec, String.class);
     this.temporalFormat = temporalFormat;
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public String internalToExternal(T value) {
     if (value == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     return temporalFormat.format(value);
   }
 
   TemporalAccessor parseTemporalAccessor(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     return CodecUtils.parseTemporal(s, temporalFormat);

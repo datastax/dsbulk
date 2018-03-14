@@ -17,19 +17,19 @@ public class StringToBooleanCodec extends ConvertingCodec<String, Boolean> {
 
   private final Map<String, Boolean> inputs;
   private final Map<Boolean, String> outputs;
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
   public StringToBooleanCodec(
-      Map<String, Boolean> inputs, Map<Boolean, String> outputs, List<String> nullWords) {
+      Map<String, Boolean> inputs, Map<Boolean, String> outputs, List<String> nullStrings) {
     super(cboolean(), String.class);
     this.inputs = inputs;
     this.outputs = outputs;
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public Boolean externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     Boolean b = inputs.get(s.toLowerCase());
@@ -42,7 +42,7 @@ public class StringToBooleanCodec extends ConvertingCodec<String, Boolean> {
   @Override
   public String internalToExternal(Boolean value) {
     if (value == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     String s = outputs.get(value);
     if (s == null) {

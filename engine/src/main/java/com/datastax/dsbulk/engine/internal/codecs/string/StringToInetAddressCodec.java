@@ -15,16 +15,16 @@ import java.util.List;
 
 public class StringToInetAddressCodec extends ConvertingCodec<String, InetAddress> {
 
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
-  public StringToInetAddressCodec(List<String> nullWords) {
+  public StringToInetAddressCodec(List<String> nullStrings) {
     super(inet(), String.class);
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public InetAddress externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     try {
@@ -37,7 +37,7 @@ public class StringToInetAddressCodec extends ConvertingCodec<String, InetAddres
   @Override
   public String internalToExternal(InetAddress value) {
     if (value == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     return value.getHostAddress();
   }

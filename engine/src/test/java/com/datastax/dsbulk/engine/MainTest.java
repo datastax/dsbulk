@@ -351,8 +351,8 @@ class MainTest {
   void should_accept_escaped_double_quote_in_complex_type() throws Exception {
     // double quotes should be provided escaped as valid HOCON
     Config result =
-        Main.parseCommandLine("load", new String[] {"--codec.booleanWords", "[\"foo\\\"bar\"]"});
-    assertThat(result.getStringList("codec.booleanWords")).containsExactly("foo\"bar");
+        Main.parseCommandLine("load", new String[] {"--codec.booleanStrings", "[\"foo\\\"bar\"]"});
+    assertThat(result.getStringList("codec.booleanStrings")).containsExactly("foo\"bar");
   }
 
   @Test
@@ -365,10 +365,10 @@ class MainTest {
 
   @Test
   void should_not_accept_parse_error() {
-    new Main(new String[] {"load", "--codec.booleanWords", "[a,b"}).run();
+    new Main(new String[] {"load", "--codec.booleanStrings", "[a,b"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
-        .contains("codec.booleanWords: Expecting LIST, got '[a,b'")
+        .contains("codec.booleanStrings: Expecting LIST, got '[a,b'")
         .contains("List should have ended with ] or had a comma");
   }
 
@@ -410,7 +410,7 @@ class MainTest {
               "ks",
               "-m",
               "{0:\"f1\", 1:\"f2\"}",
-              "-nullWords",
+              "-nullStrings",
               "[nil, nada]",
               "-query",
               "INSERT INTO foo",
@@ -457,7 +457,7 @@ class MainTest {
     assertThat(result.getInt("monitoring.reportRate")).isEqualTo(456);
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
-    assertThat(result.getStringList("codec.nullWords")).containsExactly("nil", "nada");
+    assertThat(result.getStringList("codec.nullStrings")).containsExactly("nil", "nada");
     assertThat(result.getString("schema.query")).isEqualTo("INSERT INTO foo");
     assertThat(result.getString("schema.table")).isEqualTo("table");
 
@@ -684,7 +684,7 @@ class MainTest {
               "locale",
               "--codec.timeZone",
               "tz",
-              "--codec.booleanWords",
+              "--codec.booleanStrings",
               "[\"Si\", \"No\"]",
               "--codec.number",
               "codec-number",
@@ -716,7 +716,7 @@ class MainTest {
               "98761234",
               "--schema.queryTtl",
               "28",
-              "--codec.nullWords",
+              "--codec.nullStrings",
               "[NIL, NADA]",
               "--schema.nullToUnset",
               "false",
@@ -795,7 +795,7 @@ class MainTest {
     assertThat(result.getInt("log.stmt.maxInnerStatements")).isEqualTo(22);
     assertThat(result.getString("codec.locale")).isEqualTo("locale");
     assertThat(result.getString("codec.timeZone")).isEqualTo("tz");
-    assertThat(result.getStringList("codec.booleanWords")).isEqualTo(Arrays.asList("Si", "No"));
+    assertThat(result.getStringList("codec.booleanStrings")).isEqualTo(Arrays.asList("Si", "No"));
     assertThat(result.getString("codec.number")).isEqualTo("codec-number");
     assertThat(result.getString("codec.timestamp")).isEqualTo("codec-ts");
     assertThat(result.getString("codec.date")).isEqualTo("codec-date");
@@ -811,7 +811,7 @@ class MainTest {
     assertThat(result.getString("schema.query")).isEqualTo("SELECT JUNK");
     assertThat(result.getString("schema.queryTimestamp")).isEqualTo("98761234");
     assertThat(result.getInt("schema.queryTtl")).isEqualTo(28);
-    assertThat(result.getStringList("codec.nullWords")).containsExactly("NIL", "NADA");
+    assertThat(result.getStringList("codec.nullStrings")).containsExactly("NIL", "NADA");
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");

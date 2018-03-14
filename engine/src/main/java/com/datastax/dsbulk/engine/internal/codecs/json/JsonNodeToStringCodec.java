@@ -16,8 +16,8 @@ import java.util.List;
 
 public class JsonNodeToStringCodec extends JsonNodeConvertingCodec<String> {
 
-  public JsonNodeToStringCodec(TypeCodec<String> innerCodec, List<String> nullWords) {
-    super(innerCodec, nullWords);
+  public JsonNodeToStringCodec(TypeCodec<String> innerCodec, List<String> nullStrings) {
+    super(innerCodec, nullStrings);
   }
 
   @Override

@@ -28,8 +28,8 @@ public class JsonNodeToUUIDCodec extends JsonNodeConvertingCodec<UUID> {
       TypeCodec<UUID> targetCodec,
       ConvertingCodec<String, Instant> instantCodec,
       TimeUUIDGenerator generator,
-      List<String> nullWords) {
-    super(targetCodec, nullWords);
+      List<String> nullStrings) {
+    super(targetCodec, nullStrings);
     this.instantCodec = instantCodec;
     this.generator = generator;
   }

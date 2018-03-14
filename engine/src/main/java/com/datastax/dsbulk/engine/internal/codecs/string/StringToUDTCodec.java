@@ -22,19 +22,19 @@ public class StringToUDTCodec extends ConvertingCodec<String, UDTValue> {
 
   private final JsonNodeToUDTCodec jsonCodec;
   private final ObjectMapper objectMapper;
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
   public StringToUDTCodec(
-      JsonNodeToUDTCodec jsonCodec, ObjectMapper objectMapper, List<String> nullWords) {
+      JsonNodeToUDTCodec jsonCodec, ObjectMapper objectMapper, List<String> nullStrings) {
     super(jsonCodec.getInternalCodec(), String.class);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public UDTValue externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     try {
@@ -48,7 +48,7 @@ public class StringToUDTCodec extends ConvertingCodec<String, UDTValue> {
   @Override
   public String internalToExternal(UDTValue udt) {
     if (udt == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     try {
       JsonNode node = jsonCodec.internalToExternal(udt);

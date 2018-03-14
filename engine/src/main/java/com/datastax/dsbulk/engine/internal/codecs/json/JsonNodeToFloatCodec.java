@@ -33,9 +33,9 @@ public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
+      Map<String, Boolean> booleanStrings,
       List<BigDecimal> booleanNumbers,
-      List<String> nullWords) {
+      List<String> nullStrings) {
     super(
         TypeCodec.cfloat(),
         numberFormat,
@@ -44,9 +44,9 @@ public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
+        booleanStrings,
         booleanNumbers.stream().map(BigDecimal::floatValue).collect(toList()),
-        nullWords);
+        nullStrings);
   }
 
   @Override

@@ -19,8 +19,8 @@ public class JsonNodeToBooleanCodec extends JsonNodeConvertingCodec<Boolean> {
 
   private final Map<String, Boolean> inputs;
 
-  public JsonNodeToBooleanCodec(Map<String, Boolean> inputs, List<String> nullWords) {
-    super(cboolean(), nullWords);
+  public JsonNodeToBooleanCodec(Map<String, Boolean> inputs, List<String> nullStrings) {
+    super(cboolean(), nullStrings);
     this.inputs = inputs;
   }
 

@@ -31,8 +31,8 @@ public class JsonNodeToInstantCodec extends JsonNodeToTemporalCodec<Instant> {
       FastThreadLocal<NumberFormat> numberFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      List<String> nullWords) {
-    super(InstantCodec.instance, temporalFormat, nullWords);
+      List<String> nullStrings) {
+    super(InstantCodec.instance, temporalFormat, nullStrings);
     this.numberFormat = numberFormat;
     this.timeUnit = timeUnit;
     this.epoch = epoch;

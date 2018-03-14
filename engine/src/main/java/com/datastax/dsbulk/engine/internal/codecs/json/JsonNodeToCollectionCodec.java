@@ -31,8 +31,8 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
       ConvertingCodec<JsonNode, E> eltCodec,
       ObjectMapper objectMapper,
       Supplier<C> collectionSupplier,
-      List<String> nullWords) {
-    super(collectionCodec, nullWords);
+      List<String> nullStrings) {
+    super(collectionCodec, nullStrings);
     this.eltCodec = eltCodec;
     this.objectMapper = objectMapper;
     this.collectionSupplier = collectionSupplier;

@@ -20,22 +20,22 @@ public class StringToUUIDCodec extends ConvertingCodec<String, UUID> {
 
   private final ConvertingCodec<String, Instant> instantCodec;
   private final TimeUUIDGenerator generator;
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
   public StringToUUIDCodec(
       TypeCodec<UUID> targetCodec,
       ConvertingCodec<String, Instant> instantCodec,
       TimeUUIDGenerator generator,
-      List<String> nullWords) {
+      List<String> nullStrings) {
     super(targetCodec, String.class);
     this.instantCodec = instantCodec;
     this.generator = generator;
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public UUID externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     return CodecUtils.parseUUID(s, instantCodec, generator);
@@ -44,7 +44,7 @@ public class StringToUUIDCodec extends ConvertingCodec<String, UUID> {
   @Override
   public String internalToExternal(UUID value) {
     if (value == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     return value.toString();
   }

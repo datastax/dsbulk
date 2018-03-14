@@ -15,16 +15,16 @@ import java.util.List;
 
 abstract class JsonNodeConvertingCodec<T> extends ConvertingCodec<JsonNode, T> {
 
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
-  JsonNodeConvertingCodec(TypeCodec<T> targetCodec, List<String> nullWords) {
+  JsonNodeConvertingCodec(TypeCodec<T> targetCodec, List<String> nullStrings) {
     super(targetCodec, JsonNode.class);
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   boolean isNull(JsonNode node) {
     return node == null
         || node.isNull()
-        || (node.isValueNode() && nullWords.contains(node.asText()));
+        || (node.isValueNode() && nullStrings.contains(node.asText()));
   }
 }

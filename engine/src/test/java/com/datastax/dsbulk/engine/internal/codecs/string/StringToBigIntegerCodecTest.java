@@ -34,7 +34,7 @@ class StringToBigIntegerCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   private final StringToBigIntegerCodec codec =
       new StringToBigIntegerCodec(

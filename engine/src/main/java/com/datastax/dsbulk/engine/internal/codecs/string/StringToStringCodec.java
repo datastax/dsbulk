@@ -14,16 +14,16 @@ import java.util.List;
 
 public class StringToStringCodec extends ConvertingCodec<String, String> {
 
-  private final List<String> nullWords;
+  private final List<String> nullStrings;
 
-  public StringToStringCodec(TypeCodec<String> innerCodec, List<String> nullWords) {
+  public StringToStringCodec(TypeCodec<String> innerCodec, List<String> nullStrings) {
     super(innerCodec, String.class);
-    this.nullWords = nullWords;
+    this.nullStrings = nullStrings;
   }
 
   @Override
   public String externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullWords.contains(s)) {
+    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
       return null;
     }
     return s;
@@ -32,7 +32,7 @@ public class StringToStringCodec extends ConvertingCodec<String, String> {
   @Override
   public String internalToExternal(String value) {
     if (value == null) {
-      return nullWords.isEmpty() ? null : nullWords.get(0);
+      return nullStrings.isEmpty() ? null : nullStrings.get(0);
     }
     return value;
   }

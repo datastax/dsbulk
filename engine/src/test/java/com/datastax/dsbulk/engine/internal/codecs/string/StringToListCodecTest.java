@@ -43,7 +43,7 @@ class StringToListCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   private final JsonNodeToDoubleCodec eltCodec1 =
       new JsonNodeToDoubleCodec(
@@ -55,25 +55,25 @@ class StringToListCodecTest {
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
           newArrayList(ONE, ZERO),
-          nullWords);
+          nullStrings);
 
   private final JsonNodeToStringCodec eltCodec2 =
-      new JsonNodeToStringCodec(TypeCodec.varchar(), nullWords);
+      new JsonNodeToStringCodec(TypeCodec.varchar(), nullStrings);
 
   private final TypeCodec<List<Double>> listCodec1 = list(cdouble());
   private final TypeCodec<List<String>> listCodec2 = list(varchar());
 
   private final StringToListCodec<Double> codec1 =
       new StringToListCodec<>(
-          new JsonNodeToListCodec<>(listCodec1, eltCodec1, objectMapper, nullWords),
+          new JsonNodeToListCodec<>(listCodec1, eltCodec1, objectMapper, nullStrings),
           objectMapper,
-          nullWords);
+          nullStrings);
 
   private final StringToListCodec<String> codec2 =
       new StringToListCodec<>(
-          new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper, nullWords),
+          new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper, nullStrings),
           objectMapper,
-          nullWords);
+          nullStrings);
 
   @Test
   void should_convert_from_valid_external() {

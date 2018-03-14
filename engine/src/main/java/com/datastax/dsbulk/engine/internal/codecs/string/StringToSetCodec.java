@@ -18,7 +18,7 @@ public class StringToSetCodec<E> extends StringToCollectionCodec<E, Set<E>> {
   public StringToSetCodec(
       JsonNodeToCollectionCodec<E, Set<E>> jsonCodec,
       ObjectMapper objectMapper,
-      List<String> nullWords) {
-    super(jsonCodec, objectMapper, nullWords);
+      List<String> nullStrings) {
+    super(jsonCodec, objectMapper, nullStrings);
   }
 }

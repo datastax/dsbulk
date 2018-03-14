@@ -28,11 +28,11 @@ class StringToLocalTimeCodecTest {
   private DateTimeFormatter format2 =
       CodecSettings.getDateTimeFormat("HHmmss.SSS", UTC, US, EPOCH.atZone(UTC));
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   @Test
   void should_convert_from_valid_external() {
-    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullWords);
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullStrings);
     assertThat(codec)
         .convertsFromExternal("12:24:46")
         .toInternal(LocalTime.parse("12:24:46"))
@@ -44,7 +44,7 @@ class StringToLocalTimeCodecTest {
         .toInternal(null)
         .convertsFromExternal("")
         .toInternal(null);
-    codec = new StringToLocalTimeCodec(format2, nullWords);
+    codec = new StringToLocalTimeCodec(format2, nullStrings);
     assertThat(codec)
         .convertsFromExternal("122446.999")
         .toInternal(LocalTime.parse("12:24:46.999"));
@@ -52,11 +52,11 @@ class StringToLocalTimeCodecTest {
 
   @Test
   void should_convert_from_valid_internal() {
-    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullWords);
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullStrings);
     assertThat(codec)
         .convertsFromInternal(LocalTime.parse("12:24:46.999"))
         .toExternal("12:24:46.999");
-    codec = new StringToLocalTimeCodec(format2, nullWords);
+    codec = new StringToLocalTimeCodec(format2, nullStrings);
     assertThat(codec)
         .convertsFromInternal(LocalTime.parse("12:24:46.999"))
         .toExternal("122446.999");
@@ -64,7 +64,7 @@ class StringToLocalTimeCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullWords);
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullStrings);
     assertThat(codec).cannotConvertFromExternal("not a valid date format");
   }
 }

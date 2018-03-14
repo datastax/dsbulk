@@ -31,8 +31,8 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
       TypeCodec<UDTValue> udtCodec,
       Map<String, ConvertingCodec<JsonNode, Object>> fieldCodecs,
       ObjectMapper objectMapper,
-      List<String> nullWords) {
-    super(udtCodec, nullWords);
+      List<String> nullStrings) {
+    super(udtCodec, nullStrings);
     this.fieldCodecs = fieldCodecs;
     definition = (UserType) udtCodec.getCqlType();
     this.objectMapper = objectMapper;

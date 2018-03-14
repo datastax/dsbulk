@@ -16,8 +16,8 @@ import java.util.List;
 
 public class JsonNodeToDurationCodec extends JsonNodeConvertingCodec<Duration> {
 
-  public JsonNodeToDurationCodec(List<String> nullWords) {
-    super(duration(), nullWords);
+  public JsonNodeToDurationCodec(List<String> nullStrings) {
+    super(duration(), nullStrings);
   }
 
   @Override

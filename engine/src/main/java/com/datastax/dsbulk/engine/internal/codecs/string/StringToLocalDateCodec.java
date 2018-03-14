@@ -17,8 +17,8 @@ import java.util.List;
 
 public class StringToLocalDateCodec extends StringToTemporalCodec<LocalDate> {
 
-  public StringToLocalDateCodec(DateTimeFormatter parser, List<String> nullWords) {
-    super(LocalDateCodec.instance, parser, nullWords);
+  public StringToLocalDateCodec(DateTimeFormatter parser, List<String> nullStrings) {
+    super(LocalDateCodec.instance, parser, nullStrings);
   }
 
   @Override

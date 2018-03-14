@@ -31,9 +31,9 @@ public class StringToDoubleCodec extends StringToNumberCodec<Double> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
+      Map<String, Boolean> booleanStrings,
       List<BigDecimal> booleanNumbers,
-      List<String> nullWords) {
+      List<String> nullStrings) {
     super(
         TypeCodec.cdouble(),
         numberFormat,
@@ -42,9 +42,9 @@ public class StringToDoubleCodec extends StringToNumberCodec<Double> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
+        booleanStrings,
         booleanNumbers.stream().map(BigDecimal::doubleValue).collect(toList()),
-        nullWords);
+        nullStrings);
   }
 
   @Override

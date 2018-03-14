@@ -19,8 +19,8 @@ import java.util.List;
 
 public class JsonNodeToLocalTimeCodec extends JsonNodeToTemporalCodec<LocalTime> {
 
-  public JsonNodeToLocalTimeCodec(DateTimeFormatter parser, List<String> nullWords) {
-    super(LocalTimeCodec.instance, parser, nullWords);
+  public JsonNodeToLocalTimeCodec(DateTimeFormatter parser, List<String> nullStrings) {
+    super(LocalTimeCodec.instance, parser, nullStrings);
   }
 
   @Override

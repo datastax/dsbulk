@@ -36,14 +36,14 @@ class StringToUUIDCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private final List<String> nullWords = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL");
 
   private StringToInstantCodec instantCodec =
       new StringToInstantCodec(
-          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullWords);
+          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
 
   private final StringToUUIDCodec codec =
-      new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullWords);
+      new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullStrings);
 
   @Test
   void should_convert_from_valid_external() {
@@ -57,18 +57,18 @@ class StringToUUIDCodecTest {
         .convertsFromExternal("")
         .toInternal(null);
 
-    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullWords))
+    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullStrings))
         .convertsFromExternal("2017-12-05T12:44:36+01:00")
         .toInternal(
             UUIDs.startOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
-    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullWords))
+    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullStrings))
         .convertsFromExternal("2017-12-05T12:44:36.999999999+01:00")
         .toInternal(
             UUIDs.endOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36.999+01:00").toInstant().toEpochMilli()));
     assertThat(
-            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullWords)
+            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullStrings)
                 .externalToInternal("2017-12-05T12:44:36+01:00")
                 .timestamp())
         .isEqualTo(
@@ -76,7 +76,7 @@ class StringToUUIDCodecTest {
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
     assertThat(
-            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullWords)
+            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullStrings)
                 .externalToInternal("2017-12-05T12:44:36+01:00")
                 .timestamp())
         .isEqualTo(
@@ -84,21 +84,21 @@ class StringToUUIDCodecTest {
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
 
-    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullWords))
+    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullStrings))
         .convertsFromExternal("123456")
         .toInternal(UUIDs.startOf(123456L));
     assertThat(
-            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullWords)
+            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullStrings)
                 .externalToInternal("123456")
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     assertThat(
-            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullWords)
+            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullStrings)
                 .externalToInternal("123456")
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     assertThat(
-            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullWords)
+            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullStrings)
                 .externalToInternal("123456")
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
