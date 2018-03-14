@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToMapCodec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,23 +17,21 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-public class StringToMapCodec<K, V> extends ConvertingCodec<String, Map<K, V>> {
+public class StringToMapCodec<K, V> extends StringConvertingCodec<Map<K, V>> {
 
   private final JsonNodeToMapCodec<K, V> jsonCodec;
   private final ObjectMapper objectMapper;
-  private final List<String> nullStrings;
 
   public StringToMapCodec(
       JsonNodeToMapCodec<K, V> jsonCodec, ObjectMapper objectMapper, List<String> nullStrings) {
-    super(jsonCodec.getInternalCodec(), String.class);
+    super(jsonCodec.getInternalCodec(), nullStrings);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
-    this.nullStrings = nullStrings;
   }
 
   @Override
   public Map<K, V> externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
+    if (isNull(s)) {
       return null;
     }
     try {
@@ -48,7 +45,7 @@ public class StringToMapCodec<K, V> extends ConvertingCodec<String, Map<K, V>> {
   @Override
   public String internalToExternal(Map<K, V> map) {
     if (map == null) {
-      return nullStrings.isEmpty() ? null : nullStrings.get(0);
+      return nullString();
     }
     try {
       JsonNode node = jsonCodec.internalToExternal(map);

@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUDTCodec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,23 +17,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
 
-public class StringToUDTCodec extends ConvertingCodec<String, UDTValue> {
+public class StringToUDTCodec extends StringConvertingCodec<UDTValue> {
 
   private final JsonNodeToUDTCodec jsonCodec;
   private final ObjectMapper objectMapper;
-  private final List<String> nullStrings;
 
   public StringToUDTCodec(
       JsonNodeToUDTCodec jsonCodec, ObjectMapper objectMapper, List<String> nullStrings) {
-    super(jsonCodec.getInternalCodec(), String.class);
+    super(jsonCodec.getInternalCodec(), nullStrings);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
-    this.nullStrings = nullStrings;
   }
 
   @Override
   public UDTValue externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
+    if (isNull(s)) {
       return null;
     }
     try {
@@ -48,7 +45,7 @@ public class StringToUDTCodec extends ConvertingCodec<String, UDTValue> {
   @Override
   public String internalToExternal(UDTValue udt) {
     if (udt == null) {
-      return nullStrings.isEmpty() ? null : nullStrings.get(0);
+      return nullString();
     }
     try {
       JsonNode node = jsonCodec.internalToExternal(udt);

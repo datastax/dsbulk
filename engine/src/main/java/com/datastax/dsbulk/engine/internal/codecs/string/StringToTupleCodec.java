@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.TupleValue;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToTupleCodec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,23 +17,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
 
-public class StringToTupleCodec extends ConvertingCodec<String, TupleValue> {
+public class StringToTupleCodec extends StringConvertingCodec<TupleValue> {
 
   private final JsonNodeToTupleCodec jsonCodec;
   private final ObjectMapper objectMapper;
-  private final List<String> nullStrings;
 
   public StringToTupleCodec(
       JsonNodeToTupleCodec jsonCodec, ObjectMapper objectMapper, List<String> nullStrings) {
-    super(jsonCodec.getInternalCodec(), String.class);
+    super(jsonCodec.getInternalCodec(), nullStrings);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
-    this.nullStrings = nullStrings;
   }
 
   @Override
   public TupleValue externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
+    if (isNull(s)) {
       return null;
     }
     try {
@@ -48,7 +45,7 @@ public class StringToTupleCodec extends ConvertingCodec<String, TupleValue> {
   @Override
   public String internalToExternal(TupleValue tuple) {
     if (tuple == null) {
-      return nullStrings.isEmpty() ? null : nullStrings.get(0);
+      return nullString();
     }
     try {
       JsonNode node = jsonCodec.internalToExternal(tuple);

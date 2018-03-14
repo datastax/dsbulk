@@ -9,24 +9,20 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.utils.Bytes;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.List;
 
-public class StringToBlobCodec extends ConvertingCodec<String, ByteBuffer> {
-
-  private final List<String> nullStrings;
+public class StringToBlobCodec extends StringConvertingCodec<ByteBuffer> {
 
   public StringToBlobCodec(List<String> nullStrings) {
-    super(blob(), String.class);
-    this.nullStrings = nullStrings;
+    super(blob(), nullStrings);
   }
 
   @Override
   public ByteBuffer externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
+    if (isNull(s)) {
       return null;
     }
     return CodecUtils.parseByteBuffer(s);
@@ -35,7 +31,7 @@ public class StringToBlobCodec extends ConvertingCodec<String, ByteBuffer> {
   @Override
   public String internalToExternal(ByteBuffer value) {
     if (value == null) {
-      return nullStrings.isEmpty() ? null : nullStrings.get(0);
+      return nullString();
     }
     return Base64.getEncoder().encodeToString(Bytes.getArray(value));
   }

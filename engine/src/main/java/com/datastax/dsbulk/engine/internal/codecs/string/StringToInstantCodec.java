@@ -49,7 +49,7 @@ public class StringToInstantCodec extends StringToTemporalCodec<Instant> {
 
   @Override
   TemporalAccessor parseTemporalAccessor(String s) {
-    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
+    if (isNull(s)) {
       return null;
     }
     // For timestamps, the conversion is more complex than for other temporals

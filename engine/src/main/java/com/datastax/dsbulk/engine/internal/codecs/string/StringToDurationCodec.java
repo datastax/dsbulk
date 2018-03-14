@@ -9,21 +9,17 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.Duration;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import java.util.List;
 
-public class StringToDurationCodec extends ConvertingCodec<String, Duration> {
-
-  private final List<String> nullStrings;
+public class StringToDurationCodec extends StringConvertingCodec<Duration> {
 
   public StringToDurationCodec(List<String> nullStrings) {
-    super(duration(), String.class);
-    this.nullStrings = nullStrings;
+    super(duration(), nullStrings);
   }
 
   @Override
   public Duration externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
+    if (isNull(s)) {
       return null;
     }
     return Duration.from(s);
@@ -32,7 +28,7 @@ public class StringToDurationCodec extends ConvertingCodec<String, Duration> {
   @Override
   public String internalToExternal(Duration value) {
     if (value == null) {
-      return nullStrings.isEmpty() ? null : nullStrings.get(0);
+      return nullString();
     }
     return value.toString();
   }

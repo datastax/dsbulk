@@ -9,22 +9,18 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import java.net.InetAddress;
 import java.util.List;
 
-public class StringToInetAddressCodec extends ConvertingCodec<String, InetAddress> {
-
-  private final List<String> nullStrings;
+public class StringToInetAddressCodec extends StringConvertingCodec<InetAddress> {
 
   public StringToInetAddressCodec(List<String> nullStrings) {
-    super(inet(), String.class);
-    this.nullStrings = nullStrings;
+    super(inet(), nullStrings);
   }
 
   @Override
   public InetAddress externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
+    if (isNull(s)) {
       return null;
     }
     try {
@@ -37,7 +33,7 @@ public class StringToInetAddressCodec extends ConvertingCodec<String, InetAddres
   @Override
   public String internalToExternal(InetAddress value) {
     if (value == null) {
-      return nullStrings.isEmpty() ? null : nullStrings.get(0);
+      return nullString();
     }
     return value.getHostAddress();
   }

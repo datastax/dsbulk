@@ -9,21 +9,17 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import java.util.List;
 
-public class StringToStringCodec extends ConvertingCodec<String, String> {
-
-  private final List<String> nullStrings;
+public class StringToStringCodec extends StringConvertingCodec<String> {
 
   public StringToStringCodec(TypeCodec<String> innerCodec, List<String> nullStrings) {
-    super(innerCodec, String.class);
-    this.nullStrings = nullStrings;
+    super(innerCodec, nullStrings);
   }
 
   @Override
   public String externalToInternal(String s) {
-    if (s == null || s.isEmpty() || nullStrings.contains(s)) {
+    if (isNull(s)) {
       return null;
     }
     return s;
@@ -32,7 +28,7 @@ public class StringToStringCodec extends ConvertingCodec<String, String> {
   @Override
   public String internalToExternal(String value) {
     if (value == null) {
-      return nullStrings.isEmpty() ? null : nullStrings.get(0);
+      return nullString();
     }
     return value;
   }
