@@ -10,6 +10,7 @@
 - [improvement] DAT-243: Improve message when DSBulk completes with errors.
 - [improvement] DAT-242: Reduce and filter stack traces.
 - [improvement] DAT-244: Validate that mapped fields are present in the record.
+- [improvement] DAT-238: Monitor throughput in bytes/sec.
 
 
 ### 1.0.0
