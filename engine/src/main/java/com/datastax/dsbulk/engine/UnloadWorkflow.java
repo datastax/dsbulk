@@ -136,6 +136,9 @@ public class UnloadWorkflow implements Workflow {
     flux.compose(connector.write())
         .transform(metricsManager.newFailedItemsMonitor())
         .transform(logManager.newFailedRecordsHandler())
+        .then()
+        .flux()
+        .transform(logManager.newUncaughtExceptionHandler())
         .blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);

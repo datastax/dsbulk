@@ -12,6 +12,7 @@
 - [improvement] DAT-244: Validate that mapped fields are present in the record.
 - [improvement] DAT-238: Monitor throughput in bytes/sec.
 - [improvement] DAT-246: Do not log ongoing metrics to main log file.
+- [improvement] DAT-247: Improve handling of uncaught exceptions.
 
 
 ### 1.0.0
