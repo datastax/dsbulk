@@ -77,7 +77,7 @@ class DriverSettingsTest {
   void should_create_mapper_when_hosts_provided() {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("port = 9876, hosts = \"1.2.3.4, 2.3.4.5, 9.8.7.6\"")
+            ConfigFactory.parseString("port = 9876, hosts = [1.2.3.4, 2.3.4.5, 9.8.7.6]")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config, "test");
     driverSettings.init();
@@ -398,7 +398,7 @@ class DriverSettingsTest {
                         + "      childPolicy=whiteList,"
                         + "    }, "
                         + "    dcAwareRoundRobin {"
-                        + "      localDc=127.0.0.2,"
+                        + "      localDc=myLocalDcName,"
                         + "      allowRemoteDCsForLocalConsistencyLevel=true,"
                         + "      usedHostsPerRemoteDc=2,"
                         + "    }, "
@@ -408,7 +408,7 @@ class DriverSettingsTest {
                         + "    }, "
                         + "    whiteList {"
                         + "      childPolicy = tokenAware,"
-                        + "      hosts = \"127.0.0.4, 127.0.0.1\","
+                        + "      hosts = [127.0.0.4, 127.0.0.1],"
                         + "    }, "
                         + "  }"
                         + "}")
@@ -445,7 +445,7 @@ class DriverSettingsTest {
     assertThat(tokenAwarePolicy.getChildPolicy()).isInstanceOf(DCAwareRoundRobinPolicy.class);
     DCAwareRoundRobinPolicy dcAwareRoundRobinPolicy =
         (DCAwareRoundRobinPolicy) tokenAwarePolicy.getChildPolicy();
-    assertThat(getInternalState(dcAwareRoundRobinPolicy, "localDc")).isEqualTo("127.0.0.2");
+    assertThat(getInternalState(dcAwareRoundRobinPolicy, "localDc")).isEqualTo("myLocalDcName");
     assertThat(getInternalState(dcAwareRoundRobinPolicy, "dontHopForLocalCL")).isEqualTo(false);
     assertThat(getInternalState(dcAwareRoundRobinPolicy, "usedHostsPerRemoteDc")).isEqualTo(2);
   }

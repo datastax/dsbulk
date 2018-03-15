@@ -182,7 +182,7 @@ Default: **["127.0.0.1"]**.
 
 The native transport port to connect to. This must match DSE's [native_transport_port](https://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configCassandra_yaml_r.html#configCassandra_yaml_r__native_transport_port) configuration option.
 
-Note that all nodes in a cluster must accept connections on the same port number. Mixed-port cluster are not supported.
+Note that all nodes in a cluster must accept connections on the same port number. Mixed-port clusters are not supported.
 
 Default: **9042**.
 
@@ -832,7 +832,7 @@ Default: **["127.0.0.1"]**.
 
 The native transport port to connect to. This must match DSE's [native_transport_port](https://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configCassandra_yaml_r.html#configCassandra_yaml_r__native_transport_port) configuration option.
 
-Note that all nodes in a cluster must accept connections on the same port number. Mixed-port cluster are not supported.
+Note that all nodes in a cluster must accept connections on the same port number. Mixed-port clusters are not supported.
 
 Default: **9042**.
 
