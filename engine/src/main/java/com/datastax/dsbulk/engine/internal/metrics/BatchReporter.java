@@ -23,16 +23,16 @@ import com.codahale.metrics.Timer;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class BatchReporter extends ScheduledReporter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BatchReporter.class);
-
   private static final String MSG = "Batches: total: %,d, size: %,.2f mean, %d min, %d max";
 
-  public BatchReporter(MetricRegistry registry, ScheduledExecutorService scheduler) {
+  private final Logger logger;
+
+  BatchReporter(MetricRegistry registry, Logger logger, ScheduledExecutorService scheduler) {
     super(registry, "batch-reporter", createFilter(), SECONDS, MILLISECONDS, scheduler);
+    this.logger = logger;
   }
 
   private static MetricFilter createFilter() {
@@ -48,7 +48,7 @@ public class BatchReporter extends ScheduledReporter {
       SortedMap<String, Timer> timers) {
     Histogram size = histograms.get("batches/size");
     Snapshot snapshot = size.getSnapshot();
-    LOGGER.info(
+    logger.info(
         String.format(
             MSG, size.getCount(), snapshot.getMean(), snapshot.getMin(), snapshot.getMax()));
   }

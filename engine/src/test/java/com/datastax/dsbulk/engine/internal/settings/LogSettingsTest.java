@@ -25,6 +25,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.FileAppender;
+import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
@@ -39,6 +40,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
+import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -86,7 +88,7 @@ class LogSettingsTest {
   }
 
   @AfterEach
-  void removeMainLogFileAppender() {
+  void removeMainLogFileAppender() throws JoranException {
     ch.qos.logback.classic.Logger root =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
     FileAppender<ILoggingEvent> appender =
@@ -95,6 +97,7 @@ class LogSettingsTest {
       appender.stop();
       root.detachAppender(appender);
     }
+    LogUtils.resetLogbackConfiguration();
   }
 
   @Test
@@ -156,8 +159,7 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     ch.qos.logback.classic.Logger root =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    LoggerContext lc = root.getLoggerContext();
-    lc.putProperty(PRODUCTION_KEY, "true");
+    LogUtils.setProductionKey();
     Level oldLevel = root.getLevel();
     try {
       LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
@@ -169,7 +171,7 @@ class LogSettingsTest {
       String contents = Files.readAllLines(logFile).stream().collect(Collectors.joining());
       assertThat(contents).contains("this is a test");
     } finally {
-      lc.putProperty(PRODUCTION_KEY, "false");
+      LogUtils.removeProductionKey();
       root.setLevel(oldLevel);
     }
   }

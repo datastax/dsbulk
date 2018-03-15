@@ -41,7 +41,13 @@ class MonitoringSettingsTest {
     settings.init();
     MetricsManager metricsManager =
         settings.newMetricsManager(
-            WorkflowType.UNLOAD, true, null, new MetricRegistry(), protocolVersion, codecRegistry);
+            WorkflowType.UNLOAD,
+            true,
+            null,
+            null,
+            new MetricRegistry(),
+            protocolVersion,
+            codecRegistry);
     assertThat(metricsManager).isNotNull();
     assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "durationUnit"))
@@ -74,6 +80,7 @@ class MonitoringSettingsTest {
             WorkflowType.UNLOAD,
             true,
             tmpPath,
+            null,
             new MetricRegistry(),
             protocolVersion,
             codecRegistry);

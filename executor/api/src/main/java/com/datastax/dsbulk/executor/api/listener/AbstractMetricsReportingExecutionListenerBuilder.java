@@ -16,6 +16,7 @@ import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
 
 /**
  * A builder for {@link AbstractMetricsReportingExecutionListener}.
@@ -30,6 +31,7 @@ public abstract class AbstractMetricsReportingExecutionListenerBuilder<
   TimeUnit rateUnit = SECONDS;
   TimeUnit durationUnit = MILLISECONDS;
   ScheduledExecutorService scheduler;
+  Logger logger = null;
 
   AbstractMetricsReportingExecutionListenerBuilder() {}
 
@@ -98,6 +100,19 @@ public abstract class AbstractMetricsReportingExecutionListenerBuilder<
   public AbstractMetricsReportingExecutionListenerBuilder<T> withScheduler(
       ScheduledExecutorService scheduler) {
     this.scheduler = scheduler;
+    return this;
+  }
+
+  /**
+   * Use the given {@link Logger} to log messages.
+   *
+   * <p>If this method is not called, then a default logger is used.
+   *
+   * @param logger the {@link Logger} to use.
+   * @return {@code this} (for method chaining).
+   */
+  public AbstractMetricsReportingExecutionListenerBuilder<T> withLogger(Logger logger) {
+    this.logger = logger;
     return this;
   }
 

@@ -109,6 +109,7 @@ public class UnloadWorkflow implements Workflow {
             WorkflowType.UNLOAD,
             false,
             logManager.getExecutionDirectory(),
+            logSettings.getMainLogFileAppender(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
             cluster.getConfiguration().getCodecRegistry());
