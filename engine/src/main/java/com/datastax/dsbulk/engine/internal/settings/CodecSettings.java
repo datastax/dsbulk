@@ -308,6 +308,11 @@ public class CodecSettings {
         .map(str -> new StringTokenizer(str, ":"))
         .forEach(
             tokenizer -> {
+              if (tokenizer.countTokens() != 2) {
+                throw new BulkConfigurationException(
+                    "Expecting codec.booleanStrings to contain a list of true:false pairs, got "
+                        + list);
+              }
               builder.put(tokenizer.nextToken().toLowerCase(), true);
               builder.put(tokenizer.nextToken().toLowerCase(), false);
             });
