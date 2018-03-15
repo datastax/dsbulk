@@ -98,9 +98,9 @@ public class CodecSettings {
 
   private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
   private static final String LOCALE = "locale";
-  private static final String BOOLEAN_WORDS = "booleanStrings";
+  private static final String NULL_STRINGS = "nullStrings";
+  private static final String BOOLEAN_STRINGS = "booleanStrings";
   private static final String BOOLEAN_NUMBERS = "booleanNumbers";
-  private static final String NULL_WORDS = "nullStrings";
   private static final String NUMBER = "number";
   private static final String FORMAT_NUMERIC_OUTPUT = "formatNumbers";
   private static final String ROUNDING_STRATEGY = "roundingStrategy";
@@ -140,7 +140,7 @@ public class CodecSettings {
       Locale locale = parseLocale(config.getString(LOCALE));
 
       // strings
-      nullStrings = ImmutableList.copyOf(config.getStringList(NULL_WORDS));
+      nullStrings = ImmutableList.copyOf(config.getStringList(NULL_STRINGS));
 
       // numeric
       roundingMode = config.getEnum(RoundingMode.class, ROUNDING_STRATEGY);
@@ -168,7 +168,7 @@ public class CodecSettings {
         throw new BulkConfigurationException(
             "Invalid boolean numbers list, expecting two elements, got " + booleanNumbers);
       }
-      List<String> booleanStrings = config.getStringList(BOOLEAN_WORDS);
+      List<String> booleanStrings = config.getStringList(BOOLEAN_STRINGS);
       booleanInputWords = getBooleanInputWords(booleanStrings);
       booleanOutputWords = getBooleanOutputWords(booleanStrings);
 
