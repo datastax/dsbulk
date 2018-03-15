@@ -342,7 +342,7 @@ class SchemaSettingsTest {
     when(ps.getVariables()).thenReturn(definitions);
     LoaderConfig config =
         makeLoaderConfig(
-            "mapping = \"{ 0 = c1var , 2 = c2var }\", "
+            "mapping = \"0 = c1var , 2 = c2var\", "
                 + "query = \"INSERT INTO ks.t1(c2, c1) VALUES (:c2var, :c1var)\", "
                 + "nullToUnset = true");
     SchemaSettings schemaSettings = new SchemaSettings(config);

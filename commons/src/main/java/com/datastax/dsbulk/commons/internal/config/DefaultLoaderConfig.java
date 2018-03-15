@@ -10,8 +10,6 @@ package com.datastax.dsbulk.commons.internal.config;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigException;
-import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigMemorySize;
 import com.typesafe.config.ConfigMergeable;
@@ -243,22 +241,7 @@ public class DefaultLoaderConfig implements LoaderConfig {
 
   @Override
   public List<String> getStringList(String path) {
-    try {
-      return delegate.getStringList(path);
-    } catch (ConfigException.WrongType e) {
-      String rawValue = getString(path);
-      if (!rawValue.startsWith("[")) {
-        rawValue = "[" + rawValue + "]";
-      }
-
-      // This seems a little strange. Basically, rawValue may contain null items, and we
-      // want to treat those as string null, not true null. So, map such items.
-      return ConfigFactory.parseString("dummyKey = " + rawValue)
-          .getList("dummyKey")
-          .stream()
-          .map(elt -> elt.valueType() == ConfigValueType.NULL ? "null" : elt.unwrapped().toString())
-          .collect(Collectors.toList());
-    }
+    return delegate.getStringList(path);
   }
 
   @Override

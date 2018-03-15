@@ -158,4 +158,25 @@ public class ConfigUtils {
     }
     return threads;
   }
+
+  public static String ensureQuoted(String value) {
+    if (value.startsWith("\"") && value.endsWith("\"")) {
+      return value;
+    }
+    return "\"" + value + "\"";
+  }
+
+  public static String ensureBrackets(String value) {
+    if (value.startsWith("[") && value.endsWith("]")) {
+      return value;
+    }
+    return "[" + value + "]";
+  }
+
+  public static String ensureBraces(String value) {
+    if (value.startsWith("{") && value.endsWith("}")) {
+      return value;
+    }
+    return "{" + value + "}";
+  }
 }

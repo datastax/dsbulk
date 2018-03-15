@@ -465,12 +465,16 @@ public class SchemaSettings {
   private Config getMapping() throws BulkConfigurationException {
     String mappingString = config.getString(MAPPING).replaceAll("\\*", INFERRED_MAPPING_TOKEN);
     try {
-      return ConfigFactory.parseString(mappingString);
+      return ConfigFactory.parseString(ConfigUtils.ensureBraces(mappingString));
     } catch (ConfigException.Parse e) {
       // mappingString doesn't seem to be a map. Treat it as a list instead.
       Map<String, String> indexMap = new HashMap<>();
       int curInd = 0;
-      for (String s : config.getStringList(MAPPING)) {
+      List<String> list =
+          ConfigFactory.parseString(
+                  "key = " + ConfigUtils.ensureBrackets(config.getString(MAPPING)))
+              .getStringList("key");
+      for (String s : list) {
         indexMap.put(Integer.toString(curInd++), s);
       }
       return ConfigFactory.parseMap(indexMap);

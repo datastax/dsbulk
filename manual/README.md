@@ -49,39 +49,6 @@ Run the tool with `--help` and specify the connector to see its short options:
 dsbulk -c csv --help
 ```
 
-## Escaping and Quoting Command Line Arguments
-
-When supplied via the command line, all option values are expected to be in valid [HOCON] syntax.
-For example, control characters, the backslash character, and the double-quote character all need to
-be properly escaped.
-
-The following is thus correct:
-
-```bash
-dsbulk load -delim '\t' -url 'C:\\Users\\My Folder'
-```
-
-In the above example, `\t` is the escape sequence that corresponds to the tab character, 
-whereas `\\` is the escape sequence for the backslash character.
- 
-In general, string values containing special characters also need to be properly quoted 
-with double-quotes, as required by the HOCON syntax, e.g.:
-
-```bash
-dsbulk load -url '"C:\\Users\\My Folder"'
-```
-
-However, when the expected type of an option is simply string, it is possible to omit the 
-surrounding double-quotes, for convenience. Thus the following two lines are equivalent:
-
-```bash
-dsbulk load -url 'C:\\Users\\My Folder'
-dsbulk load -url '"C:\\Users\\My Folder"'
-```
-
-This is not possible for complex option types: in these cases, it is up to you to ensure that
-all arguments are properly escaped _and_ quoted.
-
 ## Configuration Files vs Command Line Options
 
 All DSBulk options can be passed as command line arguments, or in a configuration file.
@@ -128,6 +95,57 @@ dsbulk.connector.csv.delimiter = "\t"
    however, you should use `--connector.name csv` to achieve the same effect.
 2. Options specified through the command line _override options specified in configuration files_.
    See examples for details.
+
+## Escaping and Quoting Command Line Arguments
+
+When supplied via the command line, all option values are expected to be in valid [HOCON] syntax.
+For example, control characters, the backslash character, and the double-quote character all need to
+be properly escaped.
+
+The following is thus correct:
+
+```bash
+dsbulk load -delim '\t' -url 'C:\\Users\\My Folder'
+```
+
+In the above example, `\t` is the escape sequence that corresponds to the tab character, 
+whereas `\\` is the escape sequence for the backslash character.
+ 
+In general, string values containing special characters also need to be properly quoted 
+with double-quotes, as required by the HOCON syntax, e.g.:
+
+```bash
+dsbulk load -url '"C:\\Users\\My Folder"'
+```
+
+However, when the expected type of an option is a string, it is possible to omit the 
+surrounding double-quotes, for convenience. Thus the following two lines are equivalent:
+
+```bash
+dsbulk load -url 'C:\\Users\\My Folder'
+dsbulk load -url '"C:\\Users\\My Folder"'
+```
+
+Similarly, when an argument is a list, it is possible to omit the surrounding square brackets;
+the following two lines are thus equivalent:
+
+```bash
+dsbulk load --codec.nullStrings 'NIL, NULL'
+dsbulk load --codec.nullStrings '[NIL, NULL]'
+```
+
+And finally, the same applies for arguments of type map: it is possible to omit the surrounding 
+curly braces, which makes the following two lines equivalent:
+
+```bash
+dsbulk load --connector.json.deserializationFeatures '{ USE_BIG_DECIMAL_FOR_FLOATS : true }'
+dsbulk load --connector.json.deserializationFeatures 'USE_BIG_DECIMAL_FOR_FLOATS : true'
+```
+
+This syntactic sugar is only available for command line arguments of type string, list or map; 
+all other option types, as well as all options specified in a configuration file _must_ be fully 
+compliant with HOCON syntax, and it is the user's responsibility to ensure that such options are 
+properly escaped _and_ quoted.
 
 ## Load Examples
 
