@@ -172,11 +172,11 @@ Enable or disable dry-run mode, a test mode that runs the command but does not l
 
 Default: **false**.
 
-#### -h,--driver.hosts _&lt;string&gt;_
+#### -h,--driver.hosts _&lt;list&lt;string&gt;&gt;_
 
 The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
-Default: **"127.0.0.1"**.
+Default: **["127.0.0.1"]**.
 
 #### -port,--driver.port _&lt;number&gt;_
 
@@ -822,11 +822,11 @@ Default: **"RANDOM"**.
 
 Driver-specific configuration.
 
-#### -h,--driver.hosts _&lt;string&gt;_
+#### -h,--driver.hosts _&lt;list&lt;string&gt;&gt;_
 
 The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
-Default: **"127.0.0.1"**.
+Default: **["127.0.0.1"]**.
 
 #### -port,--driver.port _&lt;number&gt;_
 
@@ -975,11 +975,11 @@ The child policy that the specified `whiteList` policy wraps.
 
 Default: **"roundRobin"**.
 
-#### --driver.policy.lbp.whiteList.hosts _&lt;string&gt;_
+#### --driver.policy.lbp.whiteList.hosts _&lt;list&lt;string&gt;&gt;_
 
 List of hosts to white list. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
-Default: **&lt;unspecified&gt;**.
+Default: **[""]**.
 
 #### -maxRetries,--driver.policy.maxRetries _&lt;number&gt;_
 

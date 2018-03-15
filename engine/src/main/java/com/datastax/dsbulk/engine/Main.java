@@ -201,7 +201,8 @@ public class Main {
         }
         userSettings =
             ConfigFactory.parseString(
-                    path + "=" + formatted, ConfigParseOptions.defaults().setOriginDescription(path))
+                    path + "=" + formatted,
+                    ConfigParseOptions.defaults().setOriginDescription(path))
                 .withFallback(userSettings);
       } catch (Exception e) {
         LOGGER.error(e.getMessage(), e);

@@ -10,11 +10,11 @@ package com.datastax.dsbulk.engine.internal.docs;
 
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils.Group;
 import com.datastax.dsbulk.engine.internal.utils.StringUtils;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
@@ -42,7 +42,7 @@ public class ConfigurationFileCreator {
       //noinspection ResultOfMethodCallIgnored
       file.getParentFile().mkdirs();
       PrintWriter pw = new PrintWriter(file, StandardCharsets.UTF_8.name());
-      LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk"));
+      Config config = ConfigFactory.load().getConfig("dsbulk");
       String rowOfHashes = StringUtils.nCopies("#", LINE_LENGTH);
       String indentedRowOfHashes =
           LINE_INDENT + StringUtils.nCopies("#", LINE_LENGTH - INDENT_LENGTH);
@@ -100,7 +100,7 @@ public class ConfigurationFileCreator {
                     pw.println(wrapIndentedLines(l));
                   });
           pw.print(LINE_INDENT + "# Type: ");
-          pw.println(config.getTypeString(settingName));
+          pw.println(ConfigUtils.getTypeString(config, settingName));
           pw.print(LINE_INDENT + "# Default value: ");
           pw.println(value.render(ConfigRenderOptions.concise()));
           pw.print(LINE_INDENT);

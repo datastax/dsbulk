@@ -31,8 +31,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collections;
 import org.apache.commons.cli.ParseException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -445,7 +443,7 @@ class MainTest {
     assertThat(result.getString("connector.name")).isEqualTo("csv");
     assertThat(result.getString("driver.auth.password")).isEqualTo("pass");
     assertThat(result.getString("driver.auth.username")).isEqualTo("user");
-    assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
+    assertThat(result.getStringList("driver.hosts")).containsExactly("host1", "host2");
     assertThat(result.getString("driver.policy.lbp.name")).isEqualTo("lbp");
     assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(42);
     assertThat(result.getInt("driver.port")).isEqualTo(9876);
@@ -725,7 +723,7 @@ class MainTest {
               "--connector.name",
               "conn"
             });
-    assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
+    assertThat(result.getStringList("driver.hosts")).containsExactly("host1", "host2");
     assertThat(result.getInt("driver.port")).isEqualTo(1);
     assertThat(result.getString("driver.protocol.compression")).isEqualTo("NONE");
     assertThat(result.getInt("driver.pooling.local.connections")).isEqualTo(2);
@@ -746,8 +744,7 @@ class MainTest {
     assertThat(result.getString("driver.auth.keyTab")).isEqualTo("mykeytab");
     assertThat(result.getString("driver.auth.saslService")).isEqualTo("sasl");
     assertThat(result.getString("driver.ssl.provider")).isEqualTo("myssl");
-    assertThat(result.getStringList("driver.ssl.cipherSuites"))
-        .isEqualTo(Collections.singletonList("TLS"));
+    assertThat(result.getStringList("driver.ssl.cipherSuites")).containsExactly("TLS");
     assertThat(result.getString("driver.ssl.truststore.path")).isEqualTo("trust-path");
     assertThat(result.getString("driver.ssl.truststore.password")).isEqualTo("trust-pass");
     assertThat(result.getString("driver.ssl.truststore.algorithm")).isEqualTo("trust-alg");
@@ -773,7 +770,8 @@ class MainTest {
     assertThat(result.getBoolean("driver.policy.lbp.tokenAware.shuffleReplicas")).isFalse();
     assertThat(result.getString("driver.policy.lbp.whiteList.childPolicy"))
         .isEqualTo("whiteListChild");
-    assertThat(result.getString("driver.policy.lbp.whiteList.hosts")).isEqualTo("wh1, wh2");
+    assertThat(result.getStringList("driver.policy.lbp.whiteList.hosts"))
+        .containsExactly("wh1", "wh2");
     assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(29);
     assertThat(result.getBoolean("engine.dryRun")).isTrue();
     assertThat(result.getString("engine.executionId")).isEqualTo("MY_EXEC_ID");
@@ -795,7 +793,7 @@ class MainTest {
     assertThat(result.getInt("log.stmt.maxInnerStatements")).isEqualTo(22);
     assertThat(result.getString("codec.locale")).isEqualTo("locale");
     assertThat(result.getString("codec.timeZone")).isEqualTo("tz");
-    assertThat(result.getStringList("codec.booleanStrings")).isEqualTo(Arrays.asList("Si", "No"));
+    assertThat(result.getStringList("codec.booleanStrings")).containsExactly("Si", "No");
     assertThat(result.getString("codec.number")).isEqualTo("codec-number");
     assertThat(result.getString("codec.timestamp")).isEqualTo("codec-ts");
     assertThat(result.getString("codec.date")).isEqualTo("codec-date");

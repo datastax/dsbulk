@@ -39,7 +39,6 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -139,7 +138,7 @@ public class DriverSettings {
 
   private final LoaderConfig config;
   private final String executionId;
-  private String hosts;
+  private List<String> hosts;
   private int port;
   private int poolingLocalConnections;
   private int poolingRemoteConnections;
@@ -179,12 +178,12 @@ public class DriverSettings {
 
   public void init() {
     try {
-      if (!config.hasPath("hosts")) {
+      hosts = config.getStringList(HOSTS);
+      if (hosts.isEmpty()) {
         throw new BulkConfigurationException(
             "driver.hosts is mandatory. Please set driver.hosts "
                 + "and try again. See settings.md or help for more information.");
       }
-      hosts = config.getString(HOSTS);
       port = config.getInt(PORT);
       compression = config.getEnum(ProtocolOptions.Compression.class, PROTOCOL_COMPRESSION);
       poolingLocalConnections = config.getInt(POOLING_LOCAL_CONNECTIONS);
@@ -357,10 +356,7 @@ public class DriverSettings {
 
   public DseCluster newCluster() throws BulkConfigurationException {
     DseCluster.Builder builder = DseCluster.builder().withClusterName(executionId + "-driver");
-    getHostsList(hosts)
-        .stream()
-        .map(InetSocketAddress::getAddress)
-        .forEach(builder::addContactPoints);
+    hosts.forEach(builder::addContactPoints);
     builder
         .withPort(port)
         .withCodecRegistry(new CodecRegistry())
@@ -462,9 +458,13 @@ public class DriverSettings {
         policy = new RoundRobinPolicy();
         break;
       case whiteList:
-        String WLHosts = config.getString("policy.lbp.whiteList.hosts");
-        policy = new WhiteListPolicy(childPolicy, getHostsList(WLHosts));
-
+        List<InetSocketAddress> WLHosts =
+            config
+                .getStringList("policy.lbp.whiteList.hosts")
+                .stream()
+                .map(host -> new InetSocketAddress(host, port))
+                .collect(Collectors.toList());
+        policy = new WhiteListPolicy(childPolicy, WLHosts);
         break;
       case tokenAware:
         policy =
@@ -570,14 +570,6 @@ public class DriverSettings {
         // cannot happen
         return null;
     }
-  }
-
-  private List<InetSocketAddress> getHostsList(String hosts) {
-    return Splitter.onPattern(",\\s*")
-        .splitToList(hosts)
-        .stream()
-        .map(host -> new InetSocketAddress(host, port))
-        .collect(Collectors.toList());
   }
 
   @VisibleForTesting

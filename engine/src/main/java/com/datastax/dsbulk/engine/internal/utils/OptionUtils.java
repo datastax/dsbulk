@@ -10,9 +10,9 @@ package com.datastax.dsbulk.engine.internal.utils;
 
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.CONFIG_FILE_OPTION;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.Main;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import java.util.Map;
@@ -26,11 +26,9 @@ public class OptionUtils {
 
     Options options = new Options();
 
-    LoaderConfig config = new DefaultLoaderConfig(Main.DEFAULT);
-
     for (Map.Entry<String, ConfigValue> entry : Main.DEFAULT.entrySet()) {
       String longName = entry.getKey();
-      Option option = createOption(config, longToShortOptions, longName, entry.getValue());
+      Option option = createOption(Main.DEFAULT, longToShortOptions, longName, entry.getValue());
       options.addOption(option);
     }
 
@@ -47,10 +45,7 @@ public class OptionUtils {
   }
 
   static Option createOption(
-      LoaderConfig config,
-      Map<String, String> longToShortOptions,
-      String longName,
-      ConfigValue value) {
+      Config config, Map<String, String> longToShortOptions, String longName, ConfigValue value) {
     Option.Builder option;
     String shortName = longToShortOptions.get(longName);
     if (shortName == null) {
@@ -61,7 +56,7 @@ public class OptionUtils {
     option
         .hasArg()
         .longOpt(longName)
-        .argName(config.getTypeString(longName))
+        .argName(ConfigUtils.getTypeString(config, longName))
         .desc(getSanitizedDescription(longName, value));
     return option.build();
   }
