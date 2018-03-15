@@ -8,12 +8,8 @@
  */
 package com.datastax.dsbulk.engine.tests.utils;
 
-import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.joran.JoranConfigurator;
-import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -36,8 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class EndToEndUtils {
 
@@ -176,20 +170,5 @@ public class EndToEndUtils {
             .filter(l -> l.getType().equals("PREPARE") && l.getQuery().startsWith(query))
             .collect(Collectors.toList());
     assertThat(ipLogs.size()).isEqualTo(1);
-  }
-
-  public static void resetLogbackConfiguration() throws JoranException {
-    LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
-    JoranConfigurator configurator = new JoranConfigurator();
-    configurator.setContext(context);
-    context.reset();
-    configurator.doConfigure(ClassLoader.getSystemResource("logback-test.xml"));
-  }
-
-  public static void setProductionKey() {
-    ch.qos.logback.classic.Logger root =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    LoggerContext lc = root.getLoggerContext();
-    lc.putProperty(PRODUCTION_KEY, "true");
   }
 }

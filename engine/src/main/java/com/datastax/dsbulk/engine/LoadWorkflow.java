@@ -115,6 +115,7 @@ public class LoadWorkflow implements Workflow {
             WorkflowType.LOAD,
             batchingEnabled,
             logManager.getExecutionDirectory(),
+            logSettings.getMainLogFileAppender(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
             cluster.getConfiguration().getCodecRegistry());

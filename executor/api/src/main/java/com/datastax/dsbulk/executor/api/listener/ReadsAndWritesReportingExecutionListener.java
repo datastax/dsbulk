@@ -52,12 +52,13 @@ public class ReadsAndWritesReportingExecutionListener
         ReadsAndWritesReportingExecutionListener>() {
       @Override
       public ReadsAndWritesReportingExecutionListener build() {
+        Logger l = logger == null ? LOGGER : logger;
         if (scheduler == null) {
           return new ReadsAndWritesReportingExecutionListener(
-              delegate, rateUnit, durationUnit, expectedTotal);
+              delegate, rateUnit, durationUnit, expectedTotal, l);
         } else {
           return new ReadsAndWritesReportingExecutionListener(
-              delegate, rateUnit, durationUnit, expectedTotal, scheduler);
+              delegate, rateUnit, durationUnit, expectedTotal, l, scheduler);
         }
       }
     };
@@ -73,6 +74,7 @@ public class ReadsAndWritesReportingExecutionListener
   private final Counter inFlight;
   private final Meter sent;
   private final Meter received;
+  private final Logger logger;
 
   /**
    * Creates a default instance of {@link ReadsAndWritesReportingExecutionListener}.
@@ -80,7 +82,7 @@ public class ReadsAndWritesReportingExecutionListener
    * <p>The instance will express rates in operations per second, and durations in milliseconds.
    */
   public ReadsAndWritesReportingExecutionListener() {
-    this(new MetricsCollectingExecutionListener(), SECONDS, MILLISECONDS, -1);
+    this(new MetricsCollectingExecutionListener(), SECONDS, MILLISECONDS, -1, LOGGER);
   }
 
   /**
@@ -92,16 +94,18 @@ public class ReadsAndWritesReportingExecutionListener
    * @param delegate the {@link ReadsAndWritesReportingExecutionListener} to use as metrics source.
    */
   public ReadsAndWritesReportingExecutionListener(MetricsCollectingExecutionListener delegate) {
-    this(delegate, SECONDS, MILLISECONDS, -1);
+    this(delegate, SECONDS, MILLISECONDS, -1, LOGGER);
   }
 
-  ReadsAndWritesReportingExecutionListener(
+  private ReadsAndWritesReportingExecutionListener(
       MetricsCollectingExecutionListener delegate,
       TimeUnit rateUnit,
       TimeUnit durationUnit,
-      long expectedTotal) {
+      long expectedTotal,
+      Logger logger) {
     super(delegate, REPORTER_NAME, METRIC_FILTER, rateUnit, durationUnit);
     this.expectedTotal = expectedTotal;
+    this.logger = logger;
     countMessage = createCountMessageTemplate(expectedTotal);
     throughputMessage = createThroughputMessageTemplate();
     latencyMessage = createLatencyMessageTemplate();
@@ -113,14 +117,16 @@ public class ReadsAndWritesReportingExecutionListener
     received = delegate.getBytesReceivedMeter();
   }
 
-  ReadsAndWritesReportingExecutionListener(
+  private ReadsAndWritesReportingExecutionListener(
       MetricsCollectingExecutionListener delegate,
       TimeUnit rateUnit,
       TimeUnit durationUnit,
       long expectedTotal,
+      Logger logger,
       ScheduledExecutorService scheduler) {
     super(delegate, REPORTER_NAME, METRIC_FILTER, rateUnit, durationUnit, scheduler);
     this.expectedTotal = expectedTotal;
+    this.logger = logger;
     countMessage = createCountMessageTemplate(expectedTotal);
     throughputMessage = createThroughputMessageTemplate();
     latencyMessage = createLatencyMessageTemplate();
@@ -144,12 +150,12 @@ public class ReadsAndWritesReportingExecutionListener
     String durationUnit = getDurationUnit();
     String rateUnit = getRateUnit();
     if (expectedTotal < 0) {
-      LOGGER.info(
+      logger.info(
           String.format(
               countMessage, total, successful.getCount(), failed.getCount(), inFlight.getCount()));
     } else {
       float achieved = (float) total / (float) expectedTotal * 100f;
-      LOGGER.info(
+      logger.info(
           String.format(
               countMessage,
               total,
@@ -158,7 +164,7 @@ public class ReadsAndWritesReportingExecutionListener
               inFlight.getCount(),
               achieved));
     }
-    LOGGER.info(
+    logger.info(
         String.format(
             throughputMessage,
             convertRate(timer.getMeanRate()),
@@ -167,7 +173,7 @@ public class ReadsAndWritesReportingExecutionListener
             rateUnit,
             convertRate(received.getMeanRate() / BYTES_PER_MB),
             rateUnit));
-    LOGGER.info(
+    logger.info(
         String.format(
             latencyMessage,
             convertDuration(snapshot.getMean()),

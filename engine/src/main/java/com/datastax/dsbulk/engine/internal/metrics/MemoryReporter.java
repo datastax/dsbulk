@@ -22,18 +22,18 @@ import com.codahale.metrics.Timer;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class MemoryReporter extends ScheduledReporter {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryReporter.class);
 
   private static final String MSG =
       "Memory usage: used: %,d MB, free: %,d MB, allocated: %,d MB, available: %,d MB, "
           + "total gc count: %,d, total gc time: %,d ms";
 
-  MemoryReporter(MetricRegistry registry, ScheduledExecutorService scheduler) {
+  private final Logger logger;
+
+  MemoryReporter(MetricRegistry registry, Logger logger, ScheduledExecutorService scheduler) {
     super(registry, "memory-reporter", createFilter(), SECONDS, MILLISECONDS, scheduler);
+    this.logger = logger;
   }
 
   private static MetricFilter createFilter() {
@@ -65,7 +65,7 @@ public class MemoryReporter extends ScheduledReporter {
     long availableMemory = (Long) availableMemoryGauge.getValue();
     long gcCount = (Long) gcCountGauge.getValue();
     long gcTime = (Long) gcTimeGauge.getValue();
-    LOGGER.info(
+    logger.info(
         String.format(
             MSG, usedMemory, freeMemory, allocatedMemory, availableMemory, gcCount, gcTime));
   }

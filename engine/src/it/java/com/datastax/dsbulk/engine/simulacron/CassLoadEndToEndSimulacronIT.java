@@ -25,7 +25,7 @@ import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronConfig;
 import com.datastax.dsbulk.engine.Main;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
-import com.datastax.dsbulk.engine.tests.utils.EndToEndUtils;
+import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -60,7 +60,7 @@ class CassLoadEndToEndSimulacronIT {
 
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
-    EndToEndUtils.resetLogbackConfiguration();
+    LogUtils.resetLogbackConfiguration();
   }
 
   @BeforeEach

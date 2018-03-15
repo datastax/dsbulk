@@ -20,9 +20,13 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(LogInterceptingExtension.class)
 class RecordReporterTest {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RecordReporter.class);
 
   private MetricRegistry registry = new MetricRegistry();
 
@@ -31,7 +35,8 @@ class RecordReporterTest {
     Meter totalMeter = registry.meter("records/total");
     Counter failedMeter = registry.counter("records/failed");
     RecordReporter reporter =
-        new RecordReporter(registry, SECONDS, Executors.newSingleThreadScheduledExecutor(), -1);
+        new RecordReporter(
+            registry, LOGGER, SECONDS, Executors.newSingleThreadScheduledExecutor(), -1);
     reporter.report();
     assertThat(interceptor)
         .hasMessageContaining(
@@ -49,7 +54,8 @@ class RecordReporterTest {
     Meter totalMeter = registry.meter("records/total");
     Counter failedMeter = registry.counter("records/failed");
     RecordReporter reporter =
-        new RecordReporter(registry, SECONDS, Executors.newSingleThreadScheduledExecutor(), 3);
+        new RecordReporter(
+            registry, LOGGER, SECONDS, Executors.newSingleThreadScheduledExecutor(), 3);
     reporter.report();
     assertThat(interceptor)
         .hasMessageContaining(

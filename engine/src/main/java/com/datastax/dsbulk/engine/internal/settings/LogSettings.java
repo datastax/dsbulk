@@ -23,6 +23,7 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.typesafe.config.ConfigException;
@@ -39,6 +40,7 @@ public class LogSettings {
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
   public static final String MAIN_LOG_FILE_APPENDER = "MAIN_LOG_FILE_APPENDER";
   public static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
+  public static final String MAIN_LOG_FILE_NAME = "operation.log";
 
   /** The options for stack trace printing. */
   public static final ImmutableList<String> STACK_TRACE_PRINTER_OPTIONS =
@@ -90,6 +92,7 @@ public class LogSettings {
   private StatementFormatVerbosity level;
   private int maxErrors;
   private float maxErrorsRatio;
+  private FileAppender<ILoggingEvent> mainLogFileAppender;
 
   LogSettings(LoaderConfig config, String executionId) {
     this.config = config;
@@ -118,7 +121,10 @@ public class LogSettings {
       if (writeToStandardOutput) {
         redirectStandardOutputToStandardError();
       }
-      maybeStartExecutionLogFileAppender();
+      if (isProduction()) {
+        mainLogFileAppender =
+            createMainLogFileAppender(executionDirectory.resolve(MAIN_LOG_FILE_NAME));
+      }
       installJavaLoggingToSLF4JBridge();
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "log");
@@ -135,6 +141,10 @@ public class LogSettings {
             .build();
     return new LogManager(
         workflowType, cluster, executionDirectory, maxErrors, maxErrorsRatio, formatter, level);
+  }
+
+  public FileAppender<ILoggingEvent> getMainLogFileAppender() {
+    return mainLogFileAppender;
   }
 
   Path getExecutionDirectory() {
@@ -177,40 +187,47 @@ public class LogSettings {
     LOGGER.info("Standard output is reserved, log messages are redirected to standard error.");
   }
 
-  private boolean isPercent(String maxErrors) {
-    return maxErrors.contains("%");
-  }
-
-  private void maybeStartExecutionLogFileAppender() {
+  private static boolean isProduction() {
     ch.qos.logback.classic.Logger root =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
     LoggerContext lc = root.getLoggerContext();
     String production = lc.getProperty(PRODUCTION_KEY);
-    if (production != null && production.equalsIgnoreCase("true")) {
-      PatternLayoutEncoder ple = new PatternLayoutEncoder();
-      ple.setPattern(LAYOUT_PATTERN);
-      ple.setContext(lc);
-      ple.setCharset(StandardCharsets.UTF_8);
-      ple.start();
-      FileAppender<ILoggingEvent> fileAppender = new FileAppender<>();
-      fileAppender.setName(MAIN_LOG_FILE_APPENDER);
-      fileAppender.setFile(executionDirectory.resolve("operation.log").toFile().getAbsolutePath());
-      fileAppender.setEncoder(ple);
-      fileAppender.setContext(lc);
-      fileAppender.setAppend(false);
-      fileAppender.start();
-      root.addAppender(fileAppender);
-    }
+    return production != null && production.equalsIgnoreCase("true");
   }
 
-  private void validatePercentageRange(float maxErrorRatio) {
+  @VisibleForTesting
+  public static FileAppender<ILoggingEvent> createMainLogFileAppender(Path mainLogFile) {
+    ch.qos.logback.classic.Logger root =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    LoggerContext lc = root.getLoggerContext();
+    PatternLayoutEncoder ple = new PatternLayoutEncoder();
+    ple.setPattern(LAYOUT_PATTERN);
+    ple.setContext(lc);
+    ple.setCharset(StandardCharsets.UTF_8);
+    ple.start();
+    FileAppender<ILoggingEvent> mainLogFileAppender = new FileAppender<>();
+    mainLogFileAppender.setName(MAIN_LOG_FILE_APPENDER);
+    mainLogFileAppender.setFile(mainLogFile.toFile().getAbsolutePath());
+    mainLogFileAppender.setEncoder(ple);
+    mainLogFileAppender.setContext(lc);
+    mainLogFileAppender.setAppend(false);
+    mainLogFileAppender.start();
+    root.addAppender(mainLogFileAppender);
+    return mainLogFileAppender;
+  }
+
+  private static boolean isPercent(String maxErrors) {
+    return maxErrors.contains("%");
+  }
+
+  private static void validatePercentageRange(float maxErrorRatio) {
     if (maxErrorRatio <= 0 || maxErrorRatio >= 1) {
       throw new BulkConfigurationException(
           "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
     }
   }
 
-  private void installJavaLoggingToSLF4JBridge() {
+  private static void installJavaLoggingToSLF4JBridge() {
     SLF4JBridgeHandler.removeHandlersForRootLogger();
     SLF4JBridgeHandler.install();
   }

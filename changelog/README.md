@@ -11,6 +11,7 @@
 - [improvement] DAT-242: Reduce and filter stack traces.
 - [improvement] DAT-244: Validate that mapped fields are present in the record.
 - [improvement] DAT-238: Monitor throughput in bytes/sec.
+- [improvement] DAT-246: Do not log ongoing metrics to main log file.
 - [bug] DAT-241: Null words should be supported by all connectors.
 
 

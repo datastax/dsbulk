@@ -8,9 +8,15 @@
  */
 package com.datastax.dsbulk.engine.internal.metrics;
 
+import static ch.qos.logback.core.spi.FilterReply.DENY;
+import static ch.qos.logback.core.spi.FilterReply.NEUTRAL;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
+import ch.qos.logback.core.filter.Filter;
+import ch.qos.logback.core.spi.FilterReply;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.CsvReporter;
 import com.codahale.metrics.Histogram;
@@ -34,6 +40,7 @@ import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -61,6 +68,7 @@ public class MetricsManager implements AutoCloseable {
   private final boolean jmx;
   private final boolean csv;
   private final Path executionDirectory;
+  private final Appender<ILoggingEvent> mainLogFileAppender;
   private final Duration reportInterval;
   private final boolean batchingEnabled;
 
@@ -74,6 +82,7 @@ public class MetricsManager implements AutoCloseable {
   private ReadsReportingExecutionListener readsReporter;
   private JmxReporter jmxReporter;
   private CsvReporter csvReporter;
+  private List<Filter<ILoggingEvent>> mainLogFileAppenderFilters;
 
   public MetricsManager(
       MetricRegistry driverRegistry,
@@ -87,6 +96,7 @@ public class MetricsManager implements AutoCloseable {
       boolean jmx,
       boolean csv,
       Path executionDirectory,
+      Appender<ILoggingEvent> mainLogFileAppender,
       Duration reportInterval,
       boolean batchingEnabled,
       ProtocolVersion protocolVersion,
@@ -107,11 +117,13 @@ public class MetricsManager implements AutoCloseable {
     this.jmx = jmx;
     this.csv = csv;
     this.executionDirectory = executionDirectory;
+    this.mainLogFileAppender = mainLogFileAppender;
     this.reportInterval = reportInterval;
     this.batchingEnabled = batchingEnabled;
   }
 
   public void init() {
+    setUpMetricsLogger();
     totalRecords = registry.meter("records/total");
     failedRecords = registry.counter("records/failed");
     batchSize = registry.histogram("batches/size", () -> new Histogram(new UniformReservoir()));
@@ -137,6 +149,33 @@ public class MetricsManager implements AutoCloseable {
       case UNLOAD:
         startReadsReporter();
         break;
+    }
+  }
+
+  private void setUpMetricsLogger() {
+    if (mainLogFileAppender != null) {
+      // backup current filters
+      mainLogFileAppenderFilters = mainLogFileAppender.getCopyOfAttachedFiltersList();
+      mainLogFileAppender.addFilter(
+          new Filter<ILoggingEvent>() {
+            @Override
+            public FilterReply decide(ILoggingEvent event) {
+              // filter out ongoing metrics and only log the final ones (after close)
+              if (event.getLoggerName().equals(LOGGER.getName())) {
+                return DENY;
+              }
+              return NEUTRAL;
+            }
+          });
+    }
+  }
+
+  private void tearDownMetricsLogger() {
+    if (mainLogFileAppender != null) {
+      // remove all filters, including the ongoing metrics filter
+      mainLogFileAppender.clearAllFilters();
+      // restore initial filters
+      mainLogFileAppenderFilters.forEach(mainLogFileAppender::addFilter);
     }
   }
 
@@ -246,17 +285,17 @@ public class MetricsManager implements AutoCloseable {
   }
 
   private void startRecordReporter() {
-    recordReporter = new RecordReporter(registry, rateUnit, scheduler, expectedWrites);
+    recordReporter = new RecordReporter(registry, LOGGER, rateUnit, scheduler, expectedWrites);
     recordReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
   private void startBatchesReporter() {
-    batchesReporter = new BatchReporter(registry, scheduler);
+    batchesReporter = new BatchReporter(registry, LOGGER, scheduler);
     batchesReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
   private void startMemoryReporter() {
-    memoryReporter = new MemoryReporter(registry, scheduler);
+    memoryReporter = new MemoryReporter(registry, LOGGER, scheduler);
     memoryReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
@@ -264,6 +303,7 @@ public class MetricsManager implements AutoCloseable {
     AbstractMetricsReportingExecutionListenerBuilder<WritesReportingExecutionListener> builder =
         WritesReportingExecutionListener.builder()
             .withScheduler(scheduler)
+            .withLogger(LOGGER)
             .convertRatesTo(rateUnit)
             .convertDurationsTo(durationUnit)
             .extractingMetricsFrom(listener);
@@ -278,6 +318,7 @@ public class MetricsManager implements AutoCloseable {
     AbstractMetricsReportingExecutionListenerBuilder<ReadsReportingExecutionListener> builder =
         ReadsReportingExecutionListener.builder()
             .withScheduler(scheduler)
+            .withLogger(LOGGER)
             .convertRatesTo(rateUnit)
             .convertDurationsTo(durationUnit)
             .extractingMetricsFrom(listener);
@@ -294,6 +335,7 @@ public class MetricsManager implements AutoCloseable {
     scheduler.shutdown();
     scheduler.awaitTermination(1, MINUTES);
     scheduler.shutdownNow();
+    tearDownMetricsLogger();
   }
 
   public void reportFinalMetrics() {
