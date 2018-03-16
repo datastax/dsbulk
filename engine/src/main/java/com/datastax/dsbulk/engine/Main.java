@@ -135,18 +135,23 @@ public class Main {
       LOGGER.error(workflow + " aborted: " + e.getMessage(), e);
       status = STATUS_ABORTED_TOO_MANY_ERRORS;
     } catch (Throwable t) {
-      // Reactor framework often wraps InterruptedException
+      // Reactor framework often wraps InterruptedException, so unwrap it now.
       Throwable root = Throwables.getRootCause(t);
       if (t instanceof InterruptedException || root instanceof InterruptedException) {
         status = STATUS_INTERRUPTED;
         LOGGER.error(workflow + " interrupted.", t);
-        // do not set the thread's interrupted status, we are going to exit anyway
-      } else if (t instanceof Exception) {
-        status = STATUS_ABORTED_FATAL_ERROR;
-        LOGGER.error(workflow + " aborted: " + t.getMessage(), t);
       } else {
-        status = STATUS_CRASHED;
-        LOGGER.error(workflow + " failed unexpectedly: " + t.getMessage(), t);
+        String message = t.getMessage();
+        if (message == null) {
+          message = t.toString();
+        }
+        if (t instanceof Exception) {
+          status = STATUS_ABORTED_FATAL_ERROR;
+          LOGGER.error(workflow + " aborted: " + message, t);
+        } else {
+          status = STATUS_CRASHED;
+          LOGGER.error(workflow + " failed unexpectedly: " + message, t);
+        }
       }
       // make sure the error above is printed to System.err
       // before the closing sequence is printed to System.out
