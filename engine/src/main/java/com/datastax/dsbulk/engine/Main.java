@@ -214,6 +214,10 @@ public class Main {
         if (workflowThread.isAlive()) {
           workflowThread.interrupt();
           workflowThread.join(5000);
+          if (workflowThread.isAlive()) {
+            workflowThread.status = STATUS_CRASHED;
+            LOGGER.error(String.format("%s did not finish within 5 seconds, forcing close.", workflow));
+          }
         }
         // make sure System.err is flushed before the closing sequence is printed to System.out
         System.out.flush();
