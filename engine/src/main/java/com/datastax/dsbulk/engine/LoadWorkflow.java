@@ -203,8 +203,6 @@ public class LoadWorkflow implements Workflow {
     return Flux.defer(connector.readByResource())
         .flatMap(records -> Flux.from(records).window(batchBufferSize))
         .publishOn(scheduler1, Queues.SMALL_BUFFER_SIZE * 4)
-        .parallel()
-        .runOn(scheduler2)
         .flatMap(
             records ->
                 records
@@ -212,13 +210,15 @@ public class LoadWorkflow implements Workflow {
                     .transform(logManager.newTotalItemsCounter())
                     .transform(metricsManager.newFailedItemsMonitor())
                     .transform(logManager.newFailedRecordsHandler())
+                    .parallel()
+                    .runOn(scheduler2)
                     .map(recordMapper::map)
+                    .sequential()
                     .transform(metricsManager.newFailedItemsMonitor())
                     .transform(logManager.newFailedStatementsHandler())
                     .transform(batcher::batchByGroupingKey)
                     .transform(metricsManager.newBatcherMonitor())
-                    .transform(this::executeStatements))
-        .sequential();
+                    .transform(this::executeStatements));
   }
 
   @NotNull
@@ -230,17 +230,17 @@ public class LoadWorkflow implements Workflow {
     disposables.add(scheduler2);
     return Flux.defer(connector.read())
         .publishOn(scheduler1, Queues.SMALL_BUFFER_SIZE * 4)
+        .transform(metricsManager.newTotalItemsMonitor())
+        .transform(logManager.newTotalItemsCounter())
+        .transform(metricsManager.newFailedItemsMonitor())
+        .transform(logManager.newFailedRecordsHandler())
         .parallel()
         .runOn(scheduler2)
-        .composeGroup(metricsManager.newTotalItemsMonitor())
-        .composeGroup(logManager.newTotalItemsCounter())
-        .composeGroup(metricsManager.newFailedItemsMonitor())
-        .composeGroup(logManager.newFailedRecordsHandler())
         .map(recordMapper::map)
-        .composeGroup(metricsManager.newFailedItemsMonitor())
-        .composeGroup(logManager.newFailedStatementsHandler())
-        .composeGroup(this::executeStatements)
-        .sequential();
+        .sequential()
+        .transform(metricsManager.newFailedItemsMonitor())
+        .transform(logManager.newFailedStatementsHandler())
+        .transform(this::executeStatements);
   }
 
   @NotNull
