@@ -99,8 +99,7 @@ public class LogManager implements AutoCloseable {
           .build(
               path ->
                   new PrintWriter(
-                      Files.newBufferedWriter(
-                          path, Charset.forName("UTF-8"), CREATE_NEW, WRITE)));
+                      Files.newBufferedWriter(path, Charset.forName("UTF-8"), CREATE_NEW, WRITE)));
 
   private final ConcurrentMap<URI, List<Range<Long>>> positions = new ConcurrentSkipListMap<>();
 

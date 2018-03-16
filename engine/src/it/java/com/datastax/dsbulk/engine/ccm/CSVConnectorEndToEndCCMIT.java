@@ -616,7 +616,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new Main(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
     validateErrorMessageLogged(
-        logs, "Multiple input values in mapping resolve to column", "country_code");
+        logs, "Multiple input values in mapping resolve to column country_code");
   }
 
   @Test
@@ -1309,7 +1309,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   private void validateErrorMessageLogged(LogInterceptor logs, String... msg) {
     CommonsAssertions.assertThat(logs)
         .hasMessageContaining("Load workflow engine execution")
-        .hasMessageContaining("aborted");
+        .hasMessageContaining("failed");
     for (String s : msg) {
       CommonsAssertions.assertThat(logs).hasMessageContaining(s);
     }

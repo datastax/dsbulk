@@ -832,7 +832,7 @@ class CSVEndToEndSimulacronIT {
     assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
-        .contains("aborted: java.io.IOException: booo");
+        .contains("failed: java.io.IOException: booo");
   }
 
   @Test

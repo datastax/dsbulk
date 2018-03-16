@@ -69,7 +69,6 @@ public class Main {
 
   public int run() {
 
-    DefaultLoaderConfig config;
     try {
       // The first arg can be a subcommand or option...or no arg. We want to treat these
       // cases as follows:
@@ -93,8 +92,19 @@ public class Main {
 
       // Parse command line args fully, integrate with default config, and run.
       Config cmdLineConfig = parseCommandLine(subCommand, optionArgs);
-      config = new DefaultLoaderConfig(cmdLineConfig.withFallback(DEFAULT));
+      DefaultLoaderConfig config = new DefaultLoaderConfig(cmdLineConfig.withFallback(DEFAULT));
       config.checkValid(REFERENCE);
+
+      // create workflow thread and cleanup shutdown hook
+      WorkflowType workflowType = WorkflowType.valueOf(args[0].toUpperCase());
+      Workflow workflow = workflowType.newWorkflow(config);
+      WorkflowThread workflowThread = new WorkflowThread(workflow);
+      Runtime.getRuntime().addShutdownHook(new CleanupThread(workflow, workflowThread));
+
+      // start the workflow and wait for its completion
+      workflowThread.start();
+      workflowThread.join();
+      return workflowThread.status;
 
     } catch (GlobalHelpRequestException e) {
       HelpUtils.emitGlobalHelp(e.getConnectorName());
@@ -122,48 +132,96 @@ public class Main {
       LOGGER.error(t.getMessage(), t);
       return STATUS_CRASHED;
     }
+  }
 
-    WorkflowType workflowType = WorkflowType.valueOf(args[0].toUpperCase());
-    Workflow workflow = workflowType.newWorkflow(config);
-    Runtime.getRuntime().addShutdownHook(new CleanupThread(workflow));
+  /**
+   * A thread responsible for running the workflow.
+   *
+   * <p>We run the workflow on a dedicated thread to be able to interrupt it when the JVM receives a
+   * SIGINT signal (CTRL + C).
+   *
+   * @see CleanupThread
+   */
+  private static class WorkflowThread extends Thread {
 
-    int status;
-    try {
-      workflow.init();
-      status = workflow.execute() ? STATUS_OK : STATUS_COMPLETED_WITH_ERRORS;
-    } catch (TooManyErrorsException e) {
-      LOGGER.error(workflow + " aborted: " + e.getMessage(), e);
-      status = STATUS_ABORTED_TOO_MANY_ERRORS;
-    } catch (Throwable t) {
-      // Reactor framework often wraps InterruptedException, so unwrap it now.
-      Throwable root = Throwables.getRootCause(t);
-      if (t instanceof InterruptedException || root instanceof InterruptedException) {
-        status = STATUS_INTERRUPTED;
-        LOGGER.error(workflow + " interrupted.", t);
-      } else {
-        String message = t.getMessage();
-        if (message == null) {
-          message = t.toString();
-        }
-        if (t instanceof Exception) {
-          status = STATUS_ABORTED_FATAL_ERROR;
-          LOGGER.error(workflow + " aborted: " + message, t);
+    private final Workflow workflow;
+    private int status = -1;
+
+    private WorkflowThread(Workflow workflow) {
+      super("workflow-runner");
+      this.workflow = workflow;
+    }
+
+    @Override
+    public void run() {
+      try {
+        workflow.init();
+        status = workflow.execute() ? STATUS_OK : STATUS_COMPLETED_WITH_ERRORS;
+      } catch (TooManyErrorsException e) {
+        LOGGER.error(workflow + " aborted: " + e.getMessage(), e);
+        status = STATUS_ABORTED_TOO_MANY_ERRORS;
+      } catch (Throwable t) {
+        // Reactor framework often wraps InterruptedException, so unwrap it now.
+        Throwable root = Throwables.getRootCause(t);
+        if (t instanceof InterruptedException || root instanceof InterruptedException) {
+          status = STATUS_INTERRUPTED;
+          LOGGER.error(workflow + " interrupted.", t);
         } else {
-          status = STATUS_CRASHED;
-          LOGGER.error(workflow + " failed unexpectedly: " + message, t);
+          String message = t.getMessage();
+          if (message == null) {
+            message = t.toString();
+          }
+          if (t instanceof Exception) {
+            status = STATUS_ABORTED_FATAL_ERROR;
+            LOGGER.error(workflow + " failed: " + message, t);
+          } else {
+            status = STATUS_CRASHED;
+            LOGGER.error(workflow + " failed unexpectedly: " + message, t);
+          }
+        }
+      } finally {
+        try {
+          // make sure System.err is flushed before the closing sequence is printed to System.out
+          System.out.flush();
+          System.err.flush();
+          workflow.close();
+        } catch (Exception e) {
+          LOGGER.error(String.format("%s could not be closed.", workflow), e);
         }
       }
-      // make sure the error above is printed to System.err
-      // before the closing sequence is printed to System.out
-      System.err.flush();
-    } finally {
+    }
+  }
+
+  /**
+   * A shutdown hook responsible for interrupting the workflow thread in the event of a user
+   * interruption via SIGINT (CTLR + C), and for closing the workflow.
+   */
+  private static class CleanupThread extends Thread {
+
+    private final Workflow workflow;
+    private final Thread workflowThread;
+
+    private CleanupThread(Workflow workflow, Thread workflowThread) {
+      super("cleanup-thread");
+      this.workflow = workflow;
+      this.workflowThread = workflowThread;
+    }
+
+    @Override
+    public void run() {
       try {
+        if (workflowThread.isAlive()) {
+          workflowThread.interrupt();
+          workflowThread.join();
+        }
+        // make sure System.err is flushed before the closing sequence is printed to System.out
+        System.out.flush();
+        System.err.flush();
         workflow.close();
       } catch (Exception e) {
         LOGGER.error(String.format("%s could not be closed.", workflow), e);
       }
     }
-    return status;
   }
 
   private static String getConnectorNameFromArgs(String[] optionArgs) {
@@ -304,25 +362,6 @@ public class Main {
       connectorName = connectorNameFromArgs;
     }
     return connectorName;
-  }
-
-  private static class CleanupThread extends Thread {
-
-    private final Workflow workflow;
-
-    private CleanupThread(Workflow workflow) {
-      super("cleanup-thread");
-      this.workflow = workflow;
-    }
-
-    @Override
-    public void run() {
-      try {
-        workflow.close();
-      } catch (Exception e) {
-        LOGGER.error(String.format("%s could not be closed.", workflow), e);
-      }
-    }
   }
 
   // Simple exception indicating that the user wants to know the

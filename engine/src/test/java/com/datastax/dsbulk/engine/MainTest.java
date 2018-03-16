@@ -318,7 +318,7 @@ class MainTest {
     new Main(new String[] {"load", "--engine.executionId", "%4$s"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
-        .contains("Load workflow engine execution null aborted")
+        .contains("Load workflow engine execution null failed")
         .contains("Could not generate execution ID with template: '%4$s'");
   }
 
