@@ -38,7 +38,7 @@ public class ConfigUtils {
 
   private static final Pattern ENUM_PATTERN =
       Pattern.compile(
-          "The enum class \\w+ has no constant of the name ('\\w+') \\(should be one of \\[([^]]+)]\\.\\)",
+          "The enum class \\w+ has no constant of the name ('.+') \\(should be one of \\[([^]]+)]\\.\\)",
           Pattern.CASE_INSENSITIVE);
 
   public static BulkConfigurationException configExceptionToBulkConfigurationException(
