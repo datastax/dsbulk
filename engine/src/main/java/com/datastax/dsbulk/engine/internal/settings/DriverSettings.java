@@ -130,7 +130,7 @@ public class DriverSettings {
       SSL + DELIMITER + OPENSSL + DELIMITER + "privateKey";
 
   private static final String POLICY_NAME = POLICY + DELIMITER + LBP + DELIMITER + "name";
-  private static final String POLICY_MAXRETRIES = POLICY + DELIMITER + "maxRetries";
+  private static final String POLICY_MAX_RETRIES = POLICY + DELIMITER + "maxRetries";
 
   private static final String PLAINTEXT_PROVIDER = "PlainTextAuthProvider";
   private static final String DSE_PLAINTEXT_PROVIDER = "DsePlainTextAuthProvider";
@@ -199,7 +199,7 @@ public class DriverSettings {
       timestampGenerator = config.getInstance(TIMESTAMP_GENERATOR, TimestampGenerator.class);
       addressTranslator = config.getInstance(ADDRESS_TRANSLATOR, AddressTranslator.class);
       authProvider = config.getString(AUTH_PROVIDER);
-      policyMaxRetries = config.getInt(POLICY_MAXRETRIES);
+      policyMaxRetries = config.getInt(POLICY_MAX_RETRIES);
       if (!authProvider.equals("None")) {
         switch (authProvider) {
           case PLAINTEXT_PROVIDER:
@@ -458,13 +458,13 @@ public class DriverSettings {
         policy = new RoundRobinPolicy();
         break;
       case whiteList:
-        List<InetSocketAddress> WLHosts =
+        List<InetSocketAddress> whiteList =
             config
                 .getStringList("policy.lbp.whiteList.hosts")
                 .stream()
                 .map(host -> new InetSocketAddress(host, port))
                 .collect(Collectors.toList());
-        policy = new WhiteListPolicy(childPolicy, WLHosts);
+        policy = new WhiteListPolicy(childPolicy, whiteList);
         break;
       case tokenAware:
         policy =
