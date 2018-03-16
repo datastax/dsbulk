@@ -117,6 +117,8 @@ public class LogManager implements AutoCloseable {
   private UnicastProcessor<Void> uncaughtExceptionProcessor;
   private FluxSink<Void> uncaughtExceptionSink;
 
+  private volatile boolean running;
+
   public LogManager(
       WorkflowType workflowType,
       Cluster cluster,
@@ -194,6 +196,7 @@ public class LogManager implements AutoCloseable {
     // and the workflow does not stop properly. By setting a global hook for errors
     // caught by a worker thread, we can make the workflow stop as expected.
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> uncaughtExceptionSink.error(t));
+    running = true;
   }
 
   public Path getExecutionDirectory() {
@@ -206,6 +209,7 @@ public class LogManager implements AutoCloseable {
 
   @Override
   public void close() {
+    running = false;
     unmappableRecordSink.complete();
     unmappableStatementSink.complete();
     writeResultSink.complete();
@@ -586,56 +590,70 @@ public class LogManager implements AutoCloseable {
   }
 
   private void appendToBadFile(Record record) {
-    Path logFile = executionDirectory.resolve("operation.bad");
-    PrintWriter writer = openFiles.get(logFile);
-    assert writer != null;
-    Object source = record.getSource();
-    printAndMaybeAddNewLine(source == null ? null : source.toString(), writer);
-    writer.flush();
+    if (running) {
+      Path logFile = executionDirectory.resolve("operation.bad");
+      PrintWriter writer = openFiles.get(logFile);
+      assert writer != null;
+      Object source = record.getSource();
+      printAndMaybeAddNewLine(source == null ? null : source.toString(), writer);
+      writer.flush();
+    }
   }
 
   private void appendToDebugFile(WriteResult result) {
-    Path logFile = executionDirectory.resolve("load-errors.log");
-    appendToDebugFile(result, logFile);
+    if (running) {
+      Path logFile = executionDirectory.resolve("load-errors.log");
+      appendToDebugFile(result, logFile);
+    }
   }
 
   private void appendToDebugFile(ReadResult result) {
-    Path logFile = executionDirectory.resolve("unload-errors.log");
-    appendToDebugFile(result, logFile);
+    if (running) {
+      Path logFile = executionDirectory.resolve("unload-errors.log");
+      appendToDebugFile(result, logFile);
+    }
   }
 
   private void appendToDebugFile(Result result, Path logFile) {
-    PrintWriter writer = openFiles.get(logFile);
-    assert writer != null;
-    writer.print("Statement: ");
-    String format =
-        formatter.format(result.getStatement(), verbosity, protocolVersion, codecRegistry);
-    printAndMaybeAddNewLine(format, writer);
-    stackTracePrinter.printStackTrace(
-        result.getError().orElseThrow(IllegalStateException::new), writer);
+    if (running) {
+      PrintWriter writer = openFiles.get(logFile);
+      assert writer != null;
+      writer.print("Statement: ");
+      String format =
+          formatter.format(result.getStatement(), verbosity, protocolVersion, codecRegistry);
+      printAndMaybeAddNewLine(format, writer);
+      stackTracePrinter.printStackTrace(
+          result.getError().orElseThrow(IllegalStateException::new), writer);
+    }
   }
 
   private void appendToDebugFile(UnmappableStatement statement) {
-    Path logFile = executionDirectory.resolve("mapping-errors.log");
-    PrintWriter writer = openFiles.get(logFile);
-    assert writer != null;
-    appendStatementInfo(statement, writer);
-    stackTracePrinter.printStackTrace(statement.getError(), writer);
+    if (running) {
+      Path logFile = executionDirectory.resolve("mapping-errors.log");
+      PrintWriter writer = openFiles.get(logFile);
+      assert writer != null;
+      appendStatementInfo(statement, writer);
+      stackTracePrinter.printStackTrace(statement.getError(), writer);
+    }
   }
 
   private void appendToDebugFile(ErrorRecord record) {
-    Path logFile = executionDirectory.resolve("mapping-errors.log");
-    PrintWriter writer = openFiles.get(logFile);
-    assert writer != null;
-    appendRecordInfo(record, writer);
-    stackTracePrinter.printStackTrace(record.getError(), writer);
+    if (running) {
+      Path logFile = executionDirectory.resolve("mapping-errors.log");
+      PrintWriter writer = openFiles.get(logFile);
+      assert writer != null;
+      appendRecordInfo(record, writer);
+      stackTracePrinter.printStackTrace(record.getError(), writer);
+    }
   }
 
   private void appendToPositionsFile(URI resource, List<Range<Long>> positions) {
-    positionsPrinter.print(resource);
-    positionsPrinter.print(':');
-    positions.stream().findFirst().ifPresent(pos -> positionsPrinter.print(pos.upperEndpoint()));
-    positionsPrinter.println();
+    if (running) {
+      positionsPrinter.print(resource);
+      positionsPrinter.print(':');
+      positions.stream().findFirst().ifPresent(pos -> positionsPrinter.print(pos.upperEndpoint()));
+      positionsPrinter.println();
+    }
   }
 
   @NotNull
