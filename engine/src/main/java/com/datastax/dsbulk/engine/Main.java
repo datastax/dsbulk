@@ -145,7 +145,7 @@ public class Main {
   private static class WorkflowThread extends Thread {
 
     private final Workflow workflow;
-    private int status = -1;
+    private volatile int status = -1;
 
     private WorkflowThread(Workflow workflow) {
       super("workflow-runner");
@@ -186,6 +186,7 @@ public class Main {
           System.err.flush();
           workflow.close();
         } catch (Exception e) {
+          status = STATUS_CRASHED;
           LOGGER.error(String.format("%s could not be closed.", workflow), e);
         }
       }
@@ -199,9 +200,9 @@ public class Main {
   private static class CleanupThread extends Thread {
 
     private final Workflow workflow;
-    private final Thread workflowThread;
+    private final WorkflowThread workflowThread;
 
-    private CleanupThread(Workflow workflow, Thread workflowThread) {
+    private CleanupThread(Workflow workflow, WorkflowThread workflowThread) {
       super("cleanup-thread");
       this.workflow = workflow;
       this.workflowThread = workflowThread;
@@ -219,6 +220,7 @@ public class Main {
         System.err.flush();
         workflow.close();
       } catch (Exception e) {
+        workflowThread.status = STATUS_CRASHED;
         LOGGER.error(String.format("%s could not be closed.", workflow), e);
       }
     }
