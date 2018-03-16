@@ -342,7 +342,7 @@ public class LogManager implements AutoCloseable {
                         assert r.getError().isPresent();
                         Throwable cause = r.getError().get().getCause();
                         if (isUnrecoverable(cause)) {
-                          return Signal.error(cause);
+                          signal = Signal.error(cause);
                         } else {
                           signal =
                               maybeTriggerOnError(
@@ -385,7 +385,7 @@ public class LogManager implements AutoCloseable {
                         assert r.getError().isPresent();
                         Throwable cause = r.getError().get().getCause();
                         if (isUnrecoverable(cause)) {
-                          return Signal.error(cause);
+                          signal = Signal.error(cause);
                         } else {
                           signal = maybeTriggerOnError(signal, errors.incrementAndGet());
                         }
