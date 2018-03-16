@@ -209,6 +209,11 @@ public class LogManager implements AutoCloseable {
 
   @Override
   public void close() {
+    if (workflowType == WorkflowType.LOAD && positionsPrinter != null) {
+      positions.forEach(this::appendToPositionsFile);
+      positionsPrinter.flush();
+      positionsPrinter.close();
+    }
     running = false;
     unmappableRecordSink.complete();
     unmappableStatementSink.complete();
@@ -218,11 +223,6 @@ public class LogManager implements AutoCloseable {
     stackTracePrinter.stop();
     openFiles.invalidateAll();
     openFiles.cleanUp();
-    if (workflowType == WorkflowType.LOAD && positionsPrinter != null) {
-      positions.forEach(this::appendToPositionsFile);
-      positionsPrinter.flush();
-      positionsPrinter.close();
-    }
     scheduler.dispose();
   }
 
