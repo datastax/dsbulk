@@ -42,46 +42,49 @@ class StringToBigDecimalCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("0")
-        .to(ZERO)
-        .convertsFrom("-1234.56")
-        .to(new BigDecimal("-1234.56"))
-        .convertsFrom("1970-01-01T00:00:00Z")
-        .to(new BigDecimal("0"))
-        .convertsFrom("2000-01-01T00:00:00Z")
-        .to(new BigDecimal("946684800000"))
-        .convertsFrom("true")
-        .to(new BigDecimal("1"))
-        .convertsFrom("false")
-        .to(new BigDecimal("0"))
-        .convertsFrom("TRUE")
-        .to(ONE)
-        .convertsFrom("FALSE")
-        .to(ZERO)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("0")
+        .toInternal(ZERO)
+        .convertsFromExternal("-1234.56")
+        .toInternal(new BigDecimal("-1234.56"))
+        .convertsFromExternal("1970-01-01T00:00:00Z")
+        .toInternal(new BigDecimal("0"))
+        .convertsFromExternal("2000-01-01T00:00:00Z")
+        .toInternal(new BigDecimal("946684800000"))
+        .convertsFromExternal("true")
+        .toInternal(new BigDecimal("1"))
+        .convertsFromExternal("false")
+        .toInternal(new BigDecimal("0"))
+        .convertsFromExternal("TRUE")
+        .toInternal(ONE)
+        .convertsFromExternal("FALSE")
+        .toInternal(ZERO)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(ZERO)
-        .from("0")
-        .convertsTo(new BigDecimal("1234.56"))
-        .from("1,234.56")
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal(ZERO)
+        .toExternal("0")
+        .convertsFromInternal(new BigDecimal("1234.56"))
+        .toExternal("1,234.56")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom("not a valid decimal");
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal("not a valid decimal");
   }
 }

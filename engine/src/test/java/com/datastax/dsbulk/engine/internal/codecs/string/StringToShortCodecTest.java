@@ -41,54 +41,57 @@ class StringToShortCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("0")
-        .to((short) 0)
-        .convertsFrom("32767")
-        .to((short) 32767)
-        .convertsFrom("-32768")
-        .to((short) -32768)
-        .convertsFrom("32,767")
-        .to((short) 32767)
-        .convertsFrom("-32,768")
-        .to((short) -32768)
-        .convertsFrom("1970-01-01T00:00:00Z")
-        .to((short) 0)
-        .convertsFrom("TRUE")
-        .to((short) 1)
-        .convertsFrom("FALSE")
-        .to((short) 0)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("0")
+        .toInternal((short) 0)
+        .convertsFromExternal("32767")
+        .toInternal((short) 32767)
+        .convertsFromExternal("-32768")
+        .toInternal((short) -32768)
+        .convertsFromExternal("32,767")
+        .toInternal((short) 32767)
+        .convertsFromExternal("-32,768")
+        .toInternal((short) -32768)
+        .convertsFromExternal("1970-01-01T00:00:00Z")
+        .toInternal((short) 0)
+        .convertsFromExternal("TRUE")
+        .toInternal((short) 1)
+        .convertsFromExternal("FALSE")
+        .toInternal((short) 0)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo((short) 0)
-        .from("0")
-        .convertsTo((short) 32767)
-        .from("32,767")
-        .convertsTo((short) -32768)
-        .from("-32,768")
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal((short) 0)
+        .toExternal("0")
+        .convertsFromInternal((short) 32767)
+        .toExternal("32,767")
+        .convertsFromInternal((short) -32768)
+        .toExternal("-32,768")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFrom("not a valid short")
-        .cannotConvertFrom("1.2")
-        .cannotConvertFrom("32768")
-        .cannotConvertFrom("-32769")
-        .cannotConvertFrom("2000-01-01T00:00:00Z") // overflow
+        .cannotConvertFromExternal("not a valid short")
+        .cannotConvertFromExternal("1.2")
+        .cannotConvertFromExternal("32768")
+        .cannotConvertFromExternal("-32769")
+        .cannotConvertFromExternal("2000-01-01T00:00:00Z") // overflow
     ;
   }
 }

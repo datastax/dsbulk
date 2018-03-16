@@ -31,8 +31,9 @@ public class StringToByteCodec extends StringToNumberCodec<Byte> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      Map<String, Boolean> booleanStrings,
+      List<BigDecimal> booleanNumbers,
+      List<String> nullStrings) {
     super(
         TypeCodec.tinyInt(),
         numberFormat,
@@ -41,12 +42,13 @@ public class StringToByteCodec extends StringToNumberCodec<Byte> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
-        booleanNumbers.stream().map(BigDecimal::byteValueExact).collect(toList()));
+        booleanStrings,
+        booleanNumbers.stream().map(BigDecimal::byteValueExact).collect(toList()),
+        nullStrings);
   }
 
   @Override
-  public Byte convertFrom(String s) {
+  public Byte externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

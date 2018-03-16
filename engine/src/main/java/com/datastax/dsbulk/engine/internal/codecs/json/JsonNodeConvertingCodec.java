@@ -11,17 +11,20 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.ArrayList;
 import java.util.List;
 
-public class JsonNodeToListCodec<E> extends JsonNodeToCollectionCodec<E, List<E>> {
+abstract class JsonNodeConvertingCodec<T> extends ConvertingCodec<JsonNode, T> {
 
-  public JsonNodeToListCodec(
-      TypeCodec<List<E>> collectionCodec,
-      ConvertingCodec<JsonNode, E> eltCodec,
-      ObjectMapper objectMapper,
-      List<String> nullStrings) {
-    super(collectionCodec, eltCodec, objectMapper, ArrayList::new, nullStrings);
+  private final List<String> nullStrings;
+
+  JsonNodeConvertingCodec(TypeCodec<T> targetCodec, List<String> nullStrings) {
+    super(targetCodec, JsonNode.class);
+    this.nullStrings = nullStrings;
+  }
+
+  boolean isNull(JsonNode node) {
+    return node == null
+        || node.isNull()
+        || (node.isValueNode() && nullStrings.contains(node.asText()));
   }
 }

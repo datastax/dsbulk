@@ -9,45 +9,46 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToMapCodec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
-public class StringToMapCodec<K, V> extends ConvertingCodec<String, Map<K, V>> {
+public class StringToMapCodec<K, V> extends StringConvertingCodec<Map<K, V>> {
 
   private final JsonNodeToMapCodec<K, V> jsonCodec;
   private final ObjectMapper objectMapper;
 
-  public StringToMapCodec(JsonNodeToMapCodec<K, V> jsonCodec, ObjectMapper objectMapper) {
-    super(jsonCodec.getTargetCodec(), String.class);
+  public StringToMapCodec(
+      JsonNodeToMapCodec<K, V> jsonCodec, ObjectMapper objectMapper, List<String> nullStrings) {
+    super(jsonCodec.getInternalCodec(), nullStrings);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
   }
 
   @Override
-  public Map<K, V> convertFrom(String s) {
-    if (s == null || s.isEmpty()) {
+  public Map<K, V> externalToInternal(String s) {
+    if (isNull(s)) {
       return null;
     }
     try {
       JsonNode node = objectMapper.readTree(s);
-      return jsonCodec.convertFrom(node);
+      return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
       throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
     }
   }
 
   @Override
-  public String convertTo(Map<K, V> map) {
+  public String internalToExternal(Map<K, V> map) {
     if (map == null) {
-      return null;
+      return nullString();
     }
     try {
-      JsonNode node = jsonCodec.convertTo(map);
+      JsonNode node = jsonCodec.internalToExternal(map);
       return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
       throw new InvalidTypeException(String.format("Could not format '%s' to Json", map), e);

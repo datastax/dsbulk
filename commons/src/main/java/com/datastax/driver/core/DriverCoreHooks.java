@@ -68,4 +68,8 @@ public class DriverCoreHooks {
   public static int[] primaryKeyIndices(PreparedId id) {
     return id.routingKeyIndexes;
   }
+
+  public static ProtocolVersion protocolVersion(PreparedId preparedId) {
+    return preparedId.protocolVersion;
+  }
 }

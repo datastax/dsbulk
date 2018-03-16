@@ -18,6 +18,7 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newField;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
 import static com.datastax.driver.core.TypeCodec.userType;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
+import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -58,6 +59,8 @@ class JsonNodeToUDTCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullStrings = newArrayList("NULL");
+
   // UDT 1
 
   private final UserType udt1 =
@@ -77,11 +80,12 @@ class JsonNodeToUDTCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullStrings);
   private final ConvertingCodec f1bCodec =
       new JsonNodeToMapCodec<>(
           TypeCodec.map(TypeCodec.varchar(), TypeCodec.cdouble()),
-          new StringToStringCodec(TypeCodec.varchar()),
+          new StringToStringCodec(TypeCodec.varchar(), nullStrings),
           new JsonNodeToDoubleCodec(
               numberFormat,
               OverflowStrategy.REJECT,
@@ -90,13 +94,18 @@ class JsonNodeToUDTCodecTest {
               MILLISECONDS,
               EPOCH.atZone(UTC),
               ImmutableMap.of("true", true, "false", false),
-              newArrayList(ONE, ZERO)),
-          objectMapper);
+              newArrayList(ONE, ZERO),
+              nullStrings),
+          objectMapper,
+          nullStrings);
 
   @SuppressWarnings("unchecked")
   private final JsonNodeToUDTCodec udtCodec1 =
       new JsonNodeToUDTCodec(
-          userType(udt1), ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec), objectMapper);
+          userType(udt1),
+          ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec),
+          objectMapper,
+          nullStrings);
 
   // UDT 2
 
@@ -112,81 +121,93 @@ class JsonNodeToUDTCodecTest {
   @SuppressWarnings("unchecked")
   private final ConvertingCodec f2aCodec =
       new JsonNodeToUDTCodec(
-          userType(udt1), ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec), objectMapper);
+          userType(udt1),
+          ImmutableMap.of("f1a", f1aCodec, "f1b", f1bCodec),
+          objectMapper,
+          nullStrings);
 
   private final ConvertingCodec f2bCodec =
       new JsonNodeToListCodec<>(
           TypeCodec.list(LocalDateCodec.instance),
-          new JsonNodeToLocalDateCodec(CQL_DATE_TIME_FORMAT),
-          objectMapper);
+          new JsonNodeToLocalDateCodec(CQL_DATE_TIME_FORMAT, nullStrings),
+          objectMapper,
+          nullStrings);
 
   @SuppressWarnings("unchecked")
   private final JsonNodeToUDTCodec udtCodec2 =
       new JsonNodeToUDTCodec(
-          userType(udt2), ImmutableMap.of("f2a", f2aCodec, "f2b", f2bCodec), objectMapper);
+          userType(udt2),
+          ImmutableMap.of("f2a", f2aCodec, "f2b", f2bCodec),
+          objectMapper,
+          nullStrings);
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_external() throws Exception {
     assertThat(udtCodec1)
-        .convertsFrom(objectMapper.readTree("{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}}"))
-        .to(udt1Value)
-        .convertsFrom(objectMapper.readTree("{'f1a':42,'f1b':{'foo':1234.56,'bar':0.12}}"))
-        .to(udt1Value)
-        .convertsFrom(
+        .convertsFromExternal(
+            objectMapper.readTree("{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}}"))
+        .toInternal(udt1Value)
+        .convertsFromExternal(objectMapper.readTree("{'f1a':42,'f1b':{'foo':1234.56,'bar':0.12}}"))
+        .toInternal(udt1Value)
+        .convertsFromExternal(
             objectMapper.readTree(
                 "{ \"f1b\" :  { \"foo\" : \"1,234.56\" , \"bar\" : \"0000.12000\" } , \"f1a\" : \"42.00\" }"))
-        .to(udt1Value)
-        .convertsFrom(objectMapper.readTree("{ \"f1b\" :  { } , \"f1a\" :  ''}"))
-        .to(udt1Empty)
-        .convertsFrom(objectMapper.readTree("{ \"f1b\" :  null , \"f1a\" :  null }"))
-        .to(udt1Empty)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(objectMapper.readTree("{}"))
-        .to(null)
-        .convertsFrom(objectMapper.readTree(""))
-        .to(null);
+        .toInternal(udt1Value)
+        .convertsFromExternal(objectMapper.readTree("{ \"f1b\" :  { } , \"f1a\" :  ''}"))
+        .toInternal(udt1Empty)
+        .convertsFromExternal(objectMapper.readTree("{ \"f1b\" :  null , \"f1a\" :  null }"))
+        .toInternal(udt1Empty)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(objectMapper.readTree("{}"))
+        .toInternal(null)
+        .convertsFromExternal(objectMapper.readTree(""))
+        .toInternal(null);
     assertThat(udtCodec2)
-        .convertsFrom(
+        .convertsFromExternal(
             objectMapper.readTree(
                 "{\"f2a\":{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}},\"f2b\":[\"2017-09-22\"]}"))
-        .to(udt2Value)
-        .convertsFrom(
+        .toInternal(udt2Value)
+        .convertsFromExternal(
             objectMapper.readTree(
                 "{'f2a':{'f1a':42,'f1b':{'foo':1234.56,'bar':0.12}},'f2b':['2017-09-22']}"))
-        .to(udt2Value)
-        .convertsFrom(
+        .toInternal(udt2Value)
+        .convertsFromExternal(
             objectMapper.readTree(
                 "{ \"f2b\" :  [ \"2017-09-22\" ] , \"f2a\" : { \"f1b\" :  { \"foo\" : \"1,234.56\" , \"bar\" : \"0000.12000\" } , \"f1a\" : \"42.00\" } }"))
-        .to(udt2Value)
-        .convertsFrom(objectMapper.readTree("{ \"f2b\" :  null , \"f2a\" :  null }"))
-        .to(udt2Empty)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(objectMapper.readTree("{}"))
-        .to(null)
-        .convertsFrom(objectMapper.readTree(""))
-        .to(null);
+        .toInternal(udt2Value)
+        .convertsFromExternal(objectMapper.readTree("{ \"f2b\" :  null , \"f2a\" :  null }"))
+        .toInternal(udt2Empty)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(objectMapper.readTree("{}"))
+        .toInternal(null)
+        .convertsFromExternal(objectMapper.readTree(""))
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
+  void should_convert_from_valid_internal() throws Exception {
     assertThat(udtCodec1)
-        .convertsTo(
+        .convertsFromInternal(
             udt1.newValue().setInt("f1a", 42).setMap("f1b", newMap("foo", 1234.56d, "bar", 0.12d)))
-        .from(objectMapper.readTree("{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}}"))
-        .convertsTo(udt1.newValue())
-        .from(objectMapper.readTree("{\"f1a\":null,\"f1b\":{}}"))
-        .convertsTo(null)
-        .from(objectMapper.getNodeFactory().nullNode());
+        .toExternal(objectMapper.readTree("{\"f1a\":42,\"f1b\":{\"foo\":1234.56,\"bar\":0.12}}"))
+        .convertsFromInternal(udt1.newValue())
+        .toExternal(objectMapper.readTree("{\"f1a\":null,\"f1b\":{}}"))
+        .convertsFromInternal(null)
+        .toExternal(objectMapper.getNodeFactory().nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
+  void should_not_convert_from_invalid_external() throws Exception {
     assertThat(udtCodec1)
-        .cannotConvertFrom(objectMapper.readTree("{\"f1a\":42}"))
-        .cannotConvertFrom(objectMapper.readTree("[42]"))
-        .cannotConvertFrom(objectMapper.readTree("{\"not a valid input\":\"foo\"}"));
+        .cannotConvertFromExternal(objectMapper.readTree("{\"f1a\":42}"))
+        .cannotConvertFromExternal(objectMapper.readTree("[42]"))
+        .cannotConvertFromExternal(objectMapper.readTree("{\"not a valid input\":\"foo\"}"));
   }
 
   @SuppressWarnings("SameParameterValue")

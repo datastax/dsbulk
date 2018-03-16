@@ -47,7 +47,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.ImmutableSet;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
@@ -86,7 +85,6 @@ public class SchemaSettings {
 
   private static final String INFERRED_MAPPING_TOKEN = "__INFERRED_MAPPING";
   private static final String NULL_TO_UNSET = "nullToUnset";
-  private static final String NULL_STRINGS = "nullStrings";
   private static final String KEYSPACE = "keyspace";
   private static final String TABLE = "table";
   private static final String MAPPING = "mapping";
@@ -104,7 +102,6 @@ public class SchemaSettings {
 
   private final LoaderConfig config;
 
-  private ImmutableSet<String> nullStrings;
   private boolean nullToUnset;
   private boolean allowExtraFields;
   private boolean allowMissingFields;
@@ -126,7 +123,6 @@ public class SchemaSettings {
   public void init(StringToTemporalCodec<Instant> timestampCodec) {
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
-      nullStrings = ImmutableSet.copyOf(config.getStringList(NULL_STRINGS));
       ttlSeconds = config.getInt(QUERY_TTL);
       allowExtraFields = config.getBoolean(ALLOW_EXTRA_FIELDS);
       allowMissingFields = config.getBoolean(ALLOW_MISSING_FIELDS);
@@ -135,7 +131,7 @@ public class SchemaSettings {
         this.timestampMicros = -1L;
       } else {
         try {
-          Instant instant = timestampCodec.convertFrom(timestampStr);
+          Instant instant = timestampCodec.externalToInternal(timestampStr);
           this.timestampMicros = instantToNumber(instant, MICROSECONDS, EPOCH);
         } catch (Exception e) {
           throw new BulkConfigurationException(
@@ -279,7 +275,6 @@ public class SchemaSettings {
         preparedStatement,
         mapping,
         recordMetadata,
-        nullStrings,
         nullToUnset,
         allowExtraFields,
         allowMissingFields);
@@ -289,8 +284,7 @@ public class SchemaSettings {
       Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, UNLOAD);
-    return new DefaultReadResultMapper(
-        mapping, recordMetadata, nullStrings.isEmpty() ? null : nullStrings.iterator().next());
+    return new DefaultReadResultMapper(mapping, recordMetadata);
   }
 
   public List<Statement> createReadStatements(Cluster cluster) {
@@ -471,12 +465,16 @@ public class SchemaSettings {
   private Config getMapping() throws BulkConfigurationException {
     String mappingString = config.getString(MAPPING).replaceAll("\\*", INFERRED_MAPPING_TOKEN);
     try {
-      return ConfigFactory.parseString(mappingString);
+      return ConfigFactory.parseString(ConfigUtils.ensureBraces(mappingString));
     } catch (ConfigException.Parse e) {
       // mappingString doesn't seem to be a map. Treat it as a list instead.
       Map<String, String> indexMap = new HashMap<>();
       int curInd = 0;
-      for (String s : config.getStringList(MAPPING)) {
+      List<String> list =
+          ConfigFactory.parseString(
+                  "key = " + ConfigUtils.ensureBrackets(config.getString(MAPPING)))
+              .getStringList("key");
+      for (String s : list) {
         indexMap.put(Integer.toString(curInd++), s);
       }
       return ConfigFactory.parseMap(indexMap);

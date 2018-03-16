@@ -10,44 +10,45 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUDTCodec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.List;
 
-public class StringToUDTCodec extends ConvertingCodec<String, UDTValue> {
+public class StringToUDTCodec extends StringConvertingCodec<UDTValue> {
 
   private final JsonNodeToUDTCodec jsonCodec;
   private final ObjectMapper objectMapper;
 
-  public StringToUDTCodec(JsonNodeToUDTCodec jsonCodec, ObjectMapper objectMapper) {
-    super(jsonCodec.getTargetCodec(), String.class);
+  public StringToUDTCodec(
+      JsonNodeToUDTCodec jsonCodec, ObjectMapper objectMapper, List<String> nullStrings) {
+    super(jsonCodec.getInternalCodec(), nullStrings);
     this.jsonCodec = jsonCodec;
     this.objectMapper = objectMapper;
   }
 
   @Override
-  public UDTValue convertFrom(String s) {
-    if (s == null || s.isEmpty()) {
+  public UDTValue externalToInternal(String s) {
+    if (isNull(s)) {
       return null;
     }
     try {
       JsonNode node = objectMapper.readTree(s);
-      return jsonCodec.convertFrom(node);
+      return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
       throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
     }
   }
 
   @Override
-  public String convertTo(UDTValue udt) {
+  public String internalToExternal(UDTValue udt) {
     if (udt == null) {
-      return null;
+      return nullString();
     }
     try {
-      JsonNode node = jsonCodec.convertTo(udt);
+      JsonNode node = jsonCodec.internalToExternal(udt);
       return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
       throw new InvalidTypeException(String.format("Could not format '%s' to Json", udt), e);

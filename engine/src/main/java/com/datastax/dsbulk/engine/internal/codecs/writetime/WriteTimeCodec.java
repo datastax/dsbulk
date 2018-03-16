@@ -25,16 +25,16 @@ public class WriteTimeCodec<T> extends ConvertingCodec<T, Long> {
   }
 
   @Override
-  public Long convertFrom(T value) {
+  public Long externalToInternal(T value) {
     if (value == null) {
       return null;
     }
-    Instant i = innerCodec.convertFrom(value);
+    Instant i = innerCodec.externalToInternal(value);
     return CodecUtils.instantToNumber(i, MICROSECONDS, EPOCH);
   }
 
   @Override
-  public T convertTo(Long value) {
+  public T internalToExternal(Long value) {
     throw new UnsupportedOperationException("This codec cannot be used when deserializing");
   }
 }

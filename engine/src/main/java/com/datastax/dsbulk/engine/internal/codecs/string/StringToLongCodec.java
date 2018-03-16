@@ -31,8 +31,9 @@ public class StringToLongCodec extends StringToNumberCodec<Long> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      Map<String, Boolean> booleanStrings,
+      List<BigDecimal> booleanNumbers,
+      List<String> nullStrings) {
     super(
         TypeCodec.bigint(),
         numberFormat,
@@ -41,12 +42,13 @@ public class StringToLongCodec extends StringToNumberCodec<Long> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
-        booleanNumbers.stream().map(BigDecimal::longValueExact).collect(toList()));
+        booleanStrings,
+        booleanNumbers.stream().map(BigDecimal::longValueExact).collect(toList()),
+        nullStrings);
   }
 
   @Override
-  public Long convertFrom(String s) {
+  public Long externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

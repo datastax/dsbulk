@@ -12,17 +12,13 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.reflection.ReflectionUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
-import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigMergeable;
-import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.ConfigValue;
-import com.typesafe.config.ConfigValueType;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.Optional;
 
 public interface LoaderConfig extends Config {
 
@@ -211,68 +207,6 @@ public interface LoaderConfig extends Config {
     } catch (Exception e) {
       throw new ConfigException.WrongType(
           origin(), String.format("%s: Expecting valid charset name, got '%s'", path, setting), e);
-    }
-  }
-
-  /**
-   * Return a string representation of the value type at this path.
-   *
-   * @param path path expression.
-   * @return the type string
-   * @throws ConfigException.Missing if value is absent or null.
-   */
-  default String getTypeString(String path) {
-    ConfigValue value = getValue(path);
-    Optional<String> typeHint =
-        value
-            .origin()
-            .comments()
-            .stream()
-            .filter(line -> line.contains(TYPE_ANNOTATION))
-            .findFirst();
-    if (typeHint.isPresent()) {
-      return typeHint.get().replace("@type", "").trim();
-    }
-    ConfigValueType type = value.valueType();
-    if (type == ConfigValueType.LIST) {
-      ConfigList list = getList(path);
-      if (list.isEmpty()) {
-        return "list";
-      } else {
-        return "list<" + getTypeString(list.get(0).valueType()) + ">";
-      }
-    } else if (type == ConfigValueType.OBJECT) {
-      ConfigObject object = getObject(path);
-      if (object.isEmpty()) {
-        return "map";
-      } else {
-        return "map<string," + getTypeString(object.values().iterator().next().valueType()) + ">";
-      }
-    } else {
-      return getTypeString(type);
-    }
-  }
-
-  /**
-   * Return a string representation of the given value type.
-   *
-   * @param type ConfigValueType to stringify.
-   * @return the type string
-   */
-  default String getTypeString(ConfigValueType type) {
-    switch (type) {
-      case STRING:
-        return "string";
-      case LIST:
-        return "list";
-      case OBJECT:
-        return "map";
-      case NUMBER:
-        return "number";
-      case BOOLEAN:
-        return "boolean";
-      default:
-        return "arg";
     }
   }
 

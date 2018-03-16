@@ -227,15 +227,23 @@ public class Main {
       String value = option.getValue();
       ConfigValueType type = DEFAULT.getValue(path).valueType();
       try {
+        // all user input is expected to be already valid HOCON;
+        // however we accept a relaxed syntax for strings, lists and maps.
+        String formatted = value;
         if (type == ConfigValueType.STRING) {
-          // all user input is expected to be already valid HOCON;
-          // however if the value is a string, be nice with the user and
-          // surround with quotes if that's not the case.
-          value = ensureQuoted(value);
+          // if the user did not surround the string with double-quotes, do it for him.
+          formatted = ConfigUtils.ensureQuoted(value);
+        } else if (type == ConfigValueType.LIST) {
+          // if the user did not surround the list elements with square brackets, do it for him.
+          formatted = ConfigUtils.ensureBrackets(value);
+        } else if (type == ConfigValueType.OBJECT) {
+          // if the user did not surround the map entries with curly braces, do it for him.
+          formatted = ConfigUtils.ensureBraces(value);
         }
         userSettings =
             ConfigFactory.parseString(
-                    path + "=" + value, ConfigParseOptions.defaults().setOriginDescription(path))
+                    path + "=" + formatted,
+                    ConfigParseOptions.defaults().setOriginDescription(path))
                 .withFallback(userSettings);
       } catch (Exception e) {
         LOGGER.error(e.getMessage(), e);
@@ -269,13 +277,6 @@ public class Main {
     }
     ConfigFactory.invalidateCaches();
     DEFAULT = ConfigFactory.load().getConfig("dsbulk");
-  }
-
-  private static String ensureQuoted(String value) {
-    if (value.startsWith("\"") && value.endsWith("\"")) {
-      return value;
-    }
-    return "\"" + value + "\"";
   }
 
   private static Path getAppConfigPath(String[] optionArgs) {

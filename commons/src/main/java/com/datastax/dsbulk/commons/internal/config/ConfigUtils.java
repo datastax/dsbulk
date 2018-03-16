@@ -8,14 +8,22 @@
  */
 package com.datastax.dsbulk.commons.internal.config;
 
+import static com.datastax.dsbulk.commons.config.LoaderConfig.TYPE_ANNOTATION;
+
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigList;
+import com.typesafe.config.ConfigObject;
+import com.typesafe.config.ConfigValue;
+import com.typesafe.config.ConfigValueType;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -157,5 +165,91 @@ public class ConfigUtils {
       throw new IllegalArgumentException("Expecting positive number of threads, got " + threads);
     }
     return threads;
+  }
+
+  public static String ensureQuoted(String value) {
+    if (value.startsWith("\"") && value.endsWith("\"")) {
+      return value;
+    }
+    return "\"" + value + "\"";
+  }
+
+  public static String ensureBrackets(String value) {
+    if (value.startsWith("[") && value.endsWith("]")) {
+      return value;
+    }
+    return "[" + value + "]";
+  }
+
+  public static String ensureBraces(String value) {
+    if (value.startsWith("{") && value.endsWith("}")) {
+      return value;
+    }
+    return "{" + value + "}";
+  }
+
+  /**
+   * Returns a string representation of the value type at this path.
+   *
+   * @param config the config.
+   * @param path path expression.
+   * @return the type string
+   * @throws ConfigException.Missing if value is absent or null.
+   */
+  public static String getTypeString(Config config, String path) {
+    ConfigValue value = config.getValue(path);
+    Optional<String> typeHint =
+        value
+            .origin()
+            .comments()
+            .stream()
+            .filter(line -> line.contains(TYPE_ANNOTATION))
+            .map(line -> line.replace("@type", ""))
+            .map(String::trim)
+            .findFirst();
+    if (typeHint.isPresent()) {
+      return typeHint.get();
+    }
+    ConfigValueType type = value.valueType();
+    if (type == ConfigValueType.LIST) {
+      ConfigList list = config.getList(path);
+      if (list.isEmpty()) {
+        return "list";
+      } else {
+        return "list<" + getTypeString(list.get(0).valueType()) + ">";
+      }
+    } else if (type == ConfigValueType.OBJECT) {
+      ConfigObject object = config.getObject(path);
+      if (object.isEmpty()) {
+        return "map";
+      } else {
+        return "map<string," + getTypeString(object.values().iterator().next().valueType()) + ">";
+      }
+    } else {
+      return getTypeString(type);
+    }
+  }
+
+  /**
+   * Return a string representation of the given value type.
+   *
+   * @param type ConfigValueType to stringify.
+   * @return the type string
+   */
+  private static String getTypeString(ConfigValueType type) {
+    switch (type) {
+      case STRING:
+        return "string";
+      case LIST:
+        return "list";
+      case OBJECT:
+        return "map";
+      case NUMBER:
+        return "number";
+      case BOOLEAN:
+        return "boolean";
+      default:
+        return "arg";
+    }
   }
 }

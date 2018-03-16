@@ -14,6 +14,7 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
@@ -23,8 +24,8 @@ import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -36,13 +37,11 @@ public class DefaultRecordMapper implements RecordMapper {
 
   private final PreparedStatement insertStatement;
   private final int[] pkIndices;
+  private final ProtocolVersion protocolVersion;
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
   private final boolean allowExtraFields;
   private final boolean allowMissingFields;
-
-  /** Values in input that we treat as null in the loader. */
-  private final ImmutableSet<String> nullStrings;
 
   /** Whether to map null input to "unset" */
   private final boolean nullToUnset;
@@ -53,16 +52,15 @@ public class DefaultRecordMapper implements RecordMapper {
       PreparedStatement insertStatement,
       Mapping mapping,
       RecordMetadata recordMetadata,
-      ImmutableSet<String> nullStrings,
       boolean nullToUnset,
       boolean allowExtraFields,
       boolean allowMissingFields) {
     this(
         insertStatement,
         DriverCoreHooks.primaryKeyIndices(insertStatement.getPreparedId()),
+        DriverCoreHooks.protocolVersion(insertStatement.getPreparedId()),
         mapping,
         recordMetadata,
-        nullStrings,
         nullToUnset,
         allowExtraFields,
         allowMissingFields,
@@ -73,18 +71,18 @@ public class DefaultRecordMapper implements RecordMapper {
   DefaultRecordMapper(
       PreparedStatement insertStatement,
       int[] pkIndices,
+      ProtocolVersion protocolVersion,
       Mapping mapping,
       RecordMetadata recordMetadata,
-      ImmutableSet<String> nullStrings,
       boolean nullToUnset,
       boolean allowExtraFields,
       boolean allowMissingFields,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
     this.pkIndices = pkIndices;
+    this.protocolVersion = protocolVersion;
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
-    this.nullStrings = nullStrings;
     this.nullToUnset = nullToUnset;
     this.allowExtraFields = allowExtraFields;
     this.allowMissingFields = allowMissingFields;
@@ -145,15 +143,19 @@ public class DefaultRecordMapper implements RecordMapper {
     }
   }
 
-  private void bindColumn(
-      BoundStatement bs, String variable, Object raw, DataType cqlType, TypeToken<?> javaType) {
-    // If the raw value is one of the nullStrings, the input represents null.
-    Object convertedValue = raw;
-    if (raw != null && nullStrings.contains(raw.toString())) {
-      convertedValue = null;
-    }
+  private <T> void bindColumn(
+      BoundStatement bs,
+      String variable,
+      T raw,
+      DataType cqlType,
+      TypeToken<? extends T> javaType) {
+    // the mapping provides unquoted variable names,
+    // so we need to quote them now
+    String name = Metadata.quoteIfNecessary(variable);
+    TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
+    ByteBuffer bb = codec.serialize(raw, protocolVersion);
     // Account for nullToUnset.
-    if (convertedValue == null) {
+    if (isNull(bb)) {
       if (isPrimaryKey(variable)) {
         throw new IllegalStateException(
             "Primary key column "
@@ -165,15 +167,11 @@ public class DefaultRecordMapper implements RecordMapper {
         return;
       }
     }
-    // the mapping provides unquoted variable names,
-    // so we need to quote them now
-    String name = Metadata.quoteIfNecessary(variable);
-    if (convertedValue == null) {
-      bs.setToNull(name);
-    } else {
-      TypeCodec<Object> codec = mapping.codec(variable, cqlType, javaType);
-      bs.set(name, convertedValue, codec);
-    }
+    bs.setBytesUnsafe(name, bb);
+  }
+
+  private boolean isNull(ByteBuffer bb) {
+    return bb == null || !bb.hasRemaining();
   }
 
   private boolean isPrimaryKey(String variable) {

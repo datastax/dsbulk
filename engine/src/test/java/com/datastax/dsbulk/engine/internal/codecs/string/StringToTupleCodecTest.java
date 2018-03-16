@@ -14,6 +14,7 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
@@ -49,11 +50,14 @@ class StringToTupleCodecTest {
 
   private final TupleType tupleType = newTupleType(V4, codecRegistry, timestamp(), varchar());
 
+  private final List<String> nullStrings = newArrayList("NULL");
+
   private final ConvertingCodec eltCodec1 =
       new JsonNodeToInstantCodec(
-          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
 
-  private final ConvertingCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final ConvertingCodec eltCodec2 =
+      new JsonNodeToStringCodec(TypeCodec.varchar(), nullStrings);
 
   @SuppressWarnings("unchecked")
   private final List<ConvertingCodec<JsonNode, Object>> eltCodecs =
@@ -61,48 +65,55 @@ class StringToTupleCodecTest {
 
   private final StringToTupleCodec codec =
       new StringToTupleCodec(
-          new JsonNodeToTupleCodec(TypeCodec.tuple(tupleType), eltCodecs, objectMapper),
-          objectMapper);
+          new JsonNodeToTupleCodec(
+              TypeCodec.tuple(tupleType), eltCodecs, objectMapper, nullStrings),
+          objectMapper,
+          nullStrings);
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("[\"2016-07-24T20:34:12.999\",\"+01:00\"]")
-        .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .convertsFrom("['2016-07-24T20:34:12.999','+01:00']")
-        .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .convertsFrom("[ \"2016-07-24T20:34:12.999\" , \"+01:00\" ]")
-        .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .convertsFrom("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]")
-        .to(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .convertsFrom("[\"\",\"\"]")
-        .to(tupleType.newValue(null, ""))
-        .convertsFrom("[null,null]")
-        .to(tupleType.newValue(null, null))
-        .convertsFrom("[,]")
-        .to(tupleType.newValue(null, null))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("[\"2016-07-24T20:34:12.999\",\"+01:00\"]")
+        .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
+        .convertsFromExternal("['2016-07-24T20:34:12.999','+01:00']")
+        .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
+        .convertsFromExternal("[ \"2016-07-24T20:34:12.999\" , \"+01:00\" ]")
+        .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
+        .convertsFromExternal("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]")
+        .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
+        .convertsFromExternal("[\"\",\"\"]")
+        .toInternal(tupleType.newValue(null, ""))
+        .convertsFromExternal("[\"NULL\",\"NULL\"]")
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal("[null,null]")
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal("[,]")
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .from("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]")
-        .convertsTo(tupleType.newValue(null, null))
-        .from("[null,null]")
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal(
+            tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
+        .toExternal("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]")
+        .convertsFromInternal(tupleType.newValue(null, null))
+        .toExternal("[null,null]")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFrom("[\"not a valid tuple\"]")
-        .cannotConvertFrom("{\"not a valid tuple\":42}")
-        .cannotConvertFrom("[\"2016-07-24T20:34:12.999\"]");
+        .cannotConvertFromExternal("[\"not a valid tuple\"]")
+        .cannotConvertFromExternal("{\"not a valid tuple\":42}")
+        .cannotConvertFromExternal("[\"2016-07-24T20:34:12.999\"]");
   }
 }

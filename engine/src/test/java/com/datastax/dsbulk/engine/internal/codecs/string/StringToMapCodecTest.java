@@ -45,6 +45,8 @@ class StringToMapCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullStrings = newArrayList("NULL");
+
   private final StringToDoubleCodec keyCodec =
       new StringToDoubleCodec(
           numberFormat,
@@ -54,58 +56,68 @@ class StringToMapCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullStrings);
 
   private final TypeCodec<List<String>> stringListCodec = TypeCodec.list(TypeCodec.varchar());
 
   private final ConvertingCodec<JsonNode, List<String>> valueCodec =
       new JsonNodeToListCodec<>(
-          stringListCodec, new JsonNodeToStringCodec(TypeCodec.varchar()), objectMapper);
+          stringListCodec,
+          new JsonNodeToStringCodec(TypeCodec.varchar(), nullStrings),
+          objectMapper,
+          nullStrings);
 
   private final TypeCodec<Map<Double, List<String>>> mapCodec =
       TypeCodec.map(TypeCodec.cdouble(), stringListCodec);
 
   private final StringToMapCodec<Double, List<String>> codec =
       new StringToMapCodec<>(
-          new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper), objectMapper);
+          new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper, nullStrings),
+          objectMapper,
+          nullStrings);
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("{1 : [\"foo\", \"bar\"], 2:[\"qix\"]}")
-        .to(map(1d, list("foo", "bar"), 2d, list("qix")))
-        .convertsFrom("{ '1234.56' : ['foo', 'bar'], '0.12' : ['qix'] }")
-        .to(map(1234.56d, list("foo", "bar"), 0.12d, list("qix")))
-        .convertsFrom("{ '1,234.56' : ['foo'] , '.12' : ['bar']}")
-        .to(map(1234.56d, list("foo"), 0.12d, list("bar")))
-        .convertsFrom("{1: , '' :['foo']}")
-        .to(map(1d, null, null, list("foo")))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("{}")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("{1 : [\"foo\", \"bar\"], 2:[\"qix\"]}")
+        .toInternal(map(1d, list("foo", "bar"), 2d, list("qix")))
+        .convertsFromExternal("{ '1234.56' : ['foo', 'bar'], '0.12' : ['qix'] }")
+        .toInternal(map(1234.56d, list("foo", "bar"), 0.12d, list("qix")))
+        .convertsFromExternal("{ '1,234.56' : ['foo'] , '.12' : ['bar']}")
+        .toInternal(map(1234.56d, list("foo"), 0.12d, list("bar")))
+        .convertsFromExternal("{1: , '' :['foo']}")
+        .toInternal(map(1d, null, null, list("foo")))
+        .convertsFromExternal("{1: [\"NULL\"], 2: ['NULL']}")
+        .toInternal(map(1d, list((String) null), 2d, list((String) null)))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("{}")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(map(1d, list("foo", "bar"), 2d, list("qix")))
-        .from("{\"1\":[\"foo\",\"bar\"],\"2\":[\"qix\"]}")
-        .convertsTo(map(1234.56d, list("foo", "bar"), 0.12d, list("qix")))
-        .from("{\"1,234.56\":[\"foo\",\"bar\"],\"0.12\":[\"qix\"]}")
-        .convertsTo(map(1d, null, 2d, list()))
-        .from("{\"1\":null,\"2\":[]}")
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal(map(1d, list("foo", "bar"), 2d, list("qix")))
+        .toExternal("{\"1\":[\"foo\",\"bar\"],\"2\":[\"qix\"]}")
+        .convertsFromInternal(map(1234.56d, list("foo", "bar"), 0.12d, list("qix")))
+        .toExternal("{\"1,234.56\":[\"foo\",\"bar\"],\"0.12\":[\"qix\"]}")
+        .convertsFromInternal(map(1d, null, 2d, list()))
+        .toExternal("{\"1\":null,\"2\":[]}")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFrom("not a valid input")
-        .cannotConvertFrom("{not a,valid input}");
+        .cannotConvertFromExternal("not a valid input")
+        .cannotConvertFromExternal("{not a,valid input}");
   }
 
   private static Map<Double, List<String>> map(

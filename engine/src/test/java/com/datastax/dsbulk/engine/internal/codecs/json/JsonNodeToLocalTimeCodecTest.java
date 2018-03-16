@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
@@ -18,6 +19,7 @@ import static java.util.Locale.US;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToLocalTimeCodecTest {
@@ -28,47 +30,54 @@ class JsonNodeToLocalTimeCodecTest {
   private DateTimeFormatter format2 =
       CodecSettings.getDateTimeFormat("HHmmss.SSS", UTC, US, EPOCH.atZone(UTC));
 
+  private final List<String> nullStrings = newArrayList("NULL");
+
   @Test
-  void should_convert_from_valid_input() {
-    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(format1);
+  void should_convert_from_valid_external() {
+    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(format1, nullStrings);
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("12:24:46"))
-        .to(LocalTime.parse("12:24:46"))
-        .convertsFrom(JSON_NODE_FACTORY.textNode("12:24:46.999"))
-        .to(LocalTime.parse("12:24:46.999"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
-    codec = new JsonNodeToLocalTimeCodec(format2);
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("12:24:46"))
+        .toInternal(LocalTime.parse("12:24:46"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("12:24:46.999"))
+        .toInternal(LocalTime.parse("12:24:46.999"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
+    codec = new JsonNodeToLocalTimeCodec(format2, nullStrings);
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("122446.999"))
-        .to(LocalTime.parse("12:24:46.999"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("122446.999"))
+        .toInternal(LocalTime.parse("12:24:46.999"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
-    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(format1);
+  void should_convert_from_valid_internal() {
+    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(format1, nullStrings);
     assertThat(codec)
-        .convertsTo(LocalTime.parse("12:24:46.999"))
-        .from(JSON_NODE_FACTORY.textNode("12:24:46.999"))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
-    codec = new JsonNodeToLocalTimeCodec(format2);
+        .convertsFromInternal(LocalTime.parse("12:24:46.999"))
+        .toExternal(JSON_NODE_FACTORY.textNode("12:24:46.999"))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
+    codec = new JsonNodeToLocalTimeCodec(format2, nullStrings);
     assertThat(codec)
-        .convertsTo(LocalTime.parse("12:24:46.999"))
-        .from(JSON_NODE_FACTORY.textNode("122446.999"))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(LocalTime.parse("12:24:46.999"))
+        .toExternal(JSON_NODE_FACTORY.textNode("122446.999"))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(ISO_LOCAL_DATE);
-    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid date format"));
+  void should_not_convert_from_invalid_external() {
+    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(ISO_LOCAL_DATE, nullStrings);
+    assertThat(codec)
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }
 }

@@ -31,8 +31,9 @@ public class StringToFloatCodec extends StringToNumberCodec<Float> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      Map<String, Boolean> booleanStrings,
+      List<BigDecimal> booleanNumbers,
+      List<String> nullStrings) {
     super(
         TypeCodec.cfloat(),
         numberFormat,
@@ -41,12 +42,13 @@ public class StringToFloatCodec extends StringToNumberCodec<Float> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
-        booleanNumbers.stream().map(BigDecimal::floatValue).collect(toList()));
+        booleanStrings,
+        booleanNumbers.stream().map(BigDecimal::floatValue).collect(toList()),
+        nullStrings);
   }
 
   @Override
-  public Float convertFrom(String s) {
+  public Float externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

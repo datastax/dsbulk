@@ -10,12 +10,15 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToCollectionCodec;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Set;
 
 public class StringToSetCodec<E> extends StringToCollectionCodec<E, Set<E>> {
 
   public StringToSetCodec(
-      JsonNodeToCollectionCodec<E, Set<E>> jsonCodec, ObjectMapper objectMapper) {
-    super(jsonCodec, objectMapper);
+      JsonNodeToCollectionCodec<E, Set<E>> jsonCodec,
+      ObjectMapper objectMapper,
+      List<String> nullStrings) {
+    super(jsonCodec, objectMapper, nullStrings);
   }
 }

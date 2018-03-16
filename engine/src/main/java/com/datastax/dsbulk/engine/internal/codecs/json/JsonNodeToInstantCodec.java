@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class JsonNodeToInstantCodec extends JsonNodeToTemporalCodec<Instant> {
@@ -29,15 +30,16 @@ public class JsonNodeToInstantCodec extends JsonNodeToTemporalCodec<Instant> {
       DateTimeFormatter temporalFormat,
       FastThreadLocal<NumberFormat> numberFormat,
       TimeUnit timeUnit,
-      ZonedDateTime epoch) {
-    super(InstantCodec.instance, temporalFormat);
+      ZonedDateTime epoch,
+      List<String> nullStrings) {
+    super(InstantCodec.instance, temporalFormat, nullStrings);
     this.numberFormat = numberFormat;
     this.timeUnit = timeUnit;
     this.epoch = epoch;
   }
 
   @Override
-  public Instant convertFrom(JsonNode node) {
+  public Instant externalToInternal(JsonNode node) {
     TemporalAccessor temporal = parseTemporalAccessor(node);
     if (temporal == null) {
       return null;
@@ -48,7 +50,7 @@ public class JsonNodeToInstantCodec extends JsonNodeToTemporalCodec<Instant> {
 
   @Override
   TemporalAccessor parseTemporalAccessor(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (isNull(node)) {
       return null;
     }
     String s = node.asText();

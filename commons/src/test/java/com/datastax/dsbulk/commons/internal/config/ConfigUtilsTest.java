@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.commons.internal.config;
 
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getTypeString;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolvePath;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveThreads;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveURL;
@@ -15,8 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
 
+import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
+import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.InvalidPathException;
@@ -99,5 +103,24 @@ class ConfigUtilsTest {
     assertThatThrownBy(() -> resolveThreads("should fail"))
         .isInstanceOf(PatternSyntaxException.class)
         .hasMessageContaining("Cannot parse input as N * <num_cores>");
+  }
+
+  @Test
+  void should_get_type_string() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                "intField = 7, "
+                    + "stringField = mystring, "
+                    + "stringListField = [\"v1\", \"v2\"], "
+                    + "numberListField = [9, 7], "
+                    + "booleanField = false"));
+    assertThat(getTypeString(config, "intField")).isEqualTo("number");
+    assertThat(getTypeString(config, "stringField")).isEqualTo("string");
+    assertThat(getTypeString(config, "stringListField")).isEqualTo("list<string>");
+    assertThat(getTypeString(config, "numberListField")).isEqualTo("list<number>");
+    assertThat(getTypeString(config, "booleanField")).isEqualTo("boolean");
+    assertThatThrownBy(() -> getTypeString(config, "noexist"))
+        .isInstanceOf(ConfigException.Missing.class);
   }
 }

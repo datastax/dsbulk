@@ -31,8 +31,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collections;
 import org.apache.commons.cli.ParseException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -351,8 +349,8 @@ class MainTest {
   void should_accept_escaped_double_quote_in_complex_type() throws Exception {
     // double quotes should be provided escaped as valid HOCON
     Config result =
-        Main.parseCommandLine("load", new String[] {"--codec.booleanWords", "[\"foo\\\"bar\"]"});
-    assertThat(result.getStringList("codec.booleanWords")).containsExactly("foo\"bar");
+        Main.parseCommandLine("load", new String[] {"--codec.booleanStrings", "[\"foo\\\"bar\"]"});
+    assertThat(result.getStringList("codec.booleanStrings")).containsExactly("foo\"bar");
   }
 
   @Test
@@ -365,10 +363,10 @@ class MainTest {
 
   @Test
   void should_not_accept_parse_error() {
-    new Main(new String[] {"load", "--codec.booleanWords", "[a,b"}).run();
+    new Main(new String[] {"load", "--codec.booleanStrings", "[a,b"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
-        .contains("codec.booleanWords: Expecting LIST, got '[a,b'")
+        .contains("codec.booleanStrings: Expecting LIST, got '[a,b'")
         .contains("List should have ended with ] or had a comma");
   }
 
@@ -445,7 +443,7 @@ class MainTest {
     assertThat(result.getString("connector.name")).isEqualTo("csv");
     assertThat(result.getString("driver.auth.password")).isEqualTo("pass");
     assertThat(result.getString("driver.auth.username")).isEqualTo("user");
-    assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
+    assertThat(result.getStringList("driver.hosts")).containsExactly("host1", "host2");
     assertThat(result.getString("driver.policy.lbp.name")).isEqualTo("lbp");
     assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(42);
     assertThat(result.getInt("driver.port")).isEqualTo(9876);
@@ -457,7 +455,7 @@ class MainTest {
     assertThat(result.getInt("monitoring.reportRate")).isEqualTo(456);
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
-    assertThat(result.getString("schema.nullStrings")).isEqualTo("[nil, nada]");
+    assertThat(result.getStringList("codec.nullStrings")).containsExactly("nil", "nada");
     assertThat(result.getString("schema.query")).isEqualTo("INSERT INTO foo");
     assertThat(result.getString("schema.table")).isEqualTo("table");
 
@@ -684,7 +682,7 @@ class MainTest {
               "locale",
               "--codec.timeZone",
               "tz",
-              "--codec.booleanWords",
+              "--codec.booleanStrings",
               "[\"Si\", \"No\"]",
               "--codec.number",
               "codec-number",
@@ -716,8 +714,8 @@ class MainTest {
               "98761234",
               "--schema.queryTtl",
               "28",
-              "--schema.nullStrings",
-              "NIL, NADA",
+              "--codec.nullStrings",
+              "[NIL, NADA]",
               "--schema.nullToUnset",
               "false",
               "--schema.mapping",
@@ -725,7 +723,7 @@ class MainTest {
               "--connector.name",
               "conn"
             });
-    assertThat(result.getString("driver.hosts")).isEqualTo("host1, host2");
+    assertThat(result.getStringList("driver.hosts")).containsExactly("host1", "host2");
     assertThat(result.getInt("driver.port")).isEqualTo(1);
     assertThat(result.getString("driver.protocol.compression")).isEqualTo("NONE");
     assertThat(result.getInt("driver.pooling.local.connections")).isEqualTo(2);
@@ -746,8 +744,7 @@ class MainTest {
     assertThat(result.getString("driver.auth.keyTab")).isEqualTo("mykeytab");
     assertThat(result.getString("driver.auth.saslService")).isEqualTo("sasl");
     assertThat(result.getString("driver.ssl.provider")).isEqualTo("myssl");
-    assertThat(result.getStringList("driver.ssl.cipherSuites"))
-        .isEqualTo(Collections.singletonList("TLS"));
+    assertThat(result.getStringList("driver.ssl.cipherSuites")).containsExactly("TLS");
     assertThat(result.getString("driver.ssl.truststore.path")).isEqualTo("trust-path");
     assertThat(result.getString("driver.ssl.truststore.password")).isEqualTo("trust-pass");
     assertThat(result.getString("driver.ssl.truststore.algorithm")).isEqualTo("trust-alg");
@@ -773,7 +770,8 @@ class MainTest {
     assertThat(result.getBoolean("driver.policy.lbp.tokenAware.shuffleReplicas")).isFalse();
     assertThat(result.getString("driver.policy.lbp.whiteList.childPolicy"))
         .isEqualTo("whiteListChild");
-    assertThat(result.getString("driver.policy.lbp.whiteList.hosts")).isEqualTo("wh1, wh2");
+    assertThat(result.getStringList("driver.policy.lbp.whiteList.hosts"))
+        .containsExactly("wh1", "wh2");
     assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(29);
     assertThat(result.getBoolean("engine.dryRun")).isTrue();
     assertThat(result.getString("engine.executionId")).isEqualTo("MY_EXEC_ID");
@@ -795,7 +793,7 @@ class MainTest {
     assertThat(result.getInt("log.stmt.maxInnerStatements")).isEqualTo(22);
     assertThat(result.getString("codec.locale")).isEqualTo("locale");
     assertThat(result.getString("codec.timeZone")).isEqualTo("tz");
-    assertThat(result.getStringList("codec.booleanWords")).isEqualTo(Arrays.asList("Si", "No"));
+    assertThat(result.getStringList("codec.booleanStrings")).containsExactly("Si", "No");
     assertThat(result.getString("codec.number")).isEqualTo("codec-number");
     assertThat(result.getString("codec.timestamp")).isEqualTo("codec-ts");
     assertThat(result.getString("codec.date")).isEqualTo("codec-date");
@@ -811,7 +809,7 @@ class MainTest {
     assertThat(result.getString("schema.query")).isEqualTo("SELECT JUNK");
     assertThat(result.getString("schema.queryTimestamp")).isEqualTo("98761234");
     assertThat(result.getInt("schema.queryTtl")).isEqualTo(28);
-    assertThat(result.getString("schema.nullStrings")).isEqualTo("NIL, NADA");
+    assertThat(result.getStringList("codec.nullStrings")).containsExactly("NIL", "NADA");
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
     assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
     assertThat(result.getString("connector.name")).isEqualTo("conn");

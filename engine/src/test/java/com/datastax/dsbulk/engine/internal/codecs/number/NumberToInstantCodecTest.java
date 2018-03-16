@@ -25,19 +25,19 @@ class NumberToInstantCodecTest {
   void should_convert_when_valid_input() {
 
     assertThat(codec)
-        .convertsFrom(123456L)
-        .to(Instant.ofEpochMilli(123456L))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(123456L)
+        .toInternal(Instant.ofEpochMilli(123456L))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(codec)
-        .convertsTo(Instant.ofEpochMilli(123456L))
-        .from(123456L)
-        .convertsTo(null)
-        .from(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal(Instant.ofEpochMilli(123456L))
+        .toExternal(123456L)
+        .convertsFromInternal(null)
+        .toExternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
   }
 }

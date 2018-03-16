@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.commons.internal.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.TimestampGenerator;
@@ -17,7 +16,6 @@ import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.policies.RetryPolicy;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
-import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -123,25 +121,6 @@ class DefaultLoaderConfigTest {
     assertThat(charset1).isEqualTo(Charset.forName("UTF-8"));
     Charset charset2 = config.getCharset("charset2");
     assertThat(charset2).isEqualTo(Charset.forName("UTF-8"));
-  }
-
-  @Test
-  void should_get_type_string() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "intField = 7, "
-                    + "stringField = mystring, "
-                    + "stringListField = [\"v1\", \"v2\"], "
-                    + "numberListField = [9, 7], "
-                    + "booleanField = false"));
-    assertThat(config.getTypeString("intField")).isEqualTo("number");
-    assertThat(config.getTypeString("stringField")).isEqualTo("string");
-    assertThat(config.getTypeString("stringListField")).isEqualTo("list<string>");
-    assertThat(config.getTypeString("numberListField")).isEqualTo("list<number>");
-    assertThat(config.getTypeString("booleanField")).isEqualTo("boolean");
-    assertThatThrownBy(() -> config.getTypeString("noexist"))
-        .isInstanceOf(ConfigException.Missing.class);
   }
 
   @Test

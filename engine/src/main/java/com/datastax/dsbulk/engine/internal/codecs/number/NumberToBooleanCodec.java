@@ -16,22 +16,23 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class NumberToBooleanCodec<FROM extends Number> extends ConvertingCodec<FROM, Boolean> {
+public class NumberToBooleanCodec<EXTERNAL extends Number>
+    extends ConvertingCodec<EXTERNAL, Boolean> {
 
-  private final List<FROM> booleanNumbers;
+  private final List<EXTERNAL> booleanNumbers;
 
   @SuppressWarnings("unchecked")
-  public NumberToBooleanCodec(Class<FROM> javaType, List<BigDecimal> booleanNumbers) {
+  public NumberToBooleanCodec(Class<EXTERNAL> javaType, List<BigDecimal> booleanNumbers) {
     super(TypeCodec.cboolean(), javaType);
     this.booleanNumbers =
         booleanNumbers
             .stream()
-            .map(n -> (FROM) CodecUtils.convertNumber(n, javaType))
+            .map(n -> (EXTERNAL) CodecUtils.convertNumber(n, javaType))
             .collect(Collectors.toList());
   }
 
   @Override
-  public Boolean convertFrom(FROM value) {
+  public Boolean externalToInternal(EXTERNAL value) {
     if (value == null) {
       return null;
     }
@@ -46,7 +47,7 @@ public class NumberToBooleanCodec<FROM extends Number> extends ConvertingCodec<F
   }
 
   @Override
-  public FROM convertTo(Boolean value) {
+  public EXTERNAL internalToExternal(Boolean value) {
     if (value == null) {
       return null;
     }

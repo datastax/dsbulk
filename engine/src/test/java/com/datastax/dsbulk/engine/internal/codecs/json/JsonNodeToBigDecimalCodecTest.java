@@ -43,50 +43,53 @@ class JsonNodeToBigDecimalCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() throws Exception {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(0))
-        .to(ZERO)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(0d))
-        .to(new BigDecimal("0.0"))
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(ONE))
-        .to(ONE)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(-1234.56))
-        .to(new BigDecimal("-1234.56"))
-        .convertsFrom(JSON_NODE_FACTORY.textNode("-1,234.56"))
-        .to(new BigDecimal("-1234.56"))
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
-        .to(new BigDecimal("0"))
-        .convertsFrom(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z"))
-        .to(new BigDecimal("946684800000"))
-        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
-        .to(ONE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
-        .to(ZERO)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.nullNode())
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(0))
+        .toInternal(ZERO)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(0d))
+        .toInternal(new BigDecimal("0.0"))
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(ONE))
+        .toInternal(ONE)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(-1234.56))
+        .toInternal(new BigDecimal("-1234.56"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("-1,234.56"))
+        .toInternal(new BigDecimal("-1234.56"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
+        .toInternal(new BigDecimal("0"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z"))
+        .toInternal(new BigDecimal("946684800000"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("TRUE"))
+        .toInternal(ONE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
+        .toInternal(ZERO)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(ZERO)
-        .from(JSON_NODE_FACTORY.numberNode(ZERO))
-        .convertsTo(new BigDecimal("1234.56"))
-        .from(JSON_NODE_FACTORY.numberNode(new BigDecimal("1234.56")))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(ZERO)
+        .toExternal(JSON_NODE_FACTORY.numberNode(ZERO))
+        .convertsFromInternal(new BigDecimal("1234.56"))
+        .toExternal(JSON_NODE_FACTORY.numberNode(new BigDecimal("1234.56")))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid decimal"));
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid decimal"));
   }
 }

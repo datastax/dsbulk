@@ -13,15 +13,16 @@ import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.List;
 
 public class StringToLocalTimeCodec extends StringToTemporalCodec<LocalTime> {
 
-  public StringToLocalTimeCodec(DateTimeFormatter parser) {
-    super(LocalTimeCodec.instance, parser);
+  public StringToLocalTimeCodec(DateTimeFormatter parser, List<String> nullStrings) {
+    super(LocalTimeCodec.instance, parser, nullStrings);
   }
 
   @Override
-  public LocalTime convertFrom(String s) {
+  public LocalTime externalToInternal(String s) {
     TemporalAccessor temporal = parseTemporalAccessor(s);
     if (temporal == null) {
       return null;

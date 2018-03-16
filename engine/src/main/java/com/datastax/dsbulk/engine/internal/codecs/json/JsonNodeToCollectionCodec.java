@@ -16,10 +16,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.function.Supplier;
 
 public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
-    extends ConvertingCodec<JsonNode, C> {
+    extends JsonNodeConvertingCodec<C> {
 
   private final ConvertingCodec<JsonNode, E> eltCodec;
   private final Supplier<C> collectionSupplier;
@@ -29,16 +30,17 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
       TypeCodec<C> collectionCodec,
       ConvertingCodec<JsonNode, E> eltCodec,
       ObjectMapper objectMapper,
-      Supplier<C> collectionSupplier) {
-    super(collectionCodec, JsonNode.class);
+      Supplier<C> collectionSupplier,
+      List<String> nullStrings) {
+    super(collectionCodec, nullStrings);
     this.eltCodec = eltCodec;
     this.objectMapper = objectMapper;
     this.collectionSupplier = collectionSupplier;
   }
 
   @Override
-  public C convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+  public C externalToInternal(JsonNode node) {
+    if (isNull(node)) {
       return null;
     }
     if (!node.isArray()) {
@@ -51,19 +53,19 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
     C collection = collectionSupplier.get();
     while (elements.hasNext()) {
       JsonNode element = elements.next();
-      collection.add(eltCodec.convertFrom(element));
+      collection.add(eltCodec.externalToInternal(element));
     }
     return collection;
   }
 
   @Override
-  public JsonNode convertTo(C value) {
+  public JsonNode internalToExternal(C value) {
     if (value == null) {
       return objectMapper.getNodeFactory().nullNode();
     }
     ArrayNode root = objectMapper.createArrayNode();
     for (E element : value) {
-      root.add(eltCodec.convertTo(element));
+      root.add(eltCodec.internalToExternal(element));
     }
     return root;
   }

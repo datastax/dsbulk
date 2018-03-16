@@ -11,24 +11,25 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.List;
 
 public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
-    extends ConvertingCodec<JsonNode, T> {
+    extends JsonNodeConvertingCodec<T> {
 
   final DateTimeFormatter temporalFormat;
 
-  JsonNodeToTemporalCodec(TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat) {
-    super(targetCodec, JsonNode.class);
+  JsonNodeToTemporalCodec(
+      TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat, List<String> nullStrings) {
+    super(targetCodec, nullStrings);
     this.temporalFormat = temporalFormat;
   }
 
   @Override
-  public JsonNode convertTo(T value) {
+  public JsonNode internalToExternal(T value) {
     if (value == null) {
       return JSON_NODE_FACTORY.nullNode();
     }
@@ -36,7 +37,7 @@ public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
   }
 
   TemporalAccessor parseTemporalAccessor(JsonNode node) {
-    if (node == null || node.isNull()) {
+    if (isNull(node)) {
       return null;
     }
     String s = node.asText();

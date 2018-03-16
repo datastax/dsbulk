@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class StringToInstantCodec extends StringToTemporalCodec<Instant> {
@@ -28,15 +29,16 @@ public class StringToInstantCodec extends StringToTemporalCodec<Instant> {
       DateTimeFormatter temporalFormat,
       FastThreadLocal<NumberFormat> numberFormat,
       TimeUnit timeUnit,
-      ZonedDateTime epoch) {
-    super(InstantCodec.instance, temporalFormat);
+      ZonedDateTime epoch,
+      List<String> nullStrings) {
+    super(InstantCodec.instance, temporalFormat, nullStrings);
     this.numberFormat = numberFormat;
     this.timeUnit = timeUnit;
     this.epoch = epoch;
   }
 
   @Override
-  public Instant convertFrom(String s) {
+  public Instant externalToInternal(String s) {
     TemporalAccessor temporal = parseTemporalAccessor(s);
     if (temporal == null) {
       return null;
@@ -47,6 +49,9 @@ public class StringToInstantCodec extends StringToTemporalCodec<Instant> {
 
   @Override
   TemporalAccessor parseTemporalAccessor(String s) {
+    if (isNull(s)) {
+      return null;
+    }
     // For timestamps, the conversion is more complex than for other temporals
     return CodecUtils.parseTemporal(
         s, temporalFormat, numberFormat.get(), timeUnit, epoch.toInstant());

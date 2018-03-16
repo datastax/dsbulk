@@ -41,56 +41,59 @@ class StringToByteCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("0")
-        .to((byte) 0)
-        .convertsFrom("127")
-        .to((byte) 127)
-        .convertsFrom("-128")
-        .to((byte) -128)
-        .convertsFrom("0")
-        .to((byte) 0)
-        .convertsFrom("127")
-        .to((byte) 127)
-        .convertsFrom("-128")
-        .to((byte) -128)
-        .convertsFrom("1970-01-01T00:00:00Z")
-        .to((byte) 0)
-        .convertsFrom("TRUE")
-        .to((byte) 1)
-        .convertsFrom("FALSE")
-        .to((byte) 0)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("0")
+        .toInternal((byte) 0)
+        .convertsFromExternal("127")
+        .toInternal((byte) 127)
+        .convertsFromExternal("-128")
+        .toInternal((byte) -128)
+        .convertsFromExternal("0")
+        .toInternal((byte) 0)
+        .convertsFromExternal("127")
+        .toInternal((byte) 127)
+        .convertsFromExternal("-128")
+        .toInternal((byte) -128)
+        .convertsFromExternal("1970-01-01T00:00:00Z")
+        .toInternal((byte) 0)
+        .convertsFromExternal("TRUE")
+        .toInternal((byte) 1)
+        .convertsFromExternal("FALSE")
+        .toInternal((byte) 0)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo((byte) 0)
-        .from("0")
-        .convertsTo((byte) 127)
-        .from("127")
-        .convertsTo((byte) -128)
-        .from("-128")
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal((byte) 0)
+        .toExternal("0")
+        .convertsFromInternal((byte) 127)
+        .toExternal("127")
+        .convertsFromInternal((byte) -128)
+        .toExternal("-128")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFrom("not a valid byte")
-        .cannotConvertFrom("1.2")
-        .cannotConvertFrom("128")
-        .cannotConvertFrom("-129")
-        .cannotConvertFrom("2000-01-01T00:00:00Z") // overflow
+        .cannotConvertFromExternal("not a valid byte")
+        .cannotConvertFromExternal("1.2")
+        .cannotConvertFromExternal("128")
+        .cannotConvertFromExternal("-129")
+        .cannotConvertFromExternal("2000-01-01T00:00:00Z") // overflow
     ;
   }
 }

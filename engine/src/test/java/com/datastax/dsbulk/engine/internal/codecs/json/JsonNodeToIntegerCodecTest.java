@@ -42,60 +42,63 @@ class JsonNodeToIntegerCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(0))
-        .to(0)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(2_147_483_647))
-        .to(Integer.MAX_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(-2_147_483_648))
-        .to(Integer.MIN_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("0"))
-        .to(0)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("2147483647"))
-        .to(Integer.MAX_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("-2147483648"))
-        .to(Integer.MIN_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("2,147,483,647"))
-        .to(Integer.MAX_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("-2,147,483,648"))
-        .to(Integer.MIN_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
-        .to(0)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
-        .to(1)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
-        .to(0)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(0))
+        .toInternal(0)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(2_147_483_647))
+        .toInternal(Integer.MAX_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(-2_147_483_648))
+        .toInternal(Integer.MIN_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("0"))
+        .toInternal(0)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("2147483647"))
+        .toInternal(Integer.MAX_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("-2147483648"))
+        .toInternal(Integer.MIN_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("2,147,483,647"))
+        .toInternal(Integer.MAX_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("-2,147,483,648"))
+        .toInternal(Integer.MIN_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
+        .toInternal(0)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("TRUE"))
+        .toInternal(1)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
+        .toInternal(0)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(0)
-        .from(JSON_NODE_FACTORY.numberNode(0))
-        .convertsTo(Integer.MAX_VALUE)
-        .from(JSON_NODE_FACTORY.numberNode(2_147_483_647))
-        .convertsTo(Integer.MIN_VALUE)
-        .from(JSON_NODE_FACTORY.numberNode(-2_147_483_648))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(0)
+        .toExternal(JSON_NODE_FACTORY.numberNode(0))
+        .convertsFromInternal(Integer.MAX_VALUE)
+        .toExternal(JSON_NODE_FACTORY.numberNode(2_147_483_647))
+        .convertsFromInternal(Integer.MIN_VALUE)
+        .toExternal(JSON_NODE_FACTORY.numberNode(-2_147_483_648))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
+  void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid integer"))
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("1.2"))
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("2147483648"))
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("-2147483649"))
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z")) // overflow
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid integer"))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("1.2"))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("2147483648"))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("-2147483649"))
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z")) // overflow
     ;
   }
 }

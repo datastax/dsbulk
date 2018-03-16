@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-abstract class JsonNodeToNumberCodec<N extends Number> extends ConvertingCodec<JsonNode, N> {
+abstract class JsonNodeToNumberCodec<N extends Number> extends JsonNodeConvertingCodec<N> {
 
   private final FastThreadLocal<NumberFormat> numberFormat;
   private final OverflowStrategy overflowStrategy;
@@ -30,7 +29,7 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends ConvertingCodec<J
   private final DateTimeFormatter temporalFormat;
   private final TimeUnit timeUnit;
   private final ZonedDateTime epoch;
-  private final Map<String, Boolean> booleanWords;
+  private final Map<String, Boolean> booleanStrings;
   private final List<N> booleanNumbers;
 
   JsonNodeToNumberCodec(
@@ -41,27 +40,31 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends ConvertingCodec<J
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
-      List<N> booleanNumbers) {
-    super(targetCodec, JsonNode.class);
+      Map<String, Boolean> booleanStrings,
+      List<N> booleanNumbers,
+      List<String> nullStrings) {
+    super(targetCodec, nullStrings);
     this.numberFormat = numberFormat;
     this.overflowStrategy = overflowStrategy;
     this.roundingMode = roundingMode;
     this.temporalFormat = temporalFormat;
     this.timeUnit = timeUnit;
     this.epoch = epoch;
-    this.booleanWords = booleanWords;
+    this.booleanStrings = booleanStrings;
     this.booleanNumbers = booleanNumbers;
   }
 
   Number parseNumber(JsonNode node) {
+    if (isNull(node)) {
+      return null;
+    }
     return CodecUtils.parseNumber(
         node.asText(),
         numberFormat.get(),
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
+        booleanStrings,
         booleanNumbers);
   }
 

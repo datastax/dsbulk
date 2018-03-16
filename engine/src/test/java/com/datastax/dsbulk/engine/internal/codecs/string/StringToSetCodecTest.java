@@ -34,6 +34,7 @@ import com.google.common.collect.ImmutableMap;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +45,8 @@ class StringToSetCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullStrings = newArrayList("NULL");
+
   private final JsonNodeToDoubleCodec eltCodec1 =
       new JsonNodeToDoubleCodec(
           numberFormat,
@@ -53,96 +56,110 @@ class StringToSetCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          nullStrings);
 
-  private final JsonNodeToStringCodec eltCodec2 = new JsonNodeToStringCodec(TypeCodec.varchar());
+  private final JsonNodeToStringCodec eltCodec2 =
+      new JsonNodeToStringCodec(TypeCodec.varchar(), nullStrings);
 
   private final TypeCodec<Set<Double>> setCodec1 = set(cdouble());
   private final TypeCodec<Set<String>> setCodec2 = set(varchar());
 
   private final StringToSetCodec<Double> codec1 =
       new StringToSetCodec<>(
-          new JsonNodeToSetCodec<>(setCodec1, eltCodec1, objectMapper), objectMapper);
+          new JsonNodeToSetCodec<>(setCodec1, eltCodec1, objectMapper, nullStrings),
+          objectMapper,
+          nullStrings);
   private final StringToSetCodec<String> codec2 =
       new StringToSetCodec<>(
-          new JsonNodeToSetCodec<>(setCodec2, eltCodec2, objectMapper), objectMapper);
+          new JsonNodeToSetCodec<>(setCodec2, eltCodec2, objectMapper, nullStrings),
+          objectMapper,
+          nullStrings);
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec1)
-        .convertsFrom("[1,2,3]")
-        .to(newLinkedHashSet(1d, 2d, 3d))
-        .convertsFrom(" [  1 , 2 , 3 ] ")
-        .to(newLinkedHashSet(1d, 2d, 3d))
-        .convertsFrom("[1234.56,78900]")
-        .to(newLinkedHashSet(1234.56d, 78900d))
-        .convertsFrom("[\"1,234.56\",\"78,900\"]")
-        .to(newLinkedHashSet(1234.56d, 78900d))
-        .convertsFrom("[,]")
-        .to(newLinkedHashSet(null, null))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("[1,2,3]")
+        .toInternal(newLinkedHashSet(1d, 2d, 3d))
+        .convertsFromExternal(" [  1 , 2 , 3 ] ")
+        .toInternal(newLinkedHashSet(1d, 2d, 3d))
+        .convertsFromExternal("[1234.56,78900]")
+        .toInternal(newLinkedHashSet(1234.56d, 78900d))
+        .convertsFromExternal("[\"1,234.56\",\"78,900\"]")
+        .toInternal(newLinkedHashSet(1234.56d, 78900d))
+        .convertsFromExternal("[,]")
+        .toInternal(newLinkedHashSet(null, null))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
     assertThat(codec2)
-        .convertsFrom("[\"foo\",\"bar\"]")
-        .to(newLinkedHashSet("foo", "bar"))
-        .convertsFrom("['foo','bar']")
-        .to(newLinkedHashSet("foo", "bar"))
-        .convertsFrom(" [ \"foo\" , \"bar\" ] ")
-        .to(newLinkedHashSet("foo", "bar"))
-        .convertsFrom("[ \"\\\"foo\\\"\" , \"\\\"bar\\\"\" ]")
-        .to(newLinkedHashSet("\"foo\"", "\"bar\""))
-        .convertsFrom("[ \"\\\"fo\\\\o\\\"\" , \"\\\"ba\\\\r\\\"\" ]")
-        .to(newLinkedHashSet("\"fo\\o\"", "\"ba\\r\""))
-        .convertsFrom("[,]")
-        .to(newLinkedHashSet(null, null))
-        .convertsFrom("[null,null]")
-        .to(newLinkedHashSet(null, null))
-        .convertsFrom("[\"\",\"\"]")
-        .to(newLinkedHashSet("", ""))
-        .convertsFrom("['','']")
-        .to(newLinkedHashSet("", ""))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("[]")
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("[\"foo\",\"bar\"]")
+        .toInternal(newLinkedHashSet("foo", "bar"))
+        .convertsFromExternal("['foo','bar']")
+        .toInternal(newLinkedHashSet("foo", "bar"))
+        .convertsFromExternal(" [ \"foo\" , \"bar\" ] ")
+        .toInternal(newLinkedHashSet("foo", "bar"))
+        .convertsFromExternal("[ \"\\\"foo\\\"\" , \"\\\"bar\\\"\" ]")
+        .toInternal(newLinkedHashSet("\"foo\"", "\"bar\""))
+        .convertsFromExternal("[ \"\\\"fo\\\\o\\\"\" , \"\\\"ba\\\\r\\\"\" ]")
+        .toInternal(newLinkedHashSet("\"fo\\o\"", "\"ba\\r\""))
+        .convertsFromExternal("[,]")
+        .toInternal(newLinkedHashSet(null, null))
+        .convertsFromExternal("[null,null]")
+        .toInternal(newLinkedHashSet(null, null))
+        .convertsFromExternal("[\"\",\"\"]")
+        .toInternal(newLinkedHashSet(""))
+        .convertsFromExternal("['','']")
+        .toInternal(newLinkedHashSet(""))
+        .convertsFromExternal("[\"NULL\",\"NULL\"]")
+        .toInternal(newLinkedHashSet((String) null))
+        .convertsFromExternal("['NULL','NULL']")
+        .toInternal(newLinkedHashSet((String) null))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("[]")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec1)
-        .convertsTo(newLinkedHashSet(1d, 2d, 3d))
-        .from("[1.0,2.0,3.0]")
-        .convertsTo(newLinkedHashSet(1234.56d, 78900d))
-        .from("[1234.56,78900.0]")
-        .convertsTo(newLinkedHashSet(1d, null))
-        .from("[1.0,null]")
-        .convertsTo(newLinkedHashSet(null, 0d))
-        .from("[null,0.0]")
-        .convertsTo(newLinkedHashSet((Double) null))
-        .from("[null]")
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal(newLinkedHashSet(1d, 2d, 3d))
+        .toExternal("[1.0,2.0,3.0]")
+        .convertsFromInternal(newLinkedHashSet(1234.56d, 78900d))
+        .toExternal("[1234.56,78900.0]")
+        .convertsFromInternal(newLinkedHashSet(1d, null))
+        .toExternal("[1.0,null]")
+        .convertsFromInternal(newLinkedHashSet(null, 0d))
+        .toExternal("[null,0.0]")
+        .convertsFromInternal(newLinkedHashSet((Double) null))
+        .toExternal("[null]")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
     assertThat(codec2)
-        .convertsTo(newLinkedHashSet("foo", "bar"))
-        .from("[\"foo\",\"bar\"]")
-        .convertsTo(newLinkedHashSet("\"foo\"", "\"bar\""))
-        .from("[\"\\\"foo\\\"\",\"\\\"bar\\\"\"]")
-        .convertsTo(newLinkedHashSet("\\foo\\", "\\bar\\"))
-        .from("[\"\\\\foo\\\\\",\"\\\\bar\\\\\"]")
-        .convertsTo(newLinkedHashSet(",foo,", ",bar,"))
-        .from("[\",foo,\",\",bar,\"]")
-        .convertsTo(newLinkedHashSet((String) null))
-        .from("[null]")
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal(newLinkedHashSet("foo", "bar"))
+        .toExternal("[\"foo\",\"bar\"]")
+        .convertsFromInternal(newLinkedHashSet("\"foo\"", "\"bar\""))
+        .toExternal("[\"\\\"foo\\\"\",\"\\\"bar\\\"\"]")
+        .convertsFromInternal(newLinkedHashSet("\\foo\\", "\\bar\\"))
+        .toExternal("[\"\\\\foo\\\\\",\"\\\\bar\\\\\"]")
+        .convertsFromInternal(newLinkedHashSet(",foo,", ",bar,"))
+        .toExternal("[\",foo,\",\",bar,\"]")
+        .convertsFromInternal(newLinkedHashSet((String) null))
+        .toExternal("[null]")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec1).cannotConvertFrom("[1,not a valid double]");
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec1).cannotConvertFromExternal("[1,not a valid double]");
   }
 }

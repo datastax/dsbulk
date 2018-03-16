@@ -13,99 +13,108 @@ import static org.assertj.core.api.Assertions.fail;
 
 import org.assertj.core.api.AbstractObjectAssert;
 
-public class ConvertingCodecAssert<FROM, TO>
-    extends AbstractObjectAssert<ConvertingCodecAssert<FROM, TO>, ConvertingCodec<FROM, TO>> {
+public class ConvertingCodecAssert<EXTERNAL, INTERNAL>
+    extends AbstractObjectAssert<
+        ConvertingCodecAssert<EXTERNAL, INTERNAL>, ConvertingCodec<EXTERNAL, INTERNAL>> {
 
-  public ConvertingCodecAssert(ConvertingCodec<FROM, TO> actual) {
+  public ConvertingCodecAssert(ConvertingCodec<EXTERNAL, INTERNAL> actual) {
     super(actual, ConvertingCodecAssert.class);
   }
 
-  public ConvertsFromAssert convertsFrom(FROM from) {
-    TO to = null;
+  public ConvertsToInternalAssert convertsFromExternal(EXTERNAL external) {
+    INTERNAL internal = null;
     try {
-      to = actual.convertFrom(from);
+      internal = actual.externalToInternal(external);
     } catch (Exception e) {
       fail(
           String.format(
-              "Expecting codec to convert from %s but it threw %s instead",
-              from, e.getClass().getName()),
+              "Expecting codec to convert from external %s but it threw %s instead",
+              external, e.getClass().getName()),
           e);
     }
-    return new ConvertsFromAssert(actual, from, to);
+    return new ConvertsToInternalAssert(actual, external, internal);
   }
 
-  public ConvertsToAssert convertsTo(TO to) {
-    FROM from = null;
+  public ConvertsToExternalAssert convertsFromInternal(INTERNAL internal) {
+    EXTERNAL external = null;
     try {
-      from = actual.convertTo(to);
+      external = actual.internalToExternal(internal);
     } catch (Exception e) {
       fail(
           String.format(
-              "Expecting codec to convert to %s but it threw %s instead",
-              to, e.getClass().getName()),
+              "Expecting codec to convert from internal %s but it threw %s instead",
+              internal, e.getClass().getName()),
           e);
     }
-    return new ConvertsToAssert(actual, from, to);
+    return new ConvertsToExternalAssert(actual, external, internal);
   }
 
-  public ConvertingCodecAssert<FROM, TO> cannotConvertFrom(FROM from) {
+  public ConvertingCodecAssert<EXTERNAL, INTERNAL> cannotConvertFromExternal(EXTERNAL external) {
     try {
-      TO to = actual.convertFrom(from);
+      INTERNAL internal = actual.externalToInternal(external);
       fail(
-          String.format("Expecting codec to not convert from %s but it converted to %s", from, to));
+          String.format(
+              "Expecting codec to not convert from external %s but it converted to internal %s",
+              external, internal));
     } catch (Exception ignored) {
     }
     return this;
   }
 
-  public ConvertingCodecAssert<FROM, TO> cannotConvertTo(TO to) {
+  public ConvertingCodecAssert<EXTERNAL, INTERNAL> cannotConvertFromInternal(INTERNAL internal) {
     try {
-      FROM from = actual.convertTo(to);
+      EXTERNAL external = actual.internalToExternal(internal);
       fail(
-          String.format("Expecting codec to not convert to %s but it converted from %s", to, from));
+          String.format(
+              "Expecting codec to not convert from internal %s but it converted to external %s",
+              internal, external));
     } catch (Exception ignored) {
     }
     return this;
   }
 
   @SuppressWarnings("ClassCanBeStatic")
-  public class ConvertsFromAssert extends ConvertingCodecAssert<FROM, TO> {
+  public class ConvertsToInternalAssert extends ConvertingCodecAssert<EXTERNAL, INTERNAL> {
 
-    private final FROM from;
-    private final TO to;
+    private final EXTERNAL external;
+    private final INTERNAL internal;
 
-    ConvertsFromAssert(ConvertingCodec<FROM, TO> actual, FROM from, TO to) {
+    ConvertsToInternalAssert(
+        ConvertingCodec<EXTERNAL, INTERNAL> actual, EXTERNAL external, INTERNAL internal) {
       super(actual);
-      this.from = from;
-      this.to = to;
+      this.external = external;
+      this.internal = internal;
     }
 
-    public ConvertingCodecAssert<FROM, TO> to(TO to) {
-      assertThat(this.to)
+    public ConvertingCodecAssert<EXTERNAL, INTERNAL> toInternal(INTERNAL internal) {
+      assertThat(this.internal)
           .overridingErrorMessage(
-              "Expecting codec to convert to %s from %s but it was to %s", to, from, this.to)
-          .isEqualTo(to);
+              "Expecting codec to convert from external %s to internal %s but it converted to %s",
+              external, internal, this.internal)
+          .isEqualTo(internal);
       return this;
     }
   }
 
   @SuppressWarnings("ClassCanBeStatic")
-  public class ConvertsToAssert extends ConvertingCodecAssert<FROM, TO> {
+  public class ConvertsToExternalAssert extends ConvertingCodecAssert<EXTERNAL, INTERNAL> {
 
-    private final FROM from;
-    private final TO to;
+    private final EXTERNAL external;
+    private final INTERNAL internal;
 
-    ConvertsToAssert(ConvertingCodec<FROM, TO> actual, FROM from, TO to) {
+    ConvertsToExternalAssert(
+        ConvertingCodec<EXTERNAL, INTERNAL> actual, EXTERNAL external, INTERNAL internal) {
       super(actual);
-      this.from = from;
-      this.to = to;
+      this.external = external;
+      this.internal = internal;
     }
 
-    public ConvertingCodecAssert<FROM, TO> from(FROM from) {
-      assertThat(this.from)
+    public ConvertingCodecAssert<EXTERNAL, INTERNAL> toExternal(EXTERNAL external) {
+      assertThat(this.external)
           .overridingErrorMessage(
-              "Expecting codec to convert back from %s to %s but it was to %s", to, from, this.from)
-          .isEqualTo(from);
+              "Expecting codec to convert from internal %s to external %s but it converted to %s",
+              internal, external, this.external)
+          .isEqualTo(external);
       return this;
     }
   }

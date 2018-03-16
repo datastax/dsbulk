@@ -42,58 +42,61 @@ class JsonNodeToDoubleCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(0))
-        .to(0d)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(1234.56d))
-        .to(1234.56d)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(1.7976931348623157E308d))
-        .to(Double.MAX_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.numberNode(4.9E-324d))
-        .to(Double.MIN_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("0"))
-        .to(0d)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1234.56"))
-        .to(1234.56d)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1,234.56"))
-        .to(1234.56d)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1.7976931348623157E308"))
-        .to(Double.MAX_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("4.9E-324"))
-        .to(Double.MIN_VALUE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
-        .to(0d)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z"))
-        .to(946684800000d)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("TRUE"))
-        .to(1d)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("FALSE"))
-        .to(0d)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(0))
+        .toInternal(0d)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(1234.56d))
+        .toInternal(1234.56d)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(1.7976931348623157E308d))
+        .toInternal(Double.MAX_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(4.9E-324d))
+        .toInternal(Double.MIN_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("0"))
+        .toInternal(0d)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1234.56"))
+        .toInternal(1234.56d)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1,234.56"))
+        .toInternal(1234.56d)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1.7976931348623157E308"))
+        .toInternal(Double.MAX_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("4.9E-324"))
+        .toInternal(Double.MIN_VALUE)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1970-01-01T00:00:00Z"))
+        .toInternal(0d)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("2000-01-01T00:00:00Z"))
+        .toInternal(946684800000d)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("TRUE"))
+        .toInternal(1d)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
+        .toInternal(0d)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(0d)
-        .from(JSON_NODE_FACTORY.numberNode(0d))
-        .convertsTo(1234.56d)
-        .from(JSON_NODE_FACTORY.numberNode(1234.56d))
-        .convertsTo(0.001d)
-        .from(JSON_NODE_FACTORY.numberNode(0.001d))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(0d)
+        .toExternal(JSON_NODE_FACTORY.numberNode(0d))
+        .convertsFromInternal(1234.56d)
+        .toExternal(JSON_NODE_FACTORY.numberNode(1234.56d))
+        .convertsFromInternal(0.001d)
+        .toExternal(JSON_NODE_FACTORY.numberNode(0.001d))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid double"));
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid double"));
   }
 }

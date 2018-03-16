@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.List;
 
-public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> {
+public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
 
   private final TupleType definition;
   private final List<ConvertingCodec<JsonNode, Object>> eltCodecs;
@@ -27,16 +27,17 @@ public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> 
   public JsonNodeToTupleCodec(
       TypeCodec<TupleValue> tupleCodec,
       List<ConvertingCodec<JsonNode, Object>> eltCodecs,
-      ObjectMapper objectMapper) {
-    super(tupleCodec, JsonNode.class);
+      ObjectMapper objectMapper,
+      List<String> nullStrings) {
+    super(tupleCodec, nullStrings);
     this.eltCodecs = eltCodecs;
     definition = (TupleType) tupleCodec.getCqlType();
     this.objectMapper = objectMapper;
   }
 
   @Override
-  public TupleValue convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+  public TupleValue externalToInternal(JsonNode node) {
+    if (isNull(node)) {
       return null;
     }
     if (!node.isArray()) {
@@ -53,14 +54,14 @@ public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> 
     TupleValue tuple = definition.newValue();
     for (int i = 0; i < size; i++) {
       ConvertingCodec<JsonNode, Object> eltCodec = eltCodecs.get(i);
-      Object o = eltCodec.convertFrom(node.get(i));
-      tuple.set(i, o, eltCodec.getTargetJavaType());
+      Object o = eltCodec.externalToInternal(node.get(i));
+      tuple.set(i, o, eltCodec.getInternalJavaType());
     }
     return tuple;
   }
 
   @Override
-  public JsonNode convertTo(TupleValue tuple) {
+  public JsonNode internalToExternal(TupleValue tuple) {
     if (tuple == null) {
       return objectMapper.getNodeFactory().nullNode();
     }
@@ -68,8 +69,8 @@ public class JsonNodeToTupleCodec extends ConvertingCodec<JsonNode, TupleValue> 
     int size = definition.getComponentTypes().size();
     for (int i = 0; i < size; i++) {
       ConvertingCodec<JsonNode, Object> eltCodec = eltCodecs.get(i);
-      Object o = tuple.get(i, eltCodec.getTargetJavaType());
-      JsonNode element = eltCodec.convertTo(o);
+      Object o = tuple.get(i, eltCodec.getInternalJavaType());
+      JsonNode element = eltCodec.internalToExternal(o);
       root.add(element);
     }
     return root;

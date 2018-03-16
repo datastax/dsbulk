@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -21,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public abstract class StringToNumberCodec<N extends Number> extends ConvertingCodec<String, N> {
+public abstract class StringToNumberCodec<N extends Number> extends StringConvertingCodec<N> {
 
   private final FastThreadLocal<NumberFormat> numberFormat;
   private final OverflowStrategy overflowStrategy;
@@ -29,7 +28,7 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
   private final DateTimeFormatter temporalFormat;
   private final TimeUnit timeUnit;
   private final ZonedDateTime epoch;
-  private final Map<String, Boolean> booleanWords;
+  private final Map<String, Boolean> booleanStrings;
   private final List<N> booleanNumbers;
 
   StringToNumberCodec(
@@ -40,30 +39,34 @@ public abstract class StringToNumberCodec<N extends Number> extends ConvertingCo
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
-      List<N> booleanNumbers) {
-    super(targetCodec, String.class);
+      Map<String, Boolean> booleanStrings,
+      List<N> booleanNumbers,
+      List<String> nullStrings) {
+    super(targetCodec, nullStrings);
     this.numberFormat = numberFormat;
     this.overflowStrategy = overflowStrategy;
     this.roundingMode = roundingMode;
     this.temporalFormat = temporalFormat;
     this.timeUnit = timeUnit;
     this.epoch = epoch;
-    this.booleanWords = booleanWords;
+    this.booleanStrings = booleanStrings;
     this.booleanNumbers = booleanNumbers;
   }
 
   @Override
-  public String convertTo(N value) {
+  public String internalToExternal(N value) {
     if (value == null) {
-      return null;
+      return nullString();
     }
     return CodecUtils.formatNumber(value, numberFormat.get());
   }
 
   Number parseNumber(String s) {
+    if (isNull(s)) {
+      return null;
+    }
     return CodecUtils.parseNumber(
-        s, numberFormat.get(), temporalFormat, timeUnit, epoch, booleanWords, booleanNumbers);
+        s, numberFormat.get(), temporalFormat, timeUnit, epoch, booleanStrings, booleanNumbers);
   }
 
   N narrowNumber(Number number, Class<? extends N> targetClass) {

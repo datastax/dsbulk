@@ -31,8 +31,9 @@ public class StringToDoubleCodec extends StringToNumberCodec<Double> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      Map<String, Boolean> booleanStrings,
+      List<BigDecimal> booleanNumbers,
+      List<String> nullStrings) {
     super(
         TypeCodec.cdouble(),
         numberFormat,
@@ -41,12 +42,13 @@ public class StringToDoubleCodec extends StringToNumberCodec<Double> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
-        booleanNumbers.stream().map(BigDecimal::doubleValue).collect(toList()));
+        booleanStrings,
+        booleanNumbers.stream().map(BigDecimal::doubleValue).collect(toList()),
+        nullStrings);
   }
 
   @Override
-  public Double convertFrom(String s) {
+  public Double externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

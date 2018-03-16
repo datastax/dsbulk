@@ -27,7 +27,7 @@ public class DefaultMapping implements Mapping {
 
   private final ImmutableBiMap<String, String> fieldsToVariables;
   private final ExtendedCodecRegistry codecRegistry;
-  private final Cache<String, TypeCodec<Object>> variablesToCodecs;
+  private final Cache<String, TypeCodec<?>> variablesToCodecs;
   private final String writeTimeVariable;
 
   public DefaultMapping(
@@ -51,24 +51,25 @@ public class DefaultMapping implements Mapping {
   }
 
   @Override
-  public TypeCodec<Object> codec(
-      @NotNull String variable, DataType cqlType, TypeToken<?> javaType) {
-    TypeCodec<Object> codec =
-        variablesToCodecs.get(
-            variable,
-            n -> {
-              if (variable.equals(writeTimeVariable)) {
-                if (cqlType.getName() != BIGINT) {
-                  throw new IllegalArgumentException(
-                      "Cannot create a WriteTimeCodec for " + cqlType);
-                }
-                @SuppressWarnings("unchecked")
-                ConvertingCodec<Object, Instant> innerCodec =
-                    codecRegistry.convertingCodecFor(timestamp(), (TypeToken<Object>) javaType);
-                return new WriteTimeCodec<>(innerCodec);
-              }
-              return codecRegistry.codecFor(cqlType, javaType);
-            });
+  public <T> TypeCodec<T> codec(
+      @NotNull String variable, DataType cqlType, TypeToken<? extends T> javaType) {
+    @SuppressWarnings("unchecked")
+    TypeCodec<T> codec =
+        (TypeCodec<T>)
+            variablesToCodecs.get(
+                variable,
+                n -> {
+                  if (variable.equals(writeTimeVariable)) {
+                    if (cqlType.getName() != BIGINT) {
+                      throw new IllegalArgumentException(
+                          "Cannot create a WriteTimeCodec for " + cqlType);
+                    }
+                    ConvertingCodec<T, Instant> innerCodec =
+                        codecRegistry.convertingCodecFor(timestamp(), javaType);
+                    return new WriteTimeCodec<>(innerCodec);
+                  }
+                  return codecRegistry.codecFor(cqlType, javaType);
+                });
     assert codec != null;
     return codec;
   }

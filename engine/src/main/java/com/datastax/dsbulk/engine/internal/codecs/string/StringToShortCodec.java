@@ -30,8 +30,9 @@ public class StringToShortCodec extends StringToNumberCodec<Short> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      Map<String, Boolean> booleanStrings,
+      List<BigDecimal> booleanNumbers,
+      List<String> nullStrings) {
     super(
         smallInt(),
         numberFormat,
@@ -40,12 +41,13 @@ public class StringToShortCodec extends StringToNumberCodec<Short> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
-        booleanNumbers.stream().map(BigDecimal::shortValueExact).collect(toList()));
+        booleanStrings,
+        booleanNumbers.stream().map(BigDecimal::shortValueExact).collect(toList()),
+        nullStrings);
   }
 
   @Override
-  public Short convertFrom(String s) {
+  public Short externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

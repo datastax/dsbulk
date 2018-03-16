@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
@@ -20,44 +21,47 @@ class JsonNodeToBooleanCodecTest {
   private final Map<String, Boolean> inputs =
       ImmutableMap.<String, Boolean>builder().put("foo", true).put("bar", false).build();
 
-  private final JsonNodeToBooleanCodec codec = new JsonNodeToBooleanCodec(inputs);
+  private final JsonNodeToBooleanCodec codec =
+      new JsonNodeToBooleanCodec(inputs, newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom(JSON_NODE_FACTORY.booleanNode(true))
-        .to(true)
-        .convertsFrom(JSON_NODE_FACTORY.booleanNode(false))
-        .to(false)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("FOO"))
-        .to(true)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("BAR"))
-        .to(false)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("foo"))
-        .to(true)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("bar"))
-        .to(false)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.nullNode())
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
+        .convertsFromExternal(JSON_NODE_FACTORY.booleanNode(true))
+        .toInternal(true)
+        .convertsFromExternal(JSON_NODE_FACTORY.booleanNode(false))
+        .toInternal(false)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("FOO"))
+        .toInternal(true)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("BAR"))
+        .toInternal(false)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("foo"))
+        .toInternal(true)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("bar"))
+        .toInternal(false)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(true)
-        .from(JSON_NODE_FACTORY.booleanNode(true))
-        .convertsTo(false)
-        .from(JSON_NODE_FACTORY.booleanNode(false))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+        .convertsFromInternal(true)
+        .toExternal(JSON_NODE_FACTORY.booleanNode(true))
+        .convertsFromInternal(false)
+        .toExternal(JSON_NODE_FACTORY.booleanNode(false))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid boolean"));
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid boolean"));
   }
 }

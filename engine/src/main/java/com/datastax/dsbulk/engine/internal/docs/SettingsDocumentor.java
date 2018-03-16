@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.DEFAULT;
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.LONG_TO_SHORT_OPTIONS;
 
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils.Group;
 import com.datastax.dsbulk.engine.internal.utils.StringUtils;
@@ -89,7 +90,7 @@ public class SettingsDocumentor {
               "#### %s--%s _&lt;%s&gt;_%n%n%s%n%n",
               shortOpt,
               settingName,
-              StringUtils.htmlEscape(DEFAULT.getTypeString(settingName)),
+              StringUtils.htmlEscape(ConfigUtils.getTypeString(DEFAULT, settingName)),
               getSanitizedDescription(settingValue));
         }
       }

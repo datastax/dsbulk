@@ -33,200 +33,200 @@ class TemporalToTemporalCodecTest {
     assertThat(
             new TemporalToTemporalCodec<>(
                 ZonedDateTime.class, LocalDateCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .convertsFrom(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
-        .to(LocalDate.parse("2010-06-30"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
+        .toInternal(LocalDate.parse("2010-06-30"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 ZonedDateTime.class, LocalDateCodec.instance, ofHours(1), EPOCH.atZone(UTC)))
-        .convertsFrom(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
-        .to(LocalDate.parse("2010-06-30"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
+        .toInternal(LocalDate.parse("2010-06-30"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 ZonedDateTime.class, LocalDateCodec.instance, ofHours(-1), EPOCH.atZone(UTC)))
-        .convertsFrom(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
-        .to(LocalDate.parse("2010-06-30"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
+        .toInternal(LocalDate.parse("2010-06-30"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 ZonedDateTime.class, LocalTimeCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .convertsFrom(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"))
-        .to(LocalTime.parse("23:59:59"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"))
+        .toInternal(LocalTime.parse("23:59:59"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 ZonedDateTime.class, LocalTimeCodec.instance, ofHours(1), EPOCH.atZone(UTC)))
-        .convertsFrom(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"))
-        .to(LocalTime.parse("23:59:59"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"))
+        .toInternal(LocalTime.parse("23:59:59"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 ZonedDateTime.class, LocalTimeCodec.instance, ofHours(-1), EPOCH.atZone(UTC)))
-        .convertsFrom(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"))
-        .to(LocalTime.parse("23:59:59"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"))
+        .toInternal(LocalTime.parse("23:59:59"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 ZonedDateTime.class, InstantCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .convertsFrom(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
-        .to(Instant.parse("2010-06-29T23:00:00Z"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
+        .toInternal(Instant.parse("2010-06-29T23:00:00Z"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 ZonedDateTime.class, InstantCodec.instance, ofHours(1), EPOCH.atZone(UTC)))
-        .convertsFrom(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
-        .to(Instant.parse("2010-06-29T23:00:00Z"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
+        .toInternal(Instant.parse("2010-06-29T23:00:00Z"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     // Instant -> *
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 Instant.class, LocalDateCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .convertsFrom(Instant.parse("2010-06-30T00:00:00Z"))
-        .to(LocalDate.parse("2010-06-30"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(Instant.parse("2010-06-30T00:00:00Z"))
+        .toInternal(LocalDate.parse("2010-06-30"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 Instant.class, LocalDateCodec.instance, ofHours(-1), EPOCH.atZone(UTC)))
-        .convertsFrom(Instant.parse("2010-06-30T00:00:00Z"))
-        .to(LocalDate.parse("2010-06-29"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(Instant.parse("2010-06-30T00:00:00Z"))
+        .toInternal(LocalDate.parse("2010-06-29"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 Instant.class, LocalDateCodec.instance, ofHours(1), EPOCH.atZone(UTC)))
-        .convertsFrom(Instant.parse("2010-06-30T23:59:59Z"))
-        .to(LocalDate.parse("2010-07-01"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(Instant.parse("2010-06-30T23:59:59Z"))
+        .toInternal(LocalDate.parse("2010-07-01"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 Instant.class, LocalTimeCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .convertsFrom(Instant.parse("1970-01-01T23:59:59Z"))
-        .to(LocalTime.parse("23:59:59"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(Instant.parse("1970-01-01T23:59:59Z"))
+        .toInternal(LocalTime.parse("23:59:59"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 Instant.class, LocalTimeCodec.instance, ofHours(1), EPOCH.atZone(UTC)))
-        .convertsFrom(Instant.parse("1970-01-01T23:59:59Z"))
-        .to(LocalTime.parse("00:59:59"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(Instant.parse("1970-01-01T23:59:59Z"))
+        .toInternal(LocalTime.parse("00:59:59"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 Instant.class, LocalTimeCodec.instance, ofHours(-1), EPOCH.atZone(UTC)))
-        .convertsFrom(Instant.parse("1970-01-01T23:59:59Z"))
-        .to(LocalTime.parse("22:59:59"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(Instant.parse("1970-01-01T23:59:59Z"))
+        .toInternal(LocalTime.parse("22:59:59"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     // LocalDateTime -> *
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 LocalDateTime.class, LocalDateCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .convertsFrom(LocalDateTime.parse("2010-06-30T00:00:00"))
-        .to(LocalDate.parse("2010-06-30"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(LocalDateTime.parse("2010-06-30T00:00:00"))
+        .toInternal(LocalDate.parse("2010-06-30"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 LocalDateTime.class, LocalTimeCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .convertsFrom(LocalDateTime.parse("1970-01-01T23:59:59"))
-        .to(LocalTime.parse("23:59:59"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(LocalDateTime.parse("1970-01-01T23:59:59"))
+        .toInternal(LocalTime.parse("23:59:59"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 LocalDateTime.class, InstantCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .convertsFrom(LocalDateTime.parse("2010-06-30T23:59:59"))
-        .to(Instant.parse("2010-06-30T23:59:59Z"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(LocalDateTime.parse("2010-06-30T23:59:59"))
+        .toInternal(Instant.parse("2010-06-30T23:59:59Z"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     // LocalDate -> *
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 LocalDate.class, InstantCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .convertsFrom(LocalDate.parse("2010-06-30"))
-        .to(Instant.parse("2010-06-30T00:00:00Z"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(LocalDate.parse("2010-06-30"))
+        .toInternal(Instant.parse("2010-06-30T00:00:00Z"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
 
     // LocalTime -> *
 
     assertThat(
             new TemporalToTemporalCodec<>(
                 LocalTime.class, InstantCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .convertsFrom(LocalTime.parse("23:59:59"))
-        .to(Instant.parse("1970-01-01T23:59:59Z"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .convertsFromExternal(LocalTime.parse("23:59:59"))
+        .toInternal(Instant.parse("1970-01-01T23:59:59Z"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
   }
 
   @Test
@@ -236,11 +236,11 @@ class TemporalToTemporalCodecTest {
     assertThat(
             new TemporalToTemporalCodec<>(
                 LocalDate.class, LocalTimeCodec.instance, UTC, EPOCH.atZone(UTC)))
-        .cannotConvertFrom(LocalDate.parse("2010-06-30"))
-        .cannotConvertTo(LocalTime.parse("23:59:59"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsTo(null)
-        .from(null);
+        .cannotConvertFromExternal(LocalDate.parse("2010-06-30"))
+        .cannotConvertFromInternal(LocalTime.parse("23:59:59"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromInternal(null)
+        .toExternal(null);
   }
 }

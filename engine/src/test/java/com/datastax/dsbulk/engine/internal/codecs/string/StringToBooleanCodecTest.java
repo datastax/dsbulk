@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
@@ -22,38 +23,41 @@ class StringToBooleanCodecTest {
   private final Map<Boolean, String> outputs =
       ImmutableMap.<Boolean, String>builder().put(true, "foo").put(false, "bar").build();
 
-  private final StringToBooleanCodec codec = new StringToBooleanCodec(inputs, outputs);
+  private final StringToBooleanCodec codec =
+      new StringToBooleanCodec(inputs, outputs, newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("FOO")
-        .to(true)
-        .convertsFrom("BAR")
-        .to(false)
-        .convertsFrom("foo")
-        .to(true)
-        .convertsFrom("bar")
-        .to(false)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("FOO")
+        .toInternal(true)
+        .convertsFromExternal("BAR")
+        .toInternal(false)
+        .convertsFromExternal("foo")
+        .toInternal(true)
+        .convertsFromExternal("bar")
+        .toInternal(false)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(true)
-        .from("foo")
-        .convertsTo(false)
-        .from("bar")
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal(true)
+        .toExternal("foo")
+        .convertsFromInternal(false)
+        .toExternal("bar")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom("not a valid boolean");
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal("not a valid boolean");
   }
 }

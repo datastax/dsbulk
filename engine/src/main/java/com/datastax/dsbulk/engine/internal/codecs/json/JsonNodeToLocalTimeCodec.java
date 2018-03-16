@@ -15,15 +15,16 @@ import java.time.DateTimeException;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.List;
 
 public class JsonNodeToLocalTimeCodec extends JsonNodeToTemporalCodec<LocalTime> {
 
-  public JsonNodeToLocalTimeCodec(DateTimeFormatter parser) {
-    super(LocalTimeCodec.instance, parser);
+  public JsonNodeToLocalTimeCodec(DateTimeFormatter parser, List<String> nullStrings) {
+    super(LocalTimeCodec.instance, parser, nullStrings);
   }
 
   @Override
-  public LocalTime convertFrom(JsonNode s) {
+  public LocalTime externalToInternal(JsonNode s) {
     TemporalAccessor temporal = parseTemporalAccessor(s);
     if (temporal == null) {
       return null;

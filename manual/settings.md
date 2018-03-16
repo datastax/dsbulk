@@ -172,17 +172,17 @@ Enable or disable dry-run mode, a test mode that runs the command but does not l
 
 Default: **false**.
 
-#### -h,--driver.hosts _&lt;string&gt;_
+#### -h,--driver.hosts _&lt;list&lt;string&gt;&gt;_
 
 The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
-Default: **"127.0.0.1"**.
+Default: **["127.0.0.1"]**.
 
 #### -port,--driver.port _&lt;number&gt;_
 
 The native transport port to connect to. This must match DSE's [native_transport_port](https://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configCassandra_yaml_r.html#configCassandra_yaml_r__native_transport_port) configuration option.
 
-Note that all nodes in a cluster must accept connections on the same port number. Mixed-port cluster are not supported.
+Note that all nodes in a cluster must accept connections on the same port number. Mixed-port clusters are not supported.
 
 Default: **9042**.
 
@@ -531,17 +531,11 @@ Note: if the missing field is mapped to a primary key column, the record will be
 
 Default: **false**.
 
-#### -nullStrings,--schema.nullStrings _&lt;string&gt;_
-
-Comma-separated list of strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, only the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required.
-
-Default: **&lt;unspecified&gt;**.
-
 #### --schema.nullToUnset _&lt;boolean&gt;_
 
 Specify whether to map `null` input values to "unset" in the database, i.e., don't modify a potentially pre-existing value of this field for this row. Valid for load scenarios, otherwise ignore. Note that setting to false creates tombstones to represent `null`.
 
-Note that this setting is applied after the *schema.nullStrings* setting, and may intercept `null`s produced by that setting.
+Note that this setting is applied after the *codec.nullStrings* setting, and may intercept `null`s produced by that setting.
 
 Default: **true**.
 
@@ -628,9 +622,9 @@ Set how true and false representations of numbers are interpreted. The represent
 
 Default: **[1,0]**.
 
-#### --codec.booleanWords _&lt;list&lt;string&gt;&gt;_
+#### --codec.booleanStrings _&lt;list&lt;string&gt;&gt;_
 
-Specify how true and false representations can be used by dsbulk. Each representation is of the form `true-value:false-value`, case-insensitive. For loading, all representations are honored. For unloading, the first representation will be used and all others ignored.
+Specify how true and false representations can be used by dsbulk. Each representation is of the form `true-value:false-value`, case-insensitive. For loading, all representations are honored: when a record field value exactly matches one of the specified strings, the value is replaced with `true` of `false` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first representation will be used to format booleans before they are written out, and all others are ignored.
 
 Default: **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
 
@@ -676,6 +670,12 @@ Default: **false**.
 The locale to use for locale-sensitive conversions.
 
 Default: **"en_US"**.
+
+#### -nullStrings,--codec.nullStrings _&lt;list&lt;string&gt;&gt;_
+
+Comma-separated list of values that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-word can still be left unset if required.
+
+Default: **[""]**.
 
 #### --codec.number _&lt;string&gt;_
 
@@ -822,17 +822,17 @@ Default: **"RANDOM"**.
 
 Driver-specific configuration.
 
-#### -h,--driver.hosts _&lt;string&gt;_
+#### -h,--driver.hosts _&lt;list&lt;string&gt;&gt;_
 
 The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
-Default: **"127.0.0.1"**.
+Default: **["127.0.0.1"]**.
 
 #### -port,--driver.port _&lt;number&gt;_
 
 The native transport port to connect to. This must match DSE's [native_transport_port](https://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configCassandra_yaml_r.html#configCassandra_yaml_r__native_transport_port) configuration option.
 
-Note that all nodes in a cluster must accept connections on the same port number. Mixed-port cluster are not supported.
+Note that all nodes in a cluster must accept connections on the same port number. Mixed-port clusters are not supported.
 
 Default: **9042**.
 
@@ -975,11 +975,11 @@ The child policy that the specified `whiteList` policy wraps.
 
 Default: **"roundRobin"**.
 
-#### --driver.policy.lbp.whiteList.hosts _&lt;string&gt;_
+#### --driver.policy.lbp.whiteList.hosts _&lt;list&gt;_
 
 List of hosts to white list. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
-Default: **&lt;unspecified&gt;**.
+Default: **[]**.
 
 #### -maxRetries,--driver.policy.maxRetries _&lt;number&gt;_
 

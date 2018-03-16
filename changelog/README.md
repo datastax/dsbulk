@@ -13,6 +13,7 @@
 - [improvement] DAT-238: Monitor throughput in bytes/sec.
 - [improvement] DAT-246: Do not log ongoing metrics to main log file.
 - [improvement] DAT-247: Improve handling of uncaught exceptions.
+- [bug] DAT-241: Null words should be supported by all connectors.
 
 
 ### 1.0.0

@@ -9,30 +9,34 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.List;
 
 public abstract class StringToTemporalCodec<T extends TemporalAccessor>
-    extends ConvertingCodec<String, T> {
+    extends StringConvertingCodec<T> {
 
   final DateTimeFormatter temporalFormat;
 
-  StringToTemporalCodec(TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat) {
-    super(targetCodec, String.class);
+  StringToTemporalCodec(
+      TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat, List<String> nullStrings) {
+    super(targetCodec, nullStrings);
     this.temporalFormat = temporalFormat;
   }
 
   @Override
-  public String convertTo(T value) {
+  public String internalToExternal(T value) {
     if (value == null) {
-      return null;
+      return nullString();
     }
     return temporalFormat.format(value);
   }
 
   TemporalAccessor parseTemporalAccessor(String s) {
+    if (isNull(s)) {
+      return null;
+    }
     return CodecUtils.parseTemporal(s, temporalFormat);
   }
 }

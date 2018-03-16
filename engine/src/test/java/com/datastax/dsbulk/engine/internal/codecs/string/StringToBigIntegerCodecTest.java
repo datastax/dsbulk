@@ -26,12 +26,15 @@ import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class StringToBigIntegerCodecTest {
 
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+
+  private final List<String> nullStrings = newArrayList("NULL");
 
   private final StringToBigIntegerCodec codec =
       new StringToBigIntegerCodec(
@@ -42,40 +45,47 @@ class StringToBigIntegerCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("0")
-        .to(BigInteger.ZERO)
-        .convertsFrom("-1,234")
-        .to(new BigInteger("-1234"))
-        .convertsFrom("1970-01-01T00:00:00Z")
-        .to(new BigInteger("0"))
-        .convertsFrom("2000-01-01T00:00:00Z")
-        .to(new BigInteger("946684800000"))
-        .convertsFrom("TRUE")
-        .to(BigInteger.ONE)
-        .convertsFrom("FALSE")
-        .to(BigInteger.ZERO)
-        .convertsFrom(null)
-        .to(null);
+        .convertsFromExternal("0")
+        .toInternal(BigInteger.ZERO)
+        .convertsFromExternal("-1,234")
+        .toInternal(new BigInteger("-1234"))
+        .convertsFromExternal("1970-01-01T00:00:00Z")
+        .toInternal(new BigInteger("0"))
+        .convertsFromExternal("2000-01-01T00:00:00Z")
+        .toInternal(new BigInteger("946684800000"))
+        .convertsFromExternal("TRUE")
+        .toInternal(BigInteger.ONE)
+        .convertsFromExternal("FALSE")
+        .toInternal(BigInteger.ZERO)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(BigInteger.ZERO)
-        .from("0")
-        .convertsTo(new BigInteger("-1234"))
-        .from("-1,234")
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal(BigInteger.ZERO)
+        .toExternal("0")
+        .convertsFromInternal(new BigInteger("-1234"))
+        .toExternal("-1,234")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom("-1.234").cannotConvertFrom("not a valid biginteger");
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec)
+        .cannotConvertFromExternal("-1.234")
+        .cannotConvertFromExternal("not a valid biginteger");
   }
 }

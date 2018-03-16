@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
@@ -26,6 +27,7 @@ import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -34,78 +36,83 @@ class StringToUUIDCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
+  private final List<String> nullStrings = newArrayList("NULL");
+
   private StringToInstantCodec instantCodec =
-      new StringToInstantCodec(CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC));
+      new StringToInstantCodec(
+          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
 
   private final StringToUUIDCodec codec =
-      new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN);
+      new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullStrings);
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("a15341ec-ebef-4eab-b91d-ff16bf801a79")
-        .to(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("a15341ec-ebef-4eab-b91d-ff16bf801a79")
+        .toInternal(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
 
-    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN))
-        .convertsFrom("2017-12-05T12:44:36+01:00")
-        .to(
+    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullStrings))
+        .convertsFromExternal("2017-12-05T12:44:36+01:00")
+        .toInternal(
             UUIDs.startOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
-    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX))
-        .convertsFrom("2017-12-05T12:44:36.999999999+01:00")
-        .to(
+    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullStrings))
+        .convertsFromExternal("2017-12-05T12:44:36.999999999+01:00")
+        .toInternal(
             UUIDs.endOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36.999+01:00").toInstant().toEpochMilli()));
     assertThat(
-            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED)
-                .convertFrom("2017-12-05T12:44:36+01:00")
+            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullStrings)
+                .externalToInternal("2017-12-05T12:44:36+01:00")
                 .timestamp())
         .isEqualTo(
             UUIDs.startOf(
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
     assertThat(
-            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM)
-                .convertFrom("2017-12-05T12:44:36+01:00")
+            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullStrings)
+                .externalToInternal("2017-12-05T12:44:36+01:00")
                 .timestamp())
         .isEqualTo(
             UUIDs.startOf(
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
 
-    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN))
-        .convertsFrom("123456")
-        .to(UUIDs.startOf(123456L));
+    assertThat(new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullStrings))
+        .convertsFromExternal("123456")
+        .toInternal(UUIDs.startOf(123456L));
     assertThat(
-            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX)
-                .convertFrom("123456")
+            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MAX, nullStrings)
+                .externalToInternal("123456")
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     assertThat(
-            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED)
-                .convertFrom("123456")
+            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, FIXED, nullStrings)
+                .externalToInternal("123456")
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
     assertThat(
-            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM)
-                .convertFrom("123456")
+            new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, RANDOM, nullStrings)
+                .externalToInternal("123456")
                 .timestamp())
         .isEqualTo(UUIDs.startOf(123456L).timestamp());
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
-        .from("a15341ec-ebef-4eab-b91d-ff16bf801a79");
+        .convertsFromInternal(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
+        .toExternal("a15341ec-ebef-4eab-b91d-ff16bf801a79");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom("not a valid UUID");
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal("not a valid UUID");
   }
 }

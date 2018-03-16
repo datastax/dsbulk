@@ -11,25 +11,25 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 
-public class JsonNodeToStringCodec extends ConvertingCodec<JsonNode, String> {
+public class JsonNodeToStringCodec extends JsonNodeConvertingCodec<String> {
 
-  public JsonNodeToStringCodec(TypeCodec<String> innerCodec) {
-    super(innerCodec, JsonNode.class);
+  public JsonNodeToStringCodec(TypeCodec<String> innerCodec, List<String> nullStrings) {
+    super(innerCodec, nullStrings);
   }
 
   @Override
-  public String convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+  public String externalToInternal(JsonNode node) {
+    if (isNull(node)) {
       return null;
     }
     return node.asText();
   }
 
   @Override
-  public JsonNode convertTo(String value) {
+  public JsonNode internalToExternal(String value) {
     if (value == null) {
       return null;
     }

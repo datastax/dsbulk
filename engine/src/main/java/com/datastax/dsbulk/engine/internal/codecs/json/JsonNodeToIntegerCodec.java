@@ -33,8 +33,9 @@ public class JsonNodeToIntegerCodec extends JsonNodeToNumberCodec<Integer> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      Map<String, Boolean> booleanStrings,
+      List<BigDecimal> booleanNumbers,
+      List<String> nullStrings) {
     super(
         TypeCodec.cint(),
         numberFormat,
@@ -43,13 +44,14 @@ public class JsonNodeToIntegerCodec extends JsonNodeToNumberCodec<Integer> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
-        booleanNumbers.stream().map(BigDecimal::intValueExact).collect(toList()));
+        booleanStrings,
+        booleanNumbers.stream().map(BigDecimal::intValueExact).collect(toList()),
+        nullStrings);
   }
 
   @Override
-  public Integer convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+  public Integer externalToInternal(JsonNode node) {
+    if (isNull(node)) {
       return null;
     }
     if (node.isInt()) {
@@ -65,7 +67,7 @@ public class JsonNodeToIntegerCodec extends JsonNodeToNumberCodec<Integer> {
   }
 
   @Override
-  public JsonNode convertTo(Integer value) {
+  public JsonNode internalToExternal(Integer value) {
     return JSON_NODE_FACTORY.numberNode(value);
   }
 }

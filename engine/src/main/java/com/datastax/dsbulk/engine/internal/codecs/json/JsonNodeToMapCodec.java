@@ -16,9 +16,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
-public class JsonNodeToMapCodec<K, V> extends ConvertingCodec<JsonNode, Map<K, V>> {
+public class JsonNodeToMapCodec<K, V> extends JsonNodeConvertingCodec<Map<K, V>> {
 
   private final ConvertingCodec<String, K> keyCodec;
   private final ConvertingCodec<JsonNode, V> valueCodec;
@@ -28,16 +29,17 @@ public class JsonNodeToMapCodec<K, V> extends ConvertingCodec<JsonNode, Map<K, V
       TypeCodec<Map<K, V>> collectionCodec,
       ConvertingCodec<String, K> keyCodec,
       ConvertingCodec<JsonNode, V> valueCodec,
-      ObjectMapper objectMapper) {
-    super(collectionCodec, JsonNode.class);
+      ObjectMapper objectMapper,
+      List<String> nullStrings) {
+    super(collectionCodec, nullStrings);
     this.keyCodec = keyCodec;
     this.valueCodec = valueCodec;
     this.objectMapper = objectMapper;
   }
 
   @Override
-  public Map<K, V> convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+  public Map<K, V> externalToInternal(JsonNode node) {
+    if (isNull(node)) {
       return null;
     }
     if (!node.isObject()) {
@@ -50,20 +52,22 @@ public class JsonNodeToMapCodec<K, V> extends ConvertingCodec<JsonNode, Map<K, V
     Iterator<Map.Entry<String, JsonNode>> it = node.fields();
     while (it.hasNext()) {
       Map.Entry<String, JsonNode> entry = it.next();
-      map.put(keyCodec.convertFrom(entry.getKey()), valueCodec.convertFrom(entry.getValue()));
+      map.put(
+          keyCodec.externalToInternal(entry.getKey()),
+          valueCodec.externalToInternal(entry.getValue()));
     }
     return map;
   }
 
   @Override
-  public JsonNode convertTo(Map<K, V> map) {
+  public JsonNode internalToExternal(Map<K, V> map) {
     if (map == null) {
       return objectMapper.getNodeFactory().nullNode();
     }
     ObjectNode root = objectMapper.createObjectNode();
     for (Map.Entry<K, V> entry : map.entrySet()) {
-      String key = keyCodec.convertTo(entry.getKey());
-      JsonNode value = valueCodec.convertTo(entry.getValue());
+      String key = keyCodec.internalToExternal(entry.getKey());
+      JsonNode value = valueCodec.internalToExternal(entry.getValue());
       root.set(key, value);
     }
     return root;

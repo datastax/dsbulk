@@ -15,30 +15,31 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
 
-public class NumberToInstantCodec<FROM extends Number> extends ConvertingCodec<FROM, Instant> {
+public class NumberToInstantCodec<EXTERNAL extends Number>
+    extends ConvertingCodec<EXTERNAL, Instant> {
 
   private final TimeUnit timeUnit;
   private final ZonedDateTime epoch;
 
-  public NumberToInstantCodec(Class<FROM> javaType, TimeUnit timeUnit, ZonedDateTime epoch) {
+  public NumberToInstantCodec(Class<EXTERNAL> javaType, TimeUnit timeUnit, ZonedDateTime epoch) {
     super(InstantCodec.instance, javaType);
     this.timeUnit = timeUnit;
     this.epoch = epoch;
   }
 
   @Override
-  public FROM convertTo(Instant value) {
+  public EXTERNAL internalToExternal(Instant value) {
     if (value == null) {
       return null;
     }
     long timestamp = CodecUtils.instantToNumber(value, timeUnit, epoch.toInstant());
     @SuppressWarnings("unchecked")
-    FROM n = CodecUtils.convertNumber(timestamp, (Class<FROM>) getJavaType().getRawType());
+    EXTERNAL n = CodecUtils.convertNumber(timestamp, (Class<EXTERNAL>) getJavaType().getRawType());
     return n;
   }
 
   @Override
-  public Instant convertFrom(FROM value) {
+  public Instant externalToInternal(EXTERNAL value) {
     if (value == null) {
       return null;
     }

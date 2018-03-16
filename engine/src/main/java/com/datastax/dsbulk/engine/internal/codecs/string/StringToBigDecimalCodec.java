@@ -30,8 +30,9 @@ public class StringToBigDecimalCodec extends StringToNumberCodec<BigDecimal> {
       DateTimeFormatter temporalFormat,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
-      Map<String, Boolean> booleanWords,
-      List<BigDecimal> booleanNumbers) {
+      Map<String, Boolean> booleanStrings,
+      List<BigDecimal> booleanNumbers,
+      List<String> nullStrings) {
     super(
         TypeCodec.decimal(),
         numberFormat,
@@ -40,12 +41,13 @@ public class StringToBigDecimalCodec extends StringToNumberCodec<BigDecimal> {
         temporalFormat,
         timeUnit,
         epoch,
-        booleanWords,
-        booleanNumbers);
+        booleanStrings,
+        booleanNumbers,
+        nullStrings);
   }
 
   @Override
-  public BigDecimal convertFrom(String s) {
+  public BigDecimal externalToInternal(String s) {
     Number number = parseNumber(s);
     if (number == null) {
       return null;

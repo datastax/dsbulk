@@ -56,6 +56,7 @@ public interface Mapping {
    * <p>Note that the given variable name must be supplied unquoted, even if it requires quoting to
    * comply with the syntax of CQL identifiers.
    *
+   * @param <T> the codec's Java type.
    * @param variable the bound statement or row variable name; never {@code null}.
    * @param cqlType the CQL type; never {@code null}.
    * @param javaType the Java type; never {@code null}.
@@ -63,7 +64,7 @@ public interface Mapping {
    * @throws CodecNotFoundException if a suitable codec cannot be found.
    */
   @NotNull
-  TypeCodec<Object> codec(
-      @NotNull String variable, @NotNull DataType cqlType, @NotNull TypeToken<?> javaType)
+  <T> TypeCodec<T> codec(
+      @NotNull String variable, @NotNull DataType cqlType, @NotNull TypeToken<? extends T> javaType)
       throws CodecNotFoundException;
 }

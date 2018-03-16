@@ -11,22 +11,20 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
 import com.datastax.driver.core.utils.Bytes;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.ByteBuffer;
+import java.util.List;
 
-public class JsonNodeToBlobCodec extends ConvertingCodec<JsonNode, ByteBuffer> {
+public class JsonNodeToBlobCodec extends JsonNodeConvertingCodec<ByteBuffer> {
 
-  public static final JsonNodeToBlobCodec INSTANCE = new JsonNodeToBlobCodec();
-
-  private JsonNodeToBlobCodec() {
-    super(blob(), JsonNode.class);
+  public JsonNodeToBlobCodec(List<String> nullStrings) {
+    super(blob(), nullStrings);
   }
 
   @Override
-  public ByteBuffer convertFrom(JsonNode node) {
-    if (node == null || node.isNull()) {
+  public ByteBuffer externalToInternal(JsonNode node) {
+    if (isNull(node)) {
       return null;
     }
     String s = node.asText();
@@ -34,7 +32,7 @@ public class JsonNodeToBlobCodec extends ConvertingCodec<JsonNode, ByteBuffer> {
   }
 
   @Override
-  public JsonNode convertTo(ByteBuffer value) {
+  public JsonNode internalToExternal(ByteBuffer value) {
     if (value == null) {
       return JSON_NODE_FACTORY.nullNode();
     }

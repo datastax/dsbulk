@@ -10,39 +10,45 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.google.common.collect.Lists.newArrayList;
 
 import java.net.InetAddress;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToInetAddressCodecTest {
 
+  private final JsonNodeToInetAddressCodec codec =
+      new JsonNodeToInetAddressCodec(newArrayList("NULL"));
+
   @Test
-  void should_convert_from_valid_input() throws Exception {
-    assertThat(JsonNodeToInetAddressCodec.INSTANCE)
-        .convertsFrom(JSON_NODE_FACTORY.textNode("1.2.3.4"))
-        .to(InetAddress.getByName("1.2.3.4"))
-        .convertsFrom(JSON_NODE_FACTORY.textNode("127.0.0.1"))
-        .to(InetAddress.getByName("127.0.0.1"))
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom(JSON_NODE_FACTORY.textNode(""))
-        .to(null);
+  void should_convert_from_valid_external() throws Exception {
+    assertThat(codec)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("1.2.3.4"))
+        .toInternal(InetAddress.getByName("1.2.3.4"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("127.0.0.1"))
+        .toInternal(InetAddress.getByName("127.0.0.1"))
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() throws Exception {
-    assertThat(JsonNodeToInetAddressCodec.INSTANCE)
-        .convertsTo(InetAddress.getByName("1.2.3.4"))
-        .from(JSON_NODE_FACTORY.textNode("1.2.3.4"))
-        .convertsTo(InetAddress.getByName("127.0.0.1"))
-        .from(JSON_NODE_FACTORY.textNode("127.0.0.1"))
-        .convertsTo(null)
-        .from(JSON_NODE_FACTORY.nullNode());
+  void should_convert_from_valid_internal() throws Exception {
+    assertThat(codec)
+        .convertsFromInternal(InetAddress.getByName("1.2.3.4"))
+        .toExternal(JSON_NODE_FACTORY.textNode("1.2.3.4"))
+        .convertsFromInternal(InetAddress.getByName("127.0.0.1"))
+        .toExternal(JSON_NODE_FACTORY.textNode("127.0.0.1"))
+        .convertsFromInternal(null)
+        .toExternal(JSON_NODE_FACTORY.nullNode());
   }
 
   @Test
-  void should_not_convert_from_invalid_input() throws Exception {
-    assertThat(JsonNodeToInetAddressCodec.INSTANCE)
-        .cannotConvertFrom(JSON_NODE_FACTORY.textNode("not a valid inet address"));
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec)
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid inet address"));
   }
 }

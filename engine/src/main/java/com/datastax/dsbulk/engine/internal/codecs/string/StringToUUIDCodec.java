@@ -13,9 +13,10 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
-public class StringToUUIDCodec extends ConvertingCodec<String, UUID> {
+public class StringToUUIDCodec extends StringConvertingCodec<UUID> {
 
   private final ConvertingCodec<String, Instant> instantCodec;
   private final TimeUUIDGenerator generator;
@@ -23,21 +24,25 @@ public class StringToUUIDCodec extends ConvertingCodec<String, UUID> {
   public StringToUUIDCodec(
       TypeCodec<UUID> targetCodec,
       ConvertingCodec<String, Instant> instantCodec,
-      TimeUUIDGenerator generator) {
-    super(targetCodec, String.class);
+      TimeUUIDGenerator generator,
+      List<String> nullStrings) {
+    super(targetCodec, nullStrings);
     this.instantCodec = instantCodec;
     this.generator = generator;
   }
 
   @Override
-  public UUID convertFrom(String s) {
+  public UUID externalToInternal(String s) {
+    if (isNull(s)) {
+      return null;
+    }
     return CodecUtils.parseUUID(s, instantCodec, generator);
   }
 
   @Override
-  public String convertTo(UUID value) {
+  public String internalToExternal(UUID value) {
     if (value == null) {
-      return null;
+      return nullString();
     }
     return value.toString();
   }

@@ -24,6 +24,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -97,7 +98,8 @@ public class CodecSettings {
 
   private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
   private static final String LOCALE = "locale";
-  private static final String BOOLEAN_WORDS = "booleanWords";
+  private static final String NULL_STRINGS = "nullStrings";
+  private static final String BOOLEAN_STRINGS = "booleanStrings";
   private static final String BOOLEAN_NUMBERS = "booleanNumbers";
   private static final String NUMBER = "number";
   private static final String FORMAT_NUMERIC_OUTPUT = "formatNumbers";
@@ -113,6 +115,7 @@ public class CodecSettings {
 
   private final LoaderConfig config;
 
+  private ImmutableList<String> nullStrings;
   private Map<String, Boolean> booleanInputWords;
   private Map<Boolean, String> booleanOutputWords;
   private List<BigDecimal> booleanNumbers;
@@ -135,6 +138,9 @@ public class CodecSettings {
     try {
 
       Locale locale = parseLocale(config.getString(LOCALE));
+
+      // strings
+      nullStrings = ImmutableList.copyOf(config.getStringList(NULL_STRINGS));
 
       // numeric
       roundingMode = config.getEnum(RoundingMode.class, ROUNDING_STRATEGY);
@@ -162,9 +168,9 @@ public class CodecSettings {
         throw new BulkConfigurationException(
             "Invalid boolean numbers list, expecting two elements, got " + booleanNumbers);
       }
-      List<String> booleanWords = config.getStringList(BOOLEAN_WORDS);
-      booleanInputWords = getBooleanInputWords(booleanWords);
-      booleanOutputWords = getBooleanOutputWords(booleanWords);
+      List<String> booleanStrings = config.getStringList(BOOLEAN_STRINGS);
+      booleanInputWords = getBooleanInputWords(booleanStrings);
+      booleanOutputWords = getBooleanOutputWords(booleanStrings);
 
       // UUID
       generator = config.getEnum(TimeUUIDGenerator.class, TIME_UUID_GENERATOR);
@@ -178,13 +184,14 @@ public class CodecSettings {
   }
 
   public StringToTemporalCodec<Instant> getTimestampCodec() {
-    return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch);
+    return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch, nullStrings);
   }
 
   public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {
     CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
     return new ExtendedCodecRegistry(
         codecRegistry,
+        nullStrings,
         booleanInputWords,
         booleanOutputWords,
         booleanNumbers,
@@ -301,6 +308,11 @@ public class CodecSettings {
         .map(str -> new StringTokenizer(str, ":"))
         .forEach(
             tokenizer -> {
+              if (tokenizer.countTokens() != 2) {
+                throw new BulkConfigurationException(
+                    "Expecting codec.booleanStrings to contain a list of true:false pairs, got "
+                        + list);
+              }
               builder.put(tokenizer.nextToken().toLowerCase(), true);
               builder.put(tokenizer.nextToken().toLowerCase(), false);
             });

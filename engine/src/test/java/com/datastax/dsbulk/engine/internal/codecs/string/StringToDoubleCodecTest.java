@@ -41,50 +41,53 @@ class StringToDoubleCodecTest {
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO));
+          newArrayList(ONE, ZERO),
+          newArrayList("NULL"));
 
   @Test
-  void should_convert_from_valid_input() {
+  void should_convert_from_valid_external() {
     assertThat(codec)
-        .convertsFrom("0")
-        .to(0d)
-        .convertsFrom("1234.56")
-        .to(1234.56d)
-        .convertsFrom("1,234.56")
-        .to(1234.56d)
-        .convertsFrom("1.7976931348623157E308")
-        .to(Double.MAX_VALUE)
-        .convertsFrom("4.9E-324")
-        .to(Double.MIN_VALUE)
-        .convertsFrom("1970-01-01T00:00:00Z")
-        .to(0d)
-        .convertsFrom("2000-01-01T00:00:00Z")
-        .to(946684800000d)
-        .convertsFrom("TRUE")
-        .to(1d)
-        .convertsFrom("FALSE")
-        .to(0d)
-        .convertsFrom(null)
-        .to(null)
-        .convertsFrom("")
-        .to(null);
+        .convertsFromExternal("0")
+        .toInternal(0d)
+        .convertsFromExternal("1234.56")
+        .toInternal(1234.56d)
+        .convertsFromExternal("1,234.56")
+        .toInternal(1234.56d)
+        .convertsFromExternal("1.7976931348623157E308")
+        .toInternal(Double.MAX_VALUE)
+        .convertsFromExternal("4.9E-324")
+        .toInternal(Double.MIN_VALUE)
+        .convertsFromExternal("1970-01-01T00:00:00Z")
+        .toInternal(0d)
+        .convertsFromExternal("2000-01-01T00:00:00Z")
+        .toInternal(946684800000d)
+        .convertsFromExternal("TRUE")
+        .toInternal(1d)
+        .convertsFromExternal("FALSE")
+        .toInternal(0d)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
-  void should_convert_to_valid_input() {
+  void should_convert_from_valid_internal() {
     assertThat(codec)
-        .convertsTo(0d)
-        .from("0")
-        .convertsTo(1234.56d)
-        .from("1,234.56")
-        .convertsTo(0.001)
-        .from("0") // decimals truncated
-        .convertsTo(null)
-        .from(null);
+        .convertsFromInternal(0d)
+        .toExternal("0")
+        .convertsFromInternal(1234.56d)
+        .toExternal("1,234.56")
+        .convertsFromInternal(0.001)
+        .toExternal("0") // decimals truncated
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 
   @Test
-  void should_not_convert_from_invalid_input() {
-    assertThat(codec).cannotConvertFrom("not a valid double");
+  void should_not_convert_from_invalid_external() {
+    assertThat(codec).cannotConvertFromExternal("not a valid double");
   }
 }
