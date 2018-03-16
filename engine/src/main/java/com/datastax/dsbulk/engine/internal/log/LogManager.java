@@ -188,14 +188,7 @@ public class LogManager implements AutoCloseable {
     // As a consequence, the workflow does not stop properly.
     // By setting a global hook for dropped errors, we prevent the bubbling exception from
     // being be thrown and the workflow stops as expected.
-    Hooks.onErrorDropped(
-        t -> {
-          // for TooManyErrorsException, the error is being propagated downstream already,
-          // so no need to re-inject it again in the workflow.
-          if (!(t instanceof TooManyErrorsException)) {
-            uncaughtExceptionSink.error(t);
-          }
-        });
+    Hooks.onErrorDropped(t -> {});
     // The hook below allows to process uncaught exceptions in certain operators that "bubble up"
     // to the worker thread, in which case they are logged but are otherwise ignored,
     // and the workflow does not stop properly. By setting a global hook for errors
