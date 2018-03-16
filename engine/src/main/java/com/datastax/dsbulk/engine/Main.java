@@ -26,6 +26,7 @@ import java.io.PrintWriter;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -199,6 +200,8 @@ public class Main {
    */
   private static class CleanupThread extends Thread {
 
+    private static final long SHUTDOWN_GRACE_PERIOD_MILLIS = Duration.ofSeconds(30).toMillis();
+
     private final Workflow workflow;
     private final WorkflowThread workflowThread;
 
@@ -213,11 +216,11 @@ public class Main {
       try {
         if (workflowThread.isAlive()) {
           workflowThread.interrupt();
-          workflowThread.join(5000);
+          workflowThread.join(SHUTDOWN_GRACE_PERIOD_MILLIS);
           if (workflowThread.isAlive()) {
             workflowThread.status = STATUS_CRASHED;
             LOGGER.error(
-                String.format("%s did not finish within 5 seconds, forcing close.", workflow));
+                String.format("%s did not finish within 30 seconds, forcing close.", workflow));
           }
         }
         // make sure System.err is flushed before the closing sequence is printed to System.out
