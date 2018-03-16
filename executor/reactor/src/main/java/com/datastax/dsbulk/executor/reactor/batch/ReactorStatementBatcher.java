@@ -134,16 +134,21 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * @return A {@link Flux} of {@link BatchStatement}s containing all the given statements batched
    *     together, or a {@link Flux} of the original statement, if only one was provided.
    */
-  public Flux<Statement> batchAll(Publisher<? extends Statement> statements) {
+  public Flux<? extends Statement> batchAll(Publisher<? extends Statement> statements) {
     return Flux.from(statements)
         .window(maxBatchSize)
         .flatMap(
             stmts ->
                 stmts
-                    .reduce(new BatchStatement(batchType), BatchStatement::add)
-                    // Don't wrap single statements in batch.
-                    .map(
-                        batch ->
-                            batch.size() == 1 ? batch.getStatements().iterator().next() : batch));
+                    .cast(Statement.class)
+                    .reduce(
+                        (s1, s2) -> {
+                          if (s1 instanceof BatchStatement) {
+                            ((BatchStatement) s1).add(s2);
+                            return s1;
+                          } else {
+                            return new BatchStatement(batchType).add(s1).add(s2);
+                          }
+                        }));
   }
 }

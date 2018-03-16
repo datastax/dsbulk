@@ -140,11 +140,16 @@ public class RxJavaStatementBatcher extends StatementBatcher {
         .flatMap(
             stmts ->
                 stmts
-                    .reduce(new BatchStatement(batchType), BatchStatement::add)
-                    // Don't wrap single statements in batch.
-                    .map(
-                        batch ->
-                            batch.size() == 1 ? batch.getStatements().iterator().next() : batch)
+                    .cast(Statement.class)
+                    .reduce(
+                        (s1, s2) -> {
+                          if (s1 instanceof BatchStatement) {
+                            ((BatchStatement) s1).add(s2);
+                            return s1;
+                          } else {
+                            return new BatchStatement(batchType).add(s1).add(s2);
+                          }
+                        })
                     .toFlowable());
   }
 }
