@@ -212,7 +212,7 @@ public class Main {
       try {
         if (workflowThread.isAlive()) {
           workflowThread.interrupt();
-          workflowThread.join();
+          workflowThread.join(5000);
         }
         // make sure System.err is flushed before the closing sequence is printed to System.out
         System.out.flush();
