@@ -47,7 +47,7 @@ class ReadsAndWritesReportingExecutionListenerTest {
     assertThat(interceptor)
         .hasMessageContaining("Reads/Writes: total: 0, successful: 0, failed: 0, in-flight: 0")
         .hasMessageContaining(
-            "Throughput: 0 reads-writes/second, 0.00 mb/second sent, 0.00 mb/second received")
+            "Throughput: 0 reads-writes/second, 0.00 mb/second sent, 0.00 mb/second received (0.00 kb/write, 0.00 kb/read)")
         .hasMessageContaining("Latencies: mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds");
 
     // simulate 3 reads/writes, 2 successful and 1 failed
@@ -80,7 +80,7 @@ class ReadsAndWritesReportingExecutionListenerTest {
     assertThat(interceptor)
         .hasMessageContaining("Reads/Writes: total: 0, successful: 0, failed: 0, in-flight: 0")
         .hasMessageContaining(
-            "Throughput: 0 reads-writes/second, 0.00 mb/second sent, 0.00 mb/second received")
+            "Throughput: 0 reads-writes/second, 0.00 mb/second sent, 0.00 mb/second received (0.00 kb/write, 0.00 kb/read)")
         .hasMessageContaining("Latencies: mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds");
 
     MetricsCollectingExecutionListener delegate =
@@ -120,7 +120,7 @@ class ReadsAndWritesReportingExecutionListenerTest {
     assertThat(interceptor)
         .hasMessageContaining("Reads/Writes: total: 0, successful: 0, failed: 0, in-flight: 0")
         .hasMessageContaining(
-            "Throughput: 0 reads-writes/second, 0.00 mb/second sent, 0.00 mb/second received")
+            "Throughput: 0 reads-writes/second, 0.00 mb/second sent, 0.00 mb/second received (0.00 kb/write, 0.00 kb/read)")
         .hasMessageContaining("Latencies: mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds");
 
     // simulate 3 reads/writes, 2 successful and 1 failed

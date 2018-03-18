@@ -159,13 +159,16 @@ public class WritesReportingExecutionListener extends AbstractMetricsReportingEx
               inFlight.getCount(),
               achieved));
     }
+    double throughput = timer.getMeanRate();
+    double sizeSent = sent.getMeanRate();
     logger.info(
         String.format(
             throughputMessage,
-            convertRate(timer.getMeanRate()),
+            convertRate(throughput),
             rateUnit,
-            convertRate(sent.getMeanRate() / BYTES_PER_MB),
-            rateUnit));
+            convertRate(sizeSent / BYTES_PER_MB),
+            rateUnit,
+            throughput == 0 ? 0 : (sizeSent / BYTES_PER_KB) / throughput));
     logger.info(
         String.format(
             latencyMessage,
@@ -195,7 +198,7 @@ public class WritesReportingExecutionListener extends AbstractMetricsReportingEx
   }
 
   private static String createThroughputMessageTemplate() {
-    return "Throughput: %,.0f writes/%s, %,.2f mb/%s";
+    return "Throughput: %,.0f writes/%s, %,.2f mb/%s (%,.2f kb/write)";
   }
 
   private static String createLatencyMessageTemplate() {

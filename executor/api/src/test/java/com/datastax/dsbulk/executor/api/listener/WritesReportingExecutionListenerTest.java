@@ -45,7 +45,7 @@ class WritesReportingExecutionListenerTest {
 
     assertThat(interceptor)
         .hasMessageContaining("Writes: total: 0, successful: 0, failed: 0, in-flight: 0")
-        .hasMessageContaining("Throughput: 0 writes/second, 0.00 mb/second")
+        .hasMessageContaining("Throughput: 0 writes/second, 0.00 mb/second (0.00 kb/write)")
         .hasMessageContaining("Latencies: mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds");
 
     // simulate 3 writes, 2 successful and 1 failed
@@ -83,7 +83,7 @@ class WritesReportingExecutionListenerTest {
     assertThat(interceptor)
         .hasMessageContaining(
             "Writes: total: 0, successful: 0, failed: 0, in-flight: 0, progression: 0%")
-        .hasMessageContaining("Throughput: 0 writes/second, 0.00 mb/second")
+        .hasMessageContaining("Throughput: 0 writes/second, 0.00 mb/second (0.00 kb/write)")
         .hasMessageContaining("Latencies: mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds");
 
     // simulate 3 writes, 2 successful and 1 failed
