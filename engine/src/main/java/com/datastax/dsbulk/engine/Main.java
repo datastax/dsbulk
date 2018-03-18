@@ -167,7 +167,6 @@ public class Main {
         Throwable root = Throwables.getRootCause(t);
         if (t instanceof InterruptedException || root instanceof InterruptedException) {
           status = STATUS_INTERRUPTED;
-          LOGGER.error(workflow + " interrupted.", t);
         } else {
           String message = t.getMessage();
           if (message == null) {
@@ -219,12 +218,14 @@ public class Main {
     public void run() {
       try {
         if (workflowThread.isAlive()) {
+          LOGGER.error(workflow + " interrupted, waiting for termination.");
           workflowThread.interrupt();
           workflowThread.join(SHUTDOWN_GRACE_PERIOD_MILLIS);
           if (workflowThread.isAlive()) {
             workflowThread.status = STATUS_CRASHED;
             LOGGER.error(
-                String.format("%s did not finish within 30 seconds, forcing close.", workflow));
+                String.format(
+                    "%s did not terminate within 30 seconds, forcing termination.", workflow));
           }
         }
         // make sure System.err is flushed before the closing sequence is printed to System.out
