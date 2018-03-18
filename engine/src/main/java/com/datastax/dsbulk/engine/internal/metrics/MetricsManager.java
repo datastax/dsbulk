@@ -20,7 +20,6 @@ import ch.qos.logback.core.spi.FilterReply;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.CsvReporter;
 import com.codahale.metrics.Histogram;
-import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.UniformReservoir;
 import com.codahale.metrics.jmx.JmxReporter;
@@ -72,7 +71,7 @@ public class MetricsManager implements AutoCloseable {
   private final Duration reportInterval;
   private final boolean batchingEnabled;
 
-  private Meter totalRecords;
+  private Counter totalRecords;
   private Counter failedRecords;
   private Histogram batchSize;
   private RecordReporter recordReporter;
@@ -124,7 +123,7 @@ public class MetricsManager implements AutoCloseable {
 
   public void init() {
     setUpMetricsLogger();
-    totalRecords = registry.meter("records/total");
+    totalRecords = registry.counter("records/total");
     failedRecords = registry.counter("records/failed");
     batchSize = registry.histogram("batches/size", () -> new Histogram(new UniformReservoir()));
     createMemoryGauges();
@@ -382,7 +381,7 @@ public class MetricsManager implements AutoCloseable {
   }
 
   public <T> Function<Flux<T>, Flux<T>> newTotalItemsMonitor() {
-    return upstream -> upstream.doOnNext(item -> totalRecords.mark());
+    return upstream -> upstream.doOnNext(item -> totalRecords.inc());
   }
 
   public <T> Function<Flux<T>, Flux<T>> newFailedItemsMonitor() {

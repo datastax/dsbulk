@@ -15,7 +15,6 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.assertj.core.api.AbstractObjectAssert;
 
 @SuppressWarnings("UnusedReturnValue")
@@ -38,25 +37,19 @@ public class LogInterceptorAssert
 
   public LogInterceptorAssert hasMessageSatisfying(Predicate<String> predicate) {
     Optional<String> message = actual.getLoggedMessages().stream().filter(predicate).findAny();
-    assertThat(message).overridingErrorMessage(createErrorMessage()).isPresent();
+    assertThat(message)
+        .overridingErrorMessage(
+            "Expecting logged messages to have a satisfying message but they did not")
+        .isPresent();
     return this;
   }
 
   public LogInterceptorAssert hasEventSatisfying(Predicate<ILoggingEvent> predicate) {
     Optional<ILoggingEvent> message = actual.getLoggedEvents().stream().filter(predicate).findAny();
-    assertThat(message).overridingErrorMessage(createErrorMessage()).isPresent();
+    assertThat(message)
+        .overridingErrorMessage(
+            "Expecting logged messages to have a satisfying message but they did not")
+        .isPresent();
     return this;
-  }
-
-  private String createErrorMessage() {
-    String msg = "Expecting logged messages to have a satisfying message but they did not; ";
-    if (actual.getLoggedMessages().isEmpty()) {
-      msg += "actually, no message has been logged";
-    } else {
-      msg +=
-          "current logged messages are: \n"
-              + actual.getLoggedMessages().stream().collect(Collectors.joining("\n"));
-    }
-    return msg;
   }
 }

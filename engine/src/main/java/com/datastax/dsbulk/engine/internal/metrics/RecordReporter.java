@@ -37,7 +37,7 @@ public class RecordReporter extends ScheduledReporter {
     this.logger = logger;
     this.expectedTotal = expectedTotal;
     if (expectedTotal < 0) {
-      msg = "Records: total: %,d, successful: %,d, failed: %,d, mean: %,.0f records/%s";
+      msg = "Records: total: %,d, successful: %,d, failed: %,d";
     } else {
       int numDigits = String.format("%,d", expectedTotal).length();
       msg =
@@ -45,7 +45,7 @@ public class RecordReporter extends ScheduledReporter {
               + numDigits
               + "d, successful: %,"
               + numDigits
-              + "d, failed: %,d, progression: %,.0f%%, mean: %,.0f records/%s";
+              + "d, failed: %,d, progression: %,.0f%%";
     }
   }
 
@@ -60,40 +60,25 @@ public class RecordReporter extends ScheduledReporter {
       SortedMap<String, Histogram> histograms,
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
-    Meter totalMeter = meters.get("records/total");
-    Counter failedMeter = counters.get("records/failed");
+    Counter totalCounter = counters.get("records/total");
+    Counter failedCounter = counters.get("records/failed");
     if (expectedTotal < 0) {
-      reportWithoutExpectedTotal(totalMeter, failedMeter);
+      reportWithoutExpectedTotal(totalCounter, failedCounter);
     } else {
-      reportWithExpectedTotal(totalMeter, failedMeter);
+      reportWithExpectedTotal(totalCounter, failedCounter);
     }
   }
 
-  private void reportWithoutExpectedTotal(Meter totalMeter, Counter failedMeter) {
-    long total = totalMeter.getCount();
-    long failed = failedMeter.getCount();
-    logger.info(
-        String.format(
-            msg,
-            total,
-            total - failed,
-            failed,
-            convertRate(totalMeter.getMeanRate()),
-            getRateUnit()));
+  private void reportWithoutExpectedTotal(Counter totalCounter, Counter failedCounter) {
+    long total = totalCounter.getCount();
+    long failed = failedCounter.getCount();
+    logger.info(String.format(msg, total, total - failed, failed));
   }
 
-  private void reportWithExpectedTotal(Meter totalMeter, Counter failedMeter) {
-    long total = totalMeter.getCount();
-    long failed = failedMeter.getCount();
+  private void reportWithExpectedTotal(Counter totalCounter, Counter failedCounter) {
+    long total = totalCounter.getCount();
+    long failed = failedCounter.getCount();
     float progression = (float) total / (float) expectedTotal * 100f;
-    logger.info(
-        String.format(
-            msg,
-            total,
-            total - failed,
-            failed,
-            progression,
-            convertRate(totalMeter.getMeanRate()),
-            getRateUnit()));
+    logger.info(String.format(msg, total, total - failed, failed, progression));
   }
 }

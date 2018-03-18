@@ -12,7 +12,6 @@ import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.ass
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.codahale.metrics.Counter;
-import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -32,17 +31,15 @@ class RecordReporterTest {
 
   @Test
   void should_report_batches(@LogCapture(RecordReporter.class) LogInterceptor interceptor) {
-    Meter totalMeter = registry.meter("records/total");
-    Counter failedMeter = registry.counter("records/failed");
+    Counter totalCounter = registry.counter("records/total");
+    Counter failedCounter = registry.counter("records/failed");
     RecordReporter reporter =
         new RecordReporter(
             registry, LOGGER, SECONDS, Executors.newSingleThreadScheduledExecutor(), -1);
     reporter.report();
-    assertThat(interceptor)
-        .hasMessageContaining(
-            "Records: total: 0, successful: 0, failed: 0, mean: 0 records/second");
-    totalMeter.mark(3);
-    failedMeter.inc();
+    assertThat(interceptor).hasMessageContaining("Records: total: 0, successful: 0, failed: 0");
+    totalCounter.inc(3);
+    failedCounter.inc();
     reporter.report();
     // can't assert mean rate as it may vary
     assertThat(interceptor).hasMessageContaining("Records: total: 3, successful: 2, failed: 1");
@@ -51,17 +48,16 @@ class RecordReporterTest {
   @Test
   void should_report_batches_with_expected_total(
       @LogCapture(RecordReporter.class) LogInterceptor interceptor) {
-    Meter totalMeter = registry.meter("records/total");
-    Counter failedMeter = registry.counter("records/failed");
+    Counter totalCounter = registry.counter("records/total");
+    Counter failedCounter = registry.counter("records/failed");
     RecordReporter reporter =
         new RecordReporter(
             registry, LOGGER, SECONDS, Executors.newSingleThreadScheduledExecutor(), 3);
     reporter.report();
     assertThat(interceptor)
-        .hasMessageContaining(
-            "Records: total: 0, successful: 0, failed: 0, progression: 0%, mean: 0 records/second");
-    totalMeter.mark(3);
-    failedMeter.inc();
+        .hasMessageContaining("Records: total: 0, successful: 0, failed: 0, progression: 0%");
+    totalCounter.inc(3);
+    failedCounter.inc();
     reporter.report();
     // can't assert mean rate as it may vary
     assertThat(interceptor)

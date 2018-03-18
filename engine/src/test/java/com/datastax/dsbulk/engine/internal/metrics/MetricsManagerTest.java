@@ -116,7 +116,7 @@ class MetricsManagerTest {
       manager.close();
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
-      assertThat(registry.meter("records/total").getCount()).isEqualTo(3);
+      assertThat(registry.counter("records/total").getCount()).isEqualTo(3);
       assertThat(registry.counter("records/failed").getCount()).isEqualTo(1);
     }
   }
