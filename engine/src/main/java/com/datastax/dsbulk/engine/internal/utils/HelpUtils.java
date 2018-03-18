@@ -16,7 +16,7 @@ import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.PREFERRED_
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
-import com.datastax.dsbulk.engine.Main;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.google.common.base.CharMatcher;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -79,7 +79,7 @@ public class HelpUtils {
     List<String> commonSettings = COMMON_SETTINGS;
     if (connectorName != null) {
       // Filter common settings to exclude settings for connectors other than connectorName.
-      final String settingPrefix = "connector." + connectorName + ".";
+      String settingPrefix = "connector." + connectorName + ".";
       commonSettings =
           commonSettings
               .stream()
@@ -113,7 +113,7 @@ public class HelpUtils {
   public static String getVersionMessage() {
     // Get the version of dsbulk from version.txt.
     String version = "UNKNOWN";
-    try (InputStream versionStream = Main.class.getResourceAsStream("/version.txt")) {
+    try (InputStream versionStream = DataStaxBulkLoader.class.getResourceAsStream("/version.txt")) {
       if (versionStream != null) {
         BufferedReader reader =
             new BufferedReader(new InputStreamReader(versionStream, StandardCharsets.UTF_8));
@@ -136,7 +136,7 @@ public class HelpUtils {
       Collection<String> settings, Map<String, String> longToShortOptions) {
     Options options = new Options();
 
-    LoaderConfig config = new DefaultLoaderConfig(Main.DEFAULT);
+    LoaderConfig config = new DefaultLoaderConfig(DataStaxBulkLoader.DEFAULT);
     for (String setting : settings) {
       options.addOption(
           OptionUtils.createOption(config, longToShortOptions, setting, config.getValue(setting)));

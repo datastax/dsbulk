@@ -50,7 +50,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.json.JsonConnector;
-import com.datastax.dsbulk.engine.Main;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
@@ -150,7 +150,7 @@ class JsonEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(args).run();
+    int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
@@ -181,7 +181,7 @@ class JsonEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(args).run();
+    int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 0, "INSERT INTO ip_by_country", ONE);
   }
@@ -211,7 +211,7 @@ class JsonEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(args).run();
+    int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
@@ -243,8 +243,8 @@ class JsonEndToEndSimulacronIT {
       "true"
     };
 
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(2, logPath);
@@ -319,8 +319,8 @@ class JsonEndToEndSimulacronIT {
 
     // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
     // the unavailable.
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(4, logPath);
@@ -358,8 +358,8 @@ class JsonEndToEndSimulacronIT {
       "true"
     };
 
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
@@ -400,8 +400,8 @@ class JsonEndToEndSimulacronIT {
       "--schema.allowMissingFields",
       "false"
     };
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
@@ -452,8 +452,8 @@ class JsonEndToEndSimulacronIT {
       "--schema.allowExtraFields",
       "false"
     };
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 1")
         .contains("Records: total: 3, successful: 1, failed: 2");
@@ -495,7 +495,7 @@ class JsonEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
+    int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validateOutputFiles(24, unloadDir);
@@ -532,7 +532,7 @@ class JsonEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
+    int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.LOCAL_ONE);
     validateOutputFiles(1000, unloadDir);
@@ -570,8 +570,8 @@ class JsonEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(unloadArgs).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
@@ -608,15 +608,15 @@ class JsonEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(unloadArgs).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
 
   @Test
   void unload_write_error(
-      @LogCapture(value = Main.class, level = ERROR) LogInterceptor logs,
+      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stdErr) {
 
     MockConnector.setDelegate(
@@ -666,8 +666,8 @@ class JsonEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(unloadArgs).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("Error writing to file:")
@@ -709,7 +709,7 @@ class JsonEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(args).run();
+    int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     assertThat(stdOut.getStreamLines().size()).isEqualTo(24);

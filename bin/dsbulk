@@ -76,4 +76,4 @@ if /bin/expr  "$COLUMNS" + 0 > /dev/null 2>&1 ; then
 fi
 
 # Run the tool.
-"$JAVA_CMD" $DSBULK_JAVA_OPTS -cp "$CP" com.datastax.dsbulk.engine.Main "$@"
+"$JAVA_CMD" $DSBULK_JAVA_OPTS -cp "$CP" com.datastax.dsbulk.engine.DataStaxBulkLoader "$@"

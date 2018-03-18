@@ -55,7 +55,7 @@ import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.csv.CSVConnector;
-import com.datastax.dsbulk.engine.Main;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
@@ -157,7 +157,7 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(args).run();
+    int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
     assertThat(stdOut.getStreamAsString())
         .contains(logs.getLoggedMessages())
@@ -193,7 +193,7 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(args).run();
+    int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 0, "INSERT INTO ip_by_country", ONE);
   }
@@ -223,7 +223,7 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(args).run();
+    int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
@@ -255,8 +255,8 @@ class CSVEndToEndSimulacronIT {
       "true"
     };
 
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
@@ -331,8 +331,8 @@ class CSVEndToEndSimulacronIT {
 
     // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
     // the unavailable.
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(4, logPath);
@@ -370,8 +370,8 @@ class CSVEndToEndSimulacronIT {
       "true"
     };
 
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
@@ -405,13 +405,14 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(args).run();
+    int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 1, "INSERT INTO ip_by_country", LOCAL_ONE);
   }
 
   @Test
-  void error_load_percentage(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs) {
+  void error_load_percentage(
+      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs) {
     String[] args = {
       "load",
       "--log.directory",
@@ -437,8 +438,8 @@ class CSVEndToEndSimulacronIT {
       "--batch.enabled",
       "false"
     };
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum percentage allowed is 1.0%");
   }
@@ -470,8 +471,8 @@ class CSVEndToEndSimulacronIT {
       "--schema.mapping",
       IP_BY_COUNTRY_MAPPING
     };
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 9")
         .contains("Records: total: 24, successful: 14, failed: 10");
@@ -519,8 +520,8 @@ class CSVEndToEndSimulacronIT {
       "--schema.allowMissingFields",
       "false"
     };
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
@@ -566,8 +567,8 @@ class CSVEndToEndSimulacronIT {
       "--schema.allowExtraFields",
       "false"
     };
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
@@ -608,7 +609,7 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
+    int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
     assertThat(stdOut.getStreamAsString())
         .contains(logs.getLoggedMessages())
@@ -656,7 +657,7 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
+    int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
     verifyDelimiterCount(';', 168);
     verifyDelimiterCount('<', 96);
@@ -695,7 +696,7 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
+    int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.LOCAL_ONE);
     validateOutputFiles(1000, unloadDir);
@@ -733,8 +734,8 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(unloadArgs).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
@@ -771,15 +772,15 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(unloadArgs).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
 
   @Test
   void unload_write_error(
-      @LogCapture(value = Main.class, level = ERROR) LogInterceptor logs,
+      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stdErr) {
 
     MockConnector.setDelegate(
@@ -828,8 +829,8 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(unloadArgs).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(unloadArgs).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("failed: java.io.IOException: booo");
@@ -870,7 +871,7 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(args).run();
+    int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
 
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);

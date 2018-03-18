@@ -42,10 +42,10 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Main {
+public class DataStaxBulkLoader {
 
   private static final Config REFERENCE = ConfigFactory.defaultReference().getConfig("dsbulk");
-  private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataStaxBulkLoader.class);
 
   public static final int STATUS_OK = 0;
   public static final int STATUS_COMPLETED_WITH_ERRORS = 1;
@@ -61,11 +61,11 @@ public class Main {
 
   public static void main(String[] args) {
     URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    int status = new Main(args).run();
+    int status = new DataStaxBulkLoader(args).run();
     System.exit(status);
   }
 
-  public Main(String[] args) {
+  public DataStaxBulkLoader(String[] args) {
     this.args = args;
   }
 

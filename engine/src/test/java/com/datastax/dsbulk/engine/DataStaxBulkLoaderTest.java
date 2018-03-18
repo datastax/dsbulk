@@ -39,14 +39,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(StreamInterceptingExtension.class)
 @ExtendWith(LogInterceptingExtension.class)
-class MainTest {
+class DataStaxBulkLoaderTest {
 
   private final StreamInterceptor stdOut;
   private final StreamInterceptor stdErr;
   private final LogInterceptor logs;
   private Path tempFolder;
 
-  MainTest(
+  DataStaxBulkLoaderTest(
       @StreamCapture(STDOUT) StreamInterceptor stdOut,
       @StreamCapture(STDERR) StreamInterceptor stdErr,
       @LogCapture(level = ERROR) LogInterceptor logs) {
@@ -74,65 +74,65 @@ class MainTest {
   @Test
   void should_show_global_help_when_no_args() {
     // global help, no shortcuts, has both json and csv settings.
-    new Main(new String[] {}).run();
+    new DataStaxBulkLoader(new String[] {}).run();
     assertGlobalHelp(false);
   }
 
   @Test
   void should_show_global_help_when_help_opt_arg() {
     // global help, no shortcuts, has both json and csv settings.
-    new Main(new String[] {"--help"}).run();
+    new DataStaxBulkLoader(new String[] {"--help"}).run();
     assertGlobalHelp(false);
   }
 
   @Test
   void should_show_global_help_when_help_subcommand() {
     // global help, no shortcuts, has both json and csv settings.
-    new Main(new String[] {"help"}).run();
+    new DataStaxBulkLoader(new String[] {"help"}).run();
     assertGlobalHelp(false);
   }
 
   @Test
   void should_show_section_help_when_help_opt_arg() {
-    new Main(new String[] {"--help", "driver.auth"}).run();
+    new DataStaxBulkLoader(new String[] {"--help", "driver.auth"}).run();
     assertSectionHelp();
   }
 
   @Test
   void should_show_section_help_when_help_subcommand() {
-    new Main(new String[] {"help", "driver.auth"}).run();
+    new DataStaxBulkLoader(new String[] {"help", "driver.auth"}).run();
     assertSectionHelp();
   }
 
   @Test
   void should_show_global_help_filtered_when_help_opt_arg() {
     // global help, with shortcuts, has only json common settings.
-    new Main(new String[] {"--help", "-c", "json"}).run();
+    new DataStaxBulkLoader(new String[] {"--help", "-c", "json"}).run();
     assertGlobalHelp(true);
   }
 
   @Test
   void should_show_global_help_filtered_when_help_subcommand() {
     // global help, with shortcuts, has only json common settings.
-    new Main(new String[] {"help", "-c", "json"}).run();
+    new DataStaxBulkLoader(new String[] {"help", "-c", "json"}).run();
     assertGlobalHelp(true);
   }
 
   @Test
   void should_show_section_help_when_help_opt_arg_with_connector() {
-    new Main(new String[] {"--help", "-c", "json", "driver.auth"}).run();
+    new DataStaxBulkLoader(new String[] {"--help", "-c", "json", "driver.auth"}).run();
     assertSectionHelp();
   }
 
   @Test
   void should_show_section_help_when_help_subcommand_with_connector() {
-    new Main(new String[] {"help", "-c", "json", "driver.auth"}).run();
+    new DataStaxBulkLoader(new String[] {"help", "-c", "json", "driver.auth"}).run();
     assertSectionHelp();
   }
 
   @Test
   void should_show_error_when_junk_subcommand() {
-    new Main(new String[] {"junk"}).run();
+    new DataStaxBulkLoader(new String[] {"junk"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("First argument must be subcommand \"load\", \"unload\", or \"help\"");
@@ -140,21 +140,21 @@ class MainTest {
 
   @Test
   void should_show_help_without_error_when_junk_subcommand_and_help() {
-    new Main(new String[] {"junk", "--help"}).run();
+    new DataStaxBulkLoader(new String[] {"junk", "--help"}).run();
     assertThat(stdOut.getStreamAsString()).doesNotContain("First argument must be subcommand");
     assertGlobalHelp(false);
   }
 
   @Test
   void should_show_help_without_error_when_good_subcommand_and_help() {
-    new Main(new String[] {"load", "--help"}).run();
+    new DataStaxBulkLoader(new String[] {"load", "--help"}).run();
     assertThat(stdOut.getStreamAsString()).doesNotContain("First argument must be subcommand");
     assertGlobalHelp(false);
   }
 
   @Test
   void should_show_error_for_help_bad_section() {
-    new Main(new String[] {"help", "noexist"}).run();
+    new DataStaxBulkLoader(new String[] {"help", "noexist"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("noexist is not a valid section. Available sections include")
@@ -163,7 +163,7 @@ class MainTest {
 
   @Test
   void should_show_section_help() {
-    new Main(new String[] {"help", "batch"}).run();
+    new DataStaxBulkLoader(new String[] {"help", "batch"}).run();
     String out = stdOut.getStreamAsString();
     assertThat(out)
         .contains("--batch.mode")
@@ -172,7 +172,7 @@ class MainTest {
 
   @Test
   void should_show_section_help_with_subsection_pointers() {
-    new Main(new String[] {"help", "driver"}).run();
+    new DataStaxBulkLoader(new String[] {"help", "driver"}).run();
     String out = stdOut.getStreamAsString();
     assertThat(out)
         .contains("--driver.hosts")
@@ -182,7 +182,7 @@ class MainTest {
 
   @Test
   void should_show_section_help_with_connector_shortcuts() {
-    new Main(new String[] {"help", "connector.csv"}).run();
+    new DataStaxBulkLoader(new String[] {"help", "connector.csv"}).run();
     String out = stdOut.getStreamAsString();
     assertThat(out).contains("-url, --connector.csv.url");
   }
@@ -192,7 +192,7 @@ class MainTest {
     {
       Path f = Files.createTempFile(tempFolder, "myapp", ".conf");
       Files.write(f, "dsbulk.connector.name=junk".getBytes("UTF-8"));
-      new Main(new String[] {"load", "-f", f.toString()}).run();
+      new DataStaxBulkLoader(new String[] {"load", "-f", f.toString()}).run();
       String err = logs.getAllMessagesAsString();
       assertThat(err)
           .doesNotContain("First argument must be subcommand")
@@ -207,7 +207,7 @@ class MainTest {
                   + "dsbulk.schema.query=INSERT\n"
                   + "dsbulk.driver.socket.readTimeout=wonky")
               .getBytes("UTF-8"));
-      new Main(new String[] {"load", "-f", f.toString()}).run();
+      new DataStaxBulkLoader(new String[] {"load", "-f", f.toString()}).run();
       String err = logs.getAllMessagesAsString();
       assertThat(err)
           .doesNotContain("First argument must be subcommand")
@@ -219,7 +219,7 @@ class MainTest {
       Path f = Files.createTempFile(Paths.get(System.getProperty("user.home")), "myapp", ".conf");
       f.toFile().deleteOnExit();
       Files.write(f, "dsbulk.connector.name=foo".getBytes("UTF-8"));
-      new Main(new String[] {"load", "-f", "~/" + f.getFileName().toString()}).run();
+      new DataStaxBulkLoader(new String[] {"load", "-f", "~/" + f.getFileName().toString()}).run();
       String err = logs.getAllMessagesAsString();
       assertThat(err)
           .doesNotContain("First argument must be subcommand")
@@ -230,7 +230,7 @@ class MainTest {
 
   @Test
   void should_error_out_for_bad_config_file() {
-    new Main(new String[] {"load", "-f", "noexist"}).run();
+    new DataStaxBulkLoader(new String[] {"load", "-f", "noexist"}).run();
     String err = logs.getAllMessagesAsString();
     if (PlatformUtils.isWindows()) {
 
@@ -248,7 +248,7 @@ class MainTest {
   void should_accept_connector_name_in_args_over_config_file() throws Exception {
     Path f = Files.createTempFile(tempFolder, "myapp", ".conf");
     Files.write(f, "dsbulk.connector.name=junk".getBytes("UTF-8"));
-    new Main(new String[] {"load", "-c", "fromargs", "-f", f.toString()}).run();
+    new DataStaxBulkLoader(new String[] {"load", "-c", "fromargs", "-f", f.toString()}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .doesNotContain("First argument must be subcommand")
@@ -262,7 +262,9 @@ class MainTest {
       unloadDir = createTempDirectory("test");
       Files.createFile(unloadDir.resolve("output-000001.csv"));
 
-      new Main(new String[] {"unload", "--connector.csv.url=" + escapeUserInput(unloadDir)}).run();
+      new DataStaxBulkLoader(
+              new String[] {"unload", "--connector.csv.url=" + escapeUserInput(unloadDir)})
+          .run();
       String err = logs.getAllMessagesAsString();
       assertThat(err).contains("connector.csv.url target directory").contains("must be empty");
     } finally {
@@ -279,7 +281,7 @@ class MainTest {
       unloadDir = createTempDirectory("test");
       Files.createFile(unloadDir.resolve("output-000001.json"));
 
-      new Main(
+      new DataStaxBulkLoader(
               new String[] {
                 "unload",
                 "--connector.name=json",
@@ -297,7 +299,7 @@ class MainTest {
 
   @Test
   void should_handle_connector_name_long_option() {
-    new Main(new String[] {"load", "--connector.name", "fromargs"}).run();
+    new DataStaxBulkLoader(new String[] {"load", "--connector.name", "fromargs"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .doesNotContain("First argument must be subcommand")
@@ -306,7 +308,7 @@ class MainTest {
 
   @Test
   void should_handle_connector_name_long_option_with_equal() {
-    new Main(new String[] {"load", "--connector.name=fromargs"}).run();
+    new DataStaxBulkLoader(new String[] {"load", "--connector.name=fromargs"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .doesNotContain("First argument must be subcommand")
@@ -315,7 +317,7 @@ class MainTest {
 
   @Test
   void should_error_out_for_bad_execution_id_template() {
-    new Main(new String[] {"load", "--engine.executionId", "%4$s"}).run();
+    new DataStaxBulkLoader(new String[] {"load", "--engine.executionId", "%4$s"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("Load workflow engine execution null failed")
@@ -326,7 +328,8 @@ class MainTest {
   void should_accept_escaped_control_char() throws Exception {
     // control chars should be provided escaped as valid HOCON
     Config result =
-        Main.parseCommandLine("load", new String[] {"--connector.csv.delimiter", "\\t"});
+        DataStaxBulkLoader.parseCommandLine(
+            "load", new String[] {"--connector.csv.delimiter", "\\t"});
     assertThat(result.getString("connector.csv.delimiter")).isEqualTo("\t");
   }
 
@@ -334,14 +337,17 @@ class MainTest {
   void should_accept_escaped_backslash() throws Exception {
     // backslashes should be provided escaped as valid HOCON
     Config result =
-        Main.parseCommandLine("load", new String[] {"--connector.csv.url", "C:\\\\Users"});
+        DataStaxBulkLoader.parseCommandLine(
+            "load", new String[] {"--connector.csv.url", "C:\\\\Users"});
     assertThat(result.getString("connector.csv.url")).isEqualTo("C:\\Users");
   }
 
   @Test
   void should_accept_escaped_double_quote() throws Exception {
     // double quotes should be provided escaped as valid HOCON
-    Config result = Main.parseCommandLine("load", new String[] {"--connector.csv.escape", "\\\""});
+    Config result =
+        DataStaxBulkLoader.parseCommandLine(
+            "load", new String[] {"--connector.csv.escape", "\\\""});
     assertThat(result.getString("connector.csv.escape")).isEqualTo("\"");
   }
 
@@ -349,7 +355,8 @@ class MainTest {
   void should_accept_escaped_double_quote_in_complex_type() throws Exception {
     // double quotes should be provided escaped as valid HOCON
     Config result =
-        Main.parseCommandLine("load", new String[] {"--codec.booleanStrings", "[\"foo\\\"bar\"]"});
+        DataStaxBulkLoader.parseCommandLine(
+            "load", new String[] {"--codec.booleanStrings", "[\"foo\\\"bar\"]"});
     assertThat(result.getStringList("codec.booleanStrings")).containsExactly("foo\"bar");
   }
 
@@ -357,13 +364,14 @@ class MainTest {
   void should_not_add_quote_if_already_quoted() throws Exception {
     // double quotes should be provided escaped as valid HOCON
     Config result =
-        Main.parseCommandLine("load", new String[] {"--connector.csv.delimiter", "\"\\t\""});
+        DataStaxBulkLoader.parseCommandLine(
+            "load", new String[] {"--connector.csv.delimiter", "\"\\t\""});
     assertThat(result.getString("connector.csv.delimiter")).isEqualTo("\t");
   }
 
   @Test
   void should_not_accept_parse_error() {
-    new Main(new String[] {"load", "--codec.booleanStrings", "[a,b"}).run();
+    new DataStaxBulkLoader(new String[] {"load", "--codec.booleanStrings", "[a,b"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("codec.booleanStrings: Expecting LIST, got '[a,b'")
@@ -373,7 +381,7 @@ class MainTest {
   @Test
   void should_process_short_options() throws Exception {
     Config result =
-        Main.parseCommandLine(
+        DataStaxBulkLoader.parseCommandLine(
             "load",
             new String[] {
               "-locale",
@@ -475,7 +483,7 @@ class MainTest {
   @Test
   void should_process_csv_short_options_by_default() throws Exception {
     Config result =
-        Main.parseCommandLine(
+        DataStaxBulkLoader.parseCommandLine(
             "load",
             new String[] {
               "-comment",
@@ -515,7 +523,7 @@ class MainTest {
   @Test
   void should_process_json_short_options() throws Exception {
     Config result =
-        Main.parseCommandLine(
+        DataStaxBulkLoader.parseCommandLine(
             "load",
             new String[] {
               "-c",
@@ -544,7 +552,7 @@ class MainTest {
     assertThrows(
         ParseException.class,
         () ->
-            Main.parseCommandLine(
+            DataStaxBulkLoader.parseCommandLine(
                 "load",
                 new String[] {
                   "-kks",
@@ -555,7 +563,7 @@ class MainTest {
   @Test
   void should_process_core_long_options() throws Exception {
     Config result =
-        Main.parseCommandLine(
+        DataStaxBulkLoader.parseCommandLine(
             "load",
             new String[] {
               "--driver.hosts",
@@ -818,7 +826,7 @@ class MainTest {
   @Test
   void should_process_csv_long_options() throws Exception {
     Config result =
-        Main.parseCommandLine(
+        DataStaxBulkLoader.parseCommandLine(
             "load",
             new String[] {
               "--connector.csv.url",
@@ -865,14 +873,15 @@ class MainTest {
 
   @Test
   void should_show_version_message_when_asked() {
-    new Main(new String[] {"--version"}).run();
+    new DataStaxBulkLoader(new String[] {"--version"}).run();
     String out = stdOut.getStreamAsString();
     assertThat(out).isEqualTo(String.format("%s%n", HelpUtils.getVersionMessage()));
   }
 
   @Test
   void should_show_error_when_unload_and_dryRun() {
-    new Main(new String[] {"unload", "-dryRun", "true", "-url", "/foo/bar", "-k", "k1", "-t", "t1"})
+    new DataStaxBulkLoader(
+            new String[] {"unload", "-dryRun", "true", "-url", "/foo/bar", "-k", "k1", "-t", "t1"})
         .run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
@@ -882,7 +891,7 @@ class MainTest {
   @Test
   void should_error_on_backslash() throws URISyntaxException {
     Path badJson = Paths.get(ClassLoader.getSystemResource("bad-json.conf").toURI());
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "-dryRun",

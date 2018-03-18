@@ -39,7 +39,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
-import com.datastax.dsbulk.engine.Main;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import java.io.IOException;
@@ -107,7 +107,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
@@ -129,7 +129,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -155,7 +155,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
@@ -179,7 +179,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -205,7 +205,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
@@ -229,7 +229,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -253,7 +253,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_COMPLEX_MAPPING);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(5, SELECT_FROM_IP_BY_COUNTRY_COMPLEX);
     deleteDirectory(logDir);
@@ -275,7 +275,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_COMPLEX_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(5, unloadDir);
   }
@@ -299,7 +299,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(500, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
@@ -321,7 +321,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(500, unloadDir);
   }
@@ -349,7 +349,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-t");
     args.add("WITH_SPACES");
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES);
     deleteDirectory(logDir);
@@ -371,7 +371,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-t");
     args.add("WITH_SPACES");
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(1, unloadDir);
   }
@@ -401,8 +401,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.allowMissingFields");
     args.add("true");
 
-    int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateResultSetSize(21, SELECT_FROM_IP_BY_COUNTRY);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
@@ -426,7 +426,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(21, unloadDir);
   }
@@ -458,8 +458,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
     deleteDirectory(logDir);
 
@@ -482,8 +482,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.query");
     args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
+    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersRead(TRUNCATE, unloadDir);
     deleteDirectory(logDir);
 
@@ -505,8 +505,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     // no rounding possible in json
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
   }
@@ -538,8 +538,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
+    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateExceptionsLog(
         1,
@@ -568,8 +568,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.query");
     args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
+    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersRead(REJECT, unloadDir);
     deleteDirectory(logDir);
 
@@ -591,8 +591,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersWritten(REJECT, UNNECESSARY, session);
   }
 
@@ -631,8 +631,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkTemporalsWritten(session);
     deleteDirectory(logDir);
 
@@ -663,8 +663,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.query");
     args.add("SELECT key, vdate, vtime, vtimestamp, vseconds FROM temporals");
 
-    int unloadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
+    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkTemporalsRead(unloadDir);
     deleteDirectory(logDir);
 
@@ -696,8 +696,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkTemporalsWritten(session);
   }
 

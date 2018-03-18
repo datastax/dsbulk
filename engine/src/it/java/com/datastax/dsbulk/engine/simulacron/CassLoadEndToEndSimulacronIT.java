@@ -23,7 +23,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronConfig;
-import com.datastax.dsbulk.engine.Main;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.datastax.oss.simulacron.server.BoundCluster;
@@ -95,8 +95,8 @@ class CassLoadEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING
     };
 
-    int status = new Main(args).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
 
     assertThat(interceptor)
         .hasMessageContaining(

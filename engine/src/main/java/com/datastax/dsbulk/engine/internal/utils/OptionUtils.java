@@ -11,7 +11,7 @@ package com.datastax.dsbulk.engine.internal.utils;
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.CONFIG_FILE_OPTION;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.engine.Main;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
@@ -26,9 +26,10 @@ public class OptionUtils {
 
     Options options = new Options();
 
-    for (Map.Entry<String, ConfigValue> entry : Main.DEFAULT.entrySet()) {
+    for (Map.Entry<String, ConfigValue> entry : DataStaxBulkLoader.DEFAULT.entrySet()) {
       String longName = entry.getKey();
-      Option option = createOption(Main.DEFAULT, longToShortOptions, longName, entry.getValue());
+      Option option =
+          createOption(DataStaxBulkLoader.DEFAULT, longToShortOptions, longName, entry.getValue());
       options.addOption(option);
     }
 
@@ -63,7 +64,7 @@ public class OptionUtils {
 
   private static String getSanitizedDescription(String longName, ConfigValue value) {
     String desc =
-        Main.DEFAULT
+        DataStaxBulkLoader.DEFAULT
             .getValue(longName)
             .origin()
             .comments()

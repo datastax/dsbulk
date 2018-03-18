@@ -28,7 +28,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
-import com.datastax.dsbulk.engine.Main;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -98,7 +98,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.ssl.truststore.password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
@@ -130,7 +130,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.ssl.truststore.password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -163,7 +163,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.ssl.truststore.password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
@@ -195,7 +195,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.ssl.truststore.password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }

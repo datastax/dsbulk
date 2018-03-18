@@ -91,7 +91,7 @@ class SettingsValidatorTest {
   private Path tempFolder;
 
   public SettingsValidatorTest(
-      @LogCapture(value = Main.class, level = ERROR) LogInterceptor logs,
+      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stdErr) {
     this.logs = logs;
     this.stdErr = stdErr;
@@ -114,7 +114,7 @@ class SettingsValidatorTest {
       int starting_index = argument.indexOf("-", argument.indexOf("-argument") + 1) + 2;
       int ending_index = argument.indexOf("=");
       String argPrefix = argument.substring(starting_index, ending_index);
-      new Main(
+      new DataStaxBulkLoader(
               new String[] {
                 "load",
                 "--schema.keyspace=keyspace",
@@ -132,7 +132,7 @@ class SettingsValidatorTest {
     // The enum class Compression has no constant of the name 'badValue' (should be one of [NONE,
     // SNAPPY, LZ4].
     for (String argument : Arrays.asList(BAD_ENUM)) {
-      new Main(
+      new DataStaxBulkLoader(
               new String[] {
                 "load",
                 "--schema.keyspace=keyspace",
@@ -150,7 +150,7 @@ class SettingsValidatorTest {
     // These errors will look like this; String: 1: Invalid value at 'socket.readTimeout': No number
     // in duration value 'badValue'
     for (String argument : Arrays.asList(BAD_DURATION)) {
-      new Main(
+      new DataStaxBulkLoader(
               new String[] {
                 "load",
                 "--schema.keyspace=keyspace",
@@ -168,7 +168,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_bad_connector() {
-    new Main(new String[] {"load", "-c", "BadConnector"}).run();
+    new DataStaxBulkLoader(new String[] {"load", "-c", "BadConnector"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("Cannot find connector");
@@ -176,7 +176,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_on_empty_hosts() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -195,7 +195,9 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_on_empty_url() {
-    new Main(new String[] {"load", "--driver.hosts=hostshere", "--connector.csv.url", ""}).run();
+    new DataStaxBulkLoader(
+            new String[] {"load", "--driver.hosts=hostshere", "--connector.csv.url", ""})
+        .run();
     String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains(
@@ -205,7 +207,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_bad_parse_driver_option() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url",
@@ -222,7 +224,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_auth_provider() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url",
@@ -239,7 +241,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_auth_combinations_missing_username() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -256,7 +258,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_auth_combinations_missing_password() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -272,7 +274,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_settings() {
-    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file"}).run();
+    new DataStaxBulkLoader(new String[] {"load", "--connector.csv.url=/path/to/my/file"}).run();
     String err = logs.getAllMessagesAsString();
     assertThat(err)
         .contains(
@@ -281,7 +283,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_query_with_ttl() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -300,7 +302,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_query_with_timestamp() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -319,7 +321,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_query_with_mapped_timestamp() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -335,7 +337,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_query_with_keyspace_and_table() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -354,7 +356,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_query_with_mapped_ttl() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -369,7 +371,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_timestamp() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -384,7 +386,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_connect_error_with_schema_defined() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.hosts=255.255.255.23",
@@ -399,7 +401,8 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_missing_keyspace() {
-    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "--schema.table=table"})
+    new DataStaxBulkLoader(
+            new String[] {"load", "--connector.csv.url=/path/to/my/file", "--schema.table=table"})
         .run();
     String err = logs.getAllMessagesAsString();
     assertThat(err).contains("schema.keyspace must accompany schema.table in the configuration");
@@ -407,14 +410,16 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_mapping_missing_keyspace_and_table() {
-    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "c1=c2"}).run();
+    new DataStaxBulkLoader(
+            new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "c1=c2"})
+        .run();
     String err = logs.getAllMessagesAsString();
     assertThat(err).contains("schema.query, or schema.keyspace and schema.table must be defined");
   }
 
   @Test
   void should_connect_error_with_schema_mapping_query_defined() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.hosts=255.255.255.23",
@@ -431,7 +436,8 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_inferred_mapping_query_defined() {
-    new Main(new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "*=*, c1=c2"})
+    new DataStaxBulkLoader(
+            new String[] {"load", "--connector.csv.url=/path/to/my/file", "-m", "*=*, c1=c2"})
         .run();
     String err = logs.getAllMessagesAsString();
     assertThat(err)
@@ -441,7 +447,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_invalid_schema_query_present_and_function_present() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load", "--connector.csv.url=/path/to/my/file", "-m", "now() = c1", "-query", "INSERT"
             })
@@ -453,7 +459,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_unknown_lbp() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -471,7 +477,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_lbp_bad_child_policy() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -491,7 +497,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_lbp_chaining_loop_self() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -512,7 +518,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_lbp_chaining_loop() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -538,7 +544,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_nonexistent_keytab() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.auth.provider",
@@ -553,7 +559,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_keytab_is_a_dir() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load", "--driver.auth.provider", "DseGSSAPIAuthProvider", "--driver.auth.keyTab", "."
             })
@@ -565,7 +571,7 @@ class SettingsValidatorTest {
   @Test
   void should_error_keytab_has_no_keys() throws Exception {
     Path keytabPath = Files.createTempFile(tempFolder, "my", ".keytab");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.auth.provider",
@@ -580,7 +586,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_DseGSSAPIAuthProvider_and_no_sasl_protocol() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--connector.csv.url=/path/to/my/file",
@@ -604,7 +610,7 @@ class SettingsValidatorTest {
   @Test
   void should_error_keystore_without_password() throws IOException {
     Path keystore = Files.createTempFile(tempFolder, "my", "keystore");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -621,7 +627,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_password_without_keystore() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load", "--driver.ssl.provider", "JDK", "--driver.ssl.keystore.password", "mypass"
             })
@@ -635,7 +641,7 @@ class SettingsValidatorTest {
   @Test
   void should_error_openssl_keycertchain_without_key() throws IOException {
     Path chain = Files.createTempFile(tempFolder, "my", ".chain");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -652,7 +658,7 @@ class SettingsValidatorTest {
   @Test
   void should_error_key_without_openssl_keycertchain() throws IOException {
     Path key = Files.createTempFile(tempFolder, "my", ".key");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -669,7 +675,7 @@ class SettingsValidatorTest {
   @Test
   void should_error_truststore_without_password() throws IOException {
     Path truststore = Files.createTempFile(tempFolder, "my", "truststore");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -686,7 +692,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_password_without_truststore() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load", "--driver.ssl.provider", "JDK", "--driver.ssl.truststore.password", "mypass"
             })
@@ -699,7 +705,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_nonexistent_truststore() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -716,7 +722,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_truststore_is_a_dir() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -734,7 +740,7 @@ class SettingsValidatorTest {
   @Test
   void should_accept_existing_truststore() throws IOException {
     Path truststore = Files.createTempFile(tempFolder, "my", ".truststore");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.truststore.path",
@@ -754,7 +760,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_nonexistent_keystore() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -771,7 +777,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_keystore_is_a_dir() {
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -789,7 +795,7 @@ class SettingsValidatorTest {
   @Test
   void should_accept_existing_keystore() throws IOException {
     Path keystore = Files.createTempFile(tempFolder, "my", ".keystore");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.keystore.path",
@@ -810,7 +816,7 @@ class SettingsValidatorTest {
   @Test
   void should_error_nonexistent_openssl_keycertchain() throws IOException {
     Path key = Files.createTempFile(tempFolder, "my", ".key");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -829,7 +835,7 @@ class SettingsValidatorTest {
   @Test
   void should_error_openssl_keycertchain_is_a_dir() throws IOException {
     Path key = Files.createTempFile(tempFolder, "my", ".key");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -848,7 +854,7 @@ class SettingsValidatorTest {
   void should_accept_existing_openssl_keycertchain_and_key() throws IOException {
     Path key = Files.createTempFile(tempFolder, "my", ".key");
     Path chain = Files.createTempFile(tempFolder, "my", ".chain");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -871,7 +877,7 @@ class SettingsValidatorTest {
   @Test
   void should_error_nonexistent_openssl_key() throws IOException {
     Path chain = Files.createTempFile(tempFolder, "my", ".chain");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",
@@ -889,7 +895,7 @@ class SettingsValidatorTest {
   @Test
   void should_error_openssl_key_is_a_dir() throws IOException {
     Path chain = Files.createTempFile(tempFolder, "my", ".chain");
-    new Main(
+    new DataStaxBulkLoader(
             new String[] {
               "load",
               "--driver.ssl.provider",

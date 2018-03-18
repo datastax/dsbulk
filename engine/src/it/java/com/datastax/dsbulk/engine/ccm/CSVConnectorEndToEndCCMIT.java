@@ -54,7 +54,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
-import com.datastax.dsbulk.engine.Main;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.google.common.base.Splitter;
@@ -131,7 +131,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
@@ -153,7 +153,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -179,7 +179,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
@@ -203,7 +203,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -229,7 +229,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
@@ -253,7 +253,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -277,7 +277,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_COMPLEX_MAPPING);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(5, SELECT_FROM_IP_BY_COUNTRY_COMPLEX);
     deleteDirectory(logDir);
@@ -299,7 +299,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_COMPLEX_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(5, unloadDir);
   }
@@ -323,7 +323,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(500, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
@@ -345,7 +345,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(500, unloadDir);
   }
@@ -373,7 +373,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-t");
     args.add("WITH_SPACES");
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES);
     deleteDirectory(logDir);
@@ -395,7 +395,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-t");
     args.add("WITH_SPACES");
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(3, unloadDir);
   }
@@ -425,8 +425,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.allowMissingFields");
     args.add("true");
 
-    int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateResultSetSize(21, SELECT_FROM_IP_BY_COUNTRY);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
@@ -450,7 +450,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING);
 
-    status = new Main(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(21, unloadDir);
   }
@@ -476,7 +476,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.mapping",
             "*:*,now()=loaded_at,created_at=__timestamp,time_to_live=__ttl");
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     assertTtlAndTimestamp();
   }
@@ -500,7 +500,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                 + session.getLoggedKeyspace()
                 + ".table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :time_to_live and timestamp :created_at");
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     assertTtlAndTimestamp();
   }
@@ -526,7 +526,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.mapping",
             "*=*, created_at = t2, time_to_live = t1");
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     assertTtlAndTimestamp();
   }
@@ -552,7 +552,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.mapping",
             "*=*, created_at = t2, time_to_live = t1");
 
-    int status = new Main(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     assertTtlAndTimestamp();
   }
@@ -595,7 +595,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void duplicate_values(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs) {
+  void duplicate_values(
+      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs) {
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -613,14 +614,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_code");
 
-    int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateErrorMessageLogged(
         logs, "Multiple input values in mapping resolve to column country_code");
   }
 
   @Test
-  void missing_key(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs) {
+  void missing_key(
+      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs) {
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -638,14 +640,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number, 5=country_name");
 
-    int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateErrorMessageLogged(logs, "Missing required primary key column country_code");
   }
 
   @Test
   void missing_key_with_custom_query(
-      @LogCapture(value = Main.class, level = ERROR) LogInterceptor logs) {
+      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs) {
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -663,8 +665,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number, 5=country_name");
 
-    int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateErrorMessageLogged(logs, "Missing required primary key column country_code");
   }
 
@@ -691,8 +693,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--codec.nullStrings");
     args.add("[NULL]");
 
-    int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_TOO_MANY_ERRORS);
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 9")
         .contains("Records: total: 24, successful: 14, failed: 10");
@@ -707,7 +709,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void extra_mapping(@LogCapture(value = Main.class, level = ERROR) LogInterceptor logs) {
+  void extra_mapping(
+      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs) {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
@@ -724,8 +727,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(
         "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code, 5=country_name, 6=extra");
 
-    int status = new Main(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(Main.STATUS_ABORTED_FATAL_ERROR);
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateErrorMessageLogged(logs, "doesn't match any column found in table", "extra");
   }
 
@@ -758,8 +761,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
     deleteDirectory(logDir);
 
@@ -784,8 +787,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.query");
     args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
+    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersRead(TRUNCATE, FLOOR, true, unloadDir);
     deleteDirectory(logDir);
 
@@ -809,8 +812,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("key,vdouble,vdecimal");
 
-    loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersWritten(TRUNCATE, FLOOR, session);
   }
 
@@ -843,8 +846,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_COMPLETED_WITH_ERRORS);
+    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateExceptionsLog(
         1,
@@ -873,8 +876,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.query");
     args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
+    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersRead(REJECT, UNNECESSARY, false, unloadDir);
     deleteDirectory(logDir);
 
@@ -898,8 +901,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("key,vdouble,vdecimal");
 
-    loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersWritten(REJECT, UNNECESSARY, session);
   }
 
@@ -938,8 +941,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkTemporalsWritten(session);
     deleteDirectory(logDir);
 
@@ -972,8 +975,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.query");
     args.add("SELECT key, vdate, vtime, vtimestamp, vseconds FROM temporals");
 
-    int unloadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(unloadStatus).isEqualTo(Main.STATUS_OK);
+    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkTemporalsRead(unloadDir);
     deleteDirectory(logDir);
 
@@ -1007,8 +1010,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("key, vdate, vtime, vtimestamp, vseconds");
 
-    loadStatus = new Main(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(Main.STATUS_OK);
+    loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkTemporalsWritten(session);
   }
 
