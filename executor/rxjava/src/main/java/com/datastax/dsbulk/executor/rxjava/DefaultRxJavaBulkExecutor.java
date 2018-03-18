@@ -232,7 +232,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
       try {
         subscriber.onSubscribe(subscription);
         // must be called after onSubscribe
-        subscription.start(session.executeAsync(statement));
+        subscription.start(() -> session.executeAsync(statement));
       } catch (Throwable t) {
         // As per rule 2.13: In the case that this rule is violated,
         // any associated Subscription to the Subscriber MUST be considered as
@@ -269,7 +269,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
       try {
         subscriber.onSubscribe(subscription);
         // must be called after onSubscribe
-        subscription.start(session.executeAsync(statement));
+        subscription.start(() -> session.executeAsync(statement));
       } catch (Throwable t) {
         // As per rule 2.13: In the case that this rule is violated,
         // any associated Subscription to the Subscriber MUST be considered as

@@ -104,7 +104,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   /**
    * The global execution context, used to record latencies for the execution as a whole.
    *
-   * @see #start(ListenableFuture)
+   * @see #start(Callable)
    * @see #stop(Optional)
    */
   private final DefaultExecutionContext global = new DefaultExecutionContext();
@@ -121,7 +121,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    * with or without a preceding Subscription.request(long n) call." However, the TCK considers it
    * as unfair behavior.
    *
-   * @see #start(ListenableFuture)
+   * @see #start(Callable)
    * @see #request(long)
    */
   private final CompletableFuture<Void> initial = new CompletableFuture<>();
@@ -157,10 +157,10 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    *
    * @param initial the future that, once complete, will produce the first page.
    */
-  public void start(ListenableFuture<P> initial) {
+  public void start(Callable<ListenableFuture<P>> initial) {
     global.start();
     listener.ifPresent(l -> l.onExecutionStarted(statement, global));
-    fetchNextPage(new Page(() -> initial));
+    fetchNextPage(new Page(initial));
   }
 
   @Override
@@ -323,11 +323,10 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   }
 
   /**
-   * Runs on a subscriber thread initially, see {@link #start(ListenableFuture)}. Subsequent
-   * executions run on the thread that completes the pair of futures [fetchNext, notFull] and
-   * enqueues. This can be a driver IO thread or a subscriber thread; in both cases, cannot run
-   * concurrently due to the fact that one can only fetch the next page when the current one is
-   * arrived and enqueued.
+   * Runs on a subscriber thread initially, see {@link #start(Callable)}. Subsequent executions run
+   * on the thread that completes the pair of futures [fetchNext, notFull] and enqueues. This can be
+   * a driver IO thread or a subscriber thread; in both cases, cannot run concurrently due to the
+   * fact that one can only fetch the next page when the current one is arrived and enqueued.
    */
   private void fetchNextPage(Page current) {
     // A local execution context to record metrics for this specific request-response cycle.

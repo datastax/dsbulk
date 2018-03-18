@@ -105,7 +105,8 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
       try {
         subscriber.onSubscribe(subscription);
         // must be called after onSubscribe
-        subscription.start(continuousPagingSession.executeContinuouslyAsync(statement, options));
+        subscription.start(
+            () -> continuousPagingSession.executeContinuouslyAsync(statement, options));
       } catch (Throwable t) {
         // As per rule 2.13: In the case that this rule is violated,
         // any associated Subscription to the Subscriber MUST be considered as
