@@ -195,10 +195,10 @@ public class UnloadWorkflow implements Workflow {
     if (closed.compareAndSet(false, true)) {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(metricsManager, null);
+      e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(connector, e);
       e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
-      e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(cluster, e);
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();

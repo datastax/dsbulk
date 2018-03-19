@@ -70,7 +70,6 @@ public class LoadWorkflow implements Workflow {
   private int batchBufferSize;
   private int maxInFlight;
   private Set<Disposable> disposables;
-  private DefaultThreadFactory threadFactory;
 
   LoadWorkflow(LoaderConfig config) {
     settingsManager = new SettingsManager(config, WorkflowType.LOAD);
@@ -129,10 +128,12 @@ public class LoadWorkflow implements Workflow {
     }
     maxInFlight = executorSettings.getMaxInFlight();
     dryRun = engineSettings.isDryRun();
+    if (dryRun) {
+      LOGGER.info("Dry-run mode enabled.");
+    }
     closed.set(false);
     resourceCount = connector.estimatedResourceCount();
     disposables = new HashSet<>();
-    threadFactory = new DefaultThreadFactory("workflow");
   }
 
   @Override
@@ -142,10 +143,8 @@ public class LoadWorkflow implements Workflow {
     Flux<Void> flux;
     if (resourceCount >= WorkflowUtils.TPC_THRESHOLD) {
       flux = threadPerCoreFlux();
-    } else if (batchingEnabled) {
-      flux = parallelBatchedFlux();
     } else {
-      flux = parallelUnbatchedFlux();
+      flux = parallelFlux();
     }
     flux.transform(logManager.newUncaughtExceptionHandler()).blockLast();
     timer.stop();
@@ -167,8 +166,11 @@ public class LoadWorkflow implements Workflow {
   private Flux<Void> threadPerCoreFlux() {
     LOGGER.info("Using thread-per-core pattern.");
     Scheduler scheduler =
-        Schedulers.newParallel(Runtime.getRuntime().availableProcessors(), threadFactory);
+        Schedulers.newParallel(
+            Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     disposables.add(scheduler);
+    int concurrency =
+        Math.max(Queues.XS_BUFFER_SIZE, maxInFlight / Runtime.getRuntime().availableProcessors());
     return Flux.defer(connector.readByResource())
         .flatMap(
             records -> {
@@ -188,68 +190,55 @@ public class LoadWorkflow implements Workflow {
                         .flatMap(batcher::batchByGroupingKey)
                         .transform(metricsManager.newBatcherMonitor());
               }
-              return executeStatements(stmts).subscribeOn(scheduler);
+              return executeStatements(stmts, concurrency).subscribeOn(scheduler);
             },
             Runtime.getRuntime().availableProcessors());
   }
 
   @NotNull
-  private Flux<Void> parallelBatchedFlux() {
-    Scheduler scheduler1 = Schedulers.newSingle(threadFactory);
+  private Flux<Void> parallelFlux() {
+    Scheduler scheduler1 = Schedulers.newSingle(new DefaultThreadFactory("workflow-publish"));
     Scheduler scheduler2 =
-        Schedulers.newParallel(Runtime.getRuntime().availableProcessors(), threadFactory);
+        Schedulers.newParallel(
+            Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     disposables.add(scheduler1);
     disposables.add(scheduler2);
     return Flux.defer(connector.readByResource())
-        .flatMap(records -> Flux.from(records).window(batchBufferSize))
-        .publishOn(scheduler1, Queues.SMALL_BUFFER_SIZE * 4)
         .flatMap(
             records ->
-                records
-                    .transform(metricsManager.newTotalItemsMonitor())
-                    .transform(logManager.newTotalItemsCounter())
-                    .transform(metricsManager.newFailedItemsMonitor())
-                    .transform(logManager.newFailedRecordsHandler())
-                    .parallel()
-                    .runOn(scheduler2)
-                    .map(recordMapper::map)
-                    .sequential()
-                    .transform(metricsManager.newFailedItemsMonitor())
-                    .transform(logManager.newFailedStatementsHandler())
-                    .transform(batcher::batchByGroupingKey)
-                    .transform(metricsManager.newBatcherMonitor())
-                    .transform(this::executeStatements));
-  }
-
-  @NotNull
-  private Flux<Void> parallelUnbatchedFlux() {
-    Scheduler scheduler1 = Schedulers.newSingle(threadFactory);
-    Scheduler scheduler2 =
-        Schedulers.newParallel(Runtime.getRuntime().availableProcessors(), threadFactory);
-    disposables.add(scheduler1);
-    disposables.add(scheduler2);
-    return Flux.defer(connector.read())
+                Flux.from(records)
+                    .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE))
         .publishOn(scheduler1, Queues.SMALL_BUFFER_SIZE * 4)
-        .transform(metricsManager.newTotalItemsMonitor())
-        .transform(logManager.newTotalItemsCounter())
-        .transform(metricsManager.newFailedItemsMonitor())
-        .transform(logManager.newFailedRecordsHandler())
-        .parallel()
-        .runOn(scheduler2)
-        .map(recordMapper::map)
-        .sequential()
-        .transform(metricsManager.newFailedItemsMonitor())
-        .transform(logManager.newFailedStatementsHandler())
-        .transform(this::executeStatements);
+        .flatMap(
+            records -> {
+              Flux<Statement> stmts =
+                  records
+                      .transform(metricsManager.newTotalItemsMonitor())
+                      .transform(logManager.newTotalItemsCounter())
+                      .transform(metricsManager.newFailedItemsMonitor())
+                      .transform(logManager.newFailedRecordsHandler())
+                      .parallel()
+                      .runOn(scheduler2)
+                      .map(recordMapper::map)
+                      .sequential()
+                      .transform(metricsManager.newFailedItemsMonitor())
+                      .transform(logManager.newFailedStatementsHandler());
+              if (batchingEnabled) {
+                stmts =
+                    stmts
+                        .transform(batcher::batchByGroupingKey)
+                        .transform(metricsManager.newBatcherMonitor());
+              }
+              return executeStatements(stmts, maxInFlight);
+            });
   }
 
-  @NotNull
-  private Flux<Void> executeStatements(Flux<Statement> stmts) {
+  private Flux<Void> executeStatements(Flux<Statement> stmts, int concurrency) {
     Flux<WriteResult> results;
     if (dryRun) {
       results = stmts.map(s -> new DefaultWriteResult(s, null));
     } else {
-      results = stmts.flatMap(executor::writeReactive, maxInFlight);
+      results = stmts.flatMap(executor::writeReactive, concurrency);
     }
     return results
         .transform(logManager.newFailedWritesHandler())
@@ -261,6 +250,7 @@ public class LoadWorkflow implements Workflow {
     if (closed.compareAndSet(false, true)) {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(metricsManager, null);
+      e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(connector, e);
       if (disposables != null) {
         for (Disposable disposable : disposables) {
@@ -268,7 +258,6 @@ public class LoadWorkflow implements Workflow {
         }
       }
       e = WorkflowUtils.closeQuietly(executor, e);
-      e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(cluster, e);
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
