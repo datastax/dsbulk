@@ -22,4 +22,16 @@ public final class DefaultWriteResult extends DefaultResult implements WriteResu
   public DefaultWriteResult(BulkExecutionException error) {
     super(error);
   }
+
+  @Override
+  public String toString() {
+    return "DefaultWriteResult["
+        + "error="
+        + getError()
+        + ", statement="
+        + getStatement()
+        + ", executionInfo="
+        + getExecutionInfo()
+        + ']';
+  }
 }

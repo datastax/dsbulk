@@ -8,10 +8,13 @@
  */
 package com.datastax.dsbulk.executor.api.ccm;
 
+import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.assertRowEqualsRecord;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.prepareInsertStatement;
+import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.recordForRow;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.truncateIpByCountryTable;
 import static java.util.stream.StreamSupport.stream;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.MockitoAnnotations.initMocks;
 
@@ -39,7 +42,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,7 +87,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @BeforeEach
-  void resetMocks() throws Exception {
+  void resetMocks() {
     initMocks(this);
   }
 
@@ -513,13 +515,13 @@ public abstract class BulkExecutorCCMITBase {
   // Tests for rx write methods
 
   @Test
-  void writeReactiveStringTest() throws Exception {
+  void writeReactiveStringTest() {
     CsvUtils.queries().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
     verifyWrites(500);
   }
 
   @Test
-  void writeReactiveStringFailFastTest() throws Exception {
+  void writeReactiveStringFailFastTest() {
     try {
       sampleQueriesWithLastBad().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
       fail("Should have thrown an exception");
@@ -530,20 +532,20 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void writeReactiveStringFailSafeTest() throws Exception {
+  void writeReactiveStringFailSafeTest() {
     Flowable.just(FAILED.getQueryString())
         .flatMap(failSafeExecutor::writeReactive)
         .blockingSubscribe();
   }
 
   @Test
-  void writeReactiveStatementTest() throws Exception {
+  void writeReactiveStatementTest() {
     CsvUtils.simpleStatements().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
     verifyWrites(500);
   }
 
   @Test
-  void writeReactiveStatementFailFastTest() throws Exception {
+  void writeReactiveStatementFailFastTest() {
     try {
       sampleStatementsWithLastBad().flatMap(failFastExecutor::writeReactive).blockingSubscribe();
       fail("Should have thrown an exception");
@@ -554,12 +556,12 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void writeReactiveStatementFailSafeTest() throws Exception {
+  void writeReactiveStatementFailSafeTest() {
     Flowable.just(FAILED).flatMap(failSafeExecutor::writeReactive).blockingSubscribe();
   }
 
   @Test
-  void writeReactiveStreamTest() throws Exception {
+  void writeReactiveStreamTest() {
     Stream<SimpleStatement> statements =
         stream(CsvUtils.simpleStatements().blockingIterable().spliterator(), false);
     Flowable.fromPublisher(failFastExecutor.writeReactive(statements)).blockingSubscribe();
@@ -567,7 +569,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void writeReactiveStreamFailFastTest() throws Exception {
+  void writeReactiveStreamFailFastTest() {
     try {
       Stream<Statement> statements =
           stream(sampleStatementsWithLastBad().blockingIterable().spliterator(), false);
@@ -580,7 +582,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void writeReactiveStreamFailSafeTest() throws Exception {
+  void writeReactiveStreamFailSafeTest() {
     Stream<Statement> statements =
         stream(sampleStatementsWithLastBad().blockingIterable().spliterator(), false);
     Flowable.fromPublisher(failSafeExecutor.writeReactive(statements)).blockingSubscribe();
@@ -588,14 +590,14 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void writeReactiveIterableTest() throws Exception {
+  void writeReactiveIterableTest() {
     Iterable<SimpleStatement> statements = CsvUtils.simpleStatements().blockingIterable();
     Flowable.fromPublisher(failFastExecutor.writeReactive(statements)).blockingSubscribe();
     verifyWrites(500);
   }
 
   @Test
-  void writeReactiveIterableFailFastTest() throws Exception {
+  void writeReactiveIterableFailFastTest() {
     try {
       Iterable<Statement> statements = sampleStatementsWithLastBad().blockingIterable();
       Flowable.fromPublisher(failFastExecutor.writeReactive(statements)).blockingSubscribe();
@@ -607,21 +609,21 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void writeReactiveIterableFailSafeTest() throws Exception {
+  void writeReactiveIterableFailSafeTest() {
     Iterable<Statement> statements = sampleStatementsWithLastBad().blockingIterable();
     Flowable.fromPublisher(failSafeExecutor.writeReactive(statements)).blockingSubscribe();
     verifyWrites(499);
   }
 
   @Test
-  void writeReactivePublisherTest() throws Exception {
+  void writeReactivePublisherTest() {
     Flowable.fromPublisher(failFastExecutor.writeReactive(CsvUtils.simpleStatements()))
         .blockingSubscribe();
     verifyWrites(500);
   }
 
   @Test
-  void writeReactivePublisherFailFastTest() throws Exception {
+  void writeReactivePublisherFailFastTest() {
     try {
       Flowable.fromPublisher(failFastExecutor.writeReactive(sampleStatementsWithLastBad()))
           .blockingSubscribe();
@@ -633,7 +635,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void writeReactivePublisherFailSafeTest() throws Exception {
+  void writeReactivePublisherFailSafeTest() {
     Flowable.fromPublisher(failSafeExecutor.writeReactive(sampleStatementsWithLastBad()))
         .blockingSubscribe();
     verifyWrites(499);
@@ -642,7 +644,7 @@ public abstract class BulkExecutorCCMITBase {
   // Tests for synchronous read methods
 
   @Test
-  void readSyncStringConsumerTest() throws Exception {
+  void readSyncStringConsumerTest() {
     loadData();
     failFastExecutor.readSync(READ_SUCCESSFUL.getQueryString(), readConsumer);
     List<ReadResult> readResults = verifyReadConsumer(500, 0);
@@ -650,7 +652,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readSyncStringConsumerFailFastTest() throws Exception {
+  void readSyncStringConsumerFailFastTest() {
     loadData();
     try {
       failFastExecutor.readSync(FAILED.getQueryString(), readConsumer);
@@ -663,7 +665,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readSyncStringConsumerFailSafeTest() throws Exception {
+  void readSyncStringConsumerFailSafeTest() {
     loadData();
     failSafeExecutor.readSync(FAILED.getQueryString(), readConsumer);
     List<ReadResult> readResults = verifyReadConsumer(0, 1);
@@ -671,7 +673,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readSyncStatementConsumerTest() throws Exception {
+  void readSyncStatementConsumerTest() {
     loadData();
     failFastExecutor.readSync(READ_SUCCESSFUL, readConsumer);
     List<ReadResult> readResults = verifyReadConsumer(500, 0);
@@ -679,7 +681,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readSyncStatementConsumerFailFastTest() throws Exception {
+  void readSyncStatementConsumerFailFastTest() {
     loadData();
     try {
       failFastExecutor.readSync(FAILED, readConsumer);
@@ -692,7 +694,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readSyncStatementConsumerFailSafeTest() throws Exception {
+  void readSyncStatementConsumerFailSafeTest() {
     loadData();
     failSafeExecutor.readSync(FAILED, readConsumer);
     List<ReadResult> readResults = verifyReadConsumer(0, 1);
@@ -936,7 +938,7 @@ public abstract class BulkExecutorCCMITBase {
   // Tests for rx read methods
 
   @Test
-  void readReactiveStringTest() throws Exception {
+  void readReactiveStringTest() {
     loadData();
     Iterable<ReadResult> readResults =
         Flowable.just(READ_SUCCESSFUL.getQueryString())
@@ -946,7 +948,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveStringFailFastTest() throws Exception {
+  void readReactiveStringFailFastTest() {
     loadData();
     Iterable<ReadResult> readResults = Collections.emptyList();
     try {
@@ -961,7 +963,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveStringFailSafeTest() throws Exception {
+  void readReactiveStringFailSafeTest() {
     loadData();
     Iterable<ReadResult> readResults =
         Flowable.just(FAILED.getQueryString())
@@ -971,7 +973,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveStatementTest() throws Exception {
+  void readReactiveStatementTest() {
     loadData();
     Iterable<ReadResult> readResults =
         Flowable.just(READ_SUCCESSFUL).flatMap(failFastExecutor::readReactive).blockingIterable();
@@ -979,7 +981,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveStatementFailFastTest() throws Exception {
+  void readReactiveStatementFailFastTest() {
     loadData();
     Iterable<ReadResult> readResults = Collections.emptyList();
     try {
@@ -992,7 +994,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveStatementFailSafeTest() throws Exception {
+  void readReactiveStatementFailSafeTest() {
     loadData();
     Iterable<ReadResult> readResults =
         Flowable.just(FAILED).flatMap(failSafeExecutor::readReactive).blockingIterable();
@@ -1000,7 +1002,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveStreamTest() throws Exception {
+  void readReactiveStreamTest() {
     loadData();
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
     Flowable.fromPublisher(failFastExecutor.readReactive(Stream.of(READ_SUCCESSFUL)))
@@ -1010,7 +1012,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveStreamFailFastTest() throws Exception {
+  void readReactiveStreamFailFastTest() {
     loadData();
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
     try {
@@ -1025,7 +1027,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveStreamFailSafeTest() throws Exception {
+  void readReactiveStreamFailSafeTest() {
     loadData();
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
     Flowable.fromPublisher(failSafeExecutor.readReactive(Stream.of(READ_SUCCESSFUL, FAILED)))
@@ -1035,7 +1037,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveIterableTest() throws Exception {
+  void readReactiveIterableTest() {
     loadData();
     Iterable<ReadResult> readResults =
         Flowable.fromPublisher(
@@ -1045,7 +1047,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveIterableFailFastTest() throws Exception {
+  void readReactiveIterableFailFastTest() {
     loadData();
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
     try {
@@ -1060,7 +1062,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactiveIterableFailSafeTest() throws Exception {
+  void readReactiveIterableFailSafeTest() {
     loadData();
     Iterable<ReadResult> readResults =
         Flowable.fromPublisher(
@@ -1070,7 +1072,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactivePublisherTest() throws Exception {
+  void readReactivePublisherTest() {
     loadData();
     Iterable<ReadResult> readResults =
         Flowable.fromPublisher(failFastExecutor.readReactive(Flowable.just(READ_SUCCESSFUL)))
@@ -1079,7 +1081,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactivePublisherFailFastTest() throws Exception {
+  void readReactivePublisherFailFastTest() {
     loadData();
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
     try {
@@ -1094,7 +1096,7 @@ public abstract class BulkExecutorCCMITBase {
   }
 
   @Test
-  void readReactivePublisherFailSafeTest() throws Exception {
+  void readReactivePublisherFailSafeTest() {
     loadData();
     Iterable<ReadResult> readResults =
         Flowable.fromPublisher(
@@ -1126,15 +1128,20 @@ public abstract class BulkExecutorCCMITBase {
         Flowable.fromPublisher(failFastExecutor.readReactive(READ_SUCCESSFUL))
             .doOnNext(
                 r -> {
-                  Assertions.assertThat(r.getRow().isPresent()).isTrue();
+                  assertThat(r.getRow().isPresent())
+                      .overridingErrorMessage("Expecting %s to have a row but it did not", r)
+                      .isTrue();
+                  assertThat(r.getError().isPresent())
+                      .overridingErrorMessage("Expecting %s to not have an error but it did", r)
+                      .isFalse();
                   Row row = r.getRow().get();
-                  Record record = CsvUtils.recordForRow(row);
-                  Assertions.assertThat(record).isNotNull();
-                  CsvUtils.assertRowEqualsRecord(row, record);
+                  Record record = recordForRow(row);
+                  assertThat(record).isNotNull();
+                  assertRowEqualsRecord(row, record);
                 })
             .count()
             .blockingGet();
-    Assertions.assertThat(count).isEqualTo(expected);
+    assertThat(count).isEqualTo(expected);
   }
 
   private void verifyReads(
@@ -1144,46 +1151,63 @@ public abstract class BulkExecutorCCMITBase {
             .filter(Result::isSuccess)
             .doOnNext(
                 r -> {
-                  Assertions.assertThat(r.getRow().isPresent()).isTrue();
+                  assertThat(r.getRow().isPresent())
+                      .overridingErrorMessage("Expecting %s to have a row but it did not", r)
+                      .isTrue();
+                  assertThat(r.getError().isPresent())
+                      .overridingErrorMessage("Expecting %s to not have an error but it did", r)
+                      .isFalse();
                   Row row = r.getRow().get();
-                  Record record = CsvUtils.recordForRow(row);
-                  Assertions.assertThat(record).isNotNull();
-                  CsvUtils.assertRowEqualsRecord(row, record);
+                  Record record = recordForRow(row);
+                  assertThat(record).isNotNull();
+                  assertRowEqualsRecord(row, record);
                 })
             .count()
             .blockingGet();
-    Assertions.assertThat(actualSuccessful).isEqualTo(expectedSuccessful);
+    assertThat(actualSuccessful).isEqualTo(expectedSuccessful);
     long actualFailed =
         Flowable.fromIterable(actual)
             .filter(r -> !r.isSuccess())
             .doOnNext(
                 r -> {
-                  Assertions.assertThat(r.getRow().isPresent()).isFalse();
-                  Assertions.assertThat(r.getError().isPresent()).isTrue();
+                  assertThat(r.getRow().isPresent())
+                      .overridingErrorMessage("Expecting %s to not have a row but it did", r)
+                      .isFalse();
+                  assertThat(r.getError().isPresent())
+                      .overridingErrorMessage("Expecting %s to have an error but it did not", r)
+                      .isTrue();
                   BulkExecutionException error = r.getError().get();
                   verifyException(error);
                 })
             .count()
             .blockingGet();
-    Assertions.assertThat(actualFailed).isEqualTo(expectedFailed);
+    assertThat(actualFailed).isEqualTo(expectedFailed);
   }
 
   private void verifySuccessfulWriteResult(WriteResult r) {
-    Assertions.assertThat(r.isSuccess()).isTrue();
-    Assertions.assertThat(((SimpleStatement) r.getStatement()).getQueryString())
+    assertThat(r.isSuccess())
+        .overridingErrorMessage("Expecting %s to be successful but it was not", r)
+        .isTrue();
+    assertThat(((SimpleStatement) r.getStatement()).getQueryString())
         .isEqualTo(CsvUtils.firstQuery());
-    Assertions.assertThat(r.getExecutionInfo().isPresent()).isTrue();
+    assertThat(r.getExecutionInfo().isPresent())
+        .overridingErrorMessage("Expecting %s to have an execution info but it did not", r)
+        .isTrue();
   }
 
   private void verifyFailedWriteResult(WriteResult r) {
-    Assertions.assertThat(r.isSuccess()).isFalse();
-    Assertions.assertThat(((SimpleStatement) r.getStatement()).getQueryString())
+    assertThat(r.isSuccess())
+        .overridingErrorMessage("Expecting %s to not be successful but it was", r)
+        .isFalse();
+    assertThat(((SimpleStatement) r.getStatement()).getQueryString())
         .isEqualTo(FAILED.getQueryString());
-    Assertions.assertThat(r.getExecutionInfo().isPresent()).isFalse();
+    assertThat(r.getExecutionInfo().isPresent())
+        .overridingErrorMessage("Expecting %s to not have an execution info but it did", r)
+        .isFalse();
   }
 
   private void verifyException(Throwable t) {
-    Assertions.assertThat(t)
+    assertThat(t)
         .isInstanceOf(BulkExecutionException.class)
         .hasMessage(
             String.format(
@@ -1198,25 +1222,31 @@ public abstract class BulkExecutorCCMITBase {
     Mockito.verify(writeConsumer, Mockito.times(expectedSuccessful + expectedFailed))
         .accept(captor.capture());
     List<WriteResult> values = captor.getAllValues();
-    Assertions.assertThat(values.stream().filter(Result::isSuccess).count())
-        .isEqualTo(expectedSuccessful);
-    Assertions.assertThat(values.stream().filter(r -> !r.isSuccess()).count())
-        .isEqualTo(expectedFailed);
+    assertThat(values.stream().filter(Result::isSuccess).count()).isEqualTo(expectedSuccessful);
+    assertThat(values.stream().filter(r -> !r.isSuccess()).count()).isEqualTo(expectedFailed);
     values
         .stream()
         .filter(Result::isSuccess)
         .forEach(
             r -> {
-              Assertions.assertThat(r.getError().isPresent()).isFalse();
-              Assertions.assertThat(r.getExecutionInfo().isPresent()).isTrue();
+              assertThat(r.getError().isPresent())
+                  .overridingErrorMessage("Expecting %s to not have an error but it did", r)
+                  .isFalse();
+              assertThat(r.getExecutionInfo().isPresent())
+                  .overridingErrorMessage("Expecting %s to have an execution info but it did not", r)
+                  .isTrue();
             });
     values
         .stream()
         .filter(r -> !r.isSuccess())
         .forEach(
             r -> {
-              Assertions.assertThat(r.getError().isPresent()).isTrue();
-              Assertions.assertThat(r.getExecutionInfo().isPresent()).isFalse();
+              assertThat(r.getError().isPresent())
+                  .overridingErrorMessage("Expecting %s to have an error but it did not", r)
+                  .isTrue();
+              assertThat(r.getExecutionInfo().isPresent())
+                  .overridingErrorMessage("Expecting %s to not have an execution info but it did", r)
+                  .isFalse();
             });
   }
 
@@ -1225,25 +1255,31 @@ public abstract class BulkExecutorCCMITBase {
     Mockito.verify(readConsumer, Mockito.times(expectedSuccessful + expectedFailed))
         .accept(captor.capture());
     List<ReadResult> values = captor.getAllValues();
-    Assertions.assertThat(values.stream().filter(Result::isSuccess).count())
-        .isEqualTo(expectedSuccessful);
-    Assertions.assertThat(values.stream().filter(r -> !r.isSuccess()).count())
-        .isEqualTo(expectedFailed);
+    assertThat(values.stream().filter(Result::isSuccess).count()).isEqualTo(expectedSuccessful);
+    assertThat(values.stream().filter(r -> !r.isSuccess()).count()).isEqualTo(expectedFailed);
     values
         .stream()
         .filter(Result::isSuccess)
         .forEach(
             r -> {
-              Assertions.assertThat(r.getError().isPresent()).isFalse();
-              Assertions.assertThat(r.getRow().isPresent()).isTrue();
+              assertThat(r.getRow().isPresent())
+                  .overridingErrorMessage("Expecting %s to have a row but it did not", r)
+                  .isTrue();
+              assertThat(r.getError().isPresent())
+                  .overridingErrorMessage("Expecting %s to not have an error but it did", r)
+                  .isFalse();
             });
     values
         .stream()
         .filter(r -> !r.isSuccess())
         .forEach(
             r -> {
-              Assertions.assertThat(r.getError().isPresent()).isTrue();
-              Assertions.assertThat(r.getRow().isPresent()).isFalse();
+              assertThat(r.getRow().isPresent())
+                  .overridingErrorMessage("Expecting %s to not have a row but it did", r)
+                  .isFalse();
+              assertThat(r.getError().isPresent())
+                  .overridingErrorMessage("Expecting %s to have an error but it did not", r)
+                  .isTrue();
             });
     return values;
   }

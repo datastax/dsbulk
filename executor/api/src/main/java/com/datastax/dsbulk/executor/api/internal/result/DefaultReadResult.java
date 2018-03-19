@@ -55,4 +55,18 @@ public final class DefaultReadResult extends DefaultResult implements ReadResult
     result = 31 * result + (row != null ? row.hashCode() : 0);
     return result;
   }
+
+  @Override
+  public String toString() {
+    return "DefaultReadResult["
+        + "row="
+        + getRow()
+        + ", error="
+        + getError()
+        + ", statement="
+        + getStatement()
+        + ", executionInfo="
+        + getExecutionInfo()
+        + ']';
+  }
 }
