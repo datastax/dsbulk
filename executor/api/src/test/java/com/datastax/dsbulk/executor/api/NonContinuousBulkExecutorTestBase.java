@@ -24,6 +24,7 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.exceptions.SyntaxError;
 import java.net.InetSocketAddress;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -72,8 +73,8 @@ public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTest
     // request 1a (also used for write tests, but the resultset is not consumed)
     when(successFuture1a.get()).thenReturn(successfulResultSet1a);
     when(successFuture1a.isDone()).thenReturn(true);
-    when(successfulResultSet1a.iterator()).thenReturn(page1a.iterator());
-    when(successfulResultSet1a.getAvailableWithoutFetching()).thenReturn(page1a.size());
+    ArrayDeque<Row> queue1a = new ArrayDeque<>(page1a);
+    when(successfulResultSet1a.one()).thenAnswer(invocation -> queue1a.poll());
     when(successfulResultSet1a.isFullyFetched()).thenReturn(true); // only useful in write tests
     ExecutionInfo executionInfo1a = mock(ExecutionInfo.class);
     when(successfulResultSet1a.getExecutionInfo()).thenReturn(executionInfo1a);
@@ -91,8 +92,8 @@ public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTest
     // request 1b
     when(successFuture1b.get()).thenReturn(successfulResultSet1b);
     when(successFuture1b.isDone()).thenReturn(true);
-    when(successfulResultSet1b.iterator()).thenReturn(page1b.iterator());
-    when(successfulResultSet1b.getAvailableWithoutFetching()).thenReturn(page1b.size());
+    ArrayDeque<Row> queue1b = new ArrayDeque<>(page1b);
+    when(successfulResultSet1b.one()).thenAnswer(invocation -> queue1b.poll());
     when(successfulResultSet1b.isFullyFetched()).thenReturn(true); // only useful in write tests
     ExecutionInfo executionInfo1b = mock(ExecutionInfo.class);
     when(successfulResultSet1b.getExecutionInfo()).thenReturn(executionInfo1b);
@@ -108,8 +109,8 @@ public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTest
     // request 2a
     when(successFuture2a.get()).thenReturn(successfulResultSet2a);
     when(successFuture2a.isDone()).thenReturn(true);
-    when(successfulResultSet2a.iterator()).thenReturn(page2a.iterator());
-    when(successfulResultSet2a.getAvailableWithoutFetching()).thenReturn(page2a.size());
+    ArrayDeque<Row> queue2a = new ArrayDeque<>(page2a);
+    when(successfulResultSet2a.one()).thenAnswer(invocation -> queue2a.poll());
     when(successfulResultSet2a.isFullyFetched()).thenReturn(true); // only useful in write tests
     ExecutionInfo executionInfo2a = mock(ExecutionInfo.class);
     when(successfulResultSet2a.getExecutionInfo()).thenReturn(executionInfo2a);

@@ -8,9 +8,6 @@
  */
 package com.datastax.dsbulk.executor.reactor.tck;
 
-import static org.mockito.Mockito.mock;
-
-import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.tck.ReadResultPublisherTestBase;
 import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
@@ -20,15 +17,14 @@ public class ReadResultPublisherTest extends ReadResultPublisherTestBase {
 
   @Override
   public Publisher<ReadResult> createPublisher(long elements) {
-    DefaultReactorBulkExecutor executor =
-        new DefaultReactorBulkExecutor(setUpSuccessfulSession(elements));
+    DefaultReactorBulkExecutor executor = new DefaultReactorBulkExecutor(setUpSession(elements));
     return executor.readReactive("irrelevant");
   }
 
   @Override
   public Publisher<ReadResult> createFailedPublisher() {
     DefaultReactorBulkExecutor executor =
-        DefaultReactorBulkExecutor.builder(mock(Session.class))
+        DefaultReactorBulkExecutor.builder(setUpSession(1))
             .withExecutionListener(FAILED_LISTENER)
             .build();
     return executor.readReactive("irrelevant");

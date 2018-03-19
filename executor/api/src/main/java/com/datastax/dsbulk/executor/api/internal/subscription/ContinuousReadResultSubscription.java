@@ -16,6 +16,7 @@ import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.google.common.collect.AbstractIterator;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Iterator;
 import java.util.Optional;
@@ -38,21 +39,18 @@ public class ContinuousReadResultSubscription
 
   @Override
   Page toPage(AsyncContinuousPagingResult rs, ExecutionContext local) {
+    Iterator<Row> rows = rs.currentPage().iterator();
     Iterator<ReadResult> results =
-        new Iterator<ReadResult>() {
-
-          Iterator<Row> rows = rs.currentPage().iterator();
+        new AbstractIterator<ReadResult>() {
 
           @Override
-          public boolean hasNext() {
-            return rows.hasNext();
-          }
-
-          @Override
-          public ReadResult next() {
-            Row row = rows.next();
-            listener.ifPresent(l -> l.onRowReceived(row, local));
-            return new DefaultReadResult(statement, rs.getExecutionInfo(), row);
+          protected ReadResult computeNext() {
+            if (rows.hasNext()) {
+              Row row = rows.next();
+              listener.ifPresent(l -> l.onRowReceived(row, local));
+              return new DefaultReadResult(statement, rs.getExecutionInfo(), row);
+            }
+            return endOfData();
           }
         };
     return new ContinuousPage(rs, results);

@@ -13,8 +13,11 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.PagingState;
+import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
@@ -41,12 +44,21 @@ public abstract class ReadResultPublisherTestBase extends PublisherVerification<
         }
       };
 
+  private static final int PAGE_SIZE = 5;
+
   public ReadResultPublisherTestBase() {
     super(new TestEnvironment());
   }
 
-  public static Session setUpSuccessfulSession(long elements) {
+  public static Session setUpSession(long elements) {
     Session session = mock(Session.class);
+    Cluster cluster = mock(Cluster.class);
+    when(session.getCluster()).thenReturn(cluster);
+    Configuration configuration = mock(Configuration.class);
+    when(cluster.getConfiguration()).thenReturn(configuration);
+    QueryOptions queryOptions = mock(QueryOptions.class);
+    when(configuration.getQueryOptions()).thenReturn(queryOptions);
+    when(queryOptions.getFetchSize()).thenReturn(PAGE_SIZE);
     ResultSetFuture previous = mockPages(elements);
     when(session.executeAsync(any(SimpleStatement.class))).thenReturn(previous);
     return session;
@@ -61,7 +73,7 @@ public abstract class ReadResultPublisherTestBase extends PublisherVerification<
     if (effective > 0) {
       // create pages of 5 elements each to exercise pagination
       List<Integer> pages =
-          Flowable.range(0, effective).buffer(5).map(List::size).toList().blockingGet();
+          Flowable.range(0, effective).buffer(PAGE_SIZE).map(List::size).toList().blockingGet();
       Collections.reverse(pages);
       for (Integer size : pages) {
         previous = mockPage(previous, size);

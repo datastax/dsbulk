@@ -37,6 +37,9 @@ class MockResultSet implements ResultSet, AsyncContinuousPagingResult {
 
   @Override
   public Row one() {
+    if (!iterator.hasNext()) {
+      return null;
+    }
     Row next = iterator.next();
     remaining--;
     return next;

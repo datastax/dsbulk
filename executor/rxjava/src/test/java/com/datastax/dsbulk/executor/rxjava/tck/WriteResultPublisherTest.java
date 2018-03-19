@@ -9,7 +9,7 @@
 package com.datastax.dsbulk.executor.rxjava.tck;
 
 import static com.datastax.dsbulk.executor.api.tck.ReadResultPublisherTestBase.FAILED_LISTENER;
-import static com.datastax.dsbulk.executor.api.tck.ReadResultPublisherTestBase.setUpSuccessfulSession;
+import static com.datastax.dsbulk.executor.api.tck.ReadResultPublisherTestBase.setUpSession;
 import static org.mockito.Mockito.mock;
 
 import com.datastax.driver.core.Session;
@@ -22,7 +22,7 @@ public class WriteResultPublisherTest extends WriteResultPublisherTestBase {
 
   @Override
   public Publisher<WriteResult> createPublisher(long elements) {
-    DefaultRxJavaBulkExecutor executor = new DefaultRxJavaBulkExecutor(setUpSuccessfulSession(0));
+    DefaultRxJavaBulkExecutor executor = new DefaultRxJavaBulkExecutor(setUpSession(0));
     return executor.writeReactive("irrelevant");
   }
 

@@ -1233,7 +1233,8 @@ public abstract class BulkExecutorCCMITBase {
                   .overridingErrorMessage("Expecting %s to not have an error but it did", r)
                   .isFalse();
               assertThat(r.getExecutionInfo().isPresent())
-                  .overridingErrorMessage("Expecting %s to have an execution info but it did not", r)
+                  .overridingErrorMessage(
+                      "Expecting %s to have an execution info but it did not", r)
                   .isTrue();
             });
     values
@@ -1245,7 +1246,8 @@ public abstract class BulkExecutorCCMITBase {
                   .overridingErrorMessage("Expecting %s to have an error but it did not", r)
                   .isTrue();
               assertThat(r.getExecutionInfo().isPresent())
-                  .overridingErrorMessage("Expecting %s to not have an execution info but it did", r)
+                  .overridingErrorMessage(
+                      "Expecting %s to not have an execution info but it did", r)
                   .isFalse();
             });
   }
