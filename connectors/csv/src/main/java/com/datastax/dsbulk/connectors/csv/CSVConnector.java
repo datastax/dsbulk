@@ -38,6 +38,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
+import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
@@ -411,9 +412,14 @@ public class CSVConnector implements Connector {
         }
         LOGGER.trace("Writing record {} to {}", record, url);
         writer.writeRow(record.values());
-      } catch (IOException e) {
-        throw new UncheckedIOException(
-            String.format("Error writing to %s: %s", url, e.getMessage()), e);
+      } catch (RuntimeException e) {
+        if ((e.getCause() instanceof ClosedChannelException)) {
+          // OK, happens when the channel was closed due to interruption
+          LOGGER.warn(String.format("Error writing to %s: %s", url, e.getMessage()), e);
+        } else {
+          throw new UncheckedIOException(
+              new IOException(String.format("Error writing to %s: %s", url, e.getMessage()), e));
+        }
       }
     }
 
@@ -425,9 +431,17 @@ public class CSVConnector implements Connector {
       return root != null && writer.getRecordCount() == maxRecords;
     }
 
-    private void open() throws IOException {
+    private void open() {
       url = getOrCreateDestinationURL();
-      writer = new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
+      try {
+        writer = new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
+      } catch (ClosedChannelException e) {
+        // OK, happens when the channel was closed due to interruption
+        LOGGER.warn(String.format("Could not open %s: %s", url, e.getMessage()), e);
+      } catch (IOException e) {
+        throw new UncheckedIOException(
+            String.format("Error opening %s: %s", url, e.getMessage()), e);
+      }
       LOGGER.debug("Writing {}", url);
     }
 
@@ -438,8 +452,13 @@ public class CSVConnector implements Connector {
           LOGGER.debug("Done writing {}", url);
           writer = null;
         } catch (Exception e) {
-          throw new UncheckedIOException(
-              new IOException(String.format("Error closing %s: %s", url, e.getMessage()), e));
+          if ((e.getCause() instanceof ClosedChannelException)) {
+            // OK, happens when the channel was closed due to interruption
+            LOGGER.warn(String.format("Could not close %s: %s", url, e.getMessage()), e);
+          } else {
+            throw new UncheckedIOException(
+                new IOException(String.format("Error closing %s: %s", url, e.getMessage()), e));
+          }
         }
       }
     }

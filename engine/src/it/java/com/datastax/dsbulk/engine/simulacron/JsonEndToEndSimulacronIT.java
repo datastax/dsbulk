@@ -670,7 +670,7 @@ class JsonEndToEndSimulacronIT {
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
-        .contains("Error writing to file:")
+        .contains("Error opening file:")
         .contains("output-000001.json");
   }
 

@@ -36,6 +36,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.net.URISyntaxException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -668,8 +669,8 @@ class JsonConnectorTest {
     connector.init();
     assertThatThrownBy(
             () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage(
+        .isInstanceOf(UncheckedIOException.class)
+        .hasMessageContaining(
             "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.json");
     connector.close();
   }

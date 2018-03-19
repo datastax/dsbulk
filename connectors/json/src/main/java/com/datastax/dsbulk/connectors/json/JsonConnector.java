@@ -49,6 +49,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
+import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
@@ -439,6 +440,9 @@ public class JsonConnector implements Connector {
         }
         writer.writeEndObject();
         currentLine++;
+      } catch (ClosedChannelException e) {
+        // OK, happens when the channel was closed due to interruption
+        LOGGER.warn(String.format("Error writing to %s: %s", url, e.getMessage()), e);
       } catch (IOException e) {
         throw new UncheckedIOException(
             String.format("Error writing to %s: %s", url, e.getMessage()), e);
@@ -449,18 +453,29 @@ public class JsonConnector implements Connector {
       return root != null && currentLine == maxRecords;
     }
 
-    private void open() throws IOException {
+    private void open() {
       url = getOrCreateDestinationURL();
-      writer = createJsonWriter(url);
-      if (mode == DocumentMode.SINGLE_DOCUMENT) {
-        // do not use writer.writeStartArray(): we need to fool the parser into thinking it's on
-        // multi doc mode,
-        // to get a better-looking result
-        writer.writeRaw('[');
-        writer.writeRaw(System.lineSeparator());
+      try {
+        writer = createJsonWriter(url);
+        if (mode == DocumentMode.SINGLE_DOCUMENT) {
+          // do not use writer.writeStartArray(): we need to fool the parser into thinking it's on
+          // multi doc mode,
+          // to get a better-looking result
+          writer.writeRaw('[');
+          writer.writeRaw(System.lineSeparator());
+        }
+        currentLine = 0;
+        LOGGER.debug("Writing " + url);
+      } catch (ClosedChannelException e) {
+        // OK, happens when the channel was closed due to interruption
+        LOGGER.warn(String.format("Could not open %s: %s", url, e.getMessage()), e);
+      } catch (IOException e) {
+        throw new UncheckedIOException(
+            String.format("Error opening %s: %s", url, e.getMessage()), e);
+      } catch (Exception e) {
+        throw new UncheckedIOException(
+            new IOException(String.format("Error opening %s: %s", url, e.getMessage()), e));
       }
-      currentLine = 0;
-      LOGGER.debug("Writing " + url);
     }
 
     private void close() {
@@ -475,6 +490,9 @@ public class JsonConnector implements Connector {
           writer.close();
           LOGGER.debug("Done writing {}", url);
           writer = null;
+        } catch (ClosedChannelException e) {
+          // OK, happens when the channel was closed due to interruption
+          LOGGER.warn(String.format("Could not close %s: %s", url, e.getMessage()), e);
         } catch (IOException e) {
           throw new UncheckedIOException(
               String.format("Error closing %s: %s", url, e.getMessage()), e);

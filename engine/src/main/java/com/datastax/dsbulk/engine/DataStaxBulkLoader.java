@@ -24,7 +24,6 @@ import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.URL;
-import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -187,10 +186,6 @@ public class DataStaxBulkLoader {
           System.err.flush();
           workflow.close();
         } catch (Exception e) {
-          Throwable cause = Throwables.getRootCause(e);
-          if (!(cause instanceof ClosedChannelException)) {
-            status = STATUS_CRASHED;
-          }
           LOGGER.error(String.format("%s could not be closed.", workflow), e);
         }
       }
@@ -233,10 +228,6 @@ public class DataStaxBulkLoader {
         System.err.flush();
         workflow.close();
       } catch (Exception e) {
-        Throwable cause = Throwables.getRootCause(e);
-        if (!(cause instanceof ClosedChannelException)) {
-          workflowThread.status = STATUS_CRASHED;
-        }
         LOGGER.error(String.format("%s could not be closed.", workflow), e);
       }
     }
