@@ -78,7 +78,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   private final AtomicLong requested = new AtomicLong(0);
 
   /** The pages received so far, with a maximum of MAX_ENQUEUED_PAGES elements. */
-  private final Queue<Page> pages = new SpscArrayQueue<>(MAX_ENQUEUED_PAGES);
+  final Queue<Page> pages = new SpscArrayQueue<>(MAX_ENQUEUED_PAGES);
 
   /**
    * The last page in the queue (i.e., the queue's tail element). We keep a reference to it to avoid
@@ -284,8 +284,8 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   private R tryNext() {
     Page current = pages.peek();
     if (current != null) {
-      if (current.hasNext()) {
-        return current.next();
+      if (current.hasMoreRows()) {
+        return current.nextRow();
       } else if (current.hasMorePages()) {
         // Discard current page as it is consumed.
         // Don't discard the last page though as we need it
@@ -295,8 +295,8 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
         // if the next page is readily available,
         // serve its first row now, no need to wait
         // for the next drain.
-        if (current != null && current.hasNext()) {
-          return current.next();
+        if (current != null && current.hasMoreRows()) {
+          return current.nextRow();
         }
       }
     }
@@ -319,14 +319,14 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     // 1) we are waiting for the first page and it hasn't arrived yet;
     // 2) we just finished the current page, but the next page hasn't arrived yet.
     // In any case, a null here means it is not the last page.
-    return current != null && !current.hasNext() && !current.hasMorePages();
+    return current != null && !current.hasMoreRows() && !current.hasMorePages();
   }
 
   /**
    * Runs on a subscriber thread initially, see {@link #start(Callable)}. Subsequent executions run
-   * on the thread that completes the pair of futures [fetchNext, notFull] and enqueues. This can be
-   * a driver IO thread or a subscriber thread; in both cases, cannot run concurrently due to the
-   * fact that one can only fetch the next page when the current one is arrived and enqueued.
+   * on the thread that completes the pair of futures [nextPage, fullyConsumed] and enqueues. This
+   * can be a driver IO thread or a subscriber thread; in both cases, cannot run concurrently due to
+   * the fact that one can only fetch the next page when the current one is arrived and enqueued.
    */
   private void fetchNextPage(Page current) {
     // A local execution context to record metrics for this specific request-response cycle.
@@ -336,7 +336,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     local.start();
     onRequestStarted(local);
     current
-        .fetchNext()
+        .nextPage()
         // as soon as the response arrives, notify our listener and
         // update requestPermits.
         .whenComplete(
@@ -509,10 +509,8 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
 
   /** Converts the given error into a {@link Page}, containing the error as its only element. */
   Page toErrorPage(Throwable t) {
-    Page page;
     BulkExecutionException error = new BulkExecutionException(t, statement);
-    page = new Page(Collections.singleton(toErrorResult(error)).iterator(), null);
-    return page;
+    return new Page(Collections.singleton(toErrorResult(error)).iterator(), null);
   }
 
   /**
@@ -532,30 +530,30 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    */
   class Page {
 
-    final Iterator<R> iterator;
-    final Callable<ListenableFuture<P>> next;
+    final Iterator<R> rows;
+    final Callable<ListenableFuture<P>> nextPage;
     final CompletableFuture<Void> fullyConsumed;
 
     /** called only from start() */
-    private Page(Callable<ListenableFuture<P>> next) {
-      this.next = next;
-      this.iterator = Collections.emptyIterator();
+    private Page(Callable<ListenableFuture<P>> nextPage) {
+      this.nextPage = nextPage;
+      this.rows = Collections.emptyIterator();
       fullyConsumed = initial;
     }
 
-    Page(Iterator<R> iterator, Callable<ListenableFuture<P>> next) {
-      this.next = next;
-      this.iterator = iterator;
+    Page(Iterator<R> rows, Callable<ListenableFuture<P>> nextPage) {
+      this.nextPage = nextPage;
+      this.rows = rows;
       fullyConsumed = new CompletableFuture<>();
     }
 
     boolean hasMorePages() {
-      return next != null;
+      return nextPage != null;
     }
 
-    CompletionStage<P> fetchNext() {
+    CompletionStage<P> nextPage() {
       try {
-        return toCompletableFuture(next.call());
+        return toCompletableFuture(nextPage.call());
       } catch (Exception e) {
         // This is a synchronous failure in the driver.
         // We treat it as a failed future.
@@ -565,12 +563,12 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
       }
     }
 
-    R next() {
-      return iterator.next();
+    boolean hasMoreRows() {
+      return rows.hasNext();
     }
 
-    boolean hasNext() {
-      return iterator.hasNext();
+    R nextRow() {
+      return rows.next();
     }
   }
 

@@ -55,7 +55,17 @@ public class ContinuousReadResultSubscription
             return new DefaultReadResult(statement, rs.getExecutionInfo(), row);
           }
         };
-    return new Page(results, rs.isLast() ? null : rs::nextPage);
+    return new ContinuousPage(rs, results);
+  }
+
+  @Override
+  public void cancel() {
+    Page current = pages.peek();
+    if (current != null && current instanceof ContinuousPage) {
+      // forcibly cancel the continuous paging request
+      ((ContinuousPage) current).rs.cancel();
+    }
+    super.cancel();
   }
 
   @Override
@@ -76,5 +86,15 @@ public class ContinuousReadResultSubscription
   @Override
   protected ReadResult toErrorResult(BulkExecutionException error) {
     return new DefaultReadResult(error);
+  }
+
+  private class ContinuousPage extends Page {
+
+    final AsyncContinuousPagingResult rs;
+
+    private ContinuousPage(AsyncContinuousPagingResult rs, Iterator<ReadResult> rows) {
+      super(rows, rs.isLast() ? null : rs::nextPage);
+      this.rs = rs;
+    }
   }
 }
