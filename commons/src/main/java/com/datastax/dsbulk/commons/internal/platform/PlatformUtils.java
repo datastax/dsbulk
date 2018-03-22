@@ -20,4 +20,14 @@ public class PlatformUtils {
     String osName = System.getProperty("os.name");
     return osName != null && osName.startsWith("Windows");
   }
+
+  /**
+   * Checks if the current terminal is an ANSI-compatible terminal.
+   *
+   * @return <code>true</code> if the terminal is ANSI-compatible, <code>false</code> otherwise.
+   */
+  public static boolean isAnsi() {
+    String term = System.getenv("TERM");
+    return term != null && term.toLowerCase().contains("xterm");
+  }
 }

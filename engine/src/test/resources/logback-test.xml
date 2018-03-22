@@ -13,7 +13,7 @@
   <!-- for testing purposes, this file should contain exactly the same appenders
   as the production configuration file "logback.xml" -->
 
-  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+  <appender name="STDOUT" class="com.datastax.dsbulk.engine.internal.log.AnsiConsoleAppender">
     <target>System.out</target>
     <filter class="com.datastax.dsbulk.engine.internal.log.StandardOutFilter"/>
     <encoder>
@@ -22,7 +22,7 @@
     </encoder>
   </appender>
 
-  <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+  <appender name="STDERR" class="com.datastax.dsbulk.engine.internal.log.AnsiConsoleAppender">
     <target>System.err</target>
     <filter class="com.datastax.dsbulk.engine.internal.log.StandardErrorFilter"/>
     <encoder>
