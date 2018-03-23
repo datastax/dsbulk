@@ -9,9 +9,9 @@
 package com.datastax.dsbulk.engine.internal.log;
 
 import ch.qos.logback.core.OutputStreamAppender;
-import com.datastax.dsbulk.commons.url.UncloseablePrintStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import org.fusesource.jansi.AnsiConsole;
 
 /**
@@ -43,12 +43,10 @@ public class JansiConsoleAppender<E> extends OutputStreamAppender<E> {
   public void start() {
     switch (target) {
       case STDOUT:
-        setOutputStream(
-            AnsiConsole.wrapSystemOut(new UncloseablePrintStream(new SystemOutOutputStream())));
+        setOutputStream(AnsiConsole.wrapSystemOut(new PrintStream(new SystemOutOutputStream())));
         break;
       case STDERR:
-        setOutputStream(
-            AnsiConsole.wrapSystemErr(new UncloseablePrintStream(new SystemErrOutputStream())));
+        setOutputStream(AnsiConsole.wrapSystemErr(new PrintStream(new SystemErrOutputStream())));
         break;
     }
     super.start();

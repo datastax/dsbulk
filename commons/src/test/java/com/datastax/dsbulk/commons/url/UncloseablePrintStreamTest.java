@@ -15,12 +15,12 @@ import static org.mockito.Mockito.verify;
 import java.io.ByteArrayOutputStream;
 import org.junit.jupiter.api.Test;
 
-class UncloseablePrintStreamTest {
+class UncloseableOutputStreamTest {
 
   @Test
   void should_not_close_output_stream() throws Exception {
     ByteArrayOutputStream delegate = spy(new ByteArrayOutputStream());
-    UncloseablePrintStream is = new UncloseablePrintStream(delegate);
+    UncloseableOutputStream is = new UncloseableOutputStream(delegate);
     is.close();
     verify(delegate, never()).close();
   }

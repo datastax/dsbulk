@@ -67,7 +67,7 @@ public class LoaderURLStreamHandlerFactory implements URLStreamHandlerFactory {
 
     @Override
     public OutputStream getOutputStream() {
-      return new BufferedOutputStream(new UncloseablePrintStream(System.out));
+      return new BufferedOutputStream(new UncloseableOutputStream(System.out));
     }
   }
 }
