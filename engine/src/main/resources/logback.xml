@@ -20,8 +20,8 @@
   
   <property scope="context" name="com.datastax.dsbulk.PRODUCTION" value="true"/>
 
-  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-    <target>System.out</target>
+  <appender name="STDOUT" class="com.datastax.dsbulk.engine.internal.log.JansiConsoleAppender">
+    <target>STDOUT</target>
     <filter class="com.datastax.dsbulk.engine.internal.log.StandardOutFilter"/>
     <encoder>
       <pattern>%nopex%green(%date{yyyy-MM-dd,UTC}) %cyan(%date{HH:mm:ss,UTC}) %highlight(%-5level) %msg%n</pattern>
@@ -29,8 +29,8 @@
     </encoder>
   </appender>
 
-  <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
-    <target>System.err</target>
+  <appender name="STDERR" class="com.datastax.dsbulk.engine.internal.log.JansiConsoleAppender">
+    <target>STDERR</target>
     <filter class="com.datastax.dsbulk.engine.internal.log.StandardErrorFilter"/>
     <encoder>
       <pattern>%nopex%boldRed(%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg) %n</pattern>

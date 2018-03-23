@@ -83,7 +83,7 @@ public class LoadWorkflow implements Workflow {
     logSettings.init(false);
     ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
     connectorSettings.init();
-    settingsManager.logEffectiveSettings(
+    logSettings.logEffectiveSettings(
         connectorSettings.getConnectorName(), connectorSettings.getConnectorConfig());
     DriverSettings driverSettings = settingsManager.getDriverSettings();
     SchemaSettings schemaSettings = settingsManager.getSchemaSettings();

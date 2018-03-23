@@ -1,5 +1,11 @@
 ## Changelog
 
+
+### 1.0.2 (in progress)
+
+- [improvement] DAT-249: Don't use ANSI color codes on non-ANSI terminals.
+
+
 ### 1.0.1
 
 - [improvement] DAT-240: Detect console width on Windows.

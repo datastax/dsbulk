@@ -408,6 +408,12 @@
         <version>1.4.22.Final</version>
       </dependency>
 
+      <dependency>
+        <groupId>org.fusesource.jansi</groupId>
+        <artifactId>jansi</artifactId>
+        <version>1.17</version>
+      </dependency>
+
     </dependencies>
 
   </dependencyManagement>

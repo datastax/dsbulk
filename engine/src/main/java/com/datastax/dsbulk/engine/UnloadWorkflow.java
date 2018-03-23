@@ -89,7 +89,7 @@ public class UnloadWorkflow implements Workflow {
     connector.init();
     // No logs should be produced until the following statement returns
     logSettings.init(connector.isWriteToStandardOutput());
-    settingsManager.logEffectiveSettings(
+    logSettings.logEffectiveSettings(
         connectorSettings.getConnectorName(), connectorSettings.getConnectorConfig());
     codecSettings.init();
     schemaSettings.init(codecSettings.getTimestampCodec());
