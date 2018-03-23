@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.commons.url;
 
 import java.io.FilterInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -26,7 +25,7 @@ public class UncloseableInputStream extends FilterInputStream {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     // do not forward the call to the delegate InputStream
   }
 }

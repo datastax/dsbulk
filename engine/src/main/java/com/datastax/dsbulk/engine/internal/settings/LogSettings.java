@@ -20,17 +20,26 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.datastax.dsbulk.engine.internal.log.JansiConsoleAppender;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigRenderOptions;
+import com.typesafe.config.ConfigValue;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -38,9 +47,14 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 public class LogSettings {
 
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
-  public static final String MAIN_LOG_FILE_APPENDER = "MAIN_LOG_FILE_APPENDER";
   public static final String PRODUCTION_KEY = "com.datastax.dsbulk.PRODUCTION";
-  public static final String MAIN_LOG_FILE_NAME = "operation.log";
+  static final String MAIN_LOG_FILE_APPENDER = "MAIN_LOG_FILE_APPENDER";
+  private static final String EFFECTIVE_SETTINGS_LOGGER =
+      "com.datastax.dsbulk.engine.internal.settings.EFFECTIVE_SETTINGS";
+  private static final String MAIN_LOG_FILE_NAME = "operation.log";
+  private static final String STDOUT_APPENDER = "STDOUT";
+  private static final String STDERR_APPENDER = "STDERR";
+  private static final String DISABLE_ANSI = "jansi.strip";
 
   /** The options for stack trace printing. */
   public static final ImmutableList<String> STACK_TRACE_PRINTER_OPTIONS =
@@ -80,6 +94,7 @@ public class LogSettings {
   private static final String MAX_INNER_STATEMENTS = STMT + DELIMITER + "maxInnerStatements";
   private static final String LEVEL = STMT + DELIMITER + "level";
   private static final String MAX_ERRORS = "maxErrors";
+  private static final String ANSI_ENABLED = "ansiEnabled";
 
   private final LoaderConfig config;
   private final String executionId;
@@ -118,6 +133,9 @@ public class LogSettings {
         maxErrors = config.getInt(MAX_ERRORS);
         maxErrorsRatio = 0;
       }
+      if (!config.getBoolean(ANSI_ENABLED)) {
+        disableAnsi();
+      }
       if (writeToStandardOutput) {
         redirectStandardOutputToStandardError();
       }
@@ -128,6 +146,44 @@ public class LogSettings {
       installJavaLoggingToSLF4JBridge();
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "log");
+    }
+  }
+
+  public void logEffectiveSettings(String connectorName, Config connectorConfig) {
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info(HelpUtils.getVersionMessage() + " starting.");
+      ch.qos.logback.classic.Logger root =
+          (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+      LoggerContext lc = root.getLoggerContext();
+      String production = lc.getProperty(PRODUCTION_KEY);
+      if (production != null && production.equalsIgnoreCase("true")) {
+        ch.qos.logback.classic.Logger effectiveSettingsLogger =
+            (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(EFFECTIVE_SETTINGS_LOGGER);
+        effectiveSettingsLogger.setAdditive(false);
+        effectiveSettingsLogger.addAppender(root.getAppender(MAIN_LOG_FILE_APPENDER));
+        effectiveSettingsLogger.info("Effective settings:");
+        Set<Map.Entry<String, ConfigValue>> entries =
+            new TreeSet<>(Comparator.comparing(Map.Entry::getKey));
+        entries.addAll(
+            config
+                .withoutPath("metaSettings")
+                // limit connector configuration to the selected connector
+                .withoutPath("connector")
+                .withFallback(connectorConfig.atPath("connector." + connectorName))
+                .entrySet());
+        for (Map.Entry<String, ConfigValue> entry : entries) {
+          // Skip all settings that have a `metaSettings` path element.
+          if (entry.getKey().contains(".metaSettings.")) {
+            continue;
+          }
+          effectiveSettingsLogger.info(
+              String.format(
+                  "%s = %s",
+                  entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
+        }
+      }
+      LOGGER.info("Available CPU cores: {}.", Runtime.getRuntime().availableProcessors());
+      LOGGER.info("Operation output directory: {}.", executionDirectory);
     }
   }
 
@@ -145,10 +201,6 @@ public class LogSettings {
 
   public FileAppender<ILoggingEvent> getMainLogFileAppender() {
     return mainLogFileAppender;
-  }
-
-  Path getExecutionDirectory() {
-    return executionDirectory;
   }
 
   private void checkExecutionDirectory() throws IOException {
@@ -174,14 +226,26 @@ public class LogSettings {
     }
   }
 
-  private void redirectStandardOutputToStandardError() {
+  private static void disableAnsi() {
+    System.setProperty(DISABLE_ANSI, "true");
+    ch.qos.logback.classic.Logger root =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    JansiConsoleAppender<?> stdout = (JansiConsoleAppender<?>) root.getAppender(STDOUT_APPENDER);
+    stdout.stop();
+    stdout.start();
+    JansiConsoleAppender<?> stderr = (JansiConsoleAppender<?>) root.getAppender(STDERR_APPENDER);
+    stderr.stop();
+    stderr.start();
+  }
+
+  private static void redirectStandardOutputToStandardError() {
     ch.qos.logback.classic.Logger root =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
     LoggerContext lc = root.getLoggerContext();
     String production = lc.getProperty(PRODUCTION_KEY);
     if (production != null && production.equalsIgnoreCase("true")) {
-      root.detachAppender("STDOUT");
-      Appender<ILoggingEvent> stderr = root.getAppender("STDERR");
+      root.detachAppender(STDOUT_APPENDER);
+      Appender<ILoggingEvent> stderr = root.getAppender(STDERR_APPENDER);
       stderr.clearAllFilters();
     }
     LOGGER.info("Standard output is reserved, log messages are redirected to standard error.");
@@ -216,6 +280,11 @@ public class LogSettings {
     return mainLogFileAppender;
   }
 
+  private static void installJavaLoggingToSLF4JBridge() {
+    SLF4JBridgeHandler.removeHandlersForRootLogger();
+    SLF4JBridgeHandler.install();
+  }
+
   private static boolean isPercent(String maxErrors) {
     return maxErrors.contains("%");
   }
@@ -225,10 +294,5 @@ public class LogSettings {
       throw new BulkConfigurationException(
           "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
     }
-  }
-
-  private static void installJavaLoggingToSLF4JBridge() {
-    SLF4JBridgeHandler.removeHandlersForRootLogger();
-    SLF4JBridgeHandler.install();
   }
 }

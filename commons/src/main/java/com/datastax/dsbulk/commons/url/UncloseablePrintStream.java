@@ -8,9 +8,8 @@
  */
 package com.datastax.dsbulk.commons.url;
 
-import java.io.FilterOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintStream;
 
 /**
  * An output stream that cannot be closed.
@@ -19,14 +18,14 @@ import java.io.OutputStream;
  * and therefore should not be closed accidentally by one of them.
  */
 @SuppressWarnings("WeakerAccess")
-public class UncloseableOutputStream extends FilterOutputStream {
+public class UncloseablePrintStream extends PrintStream {
 
-  public UncloseableOutputStream(OutputStream out) {
+  public UncloseablePrintStream(OutputStream out) {
     super(out);
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     // do not forward the call to the delegate OutputStream
   }
 }

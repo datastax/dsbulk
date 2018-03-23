@@ -8,21 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.engine.internal.settings.LogSettings.MAIN_LOG_FILE_APPENDER;
-import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
-
-import ch.qos.logback.classic.LoggerContext;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
-import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigRenderOptions;
-import com.typesafe.config.ConfigValue;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,46 +59,6 @@ public class SettingsManager {
 
   public String getExecutionId() {
     return executionId;
-  }
-
-  public void logEffectiveSettings(String connectorName, Config connectorConfig) {
-    if (LOGGER.isInfoEnabled()) {
-      LOGGER.info(HelpUtils.getVersionMessage() + " starting.");
-      ch.qos.logback.classic.Logger root =
-          (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-      LoggerContext lc = root.getLoggerContext();
-      String production = lc.getProperty(PRODUCTION_KEY);
-      if (production != null && production.equalsIgnoreCase("true")) {
-        ch.qos.logback.classic.Logger effectiveSettingsLogger =
-            (ch.qos.logback.classic.Logger)
-                LoggerFactory.getLogger(
-                    "com.datastax.dsbulk.engine.internal.settings.EFFECTIVE_SETTINGS");
-        effectiveSettingsLogger.setAdditive(false);
-        effectiveSettingsLogger.addAppender(root.getAppender(MAIN_LOG_FILE_APPENDER));
-        effectiveSettingsLogger.info("Effective settings:");
-        Set<Map.Entry<String, ConfigValue>> entries =
-            new TreeSet<>(Comparator.comparing(Map.Entry::getKey));
-        entries.addAll(
-            config
-                .withoutPath("metaSettings")
-                // limit connector configuration to the selected connector
-                .withoutPath("connector")
-                .withFallback(connectorConfig.atPath("connector." + connectorName))
-                .entrySet());
-        for (Map.Entry<String, ConfigValue> entry : entries) {
-          // Skip all settings that have a `metaSettings` path element.
-          if (entry.getKey().contains(".metaSettings.")) {
-            continue;
-          }
-          effectiveSettingsLogger.info(
-              String.format(
-                  "%s = %s",
-                  entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
-        }
-      }
-      LOGGER.info("Available CPU cores: {}.", Runtime.getRuntime().availableProcessors());
-      LOGGER.info("Operation output directory: {}.", logSettings.getExecutionDirectory());
-    }
   }
 
   public DriverSettings getDriverSettings() {

@@ -1244,6 +1244,19 @@ The writable directory where all log files will be stored; if the directory spec
 
 Default: **"./logs"**.
 
+#### --log.ansiEnabled _&lt;boolean&gt;_
+
+Whether or not to use ANSI colors and other escape sequences in log messages printed to standard output and standard error.
+
+By defaul, DSBulk will use colored output when:
+
+- The terminal is compatible with ANSI escape sequences; all common terminals on Nix and BSD systems, including MacOS, are ANSI-compatible, as well as some popular terminals for Windows, such as Mintty (Cygwin) and MinGW.
+- The terminal is the standard Windows DOS command prompt (in which case, ANSI sequences are translated on the fly).
+
+There should be no reason to disable ANSI escape sequences, but if, for some reason, colored messages are undesired or are not printed correctly, this option allows to disable ANSI support altogether.
+
+Default: **true**.
+
 #### --log.stmt.level _&lt;string&gt;_
 
 The desired log level. Valid values are:
