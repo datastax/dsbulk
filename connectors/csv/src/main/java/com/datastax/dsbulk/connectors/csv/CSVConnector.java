@@ -335,8 +335,9 @@ public class CSVConnector implements Connector {
                 LOGGER.debug("Done reading {}", url);
                 sink.complete();
               } catch (Exception e) {
-                LOGGER.error(String.format("Error reading from %s: %s", url, e.getMessage()), e);
-                sink.error(e);
+                sink.error(
+                    new IOException(
+                        String.format("Error reading from %s: %s", url, e.getMessage()), e));
               }
             },
             FluxSink.OverflowStrategy.ERROR);
