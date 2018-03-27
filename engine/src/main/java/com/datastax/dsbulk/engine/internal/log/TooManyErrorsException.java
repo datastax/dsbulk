@@ -18,13 +18,13 @@ public class TooManyErrorsException extends RuntimeException {
   private final float maxErrorRatio;
 
   TooManyErrorsException(int maxErrors) {
-    super("Too many errors, the maximum allowed is " + maxErrors);
+    super("Too many errors, the maximum allowed is " + maxErrors + ".");
     this.maxErrors = maxErrors;
     maxErrorRatio = -1;
   }
 
   TooManyErrorsException(float maxErrorRatio) {
-    super("Too many errors, the maximum percentage allowed is " + (maxErrorRatio * 100f) + "%");
+    super("Too many errors, the maximum percentage allowed is " + (maxErrorRatio * 100f) + "%.");
     this.maxErrorRatio = maxErrorRatio;
     maxErrors = -1;
   }

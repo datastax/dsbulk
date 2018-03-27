@@ -176,7 +176,7 @@ class LogManagerTest {
       stmts.transform(logManager.newFailedStatementsHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
@@ -218,7 +218,7 @@ class LogManagerTest {
       records.transform(logManager.newFailedRecordsHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
@@ -252,7 +252,7 @@ class LogManagerTest {
       stmts.transform(logManager.newFailedWritesHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
@@ -352,7 +352,7 @@ class LogManagerTest {
       stmts.transform(logManager.newFailedWritesHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 1");
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 1.");
       assertThat(e.getMaxErrors()).isEqualTo(1);
     }
     logManager.close();
@@ -403,7 +403,7 @@ class LogManagerTest {
       stmts.transform(logManager.newFailedReadsHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2");
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
@@ -474,7 +474,7 @@ class LogManagerTest {
           .blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum percentage allowed is 1.0%");
+      assertThat(e).hasMessage("Too many errors, the maximum percentage allowed is 1.0%.");
       assertThat(e.getMaxErrorRatio()).isEqualTo(0.01f);
     }
     logManager.close();
