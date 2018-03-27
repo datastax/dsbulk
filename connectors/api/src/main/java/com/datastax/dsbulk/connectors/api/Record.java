@@ -38,11 +38,17 @@ public interface Record {
   URI getResource();
 
   /**
-   * Returns the record's position inside its {@link #getResource() resource}, typically the line
-   * number if the resource is a file, or the row number, if the resource is a database table.
+   * Returns the record's position inside its {@linkplain #getResource() resource}, typically the
+   * line number if the resource is a file, or the row number, if the resource is a database table.
    *
-   * <p>Positions should be 1-based. If the position cannot be determined, this method should return
-   * -1.
+   * <p>Note that in the case of a file, the record's position is not necessarily equal to the line
+   * number where it appears. First, if there is one or more header lines, the actual line number
+   * would be its position + the number of header lines. Moreover, it the resource contains
+   * multi-line records, then it is not possible to draw a direct relationship between the record's
+   * position and its line.
+   *
+   * <p>Positions should be 1-based, i.e., the first record in the resource has position 1, and so
+   * on. If the position cannot be determined, this method should return -1.
    *
    * @return the record's position, or -1 if the position cannot be determined.
    */
@@ -56,8 +62,8 @@ public interface Record {
    * could not be written to the database.
    *
    * <p>Details about the returned URI, and in particular its scheme, are implementation-specific.
-   * Usually, the record's location URI is derived from its {@link #getResource() resource URI} and
-   * its {@link #getPosition() position}, but that is not a hard requirement.
+   * Usually, the record's location URI is derived from its {@linkplain #getResource() resource URI}
+   * and its {@linkplain #getPosition() position}, but that is not a hard requirement.
    *
    * @return The record location.
    */
