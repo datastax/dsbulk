@@ -89,7 +89,7 @@ public class ConfigUtils {
         throw new InvalidPathException(path, "Cannot resolve home directory", 1);
       }
     }
-    return Paths.get(path).normalize().toAbsolutePath();
+    return Paths.get(path).toAbsolutePath().normalize();
   }
 
   /**
