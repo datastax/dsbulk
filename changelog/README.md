@@ -4,6 +4,7 @@
 ### 1.0.2 (in progress)
 
 - [improvement] DAT-249: Don't use ANSI color codes on non-ANSI terminals.
+- [improvement] DAT-251: Update DriverSettings with new TokenAwarePolicy.
 
 
 ### 1.0.1

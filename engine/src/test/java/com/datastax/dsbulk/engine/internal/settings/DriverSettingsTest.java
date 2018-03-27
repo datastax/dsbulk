@@ -404,7 +404,7 @@ class DriverSettingsTest {
                         + "    }, "
                         + "    tokenAware {"
                         + "      childPolicy = dcAwareRoundRobin,"
-                        + "      shuffleReplicas = false,"
+                        + "      replicaOrdering = NEUTRAL,"
                         + "    }, "
                         + "    whiteList {"
                         + "      childPolicy = tokenAware,"
@@ -439,7 +439,8 @@ class DriverSettingsTest {
     // The whitelist policy chains to a token-aware policy.
     assertThat(whiteListPolicy.getChildPolicy()).isInstanceOf(TokenAwarePolicy.class);
     TokenAwarePolicy tokenAwarePolicy = (TokenAwarePolicy) whiteListPolicy.getChildPolicy();
-    assertThat(getInternalState(tokenAwarePolicy, "shuffleReplicas")).isEqualTo(false);
+    assertThat(getInternalState(tokenAwarePolicy, "replicaOrdering"))
+        .isEqualTo(TokenAwarePolicy.ReplicaOrdering.NEUTRAL);
 
     // ...which chains to a DCAwareRoundRobinPolicy
     assertThat(tokenAwarePolicy.getChildPolicy()).isInstanceOf(DCAwareRoundRobinPolicy.class);

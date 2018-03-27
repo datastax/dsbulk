@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.slf4j.event.Level.ERROR;
 
+import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -642,8 +643,8 @@ class DataStaxBulkLoaderTest {
               "28",
               "--driver.policy.lbp.tokenAware.childPolicy",
               "tokenAwareChild",
-              "--driver.policy.lbp.tokenAware.shuffleReplicas",
-              "false",
+              "--driver.policy.lbp.tokenAware.replicaOrdering",
+              "NEUTRAL",
               "--driver.policy.lbp.whiteList.childPolicy",
               "whiteListChild",
               "--driver.policy.lbp.whiteList.hosts",
@@ -775,7 +776,11 @@ class DataStaxBulkLoaderTest {
         .isEqualTo(28);
     assertThat(result.getString("driver.policy.lbp.tokenAware.childPolicy"))
         .isEqualTo("tokenAwareChild");
-    assertThat(result.getBoolean("driver.policy.lbp.tokenAware.shuffleReplicas")).isFalse();
+    assertThat(
+            result.getEnum(
+                TokenAwarePolicy.ReplicaOrdering.class,
+                "driver.policy.lbp.tokenAware.replicaOrdering"))
+        .isEqualTo(TokenAwarePolicy.ReplicaOrdering.NEUTRAL);
     assertThat(result.getString("driver.policy.lbp.whiteList.childPolicy"))
         .isEqualTo("whiteListChild");
     assertThat(result.getStringList("driver.policy.lbp.whiteList.hosts"))
