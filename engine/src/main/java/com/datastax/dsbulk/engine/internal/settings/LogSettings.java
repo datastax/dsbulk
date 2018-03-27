@@ -149,7 +149,7 @@ public class LogSettings {
     }
   }
 
-  public void logEffectiveSettings(String connectorName, Config connectorConfig) {
+  public void logEffectiveSettings(Config global) {
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(HelpUtils.getVersionMessage() + " starting.");
       ch.qos.logback.classic.Logger root =
@@ -164,13 +164,7 @@ public class LogSettings {
         effectiveSettingsLogger.info("Effective settings:");
         Set<Map.Entry<String, ConfigValue>> entries =
             new TreeSet<>(Comparator.comparing(Map.Entry::getKey));
-        entries.addAll(
-            config
-                .withoutPath("metaSettings")
-                // limit connector configuration to the selected connector
-                .withoutPath("connector")
-                .withFallback(connectorConfig.atPath("connector." + connectorName))
-                .entrySet());
+        entries.addAll(global.entrySet());
         for (Map.Entry<String, ConfigValue> entry : entries) {
           // Skip all settings that have a `metaSettings` path element.
           if (entry.getKey().contains(".metaSettings.")) {

@@ -96,4 +96,16 @@ public class SettingsManager {
   public EngineSettings getEngineSettings() {
     return engineSettings;
   }
+
+  public LoaderConfig getGlobalConfig() {
+    // must be called after connector settings initialized
+    return config
+        .withoutPath("metaSettings")
+        // limit connector configuration to the selected connector
+        .withoutPath("connector")
+        .withFallback(
+            connectorSettings
+                .getConnectorConfig()
+                .atPath("connector." + connectorSettings.getConnectorName()));
+  }
 }
