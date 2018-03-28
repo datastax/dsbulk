@@ -9,9 +9,13 @@ init:
 install:
   - ps: .\appveyor.ps1
 build_script:
-  - mvn install -DskipTests=true -B -V -Ddriver.version=1.5.0
+  - git clone --branch 1.6.5 --depth 1 https://github.com/riptano/java-dse-driver.git
+  - cd java-dse-driver
+  - mvn install -DskipTests=true -B -V
+  - cd ..
+  - mvn install -DskipTests=true -B -V
 test_script:
-  - mvn verify -B -Ddriver.version=1.5.0
+  - mvn verify -B
 on_finish:
   - ps: .\uploadtests.ps1
 cache:
