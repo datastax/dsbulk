@@ -9,9 +9,9 @@ init:
 install:
   - ps: .\appveyor.ps1
 build_script:
-  - wget https://datastax.jfrog.io/datastax/datastax-releases-local/com/datastax/dse/dse-java-driver-core/1.6.5/dse-java-driver-core-1.6.5.jar
-  - wget https://datastax.jfrog.io/datastax/datastax-releases-local/com/datastax/dse/dse-java-driver-core/1.6.5/dse-java-driver-core-1.6.5.pom
-  - mvn install:install-file -Dfile=dse-java-driver-core-1.6.5.jar -DpomFile=dse-java-driver-core-1.6.5.pom
+  - iwr -outf driver.jar https://datastax.jfrog.io/datastax/datastax-releases-local/com/datastax/dse/dse-java-driver-core/1.6.5/dse-java-driver-core-1.6.5.jar
+  - iwr -outf driver.pom https://datastax.jfrog.io/datastax/datastax-releases-local/com/datastax/dse/dse-java-driver-core/1.6.5/dse-java-driver-core-1.6.5.pom
+  - mvn install:install-file -Dfile=driver.jar -DpomFile=driverx  .pom
   - mvn install -DskipTests=true -B -V
 test_script:
   - mvn verify -B
