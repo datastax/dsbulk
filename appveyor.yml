@@ -9,7 +9,7 @@ init:
 install:
   - ps: .\appveyor.ps1
 build_script:
-  - git clone --branch 1.6.5 --depth 1 https://github.com/riptano/java-dse-driver.git
+  - git clone --branch 1.6.5 --depth 1 git@github.com:riptano/java-dse-driver.git
   - cd java-dse-driver
   - mvn install -DskipTests=true -B -V
   - cd ..
