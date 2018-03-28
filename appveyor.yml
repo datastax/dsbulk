@@ -9,9 +9,6 @@ init:
 install:
   - ps: .\appveyor.ps1
 build_script:
-  - (new-object System.Net.WebClient).DownloadFile('https://datastax.jfrog.io/datastax/datastax-releases-local/com/datastax/dse/dse-java-driver-core/1.6.5/dse-java-driver-core-1.6.5.jar','driver.jar')
-  - (new-object System.Net.WebClient).DownloadFile('https://datastax.jfrog.io/datastax/datastax-releases-local/com/datastax/dse/dse-java-driver-core/1.6.5/dse-java-driver-core-1.6.5.pom','driver.pom')
-  - mvn install:install-file -Dfile=driver.jar -DpomFile=driver.pom
   - mvn install -DskipTests=true -B -V
 test_script:
   - mvn verify -B
