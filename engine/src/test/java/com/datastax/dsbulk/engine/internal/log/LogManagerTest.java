@@ -53,8 +53,6 @@ import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 class LogManagerTest {
 
@@ -96,8 +94,6 @@ class LogManagerTest {
           .withMaxBoundValues(10)
           .withMaxInnerStatements(10)
           .build();
-
-  private final Scheduler scheduler = Schedulers.immediate();
 
   @BeforeEach
   void setUp() throws Exception {
@@ -169,7 +165,7 @@ class LogManagerTest {
   void should_stop_when_max_record_mapping_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 2, 0, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, 2, 0, formatter, EXTENDED);
     logManager.init();
     Flux<Statement> stmts = Flux.just(stmt1, stmt2, stmt3);
     try {
@@ -211,7 +207,7 @@ class LogManagerTest {
   void should_stop_when_max_result_mapping_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 2, 0, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, 2, 0, formatter, EXTENDED);
     logManager.init();
     Flux<Record> records = Flux.just(record1, record2, record3);
     try {
@@ -245,7 +241,7 @@ class LogManagerTest {
   void should_stop_when_max_write_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 2, 0, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, 2, 0, formatter, EXTENDED);
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(writeResult1, writeResult2, writeResult3);
     try {
@@ -298,7 +294,7 @@ class LogManagerTest {
   void should_not_stop_before_sample_size_is_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 0, 2, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, 0, 2, formatter, EXTENDED);
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(writeResult1, writeResult2, writeResult3);
     stmts.transform(logManager.newFailedWritesHandler()).blockLast();
@@ -345,7 +341,7 @@ class LogManagerTest {
   void should_stop_when_max_write_errors_reached_and_statements_batched() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 1, 0, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, 1, 0, formatter, EXTENDED);
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(batchWriteResult);
     try {
@@ -395,8 +391,7 @@ class LogManagerTest {
   void should_stop_when_max_read_errors_reached() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(
-            WorkflowType.UNLOAD, cluster, scheduler, outputDir, 2, 0, formatter, EXTENDED);
+        new LogManager(WorkflowType.UNLOAD, cluster, outputDir, 2, 0, formatter, EXTENDED);
     logManager.init();
     Flux<ReadResult> stmts = Flux.just(readResult1, readResult2, readResult3);
     try {
@@ -430,8 +425,7 @@ class LogManagerTest {
   void should_not_stop_when_sample_size_is_not_met() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(
-            WorkflowType.UNLOAD, cluster, scheduler, outputDir, 0, 0.01f, formatter, EXTENDED);
+        new LogManager(WorkflowType.UNLOAD, cluster, outputDir, 0, 0.01f, formatter, EXTENDED);
     logManager.init();
     Flux<ReadResult> stmts = Flux.just(readResult1, readResult2, readResult3);
     stmts
@@ -462,8 +456,7 @@ class LogManagerTest {
   void should_stop_when_sample_size_is_met_and_percentage_exceeded() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(
-            WorkflowType.UNLOAD, cluster, scheduler, outputDir, 0, 0.01f, formatter, EXTENDED);
+        new LogManager(WorkflowType.UNLOAD, cluster, outputDir, 0, 0.01f, formatter, EXTENDED);
     logManager.init();
     Flux<ReadResult> stmts = Flux.just(readResult1);
     try {
@@ -491,8 +484,7 @@ class LogManagerTest {
   void should_stop_when_unrecoverable_error_writing() throws Exception {
     Path outputDir = Files.createTempDirectory("test4");
     LogManager logManager =
-        new LogManager(
-            WorkflowType.LOAD, cluster, scheduler, outputDir, 1000, 0, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, 1000, 0, formatter, EXTENDED);
     logManager.init();
     DefaultWriteResult result =
         new DefaultWriteResult(
@@ -534,8 +526,7 @@ class LogManagerTest {
   void should_stop_when_unrecoverable_error_reading() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(
-            WorkflowType.UNLOAD, cluster, scheduler, outputDir, 2, 0, formatter, EXTENDED);
+        new LogManager(WorkflowType.UNLOAD, cluster, outputDir, 2, 0, formatter, EXTENDED);
     logManager.init();
     DefaultReadResult result =
         new DefaultReadResult(
@@ -568,7 +559,7 @@ class LogManagerTest {
   void should_record_positions() throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
-        new LogManager(WorkflowType.LOAD, cluster, scheduler, outputDir, 1, 0, formatter, EXTENDED);
+        new LogManager(WorkflowType.LOAD, cluster, outputDir, 1, 0, formatter, EXTENDED);
     logManager.init();
     assertRanges(logManager, new long[] {1, 2, 3, 4}, closed(1L, 4L));
     assertRanges(logManager, new long[] {1, 2, 3, 5}, closed(1L, 3L), singleton(5L));
