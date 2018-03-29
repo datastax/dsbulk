@@ -468,7 +468,10 @@ public class DriverSettings {
         break;
       case tokenAware:
         policy =
-            new TokenAwarePolicy(childPolicy, lbpConfig.getBoolean("tokenAware.shuffleReplicas"));
+            new TokenAwarePolicy(
+                childPolicy,
+                lbpConfig.getEnum(
+                    TokenAwarePolicy.ReplicaOrdering.class, "tokenAware.replicaOrdering"));
         break;
     }
     return policy;

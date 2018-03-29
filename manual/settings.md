@@ -963,11 +963,18 @@ The child policy that the specified `tokenAware` policy wraps.
 
 Default: **"roundRobin"**.
 
-#### --driver.policy.lbp.tokenAware.shuffleReplicas _&lt;boolean&gt;_
+#### --driver.policy.lbp.tokenAware.replicaOrdering _&lt;string&gt;_
 
-Specify whether to shuffle the list of replicas that can process a request. For loading, shuffling can improve performance by distributing writes across nodes.
+Specify how to order replicas.
 
-Default: **true**.
+Valid values are all `TokenAwarePolicy.ReplicaOrdering` enum constants:
+
+- RANDOM: Return replicas in a different, random order for each query plan. This is the default strategy;
+for loading, it should be preferred has it can improve performance by distributing writes across replicas.
+- TOPOLOGICAL: Order replicas by token ring topology, i.e. always return the "primary" replica first.
+- NEUTRAL: Return the replicas in the exact same order in which they appear in the child policy's query plan.
+
+Default: **"RANDOM"**.
 
 #### --driver.policy.lbp.whiteList.childPolicy _&lt;string&gt;_
 

@@ -41,7 +41,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <driver.version>1.6.4</driver.version>
+    <driver.version>1.6.5</driver.version>
     <reactive-streams.version>1.0.1</reactive-streams.version>
     <rx-java.version>2.1.10</rx-java.version>
     <reactor.version>Bismuth-SR7</reactor.version>
