@@ -152,11 +152,10 @@ public class LoadWorkflow implements Workflow {
       LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
     } else {
       LOGGER.info(
-          "{} completed with {} errors in {}. Check log files under {} for details.",
+          "{} completed with {} errors in {}.",
           this,
           logManager.getTotalErrors(),
-          WorkflowUtils.formatElapsed(seconds),
-          logManager.getExecutionDirectory());
+          WorkflowUtils.formatElapsed(seconds));
     }
     return logManager.getTotalErrors() == 0;
   }
