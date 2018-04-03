@@ -198,7 +198,7 @@ public class DataStaxBulkLoader {
    */
   private static class CleanupThread extends Thread {
 
-    private static final long SHUTDOWN_GRACE_PERIOD_MILLIS = Duration.ofSeconds(30).toMillis();
+    private static final Duration SHUTDOWN_GRACE_PERIOD = Duration.ofSeconds(10);
 
     private final Workflow workflow;
     private final WorkflowThread workflowThread;
@@ -215,12 +215,13 @@ public class DataStaxBulkLoader {
         if (workflowThread.isAlive()) {
           LOGGER.error(workflow + " interrupted, waiting for termination.");
           workflowThread.interrupt();
-          workflowThread.join(SHUTDOWN_GRACE_PERIOD_MILLIS);
+          workflowThread.join(SHUTDOWN_GRACE_PERIOD.toMillis());
           if (workflowThread.isAlive()) {
             workflowThread.status = STATUS_CRASHED;
             LOGGER.error(
                 String.format(
-                    "%s did not terminate within 30 seconds, forcing termination.", workflow));
+                    "%s did not terminate within %d seconds, forcing termination.",
+                    workflow, SHUTDOWN_GRACE_PERIOD.getSeconds()));
           }
         }
         // make sure System.err is flushed before the closing sequence is printed to System.out
