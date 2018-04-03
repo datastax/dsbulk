@@ -219,7 +219,7 @@ public class LogManager implements AutoCloseable {
   public void reportLastLocations() {
     Path badFile = executionDirectory.resolve(BAD_FILE);
     if (openFiles.asMap().containsKey(badFile)) {
-      LOGGER.info("Rejected records can be found in {}", badFile);
+      LOGGER.info("Rejected records can be found in file {}", BAD_FILE);
     }
     List<Path> files =
         openFiles
@@ -227,14 +227,13 @@ public class LogManager implements AutoCloseable {
             .keySet()
             .stream()
             .filter(path -> !path.equals(badFile))
+            .map(Path::getFileName)
             .collect(Collectors.toList());
     if (!files.isEmpty()) {
       LOGGER.info("Errors are detailed in the following file(s): {}", Joiner.on(", ").join(files));
     }
     if (positionsPrinter != null) {
-      LOGGER.info(
-          "Last processed positions can be found in {}",
-          executionDirectory.resolve(POSITIONS_FILE));
+      LOGGER.info("Last processed positions can be found in {}", POSITIONS_FILE);
     }
   }
 
