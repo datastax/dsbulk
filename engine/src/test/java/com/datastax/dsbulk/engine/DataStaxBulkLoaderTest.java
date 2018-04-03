@@ -914,7 +914,7 @@ class DataStaxBulkLoaderTest {
     assertThat(stdErr.getStreamAsString())
         .contains(
             String.format(
-                "Error parsing configuration file %s. "
+                "Error parsing configuration file %s at line 1. "
                     + "Please make sure its format is compliant with HOCON syntax. "
                     + "If you are using \\ (backslash) to define a path, "
                     + "escape it with \\\\ or use / (forward slash) instead.",

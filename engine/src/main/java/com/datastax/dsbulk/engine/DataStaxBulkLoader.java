@@ -53,8 +53,8 @@ public class DataStaxBulkLoader {
   public static final int STATUS_INTERRUPTED = 4;
   public static final int STATUS_CRASHED = 5;
 
-  // Maybe be overridden to handle the "-f" override for application.conf.
-  public static Config DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+  // May be be overridden to handle the "-f" override for application.conf.
+  public static Config DEFAULT;
 
   private final String[] args;
 
@@ -323,28 +323,26 @@ public class DataStaxBulkLoader {
   }
 
   private static void initDefaultConfig(String[] optionArgs) {
-    // If the user specified the -f option (giving us an app config path),
-    // set the config.file property to tell TypeSafeConfig.
-    Path appConfigPath = getAppConfigPath(optionArgs);
-    if (appConfigPath != null) {
-      System.setProperty("config.file", appConfigPath.toString());
+    try {
       ConfigFactory.invalidateCaches();
-      try {
-        DEFAULT = ConfigFactory.load().getConfig("dsbulk");
-      } catch (ConfigException.Parse e) {
-        LOGGER.error(e.getMessage(), e);
-        throw new IllegalArgumentException(
-            String.format(
-                "Error parsing configuration file %s. "
-                    + "Please make sure its format is compliant with HOCON syntax. "
-                    + "If you are using \\ (backslash) to define a path, "
-                    + "escape it with \\\\ or use / (forward slash) instead.",
-                appConfigPath),
-            e);
+      Path appConfigPath = getAppConfigPath(optionArgs);
+      if (appConfigPath != null) {
+        // If the user specified the -f option (giving us an app config path),
+        // set the config.file property to tell TypeSafeConfig.
+        System.setProperty("config.file", appConfigPath.toString());
       }
+      DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+    } catch (ConfigException.Parse e) {
+      LOGGER.error(e.getMessage(), e);
+      throw new IllegalArgumentException(
+          String.format(
+              "Error parsing configuration file %s at line %s. "
+                  + "Please make sure its format is compliant with HOCON syntax. "
+                  + "If you are using \\ (backslash) to define a path, "
+                  + "escape it with \\\\ or use / (forward slash) instead.",
+              e.origin().filename(), e.origin().lineNumber()),
+          e);
     }
-    ConfigFactory.invalidateCaches();
-    DEFAULT = ConfigFactory.load().getConfig("dsbulk");
   }
 
   private static Path getAppConfigPath(String[] optionArgs) {
