@@ -54,7 +54,9 @@ public class DefaultRecord extends LinkedHashMap<String, Object> implements Reco
     this.resource = resource;
     this.position = position;
     if (keys.length != values.length) {
-      throw new IllegalArgumentException("Keys and values have different sizes");
+      throw new IllegalArgumentException(
+          String.format(
+              "Expecting record to contain %d fields but found %d.", keys.length, values.length));
     }
     this.source = source;
     this.location = location;
