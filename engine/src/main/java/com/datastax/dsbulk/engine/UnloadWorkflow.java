@@ -137,7 +137,7 @@ public class UnloadWorkflow implements Workflow {
         .transform(logManager.newFailedRecordsHandler())
         .then()
         .flux()
-        .transform(logManager.newUncaughtExceptionHandler())
+        .transform(logManager.newTerminationHandler())
         .blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);

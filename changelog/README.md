@@ -7,6 +7,7 @@
 - [bug] DAT-255: Debug files are missing records.
 - [improvement] DAT-251: Update DriverSettings with new TokenAwarePolicy.
 - [bug] DAT-259: LogManager files have interleaved entries.
+- [bug] DAT-260: LogManager is closing files too soon.
 
 
 ### 1.0.1

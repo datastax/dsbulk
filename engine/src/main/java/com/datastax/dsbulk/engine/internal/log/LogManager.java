@@ -63,7 +63,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
@@ -152,7 +152,12 @@ public class LogManager implements AutoCloseable {
     executor =
         // Only spin 1 thread, but stretch up to 8 in case lots of errors arrive
         new ThreadPoolExecutor(
-            1, 8, 60L, SECONDS, new SynchronousQueue<>(), new DefaultThreadFactory("log-manager"));
+            1,
+            8,
+            60L,
+            SECONDS,
+            new LinkedBlockingQueue<>(),
+            new DefaultThreadFactory("log-manager"));
     scheduler = Schedulers.fromExecutorService(executor);
     codecRegistry = cluster.getConfiguration().getCodecRegistry();
     protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
@@ -258,15 +263,29 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
-   * Handler for uncaught exceptions.
+   * Handler that is meant to be executed at the very end of the main workflow.
    *
-   * @return a handler for uncaught exceptions.
+   * <p>It detects when the main workflow emits a terminal signal and reacts by triggering the
+   * completion of all processors managed by this component.
+   *
+   * @return a handler that is meant to be executed at the very end of the main workflow.
    */
   @NotNull
-  public Function<Flux<Void>, Flux<Void>> newUncaughtExceptionHandler() {
+  public Function<Flux<Void>, Flux<Void>> newTerminationHandler() {
     return upstream ->
         upstream
+            // when a terminal signal arrives,
+            // complete all open processors
+            .doOnTerminate(failedRecordSink::complete)
+            .doOnTerminate(unmappableRecordSink::complete)
+            .doOnTerminate(unmappableStatementSink::complete)
+            .doOnTerminate(writeResultSink::complete)
+            .doOnTerminate(readResultSink::complete)
             .doOnTerminate(uncaughtExceptionSink::complete)
+            // By merging the main workflow with the uncaught exceptions
+            // workflow, we make the main workflow fail when an uncaught
+            // exception is triggered, even if the main workflow completes
+            // normally.
             .mergeWith(uncaughtExceptionProcessor);
   }
 
@@ -302,7 +321,6 @@ public class LogManager implements AutoCloseable {
                   return signal;
                 })
             .<Statement>dematerialize()
-            .doOnTerminate(unmappableStatementSink::complete)
             .filter(r -> !(r instanceof UnmappableStatement));
   }
 
@@ -373,7 +391,6 @@ public class LogManager implements AutoCloseable {
                   return signal;
                 })
             .<Record>dematerialize()
-            .doOnTerminate(unmappableRecordSink::complete)
             .filter(r -> !(r instanceof ErrorRecord));
   }
 
@@ -416,7 +433,6 @@ public class LogManager implements AutoCloseable {
                   return signal;
                 })
             .<WriteResult>dematerialize()
-            .doOnTerminate(writeResultSink::complete)
             .filter(Result::isSuccess);
   }
 
@@ -457,7 +473,6 @@ public class LogManager implements AutoCloseable {
                   return signal;
                 })
             .<ReadResult>dematerialize()
-            .doOnTerminate(readResultSink::complete)
             .filter(Result::isSuccess);
   }
 
