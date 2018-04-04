@@ -35,7 +35,6 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExcep
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.math.RoundingMode.FLOOR;
 import static java.math.RoundingMode.UNNECESSARY;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -1043,7 +1042,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Map<String, String> doubles = new HashMap<>();
     Map<String, String> bigdecimals = new HashMap<>();
     List<String> lines =
-        FileUtils.readAllLinesInDirectoryAsStream(unloadDir, UTF_8).collect(Collectors.toList());
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     for (String line : lines) {
       List<String> cols = Splitter.on(';').splitToList(line);
       doubles.put(cols.get(0), cols.get(1));
@@ -1299,9 +1298,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static void checkTemporalsRead(Path unloadDir) throws IOException {
     String line =
-        FileUtils.readAllLinesInDirectoryAsStream(unloadDir, UTF_8)
-            .collect(Collectors.toList())
-            .get(0);
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
     List<String> cols = Splitter.on(';').splitToList(line);
     assertThat(cols.get(1)).isEqualTo("vendredi, 9 mars 2018");
     assertThat(cols.get(2)).isEqualTo("171232584");

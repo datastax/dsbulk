@@ -180,7 +180,7 @@ public class LoadWorkflow implements Workflow {
                       .transform(logManager.newFailedRecordsHandler())
                       .map(recordMapper::map)
                       .transform(metricsManager.newFailedItemsMonitor())
-                      .transform(logManager.newFailedStatementsHandler());
+                      .transform(logManager.newUnmappableStatementsHandler());
               if (batchingEnabled) {
                 stmts =
                     stmts
@@ -220,7 +220,7 @@ public class LoadWorkflow implements Workflow {
                       .map(recordMapper::map)
                       .sequential()
                       .transform(metricsManager.newFailedItemsMonitor())
-                      .transform(logManager.newFailedStatementsHandler());
+                      .transform(logManager.newUnmappableStatementsHandler());
               if (batchingEnabled) {
                 stmts =
                     stmts

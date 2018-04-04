@@ -169,14 +169,14 @@ class LogManagerTest {
     logManager.init();
     Flux<Statement> stmts = Flux.just(stmt1, stmt2, stmt3);
     try {
-      stmts.transform(logManager.newFailedStatementsHandler()).blockLast();
+      stmts.transform(logManager.newUnmappableStatementsHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
+    Path bad = logManager.getExecutionDirectory().resolve("mapping.bad");
     Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
     Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
@@ -218,8 +218,8 @@ class LogManagerTest {
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
+    Path bad = logManager.getExecutionDirectory().resolve("connector.bad");
+    Path errors = logManager.getExecutionDirectory().resolve("connector-errors.log");
     Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
@@ -252,7 +252,7 @@ class LogManagerTest {
       assertThat(e.getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
+    Path bad = logManager.getExecutionDirectory().resolve("load.bad");
     Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
     Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
@@ -299,7 +299,7 @@ class LogManagerTest {
     Flux<WriteResult> stmts = Flux.just(writeResult1, writeResult2, writeResult3);
     stmts.transform(logManager.newFailedWritesHandler()).blockLast();
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
+    Path bad = logManager.getExecutionDirectory().resolve("load.bad");
     Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
     Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
@@ -352,7 +352,7 @@ class LogManagerTest {
       assertThat(e.getMaxErrors()).isEqualTo(1);
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
+    Path bad = logManager.getExecutionDirectory().resolve("load.bad");
     Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
     Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
@@ -499,7 +499,7 @@ class LogManagerTest {
       assertThat(e).hasMessage("error 1");
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("operation.bad");
+    Path bad = logManager.getExecutionDirectory().resolve("load.bad");
     Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
     Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();

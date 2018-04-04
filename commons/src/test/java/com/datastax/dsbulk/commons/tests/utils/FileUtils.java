@@ -40,22 +40,31 @@ public class FileUtils {
     }
   }
 
+  public static Stream<String> readAllLinesInDirectoryAsStream(Path dir) throws IOException {
+    return readAllLinesInDirectoryAsStream(dir, StandardCharsets.UTF_8);
+  }
+
   public static Stream<String> readAllLinesInDirectoryAsStream(Path dir, Charset charset)
       throws IOException {
     try (Stream<Path> files = Files.walk(dir)) {
       List<String> lines =
           files
               .filter(Files::isRegularFile)
-              .flatMap(
-                  path -> {
-                    try {
-                      return Files.readAllLines(path, charset).stream();
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  })
+              .flatMap(path -> readAllLines(path, charset))
               .collect(Collectors.toList());
       return lines.stream();
+    }
+  }
+
+  public static Stream<String> readAllLines(Path path) {
+    return readAllLines(path, StandardCharsets.UTF_8);
+  }
+
+  public static Stream<String> readAllLines(Path path, Charset charset) {
+    try {
+      return Files.readAllLines(path, charset).stream();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 

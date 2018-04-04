@@ -167,7 +167,7 @@ public class UnloadWorkflow implements Workflow {
                     .transform(logManager.newFailedReadsHandler())
                     .map(readResultMapper::map)
                     .transform(metricsManager.newFailedItemsMonitor())
-                    .transform(logManager.newFailedRecordsHandler())
+                    .transform(logManager.newUnmappableRecordsHandler())
                     .subscribeOn(scheduler),
             Runtime.getRuntime().availableProcessors());
   }
@@ -185,7 +185,7 @@ public class UnloadWorkflow implements Workflow {
         .map(readResultMapper::map)
         .sequential()
         .transform(metricsManager.newFailedItemsMonitor())
-        .transform(logManager.newFailedRecordsHandler());
+        .transform(logManager.newUnmappableRecordsHandler());
   }
 
   @Override

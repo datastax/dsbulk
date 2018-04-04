@@ -34,7 +34,6 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePrepa
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateQueryCount;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -884,8 +883,7 @@ class CSVEndToEndSimulacronIT {
 
   private void verifyDelimiterCount(char delimiter, int expected) throws Exception {
     String contents =
-        FileUtils.readAllLinesInDirectoryAsStream(unloadDir, UTF_8)
-            .collect(Collectors.joining("\n"));
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.joining("\n"));
     assertThat(StringUtils.countOccurrences(delimiter, contents)).isEqualTo(expected);
   }
 }
