@@ -145,7 +145,7 @@ public class LoadWorkflow implements Workflow {
     } else {
       flux = parallelFlux();
     }
-    flux.transform(logManager.newUncaughtExceptionHandler()).blockLast();
+    flux.transform(logManager.newTerminationHandler()).blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
