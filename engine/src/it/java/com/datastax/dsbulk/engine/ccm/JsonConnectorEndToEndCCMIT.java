@@ -31,7 +31,6 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createComplexTabl
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createWithSpacesTable;
 import static java.math.RoundingMode.UNNECESSARY;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -706,7 +705,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Map<String, String> doubles = new HashMap<>();
     Map<String, String> bigdecimals = new HashMap<>();
     List<String> lines =
-        FileUtils.readAllLinesInDirectoryAsStream(unloadDir, UTF_8).collect(Collectors.toList());
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     Pattern pattern = Pattern.compile("\\{\"key\":\"(.+?)\",\"vdouble\":(.+?),\"vdecimal\":(.+?)}");
     for (String line : lines) {
       Matcher matcher = pattern.matcher(line);
@@ -772,9 +771,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static void checkTemporalsRead(Path unloadDir) throws IOException {
     String line =
-        FileUtils.readAllLinesInDirectoryAsStream(unloadDir, UTF_8)
-            .collect(Collectors.toList())
-            .get(0);
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
     Pattern pattern =
         Pattern.compile(
             "\\{\"key\":(.+?),\"vdate\":\"(.+?)\",\"vtime\":\"(.+?)\",\"vtimestamp\":\"(.+?)\",\"vseconds\":\"(.+?)\"}");

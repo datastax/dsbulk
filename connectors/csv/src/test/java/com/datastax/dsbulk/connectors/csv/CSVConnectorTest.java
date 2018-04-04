@@ -10,7 +10,6 @@ package com.datastax.dsbulk.connectors.csv;
 
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -348,7 +347,7 @@ class CSVConnectorTest {
       Flux.fromIterable(createRecords()).repeat(200).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual =
-          FileUtils.readAllLinesInDirectoryAsStream(out, UTF_8)
+          FileUtils.readAllLinesInDirectoryAsStream(out)
               .sorted()
               .distinct()
               .collect(Collectors.toList());

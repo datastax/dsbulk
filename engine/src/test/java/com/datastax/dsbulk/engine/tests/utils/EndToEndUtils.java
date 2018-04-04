@@ -20,10 +20,10 @@ import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
 
 public class EndToEndUtils {
@@ -131,23 +132,27 @@ public class EndToEndUtils {
   public static void validateExceptionsLog(int size, String keyword, String fileName, Path logPath)
       throws Exception {
     Path exceptionFile = logPath.resolve(fileName);
-    @SuppressWarnings("StreamResourceLeak")
-    long numErrors = Files.lines(exceptionFile).filter(l -> l.contains(keyword)).count();
-    assertThat(numErrors).isEqualTo(size);
+    try (Stream<String> lines = Files.lines(exceptionFile)) {
+      long numErrors = lines.filter(l -> l.contains(keyword)).count();
+      assertThat(numErrors).isEqualTo(size);
+    }
   }
 
   public static void validateBadOps(int size, Path logPath) throws Exception {
-    Path badOps = logPath.resolve("operation.bad");
-    @SuppressWarnings("StreamResourceLeak")
-    long numBadOps = Files.lines(badOps, Charset.defaultCharset()).count();
-    assertThat(numBadOps).isEqualTo(size);
+    PathMatcher badFileMatcher = FileSystems.getDefault().getPathMatcher("glob:**/*.bad");
+    try (Stream<Path> paths = Files.list(logPath)) {
+      long numBadOps =
+          paths.filter(badFileMatcher::matches).flatMap(FileUtils::readAllLines).count();
+      assertThat(numBadOps).isEqualTo(size);
+    }
   }
 
   public static void validateOutputFiles(int numOfRecords, Path dir) throws IOException {
-    // Sum the number of lines in each file and assert that the total matches the expected value.
-    long totalLines =
-        FileUtils.readAllLinesInDirectoryAsStream(dir, StandardCharsets.UTF_8).count();
-    assertThat(totalLines).isEqualTo(numOfRecords);
+    try (Stream<String> lines = FileUtils.readAllLinesInDirectoryAsStream(dir)) {
+      // Sum the number of lines in each file and assert that the total matches the expected value.
+      long totalLines = lines.count();
+      assertThat(totalLines).isEqualTo(numOfRecords);
+    }
   }
 
   public static void validateQueryCount(

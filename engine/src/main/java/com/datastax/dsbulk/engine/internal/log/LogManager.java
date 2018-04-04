@@ -15,6 +15,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toList;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.pattern.ThrowableProxyConverter;
@@ -50,19 +52,22 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,9 +86,14 @@ public class LogManager implements AutoCloseable {
   private static final int MIN_SAMPLE = 100;
 
   private static final String MAPPING_ERRORS_FILE = "mapping-errors.log";
+  private static final String CONNECTOR_ERRORS_FILE = "connector-errors.log";
   private static final String UNLOAD_ERRORS_FILE = "unload-errors.log";
   private static final String LOAD_ERRORS_FILE = "load-errors.log";
-  private static final String BAD_FILE = "operation.bad";
+
+  private static final String CONNECTOR_BAD_FILE = "connector.bad";
+  private static final String MAPPING_BAD_FILE = "mapping.bad";
+  private static final String LOAD_BAD_FILE = "load.bad";
+
   private static final String POSITIONS_FILE = "positions.txt";
 
   private final WorkflowType workflowType;
@@ -112,6 +122,7 @@ public class LogManager implements AutoCloseable {
   private StackTracePrinter stackTracePrinter;
   private PrintWriter positionsPrinter;
 
+  private FluxSink<ErrorRecord> failedRecordSink;
   private FluxSink<ErrorRecord> unmappableRecordSink;
   private FluxSink<UnmappableStatement> unmappableStatementSink;
   private FluxSink<WriteResult> writeResultSink;
@@ -138,13 +149,17 @@ public class LogManager implements AutoCloseable {
   }
 
   public void init() {
-    executor = new ScheduledThreadPoolExecutor(4, new DefaultThreadFactory("log-manager"));
+    executor =
+        // Only spin 1 thread, but stretch up to 8 in case lots of errors arrive
+        new ThreadPoolExecutor(
+            1, 8, 60L, SECONDS, new SynchronousQueue<>(), new DefaultThreadFactory("log-manager"));
     scheduler = Schedulers.fromExecutorService(executor);
     codecRegistry = cluster.getConfiguration().getCodecRegistry();
     protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
     stackTracePrinter = new StackTracePrinter();
     stackTracePrinter.setOptionList(LogSettings.STACK_TRACE_PRINTER_OPTIONS);
     stackTracePrinter.start();
+    failedRecordSink = newFailedRecordSink();
     unmappableRecordSink = newUnmappableRecordSink();
     unmappableStatementSink = newUnmappableStatementSink();
     writeResultSink = newWriteResultSink();
@@ -161,7 +176,7 @@ public class LogManager implements AutoCloseable {
     // caught by Guava's future listener, which logs it and then ignores it completely.
     // As a consequence, the workflow does not stop properly.
     // By setting a global hook for dropped errors, we prevent the bubbling exception from
-    // being be thrown and the workflow stops as expected.
+    // being thrown and the workflow stops as expected.
     Hooks.onErrorDropped(t -> {});
     // The hook below allows to process uncaught exceptions in certain operators that "bubble up"
     // to the worker thread, in which case they are logged but are otherwise ignored,
@@ -180,6 +195,7 @@ public class LogManager implements AutoCloseable {
 
   @Override
   public void close() throws InterruptedException, IOException {
+    failedRecordSink.complete();
     unmappableRecordSink.complete();
     unmappableStatementSink.complete();
     writeResultSink.complete();
@@ -217,20 +233,24 @@ public class LogManager implements AutoCloseable {
   }
 
   public void reportLastLocations() {
-    Path badFile = executionDirectory.resolve(BAD_FILE);
-    if (openFiles.asMap().containsKey(badFile)) {
-      LOGGER.info("Rejected records can be found in file {}", BAD_FILE);
+    PathMatcher badFileMatcher = FileSystems.getDefault().getPathMatcher("glob:*.bad");
+    Set<Path> files = openFiles.asMap().keySet();
+    List<Path> badFiles =
+        files.stream().map(Path::getFileName).filter(badFileMatcher::matches).collect(toList());
+    if (!badFiles.isEmpty()) {
+      LOGGER.info(
+          "Rejected records can be found in the following file(s): {}",
+          Joiner.on(", ").join(badFiles));
     }
-    List<Path> files =
-        openFiles
-            .asMap()
-            .keySet()
+    List<Path> debugFiles =
+        files
             .stream()
-            .filter(path -> !path.equals(badFile))
             .map(Path::getFileName)
-            .collect(Collectors.toList());
-    if (!files.isEmpty()) {
-      LOGGER.info("Errors are detailed in the following file(s): {}", Joiner.on(", ").join(files));
+            .filter(path -> !badFileMatcher.matches(path))
+            .collect(toList());
+    if (!debugFiles.isEmpty()) {
+      LOGGER.info(
+          "Errors are detailed in the following file(s): {}", Joiner.on(", ").join(debugFiles));
     }
     if (positionsPrinter != null) {
       LOGGER.info("Last processed positions can be found in {}", POSITIONS_FILE);
@@ -251,7 +271,7 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
-   * Handler for unmappable statements produced by the {@link
+   * Handler for unmappable statements produced by the {@linkplain
    * com.datastax.dsbulk.engine.internal.schema.RecordMapper record mapper}.
    *
    * <p>Used only in load workflows.
@@ -262,7 +282,7 @@ public class LogManager implements AutoCloseable {
    * @return a handler for unmappable statements.
    */
   @NotNull
-  public Function<Flux<Statement>, Flux<Statement>> newFailedStatementsHandler() {
+  public Function<Flux<Statement>, Flux<Statement>> newUnmappableStatementsHandler() {
     return upstream ->
         upstream
             .materialize()
@@ -287,12 +307,45 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
-   * Handler for unmappable records produced either by the {@link
-   * com.datastax.dsbulk.connectors.api.Connector connector} (load workflows) or by the {@link
-   * com.datastax.dsbulk.engine.internal.schema.ReadResultMapper read result mapper} (unload
-   * workflows).
+   * Handler for failed records. A failed record is a record that the connector could not read or
+   * write.
    *
    * <p>Used by both load and unload workflows.
+   *
+   * <p>Increments the number of errors and forwards failed records to the failed record processor
+   * for further processing.
+   *
+   * @return a handler for failed records.
+   */
+  @NotNull
+  public Function<Flux<Record>, Flux<Record>> newFailedRecordsHandler() {
+    return upstream ->
+        upstream
+            .materialize()
+            .map(
+                signal -> {
+                  if (signal.isOnNext()) {
+                    Record r = signal.get();
+                    if (r instanceof ErrorRecord) {
+                      try {
+                        failedRecordSink.next((ErrorRecord) r);
+                        signal = maybeTriggerOnError(signal, errors.incrementAndGet());
+                      } catch (Exception e) {
+                        signal = Signal.error(e);
+                      }
+                    }
+                  }
+                  return signal;
+                })
+            .<Record>dematerialize()
+            .filter(r -> !(r instanceof ErrorRecord));
+  }
+
+  /**
+   * Handler for unmappable records produced by the {@linkplain
+   * com.datastax.dsbulk.engine.internal.schema.ReadResultMapper result mapper}.
+   *
+   * <p>Used only in unload workflows.
    *
    * <p>Increments the number of errors and forwards unmappable records to the unmappable record
    * processor for further processing.
@@ -300,7 +353,7 @@ public class LogManager implements AutoCloseable {
    * @return a handler for unmappable records.
    */
   @NotNull
-  public Function<Flux<Record>, Flux<Record>> newFailedRecordsHandler() {
+  public Function<Flux<Record>, Flux<Record>> newUnmappableRecordsHandler() {
     return upstream ->
         upstream
             .materialize()
@@ -446,8 +499,8 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Used only by the load workflow.
    *
-   * <p>Groups together records by {@link Record#getResource() resource} then merges all their
-   * {@link Record#getPosition() positions} into continuous ranges.
+   * <p>Groups together records by {@linkplain Record#getResource() resource} then merges all their
+   * {@linkplain Record#getPosition() positions} into continuous ranges.
    *
    * @return A tracker for statement positions.
    */
@@ -501,21 +554,28 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
-   * A processor for unmappable records.
+   * A processor for failed records. A failed record is a record that the connector could not read
+   * or write.
    *
    * <p>Used in both load and unload workflows.
    *
    * <p>Appends the record to the debug file, then (for load workflows only) to the bad file and
-   * forwards the record's position to the {@link #newRecordPositionTracker() position tracker}.
+   * forwards the record's position to the {@linkplain #newRecordPositionTracker() position
+   * tracker}.
    *
-   * @return A processor for unmappable records.
+   * @return A processor for failed records.
    */
   @NotNull
-  private FluxSink<ErrorRecord> newUnmappableRecordSink() {
+  private FluxSink<ErrorRecord> newFailedRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
-    Flux<ErrorRecord> flux = processor.publishOn(scheduler).doOnNext(this::appendToDebugFile);
+    Flux<ErrorRecord> flux =
+        processor
+            .publishOn(scheduler)
+            .doOnNext(record -> appendToDebugFile(record, CONNECTOR_ERRORS_FILE));
     if (workflowType == WorkflowType.LOAD) {
-      flux.doOnNext(this::appendToBadFile).transform(newRecordPositionTracker()).subscribe();
+      flux.doOnNext(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
+          .transform(newRecordPositionTracker())
+          .subscribe();
     } else {
       flux.subscribe();
     }
@@ -523,13 +583,36 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
-   * A processor for unmappable statements.
+   * A processor for unmappable records produced by the {@linkplain
+   * com.datastax.dsbulk.engine.internal.schema.ReadResultMapper result mapper}.
+   *
+   * <p>Used only in unload workflows.
+   *
+   * <p>Appends the record to the debug file, then (for load workflows only) to the bad file and
+   * forwards the record's position to the {@linkplain #newRecordPositionTracker() position
+   * tracker}.
+   *
+   * @return A processor for unmappable records.
+   */
+  @NotNull
+  private FluxSink<ErrorRecord> newUnmappableRecordSink() {
+    UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
+    processor
+        .publishOn(scheduler)
+        .doOnNext(record -> appendToDebugFile(record, MAPPING_ERRORS_FILE))
+        .subscribe();
+    return processor.sink();
+  }
+
+  /**
+   * A processor for unmappable statementsproduced by the {@linkplain
+   * com.datastax.dsbulk.engine.internal.schema.RecordMapper} record mapper}.
    *
    * <p>Used only in the load workflow.
    *
    * <p>Appends the statement to the debug file, then extracts its record, appends it to the bad
-   * file, then forwards the record's position to the {@link #newRecordPositionTracker() position
-   * tracker}.
+   * file, then forwards the record's position to the {@linkplain #newRecordPositionTracker()
+   * position tracker}.
    *
    * @return A processor for unmappable statements.
    */
@@ -540,7 +623,7 @@ public class LogManager implements AutoCloseable {
         .publishOn(scheduler)
         .doOnNext(this::appendToDebugFile)
         .transform(newStatementToRecordMapper())
-        .doOnNext(this::appendToBadFile)
+        .doOnNext(record -> appendToBadFile(record, MAPPING_BAD_FILE))
         .transform(newRecordPositionTracker())
         .subscribe();
     return processor.sink();
@@ -552,7 +635,7 @@ public class LogManager implements AutoCloseable {
    * <p>Used only in the load workflow.
    *
    * <p>Appends the failed result to the debug file, then extracts its statement, then extracts its
-   * record, then appends it to the bad file, then forwards the record's position to the {@link
+   * record, then appends it to the bad file, then forwards the record's position to the {@linkplain
    * #newRecordPositionTracker() position tracker}.
    *
    * @return A processor for failed write results.
@@ -565,7 +648,7 @@ public class LogManager implements AutoCloseable {
         .doOnNext(this::appendToDebugFile)
         .map(Result::getStatement)
         .transform(newStatementToRecordMapper())
-        .doOnNext(this::appendToBadFile)
+        .doOnNext(record -> appendToBadFile(record, LOAD_BAD_FILE))
         .transform(newRecordPositionTracker())
         .subscribe();
     return processor.sink();
@@ -577,7 +660,7 @@ public class LogManager implements AutoCloseable {
    * <p>Used only in the unload workflow.
    *
    * <p>Extracts the statement, then appends it to the debug file, then extracts its record, appends
-   * it to the bad file, then forwards the record's position to the {@link
+   * it to the bad file, then forwards the record's position to the {@linkplain
    * #newRecordPositionTracker() position tracker}.
    *
    * @return A processor for failed read results.
@@ -589,8 +672,8 @@ public class LogManager implements AutoCloseable {
     return processor.sink();
   }
 
-  private void appendToBadFile(Record record) {
-    Path logFile = executionDirectory.resolve(BAD_FILE);
+  private void appendToBadFile(Record record, String file) {
+    Path logFile = executionDirectory.resolve(file);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     Object source = record.getSource();
@@ -627,8 +710,8 @@ public class LogManager implements AutoCloseable {
     stackTracePrinter.printStackTrace(statement.getError(), writer);
   }
 
-  private void appendToDebugFile(ErrorRecord record) {
-    Path logFile = executionDirectory.resolve(MAPPING_ERRORS_FILE);
+  private void appendToDebugFile(ErrorRecord record, String file) {
+    Path logFile = executionDirectory.resolve(file);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     appendRecordInfo(record, writer);

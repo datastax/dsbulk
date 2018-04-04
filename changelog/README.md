@@ -6,6 +6,7 @@
 - [improvement] DAT-249: Don't use ANSI color codes on non-ANSI terminals.
 - [bug] DAT-255: Debug files are missing records.
 - [improvement] DAT-251: Update DriverSettings with new TokenAwarePolicy.
+- [bug] DAT-259: LogManager files have interleaved entries.
 
 
 ### 1.0.1
