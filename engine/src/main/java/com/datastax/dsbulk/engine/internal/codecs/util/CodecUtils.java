@@ -319,7 +319,7 @@ public class CodecUtils {
     ParsePosition pos = new ParsePosition(0);
     TemporalAccessor accessor = format.parse(s.trim(), pos);
     if (pos.getIndex() != s.length()) {
-      throw new DateTimeParseException("Invalid temporal format", s, pos.getIndex());
+      throw new DateTimeParseException("Invalid temporal format: " + s, s, pos.getIndex());
     }
     return accessor;
   }
