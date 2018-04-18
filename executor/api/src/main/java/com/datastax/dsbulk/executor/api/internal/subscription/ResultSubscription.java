@@ -230,7 +230,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     int missed = 1;
     // Note: when termination is detected inside this loop,
     // we MUST call clear() manually.
-    for (; ; ) {
+    do {
       // The requested number of items at this point
       long r = requested.get();
       // The number of items emitted thus far
@@ -270,10 +270,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
       // if another thread tried to call drain() while we were busy,
       // then we should do another drain round.
       missed = draining.addAndGet(-missed);
-      if (missed == 0) {
-        break;
-      }
-    }
+    } while (missed != 0);
   }
 
   /**
