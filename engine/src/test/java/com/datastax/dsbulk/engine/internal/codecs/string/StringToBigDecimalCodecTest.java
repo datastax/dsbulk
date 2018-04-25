@@ -67,8 +67,6 @@ class StringToBigDecimalCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
-        .toInternal(null)
-        .convertsFromExternal("")
         .toInternal(null);
   }
 
@@ -85,6 +83,8 @@ class StringToBigDecimalCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec).cannotConvertFromExternal("not a valid decimal");
+    assertThat(codec)
+        .cannotConvertFromExternal("")
+        .cannotConvertFromExternal("not a valid decimal");
   }
 }

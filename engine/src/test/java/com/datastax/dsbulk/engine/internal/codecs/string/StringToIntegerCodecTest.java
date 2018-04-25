@@ -70,8 +70,6 @@ class StringToIntegerCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
-        .toInternal(null)
-        .convertsFromExternal("")
         .toInternal(null);
   }
 
@@ -91,6 +89,7 @@ class StringToIntegerCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
+        .cannotConvertFromExternal("")
         .cannotConvertFromExternal("not a valid integer")
         .cannotConvertFromExternal("1.2")
         .cannotConvertFromExternal("2147483648")

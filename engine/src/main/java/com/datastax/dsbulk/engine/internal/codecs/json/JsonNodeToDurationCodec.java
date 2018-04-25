@@ -26,16 +26,13 @@ public class JsonNodeToDurationCodec extends JsonNodeConvertingCodec<Duration> {
       return null;
     }
     String s = node.asText();
-    if (s == null || s.isEmpty()) {
-      return null;
-    }
     return Duration.from(s);
   }
 
   @Override
   public JsonNode internalToExternal(Duration value) {
     if (value == null) {
-      return null;
+      return JSON_NODE_FACTORY.nullNode();
     }
     return JSON_NODE_FACTORY.textNode(value.toString());
   }

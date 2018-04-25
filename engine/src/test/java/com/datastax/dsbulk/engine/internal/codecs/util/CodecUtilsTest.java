@@ -116,7 +116,6 @@ class CodecUtilsTest {
   @Test
   void should_parse_temporal_complex() {
     assertThat(parseTemporal(null, timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)).isNull();
-    assertThat(parseTemporal("", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)).isNull();
     assertThat(
             Instant.from(
                 parseTemporal(
@@ -179,7 +178,6 @@ class CodecUtilsTest {
   @Test
   void should_parse_temporal() {
     assertThat(parseTemporal(null, timestampFormat1)).isNull();
-    assertThat(parseTemporal("", timestampFormat1)).isNull();
     assertThat(
             Instant.from(
                 parseTemporal("2017-11-23T13:24:59.000+01:00[Europe/Paris]", timestampFormat1)))
@@ -223,16 +221,6 @@ class CodecUtilsTest {
     assertThat(
             parseNumber(
                 null,
-                numberFormat1,
-                timestampFormat1,
-                MILLISECONDS,
-                EPOCH.atZone(UTC),
-                booleanInputWords,
-                booleanNumbers))
-        .isNull();
-    assertThat(
-            parseNumber(
-                "",
                 numberFormat1,
                 timestampFormat1,
                 MILLISECONDS,
@@ -1023,7 +1011,6 @@ class CodecUtilsTest {
             EPOCH.atZone(UTC),
             newArrayList("NULL"));
     assertThat(CodecUtils.parseUUID(null, instantCodec, MIN)).isNull();
-    assertThat(CodecUtils.parseUUID("", instantCodec, MIN)).isNull();
     assertThat(CodecUtils.parseUUID("a15341ec-ebef-4eab-b91d-ff16bf801a79", instantCodec, MIN))
         .isEqualTo(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"));
     // time UUIDs with MIN strategy
@@ -1069,7 +1056,6 @@ class CodecUtilsTest {
     String data64 = Base64.getEncoder().encodeToString(data);
     String dataHex = Bytes.toHexString(data);
     assertThat(CodecUtils.parseByteBuffer(null)).isNull();
-    assertThat(CodecUtils.parseByteBuffer("")).isNull();
     assertThat(CodecUtils.parseByteBuffer("0x")).isEqualTo(ByteBuffer.wrap(new byte[] {}));
     assertThat(CodecUtils.parseByteBuffer(data64)).isEqualTo(ByteBuffer.wrap(data));
     assertThat(CodecUtils.parseByteBuffer(dataHex)).isEqualTo(ByteBuffer.wrap(data));

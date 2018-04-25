@@ -8,6 +8,7 @@
 - [improvement] DAT-251: Update DriverSettings with new TokenAwarePolicy.
 - [bug] DAT-259: LogManager files have interleaved entries.
 - [bug] DAT-260: LogManager is closing files too soon.
+- [bug] DAT-266: DSE Geometry types cause CodecNotFoundException.
 
 
 ### 1.0.1

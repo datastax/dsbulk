@@ -66,8 +66,6 @@ class StringToShortCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
-        .toInternal(null)
-        .convertsFromExternal("")
         .toInternal(null);
   }
 
@@ -87,6 +85,7 @@ class StringToShortCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
+        .cannotConvertFromExternal("")
         .cannotConvertFromExternal("not a valid short")
         .cannotConvertFromExternal("1.2")
         .cannotConvertFromExternal("32768")

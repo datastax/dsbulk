@@ -31,8 +31,6 @@ class StringToDurationCodecTest {
         .toInternal(duration)
         .convertsFromExternal("P0001-03-00T02:10:00") // alternative ISO 8601 pattern
         .toInternal(duration)
-        .convertsFromExternal("")
-        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
@@ -51,6 +49,7 @@ class StringToDurationCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
+        .cannotConvertFromExternal("")
         .cannotConvertFromExternal("1Y3M4D") // The minutes should be after days
         .cannotConvertFromExternal("not a valid duration");
   }
