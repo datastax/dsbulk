@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NO
 import com.datastax.driver.core.utils.Bytes;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -26,6 +27,13 @@ public class JsonNodeToBlobCodec extends JsonNodeConvertingCodec<ByteBuffer> {
   public ByteBuffer externalToInternal(JsonNode node) {
     if (isNull(node)) {
       return null;
+    }
+    if (node.isBinary()) {
+      try {
+        return ByteBuffer.wrap(node.binaryValue());
+      } catch (IOException ignored) {
+        // try as a string below
+      }
     }
     String s = node.asText();
     return CodecUtils.parseByteBuffer(s);

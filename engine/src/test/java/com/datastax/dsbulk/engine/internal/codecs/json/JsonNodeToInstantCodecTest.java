@@ -66,8 +66,6 @@ class JsonNodeToInstantCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
-        .toInternal(null)
-        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
         .toInternal(null);
     codec =
         new JsonNodeToInstantCodec(
@@ -78,8 +76,6 @@ class JsonNodeToInstantCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
-        .toInternal(null)
-        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
         .toInternal(null);
     codec =
         new JsonNodeToInstantCodec(
@@ -134,6 +130,7 @@ class JsonNodeToInstantCodecTest {
         new JsonNodeToInstantCodec(
             temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), newArrayList("NULL"));
     assertThat(codec)
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }
 }

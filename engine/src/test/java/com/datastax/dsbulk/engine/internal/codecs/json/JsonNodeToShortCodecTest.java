@@ -73,8 +73,6 @@ class JsonNodeToShortCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
-        .toInternal(null)
-        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
         .toInternal(null);
   }
 
@@ -94,6 +92,7 @@ class JsonNodeToShortCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
+        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid short"))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("1.2"))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("32768"))

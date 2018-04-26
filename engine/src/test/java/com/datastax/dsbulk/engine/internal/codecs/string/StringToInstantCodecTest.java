@@ -62,8 +62,6 @@ class StringToInstantCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
-        .toInternal(null)
-        .convertsFromExternal("")
         .toInternal(null);
     codec =
         new StringToInstantCodec(
@@ -118,6 +116,8 @@ class StringToInstantCodecTest {
     StringToInstantCodec codec =
         new StringToInstantCodec(
             temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
-    assertThat(codec).cannotConvertFromExternal("not a valid date format");
+    assertThat(codec)
+        .cannotConvertFromExternal("")
+        .cannotConvertFromExternal("not a valid date format");
   }
 }

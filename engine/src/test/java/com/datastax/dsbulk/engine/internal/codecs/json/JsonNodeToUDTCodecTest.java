@@ -59,7 +59,7 @@ class JsonNodeToUDTCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private final List<String> nullStrings = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL", "");
 
   // UDT 1
 

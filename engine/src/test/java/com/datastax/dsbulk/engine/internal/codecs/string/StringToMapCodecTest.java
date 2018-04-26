@@ -45,7 +45,7 @@ class StringToMapCodecTest {
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private final List<String> nullStrings = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL", "");
 
   private final StringToDoubleCodec keyCodec =
       new StringToDoubleCodec(
@@ -64,7 +64,7 @@ class StringToMapCodecTest {
   private final ConvertingCodec<JsonNode, List<String>> valueCodec =
       new JsonNodeToListCodec<>(
           stringListCodec,
-          new JsonNodeToStringCodec(TypeCodec.varchar(), nullStrings),
+          new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings),
           objectMapper,
           nullStrings);
 

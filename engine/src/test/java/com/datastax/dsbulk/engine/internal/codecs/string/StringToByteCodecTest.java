@@ -68,8 +68,6 @@ class StringToByteCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
-        .toInternal(null)
-        .convertsFromExternal("")
         .toInternal(null);
   }
 
@@ -89,6 +87,7 @@ class StringToByteCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
+        .cannotConvertFromExternal("")
         .cannotConvertFromExternal("not a valid byte")
         .cannotConvertFromExternal("1.2")
         .cannotConvertFromExternal("128")

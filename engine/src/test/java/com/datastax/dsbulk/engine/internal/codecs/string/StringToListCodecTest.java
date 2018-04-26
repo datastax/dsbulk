@@ -58,7 +58,7 @@ class StringToListCodecTest {
           nullStrings);
 
   private final JsonNodeToStringCodec eltCodec2 =
-      new JsonNodeToStringCodec(TypeCodec.varchar(), nullStrings);
+      new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
 
   private final TypeCodec<List<Double>> listCodec1 = list(cdouble());
   private final TypeCodec<List<String>> listCodec2 = list(varchar());

@@ -41,8 +41,6 @@ class StringToLocalTimeCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
-        .toInternal(null)
-        .convertsFromExternal("")
         .toInternal(null);
     codec = new StringToLocalTimeCodec(format2, nullStrings);
     assertThat(codec)
@@ -65,6 +63,8 @@ class StringToLocalTimeCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullStrings);
-    assertThat(codec).cannotConvertFromExternal("not a valid date format");
+    assertThat(codec)
+        .cannotConvertFromExternal("")
+        .cannotConvertFromExternal("not a valid date format");
   }
 }

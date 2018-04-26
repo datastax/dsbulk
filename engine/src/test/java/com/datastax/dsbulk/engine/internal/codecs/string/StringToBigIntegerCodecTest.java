@@ -66,8 +66,6 @@ class StringToBigIntegerCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
-        .toInternal(null)
-        .convertsFromExternal("")
         .toInternal(null);
   }
 
@@ -85,6 +83,7 @@ class StringToBigIntegerCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
+        .cannotConvertFromExternal("")
         .cannotConvertFromExternal("-1.234")
         .cannotConvertFromExternal("not a valid biginteger");
   }

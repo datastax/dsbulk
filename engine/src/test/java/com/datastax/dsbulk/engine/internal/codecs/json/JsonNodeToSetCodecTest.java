@@ -58,7 +58,7 @@ class JsonNodeToSetCodecTest {
           nullStrings);
 
   private final JsonNodeToStringCodec eltCodec2 =
-      new JsonNodeToStringCodec(TypeCodec.varchar(), nullStrings);
+      new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
 
   private final TypeCodec<Set<Double>> setCodec1 = set(cdouble());
   private final TypeCodec<Set<String>> setCodec2 = set(varchar());

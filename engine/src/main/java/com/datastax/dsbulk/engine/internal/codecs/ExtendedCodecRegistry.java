@@ -16,6 +16,10 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.UserType;
 import com.datastax.driver.core.exceptions.CodecNotFoundException;
+import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.driver.dse.geometry.codecs.LineStringCodec;
+import com.datastax.driver.dse.geometry.codecs.PointCodec;
+import com.datastax.driver.dse.geometry.codecs.PolygonCodec;
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
@@ -41,6 +45,11 @@ import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToStringCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToTupleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUDTCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUnknownTypeCodec;
+import com.datastax.dsbulk.engine.internal.codecs.json.dse.JsonNodeToDateRangeCodec;
+import com.datastax.dsbulk.engine.internal.codecs.json.dse.JsonNodeToLineStringCodec;
+import com.datastax.dsbulk.engine.internal.codecs.json.dse.JsonNodeToPointCodec;
+import com.datastax.dsbulk.engine.internal.codecs.json.dse.JsonNodeToPolygonCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.BooleanToNumberCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.NumberToBooleanCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.NumberToInstantCodec;
@@ -68,6 +77,11 @@ import com.datastax.dsbulk.engine.internal.codecs.string.StringToStringCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToTupleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUDTCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.string.StringToUnknownTypeCodec;
+import com.datastax.dsbulk.engine.internal.codecs.string.dse.StringToDateRangeCodec;
+import com.datastax.dsbulk.engine.internal.codecs.string.dse.StringToLineStringCodec;
+import com.datastax.dsbulk.engine.internal.codecs.string.dse.StringToPointCodec;
+import com.datastax.dsbulk.engine.internal.codecs.string.dse.StringToPolygonCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCodec;
@@ -96,6 +110,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * If only CodecRegistry were extensible :(
@@ -105,8 +121,11 @@ import org.jetbrains.annotations.Nullable;
  */
 public class ExtendedCodecRegistry {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ExtendedCodecRegistry.class);
   private static final TypeToken<String> STRING_TYPE_TOKEN = TypeToken.of(String.class);
   private static final TypeToken<JsonNode> JSON_NODE_TYPE_TOKEN = TypeToken.of(JsonNode.class);
+  private static final String DATE_RANGE_CLASS_NAME =
+      "org.apache.cassandra.db.marshal.DateRangeType";
 
   private final CodecRegistry codecRegistry;
   private final List<String> nullStrings;
@@ -162,6 +181,9 @@ public class ExtendedCodecRegistry {
   @SuppressWarnings("unchecked")
   public <T> TypeCodec<T> codecFor(
       @NotNull DataType cqlType, @NotNull TypeToken<? extends T> javaType) {
+    // Implementation note: it's not required to cache codecs created on-the-fly by this method
+    // as caching is meant to be handled by the caller, see
+    // com.datastax.dsbulk.engine.internal.schema.DefaultMapping.codec()
     TypeCodec<T> codec;
     try {
       if (javaType.getRawType().equals(String.class)) {
@@ -439,12 +461,39 @@ public class ExtendedCodecRegistry {
           return new StringToUDTCodec(jsonCodec, objectMapper, nullStrings);
         }
       case COUNTER:
+        throw new InvalidTypeException("Cannot set the value of a counter column");
       case CUSTOM:
+        {
+          DataType.CustomType customType = (DataType.CustomType) cqlType;
+          switch (customType.getCustomTypeClassName()) {
+            case PointCodec.CLASS_NAME:
+              return new StringToPointCodec(nullStrings);
+            case LineStringCodec.CLASS_NAME:
+              return new StringToLineStringCodec(nullStrings);
+            case PolygonCodec.CLASS_NAME:
+              return new StringToPolygonCodec(nullStrings);
+            case DATE_RANGE_CLASS_NAME:
+              return new StringToDateRangeCodec(nullStrings);
+          }
+          // fall through
+        }
       default:
-        String msg =
-            String.format(
-                "Codec not found for requested operation: [%s <-> %s]", cqlType, String.class);
-        throw new CodecNotFoundException(msg, cqlType, STRING_TYPE_TOKEN);
+        try {
+          TypeCodec<Object> innerCodec = codecRegistry.codecFor(cqlType);
+          LOGGER.warn(
+              String.format(
+                  "CQL type %s is not officially supported by this version of DSBulk; "
+                      + "string literals will be parsed and formatted using registered codec %s",
+                  cqlType, innerCodec.getClass().getSimpleName()));
+          return new StringToUnknownTypeCodec<>(innerCodec, nullStrings);
+        } catch (CodecNotFoundException e) {
+          String msg =
+              String.format(
+                  "Codec not found for requested operation: [%s <-> %s]", cqlType, String.class);
+          CodecNotFoundException e1 = new CodecNotFoundException(msg, cqlType, STRING_TYPE_TOKEN);
+          e1.addSuppressed(e);
+          throw e1;
+        }
     }
   }
 
@@ -454,7 +503,8 @@ public class ExtendedCodecRegistry {
       case ASCII:
       case TEXT:
       case VARCHAR:
-        return new JsonNodeToStringCodec(codecRegistry.codecFor(cqlType), nullStrings);
+        return new JsonNodeToStringCodec(
+            codecRegistry.codecFor(cqlType), objectMapper, nullStrings);
       case BOOLEAN:
         return new JsonNodeToBooleanCodec(booleanInputWords, nullStrings);
       case TINYINT:
@@ -632,12 +682,40 @@ public class ExtendedCodecRegistry {
           return new JsonNodeToUDTCodec(udtCodec, fieldCodecs.build(), objectMapper, nullStrings);
         }
       case COUNTER:
+        throw new InvalidTypeException("Cannot set the value of a counter column");
       case CUSTOM:
+        {
+          DataType.CustomType customType = (DataType.CustomType) cqlType;
+          switch (customType.getCustomTypeClassName()) {
+            case PointCodec.CLASS_NAME:
+              return new JsonNodeToPointCodec(objectMapper, nullStrings);
+            case LineStringCodec.CLASS_NAME:
+              return new JsonNodeToLineStringCodec(objectMapper, nullStrings);
+            case PolygonCodec.CLASS_NAME:
+              return new JsonNodeToPolygonCodec(objectMapper, nullStrings);
+            case DATE_RANGE_CLASS_NAME:
+              return new JsonNodeToDateRangeCodec(nullStrings);
+          }
+          // fall through
+        }
       default:
-        String msg =
-            String.format(
-                "Codec not found for requested operation: [%s <-> %s]", cqlType, JsonNode.class);
-        throw new CodecNotFoundException(msg, cqlType, JSON_NODE_TYPE_TOKEN);
+        try {
+          TypeCodec<Object> innerCodec = codecRegistry.codecFor(cqlType);
+          LOGGER.warn(
+              String.format(
+                  "CQL type %s is not officially supported by this version of DSBulk; "
+                      + "JSON literals will be parsed and formatted using registered codec %s",
+                  cqlType, innerCodec.getClass().getSimpleName()));
+          return new JsonNodeToUnknownTypeCodec<>(innerCodec, nullStrings);
+        } catch (CodecNotFoundException e) {
+          String msg =
+              String.format(
+                  "Codec not found for requested operation: [%s <-> %s]", cqlType, JsonNode.class);
+          CodecNotFoundException e1 =
+              new CodecNotFoundException(msg, cqlType, JSON_NODE_TYPE_TOKEN);
+          e1.addSuppressed(e);
+          throw e1;
+        }
     }
   }
 
