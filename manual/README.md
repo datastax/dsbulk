@@ -102,40 +102,32 @@ When supplied via the command line, all option values are expected to be in vali
 For example, control characters, the backslash character, and the double-quote character all need to
 be properly escaped.
 
-The following is thus correct:
+For example, `\t` is the escape sequence that corresponds to the tab character, whereas `\\` is
+the escape sequence for the backslash character:
 
 ```bash
 dsbulk load -delim '\t' -url 'C:\\Users\\My Folder'
 ```
 
-In the above example, `\t` is the escape sequence that corresponds to the tab character, 
-whereas `\\` is the escape sequence for the backslash character.
- 
-In general, string values containing special characters also need to be properly quoted 
-with double-quotes, as required by the HOCON syntax, e.g.:
+In general, string values containing special characters also need to be properly quoted with
+double-quotes, as required by the HOCON syntax:
 
 ```bash
 dsbulk load -url '"C:\\Users\\My Folder"'
 ```
 
-However, when the expected type of an option is a string, it is possible to omit the 
-surrounding double-quotes, for convenience. Thus the following two lines are equivalent:
-
-```bash
-dsbulk load -url 'C:\\Users\\My Folder'
-dsbulk load -url '"C:\\Users\\My Folder"'
-```
-
-Similarly, when an argument is a list, it is possible to omit the surrounding square brackets;
-the following two lines are thus equivalent:
+However, when the expected type of an option is a string, it is possible to omit the
+surrounding double-quotes, for convenience. Thus, note the absence of the double-quotes in the first
+example. Similarly, when an argument is a list, it is possible to omit the surrounding square
+brackets; making the following two lines equivalent:
 
 ```bash
 dsbulk load --codec.nullStrings 'NIL, NULL'
 dsbulk load --codec.nullStrings '[NIL, NULL]'
 ```
 
-And finally, the same applies for arguments of type map: it is possible to omit the surrounding 
-curly braces, which makes the following two lines equivalent:
+The same applies for arguments of type map: it is possible to omit the surrounding
+curly braces, making the following two lines equivalent:
 
 ```bash
 dsbulk load --connector.json.deserializationFeatures '{ USE_BIG_DECIMAL_FOR_FLOATS : true }'
@@ -160,6 +152,11 @@ properly escaped _and_ quoted.
   `stdin` of the tool:
 
   `gzcat table1.csv.gz | dsbulk load -k ks1 -t table1`
+
+* Load the file `export.csv` to table `ks.table1` using the short form option for `url` and the
+  tab character as a field delimiter:
+
+  `dsbulk load -k ks1 -t table1 -url export.csv -delim '\t'`
 
 * Specify a few hosts (initial contact points) that belong to the desired cluster and
   load from a local file, without headers. Map field indices of the input to table columns:
