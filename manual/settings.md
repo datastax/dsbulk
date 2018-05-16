@@ -424,6 +424,8 @@ A map of JSON deserialization features to set. Map keys should be enum constants
 
 Note: the default is to set `USE_BIG_DECIMAL_FOR_FLOATS` to `true`; this is the only way to guarantee that floating point numbers will not have their precision truncated when parsed, at the cost of a slightly slower parsing.
 
+Default: **"{USE_BIG_DECIMAL_FOR_FLOATS : true}"**.
+
 #### -encoding,--connector.json.encoding _&lt;string&gt;_
 
 The file encoding to use for all read or written files.
@@ -446,9 +448,13 @@ Default: **"\*\*/\*.json"**.
 
 A map of JSON generator features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `{ ESCAPE_NON_ASCII : true, QUOTE_FIELD_NAMES : true }` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
 
+Default: **"{}"**.
+
 #### --connector.json.mapperFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 A map of JSON mapper features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.MapperFeature`. Used both for loading and unloading.
+
+Default: **"{}"**.
 
 #### -maxConcurrentFiles,--connector.json.maxConcurrentFiles _&lt;string&gt;_
 
@@ -459,6 +465,8 @@ Default: **"0.25C"**.
 #### --connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 A map of JSON parser features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.core.JsonParser.Feature`. For example, a value of `{ ALLOW_COMMENTS : true, ALLOW_SINGLE_QUOTES : true }` will configure the parser to allow the use of comments and single-quoted strings in JSON data. Used for loading only.
+
+Default: **"{}"**.
 
 #### --connector.json.prettyPrint _&lt;boolean&gt;_
 
@@ -477,6 +485,8 @@ Default: **false**.
 #### --connector.json.serializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 A map of JSON serialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.SerializationFeature`. Used for unloading only.
+
+Default: **"{}"**.
 
 <a name="schema"></a>
 ## Schema Settings

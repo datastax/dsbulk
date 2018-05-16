@@ -72,8 +72,6 @@ class ConnectorSettingsTest {
             "encoding",
             "skipRecords",
             "maxRecords",
-            "parserFeatures",
-            "generatorFeatures",
             "prettyPrint")
         .doesNotHavePath("json");
   }
