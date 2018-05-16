@@ -69,8 +69,8 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                        "url = \"%s\", parserFeatures = \"{ALLOW_COMMENTS:true}\", "
+                            + "deserializationFeatures = \"{USE_BIG_DECIMAL_FOR_FLOATS : false}\"",
                         url("/multi_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -87,8 +87,8 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}, "
+                        "url = \"%s\", parserFeatures = \"ALLOW_COMMENTS=true\", "
+                            + "deserializationFeatures = \"{USE_BIG_DECIMAL_FOR_FLOATS = false}\", "
                             + "mode = SINGLE_DOCUMENT",
                         url("/single_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
@@ -106,7 +106,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, mode = SINGLE_DOCUMENT",
+                        "url = \"%s\", parserFeatures = \"{ALLOW_COMMENTS:true}\", mode = SINGLE_DOCUMENT",
                         url("/empty.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -124,7 +124,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, mode = MULTI_DOCUMENT",
+                        "url = \"%s\", parserFeatures = \"{ALLOW_COMMENTS:true}\", mode = MULTI_DOCUMENT",
                         url("/empty.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -142,8 +142,8 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                        "url = \"%s\", parserFeatures = \"{ALLOW_COMMENTS:true}\", "
+                            + "deserializationFeatures = \"{USE_BIG_DECIMAL_FOR_FLOATS : false}\"",
                         url("/multi_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -331,7 +331,7 @@ class JsonConnectorTest {
               "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
     } finally {
-      deleteDirectory(out);
+      deleteDirectory(dir);
     }
   }
 
@@ -366,7 +366,7 @@ class JsonConnectorTest {
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
               "]");
     } finally {
-      deleteDirectory(out);
+      deleteDirectory(dir);
     }
   }
 
@@ -615,7 +615,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, mode = MULTI_DOCUMENT",
+                        "url = \"%s\", parserFeatures = \"{ALLOW_COMMENTS:true}\", mode = MULTI_DOCUMENT",
                         url("/single_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -643,8 +643,8 @@ class JsonConnectorTest {
                       String.format(
                           "url = \"http://localhost:%d/file.json\", "
                               + "mode = SINGLE_DOCUMENT, "
-                              + "parserFeatures = {ALLOW_COMMENTS:true}, "
-                              + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                              + "parserFeatures = \"{ALLOW_COMMENTS:true}\", "
+                              + "deserializationFeatures = \"{USE_BIG_DECIMAL_FOR_FLOATS : false}\"",
                           server.getPort()))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);

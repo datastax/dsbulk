@@ -27,6 +27,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -546,6 +547,68 @@ class DataStaxBulkLoaderTest {
     assertThat(result.getInt("connector.json.maxRecords")).isEqualTo(111);
     assertThat(result.getInt("connector.json.maxConcurrentFiles")).isEqualTo(222);
     assertThat(result.getString("connector.json.url")).isEqualTo("http://findit");
+  }
+
+  @Test
+  void should_process_json_long_options() throws Exception {
+    DataStaxBulkLoader.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+    Config result =
+        DataStaxBulkLoader.parseCommandLine(
+            "load",
+            new String[] {
+              "-c",
+              "json",
+              "--connector.json.url",
+              "url",
+              "--connector.json.mode",
+              "SINGLE_DOCUMENT",
+              "--connector.json.fileNamePattern",
+              "pat",
+              "--connector.json.fileNameFormat",
+              "fmt",
+              "--connector.json.recursive",
+              "true",
+              "--connector.json.maxConcurrentFiles",
+              "1",
+              "--connector.json.encoding",
+              "enc",
+              "--connector.json.skipRecords",
+              "2",
+              "--connector.json.maxRecords",
+              "3",
+              "--connector.json.parserFeatures",
+              "{f1 = true, f2 = false}",
+              "--connector.json.generatorFeatures",
+              "{g1 = true, g2 = false}",
+              "--connector.json.mapperFeatures",
+              "{m1 = true, m2 = false}",
+              "--connector.json.serializationFeatures",
+              "{s1 = true, s2 = false}",
+              "--connector.json.deserializationFeatures",
+              "{d1 = true, d2 = false}",
+              "--connector.json.prettyPrint",
+              "true",
+            });
+    assertThat(result.getString("connector.json.url")).isEqualTo("url");
+    assertThat(result.getString("connector.json.mode")).isEqualTo("SINGLE_DOCUMENT");
+    assertThat(result.getString("connector.json.fileNamePattern")).isEqualTo("pat");
+    assertThat(result.getString("connector.json.fileNameFormat")).isEqualTo("fmt");
+    assertThat(result.getBoolean("connector.json.recursive")).isTrue();
+    assertThat(result.getInt("connector.json.maxConcurrentFiles")).isEqualTo(1);
+    assertThat(result.getString("connector.json.encoding")).isEqualTo("enc");
+    assertThat(result.getInt("connector.json.skipRecords")).isEqualTo(2);
+    assertThat(result.getInt("connector.json.maxRecords")).isEqualTo(3);
+    assertThat(result.getString("connector.json.parserFeatures"))
+        .isEqualTo("{f1 = true, f2 = false}");
+    assertThat(result.getString("connector.json.generatorFeatures"))
+        .isEqualTo("{g1 = true, g2 = false}");
+    assertThat(result.getString("connector.json.mapperFeatures"))
+        .isEqualTo("{m1 = true, m2 = false}");
+    assertThat(result.getString("connector.json.serializationFeatures"))
+        .isEqualTo("{s1 = true, s2 = false}");
+    assertThat(result.getString("connector.json.deserializationFeatures"))
+        .isEqualTo("{d1 = true, d2 = false}");
+    assertThat(result.getBoolean("connector.json.prettyPrint")).isTrue();
   }
 
   @Test

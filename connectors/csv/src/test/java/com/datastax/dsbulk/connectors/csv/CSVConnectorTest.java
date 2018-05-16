@@ -324,7 +324,7 @@ class CSVConnectorTest {
               "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
               ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
     } finally {
-      deleteDirectory(out);
+      deleteDirectory(dir);
     }
   }
 

@@ -39,7 +39,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.base.Suppliers;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigFactory;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -159,14 +161,14 @@ public class JsonConnector implements Connector {
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
       recursive = settings.getBoolean(RECURSIVE);
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
-      parserFeatures = getFeatureMap(settings.getConfig(PARSER_FEATURES), JsonParser.Feature.class);
+      parserFeatures = getFeatureMap(settings.getString(PARSER_FEATURES), JsonParser.Feature.class);
       generatorFeatures =
-          getFeatureMap(settings.getConfig(GENERATOR_FEATURES), JsonGenerator.Feature.class);
-      mapperFeatures = getFeatureMap(settings.getConfig(MAPPER_FEATURES), MapperFeature.class);
+          getFeatureMap(settings.getString(GENERATOR_FEATURES), JsonGenerator.Feature.class);
+      mapperFeatures = getFeatureMap(settings.getString(MAPPER_FEATURES), MapperFeature.class);
       serializationFeatures =
-          getFeatureMap(settings.getConfig(SERIALIZATION_FEATURES), SerializationFeature.class);
+          getFeatureMap(settings.getString(SERIALIZATION_FEATURES), SerializationFeature.class);
       deserializationFeatures =
-          getFeatureMap(settings.getConfig(DESERIALIZATION_FEATURES), DeserializationFeature.class);
+          getFeatureMap(settings.getString(DESERIALIZATION_FEATURES), DeserializationFeature.class);
       prettyPrint = settings.getBoolean(PRETTY_PRINT);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.json");
@@ -526,7 +528,8 @@ public class JsonConnector implements Connector {
   }
 
   private static <T extends Enum<T>> Map<T, Boolean> getFeatureMap(
-      LoaderConfig source, Class<T> featureClass) {
+      String sourceString, Class<T> featureClass) {
+    Config source = ConfigFactory.parseString(ConfigUtils.ensureBraces(sourceString));
     Map<T, Boolean> dest = new HashMap<>();
     for (String name : source.root().keySet()) {
       dest.put(Enum.valueOf(featureClass, name), source.getBoolean(name));
