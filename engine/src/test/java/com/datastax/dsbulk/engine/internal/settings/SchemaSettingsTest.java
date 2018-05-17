@@ -99,6 +99,9 @@ class SchemaSettingsTest {
 
   private Session session;
   private Cluster cluster;
+  private Metadata metadata;
+  private KeyspaceMetadata keyspace;
+  private TableMetadata table;
   private PreparedStatement ps;
 
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
@@ -113,9 +116,9 @@ class SchemaSettingsTest {
   void setUp() {
     session = mock(Session.class);
     cluster = mock(Cluster.class);
-    Metadata metadata = mock(Metadata.class);
-    KeyspaceMetadata keyspace = mock(KeyspaceMetadata.class);
-    TableMetadata table = mock(TableMetadata.class);
+    metadata = mock(Metadata.class);
+    keyspace = mock(KeyspaceMetadata.class);
+    table = mock(TableMetadata.class);
     ps = mock(PreparedStatement.class);
     ColumnMetadata col1 = mock(ColumnMetadata.class);
     ColumnMetadata col2 = mock(ColumnMetadata.class);
@@ -860,6 +863,60 @@ class SchemaSettingsTest {
         .hasMessage(
             "The provided statement (schema.query) contains unrecognized bound variables: [foo, bar]; "
                 + "only 'start' and 'end' can be used to define a token range");
+  }
+
+  @Test
+  void should_warn_that_keyspace_was_not_found() {
+    when(metadata.getKeyspace("\"MyKs\"")).thenReturn(null);
+    when(metadata.getKeyspace("myks")).thenReturn(keyspace);
+    LoaderConfig config = makeLoaderConfig("keyspace = MyKs, table = t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(codec);
+    assertThatThrownBy(
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Keyspace \"MyKs\" does not exist, however a keyspace myks was found. Did you mean to use -k myks?");
+  }
+
+  @Test
+  void should_warn_that_table_was_not_found() {
+    when(keyspace.getTable("\"MyTable\"")).thenReturn(null);
+    when(keyspace.getTable("mytable")).thenReturn(table);
+    LoaderConfig config = makeLoaderConfig("keyspace = ks1, table = MyTable");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(codec);
+    assertThatThrownBy(
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Table \"MyTable\" does not exist, however a table mytable was found. Did you mean to use -t mytable?");
+  }
+
+  @Test
+  void should_warn_that_keyspace_was_not_found_2() {
+    when(metadata.getKeyspace("\"MyKs\"")).thenReturn(null);
+    when(metadata.getKeyspace("myks")).thenReturn(null);
+    LoaderConfig config = makeLoaderConfig("keyspace = MyKs, table = t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(codec);
+    assertThatThrownBy(
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Keyspace \"MyKs\" does not exist");
+  }
+
+  @Test
+  void should_warn_that_table_was_not_found_2() {
+    when(keyspace.getTable("\"MyTable\"")).thenReturn(null);
+    when(keyspace.getTable("mytable")).thenReturn(null);
+    LoaderConfig config = makeLoaderConfig("keyspace = ks1, table = MyTable");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(codec);
+    assertThatThrownBy(
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Table \"MyTable\" does not exist");
   }
 
   @NotNull
