@@ -9,6 +9,7 @@
 - [bug] DAT-259: LogManager files have interleaved entries.
 - [bug] DAT-260: LogManager is closing files too soon.
 - [bug] DAT-266: DSE Geometry types cause CodecNotFoundException.
+- [improvement] DAT-261: Improve message when no files match pattern in a directory.
 
 
 ### 1.0.1

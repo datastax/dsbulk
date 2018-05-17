@@ -236,7 +236,7 @@ public class CSVConnector implements Connector {
     }
   }
 
-  private void tryReadFromDirectory() throws URISyntaxException {
+  private void tryReadFromDirectory() throws URISyntaxException, IOException {
     try {
       resourceCount = 1;
       Path root = Paths.get(url.toURI());
@@ -246,9 +246,25 @@ public class CSVConnector implements Connector {
         }
         this.root = root;
         resourceCount = scanRootDirectory().take(100).count().block().intValue();
+        if (resourceCount == 0) {
+          if (countReadableFiles() == 0) {
+            LOGGER.warn("Directory {} has no readable files", root);
+          } else {
+            LOGGER.warn(
+                "No files in directory {} matched the connector.csv.fileNamePattern of \"{}\".",
+                root,
+                pattern);
+          }
+        }
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to reading from URL directly
+    }
+  }
+
+  private long countReadableFiles() throws IOException {
+    try (Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1)) {
+      return files.filter(Files::isReadable).filter(Files::isRegularFile).count();
     }
   }
 

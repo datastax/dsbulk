@@ -21,6 +21,9 @@ import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.HttpTestServer;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -45,10 +48,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
-@SuppressWarnings("Duplicates")
+@ExtendWith(LogInterceptingExtension.class)
 class JsonConnectorTest {
 
   static {
@@ -300,6 +304,48 @@ class JsonConnectorTest {
     connector.init();
     assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(500);
     connector.close();
+  }
+
+  @Test
+  void should_warn_when_directory_empty(@LogCapture LogInterceptor logs) throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Path rootPath = Files.createTempDirectory("empty");
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
+                        rootPath))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(logs.getLoggedMessages())
+        .contains(String.format("Directory %s has no readable files", rootPath));
+    connector.close();
+    FileUtils.deleteDirectory(rootPath);
+  }
+
+  @Test
+  void should_warn_when_no_files_matched(@LogCapture LogInterceptor logs) throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Path rootPath = Files.createTempDirectory("empty");
+    Files.createTempFile(rootPath, "test", ".txt");
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
+                        rootPath))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(logs.getLoggedMessages())
+        .contains(
+            String.format(
+                "No files in directory %s matched the connector.json.fileNamePattern of \"**/part-*\".",
+                rootPath));
+    connector.close();
+    FileUtils.deleteDirectory(rootPath);
   }
 
   @Test
