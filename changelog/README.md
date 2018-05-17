@@ -9,7 +9,7 @@
 - [bug] DAT-259: LogManager files have interleaved entries.
 - [bug] DAT-260: LogManager is closing files too soon.
 - [bug] DAT-266: DSE Geometry types cause CodecNotFoundException.
-
+- [bug] DAT-268: Map-type settings are unrecognized from the command-line.
 
 ### 1.0.1
 
