@@ -13,8 +13,6 @@ import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.CONFIG_FIL
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.PREFERRED_SETTINGS;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.google.common.base.CharMatcher;
@@ -135,11 +133,10 @@ public class HelpUtils {
   private static Options createOptions(
       Collection<String> settings, Map<String, String> longToShortOptions) {
     Options options = new Options();
-
-    LoaderConfig config = new DefaultLoaderConfig(DataStaxBulkLoader.DEFAULT);
     for (String setting : settings) {
       options.addOption(
-          OptionUtils.createOption(config, longToShortOptions, setting, config.getValue(setting)));
+          OptionUtils.createOption(
+              setting, DataStaxBulkLoader.DEFAULT.getValue(setting), longToShortOptions));
     }
     return options;
   }

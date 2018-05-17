@@ -12,7 +12,7 @@ import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.CONFIG_FIL
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
-import com.typesafe.config.Config;
+import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import java.util.Map;
@@ -21,17 +21,13 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
 public class OptionUtils {
+
   public static Options createOptions(String connectorName) {
     Map<String, String> longToShortOptions = SettingsUtils.getLongToShortOptionsMap(connectorName);
 
     Options options = new Options();
 
-    for (Map.Entry<String, ConfigValue> entry : DataStaxBulkLoader.DEFAULT.entrySet()) {
-      String longName = entry.getKey();
-      Option option =
-          createOption(DataStaxBulkLoader.DEFAULT, longToShortOptions, longName, entry.getValue());
-      options.addOption(option);
-    }
+    createOptions(DataStaxBulkLoader.DEFAULT.root(), "", options, longToShortOptions);
 
     // Add the --help, --version, -f options
     options.addOption(
@@ -45,8 +41,34 @@ public class OptionUtils {
     return options;
   }
 
+  private static void createOptions(
+      ConfigObject root,
+      String keyPrefix,
+      Options options,
+      Map<String, String> longToShortOptions) {
+    for (Map.Entry<String, ConfigValue> entry : root.entrySet()) {
+
+      String key = entry.getKey();
+
+      // Never add a setting under "metaSettings".
+      if (key.equals("metaSettings")) {
+        continue;
+      }
+
+      ConfigValue value = entry.getValue();
+      String fullKey = keyPrefix.isEmpty() ? key : keyPrefix + '.' + key;
+
+      if (ConfigUtils.isLeaf(value)) {
+        Option option = createOption(fullKey, entry.getValue(), longToShortOptions);
+        options.addOption(option);
+      } else {
+        createOptions((ConfigObject) value, fullKey, options, longToShortOptions);
+      }
+    }
+  }
+
   static Option createOption(
-      Config config, Map<String, String> longToShortOptions, String longName, ConfigValue value) {
+      String longName, ConfigValue value, Map<String, String> longToShortOptions) {
     Option.Builder option;
     String shortName = longToShortOptions.get(longName);
     if (shortName == null) {
@@ -57,7 +79,7 @@ public class OptionUtils {
     option
         .hasArg()
         .longOpt(longName)
-        .argName(ConfigUtils.getTypeString(config, longName))
+        .argName(ConfigUtils.getTypeString(DataStaxBulkLoader.DEFAULT, longName))
         .desc(getSanitizedDescription(longName, value));
     return option.build();
   }
