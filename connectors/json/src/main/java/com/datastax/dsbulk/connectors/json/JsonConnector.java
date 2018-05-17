@@ -434,12 +434,7 @@ public class JsonConnector implements Connector {
         if (mode == DocumentMode.SINGLE_DOCUMENT && currentLine > 0) {
           writer.writeRaw(',');
         }
-        writer.writeStartObject();
-        for (String field : record.fields()) {
-          writer.writeFieldName(field);
-          writer.writeTree((TreeNode) record.getFieldValue(field));
-        }
-        writer.writeEndObject();
+        writer.writeObject(record);
         currentLine++;
       } catch (ClosedChannelException e) {
         // OK, happens when the channel was closed due to interruption
