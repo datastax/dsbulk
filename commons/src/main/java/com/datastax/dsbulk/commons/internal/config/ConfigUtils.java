@@ -169,6 +169,7 @@ public class ConfigUtils {
   }
 
   public static String ensureQuoted(String value) {
+    value = value.trim();
     if (value.startsWith("\"") && value.endsWith("\"")) {
       return value;
     }
@@ -176,6 +177,7 @@ public class ConfigUtils {
   }
 
   public static String ensureBrackets(String value) {
+    value = value.trim();
     if (value.startsWith("[") && value.endsWith("]")) {
       return value;
     }
@@ -183,6 +185,7 @@ public class ConfigUtils {
   }
 
   public static String ensureBraces(String value) {
+    value = value.trim();
     if (value.startsWith("{") && value.endsWith("}")) {
       return value;
     }
