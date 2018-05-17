@@ -35,6 +35,7 @@ import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListe
 import com.datastax.dsbulk.executor.api.listener.ReadsReportingExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.WritesReportingExecutionListener;
 import com.datastax.dsbulk.executor.api.result.Result;
+import com.google.common.util.concurrent.MoreExecutors;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
@@ -329,11 +330,9 @@ public class MetricsManager implements AutoCloseable {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     closeReporters();
-    scheduler.shutdown();
-    scheduler.awaitTermination(1, MINUTES);
-    scheduler.shutdownNow();
+    MoreExecutors.shutdownAndAwaitTermination(scheduler, 1, MINUTES);
     tearDownMetricsLogger();
   }
 
