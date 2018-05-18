@@ -47,7 +47,7 @@ class JsonNodeToStringCodecTest {
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
         .toInternal("")
-        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .convertsFromExternal(null)
         .toInternal(null);
   }
 
@@ -69,7 +69,7 @@ class JsonNodeToStringCodecTest {
         .convertsFromInternal("[1,2,3]")
         .toExternal(objectMapper.readTree("[1,2,3]"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode())
+        .toExternal(null)
         .convertsFromInternal("")
         .toExternal(JSON_NODE_FACTORY.textNode(""));
   }

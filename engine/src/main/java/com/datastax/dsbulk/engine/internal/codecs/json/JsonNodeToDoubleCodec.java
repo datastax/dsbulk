@@ -71,6 +71,6 @@ public class JsonNodeToDoubleCodec extends JsonNodeToNumberCodec<Double> {
 
   @Override
   public JsonNode internalToExternal(Double value) {
-    return JSON_NODE_FACTORY.numberNode(value);
+    return value == null ? null : JSON_NODE_FACTORY.numberNode(value);
   }
 }

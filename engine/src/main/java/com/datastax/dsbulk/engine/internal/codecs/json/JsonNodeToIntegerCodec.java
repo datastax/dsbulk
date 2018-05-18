@@ -68,6 +68,6 @@ public class JsonNodeToIntegerCodec extends JsonNodeToNumberCodec<Integer> {
 
   @Override
   public JsonNode internalToExternal(Integer value) {
-    return JSON_NODE_FACTORY.numberNode(value);
+    return value == null ? null : JSON_NODE_FACTORY.numberNode(value);
   }
 }

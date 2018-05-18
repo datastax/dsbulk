@@ -30,10 +30,7 @@ public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
 
   @Override
   public JsonNode internalToExternal(T value) {
-    if (value == null) {
-      return JSON_NODE_FACTORY.nullNode();
-    }
-    return JSON_NODE_FACTORY.textNode(temporalFormat.format(value));
+    return value == null ? null : JSON_NODE_FACTORY.textNode(temporalFormat.format(value));
   }
 
   TemporalAccessor parseTemporalAccessor(JsonNode node) {

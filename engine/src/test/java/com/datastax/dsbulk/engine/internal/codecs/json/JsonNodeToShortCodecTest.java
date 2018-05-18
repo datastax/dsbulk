@@ -86,7 +86,7 @@ class JsonNodeToShortCodecTest {
         .convertsFromInternal(Short.MIN_VALUE)
         .toExternal(JSON_NODE_FACTORY.numberNode((short) -32_768))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

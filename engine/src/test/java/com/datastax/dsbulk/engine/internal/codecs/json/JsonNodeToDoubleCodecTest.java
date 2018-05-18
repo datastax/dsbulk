@@ -90,7 +90,7 @@ class JsonNodeToDoubleCodecTest {
         .convertsFromInternal(0.001d)
         .toExternal(JSON_NODE_FACTORY.numberNode(0.001d))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

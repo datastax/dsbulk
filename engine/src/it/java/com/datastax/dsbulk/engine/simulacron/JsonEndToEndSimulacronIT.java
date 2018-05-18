@@ -593,7 +593,7 @@ class JsonEndToEndSimulacronIT {
     List<Map<String, Object>> rows = new ArrayList<>();
     HashMap<String, Object> row = new HashMap<>();
     row.put("pk", 1);
-    row.put("c1", "foo");
+    row.put("c1", null);
     rows.add(row);
     SuccessResult then = new SuccessResult(rows, columnTypes);
     RequestPrime prime = new RequestPrime(when, then);
@@ -620,7 +620,9 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       query,
       "--connector.json.generatorFeatures",
-      "{QUOTE_FIELD_NAMES = false}"
+      "{QUOTE_FIELD_NAMES = false}",
+      "--connector.json.serializationStrategy",
+      "NON_NULL"
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -628,7 +630,7 @@ class JsonEndToEndSimulacronIT {
     validateQueryCount(simulacron, 1, query, ONE);
     validateOutputFiles(1, unloadDir);
     Optional<String> line = readAllLinesInDirectoryAsStream(unloadDir).findFirst();
-    assertThat(line).isPresent().hasValue("{pk:1,c1:\"foo\"}");
+    assertThat(line).isPresent().hasValue("{pk:1}");
   }
 
   @Test

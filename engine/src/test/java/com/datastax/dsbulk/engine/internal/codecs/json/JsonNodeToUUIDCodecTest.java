@@ -130,7 +130,7 @@ class JsonNodeToUUIDCodecTest {
         .convertsFromInternal(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .toExternal(JSON_NODE_FACTORY.textNode("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

@@ -33,7 +33,7 @@ class JsonNodeToDurationCodecTest {
         .convertsFromExternal(
             JSON_NODE_FACTORY.textNode("P0001-03-00T02:10:00")) // alternative ISO 8601 pattern
         .toInternal(duration)
-        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
@@ -47,7 +47,7 @@ class JsonNodeToDurationCodecTest {
         .convertsFromInternal(duration)
         .toExternal(JSON_NODE_FACTORY.textNode("1y3mo2h10m"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

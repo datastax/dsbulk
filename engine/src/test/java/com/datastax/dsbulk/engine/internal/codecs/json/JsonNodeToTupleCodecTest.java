@@ -100,7 +100,7 @@ class JsonNodeToTupleCodecTest {
         .convertsFromInternal(tupleType.newValue(null, null))
         .toExternal(objectMapper.readTree("[null,null]"))
         .convertsFromInternal(null)
-        .toExternal(objectMapper.getNodeFactory().nullNode());
+        .toExternal(null);
   }
 
   @Test

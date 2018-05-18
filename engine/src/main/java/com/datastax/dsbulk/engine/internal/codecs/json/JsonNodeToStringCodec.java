@@ -47,7 +47,7 @@ public class JsonNodeToStringCodec extends JsonNodeConvertingCodec<String> {
   @Override
   public JsonNode internalToExternal(String value) {
     if (value == null) {
-      return JSON_NODE_FACTORY.nullNode();
+      return null;
     }
     try {
       // Try to read a valid json first (object, array, or numeric values),

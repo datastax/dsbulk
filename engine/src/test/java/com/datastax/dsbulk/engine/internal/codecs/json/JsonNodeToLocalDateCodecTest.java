@@ -58,13 +58,13 @@ class JsonNodeToLocalDateCodecTest {
         .convertsFromInternal(LocalDate.parse("2016-07-24"))
         .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
     codec = new JsonNodeToLocalDateCodec(format2, nullStrings);
     assertThat(codec)
         .convertsFromInternal(LocalDate.parse("2016-07-24"))
         .toExternal(JSON_NODE_FACTORY.textNode("20160724"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

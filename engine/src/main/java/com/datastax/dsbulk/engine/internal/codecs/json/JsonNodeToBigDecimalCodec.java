@@ -71,6 +71,6 @@ public class JsonNodeToBigDecimalCodec extends JsonNodeToNumberCodec<BigDecimal>
 
   @Override
   public JsonNode internalToExternal(BigDecimal value) {
-    return JSON_NODE_FACTORY.numberNode(value);
+    return value == null ? null : JSON_NODE_FACTORY.numberNode(value);
   }
 }

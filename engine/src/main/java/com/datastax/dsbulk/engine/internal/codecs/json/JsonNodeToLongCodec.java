@@ -68,6 +68,6 @@ public class JsonNodeToLongCodec extends JsonNodeToNumberCodec<Long> {
 
   @Override
   public JsonNode internalToExternal(Long value) {
-    return JSON_NODE_FACTORY.numberNode(value);
+    return value == null ? null : JSON_NODE_FACTORY.numberNode(value);
   }
 }

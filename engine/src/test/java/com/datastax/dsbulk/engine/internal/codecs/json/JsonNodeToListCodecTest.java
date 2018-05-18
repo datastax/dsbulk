@@ -134,7 +134,7 @@ class JsonNodeToListCodecTest {
         .convertsFromInternal(newArrayList(null, null))
         .toExternal(objectMapper.readTree("[null,null]"))
         .convertsFromInternal(null)
-        .toExternal(objectMapper.getNodeFactory().nullNode());
+        .toExternal(null);
     assertThat(codec2)
         .convertsFromInternal(newArrayList("foo", "bar"))
         .toExternal(objectMapper.readTree("[\"foo\",\"bar\"]"))
@@ -147,7 +147,7 @@ class JsonNodeToListCodecTest {
         .convertsFromInternal(newArrayList(null, null))
         .toExternal(objectMapper.readTree("[null,null]"))
         .convertsFromInternal(null)
-        .toExternal(objectMapper.getNodeFactory().nullNode());
+        .toExternal(null);
   }
 
   @Test

@@ -68,6 +68,6 @@ public class JsonNodeToByteCodec extends JsonNodeToNumberCodec<Byte> {
 
   @Override
   public JsonNode internalToExternal(Byte value) {
-    return JSON_NODE_FACTORY.numberNode(value);
+    return value == null ? null : JSON_NODE_FACTORY.numberNode(value);
   }
 }

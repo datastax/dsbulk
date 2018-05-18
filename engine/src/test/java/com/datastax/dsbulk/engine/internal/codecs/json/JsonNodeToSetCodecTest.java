@@ -136,7 +136,7 @@ class JsonNodeToSetCodecTest {
         .convertsFromInternal(newLinkedHashSet((Double) null))
         .toExternal(objectMapper.readTree("[null]"))
         .convertsFromInternal(null)
-        .toExternal(objectMapper.getNodeFactory().nullNode());
+        .toExternal(null);
     assertThat(codec2)
         .convertsFromInternal(newLinkedHashSet("foo", "bar"))
         .toExternal(objectMapper.readTree("[\"foo\",\"bar\"]"))
@@ -149,7 +149,7 @@ class JsonNodeToSetCodecTest {
         .convertsFromInternal(newLinkedHashSet((String) null))
         .toExternal(objectMapper.readTree("[null]"))
         .convertsFromInternal(null)
-        .toExternal(objectMapper.getNodeFactory().nullNode());
+        .toExternal(null);
   }
 
   @Test

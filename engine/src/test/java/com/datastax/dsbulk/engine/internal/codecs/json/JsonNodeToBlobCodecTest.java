@@ -43,7 +43,7 @@ class JsonNodeToBlobCodecTest {
         .toInternal(dataBb)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("0x"))
         .toInternal(emptyBb)
-        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
@@ -59,7 +59,7 @@ class JsonNodeToBlobCodecTest {
         .convertsFromInternal(emptyBb)
         .toExternal(JSON_NODE_FACTORY.binaryNode(empty))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

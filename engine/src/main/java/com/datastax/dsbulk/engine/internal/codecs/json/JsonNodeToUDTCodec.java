@@ -73,7 +73,7 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
   @Override
   public JsonNode internalToExternal(UDTValue value) {
     if (value == null) {
-      return objectMapper.getNodeFactory().nullNode();
+      return null;
     }
     ObjectNode root = objectMapper.createObjectNode();
     for (UserType.Field field : definition) {

@@ -199,7 +199,7 @@ class JsonNodeToUDTCodecTest {
         .convertsFromInternal(udt1.newValue())
         .toExternal(objectMapper.readTree("{\"f1a\":null,\"f1b\":{}}"))
         .convertsFromInternal(null)
-        .toExternal(objectMapper.getNodeFactory().nullNode());
+        .toExternal(null);
   }
 
   @Test

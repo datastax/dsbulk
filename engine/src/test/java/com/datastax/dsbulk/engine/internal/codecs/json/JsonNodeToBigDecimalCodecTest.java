@@ -71,7 +71,7 @@ class JsonNodeToBigDecimalCodecTest {
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null)
-        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .convertsFromExternal(null)
         .toInternal(null);
   }
 
@@ -83,7 +83,7 @@ class JsonNodeToBigDecimalCodecTest {
         .convertsFromInternal(new BigDecimal("1234.56"))
         .toExternal(JSON_NODE_FACTORY.numberNode(new BigDecimal("1234.56")))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

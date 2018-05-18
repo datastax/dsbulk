@@ -31,9 +31,6 @@ public class JsonNodeToDurationCodec extends JsonNodeConvertingCodec<Duration> {
 
   @Override
   public JsonNode internalToExternal(Duration value) {
-    if (value == null) {
-      return JSON_NODE_FACTORY.nullNode();
-    }
-    return JSON_NODE_FACTORY.textNode(value.toString());
+    return value == null ? null : JSON_NODE_FACTORY.textNode(value.toString());
   }
 }

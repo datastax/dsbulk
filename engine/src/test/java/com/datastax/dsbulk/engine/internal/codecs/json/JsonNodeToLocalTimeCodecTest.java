@@ -61,13 +61,13 @@ class JsonNodeToLocalTimeCodecTest {
         .convertsFromInternal(LocalTime.parse("12:24:46.999"))
         .toExternal(JSON_NODE_FACTORY.textNode("12:24:46.999"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
     codec = new JsonNodeToLocalTimeCodec(format2, nullStrings);
     assertThat(codec)
         .convertsFromInternal(LocalTime.parse("12:24:46.999"))
         .toExternal(JSON_NODE_FACTORY.textNode("122446.999"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

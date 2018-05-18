@@ -71,7 +71,7 @@ class JsonNodeToBigIntegerCodecTest {
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null)
-        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .convertsFromExternal(null)
         .toInternal(null);
   }
 
@@ -83,7 +83,7 @@ class JsonNodeToBigIntegerCodecTest {
         .convertsFromInternal(new BigInteger("-1234"))
         .toExternal(JSON_NODE_FACTORY.numberNode(new BigInteger("-1234")))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

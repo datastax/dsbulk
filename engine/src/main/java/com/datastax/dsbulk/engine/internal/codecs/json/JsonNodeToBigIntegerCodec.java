@@ -69,6 +69,6 @@ public class JsonNodeToBigIntegerCodec extends JsonNodeToNumberCodec<BigInteger>
 
   @Override
   public JsonNode internalToExternal(BigInteger value) {
-    return JSON_NODE_FACTORY.numberNode(value);
+    return value == null ? null : JSON_NODE_FACTORY.numberNode(value);
   }
 }

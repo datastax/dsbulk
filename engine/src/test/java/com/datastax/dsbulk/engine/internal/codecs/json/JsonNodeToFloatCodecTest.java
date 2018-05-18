@@ -105,7 +105,7 @@ class JsonNodeToFloatCodecTest {
         .convertsFromInternal(0.001f)
         .toExternal(JSON_NODE_FACTORY.numberNode(0.001f))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test
