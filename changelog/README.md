@@ -11,6 +11,7 @@
 - [bug] DAT-266: DSE Geometry types cause CodecNotFoundException.
 - [improvement] DAT-270: Replace Java collections with JCTools equivalents whenever possible.
 - [improvement] DAT-257: Check case on failure to identify keyspace or table.
+- [improvement] DAT-258: Default driver.auth.provider to DsePlainTextAuthProvider if -p is specified.
 
 
 ### 1.0.1

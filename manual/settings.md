@@ -199,7 +199,7 @@ The username to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### -p,--driver.auth.password _&lt;string&gt;_
 
@@ -208,7 +208,7 @@ The password to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### -cl,--driver.query.consistency _&lt;string&gt;_
 
@@ -876,7 +876,7 @@ The username to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### -p,--driver.auth.password _&lt;string&gt;_
 
@@ -885,7 +885,7 @@ The password to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### --driver.auth.provider _&lt;string&gt;_
 
