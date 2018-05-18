@@ -316,7 +316,7 @@ class JsonConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
-                          rootPath))
+                          escapeUserInput(rootPath)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -339,7 +339,7 @@ class JsonConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
-                          rootPath))
+                          escapeUserInput(rootPath)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
