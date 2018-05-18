@@ -95,7 +95,7 @@ public class LoadWorkflow implements Workflow {
     codecSettings.init();
     batchSettings.init();
     driverSettings.init();
-    schemaSettings.init(codecSettings.getTimestampCodec());
+    schemaSettings.init();
     executorSettings.init();
     engineSettings.init();
     connector = connectorSettings.getConnector();

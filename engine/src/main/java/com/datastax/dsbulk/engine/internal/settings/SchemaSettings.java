@@ -36,7 +36,6 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.string.StringToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
@@ -54,6 +53,7 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -121,7 +121,7 @@ public class SchemaSettings {
     this.config = config;
   }
 
-  public void init(StringToTemporalCodec<Instant> timestampCodec) {
+  public void init() {
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       ttlSeconds = config.getInt(QUERY_TTL);
@@ -132,11 +132,13 @@ public class SchemaSettings {
         this.timestampMicros = -1L;
       } else {
         try {
-          Instant instant = timestampCodec.externalToInternal(timestampStr);
+          Instant instant = ZonedDateTime.parse(timestampStr).toInstant();
           this.timestampMicros = instantToNumber(instant, MICROSECONDS, EPOCH);
         } catch (Exception e) {
           throw new BulkConfigurationException(
-              String.format("Could not parse %s '%s'", prettyPath(QUERY_TIMESTAMP), timestampStr));
+              String.format(
+                  "Expecting %s to be in ISO_ZONED_DATE_TIME format but got '%s'",
+                  prettyPath(QUERY_TIMESTAMP), timestampStr));
         }
       }
       this.query = config.hasPath(QUERY) ? config.getString(QUERY) : null;
