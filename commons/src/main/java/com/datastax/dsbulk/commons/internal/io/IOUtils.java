@@ -27,6 +27,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 public final class IOUtils {
 
@@ -77,6 +78,12 @@ public final class IOUtils {
       return dirStream.iterator().hasNext();
     } catch (Exception exception) {
       return true;
+    }
+  }
+
+  public static long countReadableFiles(Path root, boolean recursive) throws IOException {
+    try (Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1)) {
+      return files.filter(Files::isReadable).filter(Files::isRegularFile).count();
     }
   }
 }

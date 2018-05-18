@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
+import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 import static com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory.STD;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -236,7 +237,7 @@ public class CSVConnector implements Connector {
     }
   }
 
-  private void tryReadFromDirectory() throws URISyntaxException {
+  private void tryReadFromDirectory() throws URISyntaxException, IOException {
     try {
       resourceCount = 1;
       Path root = Paths.get(url.toURI());
@@ -246,6 +247,16 @@ public class CSVConnector implements Connector {
         }
         this.root = root;
         resourceCount = scanRootDirectory().take(100).count().block().intValue();
+        if (resourceCount == 0) {
+          if (countReadableFiles(root, recursive) == 0) {
+            LOGGER.warn("Directory {} has no readable files", root);
+          } else {
+            LOGGER.warn(
+                "No files in directory {} matched the connector.csv.fileNamePattern of \"{}\".",
+                root,
+                pattern);
+          }
+        }
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to reading from URL directly
