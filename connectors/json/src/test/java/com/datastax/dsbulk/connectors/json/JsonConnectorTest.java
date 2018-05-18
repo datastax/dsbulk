@@ -310,19 +310,22 @@ class JsonConnectorTest {
   void should_warn_when_directory_empty(@LogCapture LogInterceptor logs) throws Exception {
     JsonConnector connector = new JsonConnector();
     Path rootPath = Files.createTempDirectory("empty");
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
-                        rootPath))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, true);
-    connector.init();
-    assertThat(logs.getLoggedMessages())
-        .contains(String.format("Directory %s has no readable files", rootPath));
-    connector.close();
-    FileUtils.deleteDirectory(rootPath);
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
+                          rootPath))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      assertThat(logs.getLoggedMessages())
+          .contains(String.format("Directory %s has no readable files", rootPath));
+      connector.close();
+    } finally {
+      deleteDirectory(rootPath);
+    }
   }
 
   @Test
@@ -330,22 +333,25 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Path rootPath = Files.createTempDirectory("empty");
     Files.createTempFile(rootPath, "test", ".txt");
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
-                        rootPath))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, true);
-    connector.init();
-    assertThat(logs.getLoggedMessages())
-        .contains(
-            String.format(
-                "No files in directory %s matched the connector.json.fileNamePattern of \"**/part-*\".",
-                rootPath));
-    connector.close();
-    FileUtils.deleteDirectory(rootPath);
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
+                          rootPath))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      assertThat(logs.getLoggedMessages())
+          .contains(
+              String.format(
+                  "No files in directory %s matched the connector.json.fileNamePattern of \"**/part-*\".",
+                  rootPath));
+      connector.close();
+    } finally {
+      deleteDirectory(rootPath);
+    }
   }
 
   @Test

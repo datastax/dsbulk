@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
+import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 import static com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory.STD;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -247,7 +248,7 @@ public class CSVConnector implements Connector {
         this.root = root;
         resourceCount = scanRootDirectory().take(100).count().block().intValue();
         if (resourceCount == 0) {
-          if (countReadableFiles() == 0) {
+          if (countReadableFiles(root, recursive) == 0) {
             LOGGER.warn("Directory {} has no readable files", root);
           } else {
             LOGGER.warn(
@@ -259,12 +260,6 @@ public class CSVConnector implements Connector {
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to reading from URL directly
-    }
-  }
-
-  private long countReadableFiles() throws IOException {
-    try (Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1)) {
-      return files.filter(Files::isReadable).filter(Files::isRegularFile).count();
     }
   }
 

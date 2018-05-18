@@ -302,19 +302,22 @@ class CSVConnectorTest {
   void should_warn_when_directory_empty(@LogCapture LogInterceptor logs) throws Exception {
     CSVConnector connector = new CSVConnector();
     Path rootPath = Files.createTempDirectory("empty");
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
-                        rootPath))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, true);
-    connector.init();
-    assertThat(logs.getLoggedMessages())
-        .contains(String.format("Directory %s has no readable files", rootPath));
-    connector.close();
-    FileUtils.deleteDirectory(rootPath);
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
+                          rootPath))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      assertThat(logs.getLoggedMessages())
+          .contains(String.format("Directory %s has no readable files", rootPath));
+      connector.close();
+    } finally {
+      deleteDirectory(rootPath);
+    }
   }
 
   @Test
@@ -322,22 +325,25 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Path rootPath = Files.createTempDirectory("empty");
     Files.createTempFile(rootPath, "test", ".txt");
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
-                        rootPath))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, true);
-    connector.init();
-    assertThat(logs.getLoggedMessages())
-        .contains(
-            String.format(
-                "No files in directory %s matched the connector.csv.fileNamePattern of \"**/part-*\".",
-                rootPath));
-    connector.close();
-    FileUtils.deleteDirectory(rootPath);
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
+                          rootPath))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      assertThat(logs.getLoggedMessages())
+          .contains(
+              String.format(
+                  "No files in directory %s matched the connector.csv.fileNamePattern of \"**/part-*\".",
+                  rootPath));
+      connector.close();
+    } finally {
+      deleteDirectory(rootPath);
+    }
   }
 
   @Test
