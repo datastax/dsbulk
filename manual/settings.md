@@ -452,10 +452,6 @@ Default: **"\*\*/\*.json"**.
 
 A map of JSON generator features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `{ ESCAPE_NON_ASCII : true, QUOTE_FIELD_NAMES : true }` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
 
-#### --connector.json.mapperFeatures _&lt;map&lt;string,boolean&gt;&gt;_
-
-A map of JSON mapper features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.MapperFeature`. Used both for loading and unloading.
-
 #### -maxConcurrentFiles,--connector.json.maxConcurrentFiles _&lt;string&gt;_
 
 The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
