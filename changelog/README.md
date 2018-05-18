@@ -9,6 +9,7 @@
 - [bug] DAT-259: LogManager files have interleaved entries.
 - [bug] DAT-260: LogManager is closing files too soon.
 - [bug] DAT-266: DSE Geometry types cause CodecNotFoundException.
+- [improvement] DAT-270: Replace Java collections with JCTools equivalents whenever possible.
 - [improvement] DAT-257: Check case on failure to identify keyspace or table.
 
 
