@@ -663,14 +663,7 @@ The `DecimalFormat` pattern to use for conversions between `String` and CQL nume
 
 See [java.text.DecimalFormat](https://docs.oracle.com/javase/8/docs/api/java/text/DecimalFormat.html) for details about the pattern syntax to use.
 
-The default pattern is `#,###.##`. This format recognizes almost every input, with an optional, localized thousands separator, and a localized decimal separator. It also recognizes an optional exponent. When used with locale `en_US`, the following inputs are all valid when parsing: `1234`, `1,234`, `1234.5678`, `1,234.5678`, `1,234.5678E2`.
-
-Beware that, when unloading / formatting, rounding may be necessary and could incur in precision loss. You can specify the rounding strategy to apply, see `roundingStrategy` below.
-
-In addition to the pattern specified here, DSBulk will always recognize Java's numeric notation as valid input, both decimal and hexadecimal. Thus, regardless of the pattern being used, the following examples are always correctly parsed:
-
-- Decimal notation: `1.234e+56`
-- Hexadecimal notation: `0x1.fffP+1023`
+Most inputs are recognized: optional localized thousands separator, localized decimal separator, or optional exponent. Using locale `en_US`, `1234`, `1,234`, `1234.5678`, `1,234.5678` and `1,234.5678E2` are all valid. For unloading and formatting, rounding may occur and cause precision loss. See `codec.formatNumbers` and `codec.roundingStrategy`.
 
 Default: **"#,###.##"**.
 
@@ -1219,10 +1212,10 @@ Default: **"./logs"**.
 
 Whether or not to use ANSI colors and other escape sequences in log messages printed to standard output and standard error.
 
-By default, DSBulk will use colored output when:
+By default, DSBulk will use colored output when the terminal is:
 
-- The terminal is compatible with ANSI escape sequences; all common terminals on *nix and BSD systems, including MacOS, are ANSI-compatible, as well as some popular terminals for Windows, such as Mintty (distributed with Cygwin) and MinGW.
-- The terminal is the standard Windows DOS command prompt (in which case, ANSI sequences are translated on the fly).
+- compatible with ANSI escape sequences; all common terminals on *nix and BSD systems, including MacOS, are ANSI-compatible, and some popular terminals for Windows (Mintty, MinGW)
+- a standard Windows DOS command prompt (ANSI sequences are translated on the fly).
 
 There should be no reason to disable ANSI escape sequences, but if, for some reason, colored messages are not desired or not printed correctly, this option allows disabling ANSI support altogether.
 

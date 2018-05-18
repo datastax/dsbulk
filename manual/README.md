@@ -141,20 +141,20 @@ properly escaped _and_ quoted.
 
 ## Load Examples
 
-* Load the `ks1.table1` table from CSV data read from `stdin`.
+* Load table `table1` in keyspace `ks1` from CSV data read from `stdin`.
   Use a cluster with a `localhost` contact point. Field names in the data match column names in the
   table. Field names are obtained from a *header row* in the data; by default the tool presumes 
   a header exists in each file being loaded:
 
   `dsbulk load -k ks1 -t table1`
 
-* Load the `ks1.table1` table from a gzipped CSV file by unzipping it to stdout and piping to 
+* Load table `table1` in keyspace `ks1` from a gzipped CSV file by unzipping it to `stdout` and piping to
   `stdin` of the tool:
 
   `gzcat table1.csv.gz | dsbulk load -k ks1 -t table1`
 
-* Load the file `export.csv` to table `ks.table1` using the short form option for `url` and the
-  tab character as a field delimiter:
+* Load the file `export.csv` to table `table1` in keyspace `ks1` using the short form option for `url`
+  and the tab character as a field delimiter:
 
   `dsbulk load -k ks1 -t table1 -url export.csv -delim '\t'`
 
@@ -185,6 +185,12 @@ properly escaped _and_ quoted.
 * With default port for cluster hosts, keyspace, table, and mapping set in `dsbulk_load.conf`:
 
   `dsbulk load -f dsbulk_load.conf -url https://192.168.1.100/data/export.csv -h '10.200.1.3,10.200.1.4'`
+
+* Load table `table1` in keyspace `ks1` from a CSV file, where double-quote characters in fields are
+  escaped with a double-quote; for example,  `"f1","value with ""quotes"" and more"` is a line in
+  the CSV file:
+
+  `dsbulk load -url ~/export.csv -k ks1 -t table1 -escape '\"'`
 
 ## Unload Examples
 
