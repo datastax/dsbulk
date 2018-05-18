@@ -91,7 +91,7 @@ public class UnloadWorkflow implements Workflow {
     logSettings.init(connector.isWriteToStandardOutput());
     logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
     codecSettings.init();
-    schemaSettings.init(codecSettings.getTimestampCodec());
+    schemaSettings.init();
     monitoringSettings.init();
     executorSettings.init();
     driverSettings.init();
