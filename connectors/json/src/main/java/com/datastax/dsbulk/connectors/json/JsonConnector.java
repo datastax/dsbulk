@@ -272,7 +272,7 @@ public class JsonConnector implements Connector {
     }
   }
 
-  private void tryReadFromDirectory() throws URISyntaxException {
+  private void tryReadFromDirectory() throws URISyntaxException, IOException {
     try {
       resourceCount = 1;
       Path root = Paths.get(url.toURI());
@@ -282,6 +282,16 @@ public class JsonConnector implements Connector {
         }
         this.root = root;
         resourceCount = scanRootDirectory().take(100).count().block().intValue();
+        if (resourceCount == 0) {
+          if (IOUtils.countReadableFiles(root, recursive) == 0) {
+            LOGGER.warn("Directory {} has no readable files", root);
+          } else {
+            LOGGER.warn(
+                "No files in directory {} matched the connector.json.fileNamePattern of \"{}\".",
+                root,
+                pattern);
+          }
+        }
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to reading from URL directly

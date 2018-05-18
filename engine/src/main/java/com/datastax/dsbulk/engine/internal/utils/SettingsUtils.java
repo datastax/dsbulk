@@ -12,6 +12,7 @@ import static com.datastax.dsbulk.commons.config.LoaderConfig.LEAF_ANNOTATION;
 import static com.datastax.dsbulk.commons.config.LoaderConfig.TYPE_ANNOTATION;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -193,27 +194,19 @@ public class SettingsUtils {
 
   private static void addSettings(ConfigObject root, String keyPrefix) {
     for (Map.Entry<String, ConfigValue> entry : root.entrySet()) {
-      // Add the setting name to each group (and which groups want the setting will
-      // take it).
 
       String key = entry.getKey();
-      ConfigValue value = entry.getValue();
-      String fullKey = keyPrefix.isEmpty() ? key : keyPrefix + '.' + key;
 
       // Never add a setting under "metaSettings".
       if (key.equals("metaSettings")) {
         continue;
       }
 
-      boolean leaf =
-          !(value instanceof ConfigObject)
-              || value
-                  .origin()
-                  .comments()
-                  .stream()
-                  .anyMatch(line -> line.contains(LEAF_ANNOTATION));
+      ConfigValue value = entry.getValue();
+      String fullKey = keyPrefix.isEmpty() ? key : keyPrefix + '.' + key;
 
-      if (leaf) {
+      if (ConfigUtils.isLeaf(value)) {
+        // Add the setting name to the first group that accepts it.
         for (Group group : GROUPS.values()) {
           if (group.addSetting(fullKey)) {
             // The setting was added to a group. Don't try adding to other groups.

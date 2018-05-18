@@ -28,6 +28,8 @@ public class JsonUtils {
       ClassLoader.getSystemResource("ip-by-country-error.json");
   public static final URL JSON_RECORDS_WITH_SPACES =
       ClassLoader.getSystemResource("with-spaces.json");
+  public static final URL JSON_RECORDS_WITH_COMMENTS =
+      ClassLoader.getSystemResource("comments.json");
 
   public static final String INSERT_INTO_IP_BY_COUNTRY =
       "INSERT INTO ip_by_country "
