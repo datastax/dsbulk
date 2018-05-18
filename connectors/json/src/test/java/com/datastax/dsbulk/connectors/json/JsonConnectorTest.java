@@ -433,7 +433,7 @@ class JsonConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT, serializationInclusion = NON_NULL",
+                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT, serializationStrategy = NON_NULL",
                           escapeUserInput(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
