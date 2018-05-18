@@ -954,8 +954,6 @@ class DataStaxBulkLoaderTest {
               "{f1 = true, f2 = false}",
               "--connector.json.generatorFeatures",
               "{g1 = true, g2 = false}",
-              "--connector.json.mapperFeatures",
-              "{m1 = true, m2 = false}",
               "--connector.json.serializationFeatures",
               "{s1 = true, s2 = false}",
               "--connector.json.deserializationFeatures",
@@ -976,8 +974,6 @@ class DataStaxBulkLoaderTest {
         .isEqualTo(ImmutableMap.of("f1", true, "f2", false));
     assertThat(result.getObject("connector.json.generatorFeatures").unwrapped())
         .isEqualTo(ImmutableMap.of("g1", true, "g2", false));
-    assertThat(result.getObject("connector.json.mapperFeatures").unwrapped())
-        .isEqualTo(ImmutableMap.of("m1", true, "m2", false));
     assertThat(result.getObject("connector.json.serializationFeatures").unwrapped())
         .isEqualTo(ImmutableMap.of("s1", true, "s2", false));
     assertThat(result.getObject("connector.json.deserializationFeatures").unwrapped())

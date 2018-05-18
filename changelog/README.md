@@ -15,6 +15,7 @@
 - [improvement] DAT-261: Improve message when no files match pattern in a directory.
 - [bug] DAT-268: Map-type settings are unrecognized from the command-line.
 - [bug] DAT-273: Json connector doesn't respect WRITE_NULL_MAP_VALUES in serialization features setting.
+- [improvement] DAT-276: Remove connector.json.mapperFeatures setting.
 
 
 ### 1.0.1

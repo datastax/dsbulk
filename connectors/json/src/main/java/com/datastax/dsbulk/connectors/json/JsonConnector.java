@@ -33,7 +33,6 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -104,7 +103,6 @@ public class JsonConnector implements Connector {
   private static final String FILE_NAME_FORMAT = "fileNameFormat";
   private static final String PARSER_FEATURES = "parserFeatures";
   private static final String GENERATOR_FEATURES = "generatorFeatures";
-  private static final String MAPPER_FEATURES = "mapperFeatures";
   private static final String SERIALIZATION_FEATURES = "serializationFeatures";
   private static final String DESERIALIZATION_FEATURES = "deserializationFeatures";
   private static final String SERIALIZATION_STRATEGY = "serializationStrategy";
@@ -130,7 +128,6 @@ public class JsonConnector implements Connector {
   private JavaType jsonNodeMapType;
   private Map<JsonParser.Feature, Boolean> parserFeatures;
   private Map<JsonGenerator.Feature, Boolean> generatorFeatures;
-  private Map<MapperFeature, Boolean> mapperFeatures;
   private Map<SerializationFeature, Boolean> serializationFeatures;
   private Map<DeserializationFeature, Boolean> deserializationFeatures;
   private JsonInclude.Include serializationStrategy;
@@ -164,7 +161,6 @@ public class JsonConnector implements Connector {
       parserFeatures = getFeatureMap(settings.getConfig(PARSER_FEATURES), JsonParser.Feature.class);
       generatorFeatures =
           getFeatureMap(settings.getConfig(GENERATOR_FEATURES), JsonGenerator.Feature.class);
-      mapperFeatures = getFeatureMap(settings.getConfig(MAPPER_FEATURES), MapperFeature.class);
       serializationFeatures =
           getFeatureMap(settings.getConfig(SERIALIZATION_FEATURES), SerializationFeature.class);
       deserializationFeatures =
@@ -186,9 +182,6 @@ public class JsonConnector implements Connector {
     objectMapper = new ObjectMapper();
     objectMapper.setNodeFactory(JsonNodeFactory.withExactBigDecimals(true));
     jsonNodeMapType = objectMapper.constructType(JSON_NODE_MAP_TYPE_REFERENCE.getType());
-    for (MapperFeature mapperFeature : mapperFeatures.keySet()) {
-      objectMapper.configure(mapperFeature, mapperFeatures.get(mapperFeature));
-    }
     if (read) {
       for (JsonParser.Feature parserFeature : parserFeatures.keySet()) {
         objectMapper.configure(parserFeature, parserFeatures.get(parserFeature));
