@@ -12,12 +12,13 @@ import static java.util.stream.Collectors.toList;
 
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -28,7 +29,8 @@ public class StringToDoubleCodec extends StringToNumberCodec<Double> {
       FastThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
-      DateTimeFormatter temporalFormat,
+      TemporalFormat temporalFormat,
+      ZoneId timeZone,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanStrings,
@@ -40,6 +42,7 @@ public class StringToDoubleCodec extends StringToNumberCodec<Double> {
         overflowStrategy,
         roundingMode,
         temporalFormat,
+        timeZone,
         timeUnit,
         epoch,
         booleanStrings,

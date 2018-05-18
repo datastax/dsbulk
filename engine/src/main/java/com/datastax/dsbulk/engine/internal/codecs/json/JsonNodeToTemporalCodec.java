@@ -11,19 +11,18 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.fasterxml.jackson.databind.JsonNode;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
 
 public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
     extends JsonNodeConvertingCodec<T> {
 
-  final DateTimeFormatter temporalFormat;
+  final TemporalFormat temporalFormat;
 
   JsonNodeToTemporalCodec(
-      TypeCodec<T> targetCodec, DateTimeFormatter temporalFormat, List<String> nullStrings) {
+      TypeCodec<T> targetCodec, TemporalFormat temporalFormat, List<String> nullStrings) {
     super(targetCodec, nullStrings);
     this.temporalFormat = temporalFormat;
   }
@@ -38,6 +37,6 @@ public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
       return null;
     }
     String s = node.asText();
-    return CodecUtils.parseTemporal(s, temporalFormat);
+    return temporalFormat.parse(s);
   }
 }

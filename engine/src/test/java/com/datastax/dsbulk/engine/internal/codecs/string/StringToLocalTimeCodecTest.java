@@ -10,29 +10,26 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
-import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
 
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class StringToLocalTimeCodecTest {
 
-  private DateTimeFormatter format1 =
-      CodecSettings.getDateTimeFormat("ISO_LOCAL_TIME", UTC, US, EPOCH.atZone(UTC));
+  private TemporalFormat format1 = CodecSettings.getTemporalFormat("ISO_LOCAL_TIME", null, US);
 
-  private DateTimeFormatter format2 =
-      CodecSettings.getDateTimeFormat("HHmmss.SSS", UTC, US, EPOCH.atZone(UTC));
+  private TemporalFormat format2 = CodecSettings.getTemporalFormat("HHmmss.SSS", null, US);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
   @Test
   void should_convert_from_valid_external() {
-    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullStrings);
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, UTC, nullStrings);
     assertThat(codec)
         .convertsFromExternal("12:24:46")
         .toInternal(LocalTime.parse("12:24:46"))
@@ -42,7 +39,7 @@ class StringToLocalTimeCodecTest {
         .toInternal(null)
         .convertsFromExternal("NULL")
         .toInternal(null);
-    codec = new StringToLocalTimeCodec(format2, nullStrings);
+    codec = new StringToLocalTimeCodec(format2, UTC, nullStrings);
     assertThat(codec)
         .convertsFromExternal("122446.999")
         .toInternal(LocalTime.parse("12:24:46.999"));
@@ -50,11 +47,11 @@ class StringToLocalTimeCodecTest {
 
   @Test
   void should_convert_from_valid_internal() {
-    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullStrings);
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, UTC, nullStrings);
     assertThat(codec)
         .convertsFromInternal(LocalTime.parse("12:24:46.999"))
         .toExternal("12:24:46.999");
-    codec = new StringToLocalTimeCodec(format2, nullStrings);
+    codec = new StringToLocalTimeCodec(format2, UTC, nullStrings);
     assertThat(codec)
         .convertsFromInternal(LocalTime.parse("12:24:46.999"))
         .toExternal("122446.999");
@@ -62,7 +59,7 @@ class StringToLocalTimeCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, nullStrings);
+    StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, UTC, nullStrings);
     assertThat(codec)
         .cannotConvertFromExternal("")
         .cannotConvertFromExternal("not a valid date format");

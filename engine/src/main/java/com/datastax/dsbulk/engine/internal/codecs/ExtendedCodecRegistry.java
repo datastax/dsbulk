@@ -87,6 +87,7 @@ import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -98,8 +99,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
 import java.util.Date;
@@ -135,9 +136,10 @@ public class ExtendedCodecRegistry {
   private final FastThreadLocal<NumberFormat> numberFormat;
   private final OverflowStrategy overflowStrategy;
   private final RoundingMode roundingMode;
-  private final DateTimeFormatter localDateFormat;
-  private final DateTimeFormatter localTimeFormat;
-  private final DateTimeFormatter timestampFormat;
+  private final TemporalFormat localDateFormat;
+  private final TemporalFormat localTimeFormat;
+  private final TemporalFormat timestampFormat;
+  private final ZoneId timeZone;
   private final TimeUnit timeUnit;
   private final ZonedDateTime epoch;
   private final ObjectMapper objectMapper;
@@ -152,9 +154,10 @@ public class ExtendedCodecRegistry {
       FastThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
-      DateTimeFormatter localDateFormat,
-      DateTimeFormatter localTimeFormat,
-      DateTimeFormatter timestampFormat,
+      TemporalFormat localDateFormat,
+      TemporalFormat localTimeFormat,
+      TemporalFormat timestampFormat,
+      ZoneId timeZone,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       TimeUUIDGenerator generator,
@@ -170,6 +173,7 @@ public class ExtendedCodecRegistry {
     this.localDateFormat = localDateFormat;
     this.localTimeFormat = localTimeFormat;
     this.timestampFormat = timestampFormat;
+    this.timeZone = timeZone;
     this.timeUnit = timeUnit;
     this.epoch = epoch;
     this.generator = generator;
@@ -254,15 +258,15 @@ public class ExtendedCodecRegistry {
       Class<Temporal> fromTemporalType = (Class<Temporal>) javaType.getRawType();
       if (cqlType == DataType.date()) {
         return new TemporalToTemporalCodec<>(
-            fromTemporalType, LocalDateCodec.instance, timestampFormat.getZone(), epoch);
+            fromTemporalType, LocalDateCodec.instance, timeZone, epoch);
       }
       if (cqlType == DataType.time()) {
         return new TemporalToTemporalCodec<>(
-            fromTemporalType, LocalTimeCodec.instance, timestampFormat.getZone(), epoch);
+            fromTemporalType, LocalTimeCodec.instance, timeZone, epoch);
       }
       if (cqlType == DataType.timestamp()) {
         return new TemporalToTemporalCodec<>(
-            fromTemporalType, InstantCodec.instance, timestampFormat.getZone(), epoch);
+            fromTemporalType, InstantCodec.instance, timeZone, epoch);
       }
     }
     if (Temporal.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
@@ -276,16 +280,13 @@ public class ExtendedCodecRegistry {
     }
     if (Date.class.isAssignableFrom(javaType.getRawType()) && isTemporal(cqlType)) {
       if (cqlType == DataType.date()) {
-        return new DateToTemporalCodec<>(
-            Date.class, LocalDateCodec.instance, timestampFormat.getZone());
+        return new DateToTemporalCodec<>(Date.class, LocalDateCodec.instance, timeZone);
       }
       if (cqlType == DataType.time()) {
-        return new DateToTemporalCodec<>(
-            Date.class, LocalTimeCodec.instance, timestampFormat.getZone());
+        return new DateToTemporalCodec<>(Date.class, LocalTimeCodec.instance, timeZone);
       }
       if (cqlType == DataType.timestamp()) {
-        return new DateToTemporalCodec<>(
-            Date.class, InstantCodec.instance, timestampFormat.getZone());
+        return new DateToTemporalCodec<>(Date.class, InstantCodec.instance, timeZone);
       }
     }
     if (Date.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
@@ -318,6 +319,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -329,6 +331,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -340,6 +343,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -351,6 +355,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -362,6 +367,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -373,6 +379,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -384,6 +391,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -395,18 +403,19 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
             booleanNumbers,
             nullStrings);
       case DATE:
-        return new StringToLocalDateCodec(localDateFormat, nullStrings);
+        return new StringToLocalDateCodec(localDateFormat, timeZone, nullStrings);
       case TIME:
-        return new StringToLocalTimeCodec(localTimeFormat, nullStrings);
+        return new StringToLocalTimeCodec(localTimeFormat, timeZone, nullStrings);
       case TIMESTAMP:
         return new StringToInstantCodec(
-            timestampFormat, numberFormat, timeUnit, epoch, nullStrings);
+            timestampFormat, numberFormat, timeZone, timeUnit, epoch, nullStrings);
       case INET:
         return new StringToInetAddressCodec(nullStrings);
       case UUID:
@@ -513,6 +522,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -524,6 +534,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -535,6 +546,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -546,6 +558,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -557,6 +570,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -568,6 +582,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -579,6 +594,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -590,6 +606,7 @@ public class ExtendedCodecRegistry {
             overflowStrategy,
             roundingMode,
             timestampFormat,
+            timeZone,
             timeUnit,
             epoch,
             booleanInputWords,
@@ -601,7 +618,7 @@ public class ExtendedCodecRegistry {
         return new JsonNodeToLocalTimeCodec(localTimeFormat, nullStrings);
       case TIMESTAMP:
         return new JsonNodeToInstantCodec(
-            timestampFormat, numberFormat, timeUnit, epoch, nullStrings);
+            timestampFormat, numberFormat, timeZone, timeUnit, epoch, nullStrings);
       case INET:
         return new JsonNodeToInetAddressCodec(nullStrings);
       case UUID:

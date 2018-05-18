@@ -17,6 +17,7 @@
 - [bug] DAT-273: Json connector doesn't respect WRITE_NULL_MAP_VALUES in serialization features setting.
 - [improvement] DAT-275: Simplify schema.queryTimestamp format.
 - [improvement] DAT-276: Remove connector.json.mapperFeatures setting.
+- [improvement] DAT-277: Support all CQL literal formats.
 
 
 ### 1.0.1

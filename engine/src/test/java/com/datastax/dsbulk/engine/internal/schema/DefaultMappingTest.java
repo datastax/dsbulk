@@ -46,7 +46,8 @@ class DefaultMappingTest {
   @Test
   void should_detect_writetime_variable() {
     ExtendedCodecRegistry extendedCodecRegistry = mock(ExtendedCodecRegistry.class);
-    ConvertingCodec<String, Instant> codec = new StringToInstantCodec(null, null, null, null, null);
+    ConvertingCodec<String, Instant> codec =
+        new StringToInstantCodec(null, null, null, null, null, null);
     when(extendedCodecRegistry.<String, Instant>convertingCodecFor(
             timestamp(), TypeToken.of(String.class)))
         .thenReturn(codec);
