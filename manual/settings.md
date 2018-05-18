@@ -484,6 +484,12 @@ Default: **false**.
 
 A map of JSON serialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.SerializationFeature`. Used for unloading only.
 
+#### --connector.json.serializationStrategy _&lt;string&gt;_
+
+The strategy to use for filtering out entries when formatting output. Valid values are enum constants defined in `com.fasterxml.jackson.annotation.JsonInclude.Include` (but beware that the `CUSTOM` strategy cannot be honored). Used for unloading only.
+
+Default: **"ALWAYS"**.
+
 <a name="schema"></a>
 ## Schema Settings
 
