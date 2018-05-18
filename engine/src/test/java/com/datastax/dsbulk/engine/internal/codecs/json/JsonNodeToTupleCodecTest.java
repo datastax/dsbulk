@@ -48,14 +48,14 @@ class JsonNodeToTupleCodecTest {
 
   private final TupleType tupleType = newTupleType(V4, codecRegistry, timestamp(), varchar());
 
-  private final List<String> nullStrings = newArrayList("NULL");
+  private final List<String> nullStrings = newArrayList("NULL", "");
 
   private final ConvertingCodec eltCodec1 =
       new JsonNodeToInstantCodec(
           CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
 
   private final ConvertingCodec eltCodec2 =
-      new JsonNodeToStringCodec(TypeCodec.varchar(), nullStrings);
+      new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
 
   @SuppressWarnings("unchecked")
   private final List<ConvertingCodec<JsonNode, Object>> eltCodecs =
@@ -76,7 +76,7 @@ class JsonNodeToTupleCodecTest {
         .convertsFromExternal(objectMapper.readTree("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]"))
         .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
         .convertsFromExternal(objectMapper.readTree("[\"\",\"\"]"))
-        .toInternal(tupleType.newValue(null, ""))
+        .toInternal(tupleType.newValue(null, null))
         .convertsFromExternal(objectMapper.readTree("[\"NULL\",\"NULL\"]"))
         .toInternal(tupleType.newValue(null, null))
         .convertsFromExternal(objectMapper.readTree("[null,null]"))

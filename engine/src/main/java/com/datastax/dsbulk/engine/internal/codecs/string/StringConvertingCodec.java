@@ -12,20 +12,20 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import java.util.List;
 
-abstract class StringConvertingCodec<T> extends ConvertingCodec<String, T> {
+public abstract class StringConvertingCodec<T> extends ConvertingCodec<String, T> {
 
   private final List<String> nullStrings;
 
-  StringConvertingCodec(TypeCodec<T> targetCodec, List<String> nullStrings) {
+  protected StringConvertingCodec(TypeCodec<T> targetCodec, List<String> nullStrings) {
     super(targetCodec, String.class);
     this.nullStrings = nullStrings;
   }
 
-  boolean isNull(String s) {
-    return s == null || s.isEmpty() || nullStrings.contains(s);
+  protected boolean isNull(String s) {
+    return s == null || nullStrings.contains(s);
   }
 
-  String nullString() {
-    return nullStrings.isEmpty() ? null : nullStrings.get(0);
+  protected String nullString() {
+    return nullStrings.isEmpty() ? "" : nullStrings.get(0);
   }
 }

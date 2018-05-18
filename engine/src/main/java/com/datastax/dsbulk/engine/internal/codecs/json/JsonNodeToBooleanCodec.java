@@ -33,9 +33,6 @@ public class JsonNodeToBooleanCodec extends JsonNodeConvertingCodec<Boolean> {
       return node.asBoolean();
     }
     String s = node.asText();
-    if (s == null || s.isEmpty()) {
-      return null;
-    }
     Boolean b = inputs.get(s.toLowerCase());
     if (b == null) {
       throw new InvalidTypeException("Invalid boolean value: " + s);

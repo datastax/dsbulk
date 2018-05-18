@@ -8,10 +8,15 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.util;
 
+import static com.datastax.driver.core.ParseUtils.unquote;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.utils.Bytes;
+import com.datastax.driver.dse.geometry.LineString;
+import com.datastax.driver.dse.geometry.Point;
+import com.datastax.driver.dse.geometry.Polygon;
+import com.datastax.driver.dse.search.DateRange;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -71,7 +76,7 @@ public class CodecUtils {
     Objects.requireNonNull(numberFormat);
     Objects.requireNonNull(timeUnit);
     Objects.requireNonNull(epoch);
-    if (s == null || s.isEmpty()) {
+    if (s == null) {
       return null;
     }
     TemporalAccessor temporal;
@@ -116,7 +121,7 @@ public class CodecUtils {
    *     cannot be {@code null}.
    * @param booleanStrings A mapping between booleans and words.
    * @param booleanNumbers A mapping between booleans and numbers.
-   * @return a {@link TemporalAccessor} or {@code null} if the string was {@code null} or empty.
+   * @return a {@link Number} or {@code null} if the string was {@code null} or empty.
    * @throws IllegalArgumentException if the string cannot be parsed.
    */
   public static Number parseNumber(
@@ -133,8 +138,11 @@ public class CodecUtils {
     Objects.requireNonNull(epoch);
     Objects.requireNonNull(booleanStrings);
     Objects.requireNonNull(booleanNumbers);
-    if (s == null || s.isEmpty()) {
+    if (s == null) {
       return null;
+    }
+    if (s.isEmpty()) {
+      throw new IllegalArgumentException("Cannot convert empty string to number");
     }
     Number number;
     try {
@@ -271,7 +279,7 @@ public class CodecUtils {
    */
   public static Number parseNumber(String s, @NotNull NumberFormat format) throws ParseException {
     Objects.requireNonNull(format);
-    if (s == null || s.isEmpty()) {
+    if (s == null) {
       return null;
     }
     ParsePosition pos = new ParsePosition(0);
@@ -313,8 +321,11 @@ public class CodecUtils {
   public static TemporalAccessor parseTemporal(String s, @NotNull DateTimeFormatter format)
       throws DateTimeParseException {
     Objects.requireNonNull(format);
-    if (s == null || s.isEmpty()) {
+    if (s == null) {
       return null;
+    }
+    if (s.isEmpty()) {
+      throw new DateTimeParseException("Cannot convert empty string to temporal", s, 0);
     }
     ParsePosition pos = new ParsePosition(0);
     TemporalAccessor accessor = format.parse(s.trim(), pos);
@@ -874,7 +885,7 @@ public class CodecUtils {
       @NotNull TimeUUIDGenerator generator) {
     Objects.requireNonNull(instantCodec);
     Objects.requireNonNull(generator);
-    if (s == null || s.isEmpty()) {
+    if (s == null) {
       return null;
     }
     try {
@@ -901,7 +912,7 @@ public class CodecUtils {
    * @return the parsed {@link ByteBuffer}.
    */
   public static ByteBuffer parseByteBuffer(String s) {
-    if (s == null || s.isEmpty()) {
+    if (s == null) {
       return null;
     }
     try {
@@ -913,6 +924,71 @@ public class CodecUtils {
         e1.addSuppressed(e);
         throw new IllegalArgumentException("Invalid binary string: " + s, e1);
       }
+    }
+  }
+
+  public static Point parsePoint(String s) {
+    if (s == null) {
+      return null;
+    }
+    try {
+      // CQL geometry literals are quoted, but WKT strings are not,
+      // so we accept both
+      return Point.fromWellKnownText(unquote(s));
+    } catch (Exception e) {
+      try {
+        return Point.fromGeoJson(s);
+      } catch (Exception e1) {
+        e1.addSuppressed(e);
+        throw new IllegalArgumentException("Invalid point literal: " + s, e1);
+      }
+    }
+  }
+
+  public static LineString parseLineString(String s) {
+    if (s == null) {
+      return null;
+    }
+    try {
+      // CQL geometry literals are quoted, but WKT strings are not,
+      // so we accept both
+      return LineString.fromWellKnownText(unquote(s));
+    } catch (Exception e) {
+      try {
+        return LineString.fromGeoJson(s);
+      } catch (Exception e1) {
+        e1.addSuppressed(e);
+        throw new IllegalArgumentException("Invalid line string literal: " + s, e1);
+      }
+    }
+  }
+
+  public static Polygon parsePolygon(String s) {
+    if (s == null) {
+      return null;
+    }
+    try {
+      // CQL geometry literals are quoted, but WKT strings are not,
+      // so we accept both
+      return Polygon.fromWellKnownText(unquote(s));
+    } catch (Exception e) {
+      try {
+        return Polygon.fromGeoJson(s);
+      } catch (Exception e1) {
+        e1.addSuppressed(e);
+        throw new IllegalArgumentException("Invalid polygon literal: " + s, e1);
+      }
+    }
+  }
+
+  public static DateRange parseDateRange(String s) {
+    if (s == null) {
+      return null;
+    }
+    try {
+      return DateRange.parse(s);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Invalid date range literal: " + s, e);
     }
   }
 }

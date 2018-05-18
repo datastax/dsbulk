@@ -23,6 +23,9 @@ public class StringToInetAddressCodec extends StringConvertingCodec<InetAddress>
     if (isNull(s)) {
       return null;
     }
+    if (s.isEmpty()) {
+      throw new InvalidTypeException("Cannot create inet address from empty string");
+    }
     try {
       return InetAddress.getByName(s);
     } catch (Exception e) {

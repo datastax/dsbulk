@@ -13,16 +13,16 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 
-abstract class JsonNodeConvertingCodec<T> extends ConvertingCodec<JsonNode, T> {
+public abstract class JsonNodeConvertingCodec<T> extends ConvertingCodec<JsonNode, T> {
 
   private final List<String> nullStrings;
 
-  JsonNodeConvertingCodec(TypeCodec<T> targetCodec, List<String> nullStrings) {
+  protected JsonNodeConvertingCodec(TypeCodec<T> targetCodec, List<String> nullStrings) {
     super(targetCodec, JsonNode.class);
     this.nullStrings = nullStrings;
   }
 
-  boolean isNull(JsonNode node) {
+  protected boolean isNull(JsonNode node) {
     return node == null
         || node.isNull()
         || (node.isValueNode() && nullStrings.contains(node.asText()));
