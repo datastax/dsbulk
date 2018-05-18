@@ -92,7 +92,10 @@ public class CodecSettings {
           .toFormatter(Locale.US)
           .withZone(ZoneOffset.UTC);
 
-  /** A {@link JsonNodeFactory} that preserves {@link BigDecimal} scales. */
+  /**
+   * A {@link JsonNodeFactory} that preserves {@link BigDecimal} scales, used to generate Json
+   * nodes.
+   */
   public static final JsonNodeFactory JSON_NODE_FACTORY =
       JsonNodeFactory.withExactBigDecimals(true);
 
@@ -291,9 +294,17 @@ public class CodecSettings {
     return builder.toFormatter(locale).withZone(timeZone);
   }
 
+  /**
+   * The object mapper to use for converting Json nodes to and from Java types in Json codecs.
+   *
+   * <p>This is not the object mapper used by the Json connector to read and write Json files.
+   *
+   * @return The object mapper to use for converting Json to collections, UDTs and tuples.
+   */
   @VisibleForTesting
   public static ObjectMapper getObjectMapper() {
     ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.setNodeFactory(JSON_NODE_FACTORY);
     // create a somewhat lenient mapper that recognizes a slightly relaxed Json syntax when parsing
     objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
     objectMapper.configure(JsonParser.Feature.ALLOW_MISSING_VALUES, true);

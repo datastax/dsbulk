@@ -67,6 +67,6 @@ public class JsonNodeToShortCodec extends JsonNodeToNumberCodec<Short> {
 
   @Override
   public JsonNode internalToExternal(Short value) {
-    return JSON_NODE_FACTORY.numberNode(value);
+    return value == null ? null : JSON_NODE_FACTORY.numberNode(value);
   }
 }

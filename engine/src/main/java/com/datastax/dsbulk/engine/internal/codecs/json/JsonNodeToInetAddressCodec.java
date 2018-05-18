@@ -39,9 +39,6 @@ public class JsonNodeToInetAddressCodec extends JsonNodeConvertingCodec<InetAddr
 
   @Override
   public JsonNode internalToExternal(InetAddress value) {
-    if (value == null) {
-      return JSON_NODE_FACTORY.nullNode();
-    }
-    return JSON_NODE_FACTORY.textNode(value.getHostAddress());
+    return value == null ? null : JSON_NODE_FACTORY.textNode(value.getHostAddress());
   }
 }

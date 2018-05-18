@@ -106,7 +106,7 @@ class JsonNodeToMapCodecTest {
         .convertsFromInternal(map(1d, null, 2d, list()))
         .toExternal(objectMapper.readTree("{\"1\":null,\"2\":[]}"))
         .convertsFromInternal(null)
-        .toExternal(objectMapper.getNodeFactory().nullNode());
+        .toExternal(null);
   }
 
   @Test

@@ -88,7 +88,7 @@ class JsonNodeToLongCodecTest {
         .convertsFromInternal(Long.MIN_VALUE)
         .toExternal(JSON_NODE_FACTORY.numberNode(-9_223_372_036_854_775_808L))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

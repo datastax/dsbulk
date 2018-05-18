@@ -8,8 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json.dse;
 
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
-
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.driver.dse.geometry.LineString;
 import com.datastax.driver.dse.geometry.codecs.LineStringCodec;
@@ -56,7 +54,7 @@ public class JsonNodeToLineStringCodec extends JsonNodeConvertingCodec<LineStrin
   @Override
   public JsonNode internalToExternal(LineString value) {
     if (value == null) {
-      return JSON_NODE_FACTORY.nullNode();
+      return null;
     }
     try {
       // Since geo types have a standardized Json format,

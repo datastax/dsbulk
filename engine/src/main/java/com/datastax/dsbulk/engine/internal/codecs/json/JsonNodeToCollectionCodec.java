@@ -61,7 +61,7 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
   @Override
   public JsonNode internalToExternal(C value) {
     if (value == null) {
-      return objectMapper.getNodeFactory().nullNode();
+      return null;
     }
     ArrayNode root = objectMapper.createArrayNode();
     for (E element : value) {

@@ -423,6 +423,41 @@ class JsonConnectorTest {
   }
 
   @Test
+  void should_write_single_file_single_doc_and_skip_nulls() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT, serializationStrategy = NON_NULL",
+                          escapeUserInput(out)))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      assertThat(connector.isWriteToStandardOutput()).isFalse();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+          .containsExactly(
+              "[",
+              "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Price\":4900.0},",
+              "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Price\":5000.0},",
+              "{\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Price\":4900.0}",
+              "]");
+    } finally {
+      deleteDirectory(dir);
+    }
+  }
+
+  @Test
   void should_write_multiple_files() throws Exception {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
@@ -823,10 +858,10 @@ class JsonConnectorTest {
             -1,
             null,
             values,
-            factory.nullNode(),
-            factory.nullNode(),
+            null,
+            null,
             factory.textNode("Venture \"Extended Edition\""),
-            factory.nullNode(),
+            null,
             factory.numberNode(4900.00d)));
     return records;
   }

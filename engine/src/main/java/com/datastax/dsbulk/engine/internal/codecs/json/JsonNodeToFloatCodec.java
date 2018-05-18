@@ -71,6 +71,6 @@ public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
 
   @Override
   public JsonNode internalToExternal(Float value) {
-    return JSON_NODE_FACTORY.numberNode(value);
+    return value == null ? null : JSON_NODE_FACTORY.numberNode(value);
   }
 }

@@ -105,7 +105,7 @@ class JsonNodeToInstantCodecTest {
         .convertsFromInternal(Instant.parse("2016-07-24T19:34:12.999Z"))
         .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24T19:34:12.999Z"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
     codec =
         new JsonNodeToInstantCodec(
             temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), newArrayList("NULL"));
@@ -113,7 +113,7 @@ class JsonNodeToInstantCodecTest {
         .convertsFromInternal(Instant.parse("2016-07-24T20:34:12Z"))
         .toExternal(JSON_NODE_FACTORY.textNode("20160724203412"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
     codec =
         new JsonNodeToInstantCodec(
             temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC), newArrayList("NULL"));

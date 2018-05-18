@@ -81,7 +81,7 @@ class JsonNodeToByteCodecTest {
         .convertsFromInternal((byte) -128)
         .toExternal(JSON_NODE_FACTORY.numberNode((byte) -128))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

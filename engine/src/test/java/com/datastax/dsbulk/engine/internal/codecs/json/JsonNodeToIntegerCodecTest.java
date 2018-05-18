@@ -86,7 +86,7 @@ class JsonNodeToIntegerCodecTest {
         .convertsFromInternal(Integer.MIN_VALUE)
         .toExternal(JSON_NODE_FACTORY.numberNode(-2_147_483_648))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

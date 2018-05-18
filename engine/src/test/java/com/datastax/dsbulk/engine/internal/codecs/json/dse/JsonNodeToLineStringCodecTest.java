@@ -50,7 +50,7 @@ class JsonNodeToLineStringCodecTest {
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null)
-        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .convertsFromExternal(null)
         .toInternal(null);
   }
 

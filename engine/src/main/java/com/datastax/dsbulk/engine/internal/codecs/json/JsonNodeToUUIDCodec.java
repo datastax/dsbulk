@@ -44,9 +44,6 @@ public class JsonNodeToUUIDCodec extends JsonNodeConvertingCodec<UUID> {
 
   @Override
   public JsonNode internalToExternal(UUID value) {
-    if (value == null) {
-      return JSON_NODE_FACTORY.nullNode();
-    }
-    return JSON_NODE_FACTORY.textNode(value.toString());
+    return value == null ? null : JSON_NODE_FACTORY.textNode(value.toString());
   }
 }
