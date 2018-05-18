@@ -31,6 +31,7 @@ import com.datastax.driver.core.exceptions.BusyPoolException;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
+import com.datastax.dsbulk.commons.internal.concurrent.ScalableThreadPoolExecutor;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -47,7 +48,7 @@ import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Range;
-import io.netty.util.concurrent.DefaultThreadFactory;
+import com.google.common.util.concurrent.MoreExecutors;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
@@ -60,14 +61,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
+import org.jctools.maps.NonBlockingHashMap;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,9 +110,9 @@ public class LogManager implements AutoCloseable {
       Caffeine.newBuilder()
           .build(path -> new PrintWriter(Files.newBufferedWriter(path, UTF_8, CREATE_NEW, WRITE)));
 
-  private final ConcurrentMap<URI, List<Range<Long>>> positions = new ConcurrentSkipListMap<>();
+  private final ConcurrentMap<URI, List<Range<Long>>> positions = new NonBlockingHashMap<>();
 
-  private ExecutorService executor;
+  private ScalableThreadPoolExecutor executor;
   private Scheduler scheduler;
 
   private CodecRegistry codecRegistry;
@@ -150,14 +149,8 @@ public class LogManager implements AutoCloseable {
 
   public void init() {
     executor =
-        // Only spin 1 thread, but stretch up to 8 in case lots of errors arrive
-        new ThreadPoolExecutor(
-            1,
-            8,
-            60L,
-            SECONDS,
-            new LinkedBlockingQueue<>(),
-            new DefaultThreadFactory("log-manager"));
+        // Only spawn 1 thread initially, but stretch up to 8 in case lots of errors arrive
+        new ScalableThreadPoolExecutor(1, 8, 60L, SECONDS);
     scheduler = Schedulers.fromExecutorService(executor);
     codecRegistry = cluster.getConfiguration().getCodecRegistry();
     protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
@@ -199,7 +192,7 @@ public class LogManager implements AutoCloseable {
   }
 
   @Override
-  public void close() throws InterruptedException, IOException {
+  public void close() throws IOException {
     failedRecordSink.complete();
     unmappableRecordSink.complete();
     unmappableStatementSink.complete();
@@ -207,9 +200,7 @@ public class LogManager implements AutoCloseable {
     readResultSink.complete();
     uncaughtExceptionSink.complete();
     stackTracePrinter.stop();
-    executor.shutdown();
-    executor.awaitTermination(1, MINUTES);
-    executor.shutdownNow();
+    MoreExecutors.shutdownAndAwaitTermination(executor, 1, MINUTES);
     scheduler.dispose();
     // Forcibly close all open files on the thread that invokes close()
     // Using a cache removal listener is not an option because cache listeners
@@ -230,8 +221,9 @@ public class LogManager implements AutoCloseable {
                   Charset.forName("UTF-8"),
                   CREATE_NEW,
                   WRITE));
-      positions.forEach(
-          (resource, ranges) -> appendToPositionsFile(resource, ranges, positionsPrinter));
+      // sort positions by URI
+      new TreeMap<>(positions)
+          .forEach((resource, ranges) -> appendToPositionsFile(resource, ranges, positionsPrinter));
       positionsPrinter.flush();
       positionsPrinter.close();
     }
