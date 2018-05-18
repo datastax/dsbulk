@@ -74,7 +74,7 @@ public class DataStaxBulkLoader {
       // The first arg can be a subcommand or option...or no arg. We want to treat these
       // cases as follows:
       // no arg: same as help subcommand with no connectorName name.
-      // first arg that is a short/long option: all args are short/long options (no subcommand).
+      // first arg is a short/long option: all args are short/long options (no subcommand).
       // first arg is not a short/long option: first arg is a subcommand, rest are options.
 
       String[] optionArgs;

@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.commons.internal.config;
 
+import static com.datastax.dsbulk.commons.config.LoaderConfig.LEAF_ANNOTATION;
 import static com.datastax.dsbulk.commons.config.LoaderConfig.TYPE_ANNOTATION;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -168,6 +169,7 @@ public class ConfigUtils {
   }
 
   public static String ensureQuoted(String value) {
+    value = value.trim();
     if (value.startsWith("\"") && value.endsWith("\"")) {
       return value;
     }
@@ -175,6 +177,7 @@ public class ConfigUtils {
   }
 
   public static String ensureBrackets(String value) {
+    value = value.trim();
     if (value.startsWith("[") && value.endsWith("]")) {
       return value;
     }
@@ -182,6 +185,7 @@ public class ConfigUtils {
   }
 
   public static String ensureBraces(String value) {
+    value = value.trim();
     if (value.startsWith("{") && value.endsWith("}")) {
       return value;
     }
@@ -251,5 +255,19 @@ public class ConfigUtils {
       default:
         return "arg";
     }
+  }
+
+  /**
+   * Returns true if the given value is a leaf.
+   *
+   * <p>Leaf values are values of all types except OBJECT, or values of type OBJECT explicitly
+   * annotated with @leaf.
+   *
+   * @param value The value to inspect.
+   * @return True if the value is a leaf, false otherwise.
+   */
+  public static boolean isLeaf(ConfigValue value) {
+    return !(value instanceof ConfigObject)
+        || value.origin().comments().stream().anyMatch(line -> line.contains(LEAF_ANNOTATION));
   }
 }

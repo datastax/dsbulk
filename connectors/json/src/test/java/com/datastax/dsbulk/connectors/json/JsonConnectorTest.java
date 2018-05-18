@@ -316,7 +316,7 @@ class JsonConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
-                          rootPath))
+                          escapeUserInput(rootPath)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -339,7 +339,7 @@ class JsonConnectorTest {
               ConfigFactory.parseString(
                       String.format(
                           "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
-                          rootPath))
+                          escapeUserInput(rootPath)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -383,7 +383,7 @@ class JsonConnectorTest {
               "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
     } finally {
-      deleteDirectory(out);
+      deleteDirectory(dir);
     }
   }
 
@@ -418,7 +418,7 @@ class JsonConnectorTest {
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
               "]");
     } finally {
-      deleteDirectory(out);
+      deleteDirectory(dir);
     }
   }
 

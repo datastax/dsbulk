@@ -13,6 +13,7 @@
 - [improvement] DAT-257: Check case on failure to identify keyspace or table.
 - [improvement] DAT-258: Default driver.auth.provider to DsePlainTextAuthProvider if -p is specified.
 - [improvement] DAT-261: Improve message when no files match pattern in a directory.
+- [bug] DAT-268: Map-type settings are unrecognized from the command-line.
 
 
 ### 1.0.1
