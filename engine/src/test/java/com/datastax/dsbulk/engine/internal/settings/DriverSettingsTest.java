@@ -163,6 +163,25 @@ class DriverSettingsTest {
   }
 
   @Test
+  void should_infer_authentication_with_DsePlainTextAuthProvider() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    " auth { username = alice, password = s3cr3t, authorizationId = bob }")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings driverSettings = new DriverSettings(config, "test");
+    driverSettings.init();
+    DseCluster cluster = driverSettings.newCluster();
+    assertThat(cluster).isNotNull();
+    DseConfiguration configuration = cluster.getConfiguration();
+    AuthProvider provider = configuration.getProtocolOptions().getAuthProvider();
+    assertThat(provider).isInstanceOf(DsePlainTextAuthProvider.class);
+    assertThat(getInternalState(provider, "username")).isEqualTo("alice");
+    assertThat(getInternalState(provider, "password")).isEqualTo("s3cr3t");
+    assertThat(getInternalState(provider, "authorizationId")).isEqualTo("bob");
+  }
+
+  @Test
   void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab()
       throws URISyntaxException {
     Path keyTab = Paths.get(getClass().getResource("/cassandra.keytab").toURI());

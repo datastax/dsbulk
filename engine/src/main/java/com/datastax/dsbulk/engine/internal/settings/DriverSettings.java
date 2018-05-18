@@ -45,7 +45,6 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
@@ -115,6 +114,7 @@ public class DriverSettings {
   private static final String PROTOCOL_COMPRESSION = PROTOCOL + DELIMITER + "compression";
 
   private static final String SSL_PROVIDER = SSL + DELIMITER + "provider";
+  private static final String NONE_SSL_PROVIDER = "None";
   private static final String SSL_TRUSTSTORE_PATH =
       SSL + DELIMITER + TRUSTSTORE + DELIMITER + "path";
   private static final String SSL_TRUSTSTORE_PASSWORD =
@@ -132,6 +132,7 @@ public class DriverSettings {
   private static final String POLICY_NAME = POLICY + DELIMITER + LBP + DELIMITER + "name";
   private static final String POLICY_MAX_RETRIES = POLICY + DELIMITER + "maxRetries";
 
+  private static final String NONE_AUTH_PROVIDER = "None";
   private static final String PLAINTEXT_PROVIDER = "PlainTextAuthProvider";
   private static final String DSE_PLAINTEXT_PROVIDER = "DsePlainTextAuthProvider";
   private static final String DSE_GSSAPI_PROVIDER = "DseGSSAPIAuthProvider";
@@ -200,7 +201,16 @@ public class DriverSettings {
       addressTranslator = config.getInstance(ADDRESS_TRANSLATOR, AddressTranslator.class);
       authProvider = config.getString(AUTH_PROVIDER);
       policyMaxRetries = config.getInt(POLICY_MAX_RETRIES);
-      if (!authProvider.equals("None")) {
+      // If the user specified a username or a password, but no auth provider, infer
+      // DSE_PLAINTEXT_PROVIDER
+      if (authProvider.equals(NONE_AUTH_PROVIDER)
+          && config.hasPath(AUTH_USERNAME)
+          && config.hasPath(AUTH_PASSWORD)) {
+        LOGGER.info(
+            "Username and password provided but auth provider not specified, inferring DsePlainTextAuthProvider");
+        authProvider = DSE_PLAINTEXT_PROVIDER;
+      }
+      if (!authProvider.equals(NONE_AUTH_PROVIDER)) {
         switch (authProvider) {
           case PLAINTEXT_PROVIDER:
           case DSE_PLAINTEXT_PROVIDER:
@@ -272,10 +282,7 @@ public class DriverSettings {
                     throw new BulkConfigurationException(
                         String.format("Could not find any principals in %s", authKeyTab));
                   }
-                } catch (ClassNotFoundException
-                    | NoSuchMethodException
-                    | IllegalAccessException
-                    | InvocationTargetException e) {
+                } catch (Exception e) {
                   throw new BulkConfigurationException(
                       String.format("Could not find any principals in %s", authKeyTab), e);
                 }
@@ -390,11 +397,11 @@ public class DriverSettings {
     // Configure retry-policy.
     builder.withRetryPolicy(new MultipleRetryPolicy(policyMaxRetries));
 
-    if (!authProvider.equals("None")) {
+    if (!authProvider.equals(NONE_AUTH_PROVIDER)) {
       AuthProvider authProvider = createAuthProvider();
       builder.withAuthProvider(authProvider);
     }
-    if (!sslProvider.equals("None")) {
+    if (!sslProvider.equals(NONE_SSL_PROVIDER)) {
       RemoteEndpointAwareSSLOptions sslOptions;
       try {
         sslOptions = createSSLOptions();

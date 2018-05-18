@@ -18,8 +18,8 @@ import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.jctools.maps.NonBlockingHashMap;
 
 /**
  * A registry for {@link StatementPrinter statement printers}.
@@ -40,7 +40,7 @@ public final class StatementPrinterRegistry {
           .put(Statement.class, new DefaultStatementPrinter())
           .build();
 
-  private final ConcurrentMap<Class<?>, StatementPrinter<?>> printers = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Class<?>, StatementPrinter<?>> printers = new NonBlockingHashMap<>();
 
   StatementPrinterRegistry() {}
 
@@ -56,7 +56,9 @@ public final class StatementPrinterRegistry {
    */
   public StatementPrinter<Statement> findPrinter(Class<?> statementClass) {
     StatementPrinter<?> printer = lookupPrinter(statementClass, printers);
-    if (printer == null) printer = lookupPrinter(statementClass, BUILT_IN_PRINTERS);
+    if (printer == null) {
+      printer = lookupPrinter(statementClass, BUILT_IN_PRINTERS);
+    }
     assert printer != null;
     @SuppressWarnings("unchecked")
     StatementPrinter<Statement> sp = (StatementPrinter<Statement>) printer;

@@ -140,11 +140,17 @@ Default: **-1**.
 
 Keyspace used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
 
+Keyspace names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyKeyspace` will match
+a keyspace named "MyKeyspace" but will not match a keyspace named "mykeyspace".
+
 Default: **&lt;unspecified&gt;**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
 Table used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
+
+Table names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyTable` will match
+a table named "MyTable" but will not match a table named "mytable".
 
 Default: **&lt;unspecified&gt;**.
 
@@ -193,7 +199,7 @@ The username to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### -p,--driver.auth.password _&lt;string&gt;_
 
@@ -202,7 +208,7 @@ The password to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### -cl,--driver.query.consistency _&lt;string&gt;_
 
@@ -487,11 +493,17 @@ Schema-specific settings.
 
 Keyspace used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
 
+Keyspace names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyKeyspace` will match
+a keyspace named "MyKeyspace" but will not match a keyspace named "mykeyspace".
+
 Default: **&lt;unspecified&gt;**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
 Table used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
+
+Table names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyTable` will match
+a table named "MyTable" but will not match a table named "mytable".
 
 Default: **&lt;unspecified&gt;**.
 
@@ -864,7 +876,7 @@ The username to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### -p,--driver.auth.password _&lt;string&gt;_
 
@@ -873,7 +885,7 @@ The password to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### --driver.auth.provider _&lt;string&gt;_
 

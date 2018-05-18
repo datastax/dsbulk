@@ -21,6 +21,7 @@ import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
+import com.datastax.driver.core.ParseUtils;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
@@ -371,13 +372,33 @@ public class SchemaSettings {
       Session session, Supplier<List<String>> columns, WorkflowType workflowType)
       throws BulkConfigurationException {
     BiMap<String, String> fieldsToVariables = null;
-
     if (keyspaceName != null && tableName != null) {
-      KeyspaceMetadata keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
-      Preconditions.checkNotNull(keyspace, "Keyspace does not exist: " + keyspaceName);
+      Metadata metadata = session.getCluster().getMetadata();
+      KeyspaceMetadata keyspace = metadata.getKeyspace(keyspaceName);
+      if (keyspace == null) {
+        String lowerCaseKeyspaceName = ParseUtils.unDoubleQuote(keyspaceName).toLowerCase();
+        if (metadata.getKeyspace(lowerCaseKeyspaceName) != null) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Keyspace %s does not exist, however a keyspace %s was found. Did you mean to use -k %s?",
+                  keyspaceName, lowerCaseKeyspaceName, lowerCaseKeyspaceName));
+        } else {
+          throw new IllegalArgumentException(
+              String.format("Keyspace %s does not exist", keyspaceName));
+        }
+      }
       table = keyspace.getTable(tableName);
-      Preconditions.checkNotNull(
-          table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
+      if (table == null) {
+        String lowerCaseTableName = ParseUtils.unDoubleQuote(tableName).toLowerCase();
+        if (keyspace.getTable(lowerCaseTableName) != null) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
+                  tableName, lowerCaseTableName, lowerCaseTableName));
+        } else {
+          throw new IllegalArgumentException(String.format("Table %s does not exist", tableName));
+        }
+      }
     }
 
     if (mapping == null) {
