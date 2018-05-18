@@ -722,7 +722,7 @@ class DataStaxBulkLoaderTest {
               "--schema.query",
               "SELECT JUNK",
               "--schema.queryTimestamp",
-              "98761234",
+              "2018-05-18T15:00:00Z",
               "--schema.queryTtl",
               "28",
               "--codec.nullStrings",
@@ -822,7 +822,7 @@ class DataStaxBulkLoaderTest {
     assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
     assertThat(result.getString("schema.table")).isEqualTo("table");
     assertThat(result.getString("schema.query")).isEqualTo("SELECT JUNK");
-    assertThat(result.getString("schema.queryTimestamp")).isEqualTo("98761234");
+    assertThat(result.getString("schema.queryTimestamp")).isEqualTo("2018-05-18T15:00:00Z");
     assertThat(result.getInt("schema.queryTtl")).isEqualTo(28);
     assertThat(result.getStringList("codec.nullStrings")).containsExactly("NIL", "NADA");
     assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");

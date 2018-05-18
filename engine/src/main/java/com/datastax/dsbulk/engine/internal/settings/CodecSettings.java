@@ -14,8 +14,6 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
-import com.datastax.dsbulk.engine.internal.codecs.string.StringToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.ExactNumberFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
@@ -34,7 +32,6 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -155,7 +152,15 @@ public class CodecSettings {
       // temporal
       ZoneId timeZone = ZoneId.of(config.getString(TIME_ZONE));
       timeUnit = config.getEnum(TimeUnit.class, NUMERIC_TIMESTAMP_UNIT);
-      epoch = ZonedDateTime.parse(config.getString(NUMERIC_TIMESTAMP_EPOCH));
+      String timestampStr = config.getString(NUMERIC_TIMESTAMP_EPOCH);
+      try {
+        epoch = ZonedDateTime.parse(timestampStr);
+      } catch (Exception e) {
+        throw new BulkConfigurationException(
+            String.format(
+                "Expecting codec.%s to be in ISO_ZONED_DATE_TIME format but got '%s'",
+                NUMERIC_TIMESTAMP_EPOCH, timestampStr));
+      }
       localDateFormat = getDateTimeFormat(config.getString(DATE), timeZone, locale, epoch);
       localTimeFormat = getDateTimeFormat(config.getString(TIME), timeZone, locale, epoch);
       timestampFormat = getDateTimeFormat(config.getString(TIMESTAMP), timeZone, locale, epoch);
@@ -184,10 +189,6 @@ public class CodecSettings {
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "codec");
     }
-  }
-
-  public StringToTemporalCodec<Instant> getTimestampCodec() {
-    return new StringToInstantCodec(timestampFormat, numberFormat, timeUnit, epoch, nullStrings);
   }
 
   public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {

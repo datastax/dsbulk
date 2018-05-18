@@ -569,12 +569,11 @@ Default: **&lt;unspecified&gt;**.
 
 #### --schema.queryTimestamp _&lt;string&gt;_
 
-The timestamp of inserted/updated cells during load; otherwise, the current time of the system running the tool is used. Not applicable to unloading. The following formats are supported:
+The timestamp of inserted/updated cells during load; otherwise, the current time of the system running the tool is used. Not applicable to unloading.
 
-* A numeric timestamp that is parsed using the options `codec.unit` and `codec.epoch`.
-* A valid date-time format specified in the options `codec.timestamp` and `codec.timeZone`.
+The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
 
-Query timestamps for DSE have microsecond resolution; any sub-microsecond information specified is lost. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
+Query timestamps for DSE have microsecond resolution; any sub-microsecond information specified is lost. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
 
 Default: **&lt;unspecified&gt;**.
 
