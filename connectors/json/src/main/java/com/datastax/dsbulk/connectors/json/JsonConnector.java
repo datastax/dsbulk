@@ -21,6 +21,7 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.json.internal.SchemaFreeJsonRecordMetadata;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -106,6 +107,7 @@ public class JsonConnector implements Connector {
   private static final String MAPPER_FEATURES = "mapperFeatures";
   private static final String SERIALIZATION_FEATURES = "serializationFeatures";
   private static final String DESERIALIZATION_FEATURES = "deserializationFeatures";
+  private static final String SERIALIZATION_STRATEGY = "serializationStrategy";
   private static final String PRETTY_PRINT = "prettyPrint";
 
   private static final TypeReference<Map<String, JsonNode>> JSON_NODE_MAP_TYPE_REFERENCE =
@@ -131,6 +133,7 @@ public class JsonConnector implements Connector {
   private Map<MapperFeature, Boolean> mapperFeatures;
   private Map<SerializationFeature, Boolean> serializationFeatures;
   private Map<DeserializationFeature, Boolean> deserializationFeatures;
+  private JsonInclude.Include serializationStrategy;
   private boolean prettyPrint;
   private Scheduler scheduler;
   private List<JsonWriter> writers;
@@ -166,6 +169,7 @@ public class JsonConnector implements Connector {
           getFeatureMap(settings.getConfig(SERIALIZATION_FEATURES), SerializationFeature.class);
       deserializationFeatures =
           getFeatureMap(settings.getConfig(DESERIALIZATION_FEATURES), DeserializationFeature.class);
+      serializationStrategy = settings.getEnum(JsonInclude.Include.class, SERIALIZATION_STRATEGY);
       prettyPrint = settings.getBoolean(PRETTY_PRINT);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.json");
@@ -205,6 +209,7 @@ public class JsonConnector implements Connector {
       if (prettyPrint) {
         objectMapper.setDefaultPrettyPrinter(new DefaultPrettyPrinter(System.lineSeparator()));
       }
+      objectMapper.setSerializationInclusion(serializationStrategy);
     }
   }
 
