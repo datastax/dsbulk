@@ -645,7 +645,7 @@ Default: **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
 
 The temporal pattern to use for `String` to CQL date conversions. Valid choices:
 
-- A date-time pattern such as `uuuu-MM-dd`.
+- A date-time pattern such as `yyyy-MM-dd`.
 - A pre-defined formatter such as `ISO_LOCAL_DATE`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
 
 For more information on patterns and pre-defined formatters, see [https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns).
@@ -767,7 +767,7 @@ Default: **"UTC"**.
 
 The temporal pattern to use for `String` to CQL timestamp conversions. Valid choices:
 
-- A date-time pattern such as `uuuu-MM-dd HH:mm:ss`.
+- A date-time pattern such as `yyyy-MM-dd HH:mm:ss`.
 - A pre-defined formatter such as `ISO_ZONED_DATE_TIME` or `ISO_INSTANT`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
 - The special value `CQL_DATE_TIME`, which is a special parser that accepts most CQL date, time and timestamp literals (see below).
 
@@ -775,35 +775,7 @@ For more information on patterns and pre-defined formatters, see [https://docs.o
 
 For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
 
-The default value is the special `CQL_DATE_TIME` value. This format is roughly equivalent to the pre-defined `ISO_ZONED_DATE_TIME`, but is more permissive regarding missing fields and time zone formats.
-
-When parsing, this format recognizes most CQL temporal literals, e.g.:
-
-- Local dates:
-    - `2012-01-01`
-- Local times:
-    - `12:34`
-    - `12:34:56`
-    - `12:34:56.123`
-    - `12:34:56.123456`
-    - `12:34:56.123456789`
-- Local date-times:
-    - `2012-01-01T12:34`
-    - `2012-01-01T12:34:56`
-    - `2012-01-01T12:34:56.123`
-    - `2012-01-01T12:34:56.123456`
-    - `2012-01-01T12:34:56.123456789`
-- Zoned date-times:
-    - `2012-01-01T12:34+01:00`
-    - `2012-01-01T12:34:56+01:00`
-    - `2012-01-01T12:34:56.123+01:00`
-    - `2012-01-01T12:34:56.123456+01:00`
-    - `2012-01-01T12:34:56.123456789+01:00`
-    - `2012-01-01T12:34:56.123456789+01:00[Europe/Paris]`
-
-When the input is a local date, the timestamp is resolved using the time zone specified under `timeZone`, at midnight. When the input is a local time, the timestamp is resolved using the time zone specified under `timeZone`, and the date is inferred from the instant specified under `epoch` (by default, January 1st 1970).
-
-When formatting, this format is equivalent to `ISO_ZONED_DATE_TIME`, and produces formatted output of the following form: '2011-12-03T10:15:30.567+01:00[Europe/Paris]'.
+The default value is the special `CQL_DATE_TIME` value. When parsing, this format recognizes all CQL temporal literals; if the input is a local date, the timestamp is resolved using the time zone specified under `timeZone`, at midnight. When formatting, this format produces formatted output of the following form: '2011-12-03 10:15:30.567 CEST'.
 
 Default: **"CQL_DATE_TIME"**.
 

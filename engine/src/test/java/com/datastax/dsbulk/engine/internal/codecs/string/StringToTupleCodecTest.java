@@ -12,7 +12,6 @@ import static com.datastax.driver.core.DataType.timestamp;
 import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.ProtocolVersion.V4;
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
@@ -29,6 +28,7 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToInstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToStringCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToTupleCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,7 +54,12 @@ class StringToTupleCodecTest {
 
   private final ConvertingCodec eltCodec1 =
       new JsonNodeToInstantCodec(
-          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
+          CqlTemporalFormat.DEFAULT_INSTANCE,
+          numberFormat,
+          UTC,
+          MILLISECONDS,
+          EPOCH.atZone(UTC),
+          nullStrings);
 
   private final ConvertingCodec eltCodec2 =
       new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
@@ -102,7 +107,7 @@ class StringToTupleCodecTest {
     assertThat(codec)
         .convertsFromInternal(
             tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .toExternal("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]")
+        .toExternal("[\"2016-07-24 20:34:12.999 UTC\",\"+01:00\"]")
         .convertsFromInternal(tupleType.newValue(null, null))
         .toExternal("[null,null]")
         .convertsFromInternal(null)

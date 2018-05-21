@@ -11,12 +11,13 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -26,7 +27,8 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends JsonNodeConvertin
   private final FastThreadLocal<NumberFormat> numberFormat;
   private final OverflowStrategy overflowStrategy;
   private final RoundingMode roundingMode;
-  private final DateTimeFormatter temporalFormat;
+  private final TemporalFormat temporalFormat;
+  private final ZoneId timeZone;
   private final TimeUnit timeUnit;
   private final ZonedDateTime epoch;
   private final Map<String, Boolean> booleanStrings;
@@ -37,7 +39,8 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends JsonNodeConvertin
       FastThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
-      DateTimeFormatter temporalFormat,
+      TemporalFormat temporalFormat,
+      ZoneId timeZone,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       Map<String, Boolean> booleanStrings,
@@ -48,6 +51,7 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends JsonNodeConvertin
     this.overflowStrategy = overflowStrategy;
     this.roundingMode = roundingMode;
     this.temporalFormat = temporalFormat;
+    this.timeZone = timeZone;
     this.timeUnit = timeUnit;
     this.epoch = epoch;
     this.booleanStrings = booleanStrings;
@@ -62,6 +66,7 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends JsonNodeConvertin
         node.asText(),
         numberFormat.get(),
         temporalFormat,
+        timeZone,
         timeUnit,
         epoch,
         booleanStrings,

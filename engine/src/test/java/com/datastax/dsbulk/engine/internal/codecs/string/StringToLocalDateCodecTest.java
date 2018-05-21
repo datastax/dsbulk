@@ -10,29 +10,26 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
-import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
 
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class StringToLocalDateCodecTest {
 
-  private DateTimeFormatter format1 =
-      CodecSettings.getDateTimeFormat("ISO_LOCAL_DATE", UTC, US, EPOCH.atZone(UTC));
+  private TemporalFormat format1 = CodecSettings.getTemporalFormat("ISO_LOCAL_DATE", null, US);
 
-  private DateTimeFormatter format2 =
-      CodecSettings.getDateTimeFormat("yyyyMMdd", UTC, US, EPOCH.atZone(UTC));
+  private TemporalFormat format2 = CodecSettings.getTemporalFormat("yyyyMMdd", null, US);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
   @Test
   void should_convert_from_valid_external() {
-    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, nullStrings);
+    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, UTC, nullStrings);
     assertThat(codec)
         .convertsFromExternal("2016-07-24")
         .toInternal(LocalDate.parse("2016-07-24"))
@@ -40,21 +37,21 @@ class StringToLocalDateCodecTest {
         .toInternal(null)
         .convertsFromExternal("NULL")
         .toInternal(null);
-    codec = new StringToLocalDateCodec(format2, nullStrings);
+    codec = new StringToLocalDateCodec(format2, UTC, nullStrings);
     assertThat(codec).convertsFromExternal("20160724").toInternal(LocalDate.parse("2016-07-24"));
   }
 
   @Test
   void should_convert_from_valid_internal() {
-    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, nullStrings);
+    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, UTC, nullStrings);
     assertThat(codec).convertsFromInternal(LocalDate.parse("2016-07-24")).toExternal("2016-07-24");
-    codec = new StringToLocalDateCodec(format2, nullStrings);
+    codec = new StringToLocalDateCodec(format2, UTC, nullStrings);
     assertThat(codec).convertsFromInternal(LocalDate.parse("2016-07-24")).toExternal("20160724");
   }
 
   @Test
   void should_not_convert_from_invalid_external() {
-    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, nullStrings);
+    StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, UTC, nullStrings);
     assertThat(codec)
         .cannotConvertFromExternal("")
         .cannotConvertFromExternal("not a valid date format");

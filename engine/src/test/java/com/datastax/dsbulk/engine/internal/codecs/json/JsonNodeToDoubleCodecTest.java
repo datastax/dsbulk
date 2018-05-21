@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
@@ -20,6 +19,7 @@ import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.google.common.collect.ImmutableMap;
@@ -38,7 +38,8 @@ class JsonNodeToDoubleCodecTest {
           numberFormat,
           OverflowStrategy.REJECT,
           RoundingMode.HALF_EVEN,
-          CQL_DATE_TIME_FORMAT,
+          CqlTemporalFormat.DEFAULT_INSTANCE,
+          UTC,
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),

@@ -14,10 +14,14 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.ExactNumberFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.codecs.util.SimpleTemporalFormat;
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.datastax.dsbulk.engine.internal.codecs.util.ToStringNumberFormat;
+import com.datastax.dsbulk.engine.internal.codecs.util.ZonedTemporalFormat;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -33,61 +37,19 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.chrono.IsoChronology;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoField;
+import java.time.format.ResolverStyle;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import org.jetbrains.annotations.NotNull;
 
 public class CodecSettings {
-
-  /** A {@link DateTimeFormatter} that formats and parses most accepted CQL timestamp formats. */
-  public static final DateTimeFormatter CQL_DATE_TIME_FORMAT =
-      new DateTimeFormatterBuilder()
-          // date part
-          .optionalStart()
-          .append(DateTimeFormatter.ISO_LOCAL_DATE)
-          .optionalEnd()
-
-          // date-time separator
-          .optionalStart()
-          .appendLiteral('T')
-          .optionalEnd()
-
-          // time part
-          .optionalStart()
-          .append(DateTimeFormatter.ISO_LOCAL_TIME)
-          .optionalEnd()
-
-          // time zone part
-          .optionalStart()
-          // ISO_ZONED_DATE_TIME has appendOffsetId() here, which, when parsing, does not set the
-          // zone id
-          .appendZoneOrOffsetId()
-          .optionalEnd()
-          .optionalStart()
-          .appendLiteral('[')
-          .appendZoneRegionId()
-          .appendLiteral(']')
-          .optionalEnd()
-
-          // defaults, locale and time zone will be overridden with user-supplied settings
-          .parseDefaulting(ChronoField.YEAR, 1970)
-          .parseDefaulting(ChronoField.MONTH_OF_YEAR, 1)
-          .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
-          .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
-          .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
-          .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
-          .parseDefaulting(ChronoField.NANO_OF_SECOND, 0)
-          .toFormatter(Locale.US)
-          .withZone(ZoneOffset.UTC);
 
   /**
    * A {@link JsonNodeFactory} that preserves {@link BigDecimal} scales, used to generate Json
@@ -122,10 +84,11 @@ public class CodecSettings {
   private FastThreadLocal<NumberFormat> numberFormat;
   private RoundingMode roundingMode;
   private OverflowStrategy overflowStrategy;
-  private DateTimeFormatter localDateFormat;
-  private DateTimeFormatter localTimeFormat;
-  private DateTimeFormatter timestampFormat;
+  private TemporalFormat localDateFormat;
+  private TemporalFormat localTimeFormat;
+  private TemporalFormat timestampFormat;
   private ObjectMapper objectMapper;
+  private ZoneId timeZone;
   private TimeUnit timeUnit;
   private ZonedDateTime epoch;
   private TimeUUIDGenerator generator;
@@ -150,20 +113,20 @@ public class CodecSettings {
           getNumberFormatThreadLocal(config.getString(NUMBER), locale, roundingMode, formatNumbers);
 
       // temporal
-      ZoneId timeZone = ZoneId.of(config.getString(TIME_ZONE));
+      timeZone = ZoneId.of(config.getString(TIME_ZONE));
       timeUnit = config.getEnum(TimeUnit.class, NUMERIC_TIMESTAMP_UNIT);
-      String timestampStr = config.getString(NUMERIC_TIMESTAMP_EPOCH);
+      String epochStr = config.getString(NUMERIC_TIMESTAMP_EPOCH);
       try {
-        epoch = ZonedDateTime.parse(timestampStr);
+        epoch = ZonedDateTime.parse(epochStr);
       } catch (Exception e) {
         throw new BulkConfigurationException(
             String.format(
                 "Expecting codec.%s to be in ISO_ZONED_DATE_TIME format but got '%s'",
-                NUMERIC_TIMESTAMP_EPOCH, timestampStr));
+                NUMERIC_TIMESTAMP_EPOCH, epochStr));
       }
-      localDateFormat = getDateTimeFormat(config.getString(DATE), timeZone, locale, epoch);
-      localTimeFormat = getDateTimeFormat(config.getString(TIME), timeZone, locale, epoch);
-      timestampFormat = getDateTimeFormat(config.getString(TIMESTAMP), timeZone, locale, epoch);
+      localDateFormat = getTemporalFormat(config.getString(DATE), null, locale);
+      localTimeFormat = getTemporalFormat(config.getString(TIME), null, locale);
+      timestampFormat = getTemporalFormat(config.getString(TIMESTAMP), timeZone, locale);
 
       // boolean
       booleanNumbers =
@@ -205,6 +168,7 @@ public class CodecSettings {
         localDateFormat,
         localTimeFormat,
         timestampFormat,
+        timeZone,
         timeUnit,
         epoch,
         generator,
@@ -262,26 +226,13 @@ public class CodecSettings {
     }
   }
 
-  @NotNull
   @VisibleForTesting
-  public static DateTimeFormatter getDateTimeFormat(
-      String pattern, ZoneId timeZone, Locale locale, ZonedDateTime epoch) {
-    DateTimeFormatterBuilder builder =
-        new DateTimeFormatterBuilder().parseStrict().parseCaseInsensitive();
+  public static TemporalFormat getTemporalFormat(String pattern, ZoneId timeZone, Locale locale) {
     if (pattern.equals(CQL_DATE_TIME)) {
-      builder =
-          builder
-              .append(CQL_DATE_TIME_FORMAT)
-              // add defaults for missing fields, which allows the parsing to be lenient when
-              // some fields cannot be inferred from the input.
-              .parseDefaulting(ChronoField.YEAR, epoch.get(ChronoField.YEAR))
-              .parseDefaulting(ChronoField.MONTH_OF_YEAR, epoch.get(ChronoField.MONTH_OF_YEAR))
-              .parseDefaulting(ChronoField.DAY_OF_MONTH, epoch.get(ChronoField.DAY_OF_MONTH))
-              .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
-              .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
-              .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
-              .parseDefaulting(ChronoField.NANO_OF_SECOND, 0);
+      return new CqlTemporalFormat(timeZone, locale);
     } else {
+      DateTimeFormatterBuilder builder =
+          new DateTimeFormatterBuilder().parseStrict().parseCaseInsensitive();
       try {
         // first, assume it is a predefined format
         Field field = DateTimeFormatter.class.getDeclaredField(pattern);
@@ -291,8 +242,19 @@ public class CodecSettings {
         // if that fails, assume it's a pattern
         builder = builder.appendPattern(pattern);
       }
+      DateTimeFormatter format =
+          builder
+              .toFormatter(locale)
+              // STRICT fails sometimes, e.g. when extracting the Year field from a YearOfEra field
+              // (i.e., does not convert between "uuuu" and "yyyy")
+              .withResolverStyle(ResolverStyle.SMART)
+              .withChronology(IsoChronology.INSTANCE);
+      if (timeZone == null) {
+        return new SimpleTemporalFormat(format);
+      } else {
+        return new ZonedTemporalFormat(format, timeZone);
+      }
     }
-    return builder.toFormatter(locale).withZone(timeZone);
   }
 
   /**
@@ -300,7 +262,8 @@ public class CodecSettings {
    *
    * <p>This is not the object mapper used by the Json connector to read and write Json files.
    *
-   * @return The object mapper to use for converting Json to collections, UDTs and tuples.
+   * @return The object mapper to use for converting Json nodes to and from Java types in Json
+   *     codecs.
    */
   @VisibleForTesting
   public static ObjectMapper getObjectMapper() {

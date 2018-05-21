@@ -11,7 +11,6 @@ package com.datastax.dsbulk.engine.internal.codecs.util;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.convertNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.convertTemporal;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.formatNumber;
-import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.formatTemporal;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.numberToInstant;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.parseNumber;
@@ -68,7 +67,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -79,7 +77,6 @@ import org.junit.jupiter.api.Test;
 class CodecUtilsTest {
 
   private final Instant i1 = Instant.parse("2017-11-23T12:24:59Z");
-  private final Instant i2 = Instant.parse("2018-02-01T00:00:00Z");
   private final Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
 
   private final NumberFormat numberFormat1 =
@@ -94,17 +91,8 @@ class CodecUtilsTest {
   private final NumberFormat numberFormat4 =
       CodecSettings.getNumberFormat("#,###.##", US, UNNECESSARY, false);
 
-  private final DateTimeFormatter timestampFormat1 =
-      CodecSettings.getDateTimeFormat("CQL_DATE_TIME", UTC, US, EPOCH.atZone(UTC));
-
-  private final DateTimeFormatter timestampFormat2 =
-      CodecSettings.getDateTimeFormat(("yyyyMMddHHmmss"), ofHours(2), US, EPOCH.atZone(UTC));
-
-  private final DateTimeFormatter localDateFormat =
-      CodecSettings.getDateTimeFormat("ISO_LOCAL_DATE", UTC, US, EPOCH.atZone(UTC));
-
-  private final DateTimeFormatter localTimeFormat =
-      CodecSettings.getDateTimeFormat("ISO_LOCAL_TIME", UTC, US, EPOCH.atZone(UTC));
+  private final TemporalFormat timestampFormat1 =
+      CodecSettings.getTemporalFormat("CQL_DATE_TIME", UTC, US);
 
   private final Map<String, Boolean> booleanInputWords =
       ImmutableMap.of("true", true, "false", false);
@@ -119,12 +107,12 @@ class CodecUtilsTest {
     assertThat(
             Instant.from(
                 parseTemporal(
-                    "2017-11-23T14:24:59.999999999+02:00",
+                    "2017-11-23T14:24:59.999+02:00",
                     timestampFormat1,
                     numberFormat1,
                     MILLISECONDS,
                     EPOCH)))
-        .isEqualTo(Instant.parse("2017-11-23T12:24:59.999999999Z"));
+        .isEqualTo(Instant.parse("2017-11-23T12:24:59.999Z"));
     assertThat(
             Instant.from(
                 parseTemporal(
@@ -153,67 +141,12 @@ class CodecUtilsTest {
                 parseTemporal("2017-11-23", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)))
         .isEqualTo(Instant.parse("2017-11-23T00:00:00Z"));
     assertThat(
-            Instant.from(
-                parseTemporal(
-                    "14:24:59+02:00", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)))
-        .isEqualTo(Instant.parse("1970-01-01T12:24:59Z"));
-    assertThat(
-            Instant.from(
-                parseTemporal("14:24+02:00", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)))
-        .isEqualTo(Instant.parse("1970-01-01T12:24:00Z"));
-    assertThat(
-            Instant.from(
-                parseTemporal("14:24", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)))
-        .isEqualTo(Instant.parse("1970-01-01T14:24:00Z"));
-    assertThat(
             Instant.from(parseTemporal("0", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)))
         .isEqualTo(EPOCH);
     assertThat(
             Instant.from(
                 parseTemporal("123", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)))
         .isEqualTo(ofEpochMilli(123));
-  }
-
-  @SuppressWarnings("ConstantConditions")
-  @Test
-  void should_parse_temporal() {
-    assertThat(parseTemporal(null, timestampFormat1)).isNull();
-    assertThat(
-            Instant.from(
-                parseTemporal("2017-11-23T13:24:59.000+01:00[Europe/Paris]", timestampFormat1)))
-        .isEqualTo(i1);
-    assertThat(
-            Instant.from(
-                parseTemporal("2017-11-23T13:24:59+01:00[Europe/Paris]", timestampFormat1)))
-        .isEqualTo(i1);
-    assertThat(Instant.from(parseTemporal("2017-11-23T14:24:59+02:00", timestampFormat1)))
-        .isEqualTo(i1);
-    assertThat(Instant.from(parseTemporal("2017-11-23T12:24:59", timestampFormat1))).isEqualTo(i1);
-    assertThat(Instant.from(parseTemporal("20171123142459", timestampFormat2))).isEqualTo(i1);
-    assertThat(Instant.from(parseTemporal("2018-02-01", timestampFormat1))).isEqualTo(i2);
-    assertThat(Instant.from(parseTemporal("2018-02-01T00:00", timestampFormat1))).isEqualTo(i2);
-    assertThat(Instant.from(parseTemporal("2018-02-01T00:00:00", timestampFormat1))).isEqualTo(i2);
-    assertThat(Instant.from(parseTemporal("2018-02-01T00:00:00Z", timestampFormat1))).isEqualTo(i2);
-    assertThat(LocalDate.from(parseTemporal("2018-02-01", localDateFormat)))
-        .isEqualTo(LocalDate.parse("2018-02-01"));
-    assertThat(LocalTime.from(parseTemporal("13:24:59.123456789", localTimeFormat)))
-        .isEqualTo(LocalTime.parse("13:24:59.123456789"));
-    assertThat(LocalTime.from(parseTemporal("13:24:59", localTimeFormat)))
-        .isEqualTo(LocalTime.parse("13:24:59"));
-    assertThat(LocalTime.from(parseTemporal("13:24", localTimeFormat)))
-        .isEqualTo(LocalTime.parse("13:24:00"));
-  }
-
-  @Test
-  void should_format_temporal() {
-    assertThat(formatTemporal(Instant.parse("2017-11-23T14:24:59.999Z"), timestampFormat1))
-        .isEqualTo("2017-11-23T14:24:59.999Z");
-    assertThat(formatTemporal(Instant.parse("2017-11-23T14:24:59.999Z"), timestampFormat2))
-        .isEqualTo("20171123162459"); // at +02:00
-    assertThat(formatTemporal(LocalDate.parse("2018-02-01"), localDateFormat))
-        .isEqualTo("2018-02-01");
-    assertThat(formatTemporal(LocalTime.parse("14:24:59.999"), localTimeFormat))
-        .isEqualTo("14:24:59.999");
   }
 
   @Test
@@ -223,6 +156,7 @@ class CodecUtilsTest {
                 null,
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -234,6 +168,7 @@ class CodecUtilsTest {
                 "-123456.78",
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -244,6 +179,7 @@ class CodecUtilsTest {
                 "-123,456.78",
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -255,6 +191,7 @@ class CodecUtilsTest {
                 "1,234.123E78",
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -266,6 +203,7 @@ class CodecUtilsTest {
                 "0x1.fffP+1023",
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -276,6 +214,7 @@ class CodecUtilsTest {
                 "+Infinity",
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -286,6 +225,7 @@ class CodecUtilsTest {
                 "-Infinity",
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -296,6 +236,7 @@ class CodecUtilsTest {
                 "NaN",
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -307,6 +248,7 @@ class CodecUtilsTest {
                 "2017-12-05T12:44:36+01:00",
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -318,6 +260,7 @@ class CodecUtilsTest {
                 "TRUE",
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -328,6 +271,7 @@ class CodecUtilsTest {
                 "FALSE",
                 numberFormat1,
                 timestampFormat1,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 booleanInputWords,
@@ -478,13 +422,11 @@ class CodecUtilsTest {
     // from parsed temporals
     assertThat(
             toZonedDateTime(
-                parseTemporal("2010-06-30T00:00:00+01:00", timestampFormat1),
-                UTC,
-                LocalDate.ofEpochDay(0)))
+                timestampFormat1.parse("2010-06-30T00:00:00+01:00"), UTC, LocalDate.ofEpochDay(0)))
         .isEqualTo(ZonedDateTime.parse("2010-06-29T23:00:00Z"));
     assertThat(
             toZonedDateTime(
-                parseTemporal("2010-06-30T00:00:00+01:00", timestampFormat1),
+                timestampFormat1.parse("2010-06-30T00:00:00+01:00"),
                 ofHours(1),
                 LocalDate.ofEpochDay(0)))
         .isEqualTo(ZonedDateTime.parse("2010-06-29T23:00:00Z"));
@@ -543,13 +485,11 @@ class CodecUtilsTest {
     // from parsed temporals
     assertThat(
             toInstant(
-                parseTemporal("2010-06-30T00:00:00+01:00", timestampFormat1),
-                UTC,
-                LocalDate.ofEpochDay(0)))
+                timestampFormat1.parse("2010-06-30T00:00:00+01:00"), UTC, LocalDate.ofEpochDay(0)))
         .isEqualTo(Instant.parse("2010-06-29T23:00:00Z"));
     assertThat(
             toInstant(
-                parseTemporal("2010-06-30T00:00:00+01:00", timestampFormat1),
+                timestampFormat1.parse("2010-06-30T00:00:00+01:00"),
                 ofHours(1),
                 LocalDate.ofEpochDay(0)))
         .isEqualTo(Instant.parse("2010-06-29T23:00:00Z"));
@@ -603,13 +543,11 @@ class CodecUtilsTest {
     // from parsed temporals
     assertThat(
             toLocalDateTime(
-                parseTemporal("1970-01-01T23:59:59+01:00", timestampFormat1),
-                UTC,
-                LocalDate.ofEpochDay(0)))
+                timestampFormat1.parse("1970-01-01T23:59:59+01:00"), UTC, LocalDate.ofEpochDay(0)))
         .isEqualTo(LocalDateTime.parse("1970-01-01T23:59:59"));
     assertThat(
             toLocalDateTime(
-                parseTemporal("1970-01-01T23:59:59+01:00", timestampFormat1),
+                timestampFormat1.parse("1970-01-01T23:59:59+01:00"),
                 ofHours(1),
                 LocalDate.ofEpochDay(0)))
         .isEqualTo(LocalDateTime.parse("1970-01-01T23:59:59"));
@@ -645,13 +583,11 @@ class CodecUtilsTest {
     assertThat(toLocalDate(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"), ofHours(-1)))
         .isEqualTo(LocalDate.parse("2010-06-30"));
     // from parsed temporals
-    assertThat(toLocalDate(parseTemporal("2010-06-30T00:00:00+01:00", timestampFormat1), UTC))
+    assertThat(toLocalDate(timestampFormat1.parse("2010-06-30T00:00:00+01:00"), UTC))
         .isEqualTo(LocalDate.parse("2010-06-30"));
-    assertThat(
-            toLocalDate(parseTemporal("2010-06-30T00:00:00+01:00", timestampFormat1), ofHours(1)))
+    assertThat(toLocalDate(timestampFormat1.parse("2010-06-30T00:00:00+01:00"), ofHours(1)))
         .isEqualTo(LocalDate.parse("2010-06-30"));
-    assertThat(
-            toLocalDate(parseTemporal("2010-06-30T00:00:00+01:00", timestampFormat1), ofHours(-1)))
+    assertThat(toLocalDate(timestampFormat1.parse("2010-06-30T00:00:00+01:00"), ofHours(-1)))
         .isEqualTo(LocalDate.parse("2010-06-30"));
     // from unsupported temporal
     assertThatThrownBy(() -> toLocalDate(YearMonth.of(2018, 2), UTC))
@@ -685,13 +621,11 @@ class CodecUtilsTest {
     assertThat(toLocalTime(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"), ofHours(-1)))
         .isEqualTo(LocalTime.parse("23:59:59"));
     // from parsed temporals
-    assertThat(toLocalTime(parseTemporal("1970-01-01T23:59:59+01:00", timestampFormat1), UTC))
+    assertThat(toLocalTime(timestampFormat1.parse("1970-01-01T23:59:59+01:00"), UTC))
         .isEqualTo(LocalTime.parse("23:59:59"));
-    assertThat(
-            toLocalTime(parseTemporal("1970-01-01T23:59:59+01:00", timestampFormat1), ofHours(1)))
+    assertThat(toLocalTime(timestampFormat1.parse("1970-01-01T23:59:59+01:00"), ofHours(1)))
         .isEqualTo(LocalTime.parse("23:59:59"));
-    assertThat(
-            toLocalTime(parseTemporal("1970-01-01T23:59:59+01:00", timestampFormat1), ofHours(-1)))
+    assertThat(toLocalTime(timestampFormat1.parse("1970-01-01T23:59:59+01:00"), ofHours(-1)))
         .isEqualTo(LocalTime.parse("23:59:59"));
     // from unsupported temporal
     assertThatThrownBy(() -> toLocalTime(YearMonth.of(2018, 2), UTC))
@@ -1005,8 +939,9 @@ class CodecUtilsTest {
   void should_parse_uuid() {
     StringToInstantCodec instantCodec =
         new StringToInstantCodec(
-            timestampFormat1,
+            CodecSettings.getTemporalFormat("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX", UTC, US),
             CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
+            UTC,
             MILLISECONDS,
             EPOCH.atZone(UTC),
             newArrayList("NULL"));

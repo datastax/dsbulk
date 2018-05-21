@@ -10,15 +10,19 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
 
 public class StringToLocalTimeCodec extends StringToTemporalCodec<LocalTime> {
 
-  public StringToLocalTimeCodec(DateTimeFormatter parser, List<String> nullStrings) {
+  private final ZoneId timeZone;
+
+  public StringToLocalTimeCodec(TemporalFormat parser, ZoneId timeZone, List<String> nullStrings) {
     super(LocalTimeCodec.instance, parser, nullStrings);
+    this.timeZone = timeZone;
   }
 
   @Override
@@ -27,6 +31,6 @@ public class StringToLocalTimeCodec extends StringToTemporalCodec<LocalTime> {
     if (temporal == null) {
       return null;
     }
-    return CodecUtils.toLocalTime(temporal, temporalFormat.getZone());
+    return CodecUtils.toLocalTime(temporal, timeZone);
   }
 }

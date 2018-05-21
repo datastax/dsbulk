@@ -33,7 +33,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.time.temporal.TemporalQueries;
@@ -50,9 +49,9 @@ public class CodecUtils {
   /**
    * Parses the given string as a temporal.
    *
-   * <p>This method is more complex than {@link #parseTemporal(String, DateTimeFormatter)} and
-   * targets CQL timestamps specifically, and tries different approaches to infer the timestamp from
-   * the given string.
+   * <p>This method is more complex than {@link TemporalFormat#parse(String)} and targets CQL
+   * timestamps specifically, and tries different approaches to infer the timestamp from the given
+   * string.
    *
    * <p>It tries first to parse the string as an alphanumeric temporal, using the given parser; if
    * that fails, then it tries to parse it as a numeric temporal, using the given parser, time unit
@@ -68,7 +67,7 @@ public class CodecUtils {
    */
   public static TemporalAccessor parseTemporal(
       String s,
-      @NotNull DateTimeFormatter temporalFormat,
+      @NotNull TemporalFormat temporalFormat,
       @NotNull NumberFormat numberFormat,
       @NotNull TimeUnit timeUnit,
       @NotNull Instant epoch) {
@@ -82,7 +81,7 @@ public class CodecUtils {
     TemporalAccessor temporal;
     try {
       // 1) try user-specified patterns
-      temporal = parseTemporal(s, temporalFormat);
+      temporal = temporalFormat.parse(s);
     } catch (DateTimeParseException e1) {
       try {
         // 2) try a number, then convert to instant since epoch
@@ -115,6 +114,7 @@ public class CodecUtils {
    * @param numberFormat the {@link NumberFormat} to use to parse numbers; cannot be {@code null}.
    * @param temporalFormat the parser to use if the string is an alphanumeric temporal; cannot be
    *     {@code null}.
+   * @param timeZone the time zone to use; cannot be {@code null}.
    * @param timeUnit the time unit to use to convert the alphanumeric temporal to a numeric
    *     timestamp; cannot be {@code null}.
    * @param epoch the epoch to use to convert the alphanumeric temporal to a numeric timestamp;
@@ -127,13 +127,15 @@ public class CodecUtils {
   public static Number parseNumber(
       String s,
       @NotNull NumberFormat numberFormat,
-      @NotNull DateTimeFormatter temporalFormat,
+      @NotNull TemporalFormat temporalFormat,
+      @NotNull ZoneId timeZone,
       @NotNull TimeUnit timeUnit,
       @NotNull ZonedDateTime epoch,
       @NotNull Map<String, Boolean> booleanStrings,
       @NotNull List<? extends Number> booleanNumbers) {
     Objects.requireNonNull(numberFormat);
     Objects.requireNonNull(temporalFormat);
+    Objects.requireNonNull(timeZone);
     Objects.requireNonNull(timeUnit);
     Objects.requireNonNull(epoch);
     Objects.requireNonNull(booleanStrings);
@@ -161,9 +163,9 @@ public class CodecUtils {
           e3.addSuppressed(e2);
           try {
             // 4) try a temporal, then convert to units since epoch
-            TemporalAccessor temporal = parseTemporal(s, temporalFormat);
+            TemporalAccessor temporal = temporalFormat.parse(s);
             assert temporal != null;
-            Instant instant = toInstant(temporal, temporalFormat.getZone(), epoch.toLocalDate());
+            Instant instant = toInstant(temporal, timeZone, epoch.toLocalDate());
             number = instantToNumber(instant, timeUnit, epoch.toInstant());
           } catch (DateTimeException e4) {
             // 5) Lastly, try a boolean word, then convert to number
@@ -182,7 +184,7 @@ public class CodecUtils {
                               + "or a valid boolean word",
                           s,
                           formatNumber(1234.56, numberFormat),
-                          formatTemporal(Instant.now(), temporalFormat)));
+                          temporalFormat.format(Instant.now())));
               e5.addSuppressed(e4);
               throw e5;
             }
@@ -303,48 +305,6 @@ public class CodecUtils {
    */
   public static String formatNumber(Number value, @NotNull NumberFormat format)
       throws NumberFormatException {
-    Objects.requireNonNull(format);
-    if (value == null) {
-      return null;
-    }
-    return format.format(value);
-  }
-
-  /**
-   * Parses the given string as an alphanumeric temporal, using the given parser.
-   *
-   * @param s the string to parse, may be {@code null}.
-   * @param format the format to use; cannot be {@code null}.
-   * @return a {@link TemporalAccessor} or {@code null} if the string was {@code null} or empty.
-   * @throws DateTimeParseException if the string cannot be parsed.
-   */
-  public static TemporalAccessor parseTemporal(String s, @NotNull DateTimeFormatter format)
-      throws DateTimeParseException {
-    Objects.requireNonNull(format);
-    if (s == null) {
-      return null;
-    }
-    if (s.isEmpty()) {
-      throw new DateTimeParseException("Cannot convert empty string to temporal", s, 0);
-    }
-    ParsePosition pos = new ParsePosition(0);
-    TemporalAccessor accessor = format.parse(s.trim(), pos);
-    if (pos.getIndex() != s.length()) {
-      throw new DateTimeParseException("Invalid temporal format: " + s, s, pos.getIndex());
-    }
-    return accessor;
-  }
-
-  /**
-   * Formats the given temporal using the given format.
-   *
-   * @param value the value to format.
-   * @param format the format to use; cannot be {@code null}.
-   * @return the formatted value.
-   * @throws DateTimeException if the value cannot be formatted.
-   */
-  public static String formatTemporal(TemporalAccessor value, @NotNull DateTimeFormatter format)
-      throws DateTimeException {
     Objects.requireNonNull(format);
     if (value == null) {
       return null;

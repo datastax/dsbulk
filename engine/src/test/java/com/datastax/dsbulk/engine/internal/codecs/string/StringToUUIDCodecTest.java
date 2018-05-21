@@ -12,7 +12,6 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MAX;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MIN;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
@@ -40,7 +39,12 @@ class StringToUUIDCodecTest {
 
   private StringToInstantCodec instantCodec =
       new StringToInstantCodec(
-          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
+          CodecSettings.getTemporalFormat("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX", UTC, US),
+          numberFormat,
+          UTC,
+          MILLISECONDS,
+          EPOCH.atZone(UTC),
+          nullStrings);
 
   private final StringToUUIDCodec codec =
       new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullStrings);

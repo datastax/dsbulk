@@ -110,4 +110,21 @@ class TemporalToUUIDCodecTest {
                             .toEpochMilli())))
         .isEqualTo(ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00"));
   }
+
+  public static void main(String[] args) {
+    long n = 123400000;
+    System.out.println(n + ceiling(n));
+  }
+
+  public static long ceiling(long n) {
+    if (n == 0) {
+      return 0;
+    }
+    int adjustment = 1;
+    while (n % 10 == 0) {
+      adjustment *= 10;
+      n /= 10;
+    }
+    return adjustment - 1;
+  }
 }

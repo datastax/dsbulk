@@ -11,23 +11,19 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
-import static java.time.Instant.EPOCH;
-import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
 
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToLocalDateCodecTest {
 
-  private DateTimeFormatter format1 =
-      CodecSettings.getDateTimeFormat("ISO_LOCAL_DATE", UTC, US, EPOCH.atZone(UTC));
+  private TemporalFormat format1 = CodecSettings.getTemporalFormat("ISO_LOCAL_DATE", null, US);
 
-  private DateTimeFormatter format2 =
-      CodecSettings.getDateTimeFormat("yyyyMMdd", UTC, US, EPOCH.atZone(UTC));
+  private TemporalFormat format2 = CodecSettings.getTemporalFormat("yyyyMMdd", null, US);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
