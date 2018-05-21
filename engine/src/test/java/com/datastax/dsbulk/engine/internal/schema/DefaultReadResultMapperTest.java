@@ -26,7 +26,6 @@ import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
-import com.datastax.dsbulk.connectors.api.internal.DefaultRecordMetadata;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
@@ -49,7 +48,7 @@ class DefaultReadResultMapperTest {
   @SuppressWarnings("unchecked")
   void setUp() {
     recordMetadata =
-        new DefaultRecordMetadata(
+        new TestRecordMetadata(
             ImmutableMap.of(
                 "f0",
                 TypeToken.of(Integer.class),

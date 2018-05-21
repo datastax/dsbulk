@@ -557,9 +557,11 @@ Default: **true**.
 
 The query to use. If not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns. If `schema.keyspace` is provided, the query need not include the keyspace to qualify the table reference.
 
-For loading, the statement can be any `INSERT` or `UPDATE` statement, but must use named bound variables exclusively; positional bound variables will not work. Bound variable names usually match those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those specified in the mapping.
+For loading, the statement can be any `INSERT` or `UPDATE` statement.
 
-For unloading, the statement can be any regular `SELECT` statement; it can optionally contain a token range restriction clause of the form: `token(...) > :start and token(...) <= :end`. If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas. The column names in the SELECT clause will be used to match column names specified in the mapping.
+For unloading, the statement can be any regular `SELECT` statement; it can optionally contain a token range restriction clause of the form: `token(...) > :start and token(...) <= :end`. If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas.
+
+Statements can use both positional and named bound variables. Positional variables will be named after their corresponding column in the destination table. Named bound variables usually have names matching those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those specified in the mapping.
 
 Note: The dsbulk query is parsed to discover which bound variables are present, to map the variable correctly to fields.
 

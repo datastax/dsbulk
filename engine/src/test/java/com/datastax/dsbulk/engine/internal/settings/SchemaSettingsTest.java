@@ -46,13 +46,13 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
-import com.datastax.dsbulk.connectors.api.internal.SchemaFreeRecordMetadata;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
 import java.util.HashMap;
@@ -94,7 +94,7 @@ class SchemaSettingsTest {
   private PreparedStatement ps;
 
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
-  private final RecordMetadata recordMetadata = new SchemaFreeRecordMetadata();
+  private final RecordMetadata recordMetadata = (field, cqlType) -> TypeToken.of(String.class);
 
   @BeforeEach
   void setUp() {
@@ -140,7 +140,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -181,7 +181,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -213,12 +213,12 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo(String.format("INSERT INTO ks.t1(%1$s,\"%2$s\") VALUES (:%1$s,now())", C1, C2));
+        .isEqualTo(String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (now(),:%1$s)", C1, C2));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"), "2", C1);
   }
@@ -231,7 +231,7 @@ class SchemaSettingsTest {
                 + "keyspace=ks, table=t1, queryTtl=30");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
-    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -248,7 +248,7 @@ class SchemaSettingsTest {
                 + "keyspace=ks, table=t1, queryTimestamp=\"2017-01-02T00:00:01Z\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
-    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -268,7 +268,7 @@ class SchemaSettingsTest {
                 + "keyspace=ks, table=t1, queryTimestamp=\"2017-01-02T00:00:01Z\", queryTtl=25");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
-    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -294,7 +294,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -318,7 +318,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -346,7 +346,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -368,7 +368,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -391,14 +391,14 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (:%1$s,:\"%2$s\",:%3$s)",
+                "INSERT INTO ks.t1(%3$s,%1$s,\"%2$s\") VALUES (:%3$s,:%1$s,:\"%2$s\")",
                 C1, C2, C3));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"),
@@ -421,7 +421,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -442,7 +442,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -459,7 +459,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -482,7 +482,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -509,7 +509,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -536,14 +536,14 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                "SELECT %3$s,%1$s,\"%2$s\" FROM ks.t1 WHERE token() > :start AND token() <= :end",
                 C1, C2, C3));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
@@ -565,7 +565,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -591,7 +591,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -612,7 +612,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -632,7 +632,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -650,7 +650,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -668,7 +668,8 @@ class SchemaSettingsTest {
         makeLoaderConfig("keyspace = ks, table = t1, mapping = \"{ *=*, f1 = __timestamp }\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
-    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    RecordMapper mapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable"))
@@ -689,7 +690,8 @@ class SchemaSettingsTest {
                 + "mapping = \"{ f1 = c1 , f2 = c2 , f3 = c3 }\" ");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
-    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    RecordMapper mapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable")).isEqualTo("c3");
@@ -708,7 +710,8 @@ class SchemaSettingsTest {
             "query = \"INSERT INTO ks.t1 (k,c) VALUES (:k,:c) USING TTL 123 AND tImEsTaMp     :\\\"This is a quoted \\\"\\\" variable name\\\"\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
-    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    RecordMapper mapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
     DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable"))
@@ -723,7 +726,7 @@ class SchemaSettingsTest {
     LoaderConfig config = makeLoaderConfig("query = \"SELECT a,b,c FROM table1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
-    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     List<Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements).hasSize(1).containsExactly(bs);
   }
@@ -751,7 +754,7 @@ class SchemaSettingsTest {
             "keyspace = ks1, query = \"SELECT a,b,c FROM table1 WHERE token(a) > :start and token(a) <= :end \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
-    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     List<Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements)
         .hasSize(3)
@@ -800,7 +803,7 @@ class SchemaSettingsTest {
             "keyspace = ks1, query = \"SELECT a,b,c FROM table1 WHERE token(a) > :foo and token(a) <= :bar \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
-    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
     assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
@@ -816,7 +819,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Keyspace \"MyKs\" does not exist, however a keyspace myks was found. Did you mean to use -k myks?");
@@ -830,7 +833,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Table \"MyTable\" does not exist, however a table mytable was found. Did you mean to use -t mytable?");
@@ -844,7 +847,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Keyspace \"MyKs\" does not exist");
   }
@@ -857,9 +860,21 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init();
     assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Table \"MyTable\" does not exist");
+  }
+
+  @Test
+  void should_warn_that_mapped_fields_not_supported() {
+    LoaderConfig config = makeLoaderConfig("keyspace = MyKs, table = t1, mapping = \"c1=c1\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init();
+    assertThatThrownBy(
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, true))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Schema mapping only contains named fields, but connector only supports indexed fields");
   }
 
   @NotNull

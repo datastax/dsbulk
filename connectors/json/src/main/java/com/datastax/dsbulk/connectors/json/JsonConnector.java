@@ -16,11 +16,12 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
+import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
+import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
-import com.datastax.dsbulk.connectors.json.internal.SchemaFreeJsonRecordMetadata;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -38,6 +39,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.base.Suppliers;
+import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.BufferedReader;
@@ -91,6 +93,7 @@ public class JsonConnector implements Connector {
   }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JsonConnector.class);
+  private static final TypeToken<JsonNode> JSON_NODE_TYPE_TOKEN = TypeToken.of(JsonNode.class);
 
   private static final String URL = "url";
   private static final String MODE = "mode";
@@ -134,11 +137,6 @@ public class JsonConnector implements Connector {
   private boolean prettyPrint;
   private Scheduler scheduler;
   private List<JsonWriter> writers;
-
-  @Override
-  public RecordMetadata getRecordMetadata() {
-    return new SchemaFreeJsonRecordMetadata();
-  }
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -204,6 +202,25 @@ public class JsonConnector implements Connector {
       }
       objectMapper.setSerializationInclusion(serializationStrategy);
     }
+  }
+
+  @Override
+  public RecordMetadata getRecordMetadata() {
+    return (field, cqlType) -> JSON_NODE_TYPE_TOKEN;
+  }
+
+  @Override
+  public boolean supports(ConnectorFeature feature) {
+    if (feature instanceof CommonConnectorFeature) {
+      CommonConnectorFeature commonFeature = (CommonConnectorFeature) feature;
+      switch (commonFeature) {
+        case MAPPED_RECORDS:
+          return true;
+        case INDEXED_RECORDS:
+          return false;
+      }
+    }
+    return false;
   }
 
   @Override

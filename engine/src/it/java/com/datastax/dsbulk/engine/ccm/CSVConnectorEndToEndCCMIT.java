@@ -21,10 +21,12 @@ import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountry
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createWithSpacesTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
+import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_COMPLEX;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_HEADER;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
@@ -38,8 +40,8 @@ import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.slf4j.event.Level.ERROR;
+import static org.slf4j.event.Level.WARN;
 
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
@@ -52,9 +54,9 @@ import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
-import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
@@ -1014,6 +1016,113 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     checkTemporalsWritten(session);
   }
 
+  /** Test for DAT-253. */
+  @Test
+  void should_respect_mapping_variables_order(
+      @LogCapture(value = LogManager.class, level = WARN) LogInterceptor logs) throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS mapping");
+    session.execute("CREATE TABLE IF NOT EXISTS mapping (key int PRIMARY KEY, value varchar)");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(ClassLoader.getSystemResource("invalid-mapping.csv").toExternalForm());
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("mapping");
+    args.add("--schema.mapping");
+    args.add("value,key");
+
+    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(logs)
+        .hasMessageContaining(
+            "At least 1 record does not match the provided schema.mapping or schema.query");
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("mapping");
+    args.add("--schema.mapping");
+    // note that the entries are not in proper order,
+    // the export should still order fields by index, so 'key,value' and not 'value,key'
+    args.add("1=value,0=key");
+
+    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+    List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).contains("1,ok1").contains("2,ok2");
+  }
+
+  /** Test for DAT-253. */
+  @Test
+  void should_respect_query_variables_order(
+      @LogCapture(value = LogManager.class, level = WARN) LogInterceptor logs) throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS mapping");
+    session.execute("CREATE TABLE IF NOT EXISTS mapping (key int PRIMARY KEY, value varchar)");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(ClassLoader.getSystemResource("invalid-mapping.csv").toExternalForm());
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    // 0 = value, 1 = key
+    args.add("INSERT INTO mapping (value, key) VALUES (?, ?)");
+
+    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(logs)
+        .hasMessageContaining(
+            "At least 1 record does not match the provided schema.mapping or schema.query");
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    // the columns should be exported as they appear in the SELECT clause, so 'value,key' and not
+    // 'key,value'
+    args.add("SELECT value, key FROM mapping");
+
+    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+    List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).contains("ok1,1").contains("ok2,2");
+  }
+
   static void checkNumbersWritten(
       OverflowStrategy overflowStrategy, RoundingMode roundingMode, Session session) {
     Map<String, Double> doubles = new HashMap<>();
@@ -1041,8 +1150,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
       throws IOException {
     Map<String, String> doubles = new HashMap<>();
     Map<String, String> bigdecimals = new HashMap<>();
-    List<String> lines =
-        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     for (String line : lines) {
       List<String> cols = Splitter.on(';').splitToList(line);
       doubles.put(cols.get(0), cols.get(1));
@@ -1297,8 +1405,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   private static void checkTemporalsRead(Path unloadDir) throws IOException {
-    String line =
-        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
+    String line = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
     List<String> cols = Splitter.on(';').splitToList(line);
     assertThat(cols.get(1)).isEqualTo("vendredi, 9 mars 2018");
     assertThat(cols.get(2)).isEqualTo("171232584");

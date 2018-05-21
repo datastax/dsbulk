@@ -17,12 +17,16 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
+import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
+import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Streams;
+import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.csv.CsvFormat;
@@ -77,6 +81,8 @@ import reactor.core.scheduler.Schedulers;
 public class CSVConnector implements Connector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
+  private static final TypeToken<String> STRING_TYPE_TOKEN = TypeToken.of(String.class);
+
   private static final String URL = "url";
   private static final String FILE_NAME_PATTERN = "fileNamePattern";
   private static final String ENCODING = "encoding";
@@ -171,6 +177,27 @@ public class CSVConnector implements Connector {
       writerSettings.setQuoteEscapingEnabled(true);
       counter = new AtomicInteger(0);
     }
+  }
+
+  @Override
+  public RecordMetadata getRecordMetadata() {
+    return (field, cqlType) -> STRING_TYPE_TOKEN;
+  }
+
+  @Override
+  public boolean supports(ConnectorFeature feature) {
+    if (feature instanceof CommonConnectorFeature) {
+      CommonConnectorFeature commonFeature = (CommonConnectorFeature) feature;
+      switch (commonFeature) {
+        case MAPPED_RECORDS:
+          // only support mapped records if there is a header defined
+          return header;
+        case INDEXED_RECORDS:
+          // always support indexed records, regardless of the presence of a header
+          return true;
+      }
+    }
+    return false;
   }
 
   @Override

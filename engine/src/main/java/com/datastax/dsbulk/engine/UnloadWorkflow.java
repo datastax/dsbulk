@@ -16,6 +16,7 @@ import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
@@ -117,7 +118,11 @@ public class UnloadWorkflow implements Workflow {
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
     readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+        schemaSettings.createReadResultMapper(
+            session,
+            recordMetadata,
+            codecRegistry,
+            !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
   }

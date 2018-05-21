@@ -50,6 +50,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
+import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.json.JsonConnector;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
@@ -735,6 +736,11 @@ class JsonEndToEndSimulacronIT {
             } catch (IOException ignored) {
             }
             return super.write();
+          }
+
+          @Override
+          public boolean supports(ConnectorFeature feature) {
+            return true;
           }
         });
 
