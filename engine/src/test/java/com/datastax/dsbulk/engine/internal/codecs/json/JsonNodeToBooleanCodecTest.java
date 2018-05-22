@@ -43,7 +43,7 @@ class JsonNodeToBooleanCodecTest {
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null)
-        .convertsFromExternal(JSON_NODE_FACTORY.nullNode())
+        .convertsFromExternal(null)
         .toInternal(null);
   }
 
@@ -55,7 +55,7 @@ class JsonNodeToBooleanCodecTest {
         .convertsFromInternal(false)
         .toExternal(JSON_NODE_FACTORY.booleanNode(false))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

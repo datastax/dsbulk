@@ -9,6 +9,15 @@
 - [bug] DAT-259: LogManager files have interleaved entries.
 - [bug] DAT-260: LogManager is closing files too soon.
 - [bug] DAT-266: DSE Geometry types cause CodecNotFoundException.
+- [improvement] DAT-270: Replace Java collections with JCTools equivalents whenever possible.
+- [improvement] DAT-257: Check case on failure to identify keyspace or table.
+- [improvement] DAT-258: Default driver.auth.provider to DsePlainTextAuthProvider if -p is specified.
+- [improvement] DAT-261: Improve message when no files match pattern in a directory.
+- [bug] DAT-268: Map-type settings are unrecognized from the command-line.
+- [bug] DAT-273: Json connector doesn't respect WRITE_NULL_MAP_VALUES in serialization features setting.
+- [improvement] DAT-275: Simplify schema.queryTimestamp format.
+- [improvement] DAT-276: Remove connector.json.mapperFeatures setting.
+- [improvement] DAT-277: Support all CQL literal formats.
 
 
 ### 1.0.1

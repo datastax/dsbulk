@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
@@ -23,6 +22,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToDoubleCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,7 +50,8 @@ class JsonNodeToMapCodecTest {
           numberFormat,
           OverflowStrategy.REJECT,
           RoundingMode.HALF_EVEN,
-          CQL_DATE_TIME_FORMAT,
+          CqlTemporalFormat.DEFAULT_INSTANCE,
+          UTC,
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
@@ -106,7 +107,7 @@ class JsonNodeToMapCodecTest {
         .convertsFromInternal(map(1d, null, 2d, list()))
         .toExternal(objectMapper.readTree("{\"1\":null,\"2\":[]}"))
         .convertsFromInternal(null)
-        .toExternal(objectMapper.getNodeFactory().nullNode());
+        .toExternal(null);
   }
 
   @Test

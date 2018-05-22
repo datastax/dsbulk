@@ -21,6 +21,9 @@ import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.HttpTestServer;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -45,10 +48,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
-@SuppressWarnings("Duplicates")
+@ExtendWith(LogInterceptingExtension.class)
 class JsonConnectorTest {
 
   static {
@@ -303,6 +307,54 @@ class JsonConnectorTest {
   }
 
   @Test
+  void should_warn_when_directory_empty(@LogCapture LogInterceptor logs) throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Path rootPath = Files.createTempDirectory("empty");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
+                          escapeUserInput(rootPath)))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      assertThat(logs.getLoggedMessages())
+          .contains(String.format("Directory %s has no readable files", rootPath));
+      connector.close();
+    } finally {
+      deleteDirectory(rootPath);
+    }
+  }
+
+  @Test
+  void should_warn_when_no_files_matched(@LogCapture LogInterceptor logs) throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Path rootPath = Files.createTempDirectory("empty");
+    Files.createTempFile(rootPath, "test", ".txt");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
+                          escapeUserInput(rootPath)))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      assertThat(logs.getLoggedMessages())
+          .contains(
+              String.format(
+                  "No files in directory %s matched the connector.json.fileNamePattern of \"**/part-*\".",
+                  rootPath));
+      connector.close();
+    } finally {
+      deleteDirectory(rootPath);
+    }
+  }
+
+  @Test
   void should_write_single_file_multi_doc() throws Exception {
     JsonConnector connector = new JsonConnector();
     // test directory creation
@@ -331,7 +383,7 @@ class JsonConnectorTest {
               "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0}",
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}");
     } finally {
-      deleteDirectory(out);
+      deleteDirectory(dir);
     }
   }
 
@@ -366,7 +418,42 @@ class JsonConnectorTest {
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
               "]");
     } finally {
-      deleteDirectory(out);
+      deleteDirectory(dir);
+    }
+  }
+
+  @Test
+  void should_write_single_file_single_doc_and_skip_nulls() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT, serializationStrategy = NON_NULL",
+                          escapeUserInput(out)))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      assertThat(connector.isWriteToStandardOutput()).isFalse();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+          .containsExactly(
+              "[",
+              "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Price\":4900.0},",
+              "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Price\":5000.0},",
+              "{\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Price\":4900.0}",
+              "]");
+    } finally {
+      deleteDirectory(dir);
     }
   }
 
@@ -771,10 +858,10 @@ class JsonConnectorTest {
             -1,
             null,
             values,
-            factory.nullNode(),
-            factory.nullNode(),
+            null,
+            null,
             factory.textNode("Venture \"Extended Edition\""),
-            factory.nullNode(),
+            null,
             factory.numberNode(4900.00d)));
     return records;
   }

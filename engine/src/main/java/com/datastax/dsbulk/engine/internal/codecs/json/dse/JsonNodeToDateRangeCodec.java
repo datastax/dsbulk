@@ -33,9 +33,6 @@ public class JsonNodeToDateRangeCodec extends JsonNodeConvertingCodec<DateRange>
 
   @Override
   public JsonNode internalToExternal(DateRange value) {
-    if (value == null) {
-      return JSON_NODE_FACTORY.nullNode();
-    }
-    return JSON_NODE_FACTORY.textNode(value.toString());
+    return value == null ? null : JSON_NODE_FACTORY.textNode(value.toString());
   }
 }

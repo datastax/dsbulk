@@ -17,7 +17,6 @@ import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newField;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
 import static com.datastax.driver.core.TypeCodec.userType;
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -40,6 +39,7 @@ import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToListCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToLocalDateCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToMapCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUDTCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -80,7 +80,8 @@ class StringToUDTCodecTest {
           numberFormat,
           OverflowStrategy.REJECT,
           RoundingMode.HALF_EVEN,
-          CQL_DATE_TIME_FORMAT,
+          CqlTemporalFormat.DEFAULT_INSTANCE,
+          UTC,
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),
@@ -94,7 +95,8 @@ class StringToUDTCodecTest {
               numberFormat,
               OverflowStrategy.REJECT,
               RoundingMode.HALF_EVEN,
-              CQL_DATE_TIME_FORMAT,
+              CqlTemporalFormat.DEFAULT_INSTANCE,
+              UTC,
               MILLISECONDS,
               EPOCH.atZone(UTC),
               ImmutableMap.of("true", true, "false", false),
@@ -136,7 +138,7 @@ class StringToUDTCodecTest {
   private final ConvertingCodec f2bCodec =
       new JsonNodeToListCodec<>(
           TypeCodec.list(LocalDateCodec.instance),
-          new JsonNodeToLocalDateCodec(CQL_DATE_TIME_FORMAT, nullStrings),
+          new JsonNodeToLocalDateCodec(CqlTemporalFormat.DEFAULT_INSTANCE, nullStrings),
           objectMapper,
           nullStrings);
 

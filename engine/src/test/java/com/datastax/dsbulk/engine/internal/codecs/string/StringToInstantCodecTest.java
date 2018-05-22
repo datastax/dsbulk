@@ -17,12 +17,13 @@ import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -32,11 +33,11 @@ class StringToInstantCodecTest {
 
   private final Instant minutesAfterMillennium = millennium.plus(Duration.ofMinutes(123456));
 
-  private final DateTimeFormatter temporalFormat1 =
-      CodecSettings.getDateTimeFormat("CQL_DATE_TIME", UTC, US, EPOCH.atZone(UTC));
+  private final TemporalFormat temporalFormat1 =
+      CodecSettings.getTemporalFormat("CQL_DATE_TIME", ZoneId.of("UTC"), US);
 
-  private final DateTimeFormatter temporalFormat2 =
-      CodecSettings.getDateTimeFormat("yyyyMMddHHmmss", UTC, US, EPOCH.atZone(UTC));
+  private final TemporalFormat temporalFormat2 =
+      CodecSettings.getTemporalFormat("yyyyMMddHHmmss", ZoneId.of("UTC"), US);
 
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
@@ -47,7 +48,7 @@ class StringToInstantCodecTest {
   void should_convert_from_valid_external() {
     StringToInstantCodec codec =
         new StringToInstantCodec(
-            temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
+            temporalFormat1, numberFormat, UTC, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
     assertThat(codec)
         .convertsFromExternal("2016-07-24T20:34")
         .toInternal(Instant.parse("2016-07-24T20:34:00Z"))
@@ -65,13 +66,13 @@ class StringToInstantCodecTest {
         .toInternal(null);
     codec =
         new StringToInstantCodec(
-            temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
+            temporalFormat2, numberFormat, UTC, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
     assertThat(codec)
         .convertsFromExternal("20160724203412")
         .toInternal(Instant.parse("2016-07-24T20:34:12Z"));
     codec =
         new StringToInstantCodec(
-            temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC), nullStrings);
+            temporalFormat1, numberFormat, UTC, MINUTES, millennium.atZone(UTC), nullStrings);
     assertThat(codec)
         .convertsFromExternal("123456")
         .toInternal(minutesAfterMillennium)
@@ -83,7 +84,7 @@ class StringToInstantCodecTest {
   void should_convert_from_valid_internal() {
     StringToInstantCodec codec =
         new StringToInstantCodec(
-            temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
+            temporalFormat1, numberFormat, UTC, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
     assertThat(codec)
         .convertsFromInternal(Instant.parse("2016-07-24T20:34:00Z"))
         .toExternal("2016-07-24T20:34:00Z")
@@ -97,13 +98,13 @@ class StringToInstantCodecTest {
         .toExternal("2016-07-24T19:34:12.999Z");
     codec =
         new StringToInstantCodec(
-            temporalFormat2, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
+            temporalFormat2, numberFormat, UTC, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
     assertThat(codec)
         .convertsFromInternal(Instant.parse("2016-07-24T20:34:12Z"))
         .toExternal("20160724203412");
     codec =
         new StringToInstantCodec(
-            temporalFormat1, numberFormat, MINUTES, millennium.atZone(UTC), nullStrings);
+            temporalFormat1, numberFormat, UTC, MINUTES, millennium.atZone(UTC), nullStrings);
     // conversion back to numeric timestamps is not possible, values are always formatted with full
     // alphanumeric pattern
     assertThat(codec)
@@ -115,7 +116,7 @@ class StringToInstantCodecTest {
   void should_not_convert_from_invalid_external() {
     StringToInstantCodec codec =
         new StringToInstantCodec(
-            temporalFormat1, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
+            temporalFormat1, numberFormat, UTC, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
     assertThat(codec)
         .cannotConvertFromExternal("")
         .cannotConvertFromExternal("not a valid date format");

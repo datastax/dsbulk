@@ -10,16 +10,16 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.DateTimeException;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
 
 public class JsonNodeToLocalDateCodec extends JsonNodeToTemporalCodec<LocalDate> {
 
-  public JsonNodeToLocalDateCodec(DateTimeFormatter parser, List<String> nullStrings) {
+  public JsonNodeToLocalDateCodec(TemporalFormat parser, List<String> nullStrings) {
     super(LocalDateCodec.instance, parser, nullStrings);
   }
 

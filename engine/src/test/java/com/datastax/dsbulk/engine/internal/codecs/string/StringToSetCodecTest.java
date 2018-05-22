@@ -11,7 +11,6 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 import static com.datastax.driver.core.TypeCodec.cdouble;
 import static com.datastax.driver.core.TypeCodec.set;
 import static com.datastax.driver.core.TypeCodec.varchar;
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -27,6 +26,7 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToDoubleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToSetCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToStringCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,7 +52,8 @@ class StringToSetCodecTest {
           numberFormat,
           OverflowStrategy.REJECT,
           RoundingMode.HALF_EVEN,
-          CQL_DATE_TIME_FORMAT,
+          CqlTemporalFormat.DEFAULT_INSTANCE,
+          UTC,
           MILLISECONDS,
           EPOCH.atZone(UTC),
           ImmutableMap.of("true", true, "false", false),

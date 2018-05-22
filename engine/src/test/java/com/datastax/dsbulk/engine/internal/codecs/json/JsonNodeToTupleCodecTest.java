@@ -12,7 +12,6 @@ import static com.datastax.driver.core.DataType.timestamp;
 import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
 import static com.datastax.driver.core.ProtocolVersion.V4;
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
@@ -27,6 +26,7 @@ import com.datastax.driver.core.TupleType;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,7 +52,12 @@ class JsonNodeToTupleCodecTest {
 
   private final ConvertingCodec eltCodec1 =
       new JsonNodeToInstantCodec(
-          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
+          CqlTemporalFormat.DEFAULT_INSTANCE,
+          numberFormat,
+          UTC,
+          MILLISECONDS,
+          EPOCH.atZone(UTC),
+          nullStrings);
 
   private final ConvertingCodec eltCodec2 =
       new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
@@ -100,7 +105,7 @@ class JsonNodeToTupleCodecTest {
         .convertsFromInternal(tupleType.newValue(null, null))
         .toExternal(objectMapper.readTree("[null,null]"))
         .convertsFromInternal(null)
-        .toExternal(objectMapper.getNodeFactory().nullNode());
+        .toExternal(null);
   }
 
   @Test

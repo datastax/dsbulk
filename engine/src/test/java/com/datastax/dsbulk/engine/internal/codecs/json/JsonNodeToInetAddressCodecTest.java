@@ -41,7 +41,7 @@ class JsonNodeToInetAddressCodecTest {
         .convertsFromInternal(InetAddress.getByName("127.0.0.1"))
         .toExternal(JSON_NODE_FACTORY.textNode("127.0.0.1"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

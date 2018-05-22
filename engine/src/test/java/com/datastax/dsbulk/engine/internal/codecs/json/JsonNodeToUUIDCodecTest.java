@@ -12,7 +12,6 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MAX;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MIN;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
@@ -43,7 +42,12 @@ class JsonNodeToUUIDCodecTest {
 
   private StringToInstantCodec instantCodec =
       new StringToInstantCodec(
-          CQL_DATE_TIME_FORMAT, numberFormat, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
+          CodecSettings.getTemporalFormat("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX", UTC, US),
+          numberFormat,
+          UTC,
+          MILLISECONDS,
+          EPOCH.atZone(UTC),
+          nullStrings);
 
   private final JsonNodeToUUIDCodec codec =
       new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, MIN, nullStrings);
@@ -130,7 +134,7 @@ class JsonNodeToUUIDCodecTest {
         .convertsFromInternal(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .toExternal(JSON_NODE_FACTORY.textNode("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .convertsFromInternal(null)
-        .toExternal(JSON_NODE_FACTORY.nullNode());
+        .toExternal(null);
   }
 
   @Test

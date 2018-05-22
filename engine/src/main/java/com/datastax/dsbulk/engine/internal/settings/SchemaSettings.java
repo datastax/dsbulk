@@ -21,6 +21,7 @@ import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
+import com.datastax.driver.core.ParseUtils;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
@@ -35,7 +36,6 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.string.StringToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
@@ -53,6 +53,7 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -120,7 +121,7 @@ public class SchemaSettings {
     this.config = config;
   }
 
-  public void init(StringToTemporalCodec<Instant> timestampCodec) {
+  public void init() {
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       ttlSeconds = config.getInt(QUERY_TTL);
@@ -131,11 +132,13 @@ public class SchemaSettings {
         this.timestampMicros = -1L;
       } else {
         try {
-          Instant instant = timestampCodec.externalToInternal(timestampStr);
+          Instant instant = ZonedDateTime.parse(timestampStr).toInstant();
           this.timestampMicros = instantToNumber(instant, MICROSECONDS, EPOCH);
         } catch (Exception e) {
           throw new BulkConfigurationException(
-              String.format("Could not parse %s '%s'", prettyPath(QUERY_TIMESTAMP), timestampStr));
+              String.format(
+                  "Expecting %s to be in ISO_ZONED_DATE_TIME format but got '%s'",
+                  prettyPath(QUERY_TIMESTAMP), timestampStr));
         }
       }
       this.query = config.hasPath(QUERY) ? config.getString(QUERY) : null;
@@ -371,13 +374,33 @@ public class SchemaSettings {
       Session session, Supplier<List<String>> columns, WorkflowType workflowType)
       throws BulkConfigurationException {
     BiMap<String, String> fieldsToVariables = null;
-
     if (keyspaceName != null && tableName != null) {
-      KeyspaceMetadata keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
-      Preconditions.checkNotNull(keyspace, "Keyspace does not exist: " + keyspaceName);
+      Metadata metadata = session.getCluster().getMetadata();
+      KeyspaceMetadata keyspace = metadata.getKeyspace(keyspaceName);
+      if (keyspace == null) {
+        String lowerCaseKeyspaceName = ParseUtils.unDoubleQuote(keyspaceName).toLowerCase();
+        if (metadata.getKeyspace(lowerCaseKeyspaceName) != null) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Keyspace %s does not exist, however a keyspace %s was found. Did you mean to use -k %s?",
+                  keyspaceName, lowerCaseKeyspaceName, lowerCaseKeyspaceName));
+        } else {
+          throw new IllegalArgumentException(
+              String.format("Keyspace %s does not exist", keyspaceName));
+        }
+      }
       table = keyspace.getTable(tableName);
-      Preconditions.checkNotNull(
-          table, String.format("Table does not exist: %s.%s", keyspaceName, tableName));
+      if (table == null) {
+        String lowerCaseTableName = ParseUtils.unDoubleQuote(tableName).toLowerCase();
+        if (keyspace.getTable(lowerCaseTableName) != null) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
+                  tableName, lowerCaseTableName, lowerCaseTableName));
+        } else {
+          throw new IllegalArgumentException(String.format("Table %s does not exist", tableName));
+        }
+      }
     }
 
     if (mapping == null) {

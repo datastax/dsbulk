@@ -10,12 +10,13 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -23,17 +24,20 @@ import java.util.concurrent.TimeUnit;
 public class JsonNodeToInstantCodec extends JsonNodeToTemporalCodec<Instant> {
 
   private final FastThreadLocal<NumberFormat> numberFormat;
+  private final ZoneId timeZone;
   private final TimeUnit timeUnit;
   private final ZonedDateTime epoch;
 
   public JsonNodeToInstantCodec(
-      DateTimeFormatter temporalFormat,
+      TemporalFormat temporalFormat,
       FastThreadLocal<NumberFormat> numberFormat,
+      ZoneId timeZone,
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       List<String> nullStrings) {
     super(InstantCodec.instance, temporalFormat, nullStrings);
     this.numberFormat = numberFormat;
+    this.timeZone = timeZone;
     this.timeUnit = timeUnit;
     this.epoch = epoch;
   }
@@ -44,8 +48,7 @@ public class JsonNodeToInstantCodec extends JsonNodeToTemporalCodec<Instant> {
     if (temporal == null) {
       return null;
     }
-    return CodecUtils.convertTemporal(
-        temporal, Instant.class, temporalFormat.getZone(), epoch.toLocalDate());
+    return CodecUtils.convertTemporal(temporal, Instant.class, timeZone, epoch.toLocalDate());
   }
 
   @Override

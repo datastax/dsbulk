@@ -31,13 +31,13 @@ public class JsonNodeToUnknownTypeCodec<T> extends JsonNodeConvertingCodec<T> {
   @Override
   public JsonNode internalToExternal(T o) {
     if (o == null) {
-      return JSON_NODE_FACTORY.nullNode();
+      return null;
     }
     String s = getInternalCodec().format(o);
     // most codecs usually format null/empty values using the CQL keyword "NULL",
     // but some others may choose to return a null string.
     if (s == null || s.equalsIgnoreCase("NULL")) {
-      return JSON_NODE_FACTORY.nullNode();
+      return null;
     }
     return JSON_NODE_FACTORY.textNode(s);
   }

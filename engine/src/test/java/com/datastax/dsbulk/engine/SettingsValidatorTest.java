@@ -307,7 +307,7 @@ class SettingsValidatorTest {
               "load",
               "--connector.csv.url=/path/to/my/file",
               "--schema.query=xyz",
-              "--schema.queryTimestamp=9876123",
+              "--schema.queryTimestamp=2018-05-18T15:00:00Z",
               "--schema.keyspace=keyspace",
               "--schema.table=table"
             })
@@ -381,7 +381,9 @@ class SettingsValidatorTest {
             })
         .run();
     String err = logs.getAllMessagesAsString();
-    assertThat(err).contains("Could not parse schema.queryTimestamp 'junk'");
+    assertThat(err)
+        .contains(
+            "Expecting schema.queryTimestamp to be in ISO_ZONED_DATE_TIME format but got 'junk'");
   }
 
   @Test

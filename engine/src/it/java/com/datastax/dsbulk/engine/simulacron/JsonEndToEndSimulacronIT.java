@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.simulacron;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createParameterizedQuery;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithError;
@@ -28,6 +29,7 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_ERRO
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_PARTIAL_BAD;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_COMMENTS;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.LogUtils.setProductionKey;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
@@ -73,8 +75,12 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -214,6 +220,44 @@ class JsonEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+  }
+
+  @Test
+  void full_load_custom_features() {
+
+    String query = "INSERT INTO table1 (key,value) VALUES (:key, :value)";
+    Map<String, String> types = ImmutableMap.of("key", "int", "value", "float");
+    Query when = new Query(query, emptyList(), emptyMap(), types);
+    SuccessResult then = new SuccessResult(emptyList(), emptyMap());
+    simulacron.prime(new Prime(new RequestPrime(when, then)));
+
+    String[] args = {
+      "load",
+      "-c",
+      "json",
+      "--log.directory",
+      escapeUserInput(logDir),
+      "--connector.json.url",
+      escapeUserInput(JSON_RECORDS_WITH_COMMENTS),
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.query",
+      query,
+      "--connector.json.parserFeatures",
+      "{ALLOW_COMMENTS = true}",
+      "--connector.json.deserializationFeatures",
+      "{USE_BIG_INTEGER_FOR_INTS = false, USE_BIG_DECIMAL_FOR_FLOATS = false}",
+    };
+
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isZero();
+    validateQueryCount(simulacron, 1, "INSERT INTO table1 (key,value) VALUES (:key, :value)", ONE);
   }
 
   @Test
@@ -536,6 +580,57 @@ class JsonEndToEndSimulacronIT {
     assertThat(status).isZero();
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.LOCAL_ONE);
     validateOutputFiles(1000, unloadDir);
+  }
+
+  @Test
+  void full_unload_custom_features() throws Exception {
+
+    String query = "SELECT pk, c1, c2 FROM table1";
+    Query when = new Query(query);
+    Map<String, String> columnTypes = new LinkedHashMap<>();
+    columnTypes.put("pk", "int");
+    columnTypes.put("c1", "varchar");
+    List<Map<String, Object>> rows = new ArrayList<>();
+    HashMap<String, Object> row = new HashMap<>();
+    row.put("pk", 1);
+    row.put("c1", null);
+    rows.add(row);
+    SuccessResult then = new SuccessResult(rows, columnTypes);
+    RequestPrime prime = new RequestPrime(when, then);
+    simulacron.prime(new Prime(prime));
+
+    String[] unloadArgs = {
+      "unload",
+      "-c",
+      "json",
+      "--log.directory",
+      escapeUserInput(logDir),
+      "--connector.json.url",
+      escapeUserInput(unloadDir),
+      "--connector.json.maxConcurrentFiles",
+      "1",
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.query",
+      query,
+      "--connector.json.generatorFeatures",
+      "{QUOTE_FIELD_NAMES = false}",
+      "--connector.json.serializationStrategy",
+      "NON_NULL"
+    };
+
+    int status = new DataStaxBulkLoader(unloadArgs).run();
+    assertThat(status).isZero();
+    validateQueryCount(simulacron, 1, query, ONE);
+    validateOutputFiles(1, unloadDir);
+    Optional<String> line = readAllLinesInDirectoryAsStream(unloadDir).findFirst();
+    assertThat(line).isPresent().hasValue("{pk:1}");
   }
 
   @Test

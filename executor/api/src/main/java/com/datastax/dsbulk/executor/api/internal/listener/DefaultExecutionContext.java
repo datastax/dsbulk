@@ -10,8 +10,8 @@ package com.datastax.dsbulk.executor.api.internal.listener;
 
 import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.jctools.maps.NonBlockingHashMap;
 
 public class DefaultExecutionContext implements ExecutionContext {
 
@@ -49,7 +49,7 @@ public class DefaultExecutionContext implements ExecutionContext {
       synchronized (this) {
         if (attributes == null) {
           @SuppressWarnings("UnnecessaryLocalVariable")
-          ConcurrentMap<Object, Object> attributes = new ConcurrentHashMap<>();
+          ConcurrentMap<Object, Object> attributes = new NonBlockingHashMap<>();
           this.attributes = attributes;
         }
       }

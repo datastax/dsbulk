@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.driver.core.DataType.bigint;
 import static com.datastax.driver.core.ProtocolVersion.V4;
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.CQL_DATE_TIME_FORMAT;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
@@ -41,7 +40,10 @@ import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecordMetadata;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToIntegerCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToLongCodec;
+import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
+import com.datastax.dsbulk.engine.internal.codecs.util.ZonedTemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.collect.ImmutableMap;
@@ -51,7 +53,6 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.text.NumberFormat;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
@@ -205,7 +206,8 @@ class DefaultRecordMapperTest {
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
-                CQL_DATE_TIME_FORMAT,
+                CqlTemporalFormat.DEFAULT_INSTANCE,
+                UTC,
                 MINUTES,
                 EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
@@ -241,7 +243,8 @@ class DefaultRecordMapperTest {
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
-                CQL_DATE_TIME_FORMAT,
+                CqlTemporalFormat.DEFAULT_INSTANCE,
+                UTC,
                 MINUTES,
                 millennium.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
@@ -275,7 +278,8 @@ class DefaultRecordMapperTest {
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
-                CQL_DATE_TIME_FORMAT,
+                CqlTemporalFormat.DEFAULT_INSTANCE,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),
@@ -306,8 +310,8 @@ class DefaultRecordMapperTest {
     when(record.fields()).thenReturn(set(F1));
     when(variables.getType(C1)).thenReturn(bigint());
     when(record.getFieldValue(F1)).thenReturn("20171123-123456");
-    DateTimeFormatter timestampFormat =
-        DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
+    TemporalFormat timestampFormat =
+        new ZonedTemporalFormat(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"), UTC);
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
@@ -315,6 +319,7 @@ class DefaultRecordMapperTest {
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
                 timestampFormat,
+                UTC,
                 MILLISECONDS,
                 EPOCH.atZone(UTC),
                 ImmutableMap.of("true", true, "false", false),

@@ -21,19 +21,18 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.json.internal.SchemaFreeJsonRecordMetadata;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -104,9 +103,9 @@ public class JsonConnector implements Connector {
   private static final String FILE_NAME_FORMAT = "fileNameFormat";
   private static final String PARSER_FEATURES = "parserFeatures";
   private static final String GENERATOR_FEATURES = "generatorFeatures";
-  private static final String MAPPER_FEATURES = "mapperFeatures";
   private static final String SERIALIZATION_FEATURES = "serializationFeatures";
   private static final String DESERIALIZATION_FEATURES = "deserializationFeatures";
+  private static final String SERIALIZATION_STRATEGY = "serializationStrategy";
   private static final String PRETTY_PRINT = "prettyPrint";
 
   private static final TypeReference<Map<String, JsonNode>> JSON_NODE_MAP_TYPE_REFERENCE =
@@ -129,9 +128,9 @@ public class JsonConnector implements Connector {
   private JavaType jsonNodeMapType;
   private Map<JsonParser.Feature, Boolean> parserFeatures;
   private Map<JsonGenerator.Feature, Boolean> generatorFeatures;
-  private Map<MapperFeature, Boolean> mapperFeatures;
   private Map<SerializationFeature, Boolean> serializationFeatures;
   private Map<DeserializationFeature, Boolean> deserializationFeatures;
+  private JsonInclude.Include serializationStrategy;
   private boolean prettyPrint;
   private Scheduler scheduler;
   private List<JsonWriter> writers;
@@ -162,11 +161,11 @@ public class JsonConnector implements Connector {
       parserFeatures = getFeatureMap(settings.getConfig(PARSER_FEATURES), JsonParser.Feature.class);
       generatorFeatures =
           getFeatureMap(settings.getConfig(GENERATOR_FEATURES), JsonGenerator.Feature.class);
-      mapperFeatures = getFeatureMap(settings.getConfig(MAPPER_FEATURES), MapperFeature.class);
       serializationFeatures =
           getFeatureMap(settings.getConfig(SERIALIZATION_FEATURES), SerializationFeature.class);
       deserializationFeatures =
           getFeatureMap(settings.getConfig(DESERIALIZATION_FEATURES), DeserializationFeature.class);
+      serializationStrategy = settings.getEnum(JsonInclude.Include.class, SERIALIZATION_STRATEGY);
       prettyPrint = settings.getBoolean(PRETTY_PRINT);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.json");
@@ -183,9 +182,6 @@ public class JsonConnector implements Connector {
     objectMapper = new ObjectMapper();
     objectMapper.setNodeFactory(JsonNodeFactory.withExactBigDecimals(true));
     jsonNodeMapType = objectMapper.constructType(JSON_NODE_MAP_TYPE_REFERENCE.getType());
-    for (MapperFeature mapperFeature : mapperFeatures.keySet()) {
-      objectMapper.configure(mapperFeature, mapperFeatures.get(mapperFeature));
-    }
     if (read) {
       for (JsonParser.Feature parserFeature : parserFeatures.keySet()) {
         objectMapper.configure(parserFeature, parserFeatures.get(parserFeature));
@@ -206,6 +202,7 @@ public class JsonConnector implements Connector {
       if (prettyPrint) {
         objectMapper.setDefaultPrettyPrinter(new DefaultPrettyPrinter(System.lineSeparator()));
       }
+      objectMapper.setSerializationInclusion(serializationStrategy);
     }
   }
 
@@ -273,7 +270,7 @@ public class JsonConnector implements Connector {
     }
   }
 
-  private void tryReadFromDirectory() throws URISyntaxException {
+  private void tryReadFromDirectory() throws URISyntaxException, IOException {
     try {
       resourceCount = 1;
       Path root = Paths.get(url.toURI());
@@ -283,6 +280,16 @@ public class JsonConnector implements Connector {
         }
         this.root = root;
         resourceCount = scanRootDirectory().take(100).count().block().intValue();
+        if (resourceCount == 0) {
+          if (IOUtils.countReadableFiles(root, recursive) == 0) {
+            LOGGER.warn("Directory {} has no readable files", root);
+          } else {
+            LOGGER.warn(
+                "No files in directory {} matched the connector.json.fileNamePattern of \"{}\".",
+                root,
+                pattern);
+          }
+        }
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to reading from URL directly
@@ -434,12 +441,7 @@ public class JsonConnector implements Connector {
         if (mode == DocumentMode.SINGLE_DOCUMENT && currentLine > 0) {
           writer.writeRaw(',');
         }
-        writer.writeStartObject();
-        for (String field : record.fields()) {
-          writer.writeFieldName(field);
-          writer.writeTree((TreeNode) record.getFieldValue(field));
-        }
-        writer.writeEndObject();
+        writer.writeObject(record);
         currentLine++;
       } catch (ClosedChannelException e) {
         // OK, happens when the channel was closed due to interruption
