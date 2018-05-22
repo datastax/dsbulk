@@ -140,11 +140,17 @@ Default: **-1**.
 
 Keyspace used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
 
+Keyspace names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyKeyspace` will match
+a keyspace named "MyKeyspace" but will not match a keyspace named "mykeyspace".
+
 Default: **&lt;unspecified&gt;**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
 Table used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
+
+Table names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyTable` will match
+a table named "MyTable" but will not match a table named "mytable".
 
 Default: **&lt;unspecified&gt;**.
 
@@ -193,7 +199,7 @@ The username to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### -p,--driver.auth.password _&lt;string&gt;_
 
@@ -202,7 +208,7 @@ The password to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### -cl,--driver.query.consistency _&lt;string&gt;_
 
@@ -422,6 +428,8 @@ Default: **"MULTI_DOCUMENT"**.
 
 A map of JSON deserialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.DeserializationFeature`. The default value is the only way to guarantee that floating point numbers will not have their precision truncated when parsed, but can result in slightly slower parsing. Used for loading only.
 
+Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
+
 #### -encoding,--connector.json.encoding _&lt;string&gt;_
 
 The file encoding to use for all read or written files.
@@ -444,9 +452,7 @@ Default: **"\*\*/\*.json"**.
 
 JSON generator features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `{ ESCAPE_NON_ASCII : true, QUOTE_FIELD_NAMES : true }` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
 
-#### --connector.json.mapperFeatures _&lt;map&lt;string,boolean&gt;&gt;_
-
-A map of JSON mapper features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.MapperFeature`. Used both for loading and unloading.
+Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
 #### -maxConcurrentFiles,--connector.json.maxConcurrentFiles _&lt;string&gt;_
 
@@ -457,6 +463,8 @@ Default: **"0.25C"**.
 #### --connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 JSON parser features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonParser.Feature`. For example, a value of `{ ALLOW_COMMENTS : true, ALLOW_SINGLE_QUOTES : true }` will configure the parser to allow the use of comments and single-quoted strings in JSON data. Used for loading only.
+
+Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
 #### --connector.json.prettyPrint _&lt;boolean&gt;_
 
@@ -476,6 +484,14 @@ Default: **false**.
 
 A map of JSON serialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.SerializationFeature`. Used for unloading only.
 
+Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
+
+#### --connector.json.serializationStrategy _&lt;string&gt;_
+
+The strategy to use for filtering out entries when formatting output. Valid values are enum constants defined in `com.fasterxml.jackson.annotation.JsonInclude.Include` (but beware that the `CUSTOM` strategy cannot be honored). Used for unloading only.
+
+Default: **"ALWAYS"**.
+
 <a name="schema"></a>
 ## Schema Settings
 
@@ -485,11 +501,17 @@ Schema-specific settings.
 
 Keyspace used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
 
+Keyspace names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyKeyspace` will match
+a keyspace named "MyKeyspace" but will not match a keyspace named "mykeyspace".
+
 Default: **&lt;unspecified&gt;**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
 Table used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
+
+Table names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyTable` will match
+a table named "MyTable" but will not match a table named "mytable".
 
 Default: **&lt;unspecified&gt;**.
 
@@ -535,9 +557,11 @@ Default: **true**.
 
 The query to use. If not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns. If `schema.keyspace` is provided, the query need not include the keyspace to qualify the table reference.
 
-For loading, the statement can be any `INSERT` or `UPDATE` statement, but must use named bound variables exclusively; positional bound variables will not work. Bound variable names usually match those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those specified in the mapping.
+For loading, the statement can be any `INSERT` or `UPDATE` statement.
 
-For unloading, the statement can be any regular `SELECT` statement; it can optionally contain a token range restriction clause of the form: `token(...) > :start and token(...) <= :end`. If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas. The column names in the SELECT clause will be used to match column names specified in the mapping.
+For unloading, the statement can be any regular `SELECT` statement; it can optionally contain a token range restriction clause of the form: `token(...) > :start and token(...) <= :end`. If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas.
+
+Statements can use both positional and named bound variables. Positional variables will be named after their corresponding column in the destination table. Named bound variables usually have names matching those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those specified in the mapping.
 
 Note: The dsbulk query is parsed to discover which bound variables are present, to map the variable correctly to fields.
 
@@ -547,10 +571,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### --schema.queryTimestamp _&lt;string&gt;_
 
-The timestamp of inserted/updated cells during load; otherwise, the current time of the system running the tool is used. Not applicable to unloading. The following formats are supported:
-
-* A numeric timestamp that is parsed using the options `codec.unit` and `codec.epoch`.
-* A valid date-time format specified in the options `codec.timestamp` and `codec.timeZone`.
+The timestamp of inserted/updated cells during load; otherwise, the current time of the system running the tool is used. Not applicable to unloading. The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
 
 Query timestamps for DSE have microsecond resolution; any sub-microsecond information specified is lost. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
 
@@ -622,9 +643,9 @@ Default: **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
 
 #### --codec.date _&lt;string&gt;_
 
-The temporal pattern to use for `String` to CQL `date` conversions. Valid choices:
+The temporal pattern to use for `String` to CQL `date` conversion. Valid choices:
 
-- A date-time pattern such as `uuuu-MM-dd`.
+- A date-time pattern such as `yyyy-MM-dd`.
 - A pre-defined formatter such as `ISO_LOCAL_DATE`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
 
 For more information on patterns and pre-defined formatters, see [Patterns for Formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
@@ -635,7 +656,7 @@ Default: **"ISO_LOCAL_DATE"**.
 
 #### --codec.epoch _&lt;string&gt;_
 
-This setting applies only to CQL `timestamp` columns, and `USING TIMESTAMP` clauses in queries. If the input is a string containing only digits that cannot be parsed using the `codec.timestamp` format, the specified epoch determines the relative point in time used with the parsed value. The value must be a valid timestamp, defined by options `codec.timestamp` and `codec.timeZone` (if the value does not include a time zone).
+This setting applies only to CQL `timestamp` columns, and `USING TIMESTAMP` clauses in queries. If the input is a string containing only digits that cannot be parsed using the `codec.timestamp` format, the specified epoch determines the relative point in time used with the parsed value. The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
 
 Default: **"1970-01-01T00:00:00Z"**.
 
@@ -719,7 +740,7 @@ Default: **"UTC"**.
 
 The temporal pattern to use for `String` to CQL `timestamp` conversion. Valid choices:
 
-- A date-time pattern such as `uuuu-MM-dd HH:mm:ss`.
+- A date-time pattern such as `yyyy-MM-dd HH:mm:ss`.
 - A pre-defined formatter such as `ISO_ZONED_DATE_TIME` or `ISO_INSTANT`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
 - The special formatter `CQL_DATE_TIME`, which is a special parser that accepts all valid CQL literal formats for the `timestamp` type.
 
@@ -727,35 +748,7 @@ For more information on patterns and pre-defined formatters, see [Patterns for F
 
 For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
 
-The default value is the special `CQL_DATE_TIME` value. This format is roughly equivalent to the pre-defined `ISO_ZONED_DATE_TIME`, but is more permissive regarding missing fields and time zone formats.
-
-When parsing, this format recognizes most CQL temporal literals, e.g.:
-
-- Local dates:
-    - `2012-01-01`
-- Local times:
-    - `12:34`
-    - `12:34:56`
-    - `12:34:56.123`
-    - `12:34:56.123456`
-    - `12:34:56.123456789`
-- Local date-times:
-    - `2012-01-01T12:34`
-    - `2012-01-01T12:34:56`
-    - `2012-01-01T12:34:56.123`
-    - `2012-01-01T12:34:56.123456`
-    - `2012-01-01T12:34:56.123456789`
-- Zoned date-times:
-    - `2012-01-01T12:34+01:00`
-    - `2012-01-01T12:34:56+01:00`
-    - `2012-01-01T12:34:56.123+01:00`
-    - `2012-01-01T12:34:56.123456+01:00`
-    - `2012-01-01T12:34:56.123456789+01:00`
-    - `2012-01-01T12:34:56.123456789+01:00[Europe/Paris]`
-
-When the input is a local date, the timestamp is resolved using the time zone specified under `codec.timeZone`, at midnight. When the input is a local time, the timestamp is resolved using the time zone specified under `codec.timeZone`, and the date is inferred from the instant specified under `codec.epoch` (by default, January 1st 1970).
-
-When formatting, this format is equivalent to `ISO_ZONED_DATE_TIME`, and produces formatted output of the following form: '2011-12-03T10:15:30.567+01:00[Europe/Paris]'.
+The default value is the special `CQL_DATE_TIME` value. When parsing, this format recognizes all CQL temporal literals; if the input is a local date or date/time, the timestamp is resolved using the time zone specified under `timeZone`. When formatting, this format uses the `ISO_OFFSET_DATE_TIME` pattern, which is compliant with both CQL and ISO-8601.
 
 Default: **"CQL_DATE_TIME"**.
 
@@ -823,7 +816,7 @@ The username to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### -p,--driver.auth.password _&lt;string&gt;_
 
@@ -832,7 +825,7 @@ The password to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **"cassandra"**.
+Default: **&lt;unspecified&gt;**.
 
 #### --driver.auth.provider _&lt;string&gt;_
 
