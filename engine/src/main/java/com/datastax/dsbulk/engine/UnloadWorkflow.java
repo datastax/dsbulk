@@ -99,8 +99,7 @@ public class UnloadWorkflow implements Workflow {
         Schedulers.newParallel(
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     cluster = driverSettings.newCluster();
-    String keyspace = schemaSettings.getKeyspace();
-    DseSession session = cluster.connect(keyspace);
+    DseSession session = cluster.connect();
     logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
     logManager.init();
     metricsManager =

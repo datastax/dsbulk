@@ -317,10 +317,6 @@ public class SchemaSettings {
                 .setToken("end", range.getEnd()));
   }
 
-  public String getKeyspace() {
-    return keyspaceName;
-  }
-
   @NotNull
   private DefaultMapping prepareStatementAndCreateMapping(
       Session session, ExtendedCodecRegistry codecRegistry, WorkflowType workflowType) {
@@ -342,6 +338,10 @@ public class SchemaSettings {
               : inferReadQuery(fieldsToVariables);
       // remove function mappings as we won't need them anymore from now on
       fieldsToVariables.keySet().removeIf(SchemaSettings::isFunction);
+    }
+    if (keyspaceName != null) {
+      // keyspace is already properly quoted
+      session.execute("USE " + keyspaceName);
     }
     preparedStatement = session.prepare(query);
     if (fieldsToVariables == null) {
