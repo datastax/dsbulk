@@ -312,7 +312,7 @@ class CSVConnectorTest {
       connector.configure(settings, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
-          .contains(String.format("Directory %s has no readable files", rootPath));
+          .contains(String.format("Directory %s has no readable files.", rootPath));
       connector.close();
     } finally {
       deleteDirectory(rootPath);

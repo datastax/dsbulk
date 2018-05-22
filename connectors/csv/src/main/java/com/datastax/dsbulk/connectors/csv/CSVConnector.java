@@ -243,13 +243,13 @@ public class CSVConnector implements Connector {
       Path root = Paths.get(url.toURI());
       if (Files.isDirectory(root)) {
         if (!Files.isReadable(root)) {
-          throw new IllegalArgumentException("Directory is not readable: " + root);
+          throw new IllegalArgumentException(String.format("Directory is not readable: %s.", root));
         }
         this.root = root;
         resourceCount = scanRootDirectory().take(100).count().block().intValue();
         if (resourceCount == 0) {
           if (countReadableFiles(root, recursive) == 0) {
-            LOGGER.warn("Directory {} has no readable files", root);
+            LOGGER.warn("Directory {} has no readable files.", root);
           } else {
             LOGGER.warn(
                 "No files in directory {} matched the connector.csv.fileNamePattern of \"{}\".",
@@ -272,7 +272,7 @@ public class CSVConnector implements Connector {
       }
       if (Files.isDirectory(root)) {
         if (!Files.isWritable(root)) {
-          throw new IllegalArgumentException("Directory is not writable: " + root);
+          throw new IllegalArgumentException(String.format("Directory is not writable: %s.", root));
         }
         if (IOUtils.isDirectoryNonEmpty(root)) {
           throw new IllegalArgumentException(
