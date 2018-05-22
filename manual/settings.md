@@ -775,7 +775,7 @@ For more information on patterns and pre-defined formatters, see [https://docs.o
 
 For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
 
-The default value is the special `CQL_DATE_TIME` value. When parsing, this format recognizes all CQL temporal literals; if the input is a local date, the timestamp is resolved using the time zone specified under `timeZone`, at midnight. When formatting, this format produces formatted output of the following form: '2011-12-03 10:15:30.567 CEST'.
+The default value is the special `CQL_DATE_TIME` value. When parsing, this format recognizes all CQL temporal literals; if the input is a local date or date/time, the timestamp is resolved using the time zone specified under `timeZone`. When formatting, this format uses the `ISO_OFFSET_DATE_TIME` pattern, which is compliant with both CQL and ISO-8601.
 
 Default: **"CQL_DATE_TIME"**.
 

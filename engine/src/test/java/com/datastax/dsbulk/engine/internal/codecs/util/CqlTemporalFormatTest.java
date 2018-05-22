@@ -120,7 +120,7 @@ class CqlTemporalFormatTest {
   @Test
   void should_format_temporal() {
     assertThat(format.format(Instant.parse("2017-11-23T14:24:59.999Z")))
-        .isEqualTo("2017-11-23 14:24:59.999 UTC");
+        .isEqualTo("2017-11-23T14:24:59.999Z");
   }
 
   @Test
@@ -169,8 +169,7 @@ class CqlTemporalFormatTest {
   @Test
   void should_format_all_valid_cql_literals() {
     for (ZoneId zone : zones) {
-      DateTimeFormatter f =
-          DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSS zzz").withZone(zone);
+      DateTimeFormatter f = DateTimeFormatter.ISO_OFFSET_DATE_TIME.withZone(zone);
       CqlTemporalFormat format = new CqlTemporalFormat(zone, US);
       String actual = format.format(i1);
       String expected = f.format(i1);

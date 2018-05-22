@@ -87,15 +87,15 @@ class StringToInstantCodecTest {
             temporalFormat1, numberFormat, UTC, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
     assertThat(codec)
         .convertsFromInternal(Instant.parse("2016-07-24T20:34:00Z"))
-        .toExternal("2016-07-24 20:34:00.000 UTC")
+        .toExternal("2016-07-24T20:34:00Z")
         .convertsFromInternal(Instant.parse("2016-07-24T20:34:12Z"))
-        .toExternal("2016-07-24 20:34:12.000 UTC")
+        .toExternal("2016-07-24T20:34:12Z")
         .convertsFromInternal(Instant.parse("2016-07-24T20:34:12.999Z"))
-        .toExternal("2016-07-24 20:34:12.999 UTC")
+        .toExternal("2016-07-24T20:34:12.999Z")
         .convertsFromInternal(Instant.parse("2016-07-24T19:34:00Z"))
-        .toExternal("2016-07-24 19:34:00.000 UTC")
+        .toExternal("2016-07-24T19:34:00Z")
         .convertsFromInternal(Instant.parse("2016-07-24T19:34:12.999Z"))
-        .toExternal("2016-07-24 19:34:12.999 UTC");
+        .toExternal("2016-07-24T19:34:12.999Z");
     codec =
         new StringToInstantCodec(
             temporalFormat2, numberFormat, UTC, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);

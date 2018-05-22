@@ -114,15 +114,15 @@ class JsonNodeToInstantCodecTest {
             newArrayList("NULL"));
     assertThat(codec)
         .convertsFromInternal(Instant.parse("2016-07-24T20:34:00Z"))
-        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24 20:34:00.000 UTC"))
+        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:00Z"))
         .convertsFromInternal(Instant.parse("2016-07-24T20:34:12Z"))
-        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24 20:34:12.000 UTC"))
+        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:12Z"))
         .convertsFromInternal(Instant.parse("2016-07-24T20:34:12.999Z"))
-        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24 20:34:12.999 UTC"))
+        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:12.999Z"))
         .convertsFromInternal(Instant.parse("2016-07-24T19:34:00.000Z"))
-        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24 19:34:00.000 UTC"))
+        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24T19:34:00Z"))
         .convertsFromInternal(Instant.parse("2016-07-24T19:34:12.999Z"))
-        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24 19:34:12.999 UTC"))
+        .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24T19:34:12.999Z"))
         .convertsFromInternal(null)
         .toExternal(null);
     codec =

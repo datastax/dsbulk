@@ -25,8 +25,8 @@ import org.jetbrains.annotations.NotNull;
 /**
  * A special zoned temporal format that recognizes all valid CQL input formats when parsing.
  *
- * <p>When formatting, this format uses "uuuu-MM-dd HH:mm:ss.SSS zzz" as the formatting pattern,
- * thus producing output such as "2017-11-23 14:24:59.999 UTC".
+ * <p>When formatting, this format uses {@link DateTimeFormatter#ISO_OFFSET_DATE_TIME} as the
+ * formatting pattern, which is compliant with both CQL and ISO-8601.
  */
 public class CqlTemporalFormat extends ZonedTemporalFormat {
 
@@ -41,10 +41,8 @@ public class CqlTemporalFormat extends ZonedTemporalFormat {
   private static DateTimeFormatter createParser(Locale locale) {
     // this formatter is a hybrid parser that combines all valid CQL patterns declared in C* 2.2+
     // into a single parser. To achieve that we "cheat" a little bit and accept many optional
-    // components
-    // that would not make sense together. For example, we accept both 'T' and blank as date-time
-    // separators,
-    // so in theory we also accept "T " (i.e. 'T' followed by a blank).
+    // components that would not make sense together. For example, we accept both 'T' and blank as
+    // date-time separators, so in theory we also accept "T " (i.e. 'T' followed by a blank).
     return new DateTimeFormatterBuilder()
         .parseStrict()
         .parseCaseInsensitive()
@@ -98,14 +96,16 @@ public class CqlTemporalFormat extends ZonedTemporalFormat {
         .parseDefaulting(MINUTE_OF_HOUR, 0)
         .parseDefaulting(SECOND_OF_MINUTE, 0)
         .parseDefaulting(NANO_OF_SECOND, 0)
-        .toFormatter(locale)
+        .toFormatter()
+        .withLocale(locale)
         .withResolverStyle(ResolverStyle.STRICT)
         .withChronology(IsoChronology.INSTANCE);
   }
 
   @NotNull
   private static DateTimeFormatter createFormatter(ZoneId timeZone, Locale locale) {
-    return DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSS zzz", locale)
+    return DateTimeFormatter.ISO_OFFSET_DATE_TIME
+        .withLocale(locale)
         .withResolverStyle(ResolverStyle.STRICT)
         .withChronology(IsoChronology.INSTANCE)
         .withZone(timeZone);

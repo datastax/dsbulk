@@ -101,7 +101,7 @@ class JsonNodeToTupleCodecTest {
     assertThat(codec)
         .convertsFromInternal(
             tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
-        .toExternal(objectMapper.readTree("[\"2016-07-24 20:34:12.999 UTC\",\"+01:00\"]"))
+        .toExternal(objectMapper.readTree("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]"))
         .convertsFromInternal(tupleType.newValue(null, null))
         .toExternal(objectMapper.readTree("[null,null]"))
         .convertsFromInternal(null)
