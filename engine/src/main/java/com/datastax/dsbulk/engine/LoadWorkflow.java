@@ -102,8 +102,7 @@ public class LoadWorkflow implements Workflow {
     connector.init();
     cluster = driverSettings.newCluster();
     checkProductCompatibility(cluster);
-    String keyspace = schemaSettings.getKeyspace();
-    DseSession session = cluster.connect(keyspace);
+    DseSession session = cluster.connect();
     batchingEnabled = batchSettings.isBatchingEnabled();
     batchBufferSize = batchSettings.getBufferSize();
     logManager = logSettings.newLogManager(WorkflowType.LOAD, cluster);
