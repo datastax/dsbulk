@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.util;
 
+import static java.time.format.TextStyle.SHORT;
 import static java.time.temporal.ChronoField.HOUR_OF_DAY;
 import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
 import static java.time.temporal.ChronoField.NANO_OF_SECOND;
@@ -19,7 +20,6 @@ import java.time.chrono.IsoChronology;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.ResolverStyle;
-import java.util.Locale;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -30,29 +30,25 @@ import org.jetbrains.annotations.NotNull;
  */
 public class CqlTemporalFormat extends ZonedTemporalFormat {
 
-  public static final CqlTemporalFormat DEFAULT_INSTANCE =
-      new CqlTemporalFormat(ZoneId.of("UTC"), US);
+  public static final CqlTemporalFormat DEFAULT_INSTANCE = new CqlTemporalFormat(ZoneId.of("UTC"));
 
-  public CqlTemporalFormat(ZoneId timeZone, Locale locale) {
-    super(createParser(locale), createFormatter(timeZone, locale), timeZone);
+  public CqlTemporalFormat(ZoneId timeZone) {
+    super(createParser(), createFormatter(timeZone), timeZone);
   }
 
   @NotNull
-  private static DateTimeFormatter createParser(Locale locale) {
+  private static DateTimeFormatter createParser() {
     // this formatter is a hybrid parser that combines all valid CQL patterns declared in C* 2.2+
     // into a single parser. To achieve that we "cheat" a little bit and accept many optional
     // components that would not make sense together. For example, we accept both 'T' and blank as
     // date-time separators, so in theory we also accept "T " (i.e. 'T' followed by a blank).
     return new DateTimeFormatterBuilder()
-        .parseStrict()
-        .parseCaseInsensitive()
 
         // date part
-        .optionalStart()
         .append(DateTimeFormatter.ISO_LOCAL_DATE)
-        .optionalEnd()
 
         // date-time separators
+        .optionalStart()
         .optionalStart()
         .appendLiteral('T')
         .optionalEnd()
@@ -61,33 +57,24 @@ public class CqlTemporalFormat extends ZonedTemporalFormat {
         .optionalEnd()
 
         // time part, includes fraction of second
-        .optionalStart()
         .append(DateTimeFormatter.ISO_LOCAL_TIME)
         .optionalEnd()
 
-        // time zone separator
+        // time zone part
+
+        // the following corresponds to z, zz, and zzz in the C* patterns (they are equivalent),
+        // preceded by a blank
         .optionalStart()
         .appendLiteral(' ')
+        .appendZoneText(SHORT)
         .optionalEnd()
 
-        // time zone part
+        // the following corresponds to X, XX, and XXX in the C* patterns
         .optionalStart()
-        .appendPattern("XXX")
+        .appendOffset("+HH:MM", "Z") // XXX, matches +02:00
         .optionalEnd()
         .optionalStart()
-        .appendPattern("zzz")
-        .optionalEnd()
-        .optionalStart()
-        .appendPattern("XX")
-        .optionalEnd()
-        .optionalStart()
-        .appendPattern("zz")
-        .optionalEnd()
-        .optionalStart()
-        .appendPattern("X")
-        .optionalEnd()
-        .optionalStart()
-        .appendPattern("z")
+        .appendOffset("+HHmm", "Z") // X or XX, matches +0200 and +02
         .optionalEnd()
 
         // add defaults for missing fields, which allows the parsing to be lenient when
@@ -97,15 +84,15 @@ public class CqlTemporalFormat extends ZonedTemporalFormat {
         .parseDefaulting(SECOND_OF_MINUTE, 0)
         .parseDefaulting(NANO_OF_SECOND, 0)
         .toFormatter()
-        .withLocale(locale)
+        .withLocale(US)
         .withResolverStyle(ResolverStyle.STRICT)
         .withChronology(IsoChronology.INSTANCE);
   }
 
   @NotNull
-  private static DateTimeFormatter createFormatter(ZoneId timeZone, Locale locale) {
+  private static DateTimeFormatter createFormatter(ZoneId timeZone) {
     return DateTimeFormatter.ISO_OFFSET_DATE_TIME
-        .withLocale(locale)
+        .withLocale(US)
         .withResolverStyle(ResolverStyle.STRICT)
         .withChronology(IsoChronology.INSTANCE)
         .withZone(timeZone);

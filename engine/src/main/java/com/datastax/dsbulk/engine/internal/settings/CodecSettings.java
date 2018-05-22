@@ -229,7 +229,7 @@ public class CodecSettings {
   @VisibleForTesting
   public static TemporalFormat getTemporalFormat(String pattern, ZoneId timeZone, Locale locale) {
     if (pattern.equals(CQL_DATE_TIME)) {
-      return new CqlTemporalFormat(timeZone, locale);
+      return new CqlTemporalFormat(timeZone);
     } else {
       DateTimeFormatterBuilder builder =
           new DateTimeFormatterBuilder().parseStrict().parseCaseInsensitive();
