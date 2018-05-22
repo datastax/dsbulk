@@ -293,13 +293,13 @@ public class JsonConnector implements Connector {
       Path root = Paths.get(url.toURI());
       if (Files.isDirectory(root)) {
         if (!Files.isReadable(root)) {
-          throw new IllegalArgumentException("Directory is not readable: " + root);
+          throw new IllegalArgumentException(String.format("Directory is not readable: %s.", root));
         }
         this.root = root;
         resourceCount = scanRootDirectory().take(100).count().block().intValue();
         if (resourceCount == 0) {
           if (IOUtils.countReadableFiles(root, recursive) == 0) {
-            LOGGER.warn("Directory {} has no readable files", root);
+            LOGGER.warn("Directory {} has no readable files.", root);
           } else {
             LOGGER.warn(
                 "No files in directory {} matched the connector.json.fileNamePattern of \"{}\".",
@@ -322,11 +322,11 @@ public class JsonConnector implements Connector {
       }
       if (Files.isDirectory(root)) {
         if (!Files.isWritable(root)) {
-          throw new IllegalArgumentException("Directory is not writable: " + root);
+          throw new IllegalArgumentException(String.format("Directory is not writable: %s.", root));
         }
         if (IOUtils.isDirectoryNonEmpty(root)) {
           throw new IllegalArgumentException(
-              "connector.json.url target directory :" + root + " must be empty.");
+              "connector.json.url target directory: " + root + " must be empty.");
         }
         this.root = root;
       }
