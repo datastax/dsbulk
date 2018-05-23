@@ -37,7 +37,6 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
-import com.datastax.dsbulk.connectors.api.internal.DefaultRecordMetadata;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToIntegerCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToLongCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
@@ -99,7 +98,7 @@ class DefaultRecordMapperTest {
     valueCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
 
     recordMetadata =
-        new DefaultRecordMetadata(
+        new TestRecordMetadata(
             ImmutableMap.of(
                 F1,
                 TypeToken.of(String.class),
@@ -435,7 +434,7 @@ class DefaultRecordMapperTest {
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     UnmappableStatement unmappableStatement = (UnmappableStatement) result;
     assertThat(unmappableStatement.getError())
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(InvalidMappingException.class)
         .hasMessageContaining("Primary key column col1 cannot be mapped to null");
   }
 
@@ -460,7 +459,7 @@ class DefaultRecordMapperTest {
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     UnmappableStatement unmappableStatement = (UnmappableStatement) result;
     assertThat(unmappableStatement.getError())
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(InvalidMappingException.class)
         .hasMessageContaining("Primary key column col1 cannot be left unmapped");
   }
 
@@ -483,7 +482,7 @@ class DefaultRecordMapperTest {
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     UnmappableStatement unmappableStatement = (UnmappableStatement) result;
     assertThat(unmappableStatement.getError())
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(InvalidMappingException.class)
         .hasMessageContaining(
             "Extraneous field field3 was found in record. "
                 + "Please declare it explicitly in the mapping "
@@ -508,7 +507,7 @@ class DefaultRecordMapperTest {
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     UnmappableStatement unmappableStatement = (UnmappableStatement) result;
     assertThat(unmappableStatement.getError())
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(InvalidMappingException.class)
         .hasMessageContaining(
             "Required field field3 (mapped to column \"My Fancy Column Name\") was missing from record. "
                 + "Please remove it from the mapping "

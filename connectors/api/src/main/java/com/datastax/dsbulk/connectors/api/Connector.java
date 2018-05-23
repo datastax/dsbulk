@@ -165,19 +165,24 @@ public interface Connector extends AutoCloseable {
   default void close() throws Exception {}
 
   /**
-   * Returns metadata about the records that this connector can read or write.
+   * Whether or not the connector supports the given feature.
    *
-   * <p>If this connector cannot gather metadata, or if the metadata is inaccurate, then it should
-   * signal this situation by returning {@link RecordMetadata#DEFAULT}.
+   * @param feature the feature to check.
+   * @return {@code true} if this connector supports the feature, {@code false} otherwise.
+   */
+  default boolean supports(ConnectorFeature feature) {
+    return false;
+  }
+
+  /**
+   * Returns metadata about the records that this connector can read or write.
    *
    * <p>This method should only be called after the connector is properly {@link
    * #configure(LoaderConfig, boolean) configured} and {@link #init() initialized}.
    *
    * @return the metadata about the records that this connector can read or write.
    */
-  default RecordMetadata getRecordMetadata() {
-    return RecordMetadata.DEFAULT;
-  }
+  RecordMetadata getRecordMetadata();
 
   /**
    * Returns an estimation of the total number of resources to read.

@@ -111,7 +111,7 @@ public class DefaultRecordMapper implements RecordMapper {
             bindColumn(bs, variable, raw, cqlType, fieldType);
           }
         } else if (!allowExtraFields) {
-          throw new IllegalStateException(
+          throw new InvalidMappingException(
               "Extraneous field "
                   + field
                   + " was found in record. "
@@ -157,7 +157,7 @@ public class DefaultRecordMapper implements RecordMapper {
     // Account for nullToUnset.
     if (isNull(bb)) {
       if (isPrimaryKey(variable)) {
-        throw new IllegalStateException(
+        throw new InvalidMappingException(
             "Primary key column "
                 + Metadata.quoteIfNecessary(variable)
                 + " cannot be mapped to null. "
@@ -184,7 +184,7 @@ public class DefaultRecordMapper implements RecordMapper {
       String variable = variables.getName(i);
       String field = mapping.variableToField(variable);
       if (!recordFields.contains(field)) {
-        throw new IllegalStateException(
+        throw new InvalidMappingException(
             "Required field "
                 + field
                 + " (mapped to column "
@@ -200,7 +200,7 @@ public class DefaultRecordMapper implements RecordMapper {
     for (int pkIndex : pkIndices) {
       if (!bs.isSet(pkIndex)) {
         String variable = insertStatement.getVariables().getName(pkIndex);
-        throw new IllegalStateException(
+        throw new InvalidMappingException(
             "Primary key column "
                 + Metadata.quoteIfNecessary(variable)
                 + " cannot be left unmapped. "
