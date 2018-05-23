@@ -8,34 +8,54 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.util;
 
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.time.temporal.ChronoField.HOUR_OF_DAY;
+import static java.time.temporal.ChronoField.INSTANT_SECONDS;
 import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
 import static java.time.temporal.ChronoField.NANO_OF_SECOND;
 import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
-import static java.util.Locale.US;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.Lists;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAccessor;
+import java.util.ArrayList;
 import java.util.List;
-import org.junit.jupiter.api.Test;
+import java.util.stream.Stream;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 class CqlTemporalFormatTest {
 
-  private final Instant i1 = Instant.parse("2017-11-23T12:24:59Z");
-  private final Instant i2 = Instant.parse("2018-02-01T00:00:00Z");
+  @ParameterizedTest(name = "\"{0}\" with zone {2} should parse to {1}")
+  @ArgumentsSource(Parse.class)
+  void should_parse_from_valid_cql_literal(String input, TemporalAccessor expected, ZoneId zone) {
+    CqlTemporalFormat format = new CqlTemporalFormat(zone);
+    TemporalAccessor actual = format.parse(input);
+    assertThat(toSeconds(actual))
+        .overridingErrorMessage(
+            "Expecting %s to be same instant as %s but it was not", actual, expected)
+        .isEqualTo(toSeconds(expected));
+  }
 
-  private final TemporalFormat format = CqlTemporalFormat.DEFAULT_INSTANCE;
+  @ParameterizedTest(name = "{0} with zone {2} should format to \"{1}\"")
+  @ArgumentsSource(Format.class)
+  void should_format_to_valid_cql_literal(TemporalAccessor input, String expected, ZoneId zone) {
+    CqlTemporalFormat format = new CqlTemporalFormat(zone);
+    String actual = format.format(input);
+    assertThat(actual).isEqualTo(expected);
+  }
 
   // all valid CQL patterns, as used in Cassandra 2.2+
-  private final List<String> patterns =
+  private static final List<String> PATTERNS =
       Lists.newArrayList(
           "yyyy-MM-dd HH:mm",
           "yyyy-MM-dd HH:mm:ss",
@@ -88,7 +108,7 @@ class CqlTemporalFormatTest {
           "yyyy-MM-ddXX",
           "yyyy-MM-ddXXX");
 
-  private final List<ZoneId> zones =
+  private static final List<ZoneId> ZONES =
       Lists.newArrayList(
           ZoneId.of("UTC"),
           ZoneId.of("Z"),
@@ -98,82 +118,73 @@ class CqlTemporalFormatTest {
           ZoneId.of("+02:00"),
           ZoneId.of("PST", ZoneId.SHORT_IDS),
           ZoneId.of("CET", ZoneId.SHORT_IDS),
+          ZoneId.of("Europe/Paris"),
           ZoneId.of("-08"),
           ZoneId.of("-0830"),
-          ZoneId.of("-08:30"),
-          ZoneId.of("-083015"),
-          ZoneId.of("-08:30:15"));
+          ZoneId.of("-083015"));
 
-  @Test
-  void should_parse_temporal() {
-    assertThat(format.parse(null)).isNull();
-    assertThat(Instant.from(format.parse("2017-11-23T13:24:59.000 CEST"))).isEqualTo(i1);
-    assertThat(Instant.from(format.parse("2017-11-23T13:24:59 CEST"))).isEqualTo(i1);
-    assertThat(Instant.from(format.parse("2017-11-23T14:24:59+02:00"))).isEqualTo(i1);
-    assertThat(Instant.from(format.parse("2017-11-23T12:24:59"))).isEqualTo(i1);
-    assertThat(Instant.from(format.parse("2018-02-01"))).isEqualTo(i2);
-    assertThat(Instant.from(format.parse("2018-02-01T00:00"))).isEqualTo(i2);
-    assertThat(Instant.from(format.parse("2018-02-01T00:00:00"))).isEqualTo(i2);
-    assertThat(Instant.from(format.parse("2018-02-01T00:00:00Z"))).isEqualTo(i2);
-  }
-
-  @Test
-  void should_format_temporal() {
-    assertThat(format.format(Instant.parse("2017-11-23T14:24:59.999Z")))
-        .isEqualTo("2017-11-23T14:24:59.999Z");
-  }
-
-  @Test
-  void should_parse_all_valid_cql_literals() {
-    for (String pattern : patterns) {
-      for (ZoneId zone : zones) {
-        boolean zoned = pattern.contains("X") || pattern.contains("z");
-        if (zoned && zone instanceof ZoneOffset) {
-          int offset = ((ZoneOffset) zone).getTotalSeconds();
-          int normalized = (offset / 60) * 60;
-          // offsets including minutes cannot be properly parsed/formatted with valid CQL formats
-          if (offset != normalized) {
-            continue;
-          }
-        }
-        CqlTemporalFormat format = new CqlTemporalFormat(zone, US);
-        DateTimeFormatter f =
-            new DateTimeFormatterBuilder()
-                .parseStrict()
-                .parseCaseInsensitive()
-                .appendPattern(pattern)
-                .parseDefaulting(HOUR_OF_DAY, 0)
-                .parseDefaulting(MINUTE_OF_HOUR, 0)
-                .parseDefaulting(SECOND_OF_MINUTE, 0)
-                .parseDefaulting(NANO_OF_SECOND, 0)
-                .toFormatter(US)
-                .withZone(zone);
-        String input = f.format(i1);
-        TemporalAccessor expected = f.parse(input);
-        TemporalAccessor actual = format.parse(input);
-        long actualSeconds;
-        if (actual instanceof ZonedDateTime) {
-          actualSeconds = ((ZonedDateTime) actual).toEpochSecond();
-        } else {
-          actualSeconds = actual.getLong(ChronoField.INSTANT_SECONDS);
-        }
-        long expectedSeconds = expected.getLong(ChronoField.INSTANT_SECONDS);
-        assertThat(actualSeconds)
-            .overridingErrorMessage(
-                "Expecting %s to be same instant as %s but it was not", actual, i1)
-            .isEqualTo(expectedSeconds);
-      }
+  private static long toSeconds(TemporalAccessor actual) {
+    if (actual instanceof ZonedDateTime) {
+      return ((ZonedDateTime) actual).toEpochSecond();
+    } else {
+      return actual.getLong(INSTANT_SECONDS);
     }
   }
 
-  @Test
-  void should_format_all_valid_cql_literals() {
-    for (ZoneId zone : zones) {
-      DateTimeFormatter f = DateTimeFormatter.ISO_OFFSET_DATE_TIME.withZone(zone);
-      CqlTemporalFormat format = new CqlTemporalFormat(zone, US);
-      String actual = format.format(i1);
-      String expected = f.format(i1);
-      assertThat(actual).isEqualTo(expected);
+  private static class Parse implements ArgumentsProvider {
+
+    @Override
+    public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+      List<Arguments> args = new ArrayList<>();
+      for (ZoneId zone : ZONES) {
+        ZonedDateTime now = ZonedDateTime.now(zone);
+        for (String pattern : PATTERNS) {
+          if (checkZone(pattern, zone)) {
+            DateTimeFormatter f = createFormatter(pattern, zone);
+            String input = f.format(now);
+            // f has an overriding time zone, but it's ok since it's the same one in input
+            TemporalAccessor expected = f.parse(input);
+            args.add(Arguments.of(input, expected, zone));
+          }
+        }
+      }
+      return args.stream();
+    }
+
+    @NotNull
+    private static DateTimeFormatter createFormatter(String pattern, ZoneId zone) {
+      return new DateTimeFormatterBuilder()
+          .appendPattern(pattern)
+          .parseDefaulting(HOUR_OF_DAY, 0)
+          .parseDefaulting(MINUTE_OF_HOUR, 0)
+          .parseDefaulting(SECOND_OF_MINUTE, 0)
+          .parseDefaulting(NANO_OF_SECOND, 0)
+          .toFormatter()
+          .withZone(zone);
+    }
+
+    private static boolean checkZone(String pattern, ZoneId zone) {
+      if (pattern.contains("X") && zone instanceof ZoneOffset) {
+        int offset = ((ZoneOffset) zone).getTotalSeconds();
+        int rounded = (offset / 60) * 60;
+        // X patterns cannot print offsets including seconds
+        return offset == rounded;
+      }
+      return true;
+    }
+  }
+
+  private static class Format implements ArgumentsProvider {
+
+    @Override
+    public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+      List<Arguments> args = new ArrayList<>();
+      for (ZoneId zone : ZONES) {
+        ZonedDateTime now = ZonedDateTime.now(zone);
+        DateTimeFormatter f = ISO_OFFSET_DATE_TIME.withZone(zone);
+        args.add(Arguments.of(now, f.format(now), zone));
+      }
+      return args.stream();
     }
   }
 }

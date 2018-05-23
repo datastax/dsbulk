@@ -15,6 +15,7 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
@@ -83,6 +84,8 @@ public class LoadWorkflow implements Workflow {
     logSettings.init(false);
     ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
     connectorSettings.init();
+    connector = connectorSettings.getConnector();
+    connector.init();
     logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
     DriverSettings driverSettings = settingsManager.getDriverSettings();
     SchemaSettings schemaSettings = settingsManager.getSchemaSettings();
@@ -95,11 +98,9 @@ public class LoadWorkflow implements Workflow {
     codecSettings.init();
     batchSettings.init();
     driverSettings.init();
-    schemaSettings.init();
     executorSettings.init();
     engineSettings.init();
-    connector = connectorSettings.getConnector();
-    connector.init();
+    schemaSettings.init();
     cluster = driverSettings.newCluster();
     checkProductCompatibility(cluster);
     DseSession session = cluster.connect();
@@ -120,7 +121,10 @@ public class LoadWorkflow implements Workflow {
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     recordMapper =
         schemaSettings.createRecordMapper(
-            session, connector.getRecordMetadata(), codecSettings.createCodecRegistry(cluster));
+            session,
+            connector.getRecordMetadata(),
+            codecSettings.createCodecRegistry(cluster),
+            !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     if (batchingEnabled) {
       batcher = batchSettings.newStatementBatcher(cluster);
     }

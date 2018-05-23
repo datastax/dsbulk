@@ -6,19 +6,24 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.connectors.api.internal;
+package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.driver.core.DataType;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import org.jetbrains.annotations.NotNull;
 
-public class SchemaFreeRecordMetadata implements RecordMetadata {
+public class TestRecordMetadata implements RecordMetadata {
 
-  private static final TypeToken<String> STRING_TYPE_TOKEN = TypeToken.of(String.class);
+  private final ImmutableMap<Object, TypeToken<?>> fieldsToTypes;
+
+  TestRecordMetadata(ImmutableMap<Object, TypeToken<?>> fieldsToTypes) {
+    this.fieldsToTypes = fieldsToTypes;
+  }
 
   @Override
   public TypeToken<?> getFieldType(@NotNull String field, @NotNull DataType cqlType) {
-    return STRING_TYPE_TOKEN;
+    return fieldsToTypes.get(field);
   }
 }

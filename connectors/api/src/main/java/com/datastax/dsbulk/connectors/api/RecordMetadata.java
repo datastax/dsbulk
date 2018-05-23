@@ -9,18 +9,14 @@
 package com.datastax.dsbulk.connectors.api;
 
 import com.datastax.driver.core.DataType;
-import com.datastax.dsbulk.connectors.api.internal.SchemaFreeRecordMetadata;
 import com.google.common.reflect.TypeToken;
 import org.jetbrains.annotations.NotNull;
 
-/** Defines metadata applicable to a {@link com.datastax.dsbulk.connectors.api.Record record}. */
+/**
+ * Defines metadata applicable to a {@link com.datastax.dsbulk.connectors.api.Record record}, in
+ * particular which field types it contains.
+ */
 public interface RecordMetadata {
-
-  /**
-   * The default instance. This instance always assumes that fields exist, and that their types are
-   * {@link String}.
-   */
-  RecordMetadata DEFAULT = new SchemaFreeRecordMetadata();
 
   /**
    * Returns the type of the given field.

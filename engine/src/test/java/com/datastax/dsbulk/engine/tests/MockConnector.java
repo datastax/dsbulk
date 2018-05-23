@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.tests;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
+import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import java.util.function.Function;
@@ -58,6 +59,11 @@ public final class MockConnector implements Connector {
   @Override
   public RecordMetadata getRecordMetadata() {
     return delegate.getRecordMetadata();
+  }
+
+  @Override
+  public boolean supports(ConnectorFeature feature) {
+    return delegate.supports(feature);
   }
 
   @Override

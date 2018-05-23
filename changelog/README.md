@@ -18,6 +18,7 @@
 - [improvement] DAT-275: Simplify schema.queryTimestamp format.
 - [improvement] DAT-276: Remove connector.json.mapperFeatures setting.
 - [improvement] DAT-277: Support all CQL literal formats.
+- [improvement] DAT-253: More understandable error reporting when CSV file without headers is loaded without mapping specified.
 
 
 ### 1.0.1
