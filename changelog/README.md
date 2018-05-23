@@ -1,7 +1,7 @@
 ## Changelog
 
 
-### 1.0.2 (in progress)
+### 1.0.2
 
 - [improvement] DAT-249: Don't use ANSI color codes on non-ANSI terminals.
 - [bug] DAT-255: Debug files are missing records.
