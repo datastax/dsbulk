@@ -180,7 +180,7 @@ Default: **false**.
 
 #### -h,--driver.hosts _&lt;list&lt;string&gt;&gt;_
 
-The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
+The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). The port for all hosts must be specified with `driver.port`.
 
 Default: **["127.0.0.1"]**.
 
@@ -212,9 +212,9 @@ Default: **&lt;unspecified&gt;**.
 
 #### -cl,--driver.query.consistency _&lt;string&gt;_
 
-The consistency level to use for both loading and unloading. Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
+The consistency level to use for both loading and unloading. Note that stronger consistency levels usually result in reduced throughput. In addition, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
 
-Note that stronger consistency levels usually result in reduced throughput; besides, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
+Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
 
 Default: **"LOCAL_ONE"**.
 
@@ -529,19 +529,13 @@ Default: **&lt;unspecified&gt;**.
 
 #### --schema.allowExtraFields _&lt;boolean&gt;_
 
-Whether or not to accept records that contain extra fields that are not declared in the mapping. Only applicable for loads, ignored otherwise.
-
-For example, if a record contains 3 fields A, B, C, but the mapping only declares fields A and B, then if this option is `true`, C will be silently ignored and the record will be considered valid; if it is `false`, the record will be rejected.
+Specify whether or not to accept records that contain extra fields that are not declared in the mapping. For example, if a record contains three fields A, B, and C, but the mapping only declares fields A and B, then if this option is true, C will be silently ignored and the record will be considered valid, and if false, the record will be rejected. Only applicable for loading, ignored otherwise.
 
 Default: **true**.
 
 #### --schema.allowMissingFields _&lt;boolean&gt;_
 
-Whether or not to accept records that are missing fields declared in the mapping. Only applicable for loads, ignored otherwise.
-
-For example, if the mapping declares 3 fields A, B, C, but a record contains only A and B, then if this option is `true`, C will be silently assigned `null` and the record will be considered valid; if it is `false`, the record will be rejected.
-
-Note: if the missing field is mapped to a primary key column, the record will be rejected regardless of this option's value, since such a record would be rejected by the database anyway.
+Specify whether or not to accept records that are missing fields declared in the mapping. For example, if the mapping declares three fields A, B, and C, but a record contains only fields A and B, then if this option is true, C will be silently assigned null and the record will be considered valid, and if false, the record will be rejected. If the missing field is mapped to a primary key column, the record will always be rejected, since the database will reject the record. Only applicable for loading, ignored otherwise.
 
 Default: **false**.
 
@@ -571,9 +565,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### --schema.queryTimestamp _&lt;string&gt;_
 
-The timestamp of inserted/updated cells during load; otherwise, the current time of the system running the tool is used. Not applicable to unloading.
-
-The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
+The timestamp of inserted/updated cells during load; otherwise, the current time of the system running the tool is used. Not applicable to unloading. The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
 
 Query timestamps for DSE have microsecond resolution; any sub-microsecond information specified is lost. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
 
@@ -581,7 +573,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### --schema.queryTtl _&lt;number&gt;_
 
-The Time-To-Live (TTL) of inserted/updated cells during load (seconds); a value of -1 means there is no TTL. Not applicable to unloading. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/5.1/cql/cql/cql_using/useTTL.html) and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/5.1/cql/cql/cql_using/useExpire.html).
+The Time-To-Live (TTL) of inserted/updated cells during load (seconds); a value of -1 means there is no TTL. Not applicable to unloading. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useTTL.html), and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useExpire.html).
 
 Default: **-1**.
 
@@ -639,44 +631,32 @@ Default: **[1,0]**.
 
 #### --codec.booleanStrings _&lt;list&lt;string&gt;&gt;_
 
-Specify how true and false representations can be used by dsbulk. Each representation is of the form `true-value:false-value`, case-insensitive. For loading, all representations are honored: when a record field value exactly matches one of the specified strings, the value is replaced with `true` of `false` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first representation will be used to format booleans before they are written out, and all others are ignored.
+Specify how true and false representations can be used by dsbulk. Each representation is of the form `true_value:false_value`, case-insensitive. For loading, all representations are honored: when a record field value exactly matches one of the specified strings, the value is replaced with `true` of `false` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first representation will be used to format booleans before they are written out, and all others are ignored.
 
 Default: **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
 
 #### --codec.date _&lt;string&gt;_
 
-The temporal pattern to use for `String` to CQL date conversions. Valid choices:
+The temporal pattern to use for `String` to CQL `date` conversion. Valid choices:
 
 - A date-time pattern such as `yyyy-MM-dd`.
 - A pre-defined formatter such as `ISO_LOCAL_DATE`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
 
-For more information on patterns and pre-defined formatters, see [https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns).
+For more information on patterns and pre-defined formatters, see [Patterns for Formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 
-For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
+For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
 
 Default: **"ISO_LOCAL_DATE"**.
 
 #### --codec.epoch _&lt;string&gt;_
 
-The instant, or "epoch", to use when converting numeric input to CQL temporal types, and when converting local times to full timestamps.
-
-The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
-
-Numeric inputs are converted using this instant and the unit specified under `unit`. For example, if the unit is `DAYS` and the epoch is `2000-01-01T00:00:00Z`, then the number 31 is converted to `2000-01-01` + 31 days, that is, `2000-02-01T00:00:00Z`.
-
-When local times need to be converted to full timestamps, they are converted using the local date extracted from this value. For example, if the epoch is `2000-01-01T00:00:00Z`, then the local time `12:34:56` is converted to `2000-01-01T12:34:56Z`.
-
- The default values for `unit` and `epoch` result in numeric input being interpreted as milliseconds since Unix Epoch (1970-01-01).
+This setting applies only to CQL `timestamp` columns, and `USING TIMESTAMP` clauses in queries. If the input is a string containing only digits that cannot be parsed using the `codec.timestamp` format, the specified epoch determines the relative point in time used with the parsed value. The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
 
 Default: **"1970-01-01T00:00:00Z"**.
 
 #### --codec.formatNumbers _&lt;boolean&gt;_
 
-Whether or not to use the `number` pattern to format numeric output.
-
-Only applicable when unloading, and only if the connector in use requires stringification (i.e., if it does not handle raw numeric data, e.g. the CSV connector); ignored otherwise.
-
-When `true`, the numeric pattern defined under `number` will be used to format all numbers. This allows for nicely-formatted output, but may result in rounding (see `roundingStrategy`), or alteration of the original decimal's scale. When `false`, numbers will be simply stringified using their `toString()` method. This is the safest choice as it never results in rounding nor in scale alteration.
+Whether or not to use the `codec.number` pattern to format numeric output. When set to `true`, the numeric pattern defined by `codec.number` will be applied. This allows for nicely-formatted output, but may result in rounding (see `codec.roundingStrategy`), or alteration of the original decimal's scale. When set to `false`, numbers will be stringified using the `toString()` method, and will never result in rounding or scale alteration. Only applicable when unloading, and only if the connector in use requires stringification, because the connector, such as the CSV connector, does not handle raw numeric data; ignored otherwise.
 
 Default: **false**.
 
@@ -688,7 +668,7 @@ Default: **"en_US"**.
 
 #### -nullStrings,--codec.nullStrings _&lt;list&lt;string&gt;&gt;_
 
-Comma-separated list of values that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-word can still be left unset if required.
+Comma-separated list of strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required.
 
 Default: **[""]**.
 
@@ -698,37 +678,26 @@ The `DecimalFormat` pattern to use for conversions between `String` and CQL nume
 
 See [java.text.DecimalFormat](https://docs.oracle.com/javase/8/docs/api/java/text/DecimalFormat.html) for details about the pattern syntax to use.
 
-The default pattern is `#,###.##`. This format recognizes almost every input, with an optional, localized thousands separator, and a localized decimal separator. It also recognizes an optional exponent. When used with locale `en_US`, the following inputs are all valid when parsing: `1234`, `1,234`, `1234.5678`, `1,234.5678`, `1,234.5678E2`.
-
-Beware that, when unloading / formatting, rounding may be necessary and could incur in precision loss. You can specify the rounding strategy to apply, see `roundingStrategy` below.
-
-In addition to the pattern specified here, DSBulk will always recognize Java's numeric notation as valid input, both decimal and hexadecimal. Thus, regardless of the pattern being used, the following examples are always correctly parsed:
-
-- Decimal notation: `1.234e+56`
-- Hexadecimal notation: `0x1.fffP+1023`
+Most inputs are recognized: optional localized thousands separator, localized decimal separator, or optional exponent. Using locale `en_US`, `1234`, `1,234`, `1234.5678`, `1,234.5678` and `1,234.5678E2` are all valid. For unloading and formatting, rounding may occur and cause precision loss. See `codec.formatNumbers` and `codec.roundingStrategy`.
 
 Default: **"#,###.##"**.
 
 #### --codec.overflowStrategy _&lt;string&gt;_
 
-The overflow strategy to use when converting from `String` to CQL numeric types.
+This setting can mean one of three possibilities:
 
-"Overflow" should be understood here in 3 possible ways:
-
-- The value is out of the target CQL type's range. For example, trying to convert 128 to a CQL `tinyint` results in overflow, as the maximum value for such type is 127.
+- The value is outside the range of the target CQL type. For example, trying to convert 128 to a CQL `tinyint` (max value of 127) results in overflow.
 - The value is decimal, but the target CQL type is integral. For example, trying to convert 123.45 to a CQL `int` results in overflow.
-- The value's precision is too large for the target CQL type. For example, trying to insert 0.1234567890123456789 into a CQL `double` results in overflow as there are too many significant digits to fit in a 64-bit double.
+- The value's precision is too large for the target CQL type. For example, trying to insert 0.1234567890123456789 into a CQL `double` results in overflow, because there are too many significant digits to fit in a 64-bit double.
 
 Valid choices:
 
 - `REJECT`: overflows are considered errors and the data is rejected. This is the default value.
-- `TRUNCATE`: the data is truncated to fit in the target CQL type. The truncation algorithm is similar to the narrowing primitive conversion defined in section 5.1.3 of The Java Language Specification, with the following exceptions:
+- `TRUNCATE`: the data is truncated to fit in the target CQL type. The truncation algorithm is similar to the narrowing primitive conversion defined in The Java Language Specification, Section 5.1.3, with the following exceptions:
     - If the value is too big or too small, it is rounded up or down to the maximum or minimum value allowed, rather than truncated at bit level. For example, 128 would be rounded down to 127 to fit in a byte, whereas Java would have truncated the exceeding bits and converted to -127 instead.
-    - If the value is decimal, but the target CQL type is integral, it is first rounded to an integral using the defined rounding strategy, then narrowed to fit into the target type.
+    - If the value is decimal, but the target CQL type is integral, it is first rounded to an integral using the defined rounding strategy, then narrowed to fit into the target type. This can result in precision loss and should be used with caution.
 
-Beware that `TRUNCATE` may result in precision loss and should be used with caution.
-
-Note: this setting only applies for loading, when parsing numeric inputs; it does not apply for unloading, since formatting never results in any of the overflow situations outlined above (but it may involve rounding – see `roundingStrategy`).
+Only applicable for loading, when parsing numeric inputs; it does not apply for unloading, since formatting never results in overflow.
 
 Default: **"REJECT"**.
 
@@ -736,46 +705,42 @@ Default: **"REJECT"**.
 
 The rounding strategy to use for conversions from CQL numeric types to `String`.
 
-Only applicable when unloading, if `formatNumbers` is true and if the connector in use requires stringification (i.e., if it does not handle raw numeric data, e.g. the CSV connector); ignored otherwise.
+Valid choices: any `java.math.RoundingMode` enum constant name, including: `CEILING`, `FLOOR`, `UP`, `DOWN`, `HALF_UP`, `HALF_EVEN`, `HALF_DOWN`, and `UNNECESSARY`. The precision used when rounding is inferred from the numeric pattern declared under `codec.number`. For example, the default `codec.number` (`#,###.##`) has a rounding precision of 2, and the number 123.456 would be rounded to 123.46 if `roundingStrategy` was set to `UP`. The default value will result in infinite precision, and ignore the `codec.number` setting.
 
-Valid choices: any `java.math.RoundingMode` enum constant name, that is: `CEILING`, `FLOOR`, `UP`, `DOWN`, `HALF_UP`, `HALF_EVEN`, `HALF_DOWN`, and `UNNECESSARY`.
-
-The precision used when rounding is inferred from the numeric pattern declared under `number`. For example, `#,###.##` allows up to 2 fraction digits, so the rounding precision will be 2; 123.456 would be rounded to 123.46 with this pattern and strategy `UP`.
-
-The default is `UNNECESSARY` because this is the only strategy that allows to export numeric data without precision loss. Note however that this strategy will result in infinite precision and thus will print decimal numbers with as many fraction digits as required, regardless of the number of fraction digits declared in the numeric pattern in use.
+Only applicable when unloading, if `codec.formatNumbers` is true and if the connector in use requires stringification, because the connector, such as the CSV connector, does not handle raw numeric data; ignored otherwise.
 
 Default: **"UNNECESSARY"**.
 
 #### --codec.time _&lt;string&gt;_
 
-The temporal pattern to use for `String` to CQL time conversions. Valid choices:
+The temporal pattern to use for `String` to CQL `time` conversion. Valid choices:
 
-- A date-time pattern such as `HH:mm:ss`.
-- A pre-defined formatter such as `ISO_LOCAL_TIME`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
+- A date-time pattern, such as `HH:mm:ss`.
+- A pre-defined formatter, such as `ISO_LOCAL_TIME`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
 
-For more information on patterns and pre-defined formatters, see [https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns).
+For more information on patterns and pre-defined formatters, see [Patterns for formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 
-For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
+For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
 
 Default: **"ISO_LOCAL_TIME"**.
 
 #### -timeZone,--codec.timeZone _&lt;string&gt;_
 
-The time zone to use for temporal conversions, when the input being parsed or formatted does not convey any explicit time zone information.
+The time zone to use for temporal conversions. When loading, the time zone will be used to obtain a timestamp from inputs that do not convey any explicit time zone information. When unloading, the time zone will be used to format all timestamps.
 
 Default: **"UTC"**.
 
 #### --codec.timestamp _&lt;string&gt;_
 
-The temporal pattern to use for `String` to CQL timestamp conversions. Valid choices:
+The temporal pattern to use for `String` to CQL `timestamp` conversion. Valid choices:
 
 - A date-time pattern such as `yyyy-MM-dd HH:mm:ss`.
 - A pre-defined formatter such as `ISO_ZONED_DATE_TIME` or `ISO_INSTANT`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
-- The special value `CQL_DATE_TIME`, which is a special parser that accepts most CQL date, time and timestamp literals (see below).
+- The special formatter `CQL_DATE_TIME`, which is a special parser that accepts all valid CQL literal formats for the `timestamp` type.
 
-For more information on patterns and pre-defined formatters, see [https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns).
+For more information on patterns and pre-defined formatters, see [Patterns for Formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 
-For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/5.1/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
+For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
 
 The default value is the special `CQL_DATE_TIME` value. When parsing, this format recognizes all CQL temporal literals; if the input is a local date or date/time, the timestamp is resolved using the time zone specified under `timeZone`. When formatting, this format uses the `ISO_OFFSET_DATE_TIME` pattern, which is compliant with both CQL and ISO-8601.
 
@@ -783,13 +748,7 @@ Default: **"CQL_DATE_TIME"**.
 
 #### --codec.unit _&lt;string&gt;_
 
-The time unit to use when converting numeric input to CQL temporal types.
-
-All `TimeUnit` enum constants are valid choices.
-
-Numeric inputs are converted using this unit and the instant specified under `epoch`. For example, if the unit is `DAYS` and the epoch is `2000-01-01T00:00:00Z`, then the number 31 is converted to `2000-01-01` + 31 days, that is, `2000-02-01T00:00:00Z`.
-
- The default values for `unit` and `epoch` result in numeric input being interpreted as milliseconds since Unix Epoch (1970-01-01).
+This setting applies only to CQL `timestamp` columns, and `USING TIMESTAMP` clauses in queries. If the input is a string containing only digits that cannot be parsed using the `codec.timestamp` format, the specified time unit is applied to the parsed value. All `TimeUnit` enum constants are valid choices.
 
 Default: **"MILLISECONDS"**.
 
@@ -811,7 +770,7 @@ Driver-specific configuration.
 
 #### -h,--driver.hosts _&lt;list&lt;string&gt;&gt;_
 
-The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
+The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). The port for all hosts must be specified with `driver.port`.
 
 Default: **["127.0.0.1"]**.
 
@@ -1036,9 +995,9 @@ Query-related settings.
 
 #### -cl,--driver.query.consistency _&lt;string&gt;_
 
-The consistency level to use for both loading and unloading. Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
+The consistency level to use for both loading and unloading. Note that stronger consistency levels usually result in reduced throughput. In addition, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
 
-Note that stronger consistency levels usually result in reduced throughput; besides, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
+Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
 
 Default: **"LOCAL_ONE"**.
 
@@ -1185,9 +1144,7 @@ Default: **-1**.
 
 #### --executor.continuousPaging.enabled _&lt;boolean&gt;_
 
-Enable or disable continuous paging.
-
-Note that if the target cluster does not support continuous paging, or if the consistency level is not `ONE` or `LOCAL_ONE` (see `driver.query.consistency`), traditional paging will be used regardless of this setting.
+Enable or disable continuous paging. If the target cluster does not support continuous paging or if `driver.query.consistency` is not `ONE` or `LOCAL_ONE`, traditional paging will be used regardless of this setting.
 
 Default: **true**.
 
@@ -1242,10 +1199,10 @@ Default: **"./logs"**.
 
 Whether or not to use ANSI colors and other escape sequences in log messages printed to standard output and standard error.
 
-By default, DSBulk will use colored output when:
+By default, DSBulk will use colored output when the terminal is:
 
-- The terminal is compatible with ANSI escape sequences; all common terminals on *nix and BSD systems, including MacOS, are ANSI-compatible, as well as some popular terminals for Windows, such as Mintty (distributed with Cygwin) and MinGW.
-- The terminal is the standard Windows DOS command prompt (in which case, ANSI sequences are translated on the fly).
+- compatible with ANSI escape sequences; all common terminals on *nix and BSD systems, including MacOS, are ANSI-compatible, and some popular terminals for Windows (Mintty, MinGW)
+- a standard Windows DOS command prompt (ANSI sequences are translated on the fly).
 
 There should be no reason to disable ANSI escape sequences, but if, for some reason, colored messages are not desired or not printed correctly, this option allows disabling ANSI support altogether.
 
