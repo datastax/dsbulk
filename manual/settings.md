@@ -426,9 +426,9 @@ Default: **"MULTI_DOCUMENT"**.
 
 #### --connector.json.deserializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
-A map of JSON deserialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.DeserializationFeature`. Used for loading only.
+A map of JSON deserialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.DeserializationFeature`. The default value is the only way to guarantee that floating point numbers will not have their precision truncated when parsed, but can result in slightly slower parsing. Used for loading only.
 
-Note: the default is to set `USE_BIG_DECIMAL_FOR_FLOATS` to `true`; this is the only way to guarantee that floating point numbers will not have their precision truncated when parsed, at the cost of a slightly slower parsing.
+Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
 #### -encoding,--connector.json.encoding _&lt;string&gt;_
 
@@ -450,7 +450,9 @@ Default: **"\*\*/\*.json"**.
 
 #### --connector.json.generatorFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
-A map of JSON generator features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `{ ESCAPE_NON_ASCII : true, QUOTE_FIELD_NAMES : true }` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
+JSON generator features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `{ ESCAPE_NON_ASCII : true, QUOTE_FIELD_NAMES : true }` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
+
+Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
 #### -maxConcurrentFiles,--connector.json.maxConcurrentFiles _&lt;string&gt;_
 
@@ -460,7 +462,9 @@ Default: **"0.25C"**.
 
 #### --connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
-A map of JSON parser features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.core.JsonParser.Feature`. For example, a value of `{ ALLOW_COMMENTS : true, ALLOW_SINGLE_QUOTES : true }` will configure the parser to allow the use of comments and single-quoted strings in JSON data. Used for loading only.
+JSON parser features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonParser.Feature`. For example, a value of `{ ALLOW_COMMENTS : true, ALLOW_SINGLE_QUOTES : true }` will configure the parser to allow the use of comments and single-quoted strings in JSON data. Used for loading only.
+
+Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
 #### --connector.json.prettyPrint _&lt;boolean&gt;_
 
@@ -479,6 +483,8 @@ Default: **false**.
 #### --connector.json.serializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 A map of JSON serialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.SerializationFeature`. Used for unloading only.
+
+Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
 #### --connector.json.serializationStrategy _&lt;string&gt;_
 
