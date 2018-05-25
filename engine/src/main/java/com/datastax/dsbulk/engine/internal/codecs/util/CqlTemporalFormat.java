@@ -32,7 +32,7 @@ public class CqlTemporalFormat extends ZonedTemporalFormat {
 
   public static final CqlTemporalFormat DEFAULT_INSTANCE = new CqlTemporalFormat(ZoneId.of("UTC"));
 
-  public CqlTemporalFormat(ZoneId timeZone) {
+  public CqlTemporalFormat(@NotNull ZoneId timeZone) {
     super(createParser(), createFormatter(timeZone), timeZone);
   }
 

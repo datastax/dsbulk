@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static com.datastax.driver.core.TypeCodec.cdouble;
 import static com.datastax.driver.core.TypeCodec.list;
-import static com.datastax.driver.core.TypeCodec.varchar;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -22,17 +21,20 @@ import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToDoubleCodec;
+import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToInstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToListCodec;
-import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToStringCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -42,6 +44,9 @@ class StringToListCodecTest {
 
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+
+  private final TemporalFormat temporalFormat =
+      CodecSettings.getTemporalFormat("CQL_DATE_TIME", UTC, US);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
@@ -58,11 +63,12 @@ class StringToListCodecTest {
           newArrayList(ONE, ZERO),
           nullStrings);
 
-  private final JsonNodeToStringCodec eltCodec2 =
-      new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
+  private final JsonNodeToInstantCodec eltCodec2 =
+      new JsonNodeToInstantCodec(
+          temporalFormat, numberFormat, UTC, MILLISECONDS, EPOCH.atZone(UTC), nullStrings);
 
   private final TypeCodec<List<Double>> listCodec1 = list(cdouble());
-  private final TypeCodec<List<String>> listCodec2 = list(varchar());
+  private final TypeCodec<List<Instant>> listCodec2 = list(InstantCodec.instance);
 
   private final StringToListCodec<Double> codec1 =
       new StringToListCodec<>(
@@ -70,11 +76,14 @@ class StringToListCodecTest {
           objectMapper,
           nullStrings);
 
-  private final StringToListCodec<String> codec2 =
+  private final StringToListCodec<Instant> codec2 =
       new StringToListCodec<>(
           new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper, nullStrings),
           objectMapper,
           nullStrings);
+
+  private Instant i1 = Instant.parse("2016-07-24T20:34:12.999Z");
+  private Instant i2 = Instant.parse("2018-05-25T18:34:12.999Z");
 
   @Test
   void should_convert_from_valid_external() {
@@ -96,24 +105,17 @@ class StringToListCodecTest {
         .convertsFromExternal("")
         .toInternal(null);
     assertThat(codec2)
-        .convertsFromExternal("[\"foo\",\"bar\"]")
-        .toInternal(newArrayList("foo", "bar"))
-        .convertsFromExternal("['foo','bar']")
-        .toInternal(newArrayList("foo", "bar"))
-        .convertsFromExternal(" [ \"foo\" , \"bar\" ] ")
-        .toInternal(newArrayList("foo", "bar"))
-        .convertsFromExternal("[ \"\\\"foo\\\"\" , \"\\\"bar\\\"\" ]")
-        .toInternal(newArrayList("\"foo\"", "\"bar\""))
-        .convertsFromExternal("[ \"\\\"fo\\\\o\\\"\" , \"\\\"ba\\\\r\\\"\" ]")
-        .toInternal(newArrayList("\"fo\\o\"", "\"ba\\r\""))
+        .convertsFromExternal("[\"2016-07-24T20:34:12.999Z\",\"2018-05-25 20:34:12.999+02:00\"]")
+        .toInternal(newArrayList(i1, i2))
+        .convertsFromExternal("['2016-07-24T20:34:12.999Z','2018-05-25 20:34:12.999+02:00']")
+        .toInternal(newArrayList(i1, i2))
+        .convertsFromExternal(
+            " [ \"2016-07-24T20:34:12.999Z\" , \"2018-05-25 20:34:12.999+02:00\" ] ")
+        .toInternal(newArrayList(i1, i2))
         .convertsFromExternal("[,]")
         .toInternal(newArrayList(null, null))
         .convertsFromExternal("[null,null]")
         .toInternal(newArrayList(null, null))
-        .convertsFromExternal("[\"\",\"\"]")
-        .toInternal(newArrayList("", ""))
-        .convertsFromExternal("['','']")
-        .toInternal(newArrayList("", ""))
         .convertsFromExternal("[\"NULL\",\"NULL\"]")
         .toInternal(newArrayList(null, null))
         .convertsFromExternal("['NULL','NULL']")
@@ -144,14 +146,8 @@ class StringToListCodecTest {
         .convertsFromInternal(null)
         .toExternal("NULL");
     assertThat(codec2)
-        .convertsFromInternal(newArrayList("foo", "bar"))
-        .toExternal("[\"foo\",\"bar\"]")
-        .convertsFromInternal(newArrayList("\"foo\"", "\"bar\""))
-        .toExternal("[\"\\\"foo\\\"\",\"\\\"bar\\\"\"]")
-        .convertsFromInternal(newArrayList("\\foo\\", "\\bar\\"))
-        .toExternal("[\"\\\\foo\\\\\",\"\\\\bar\\\\\"]")
-        .convertsFromInternal(newArrayList(",foo,", ",bar,"))
-        .toExternal("[\",foo,\",\",bar,\"]")
+        .convertsFromInternal(newArrayList(i1, i2))
+        .toExternal("[\"2016-07-24T20:34:12.999Z\",\"2018-05-25T18:34:12.999Z\"]")
         .convertsFromInternal(newArrayList(null, null))
         .toExternal("[null,null]")
         .convertsFromInternal(null)

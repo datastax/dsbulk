@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.commons.tests;
 
 import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.dse.DseCluster;
@@ -96,8 +95,6 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
 
   private Cluster createCluster(ClusterFactory config, ExtensionContext context) {
     Cluster.Builder clusterBuilder = config.createClusterBuilder();
-    // use a different codec registry for each cluster instance
-    clusterBuilder.withCodecRegistry(new CodecRegistry());
     // add contact points only if the provided builder didn't do so
     if (clusterBuilder.getContactPoints().isEmpty()) {
       clusterBuilder.addContactPoints(getContactPoints(context));

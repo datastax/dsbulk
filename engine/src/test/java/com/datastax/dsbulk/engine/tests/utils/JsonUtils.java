@@ -16,8 +16,7 @@ public class JsonUtils {
   public static final URL JSON_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.json");
   public static final URL JSON_RECORDS_UNIQUE =
       ClassLoader.getSystemResource("ip-by-country-unique.json");
-  public static final URL JSON_RECORDS_COMPLEX =
-      ClassLoader.getSystemResource("ip-by-country-sample-complex.json");
+  public static final URL JSON_RECORDS_COMPLEX = ClassLoader.getSystemResource("complex.json");
   public static final URL JSON_RECORDS_CRLF =
       ClassLoader.getSystemResource("ip-by-country-crlf.json");
   public static final URL JSON_RECORDS_PARTIAL_BAD =
@@ -41,8 +40,6 @@ public class JsonUtils {
   public static final String SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES =
       "SELECT * FROM \"MYKS\".\"WITH_SPACES\"";
 
-  public static final String SELECT_FROM_IP_BY_COUNTRY_COMPLEX = "SELECT * FROM country_complex";
-
   public static final String IP_BY_COUNTRY_MAPPING =
       "{"
           + "beginning_ip_address=beginning_ip_address,"
@@ -52,9 +49,6 @@ public class JsonUtils {
           + "country_code=country_code,"
           + "country_name=country_name"
           + "}";
-
-  public static final String IP_BY_COUNTRY_COMPLEX_MAPPING =
-      "country_name=country_name, country_tuple=country_tuple, country_map=country_map, country_list=country_list, country_set=country_set, country_contacts=country_contacts";
 
   public static void createIpByCountryTable(Session session) {
     session.execute(
@@ -66,17 +60,6 @@ public class JsonUtils {
             + "beginning_ip_number bigint,"
             + "ending_ip_number bigint,"
             + "PRIMARY KEY(country_code, beginning_ip_address))");
-  }
-
-  public static void createComplexTable(Session session) {
-    session.execute("CREATE TYPE contacts (alias text, numbers  frozen<list<text>>)");
-    session.execute(
-        "CREATE TABLE country_complex (country_name text PRIMARY KEY, "
-            + "country_tuple frozen<tuple<int, text, float>>, "
-            + "country_map map<text, text>,"
-            + "country_list list<int>,"
-            + "country_set set<float>,"
-            + "country_contacts frozen<contacts>)");
   }
 
   public static void createIpByCountryTable(Session session, String keyspace) {
