@@ -812,6 +812,19 @@ class SchemaSettingsTest {
   }
 
   @Test
+  void should_respect_mapping_order_of_columns_in_generated_read_statement() {
+    ColumnDefinitions definitions = newColumnDefinitions();
+    when(ps.getVariables()).thenReturn(definitions);
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1, mapping = \"c3, c1\" ");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init();
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue()).startsWith("SELECT c3,c1 FROM");
+  }
+
+  @Test
   void should_warn_that_keyspace_was_not_found() {
     when(metadata.getKeyspace("\"MyKs\"")).thenReturn(null);
     when(metadata.getKeyspace("myks")).thenReturn(keyspace);
@@ -874,7 +887,7 @@ class SchemaSettingsTest {
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "Schema mapping only contains named fields, but connector only supports indexed fields");
+            "Schema mapping contains named fields, but connector only supports indexed fields");
   }
 
   @NotNull
