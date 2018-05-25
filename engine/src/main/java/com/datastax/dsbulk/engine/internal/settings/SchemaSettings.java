@@ -474,9 +474,9 @@ public class SchemaSettings {
 
   private void validateMappedRecords(
       BiMap<String, String> fieldsToVariables, boolean expectIndexedMapping) {
-    if (expectIndexedMapping && !containsIndexedMappings(fieldsToVariables)) {
+    if (expectIndexedMapping && !isIndexed(fieldsToVariables)) {
       throw new BulkConfigurationException(
-          "Schema mapping only contains named fields, but connector only supports indexed fields, "
+          "Schema mapping contains named fields, but connector only supports indexed fields, "
               + "please enable support for named fields in the connector, or alternatively, "
               + "provide an indexed mapping of the form: '0=col1,1=col2,...'");
     }
@@ -729,9 +729,12 @@ public class SchemaSettings {
   @NotNull
   private static Set<String> maybeSortCols(BiMap<String, String> fieldsToVariables) {
     Set<String> cols;
-    if (containsIndexedMappings(fieldsToVariables)) {
+    if (isIndexed(fieldsToVariables)) {
       // order columns by index
-      cols = new TreeSet<>(fieldsToVariables.values());
+      BiMap<String, String> variablesToFields = fieldsToVariables.inverse();
+      cols =
+          new TreeSet<>(Comparator.comparingInt(o -> Integer.parseInt(variablesToFields.get(o))));
+      cols.addAll(fieldsToVariables.values());
     } else {
       // preserve original order of variables in the mapping
       cols = new LinkedHashSet<>(fieldsToVariables.values());
@@ -739,8 +742,8 @@ public class SchemaSettings {
     return cols;
   }
 
-  private static boolean containsIndexedMappings(BiMap<String, String> fieldsToVariables) {
-    return fieldsToVariables.keySet().stream().anyMatch(s -> s.matches("\\d+"));
+  private static boolean isIndexed(BiMap<String, String> fieldsToVariables) {
+    return fieldsToVariables.keySet().stream().allMatch(s -> s.matches("\\d+"));
   }
 
   private static boolean isFunction(String field) {

@@ -1,6 +1,11 @@
 ## Changelog
 
 
+### 1.0.3 (in progress)
+
+- [bug] DAT-289: Generated queries do not respect indexed mapping order.
+
+
 ### 1.0.2
 
 - [improvement] DAT-249: Don't use ANSI color codes on non-ANSI terminals.
