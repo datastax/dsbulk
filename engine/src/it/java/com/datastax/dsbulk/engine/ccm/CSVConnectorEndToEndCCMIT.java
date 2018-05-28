@@ -10,24 +10,21 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.CSV_RECORDS;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_COMPLEX_MAPPING;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY_COMPLEX;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createComplexTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryCaseSensitiveTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createWithSpacesTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
-import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_COMPLEX;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_HEADER;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
@@ -96,7 +93,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @BeforeAll
   void createTables() {
     createIpByCountryTable(session);
-    createComplexTable(session);
     createWithSpacesTable(session);
     createIpByCountryCaseSensitiveTable(session);
   }
@@ -259,28 +255,65 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateOutputFiles(24, unloadDir);
   }
 
-  /** Attempts to load and unload complex types (Collections, UDTs, etc). */
+  /**
+   * Attempts to load and unload complex types (Collections, UDTs, etc).
+   *
+   * @jira_ticket DAT-288
+   */
   @Test
   void full_load_unload_complex() throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS complex");
+    session.execute("DROP TYPE IF EXISTS contacts");
+
+    session.execute(
+        "CREATE TYPE contacts ("
+            + "f_tuple frozen<tuple<int, text, float, timestamp>>, "
+            + "f_list frozen<list<timestamp>>"
+            + ")");
+    session.execute(
+        "CREATE TABLE complex ("
+            + "pk int PRIMARY KEY, "
+            + "c_tuple frozen<tuple<int, text, float, timestamp>>, "
+            + "c_map map<timestamp, time>,"
+            + "c_list list<timestamp>,"
+            + "c_set set<date>,"
+            + "c_udt frozen<contacts>)");
 
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_COMPLEX));
+    args.add(escapeUserInput(getClass().getResource("/complex.csv")));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
-    args.add("country_complex");
+    args.add("complex");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_COMPLEX_MAPPING);
+    args.add("pk,c_tuple,c_map,c_list,c_set,c_udt");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateResultSetSize(5, SELECT_FROM_IP_BY_COUNTRY_COMPLEX);
+    Row row = session.execute("SELECT * FROM complex").one();
+    assertThat(row.getList("c_list", Instant.class))
+        .contains(Instant.parse("2018-05-25T11:25:00Z"), Instant.parse("2018-05-25T11:26:00Z"));
+    assertThat(row.getSet("c_set", LocalDate.class))
+        .contains(LocalDate.parse("2018-05-25"), LocalDate.parse("2018-05-26"));
+    assertThat(row.getMap("c_map", Instant.class, LocalTime.class))
+        .containsEntry(Instant.parse("2018-05-25T11:25:00Z"), LocalTime.parse("11:25"));
+    assertThat(row.getTupleValue("c_tuple").getInt(0)).isEqualTo(2);
+    assertThat(row.getTupleValue("c_tuple").getString(1)).isEqualTo("test1");
+    assertThat(row.getTupleValue("c_tuple").getFloat(2)).isEqualTo(2.7f);
+    assertThat(row.getTupleValue("c_tuple").get(3, Instant.class))
+        .isEqualTo(Instant.parse("2018-05-25T11:25:00Z"));
+    assertThat(row.getUDTValue("c_udt").getTupleValue("f_tuple"))
+        .isEqualTo(row.getTupleValue("c_tuple"));
+    assertThat(row.getUDTValue("c_udt").getList("f_list", Instant.class))
+        .isEqualTo(row.getList("c_list", Instant.class));
+
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -296,13 +329,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
-    args.add("country_complex");
+    args.add("complex");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_COMPLEX_MAPPING);
+    args.add("pk,c_tuple,c_map,c_list,c_set,c_udt");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(5, unloadDir);
+    validateOutputFiles(1, unloadDir);
+    assertThat(readAllLinesInDirectoryAsStream(unloadDir))
+        .containsExactly(readFile(Paths.get(getClass().getResource("/complex.csv").toURI())));
   }
 
   /** Attempts to load and unload a larger dataset which can be batched. */

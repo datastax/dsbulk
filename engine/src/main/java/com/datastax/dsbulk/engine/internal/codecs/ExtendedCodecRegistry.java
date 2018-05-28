@@ -233,7 +233,9 @@ public class ExtendedCodecRegistry {
     if (Number.class.isAssignableFrom(javaType.getRawType()) && isNumeric(cqlType)) {
       @SuppressWarnings("unchecked")
       Class<Number> numberType = (Class<Number>) javaType.getRawType();
-      return new NumberToNumberCodec<>(numberType, codecRegistry.codecFor(cqlType));
+      @SuppressWarnings("unchecked")
+      TypeCodec<Number> typeCodec = (TypeCodec<Number>) codecFor(cqlType);
+      return new NumberToNumberCodec<>(numberType, typeCodec);
     }
     if (Number.class.isAssignableFrom(javaType.getRawType()) && cqlType == DataType.timestamp()) {
       @SuppressWarnings("unchecked")
@@ -241,7 +243,8 @@ public class ExtendedCodecRegistry {
       return new NumberToInstantCodec<>(numberType, timeUnit, epoch);
     }
     if (Number.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
-      TypeCodec<UUID> uuidCodec = codecRegistry.codecFor(cqlType);
+      @SuppressWarnings("unchecked")
+      TypeCodec<UUID> uuidCodec = (TypeCodec<UUID>) codecFor(cqlType);
       @SuppressWarnings("unchecked")
       Class<Number> numberType = (Class<Number>) javaType.getRawType();
       NumberToInstantCodec<Number> instantCodec =
@@ -270,7 +273,8 @@ public class ExtendedCodecRegistry {
       }
     }
     if (Temporal.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
-      TypeCodec<UUID> uuidCodec = codecRegistry.codecFor(cqlType);
+      @SuppressWarnings("unchecked")
+      TypeCodec<UUID> uuidCodec = (TypeCodec<UUID>) codecFor(cqlType);
       @SuppressWarnings("unchecked")
       TemporalToTemporalCodec<TemporalAccessor, Instant> instantCodec =
           (TemporalToTemporalCodec<TemporalAccessor, Instant>)
@@ -290,7 +294,8 @@ public class ExtendedCodecRegistry {
       }
     }
     if (Date.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
-      TypeCodec<UUID> uuidCodec = codecRegistry.codecFor(cqlType);
+      @SuppressWarnings("unchecked")
+      TypeCodec<UUID> uuidCodec = (TypeCodec<UUID>) codecFor(cqlType);
       @SuppressWarnings("unchecked")
       DateToTemporalCodec<Date, Instant> instantCodec =
           (DateToTemporalCodec<Date, Instant>)
@@ -299,7 +304,9 @@ public class ExtendedCodecRegistry {
       return new DateToUUIDCodec<>(uuidCodec, instantCodec, generator);
     }
     if (Boolean.class.isAssignableFrom(javaType.getRawType()) && isNumeric(cqlType)) {
-      return new BooleanToNumberCodec<>(codecRegistry.codecFor(cqlType), booleanNumbers);
+      @SuppressWarnings("unchecked")
+      TypeCodec<Number> typeCodec = (TypeCodec<Number>) codecFor(cqlType);
+      return new BooleanToNumberCodec<>(typeCodec, booleanNumbers);
     }
     return null;
   }
@@ -310,7 +317,9 @@ public class ExtendedCodecRegistry {
       case ASCII:
       case TEXT:
       case VARCHAR:
-        return new StringToStringCodec(codecRegistry.codecFor(cqlType), nullStrings);
+        @SuppressWarnings("unchecked")
+        TypeCodec<String> typeCodec = (TypeCodec<String>) codecFor(cqlType);
+        return new StringToStringCodec(typeCodec, nullStrings);
       case BOOLEAN:
         return new StringToBooleanCodec(booleanInputWords, booleanOutputWords, nullStrings);
       case TINYINT:
@@ -488,7 +497,7 @@ public class ExtendedCodecRegistry {
         }
       default:
         try {
-          TypeCodec<Object> innerCodec = codecRegistry.codecFor(cqlType);
+          TypeCodec<?> innerCodec = codecFor(cqlType);
           LOGGER.warn(
               String.format(
                   "CQL type %s is not officially supported by this version of DSBulk; "
@@ -512,8 +521,9 @@ public class ExtendedCodecRegistry {
       case ASCII:
       case TEXT:
       case VARCHAR:
-        return new JsonNodeToStringCodec(
-            codecRegistry.codecFor(cqlType), objectMapper, nullStrings);
+        @SuppressWarnings("unchecked")
+        TypeCodec<String> typeCodec = (TypeCodec<String>) codecFor(cqlType);
+        return new JsonNodeToStringCodec(typeCodec, objectMapper, nullStrings);
       case BOOLEAN:
         return new JsonNodeToBooleanCodec(booleanInputWords, nullStrings);
       case TINYINT:
@@ -643,7 +653,8 @@ public class ExtendedCodecRegistry {
       case LIST:
         {
           DataType elementType = cqlType.getTypeArguments().get(0);
-          TypeCodec<List<Object>> collectionCodec = codecRegistry.codecFor(cqlType);
+          @SuppressWarnings("unchecked")
+          TypeCodec<List<Object>> collectionCodec = (TypeCodec<List<Object>>) codecFor(cqlType);
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> eltCodec =
               (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(elementType);
@@ -652,7 +663,8 @@ public class ExtendedCodecRegistry {
       case SET:
         {
           DataType elementType = cqlType.getTypeArguments().get(0);
-          TypeCodec<Set<Object>> collectionCodec = codecRegistry.codecFor(cqlType);
+          @SuppressWarnings("unchecked")
+          TypeCodec<Set<Object>> collectionCodec = (TypeCodec<Set<Object>>) codecFor(cqlType);
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> eltCodec =
               (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(elementType);
@@ -662,7 +674,9 @@ public class ExtendedCodecRegistry {
         {
           DataType keyType = cqlType.getTypeArguments().get(0);
           DataType valueType = cqlType.getTypeArguments().get(1);
-          TypeCodec<Map<Object, Object>> mapCodec = codecRegistry.codecFor(cqlType);
+          @SuppressWarnings("unchecked")
+          TypeCodec<Map<Object, Object>> mapCodec =
+              (TypeCodec<Map<Object, Object>>) codecFor(cqlType);
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Object> keyCodec =
               (ConvertingCodec<String, Object>) createStringConvertingCodec(keyType);
@@ -674,7 +688,8 @@ public class ExtendedCodecRegistry {
         }
       case TUPLE:
         {
-          TypeCodec<TupleValue> tupleCodec = codecRegistry.codecFor(cqlType);
+          @SuppressWarnings("unchecked")
+          TypeCodec<TupleValue> tupleCodec = (TypeCodec<TupleValue>) codecFor(cqlType);
           ImmutableList.Builder<ConvertingCodec<JsonNode, Object>> eltCodecs =
               new ImmutableList.Builder<>();
           for (DataType eltType : ((TupleType) cqlType).getComponentTypes()) {
@@ -687,7 +702,8 @@ public class ExtendedCodecRegistry {
         }
       case UDT:
         {
-          TypeCodec<UDTValue> udtCodec = codecRegistry.codecFor(cqlType);
+          @SuppressWarnings("unchecked")
+          TypeCodec<UDTValue> udtCodec = (TypeCodec<UDTValue>) codecFor(cqlType);
           ImmutableMap.Builder<String, ConvertingCodec<JsonNode, Object>> fieldCodecs =
               new ImmutableMap.Builder<>();
           for (UserType.Field field : ((UserType) cqlType)) {
@@ -717,7 +733,7 @@ public class ExtendedCodecRegistry {
         }
       default:
         try {
-          TypeCodec<Object> innerCodec = codecRegistry.codecFor(cqlType);
+          TypeCodec<?> innerCodec = codecFor(cqlType);
           LOGGER.warn(
               String.format(
                   "CQL type %s is not officially supported by this version of DSBulk; "
@@ -733,6 +749,29 @@ public class ExtendedCodecRegistry {
           e1.addSuppressed(e);
           throw e1;
         }
+    }
+  }
+
+  // DAT-288: avoid returning legacy temporal codecs or collection codecs whose elements are legacy
+  // temporal codecs.
+  private @NotNull TypeCodec<?> codecFor(@NotNull DataType cqlType) {
+    switch (cqlType.getName()) {
+      case TIMESTAMP:
+        return InstantCodec.instance;
+      case DATE:
+        return LocalDateCodec.instance;
+      case TIME:
+        return LocalTimeCodec.instance;
+      case LIST:
+        return TypeCodec.list(codecFor(cqlType.getTypeArguments().get(0)));
+      case SET:
+        return TypeCodec.set(codecFor(cqlType.getTypeArguments().get(0)));
+      case MAP:
+        return TypeCodec.map(
+            codecFor(cqlType.getTypeArguments().get(0)),
+            codecFor(cqlType.getTypeArguments().get(1)));
+      default:
+        return codecRegistry.codecFor(cqlType);
     }
   }
 

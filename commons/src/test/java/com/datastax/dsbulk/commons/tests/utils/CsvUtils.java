@@ -70,17 +70,12 @@ public class CsvUtils {
   public static final String SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES =
       "SELECT * FROM \"MYKS\".\"WITH_SPACES\"";
 
-  public static final String SELECT_FROM_IP_BY_COUNTRY_COMPLEX = "SELECT * FROM country_complex";
-
   public static final String IP_BY_COUNTRY_MAPPING =
       "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code,5=country_name";
 
   public static final String IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE =
       "0=\"BEGINNING IP ADDRESS\",1=\"ENDING IP ADDRESS\",2=\"BEGINNING IP NUMBER\",3=\"ENDING IP NUMBER\","
           + "4=\"COUNTRY CODE\",5=\"COUNTRY NAME\"";
-
-  public static final String IP_BY_COUNTRY_COMPLEX_MAPPING =
-      "0=country_name, 1=country_tuple, 2=country_map, 3=country_list, 4=country_set, 5=country_contacts";
 
   public static void createIpByCountryTable(Session session) {
     session.execute(
@@ -92,17 +87,6 @@ public class CsvUtils {
             + "beginning_ip_number bigint,"
             + "ending_ip_number bigint,"
             + "PRIMARY KEY(country_code, beginning_ip_address))");
-  }
-
-  public static void createComplexTable(Session session) {
-    session.execute("CREATE TYPE contacts (alias text, numbers  frozen<list<text>>)");
-    session.execute(
-        "CREATE TABLE country_complex (country_name text PRIMARY KEY, "
-            + "country_tuple frozen<tuple<int, text, float>>, "
-            + "country_map map<text, text>,"
-            + "country_list list<int>,"
-            + "country_set set<float>,"
-            + "country_contacts frozen<contacts>)");
   }
 
   public static void createWithSpacesTable(Session session) {

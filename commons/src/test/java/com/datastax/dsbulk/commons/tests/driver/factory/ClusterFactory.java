@@ -12,6 +12,7 @@ import static com.datastax.driver.core.HostDistance.LOCAL;
 import static com.datastax.driver.core.HostDistance.REMOTE;
 
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
@@ -21,6 +22,9 @@ import com.datastax.driver.core.SSLOptions;
 import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.graph.GraphOptions;
+import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
+import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
+import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
 import com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster;
 import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterFactoryMethod;
@@ -227,13 +231,18 @@ public abstract class ClusterFactory {
       populateBean(poolingOptions, this.poolingOptions);
       populateBean(queryOptions, this.queryOptions);
       populateBean(graphOptions, this.graphOptions);
-      clusterBuilder
+      return clusterBuilder
           .withCompression(compression)
           .withPoolingOptions(poolingOptions)
           .withSocketOptions(socketOptions)
           .withQueryOptions(queryOptions)
-          .withGraphOptions(graphOptions);
-      return clusterBuilder;
+          .withGraphOptions(graphOptions)
+          // use a different codec registry for each cluster instance
+          .withCodecRegistry(
+              new CodecRegistry()
+                  .register(InstantCodec.instance)
+                  .register(LocalDateCodec.instance)
+                  .register(LocalTimeCodec.instance));
     }
 
     private SSLOptions createSSLOptions() {
