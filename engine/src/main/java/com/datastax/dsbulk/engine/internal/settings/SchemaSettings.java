@@ -18,6 +18,7 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
@@ -350,12 +351,17 @@ public class SchemaSettings {
                       .stream()
                       .map(ColumnMetadata::getName)
                       .collect(Collectors.toList()),
-              workflowType,
               expectIndexedMapping);
-      query =
-          workflowType == WorkflowType.LOAD
-              ? inferWriteQuery(fieldsToVariables)
-              : inferReadQuery(fieldsToVariables);
+      if (workflowType == WorkflowType.LOAD) {
+        validateAllKeysPresent(fieldsToVariables);
+        if (isCounterTable()) {
+          query = inferUpdateCounterQuery(fieldsToVariables);
+        } else {
+          query = inferInsertQuery(fieldsToVariables);
+        }
+      } else {
+        query = inferReadQuery(fieldsToVariables);
+      }
       // remove function mappings as we won't need them anymore from now on
       fieldsToVariables = removeMappingFunctions(fieldsToVariables);
     }
@@ -374,11 +380,20 @@ public class SchemaSettings {
                     .map(ColumnDefinitions.Definition::getName)
                     .collect(Collectors.toList());
               },
-              workflowType,
               expectIndexedMapping);
+      if (workflowType == LOAD) {
+        validateAllKeysPresent(session, fieldsToVariables);
+      }
     }
     return new DefaultMapping(
         ImmutableBiMap.copyOf(fieldsToVariables), codecRegistry, writeTimeVariable);
+  }
+
+  private boolean isCounterTable() {
+    return table
+        .getColumns()
+        .stream()
+        .anyMatch(c -> c.getType().getName() == DataType.Name.COUNTER);
   }
 
   private ColumnDefinitions getVariables(WorkflowType workflowType) {
@@ -393,10 +408,7 @@ public class SchemaSettings {
   }
 
   private BiMap<String, String> createFieldsToVariablesMap(
-      Session session,
-      Supplier<List<String>> columns,
-      WorkflowType workflowType,
-      boolean expectIndexedMapping)
+      Session session, Supplier<List<String>> columns, boolean expectIndexedMapping)
       throws BulkConfigurationException {
     BiMap<String, String> fieldsToVariables;
     if (keyspaceName != null && tableName != null) {
@@ -462,10 +474,6 @@ public class SchemaSettings {
         !fieldsToVariables.isEmpty(),
         "Mapping was absent and could not be inferred, please provide an explicit mapping");
 
-    if (workflowType == LOAD) {
-      validateAllKeysPresent(session, fieldsToVariables);
-    }
-
     validateAllFieldsPresent(fieldsToVariables, columns);
     validateMappedRecords(fieldsToVariables, expectIndexedMapping);
 
@@ -504,34 +512,48 @@ public class SchemaSettings {
         });
   }
 
+  /** Version for generated queries */
+  private void validateAllKeysPresent(BiMap<String, String> fieldsToVariables) {
+    // if we generated the query, we know that the variable names
+    // correspond to column names, so we can test the entire primary key.
+    List<ColumnMetadata> primaryKey = table.getPrimaryKey();
+    for (ColumnMetadata key : primaryKey) {
+      if (!fieldsToVariables.containsValue(key.getName())) {
+        throw new BulkConfigurationException(
+            "Missing required primary key column "
+                + Metadata.quoteIfNecessary(key.getName())
+                + " from schema.mapping or schema.query");
+      }
+    }
+  }
+
+  /** version for user-supplied queries */
   private void validateAllKeysPresent(Session session, BiMap<String, String> fieldsToVariables) {
+    ColumnDefinitions definitions = preparedStatement.getVariables();
+    if (definitions == null || definitions.size() == 0) {
+      definitions = DriverCoreHooks.resultSetVariables(preparedStatement);
+    }
     if (table == null) {
-      assert preparedStatement != null;
-      // infer table from bound variables
-      ColumnDefinitions definitions = preparedStatement.getVariables();
-      if (definitions != null && definitions.size() > 0) {
-        table = inferTable(session, definitions);
-      }
-      if (table == null) {
-        // infer table from result variables
-        definitions = DriverCoreHooks.resultSetVariables(preparedStatement);
-        if (definitions != null && definitions.size() > 0) {
-          table = inferTable(session, definitions);
-        }
-      }
+      table = inferTable(session, definitions);
     }
     // table can only be null in rare cases e.g. if all variables are UDFs
     if (table != null) {
-      List<ColumnMetadata> primaryKey = table.getPrimaryKey();
-      primaryKey.forEach(
-          key -> {
-            if (!fieldsToVariables.containsValue(key.getName())) {
-              throw new BulkConfigurationException(
-                  "Missing required primary key column "
-                      + Metadata.quoteIfNecessary(key.getName())
-                      + " from schema.mapping or schema.query");
-            }
-          });
+      // for a custom query, we cannot know if the user has named his variables
+      // like the column names or not. In this case we can only test the
+      // partition key since we know which variables are part of it.
+      List<ColumnMetadata> partitionKey = table.getPartitionKey();
+      int[] pkIndices = DriverCoreHooks.partitionKeyIndices(preparedStatement.getPreparedId());
+      for (int i = 0; i < partitionKey.size(); i++) {
+        ColumnMetadata pk = partitionKey.get(i);
+        int pki = pkIndices[i];
+        String variable = definitions.getName(pki);
+        if (!fieldsToVariables.containsValue(variable)) {
+          throw new BulkConfigurationException(
+              "Missing required primary key column "
+                  + Metadata.quoteIfNecessary(pk.getName())
+                  + " from schema.mapping or schema.query");
+        }
+      }
     }
   }
 
@@ -581,7 +603,7 @@ public class SchemaSettings {
     return fieldsToVariables.build();
   }
 
-  private String inferWriteQuery(BiMap<String, String> fieldsToVariables) {
+  private String inferInsertQuery(BiMap<String, String> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
     appendColumnNames(fieldsToVariables, sb);
@@ -610,10 +632,61 @@ public class SchemaSettings {
       }
     }
     sb.append(')');
+    addTimestampAndTTL(fieldsToVariables, sb);
+    return sb.toString();
+  }
+
+  private String inferUpdateCounterQuery(BiMap<String, String> fieldsToVariables) {
+    StringBuilder sb = new StringBuilder("UPDATE ");
+    sb.append(keyspaceName).append('.').append(tableName);
+    // Note: TTL and timestamp are not allowed in counter queries;
+    // a test is made inside the following method
+    addTimestampAndTTL(fieldsToVariables, sb);
+    sb.append(" SET ");
+    Set<String> cols = maybeSortCols(fieldsToVariables);
+    Iterator<String> it = cols.iterator();
+    boolean isFirst = true;
+    List<String> pks =
+        table.getPrimaryKey().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
+    while (it.hasNext()) {
+      String col = it.next();
+      if (pks.contains(col)) {
+        continue;
+      }
+      if (isFunction(fieldsToVariables.inverse().get(col))) {
+        throw new BulkConfigurationException(
+            "Function calls are not allowed when updating a counter table.");
+      }
+      if (!isFirst) {
+        sb.append(',');
+      }
+      isFirst = false;
+      String quoted = Metadata.quoteIfNecessary(col);
+      sb.append(quoted).append('=').append(quoted).append("+:").append(quoted);
+    }
+    sb.append(" WHERE ");
+    it = pks.iterator();
+    isFirst = true;
+    while (it.hasNext()) {
+      String col = it.next();
+      if (!isFirst) {
+        sb.append(" AND ");
+      }
+      isFirst = false;
+      sb.append(Metadata.quoteIfNecessary(col)).append("=:").append(Metadata.quoteIfNecessary(col));
+    }
+    return sb.toString();
+  }
+
+  private void addTimestampAndTTL(BiMap<String, String> fieldsToVariables, StringBuilder sb) {
     boolean hasTtl = ttlSeconds != -1 || fieldsToVariables.containsValue(TTL_VARNAME);
     boolean hasTimestamp =
         timestampMicros != -1 || fieldsToVariables.containsValue(TIMESTAMP_VARNAME);
     if (hasTtl || hasTimestamp) {
+      if (isCounterTable()) {
+        throw new BulkConfigurationException(
+            "Cannot set TTL or timestamp when updating a counter table.");
+      }
       sb.append(" USING ");
       if (hasTtl) {
         sb.append("TTL ");
@@ -637,7 +710,6 @@ public class SchemaSettings {
         }
       }
     }
-    return sb.toString();
   }
 
   private String inferReadQuery(BiMap<String, String> fieldsToVariables) {

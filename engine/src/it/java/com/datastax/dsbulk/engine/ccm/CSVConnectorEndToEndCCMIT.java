@@ -340,6 +340,72 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .containsExactly(readFile(Paths.get(getClass().getResource("/complex.csv").toURI())));
   }
 
+  /**
+   * Attempts to load and unload counter types.
+   *
+   * @jira_ticket DAT-292
+   */
+  @Test
+  void full_load_unload_counters() throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS counters");
+    session.execute(
+        "CREATE TABLE counters ("
+            + "pk1 int, "
+            + "\"PK2\" int, "
+            + "\"C1\" counter, "
+            + "c2 counter, "
+            + "c3 counter, "
+            + "PRIMARY KEY (pk1, \"PK2\"))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(getClass().getResource("/counters.csv")));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("counters");
+    args.add("--schema.mapping");
+    args.add("pk1,PK2,C1,c2");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    Row row =
+        session.execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2").one();
+    assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
+    assertThat(row.getLong("c2")).isZero(); // present in the file
+    assertThat(row.isNull("c3")).isTrue(); // not present in the file
+
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("counters");
+    args.add("--schema.mapping");
+    args.add("pk1,PK2,C1,c2,c3");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(1, unloadDir);
+    assertThat(readAllLinesInDirectoryAsStream(unloadDir)).containsExactly("1,2,42,0,");
+  }
+
   /** Attempts to load and unload a larger dataset which can be batched. */
   @Test
   void full_load_unload_large_batches() throws Exception {

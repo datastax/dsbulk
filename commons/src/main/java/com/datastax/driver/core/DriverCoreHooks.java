@@ -65,7 +65,7 @@ public class DriverCoreHooks {
     return ps.getPreparedId().resultSetMetadata.variables;
   }
 
-  public static int[] primaryKeyIndices(PreparedId id) {
+  public static int[] partitionKeyIndices(PreparedId id) {
     return id.routingKeyIndexes;
   }
 

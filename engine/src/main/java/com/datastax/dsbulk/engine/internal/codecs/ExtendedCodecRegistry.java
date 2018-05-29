@@ -16,7 +16,6 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.UserType;
 import com.datastax.driver.core.exceptions.CodecNotFoundException;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.driver.dse.geometry.codecs.LineStringCodec;
 import com.datastax.driver.dse.geometry.codecs.PointCodec;
 import com.datastax.driver.dse.geometry.codecs.PolygonCodec;
@@ -360,6 +359,20 @@ public class ExtendedCodecRegistry {
             nullStrings);
       case BIGINT:
         return new StringToLongCodec(
+            TypeCodec.bigint(),
+            numberFormat,
+            overflowStrategy,
+            roundingMode,
+            timestampFormat,
+            timeZone,
+            timeUnit,
+            epoch,
+            booleanInputWords,
+            booleanNumbers,
+            nullStrings);
+      case COUNTER:
+        return new StringToLongCodec(
+            TypeCodec.counter(),
             numberFormat,
             overflowStrategy,
             roundingMode,
@@ -478,8 +491,6 @@ public class ExtendedCodecRegistry {
               (JsonNodeToUDTCodec) createJsonNodeConvertingCodec(cqlType);
           return new StringToUDTCodec(jsonCodec, objectMapper, nullStrings);
         }
-      case COUNTER:
-        throw new InvalidTypeException("Cannot set the value of a counter column");
       case CUSTOM:
         {
           DataType.CustomType customType = (DataType.CustomType) cqlType;
@@ -564,6 +575,20 @@ public class ExtendedCodecRegistry {
             nullStrings);
       case BIGINT:
         return new JsonNodeToLongCodec(
+            TypeCodec.bigint(),
+            numberFormat,
+            overflowStrategy,
+            roundingMode,
+            timestampFormat,
+            timeZone,
+            timeUnit,
+            epoch,
+            booleanInputWords,
+            booleanNumbers,
+            nullStrings);
+      case COUNTER:
+        return new JsonNodeToLongCodec(
+            TypeCodec.counter(),
             numberFormat,
             overflowStrategy,
             roundingMode,
@@ -714,8 +739,6 @@ public class ExtendedCodecRegistry {
           }
           return new JsonNodeToUDTCodec(udtCodec, fieldCodecs.build(), objectMapper, nullStrings);
         }
-      case COUNTER:
-        throw new InvalidTypeException("Cannot set the value of a counter column");
       case CUSTOM:
         {
           DataType.CustomType customType = (DataType.CustomType) cqlType;

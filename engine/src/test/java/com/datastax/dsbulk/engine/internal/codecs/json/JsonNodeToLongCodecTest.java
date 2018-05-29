@@ -19,6 +19,7 @@ import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
@@ -35,6 +36,7 @@ class JsonNodeToLongCodecTest {
 
   private final JsonNodeToLongCodec codec =
       new JsonNodeToLongCodec(
+          TypeCodec.bigint(),
           numberFormat,
           OverflowStrategy.REJECT,
           RoundingMode.HALF_EVEN,

@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.driver.core.DataType.bigint;
+import static com.datastax.driver.core.DataType.counter;
 import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
@@ -55,6 +56,7 @@ import com.google.common.collect.Sets;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,6 +94,9 @@ class SchemaSettingsTest {
   private KeyspaceMetadata keyspace;
   private TableMetadata table;
   private PreparedStatement ps;
+  private ColumnMetadata col1;
+  private ColumnMetadata col2;
+  private ColumnMetadata col3;
 
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
   private final RecordMetadata recordMetadata = (field, cqlType) -> TypeToken.of(String.class);
@@ -104,9 +109,9 @@ class SchemaSettingsTest {
     keyspace = mock(KeyspaceMetadata.class);
     table = mock(TableMetadata.class);
     ps = mock(PreparedStatement.class);
-    ColumnMetadata col1 = mock(ColumnMetadata.class);
-    ColumnMetadata col2 = mock(ColumnMetadata.class);
-    ColumnMetadata col3 = mock(ColumnMetadata.class);
+    col1 = mock(ColumnMetadata.class);
+    col2 = mock(ColumnMetadata.class);
+    col3 = mock(ColumnMetadata.class);
     List<ColumnMetadata> columns = Lists.newArrayList(col1, col2, col3);
     when(session.getCluster()).thenReturn(cluster);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -118,16 +123,20 @@ class SchemaSettingsTest {
     when(table.getColumn(C1)).thenReturn(col1);
     when(table.getColumn(C2)).thenReturn(col2);
     when(table.getColumn(C3)).thenReturn(col3);
+    when(table.getPrimaryKey()).thenReturn(Collections.singletonList(col1));
     when(col1.getName()).thenReturn(C1);
     when(col2.getName()).thenReturn(C2);
     when(col3.getName()).thenReturn(C3);
+    when(col1.getType()).thenReturn(varchar());
+    when(col2.getType()).thenReturn(varchar());
+    when(col3.getType()).thenReturn(varchar());
     ColumnDefinitions definitions =
         newColumnDefinitions(
             newDefinition(C1, varchar()),
             newDefinition(C2, varchar()),
             newDefinition(C3, varchar()));
     when(ps.getVariables()).thenReturn(definitions);
-    when(ps.getPreparedId()).thenReturn(newPreparedId(definitions, V4));
+    when(ps.getPreparedId()).thenReturn(newPreparedId(definitions, new int[] {0}, V4));
   }
 
   @Test
@@ -153,6 +162,30 @@ class SchemaSettingsTest {
         C2,
         "2",
         C1);
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+  }
+
+  @Test
+  void should_create_record_mapper_when_mapping_keyspace_and_counter_table_provided() {
+    when(col1.getType()).thenReturn(counter());
+    when(col2.getType()).thenReturn(counter());
+    when(col3.getType()).thenReturn(counter());
+    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init();
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "UPDATE ks.t1 SET \"%2$s\"=\"%2$s\"+:\"%2$s\",%3$s=%3$s+:%3$s WHERE %1$s=:%1$s",
+                C1, C2, C3));
+    DefaultMapping mapping =
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping");
+    assertMapping(mapping, C2, C2, C1, C1, C3, C3);
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
 

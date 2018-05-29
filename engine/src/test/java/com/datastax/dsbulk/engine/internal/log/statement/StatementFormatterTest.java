@@ -397,7 +397,7 @@ class StatementFormatterTest {
   private BoundStatement newBoundStatementMock() {
     PreparedStatement ps = mock(PreparedStatement.class);
     ColumnDefinitions cd = mock(ColumnDefinitions.class);
-    PreparedId pid = newPreparedId(cd, version);
+    PreparedId pid = newPreparedId(cd, new int[] {0}, version);
     when(ps.getVariables()).thenReturn(cd);
     when(ps.getPreparedId()).thenReturn(pid);
     when(ps.getCodecRegistry()).thenReturn(codecRegistry);
@@ -418,7 +418,7 @@ class StatementFormatterTest {
   private BoundStatement newBoundStatementMock(String queryString, DataType type) {
     PreparedStatement ps = mock(PreparedStatement.class);
     ColumnDefinitions cd = mock(ColumnDefinitions.class);
-    PreparedId pid = newPreparedId(cd, version);
+    PreparedId pid = newPreparedId(cd, new int[] {0}, version);
     when(ps.getVariables()).thenReturn(cd);
     when(ps.getPreparedId()).thenReturn(pid);
     when(ps.getCodecRegistry()).thenReturn(codecRegistry);

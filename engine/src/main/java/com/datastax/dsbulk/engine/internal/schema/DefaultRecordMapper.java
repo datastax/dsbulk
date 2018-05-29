@@ -57,7 +57,7 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields) {
     this(
         insertStatement,
-        DriverCoreHooks.primaryKeyIndices(insertStatement.getPreparedId()),
+        DriverCoreHooks.partitionKeyIndices(insertStatement.getPreparedId()),
         DriverCoreHooks.protocolVersion(insertStatement.getPreparedId()),
         mapping,
         recordMetadata,
