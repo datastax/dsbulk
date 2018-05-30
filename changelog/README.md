@@ -5,6 +5,7 @@
 
 - [bug] DAT-289: Generated queries do not respect indexed mapping order.
 - [bug] DAT-288: DSBulk cannot handle columns of type list<timestamp>.
+- [improvement] DAT-292: Add support for counter tables.
 
 
 ### 1.0.2

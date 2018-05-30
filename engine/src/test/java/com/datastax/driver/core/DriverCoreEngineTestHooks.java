@@ -13,11 +13,12 @@ import java.util.Arrays;
 @SuppressWarnings("SameParameterValue")
 public class DriverCoreEngineTestHooks {
 
-  public static PreparedId newPreparedId(ColumnDefinitions cd, ProtocolVersion version) {
+  public static PreparedId newPreparedId(
+      ColumnDefinitions cd, int[] pkIndices, ProtocolVersion version) {
     return new PreparedId(
         new PreparedId.PreparedMetadata(null, null),
         new PreparedId.PreparedMetadata(null, cd),
-        null,
+        pkIndices,
         version);
   }
 

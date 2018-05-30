@@ -202,6 +202,7 @@ class DefaultRecordMapperTest {
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
+                TypeCodec.bigint(),
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
@@ -239,6 +240,7 @@ class DefaultRecordMapperTest {
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
+                TypeCodec.bigint(),
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
@@ -274,6 +276,7 @@ class DefaultRecordMapperTest {
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
+                TypeCodec.bigint(),
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
@@ -314,6 +317,7 @@ class DefaultRecordMapperTest {
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
+                TypeCodec.bigint(),
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,

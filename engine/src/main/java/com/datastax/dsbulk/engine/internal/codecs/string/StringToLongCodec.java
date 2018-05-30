@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import static java.util.stream.Collectors.toList;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -26,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 public class StringToLongCodec extends StringToNumberCodec<Long> {
 
   public StringToLongCodec(
+      PrimitiveLongCodec targetCodec,
       FastThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
@@ -37,7 +37,7 @@ public class StringToLongCodec extends StringToNumberCodec<Long> {
       List<BigDecimal> booleanNumbers,
       List<String> nullStrings) {
     super(
-        TypeCodec.bigint(),
+        targetCodec,
         numberFormat,
         overflowStrategy,
         roundingMode,

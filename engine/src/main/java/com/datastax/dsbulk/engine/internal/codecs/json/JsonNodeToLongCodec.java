@@ -11,7 +11,6 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static java.util.stream.Collectors.toList;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class JsonNodeToLongCodec extends JsonNodeToNumberCodec<Long> {
 
   public JsonNodeToLongCodec(
+      PrimitiveLongCodec targetCodec,
       FastThreadLocal<NumberFormat> numberFormat,
       OverflowStrategy overflowStrategy,
       RoundingMode roundingMode,
@@ -39,7 +39,7 @@ public class JsonNodeToLongCodec extends JsonNodeToNumberCodec<Long> {
       List<BigDecimal> booleanNumbers,
       List<String> nullStrings) {
     super(
-        TypeCodec.bigint(),
+        targetCodec,
         numberFormat,
         overflowStrategy,
         roundingMode,
