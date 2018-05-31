@@ -102,9 +102,9 @@ public class TableScanner {
                     .unwrap()
                     .stream()
                     .map(
-                        tr -> {
-                          Statement stmt = statementFactory.apply(range);
-                          return wrap(stmt, range, stmt.getKeyspace());
+                        unwrapped -> {
+                          Statement stmt = statementFactory.apply(unwrapped);
+                          return route(stmt, unwrapped, stmt.getKeyspace());
                         }))
         .collect(toList());
   }
@@ -118,11 +118,13 @@ public class TableScanner {
             .from(table)
             .where(gt(token(columns), range.getStart()))
             .and(lte(token(columns), range.getEnd()));
-    if (where != null) stmt = stmt.and(where);
-    return wrap(stmt, range, table.getKeyspace().getName());
+    if (where != null) {
+      stmt = stmt.and(where);
+    }
+    return route(stmt, range, table.getKeyspace().getName());
   }
 
-  private static Statement wrap(Statement stmt, TokenRange range, String keyspace) {
+  private static Statement route(Statement stmt, TokenRange range, String keyspace) {
     return new StatementWrapper(stmt) {
       @Override
       public Token getRoutingToken() {
