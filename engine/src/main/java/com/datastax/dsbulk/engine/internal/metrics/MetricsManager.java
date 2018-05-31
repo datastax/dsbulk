@@ -147,6 +147,7 @@ public class MetricsManager implements AutoCloseable {
         break;
 
       case UNLOAD:
+      case COUNT:
         startReadsReporter();
         break;
     }

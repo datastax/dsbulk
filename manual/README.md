@@ -20,6 +20,9 @@ dsbulk load <options>
 
 # Unload data
 dsbulk unload <options>
+
+# Count rows
+dsbulk count <options>
 ``` 
 
 All arguments are optional in that values fall back to defaults or
@@ -210,7 +213,16 @@ used in both load and unload.
 * Unload data to a local directory (which may not yet exist):
                                           
   `dsbulk unload -url ~/data-export -k ks1 -t table1`
-  
+
+
+## Count Examples
+
+When counting rows on a table, no connector is required, and some settings are ignored, such as `schema.mapping`.
+
+* Count the total rows int the `ks1.table1` table in a cluster with a `localhost` contact point. 
+
+  `dsbulk count -k ks1 -t table1`
+
 ## Command-line Help
 
 Available settings along with defaults are documented [here](settings.md) and in the

@@ -138,7 +138,8 @@ class DataStaxBulkLoaderTest {
     new DataStaxBulkLoader(new String[] {"junk"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
-        .contains("First argument must be subcommand \"load\", \"unload\", or \"help\"");
+        .contains("First argument must be subcommand")
+        .contains(", or \"help\"");
   }
 
   @Test

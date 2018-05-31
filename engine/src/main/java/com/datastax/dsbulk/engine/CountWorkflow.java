@@ -16,16 +16,10 @@ import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
-import com.datastax.dsbulk.connectors.api.Connector;
-import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.connectors.api.RecordMetadata;
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
-import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
+import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.datastax.dsbulk.engine.internal.settings.ConnectorSettings;
 import com.datastax.dsbulk.engine.internal.settings.DriverSettings;
 import com.datastax.dsbulk.engine.internal.settings.EngineSettings;
 import com.datastax.dsbulk.engine.internal.settings.ExecutorSettings;
@@ -37,6 +31,7 @@ import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jetbrains.annotations.NotNull;
@@ -46,8 +41,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-/** The main class for unload workflows. */
-public class UnloadWorkflow implements Workflow {
+/** The main class for count workflows. */
+public class CountWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UnloadWorkflow.class);
 
@@ -55,44 +50,38 @@ public class UnloadWorkflow implements Workflow {
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
   private String executionId;
-  private Connector connector;
   private Scheduler scheduler;
-  private ReadResultMapper readResultMapper;
+  private ReadResultCounter readResultCounter;
   private MetricsManager metricsManager;
   private LogManager logManager;
   private DseCluster cluster;
   private ReactorBulkReader executor;
   private List<Statement> readStatements;
 
-  UnloadWorkflow(LoaderConfig config) {
-    settingsManager = new SettingsManager(config, WorkflowType.UNLOAD);
+  CountWorkflow(LoaderConfig config) {
+    settingsManager = new SettingsManager(config, WorkflowType.COUNT);
   }
 
   @Override
-  public void init() throws Exception {
+  public void init() throws IOException {
     settingsManager.init();
     executionId = settingsManager.getExecutionId();
     LogSettings logSettings = settingsManager.getLogSettings();
     DriverSettings driverSettings = settingsManager.getDriverSettings();
-    ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
     SchemaSettings schemaSettings = settingsManager.getSchemaSettings();
     ExecutorSettings executorSettings = settingsManager.getExecutorSettings();
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
     engineSettings.init();
-    // First verify that dry-run is off; that's unsupported for unload.
+    // First verify that dry-run is off; that's unsupported for count.
     if (engineSettings.isDryRun()) {
-      throw new BulkConfigurationException("Dry-run is not supported for unload");
+      throw new BulkConfigurationException("Dry-run is not supported for count");
     }
-    connectorSettings.init();
-    connector = connectorSettings.getConnector();
-    connector.init();
-    // No logs should be produced until the following statement returns
-    logSettings.init(connector.isWriteToStandardOutput());
+    logSettings.init(false);
     logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
     codecSettings.init();
-    schemaSettings.init(WorkflowType.UNLOAD);
+    schemaSettings.init(WorkflowType.COUNT);
     monitoringSettings.init();
     executorSettings.init();
     driverSettings.init();
@@ -101,11 +90,11 @@ public class UnloadWorkflow implements Workflow {
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     cluster = driverSettings.newCluster();
     DseSession session = cluster.connect();
-    logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
+    logManager = logSettings.newLogManager(WorkflowType.COUNT, cluster);
     logManager.init();
     metricsManager =
         monitoringSettings.newMetricsManager(
-            WorkflowType.UNLOAD,
+            WorkflowType.COUNT,
             false,
             logManager.getExecutionDirectory(),
             logSettings.getMainLogFileAppender(),
@@ -114,14 +103,7 @@ public class UnloadWorkflow implements Workflow {
             cluster.getConfiguration().getCodecRegistry());
     metricsManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
-    RecordMetadata recordMetadata = connector.getRecordMetadata();
-    ExtendedCodecRegistry codecRegistry = codecSettings.createCodecRegistry(cluster);
-    readResultMapper =
-        schemaSettings.createReadResultMapper(
-            session,
-            recordMetadata,
-            codecRegistry,
-            !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
+    readResultCounter = schemaSettings.createReadResultCounter(session);
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
   }
@@ -130,19 +112,13 @@ public class UnloadWorkflow implements Workflow {
   public boolean execute() {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    Flux<Record> flux;
+    Flux<Void> flux;
     if (readStatements.size() >= TPC_THRESHOLD) {
       flux = threadPerCoreFlux();
     } else {
       flux = parallelFlux();
     }
-    flux.compose(connector.write())
-        .transform(metricsManager.newFailedItemsMonitor())
-        .transform(logManager.newFailedRecordsHandler())
-        .then()
-        .flux()
-        .transform(logManager.newTerminationHandler())
-        .blockLast();
+    flux.transform(logManager.newTerminationHandler()).blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
@@ -158,7 +134,7 @@ public class UnloadWorkflow implements Workflow {
   }
 
   @NotNull
-  private Flux<Record> threadPerCoreFlux() {
+  private Flux<Void> threadPerCoreFlux() {
     LOGGER.info("Using thread-per-core pattern.");
     return Flux.fromIterable(readStatements)
         .flatMap(
@@ -169,27 +145,26 @@ public class UnloadWorkflow implements Workflow {
                     .transform(logManager.newTotalItemsCounter())
                     .transform(metricsManager.newFailedItemsMonitor())
                     .transform(logManager.newFailedReadsHandler())
-                    .map(readResultMapper::map)
-                    .transform(metricsManager.newFailedItemsMonitor())
-                    .transform(logManager.newUnmappableRecordsHandler())
+                    .doOnNext(readResultCounter::update)
+                    .then()
                     .subscribeOn(scheduler),
             Runtime.getRuntime().availableProcessors());
   }
 
   @NotNull
-  private Flux<Record> parallelFlux() {
+  private Flux<Void> parallelFlux() {
     return Flux.fromIterable(readStatements)
         .flatMap(executor::readReactive)
-        .transform(metricsManager.newTotalItemsMonitor())
-        .transform(logManager.newTotalItemsCounter())
-        .transform(metricsManager.newFailedItemsMonitor())
-        .transform(logManager.newFailedReadsHandler())
         .parallel()
         .runOn(scheduler)
-        .map(readResultMapper::map)
+        .composeGroup(metricsManager.newTotalItemsMonitor())
+        .composeGroup(logManager.newTotalItemsCounter())
+        .composeGroup(metricsManager.newFailedItemsMonitor())
+        .composeGroup(logManager.newFailedReadsHandler())
+        .doOnNext(readResultCounter::update)
         .sequential()
-        .transform(metricsManager.newFailedItemsMonitor())
-        .transform(logManager.newUnmappableRecordsHandler());
+        .then()
+        .flux();
   }
 
   @Override
@@ -198,12 +173,14 @@ public class UnloadWorkflow implements Workflow {
       LOGGER.info("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(metricsManager, null);
       e = WorkflowUtils.closeQuietly(logManager, e);
-      e = WorkflowUtils.closeQuietly(connector, e);
       e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
       e = WorkflowUtils.closeQuietly(cluster, e);
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
+      }
+      if (readResultCounter != null) {
+        readResultCounter.reportTotals();
       }
       LOGGER.info("{} closed.", this);
       if (e != null) {
@@ -214,6 +191,6 @@ public class UnloadWorkflow implements Workflow {
 
   @Override
   public String toString() {
-    return "Unload workflow engine execution " + executionId;
+    return "Count workflow engine execution " + executionId;
   }
 }

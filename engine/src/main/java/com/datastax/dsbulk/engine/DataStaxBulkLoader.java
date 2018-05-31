@@ -14,6 +14,7 @@ import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.log.TooManyErrorsException;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.datastax.dsbulk.engine.internal.utils.OptionUtils;
+import com.google.common.base.Joiner;
 import com.google.common.base.Throwables;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -30,6 +31,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -278,9 +280,16 @@ public class DataStaxBulkLoader {
       throw new VersionRequestException();
     }
 
-    if (!Arrays.asList("load", "unload").contains(subCommand)) {
+    List<String> workflowNames =
+        Arrays.stream(WorkflowType.values())
+            .map(Enum::name)
+            .map(String::toLowerCase)
+            .collect(Collectors.toList());
+    if (!workflowNames.contains(subCommand)) {
       throw new ParseException(
-          "First argument must be subcommand \"load\", \"unload\", or \"help\"");
+          String.format(
+              "First argument must be subcommand \"%s\", or \"help\"",
+              Joiner.on("\", \"").join(workflowNames)));
     }
 
     Iterator<Option> it = cmd.iterator();

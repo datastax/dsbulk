@@ -17,6 +17,7 @@ import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryCaseSensitiveTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createWithSpacesTable;
+import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.truncateIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
@@ -101,6 +102,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void setUpDirs() throws IOException {
     logDir = createTempDirectory("logs");
     unloadDir = createTempDirectory("unload");
+  }
+
+  @AfterEach
+  void truncateTable() {
+    truncateIpByCountryTable(session);
   }
 
   @AfterEach

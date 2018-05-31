@@ -8,8 +8,6 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.truncateIpByCountryTable;
-
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
@@ -33,11 +31,6 @@ abstract class EndToEndCCMITBase {
   protected EndToEndCCMITBase(CCMCluster ccm, Session session) {
     this.ccm = ccm;
     this.session = session;
-  }
-
-  @AfterEach
-  void truncateTable() {
-    truncateIpByCountryTable(session);
   }
 
   @AfterEach

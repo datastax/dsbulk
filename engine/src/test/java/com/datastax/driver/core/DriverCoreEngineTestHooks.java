@@ -8,6 +8,7 @@
  */
 package com.datastax.driver.core;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 @SuppressWarnings("SameParameterValue")
@@ -60,6 +61,10 @@ public class DriverCoreEngineTestHooks {
 
   public static Token newToken(long value) {
     return Token.M3PToken.FACTORY.fromString(Long.toString(value));
+  }
+
+  public static ByteBuffer compose(ByteBuffer... bbs) {
+    return SimpleStatement.compose(bbs);
   }
 
   public static Statement wrappedStatement(StatementWrapper wrapper) {
