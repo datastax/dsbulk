@@ -25,18 +25,17 @@ import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
-import com.datastax.dsbulk.commons.tests.utils.FileUtils;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
-import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.google.common.reflect.TypeToken;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,7 +43,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -57,19 +55,23 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
+@ExtendWith(StreamInterceptingExtension.class)
 @Tag("ccm")
 abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
-  private final LogInterceptor interceptor;
+  private final LogInterceptor logs;
+  private final StreamInterceptor stdout;
 
   private Path logDir;
   private Map<String, Map<String, Map<TokenRange, Integer>>> allRanges;
   private Map<String, Map<String, Map<Host, Integer>>> allHosts;
   private List<Record> records;
 
-  TableReadEndToEndCCMITBase(CCMCluster ccm, Session session, LogInterceptor interceptor) {
+  TableReadEndToEndCCMITBase(
+      CCMCluster ccm, Session session, LogInterceptor logs, StreamInterceptor stdout) {
     super(ccm, session);
-    this.interceptor = interceptor;
+    this.logs = logs;
+    this.stdout = stdout;
   }
 
   @ParameterizedTest(name = "[{index}] unload keyspace {0} table {1}")
@@ -142,6 +144,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("count");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
+    args.add("-stats");
+    args.add("all");
     args.add("--schema.keyspace");
     args.add(keyspace);
     args.add("--schema.table");
@@ -168,6 +172,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("count");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
+    args.add("-stats");
+    args.add("all");
     args.add("--schema.query");
     if (table.equals("single_pk")) {
       args.add(String.format("SELECT token(pk) FROM %s.%s", keyspace, table));
@@ -182,24 +188,18 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
   }
 
   private void assertUnload() {
-    assertThat(interceptor).hasMessageContaining("Reads: total: 10,000");
+    assertThat(logs).hasMessageContaining("Reads: total: 10,000");
     assertThat(records).hasSize(10000);
   }
 
   private void assertCount(String keyspace, String table) {
-    assertThat(interceptor).hasMessageContaining("Reads: total: 10,000");
-    assertThat(interceptor).hasMessageContaining("Total rows in table: 10,000");
+    assertThat(logs).hasMessageContaining("Reads: total: 10,000");
+    assertThat(stdout.getStreamAsString()).contains("Total rows in table: 10,000");
     Map<TokenRange, Integer> ranges = allRanges.get(keyspace).get(table);
     Map<Host, Integer> hosts = allHosts.get(keyspace).get(table);
-    Path operationDirectory = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    Set<String> rowsPerRange =
-        FileUtils.readAllLines(operationDirectory.resolve("rows-per-range.csv"))
-            .collect(Collectors.toSet());
-    Set<String> rowsPerHost =
-        FileUtils.readAllLines(operationDirectory.resolve("rows-per-host.csv"))
-            .collect(Collectors.toSet());
+    List<String> lines = stdout.getStreamLines();
     for (Map.Entry<TokenRange, Integer> entry : ranges.entrySet()) {
-      assertThat(rowsPerRange)
+      assertThat(lines)
           .anyMatch(
               line ->
                   line.startsWith(
@@ -208,7 +208,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
                           entry.getKey().getStart(), entry.getKey().getEnd(), entry.getValue())));
     }
     for (Map.Entry<Host, Integer> entry : hosts.entrySet()) {
-      assertThat(rowsPerHost)
+      assertThat(lines)
           .anyMatch(
               line -> line.startsWith(String.format("%s\t%s", entry.getKey(), entry.getValue())));
     }

@@ -19,6 +19,7 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTokenRange;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.wrappedStatement;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.all;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -1016,7 +1017,7 @@ class SchemaSettingsTest {
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT);
-    ReadResultCounter counter = schemaSettings.createReadResultCounter(session);
+    ReadResultCounter counter = schemaSettings.createReadResultCounter(session, all);
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());

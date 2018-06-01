@@ -319,9 +319,11 @@ public class SchemaSettings {
     return new DefaultReadResultMapper(mapping, recordMetadata);
   }
 
-  public ReadResultCounter createReadResultCounter(Session session) {
+  public ReadResultCounter createReadResultCounter(
+      Session session, EngineSettings.StatisticsMode statisticsMode) {
     prepareStatementAndCreateMapping(session, null, COUNT, false);
-    return new DefaultReadResultCounter(keyspace.getName(), session.getCluster().getMetadata());
+    return new DefaultReadResultCounter(
+        keyspace.getName(), session.getCluster().getMetadata(), statisticsMode);
   }
 
   public List<Statement> createReadStatements(Cluster cluster) {

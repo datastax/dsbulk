@@ -8,37 +8,32 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.dsbulk.engine.internal.settings.LogSettings.OPERATION_DIRECTORY_KEY;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.nio.file.Files.newBufferedWriter;
+import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.all;
+import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.global;
+import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.hosts;
+import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.ranges;
+import static com.google.common.base.Functions.identity;
+import static java.util.stream.Collectors.toMap;
 
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Token;
 import com.datastax.driver.core.TokenRange;
+import com.datastax.dsbulk.engine.internal.settings.EngineSettings;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Functions;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.PrintStream;
 import java.net.InetSocketAddress;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.stream.Collectors;
 import org.jctools.maps.NonBlockingHashMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DefaultReadResultCounter implements ReadResultCounter {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultReadResultCounter.class);
 
   @VisibleForTesting final LongAdder total = new LongAdder();
   @VisibleForTesting final Map<TokenRange, LongAdder> totalsByRange = new NonBlockingHashMap<>();
@@ -46,76 +41,98 @@ public class DefaultReadResultCounter implements ReadResultCounter {
   @VisibleForTesting
   final Map<InetSocketAddress, LongAdder> totalsByHost = new NonBlockingHashMap<>();
 
-  private final Set<TokenRange> ranges;
-  private final Set<InetSocketAddress> hosts;
+  private final Set<TokenRange> tokenRanges;
+  private final Set<InetSocketAddress> addresses;
   private final Token[] ring;
   private final ReplicaSet[] replicaSets;
+  private final EngineSettings.StatisticsMode statisticsMode;
 
-  public DefaultReadResultCounter(String keyspace, Metadata metadata) {
-    // Store required metadata in two data structures that will speed up lookups by token:
-    // 1) ring stores the range start tokens of all ranges, contents are identical to
-    // metadata.tokenMap.ring and are designed to allow binary searches by token.
-    // 2) replicaSets stores a) a given range and b) all of its replicas for the given keyspace,
-    // contents are identical to metadata.tokenMap.tokenToHostsByKeyspace.
-    // Both arrays are filled so that ring[i] == replicaSets[i].range.end,
-    // thus allowing to easily locate the range and replicas of a given token.
-    Set<TokenRange> ranges = metadata.getTokenRanges();
-    ring = new Token[ranges.size()];
-    replicaSets = new ReplicaSet[ranges.size()];
-    int i = 0;
-    Map<Token, TokenRange> rangesByEndingToken =
-        ranges.stream().collect(Collectors.toMap(TokenRange::getEnd, Functions.identity()));
-    for (TokenRange r1 : ranges) {
-      ring[i] = r1.getStart();
-      TokenRange r2 = rangesByEndingToken.get(r1.getStart());
-      replicaSets[i] = new ReplicaSet(r2, metadata.getReplicas(keyspace, r2));
-      i++;
+  public DefaultReadResultCounter(
+      String keyspace, Metadata metadata, EngineSettings.StatisticsMode statisticsMode) {
+    this.statisticsMode = statisticsMode;
+    switch (statisticsMode) {
+      case global:
+        tokenRanges = null;
+        addresses = null;
+        ring = null;
+        replicaSets = null;
+        break;
+      case ranges:
+      case hosts:
+      case all:
+      default:
+        // Store required metadata in two data structures that will speed up lookups by token:
+        // 1) ring stores the range start tokens of all ranges, contents are identical to
+        // metadata.tokenMap.ring and are designed to allow binary searches by token.
+        // 2) replicaSets stores a) a given range and b) all of its replicas for the given keyspace,
+        // contents are identical to metadata.tokenMap.tokenToHostsByKeyspace.
+        // Both arrays are filled so that ring[i] == replicaSets[i].range.end,
+        // thus allowing to easily locate the range and replicas of a given token.
+        Set<TokenRange> ranges = metadata.getTokenRanges();
+        ring = new Token[ranges.size()];
+        replicaSets = new ReplicaSet[ranges.size()];
+        int i = 0;
+        Map<Token, TokenRange> rangesByEndingToken =
+            ranges.stream().collect(toMap(TokenRange::getEnd, identity()));
+        for (TokenRange r1 : ranges) {
+          ring[i] = r1.getStart();
+          TokenRange r2 = rangesByEndingToken.get(r1.getStart());
+          replicaSets[i] = new ReplicaSet(r2, metadata.getReplicas(keyspace, r2));
+          i++;
+        }
+        // these will only serve when printing final totals
+        this.tokenRanges = new TreeSet<>(ranges);
+        addresses = new TreeSet<>(Comparator.comparing(InetSocketAddress::toString));
+        metadata.getAllHosts().stream().map(Host::getSocketAddress).forEach(addresses::add);
+        break;
     }
-    // these will only serve when printing final totals
-    this.ranges = new TreeSet<>(ranges);
-    hosts = new TreeSet<>(Comparator.comparing(InetSocketAddress::toString));
-    metadata.getAllHosts().stream().map(Host::getSocketAddress).forEach(hosts::add);
   }
 
   @Override
   public void update(ReadResult result) {
     Row row = result.getRow().orElseThrow(IllegalStateException::new);
     Token token = row.getToken(0);
-    total.increment();
-    ReplicaSet replicaSet = getReplicaSet(token);
-    update(replicaSet.range);
-    for (InetSocketAddress host : replicaSet.hosts) {
-      update(host);
+    if (statisticsMode == all || statisticsMode == global) {
+      total.increment();
+    }
+    if (statisticsMode == all || statisticsMode == ranges || statisticsMode == hosts) {
+      ReplicaSet replicaSet = getReplicaSet(token);
+      if (statisticsMode == all || statisticsMode == ranges) {
+        update(replicaSet.range);
+      }
+      if (statisticsMode == all || statisticsMode == hosts) {
+        for (InetSocketAddress address : replicaSet.addresses) {
+          update(address);
+        }
+      }
     }
   }
 
   @Override
-  public void reportTotals() throws IOException {
-    Path executionDirectory = Paths.get(System.getProperty(OPERATION_DIRECTORY_KEY));
-    Path rowsPerRange = executionDirectory.resolve("rows-per-range.csv");
-    Path rowsPerHost = executionDirectory.resolve("rows-per-host.csv");
+  public void reportTotals() {
     long totalRows = total.sum();
-    LOGGER.info(String.format("Total rows in table: %,d", totalRows));
-    try (PrintWriter rangeWriter = new PrintWriter(newBufferedWriter(rowsPerRange, UTF_8))) {
-      ranges.forEach(
+    PrintStream out = System.out;
+    if (statisticsMode == all || statisticsMode == global) {
+      out.printf("Total rows in table: %,d%n", totalRows);
+    }
+    if (statisticsMode == all || statisticsMode == hosts) {
+      addresses.forEach(
+          host -> {
+            long totalPerHost = totalsByHost.containsKey(host) ? totalsByHost.get(host).sum() : 0;
+            float percentage = (float) totalPerHost / (float) totalRows * 100f;
+            out.printf("%s\t%d\t%.2f%n", host, totalPerHost, percentage);
+          });
+    }
+    if (statisticsMode == all || statisticsMode == ranges) {
+      tokenRanges.forEach(
           range -> {
             long totalPerRange =
                 totalsByRange.containsKey(range) ? totalsByRange.get(range).sum() : 0;
             float percentage = (float) totalPerRange / (float) totalRows * 100f;
-            rangeWriter.printf(
+            out.printf(
                 "%s\t%s\t%d\t%.2f%n", range.getStart(), range.getEnd(), totalPerRange, percentage);
           });
     }
-    try (PrintWriter hostWriter = new PrintWriter(newBufferedWriter(rowsPerHost, UTF_8))) {
-      hosts.forEach(
-          host -> {
-            long totalPerHost = totalsByHost.containsKey(host) ? totalsByHost.get(host).sum() : 0;
-            float percentage = (float) totalPerHost / (float) totalRows * 100f;
-            hostWriter.printf("%s\t%d\t%.2f%n", host, totalPerHost, percentage);
-          });
-    }
-    LOGGER.info("Totals per range can be found in " + rowsPerRange);
-    LOGGER.info("Totals per host can be found in " + rowsPerHost);
   }
 
   private ReplicaSet getReplicaSet(Token token) {
@@ -133,8 +150,8 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     return replicaSets[i];
   }
 
-  private void update(InetSocketAddress host) {
-    update(totalsByHost, host);
+  private void update(InetSocketAddress address) {
+    update(totalsByHost, address);
   }
 
   private void update(TokenRange range) {
@@ -155,11 +172,12 @@ public class DefaultReadResultCounter implements ReadResultCounter {
 
   private static class ReplicaSet {
     final TokenRange range;
-    final InetSocketAddress[] hosts;
+    final InetSocketAddress[] addresses;
 
-    ReplicaSet(TokenRange range, Set<Host> hosts) {
+    ReplicaSet(TokenRange range, Set<Host> addresses) {
       this.range = range;
-      this.hosts = hosts.stream().map(Host::getSocketAddress).toArray(InetSocketAddress[]::new);
+      this.addresses =
+          addresses.stream().map(Host::getSocketAddress).toArray(InetSocketAddress[]::new);
     }
   }
 }

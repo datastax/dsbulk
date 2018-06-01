@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newToken;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTokenRange;
+import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.all;
 import static java.net.InetSocketAddress.createUnresolved;
 import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -85,7 +86,7 @@ class DefaultReadResultCounterTest {
 
   @Test
   void should_map_result_to_mapped_record_when_mapping_succeeds() {
-    DefaultReadResultCounter counter = new DefaultReadResultCounter("ks", metadata);
+    DefaultReadResultCounter counter = new DefaultReadResultCounter("ks", metadata, all);
 
     // add token1a, belongs to range1/host1
     counter.update(result1);

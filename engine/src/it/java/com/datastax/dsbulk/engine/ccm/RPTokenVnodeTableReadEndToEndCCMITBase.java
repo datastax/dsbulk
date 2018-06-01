@@ -17,6 +17,8 @@ import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 
 @CCMConfig(
   numberOfNodes = 3,
@@ -27,7 +29,8 @@ class RPTokenVnodeTableReadEndToEndCCMITBase extends TableReadEndToEndCCMITBase 
   RPTokenVnodeTableReadEndToEndCCMITBase(
       CCMCluster ccm,
       @SessionConfig(useKeyspace = NONE) Session session,
-      @LogCapture(level = INFO) LogInterceptor interceptor) {
-    super(ccm, session, interceptor);
+      @LogCapture(level = INFO) LogInterceptor interceptor,
+      @StreamCapture StreamInterceptor stdout) {
+    super(ccm, session, interceptor, stdout);
   }
 }

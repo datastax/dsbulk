@@ -103,7 +103,8 @@ public class CountWorkflow implements Workflow {
             cluster.getConfiguration().getCodecRegistry());
     metricsManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
-    readResultCounter = schemaSettings.createReadResultCounter(session);
+    readResultCounter =
+        schemaSettings.createReadResultCounter(session, engineSettings.getStatisticsMode());
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
   }

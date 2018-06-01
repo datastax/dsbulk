@@ -1149,6 +1149,17 @@ When this identifier is user-supplied, it is important to guarantee its uniquene
 
 Default: **&lt;unspecified&gt;**.
 
+#### -stats,--engine.stats _&lt;string&gt;_
+
+Which kind of statistics to compute. Only applicaple for the statistics workflow, ignored otherwise. Possible values are:
+* `global`: count the total number of rows in the table.
+* `ranges`: count the total number of rows per token range in the table.
+* `hosts`: count the total number of rows per hosts in the table.
+* `all`: count the total number of rows in the table, the total number of rows per token range in the table, and count the total number of rows per hosts in the table.
+The default value is `global`.
+
+Default: **"global"**.
+
 <a name="executor"></a>
 ## Executor Settings
 

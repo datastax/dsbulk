@@ -35,4 +35,15 @@ class EngineSettingsTest {
     settings.init();
     assertThat(settings.isDryRun()).isTrue();
   }
+
+  @Test
+  void should_report_statistics_mode() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("stats = all")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
+    EngineSettings settings = new EngineSettings(config);
+    settings.init();
+    assertThat(settings.getStatisticsMode()).isEqualTo(EngineSettings.StatisticsMode.all);
+  }
 }
