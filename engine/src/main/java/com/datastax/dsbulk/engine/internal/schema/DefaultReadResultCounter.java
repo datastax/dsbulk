@@ -19,6 +19,7 @@ import com.datastax.driver.core.Token;
 import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Functions;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
@@ -63,7 +64,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     replicaSets = new ReplicaSet[ranges.size()];
     int i = 0;
     Map<Token, TokenRange> rangesByEndingToken =
-        ranges.stream().collect(Collectors.toMap(TokenRange::getEnd, r -> r));
+        ranges.stream().collect(Collectors.toMap(TokenRange::getEnd, Functions.identity()));
     for (TokenRange r1 : ranges) {
       ring[i] = r1.getStart();
       TokenRange r2 = rangesByEndingToken.get(r1.getStart());
