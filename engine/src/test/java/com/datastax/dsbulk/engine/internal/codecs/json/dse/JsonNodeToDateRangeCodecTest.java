@@ -51,7 +51,6 @@ class JsonNodeToDateRangeCodecTest {
   void should_not_convert_from_invalid_external() {
     JsonNodeToDateRangeCodec codec = new JsonNodeToDateRangeCodec(nullStrings);
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid date range literal"));
   }
 }

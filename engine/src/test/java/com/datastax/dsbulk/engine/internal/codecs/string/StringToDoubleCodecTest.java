@@ -8,42 +8,26 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
+import static com.datastax.driver.core.DataType.cdouble;
+import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
-import static com.google.common.collect.Lists.newArrayList;
-import static java.math.BigDecimal.ONE;
-import static java.math.BigDecimal.ZERO;
-import static java.math.RoundingMode.HALF_EVEN;
-import static java.time.Instant.EPOCH;
-import static java.time.ZoneOffset.UTC;
-import static java.util.Locale.US;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
-import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
-import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.google.common.collect.ImmutableMap;
-import io.netty.util.concurrent.FastThreadLocal;
-import java.math.RoundingMode;
-import java.text.NumberFormat;
+import com.google.common.reflect.TypeToken;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class StringToDoubleCodecTest {
 
-  private final FastThreadLocal<NumberFormat> numberFormat =
-      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+  private StringToDoubleCodec codec;
 
-  private final StringToDoubleCodec codec =
-      new StringToDoubleCodec(
-          numberFormat,
-          OverflowStrategy.REJECT,
-          RoundingMode.HALF_EVEN,
-          CqlTemporalFormat.DEFAULT_INSTANCE,
-          UTC,
-          MILLISECONDS,
-          EPOCH.atZone(UTC),
-          ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO),
-          newArrayList("NULL"));
+  @BeforeEach
+  void setUp() {
+    codec =
+        (StringToDoubleCodec)
+            newCodecRegistry(
+                    "nullStrings = [NULL], roundingStrategy = HALF_EVEN, formatNumbers = true")
+                .codecFor(cdouble(), TypeToken.of(String.class));
+  }
 
   @Test
   void should_convert_from_valid_external() {
@@ -80,13 +64,13 @@ class StringToDoubleCodecTest {
         .convertsFromInternal(1234.56d)
         .toExternal("1,234.56")
         .convertsFromInternal(0.001)
-        .toExternal("0") // decimals truncated
+        .toExternal("0")
         .convertsFromInternal(null)
         .toExternal("NULL");
   }
 
   @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec).cannotConvertFromExternal("").cannotConvertFromExternal("not a valid double");
+    assertThat(codec).cannotConvertFromExternal("not a valid double");
   }
 }

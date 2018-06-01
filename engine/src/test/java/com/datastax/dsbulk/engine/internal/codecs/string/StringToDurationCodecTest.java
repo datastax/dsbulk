@@ -49,7 +49,6 @@ class StringToDurationCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFromExternal("")
         .cannotConvertFromExternal("1Y3M4D") // The minutes should be after days
         .cannotConvertFromExternal("not a valid duration");
   }

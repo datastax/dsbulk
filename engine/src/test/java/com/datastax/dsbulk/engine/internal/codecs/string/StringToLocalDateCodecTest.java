@@ -52,8 +52,6 @@ class StringToLocalDateCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     StringToLocalDateCodec codec = new StringToLocalDateCodec(format1, UTC, nullStrings);
-    assertThat(codec)
-        .cannotConvertFromExternal("")
-        .cannotConvertFromExternal("not a valid date format");
+    assertThat(codec).cannotConvertFromExternal("not a valid date format");
   }
 }

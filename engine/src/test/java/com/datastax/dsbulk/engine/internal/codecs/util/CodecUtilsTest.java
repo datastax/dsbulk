@@ -104,6 +104,7 @@ class CodecUtilsTest {
   @Test
   void should_parse_temporal_complex() {
     assertThat(parseTemporal(null, timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)).isNull();
+    assertThat(parseTemporal("", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)).isNull();
     assertThat(
             Instant.from(
                 parseTemporal(
@@ -154,6 +155,17 @@ class CodecUtilsTest {
     assertThat(
             parseNumber(
                 null,
+                numberFormat1,
+                timestampFormat1,
+                UTC,
+                MILLISECONDS,
+                EPOCH.atZone(UTC),
+                booleanInputWords,
+                booleanNumbers))
+        .isNull();
+    assertThat(
+            parseNumber(
+                "",
                 numberFormat1,
                 timestampFormat1,
                 UTC,

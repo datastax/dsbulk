@@ -14,6 +14,7 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.ImmutableMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,6 +25,7 @@ public class JsonNodeToMapCodec<K, V> extends JsonNodeConvertingCodec<Map<K, V>>
   private final ConvertingCodec<String, K> keyCodec;
   private final ConvertingCodec<JsonNode, V> valueCodec;
   private final ObjectMapper objectMapper;
+  private final Map<K, V> emptyMap;
 
   public JsonNodeToMapCodec(
       TypeCodec<Map<K, V>> collectionCodec,
@@ -35,6 +37,7 @@ public class JsonNodeToMapCodec<K, V> extends JsonNodeConvertingCodec<Map<K, V>>
     this.keyCodec = keyCodec;
     this.valueCodec = valueCodec;
     this.objectMapper = objectMapper;
+    emptyMap = ImmutableMap.of();
   }
 
   @Override
@@ -46,7 +49,7 @@ public class JsonNodeToMapCodec<K, V> extends JsonNodeConvertingCodec<Map<K, V>>
       throw new InvalidTypeException("Expecting OBJECT node, got " + node.getNodeType());
     }
     if (node.size() == 0) {
-      return null;
+      return emptyMap;
     }
     Map<K, V> map = new LinkedHashMap<>(node.size());
     Iterator<Map.Entry<String, JsonNode>> it = node.fields();

@@ -50,9 +50,7 @@ public class StringToUnknownTypeCodecTest {
   void should_not_convert_from_invalid_external() {
     StringToUnknownTypeCodec<Fruit> codec =
         new StringToUnknownTypeCodec<>(targetCodec, nullStrings);
-    assertThat(codec)
-        .cannotConvertFromExternal("")
-        .cannotConvertFromExternal("not a valid fruit literal");
+    assertThat(codec).cannotConvertFromExternal("not a valid fruit literal");
   }
 
   public static final DataType FRUIT_TYPE = DataType.custom("com.datastax.dse.FruitType");

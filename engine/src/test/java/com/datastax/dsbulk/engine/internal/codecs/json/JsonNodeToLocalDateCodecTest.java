@@ -67,7 +67,6 @@ class JsonNodeToLocalDateCodecTest {
   void should_not_convert_from_invalid_external() {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, nullStrings);
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }
 }

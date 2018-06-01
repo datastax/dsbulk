@@ -8,43 +8,28 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
+import static com.datastax.driver.core.DataType.decimal;
+import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
-import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
-import static java.math.RoundingMode.HALF_EVEN;
-import static java.time.Instant.EPOCH;
-import static java.time.ZoneOffset.UTC;
-import static java.util.Locale.US;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
-import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
-import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.google.common.collect.ImmutableMap;
-import io.netty.util.concurrent.FastThreadLocal;
+import com.google.common.reflect.TypeToken;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.text.NumberFormat;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class StringToBigDecimalCodecTest {
 
-  private final FastThreadLocal<NumberFormat> numberFormat =
-      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+  StringToBigDecimalCodec codec;
 
-  private final StringToBigDecimalCodec codec =
-      new StringToBigDecimalCodec(
-          numberFormat,
-          OverflowStrategy.REJECT,
-          RoundingMode.HALF_EVEN,
-          CqlTemporalFormat.DEFAULT_INSTANCE,
-          UTC,
-          MILLISECONDS,
-          EPOCH.atZone(UTC),
-          ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO),
-          newArrayList("NULL"));
+  @BeforeEach
+  void setUp() {
+    codec =
+        (StringToBigDecimalCodec)
+            newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
+                .codecFor(decimal(), TypeToken.of(String.class));
+  }
 
   @Test
   void should_convert_from_valid_external() {
@@ -84,8 +69,6 @@ class StringToBigDecimalCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec)
-        .cannotConvertFromExternal("")
-        .cannotConvertFromExternal("not a valid decimal");
+    assertThat(codec).cannotConvertFromExternal("not a valid decimal");
   }
 }

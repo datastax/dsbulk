@@ -7,6 +7,7 @@
 - [bug] DAT-288: DSBulk cannot handle columns of type list<timestamp>.
 - [improvement] DAT-292: Add support for counter tables.
 - [bug] DAT-295: Generated query does not always contain all token ranges.
+- [bug] DAT-297: Empty map values do not work when loading using DSBulk.
 
 
 ### 1.0.2

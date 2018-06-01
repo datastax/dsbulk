@@ -115,6 +115,6 @@ class StringToUUIDCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec).cannotConvertFromExternal("").cannotConvertFromExternal("not a valid UUID");
+    assertThat(codec).cannotConvertFromExternal("not a valid UUID");
   }
 }

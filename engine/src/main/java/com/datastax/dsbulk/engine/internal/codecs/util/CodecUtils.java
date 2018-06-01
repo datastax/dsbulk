@@ -75,7 +75,7 @@ public class CodecUtils {
     Objects.requireNonNull(numberFormat);
     Objects.requireNonNull(timeUnit);
     Objects.requireNonNull(epoch);
-    if (s == null) {
+    if (s == null || s.isEmpty()) {
       return null;
     }
     TemporalAccessor temporal;
@@ -140,11 +140,8 @@ public class CodecUtils {
     Objects.requireNonNull(epoch);
     Objects.requireNonNull(booleanStrings);
     Objects.requireNonNull(booleanNumbers);
-    if (s == null) {
+    if (s == null || s.isEmpty()) {
       return null;
-    }
-    if (s.isEmpty()) {
-      throw new IllegalArgumentException("Cannot convert empty string to number");
     }
     Number number;
     try {
@@ -281,7 +278,7 @@ public class CodecUtils {
    */
   public static Number parseNumber(String s, @NotNull NumberFormat format) throws ParseException {
     Objects.requireNonNull(format);
-    if (s == null) {
+    if (s == null || s.isEmpty()) {
       return null;
     }
     ParsePosition pos = new ParsePosition(0);

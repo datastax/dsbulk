@@ -8,75 +8,33 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
+import static com.datastax.driver.core.DataType.cdouble;
+import static com.datastax.driver.core.DataType.varchar;
+import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
-import static com.google.common.collect.Lists.newArrayList;
-import static java.math.BigDecimal.ONE;
-import static java.math.BigDecimal.ZERO;
-import static java.math.RoundingMode.HALF_EVEN;
-import static java.time.Instant.EPOCH;
-import static java.time.ZoneOffset.UTC;
-import static java.util.Locale.US;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
-import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToListCodec;
-import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToMapCodec;
-import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToStringCodec;
-import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
-import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
-import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.datastax.driver.core.DataType;
 import com.google.common.collect.ImmutableMap;
-import io.netty.util.concurrent.FastThreadLocal;
-import java.math.RoundingMode;
-import java.text.NumberFormat;
+import com.google.common.reflect.TypeToken;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class StringToMapCodecTest {
 
-  private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private StringToMapCodec<Double, List<String>> codec;
 
-  private final FastThreadLocal<NumberFormat> numberFormat =
-      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
-
-  private final List<String> nullStrings = newArrayList("NULL", "");
-
-  private final StringToDoubleCodec keyCodec =
-      new StringToDoubleCodec(
-          numberFormat,
-          OverflowStrategy.REJECT,
-          RoundingMode.HALF_EVEN,
-          CqlTemporalFormat.DEFAULT_INSTANCE,
-          UTC,
-          MILLISECONDS,
-          EPOCH.atZone(UTC),
-          ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO),
-          nullStrings);
-
-  private final TypeCodec<List<String>> stringListCodec = TypeCodec.list(TypeCodec.varchar());
-
-  private final ConvertingCodec<JsonNode, List<String>> valueCodec =
-      new JsonNodeToListCodec<>(
-          stringListCodec,
-          new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings),
-          objectMapper,
-          nullStrings);
-
-  private final TypeCodec<Map<Double, List<String>>> mapCodec =
-      TypeCodec.map(TypeCodec.cdouble(), stringListCodec);
-
-  private final StringToMapCodec<Double, List<String>> codec =
-      new StringToMapCodec<>(
-          new JsonNodeToMapCodec<>(mapCodec, keyCodec, valueCodec, objectMapper, nullStrings),
-          objectMapper,
-          nullStrings);
+  @BeforeEach
+  void setUp() {
+    codec =
+        (StringToMapCodec<Double, List<String>>)
+            newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
+                .codecFor(
+                    DataType.map(cdouble(), DataType.list(varchar())), TypeToken.of(String.class));
+  }
 
   @Test
   void should_convert_from_valid_external() {
@@ -87,16 +45,19 @@ class StringToMapCodecTest {
         .toInternal(map(1234.56d, list("foo", "bar"), 0.12d, list("qix")))
         .convertsFromExternal("{ '1,234.56' : ['foo'] , '.12' : ['bar']}")
         .toInternal(map(1234.56d, list("foo"), 0.12d, list("bar")))
-        .convertsFromExternal("{1: , '' :['foo']}")
-        .toInternal(map(1d, null, null, list("foo")))
+        .convertsFromExternal("{1: [], 2 :[]}")
+        .toInternal(map(1d, list(), 2d, list()))
+        // DAT-297: don't apply nullStrings to inner elements
         .convertsFromExternal("{1: [\"NULL\"], 2: ['NULL']}")
-        .toInternal(map(1d, list((String) null), 2d, list((String) null)))
+        .toInternal(map(1d, list("NULL"), 2d, list("NULL")))
+        .convertsFromExternal("{1: [\"\"], 2: ['']}")
+        .toInternal(map(1d, list(""), 2d, list("")))
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
         .toInternal(null)
         .convertsFromExternal("{}")
-        .toInternal(null)
+        .toInternal(ImmutableMap.of())
         .convertsFromExternal("")
         .toInternal(null);
   }
@@ -108,8 +69,12 @@ class StringToMapCodecTest {
         .toExternal("{\"1\":[\"foo\",\"bar\"],\"2\":[\"qix\"]}")
         .convertsFromInternal(map(1234.56d, list("foo", "bar"), 0.12d, list("qix")))
         .toExternal("{\"1,234.56\":[\"foo\",\"bar\"],\"0.12\":[\"qix\"]}")
+        .convertsFromInternal(map(1d, list(""), 2d, list("")))
+        .toExternal("{\"1\":[\"\"],\"2\":[\"\"]}")
         .convertsFromInternal(map(1d, null, 2d, list()))
         .toExternal("{\"1\":null,\"2\":[]}")
+        .convertsFromInternal(ImmutableMap.of())
+        .toExternal("{}")
         .convertsFromInternal(null)
         .toExternal("NULL");
   }
@@ -117,8 +82,9 @@ class StringToMapCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFromExternal("not a valid input")
-        .cannotConvertFromExternal("{not a,valid input}");
+        .cannotConvertFromExternal("{\"not a valid input\":\"foo\"}")
+        .cannotConvertFromExternal("[1,\"not a valid object\"]")
+        .cannotConvertFromExternal("42");
   }
 
   private static Map<Double, List<String>> map(

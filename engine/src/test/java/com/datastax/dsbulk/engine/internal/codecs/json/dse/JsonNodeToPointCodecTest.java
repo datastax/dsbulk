@@ -59,7 +59,6 @@ class JsonNodeToPointCodecTest {
   void should_not_convert_from_invalid_external() {
     JsonNodeToPointCodec codec = new JsonNodeToPointCodec(objectMapper, nullStrings);
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid point literal"));
   }
 }

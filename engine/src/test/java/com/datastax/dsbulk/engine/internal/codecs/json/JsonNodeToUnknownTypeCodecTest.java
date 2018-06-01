@@ -50,7 +50,6 @@ class JsonNodeToUnknownTypeCodecTest {
     JsonNodeToUnknownTypeCodec<Fruit> codec =
         new JsonNodeToUnknownTypeCodec<>(targetCodec, nullStrings);
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid fruit literal"));
   }
 }

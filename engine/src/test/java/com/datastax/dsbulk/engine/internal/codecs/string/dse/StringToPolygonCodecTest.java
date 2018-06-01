@@ -50,8 +50,6 @@ class StringToPolygonCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     StringToPolygonCodec codec = new StringToPolygonCodec(nullStrings);
-    assertThat(codec)
-        .cannotConvertFromExternal("")
-        .cannotConvertFromExternal("not a valid polygon literal");
+    assertThat(codec).cannotConvertFromExternal("not a valid polygon literal");
   }
 }

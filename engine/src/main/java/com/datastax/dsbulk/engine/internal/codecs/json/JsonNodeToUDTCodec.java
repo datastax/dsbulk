@@ -47,7 +47,7 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
       throw new InvalidTypeException("Expecting OBJECT node, got " + node.getNodeType());
     }
     if (node.size() == 0) {
-      return null;
+      return definition.newValue();
     }
     if (node.size() != definition.size()) {
       throw new InvalidTypeException(
