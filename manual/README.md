@@ -217,9 +217,9 @@ used in both load and unload.
 
 ## Count Examples
 
-When counting rows on a table, no connector is required, and some settings are ignored, such as `schema.mapping`.
+When counting rows in a table, no connector is required, and some settings are ignored, such as `schema.mapping`.
 
-* Count the total rows int the `ks1.table1` table in a cluster with a `localhost` contact point. 
+* Count the total rows in the `ks1.table1` table in a cluster with a `localhost` contact point. 
 
   `dsbulk count -k ks1 -t table1`
 

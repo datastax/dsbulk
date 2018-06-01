@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.Collectors;
 import org.jctools.maps.NonBlockingHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,14 +62,12 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     ring = new Token[ranges.size()];
     replicaSets = new ReplicaSet[ranges.size()];
     int i = 0;
+    Map<Token, TokenRange> rangesByEndingToken =
+        ranges.stream().collect(Collectors.toMap(TokenRange::getEnd, r -> r));
     for (TokenRange r1 : ranges) {
       ring[i] = r1.getStart();
-      for (TokenRange r2 : ranges) {
-        if (r2.getEnd().equals(r1.getStart())) {
-          replicaSets[i] = new ReplicaSet(r2, metadata.getReplicas(keyspace, r2));
-          break;
-        }
-      }
+      TokenRange r2 = rangesByEndingToken.get(r1.getStart());
+      replicaSets[i] = new ReplicaSet(r2, metadata.getReplicas(keyspace, r2));
       i++;
     }
     // these will only serve when printing final totals
@@ -96,29 +95,26 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     Path rowsPerHost = executionDirectory.resolve("rows-per-host.csv");
     long totalRows = total.sum();
     LOGGER.info(String.format("Total rows in table: %,d", totalRows));
-    if (totalRows > 0) {
-      try (PrintWriter rangeWriter = new PrintWriter(newBufferedWriter(rowsPerRange, UTF_8))) {
-        ranges.forEach(
-            range -> {
-              long totalPerRange =
-                  totalsByRange.containsKey(range) ? totalsByRange.get(range).sum() : 0;
-              float percentage = (float) totalPerRange / (float) totalRows * 100f;
-              rangeWriter.printf(
-                  "%s\t%s\t%d\t%.2f%n",
-                  range.getStart(), range.getEnd(), totalPerRange, percentage);
-            });
-      }
-      try (PrintWriter hostWriter = new PrintWriter(newBufferedWriter(rowsPerHost, UTF_8))) {
-        hosts.forEach(
-            host -> {
-              long totalPerHost = totalsByHost.containsKey(host) ? totalsByHost.get(host).sum() : 0;
-              float percentage = (float) totalPerHost / (float) totalRows * 100f;
-              hostWriter.printf("%s\t%d\t%.2f%n", host, totalPerHost, percentage);
-            });
-      }
-      LOGGER.info("Totals per range can be found in " + rowsPerRange);
-      LOGGER.info("Totals per host can be found in " + rowsPerHost);
+    try (PrintWriter rangeWriter = new PrintWriter(newBufferedWriter(rowsPerRange, UTF_8))) {
+      ranges.forEach(
+          range -> {
+            long totalPerRange =
+                totalsByRange.containsKey(range) ? totalsByRange.get(range).sum() : 0;
+            float percentage = (float) totalPerRange / (float) totalRows * 100f;
+            rangeWriter.printf(
+                "%s\t%s\t%d\t%.2f%n", range.getStart(), range.getEnd(), totalPerRange, percentage);
+          });
     }
+    try (PrintWriter hostWriter = new PrintWriter(newBufferedWriter(rowsPerHost, UTF_8))) {
+      hosts.forEach(
+          host -> {
+            long totalPerHost = totalsByHost.containsKey(host) ? totalsByHost.get(host).sum() : 0;
+            float percentage = (float) totalPerHost / (float) totalRows * 100f;
+            hostWriter.printf("%s\t%d\t%.2f%n", host, totalPerHost, percentage);
+          });
+    }
+    LOGGER.info("Totals per range can be found in " + rowsPerRange);
+    LOGGER.info("Totals per host can be found in " + rowsPerHost);
   }
 
   private ReplicaSet getReplicaSet(Token token) {

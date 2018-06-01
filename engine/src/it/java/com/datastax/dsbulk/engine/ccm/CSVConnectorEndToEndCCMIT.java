@@ -104,7 +104,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     unloadDir = createTempDirectory("unload");
   }
 
-  @AfterEach
+  @BeforeEach
   void truncateTable() {
     truncateIpByCountryTable(session);
   }
