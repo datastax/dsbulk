@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -110,7 +109,7 @@ class SettingsValidatorTest {
 
   @Test
   void should_error_on_bad_arguments() {
-    for (String argument : Arrays.asList(BAD_PARAMS_WRONG_TYPE)) {
+    for (String argument : BAD_PARAMS_WRONG_TYPE) {
       int starting_index = argument.indexOf("-", argument.indexOf("-argument") + 1) + 2;
       int ending_index = argument.indexOf("=");
       String argPrefix = argument.substring(starting_index, ending_index);
@@ -131,7 +130,7 @@ class SettingsValidatorTest {
     // These errors will look like this; String: 1: Invalid value at 'protocol.compression':
     // The enum class Compression has no constant of the name 'badValue' (should be one of [NONE,
     // SNAPPY, LZ4].
-    for (String argument : Arrays.asList(BAD_ENUM)) {
+    for (String argument : BAD_ENUM) {
       new DataStaxBulkLoader(
               new String[] {
                 "load",
@@ -149,7 +148,7 @@ class SettingsValidatorTest {
 
     // These errors will look like this; String: 1: Invalid value at 'socket.readTimeout': No number
     // in duration value 'badValue'
-    for (String argument : Arrays.asList(BAD_DURATION)) {
+    for (String argument : BAD_DURATION) {
       new DataStaxBulkLoader(
               new String[] {
                 "load",
