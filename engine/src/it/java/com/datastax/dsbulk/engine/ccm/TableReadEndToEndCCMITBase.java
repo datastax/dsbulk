@@ -76,11 +76,11 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   @ParameterizedTest(name = "[{index}] unload keyspace {0} table {1}")
   @CsvSource({
-    "rf_1,single_pk",
-    "rf_1,composite_pk",
-    "rf_2,single_pk",
+    "RF_1,SINGLE_PK",
+    "RF_1,composite_pk",
+    "rf_2,SINGLE_PK",
     "rf_3,composite_pk",
-    "rf_3,single_pk",
+    "rf_3,SINGLE_PK",
     "rf_3,composite_pk",
   })
   void full_unload(String keyspace, String table) {
@@ -104,11 +104,11 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   @ParameterizedTest(name = "[{index}] unload keyspace {0} table {1} (custom query)")
   @CsvSource({
-    "rf_1,single_pk",
-    "rf_1,composite_pk",
-    "rf_2,single_pk",
+    "RF_1,SINGLE_PK",
+    "RF_1,composite_pk",
+    "rf_2,SINGLE_PK",
     "rf_3,composite_pk",
-    "rf_3,single_pk",
+    "rf_3,SINGLE_PK",
     "rf_3,composite_pk",
   })
   void full_unload_custom_query(String keyspace, String table) {
@@ -120,7 +120,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
     args.add("--schema.query");
-    args.add(String.format("SELECT * FROM %s.%s", keyspace, table));
+    args.add(String.format("\"SELECT * FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
     args.add(table);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
@@ -131,11 +131,11 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   @ParameterizedTest(name = "[{index}] count keyspace {0} table {1}")
   @CsvSource({
-    "rf_1,single_pk",
-    "rf_1,composite_pk",
-    "rf_2,single_pk",
+    "RF_1,SINGLE_PK",
+    "RF_1,composite_pk",
+    "rf_2,SINGLE_PK",
     "rf_3,composite_pk",
-    "rf_3,single_pk",
+    "rf_3,SINGLE_PK",
     "rf_3,composite_pk",
   })
   void full_count(String keyspace, String table) {
@@ -159,11 +159,11 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   @ParameterizedTest(name = "[{index}] count keyspace {0} table {1} (custom query)")
   @CsvSource({
-    "rf_1,single_pk",
-    "rf_1,composite_pk",
-    "rf_2,single_pk",
+    "RF_1,SINGLE_PK",
+    "RF_1,composite_pk",
+    "rf_2,SINGLE_PK",
     "rf_3,composite_pk",
-    "rf_3,single_pk",
+    "rf_3,SINGLE_PK",
     "rf_3,composite_pk",
   })
   void full_count_custom_query(String keyspace, String table) {
@@ -175,10 +175,10 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("-stats");
     args.add("all");
     args.add("--schema.query");
-    if (table.equals("single_pk")) {
-      args.add(String.format("SELECT token(pk) FROM %s.%s", keyspace, table));
+    if (table.equals("SINGLE_PK")) {
+      args.add(String.format("\"SELECT pk FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
     } else {
-      args.add(String.format("SELECT token(pk1,pk2) FROM %s.%s", keyspace, table));
+      args.add(String.format("\"SELECT pk1,pk2 FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
     }
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
@@ -204,28 +204,28 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
               line ->
                   line.startsWith(
                       String.format(
-                          "%s\t%s\t%s",
+                          "%s %s %s",
                           entry.getKey().getStart(), entry.getKey().getEnd(), entry.getValue())));
     }
     for (Map.Entry<Host, Integer> entry : hosts.entrySet()) {
       assertThat(lines)
           .anyMatch(
-              line -> line.startsWith(String.format("%s\t%s", entry.getKey(), entry.getValue())));
+              line -> line.startsWith(String.format("%s %s", entry.getKey(), entry.getValue())));
     }
   }
 
   @BeforeAll
   void createKeyspacesAndTables() {
-    session.execute(createKeyspaceSimpleStrategy("rf_1", 1));
+    session.execute(createKeyspaceSimpleStrategy("RF_1", 1));
     session.execute(createKeyspaceSimpleStrategy("rf_2", 2));
     session.execute(createKeyspaceSimpleStrategy("rf_3", 3));
 
-    session.execute("CREATE TABLE rf_1.single_pk (pk int PRIMARY KEY, v int)");
-    session.execute("CREATE TABLE rf_2.single_pk (pk int PRIMARY KEY, v int)");
-    session.execute("CREATE TABLE rf_3.single_pk (pk int PRIMARY KEY, v int)");
+    session.execute("CREATE TABLE \"RF_1\".\"SINGLE_PK\" (pk int PRIMARY KEY, v int)");
+    session.execute("CREATE TABLE rf_2.\"SINGLE_PK\" (pk int PRIMARY KEY, v int)");
+    session.execute("CREATE TABLE rf_3.\"SINGLE_PK\" (pk int PRIMARY KEY, v int)");
 
     session.execute(
-        "CREATE TABLE rf_1.composite_pk (pk1 int, pk2 int, v int, PRIMARY KEY ((pk1, pk2)))");
+        "CREATE TABLE \"RF_1\".composite_pk (pk1 int, pk2 int, v int, PRIMARY KEY ((pk1, pk2)))");
     session.execute(
         "CREATE TABLE rf_2.composite_pk (pk1 int, pk2 int, v int, PRIMARY KEY ((pk1, pk2)))");
     session.execute(
@@ -234,18 +234,18 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     allRanges = new HashMap<>();
     allHosts = new HashMap<>();
 
-    populateSinglePkTable("rf_1");
+    populateSinglePkTable("RF_1");
     populateSinglePkTable("rf_2");
     populateSinglePkTable("rf_3");
 
-    populateCompositePkTable("rf_1");
+    populateCompositePkTable("RF_1");
     populateCompositePkTable("rf_2");
     populateCompositePkTable("rf_3");
   }
 
   @AfterAll
   void dropKeyspaces() {
-    session.execute("DROP KEYSPACE IF EXISTS rf_1");
+    session.execute("DROP KEYSPACE IF EXISTS \"RF_1\"");
     session.execute("DROP KEYSPACE IF EXISTS rf_2");
     session.execute("DROP KEYSPACE IF EXISTS rf_3");
   }
@@ -310,10 +310,10 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
               .orElse(null);
       ranges.compute(range, (r, t) -> t == null ? 1 : t + 1);
       session.execute(
-          String.format("INSERT INTO %s.single_pk (pk, v) VALUES (?, ?)", keyspace), i, 42);
+          String.format("INSERT INTO \"%s\".\"SINGLE_PK\" (pk, v) VALUES (?, ?)", keyspace), i, 42);
     }
-    allRanges.computeIfAbsent(keyspace, k -> new HashMap<>()).put("single_pk", ranges);
-    allHosts.computeIfAbsent(keyspace, k -> new HashMap<>()).put("single_pk", hosts);
+    allRanges.computeIfAbsent(keyspace, k -> new HashMap<>()).put("SINGLE_PK", ranges);
+    allHosts.computeIfAbsent(keyspace, k -> new HashMap<>()).put("SINGLE_PK", hosts);
   }
 
   private void populateCompositePkTable(String keyspace) {
@@ -338,7 +338,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
                 .orElse(null);
         ranges.compute(range, (r, t) -> t == null ? 1 : t + 1);
         session.execute(
-            String.format("INSERT INTO %s.composite_pk (pk1, pk2, v) VALUES (?, ?, ?)", keyspace),
+            String.format(
+                "INSERT INTO \"%s\".composite_pk (pk1, pk2, v) VALUES (?, ?, ?)", keyspace),
             i,
             j,
             42);

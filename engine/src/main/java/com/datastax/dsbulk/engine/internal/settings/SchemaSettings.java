@@ -88,6 +88,13 @@ public class SchemaSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaSettings.class);
 
+  public enum StatisticsMode {
+    global,
+    ranges,
+    hosts,
+    all
+  }
+
   private static final String TTL_VARNAME = "dsbulk_internal_ttl";
   private static final String TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
 
@@ -101,6 +108,7 @@ public class SchemaSettings {
   private static final String QUERY = "query";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
+  private static final String STATS = "statisticsMode";
 
   // A mapping spec may refer to these special variables which are used to bind
   // input fields to the write timestamp or ttl of the record.
@@ -125,6 +133,7 @@ public class SchemaSettings {
   private String query;
   private PreparedStatement preparedStatement;
   private String writeTimeVariable;
+  private StatisticsMode statisticsMode;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
@@ -282,6 +291,8 @@ public class SchemaSettings {
         }
       }
 
+      statisticsMode = config.getEnum(StatisticsMode.class, STATS);
+
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
     } catch (IllegalArgumentException e) {
@@ -319,11 +330,10 @@ public class SchemaSettings {
     return new DefaultReadResultMapper(mapping, recordMetadata);
   }
 
-  public ReadResultCounter createReadResultCounter(
-      Session session, EngineSettings.StatisticsMode statisticsMode) {
+  public ReadResultCounter createReadResultCounter(Session session) {
     prepareStatementAndCreateMapping(session, null, COUNT, false);
     return new DefaultReadResultCounter(
-        keyspace.getName(), session.getCluster().getMetadata(), statisticsMode);
+        keyspaceName, session.getCluster().getMetadata(), statisticsMode);
   }
 
   public List<Statement> createReadStatements(Cluster cluster) {
@@ -407,9 +417,9 @@ public class SchemaSettings {
       inferKeyspaceAndTable(session, variables);
       // validate user-provided query
       if (workflowType == LOAD) {
-        validatePartitionKeyPresent(variables, fieldsToVariables);
+        validatePartitionKeyPresentInWhereClause(variables, fieldsToVariables);
       } else if (workflowType == COUNT) {
-        validateTokenPresent();
+        validatePartitionKeyPresentInSelectClause(variables, fieldsToVariables);
       }
     }
     assert fieldsToVariables != null;
@@ -587,7 +597,7 @@ public class SchemaSettings {
   }
 
   /** version for user-supplied queries */
-  private void validatePartitionKeyPresent(
+  private void validatePartitionKeyPresentInWhereClause(
       ColumnDefinitions definitions, BiMap<String, String> fieldsToVariables) {
     // TODO DAT-294 validate entire PK by parsing the query
     // for a custom query, we cannot know if the user has named his variables
@@ -608,8 +618,14 @@ public class SchemaSettings {
     }
   }
 
-  private void validateTokenPresent() {
-    // TODO DAT-294
+  private void validatePartitionKeyPresentInSelectClause(
+      ColumnDefinitions definitions, BiMap<String, String> fieldsToVariables) {
+    // TODO DAT-294 validate entire PK by parsing the query
+    // the query must contain the entire partition key in the select clause,
+    // and nothing else.
+    // For a custom query, we cannot know if the user has named his variables
+    // like the column names or not, and the prepared statement itself does
+    // not help here. So in this case we cannot check anything.
   }
 
   private Config getMapping() throws BulkConfigurationException {
@@ -782,7 +798,14 @@ public class SchemaSettings {
   private String inferCountQuery() {
     StringBuilder sb = new StringBuilder("SELECT ");
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
-    appendTokenFunction(sb, partitionKey);
+    Iterator<ColumnMetadata> it = partitionKey.iterator();
+    while (it.hasNext()) {
+      ColumnMetadata col = it.next();
+      sb.append(Metadata.quoteIfNecessary(col.getName()));
+      if (it.hasNext()) {
+        sb.append(',');
+      }
+    }
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
     appendTokenFunction(sb, partitionKey);
     sb.append(" > :start AND ");

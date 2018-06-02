@@ -593,6 +593,17 @@ The Time-To-Live (TTL) of inserted/updated cells during load (seconds); a value 
 
 Default: **-1**.
 
+#### -stats,--schema.statisticsMode _&lt;string&gt;_
+
+Which kind of statistics to compute. Only applicaple for the count workflow, ignored otherwise. Possible values are:
+* `global`: count the total number of rows in the table.
+* `ranges`: count the total number of rows per token range in the table.
+* `hosts`: count the total number of rows per hosts in the table.
+* `all`: count the total number of rows in the table, the total number of rows per token range in the table, and count the total number of rows per hosts in the table.
+The default value is `global`.
+
+Default: **"global"**.
+
 <a name="batch"></a>
 ## Batch Settings
 
@@ -1148,17 +1159,6 @@ When this identifier is user-supplied, it is important to guarantee its uniquene
 - `%3$s` : the JVM process PID (this parameter might not be available on some operating systems; if its value cannot be determined, a random integer will be inserted instead).
 
 Default: **&lt;unspecified&gt;**.
-
-#### -stats,--engine.stats _&lt;string&gt;_
-
-Which kind of statistics to compute. Only applicaple for the statistics workflow, ignored otherwise. Possible values are:
-* `global`: count the total number of rows in the table.
-* `ranges`: count the total number of rows per token range in the table.
-* `hosts`: count the total number of rows per hosts in the table.
-* `all`: count the total number of rows in the table, the total number of rows per token range in the table, and count the total number of rows per hosts in the table.
-The default value is `global`.
-
-Default: **"global"**.
 
 <a name="executor"></a>
 ## Executor Settings

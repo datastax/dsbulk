@@ -19,7 +19,6 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTokenRange;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.wrappedStatement;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
-import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.all;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -1014,15 +1013,15 @@ class SchemaSettingsTest {
   @Test
   void should_create_row_counter() {
     when(table.getPartitionKey()).thenReturn(newArrayList(col1));
-    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
+    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1, statisticsMode=all");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT);
-    ReadResultCounter counter = schemaSettings.createReadResultCounter(session, all);
+    ReadResultCounter counter = schemaSettings.createReadResultCounter(session);
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
   }
 
   @Test

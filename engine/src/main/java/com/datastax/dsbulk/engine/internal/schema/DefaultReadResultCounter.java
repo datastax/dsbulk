@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.all;
-import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.global;
-import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.hosts;
-import static com.datastax.dsbulk.engine.internal.settings.EngineSettings.StatisticsMode.ranges;
+import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.StatisticsMode.all;
+import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.StatisticsMode.global;
+import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.StatisticsMode.hosts;
+import static com.datastax.dsbulk.engine.internal.settings.SchemaSettings.StatisticsMode.ranges;
 import static com.google.common.base.Functions.identity;
 import static java.util.stream.Collectors.toMap;
 
@@ -20,11 +20,12 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Token;
 import com.datastax.driver.core.TokenRange;
-import com.datastax.dsbulk.engine.internal.settings.EngineSettings;
+import com.datastax.dsbulk.engine.internal.settings.SchemaSettings.StatisticsMode;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Map;
@@ -41,14 +42,16 @@ public class DefaultReadResultCounter implements ReadResultCounter {
   @VisibleForTesting
   final Map<InetSocketAddress, LongAdder> totalsByHost = new NonBlockingHashMap<>();
 
+  private final Metadata metadata;
+  private final StatisticsMode statisticsMode;
   private final Set<TokenRange> tokenRanges;
   private final Set<InetSocketAddress> addresses;
   private final Token[] ring;
   private final ReplicaSet[] replicaSets;
-  private final EngineSettings.StatisticsMode statisticsMode;
 
   public DefaultReadResultCounter(
-      String keyspace, Metadata metadata, EngineSettings.StatisticsMode statisticsMode) {
+      String keyspace, Metadata metadata, StatisticsMode statisticsMode) {
+    this.metadata = metadata;
     this.statisticsMode = statisticsMode;
     switch (statisticsMode) {
       case global:
@@ -91,7 +94,17 @@ public class DefaultReadResultCounter implements ReadResultCounter {
   @Override
   public void update(ReadResult result) {
     Row row = result.getRow().orElseThrow(IllegalStateException::new);
-    Token token = row.getToken(0);
+    int size = row.getColumnDefinitions().size();
+    Token token;
+    if (size == 1) {
+      token = metadata.newToken(row.getBytesUnsafe(0));
+    } else {
+      ByteBuffer[] bbs = new ByteBuffer[size];
+      for (int i = 0; i < size; i++) {
+        bbs[i] = row.getBytesUnsafe(i);
+      }
+      token = metadata.newToken(bbs);
+    }
     if (statisticsMode == all || statisticsMode == global) {
       total.increment();
     }
@@ -120,7 +133,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
           host -> {
             long totalPerHost = totalsByHost.containsKey(host) ? totalsByHost.get(host).sum() : 0;
             float percentage = (float) totalPerHost / (float) totalRows * 100f;
-            out.printf("%s\t%d\t%.2f%n", host, totalPerHost, percentage);
+            out.printf("%s %d %.2f%n", host, totalPerHost, percentage);
           });
     }
     if (statisticsMode == all || statisticsMode == ranges) {
@@ -130,7 +143,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
                 totalsByRange.containsKey(range) ? totalsByRange.get(range).sum() : 0;
             float percentage = (float) totalPerRange / (float) totalRows * 100f;
             out.printf(
-                "%s\t%s\t%d\t%.2f%n", range.getStart(), range.getEnd(), totalPerRange, percentage);
+                "%s %s %d %.2f%n", range.getStart(), range.getEnd(), totalPerRange, percentage);
           });
     }
   }

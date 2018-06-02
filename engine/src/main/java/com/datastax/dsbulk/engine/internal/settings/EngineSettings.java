@@ -14,23 +14,12 @@ import com.typesafe.config.ConfigException;
 
 public class EngineSettings {
 
-  public enum StatisticsMode {
-    global,
-    ranges,
-    hosts,
-    all
-  }
-
   private static final String DRY_RUN = "dryRun";
   private static final String EXECUTION_ID = "executionId";
-
-  private static final String STATS = "stats";
 
   private final LoaderConfig config;
   private boolean dryRun;
   private String executionId;
-
-  private StatisticsMode statisticsMode;
 
   EngineSettings(LoaderConfig config) {
     this.config = config;
@@ -40,7 +29,6 @@ public class EngineSettings {
     try {
       dryRun = config.getBoolean(DRY_RUN);
       executionId = config.getString(EXECUTION_ID);
-      statisticsMode = config.getEnum(StatisticsMode.class, STATS);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
     }
@@ -52,9 +40,5 @@ public class EngineSettings {
 
   String getCustomExecutionIdTemplate() {
     return executionId;
-  }
-
-  public StatisticsMode getStatisticsMode() {
-    return statisticsMode;
   }
 }
