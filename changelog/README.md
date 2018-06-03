@@ -1,5 +1,9 @@
 ## Changelog
 
+### 1.1.0 (in progress)
+
+- [new feature] DAT-291: Add count workflow.
+
 
 ### 1.0.3 (in progress)
 
@@ -7,7 +11,6 @@
 - [bug] DAT-288: DSBulk cannot handle columns of type list<timestamp>.
 - [improvement] DAT-292: Add support for counter tables.
 - [bug] DAT-295: Generated query does not always contain all token ranges.
-- [improvement] DAT-291: Count function to do a simple validation of the data load.
 
 
 ### 1.0.2
