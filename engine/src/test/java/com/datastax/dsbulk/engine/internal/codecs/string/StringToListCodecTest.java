@@ -46,7 +46,7 @@ class StringToListCodecTest {
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   private final TemporalFormat temporalFormat =
-      CodecSettings.getTemporalFormat("CQL_DATE_TIME", UTC, US);
+      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US);
 
   private final List<String> nullStrings = newArrayList("NULL");
 

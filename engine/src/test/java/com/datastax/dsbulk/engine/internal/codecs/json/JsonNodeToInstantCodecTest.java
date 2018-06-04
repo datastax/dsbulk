@@ -35,7 +35,7 @@ class JsonNodeToInstantCodecTest {
   private final Instant minutesAfterMillennium = millennium.plus(Duration.ofMinutes(123456));
 
   private final TemporalFormat temporalFormat1 =
-      CodecSettings.getTemporalFormat("CQL_DATE_TIME", ZoneId.of("UTC"), US);
+      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", ZoneId.of("UTC"), US);
 
   private final TemporalFormat temporalFormat2 =
       CodecSettings.getTemporalFormat("yyyyMMddHHmmss", ZoneId.of("UTC"), US);
