@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.driver.core.DriverCoreHooks.resultSetVariables;
+import static com.datastax.dsbulk.engine.WorkflowType.COUNT;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
@@ -38,8 +39,10 @@ import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
+import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
+import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dsbulk.engine.internal.utils.StringUtils;
@@ -85,6 +88,13 @@ public class SchemaSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaSettings.class);
 
+  public enum StatisticsMode {
+    global,
+    ranges,
+    hosts,
+    all
+  }
+
   private static final String TTL_VARNAME = "dsbulk_internal_ttl";
   private static final String TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
 
@@ -98,6 +108,7 @@ public class SchemaSettings {
   private static final String QUERY = "query";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
+  private static final String STATS = "statisticsMode";
 
   // A mapping spec may refer to these special variables which are used to bind
   // input fields to the write timestamp or ttl of the record.
@@ -118,15 +129,17 @@ public class SchemaSettings {
   private int ttlSeconds;
   private long timestampMicros;
   private TableMetadata table;
+  private KeyspaceMetadata keyspace;
   private String query;
   private PreparedStatement preparedStatement;
   private String writeTimeVariable;
+  private StatisticsMode statisticsMode;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
   }
 
-  public void init() {
+  public void init(WorkflowType workflowType) {
     try {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       ttlSeconds = config.getInt(QUERY_TTL);
@@ -270,6 +283,16 @@ public class SchemaSettings {
         writeTimeVariable = inferWriteTimeVariable();
       }
 
+      if (workflowType == COUNT) {
+        if (config.hasPath(MAPPING)) {
+          throw new BulkConfigurationException(
+              String.format(
+                  "%s must not be defined when counting rows in a table", prettyPath(MAPPING)));
+        }
+      }
+
+      statisticsMode = config.getEnum(StatisticsMode.class, STATS);
+
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
     } catch (IllegalArgumentException e) {
@@ -307,6 +330,12 @@ public class SchemaSettings {
     return new DefaultReadResultMapper(mapping, recordMetadata);
   }
 
+  public ReadResultCounter createReadResultCounter(Session session) {
+    prepareStatementAndCreateMapping(session, null, COUNT, false);
+    return new DefaultReadResultCounter(
+        keyspaceName, session.getCluster().getMetadata(), statisticsMode);
+  }
+
   public List<Statement> createReadStatements(Cluster cluster) {
     ColumnDefinitions variables = preparedStatement.getVariables();
     if (variables.size() == 0) {
@@ -341,10 +370,12 @@ public class SchemaSettings {
       WorkflowType workflowType,
       boolean expectIndexedMapping) {
     BiMap<String, String> fieldsToVariables = null;
-    if (query == null) {
+    if (!config.hasPath(QUERY)) {
+      // in the absence of user-provided queries, create the mapping *before* query generation and
+      // preparation
+      inferKeyspaceAndTable(session);
       fieldsToVariables =
           createFieldsToVariablesMap(
-              session,
               () ->
                   table
                       .getColumns()
@@ -352,15 +383,18 @@ public class SchemaSettings {
                       .map(ColumnMetadata::getName)
                       .collect(Collectors.toList()),
               expectIndexedMapping);
+      // query generation
       if (workflowType == WorkflowType.LOAD) {
-        validateAllKeysPresent(fieldsToVariables);
+        validatePrimaryKeyPresent(fieldsToVariables);
         if (isCounterTable()) {
           query = inferUpdateCounterQuery(fieldsToVariables);
         } else {
           query = inferInsertQuery(fieldsToVariables);
         }
-      } else {
+      } else if (workflowType == UNLOAD) {
         query = inferReadQuery(fieldsToVariables);
+      } else if (workflowType == COUNT) {
+        query = inferCountQuery();
       }
       // remove function mappings as we won't need them anymore from now on
       fieldsToVariables = removeMappingFunctions(fieldsToVariables);
@@ -370,21 +404,30 @@ public class SchemaSettings {
       session.execute("USE " + keyspaceName);
     }
     preparedStatement = session.prepare(query);
-    if (fieldsToVariables == null) {
+    if (config.hasPath(QUERY)) {
+      // in the presence of user-provided queries, create the mapping *after* query preparation
+      ColumnDefinitions variables = getVariables(workflowType);
       fieldsToVariables =
           createFieldsToVariablesMap(
-              session,
-              () -> {
-                ColumnDefinitions variables = getVariables(workflowType);
-                return StreamSupport.stream(variables.spliterator(), false)
-                    .map(ColumnDefinitions.Definition::getName)
-                    .collect(Collectors.toList());
-              },
+              () ->
+                  StreamSupport.stream(variables.spliterator(), false)
+                      .map(ColumnDefinitions.Definition::getName)
+                      .collect(Collectors.toList()),
               expectIndexedMapping);
+      inferKeyspaceAndTable(session, variables);
+      // validate user-provided query
       if (workflowType == LOAD) {
-        validateAllKeysPresent(session, fieldsToVariables);
+        validatePartitionKeyPresentInWhereClause(variables, fieldsToVariables);
+      } else if (workflowType == COUNT) {
+        validatePartitionKeyPresentInSelectClause(variables, fieldsToVariables);
       }
     }
+    assert fieldsToVariables != null;
+    assert keyspace != null;
+    assert table != null;
+    assert keyspaceName != null;
+    assert tableName != null;
+    assert query != null;
     return new DefaultMapping(
         ImmutableBiMap.copyOf(fieldsToVariables), codecRegistry, writeTimeVariable);
   }
@@ -401,6 +444,7 @@ public class SchemaSettings {
       case LOAD:
         return preparedStatement.getVariables();
       case UNLOAD:
+      case COUNT:
         return resultSetVariables(preparedStatement);
       default:
         throw new AssertionError();
@@ -408,38 +452,9 @@ public class SchemaSettings {
   }
 
   private BiMap<String, String> createFieldsToVariablesMap(
-      Session session, Supplier<List<String>> columns, boolean expectIndexedMapping)
+      Supplier<List<String>> columns, boolean expectIndexedMapping)
       throws BulkConfigurationException {
     BiMap<String, String> fieldsToVariables;
-    if (keyspaceName != null && tableName != null) {
-      Metadata metadata = session.getCluster().getMetadata();
-      KeyspaceMetadata keyspace = metadata.getKeyspace(keyspaceName);
-      if (keyspace == null) {
-        String lowerCaseKeyspaceName = ParseUtils.unDoubleQuote(keyspaceName).toLowerCase();
-        if (metadata.getKeyspace(lowerCaseKeyspaceName) != null) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Keyspace %s does not exist, however a keyspace %s was found. Did you mean to use -k %s?",
-                  keyspaceName, lowerCaseKeyspaceName, lowerCaseKeyspaceName));
-        } else {
-          throw new IllegalArgumentException(
-              String.format("Keyspace %s does not exist", keyspaceName));
-        }
-      }
-      table = keyspace.getTable(tableName);
-      if (table == null) {
-        String lowerCaseTableName = ParseUtils.unDoubleQuote(tableName).toLowerCase();
-        if (keyspace.getTable(lowerCaseTableName) != null) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
-                  tableName, lowerCaseTableName, lowerCaseTableName));
-        } else {
-          throw new IllegalArgumentException(String.format("Table %s does not exist", tableName));
-        }
-      }
-    }
-
     // create indexed mappings only for unload, and only if the connector really requires it, to
     // match the order in which the query declares variables.
     if (mapping == null) {
@@ -480,6 +495,60 @@ public class SchemaSettings {
     return fieldsToVariables;
   }
 
+  /** Version used wth generated queries. */
+  private void inferKeyspaceAndTable(Session session) {
+    assert !config.hasPath(QUERY);
+    assert keyspaceName != null && tableName != null;
+    Metadata metadata = session.getCluster().getMetadata();
+    keyspace = metadata.getKeyspace(keyspaceName);
+    if (keyspace == null) {
+      String lowerCaseKeyspaceName = ParseUtils.unDoubleQuote(keyspaceName).toLowerCase();
+      if (metadata.getKeyspace(lowerCaseKeyspaceName) != null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Keyspace %s does not exist, however a keyspace %s was found. Did you mean to use -k %s?",
+                keyspaceName, lowerCaseKeyspaceName, lowerCaseKeyspaceName));
+      } else {
+        throw new IllegalArgumentException(
+            String.format("Keyspace %s does not exist", keyspaceName));
+      }
+    }
+    table = keyspace.getTable(tableName);
+    if (table == null) {
+      String lowerCaseTableName = ParseUtils.unDoubleQuote(tableName).toLowerCase();
+      if (keyspace.getTable(lowerCaseTableName) != null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
+                tableName, lowerCaseTableName, lowerCaseTableName));
+      } else {
+        throw new IllegalArgumentException(String.format("Table %s does not exist", tableName));
+      }
+    }
+  }
+
+  /** Version used with user-supplied queries. */
+  private void inferKeyspaceAndTable(Session session, ColumnDefinitions definitions) {
+    // TODO DAT-294 infer keyspace and table by parsing the query
+    assert config.hasPath(QUERY);
+    if (keyspace == null) {
+      keyspaceName = Metadata.quoteIfNecessary(definitions.getKeyspace(0));
+      keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
+      if (keyspace == null) {
+        throw new BulkConfigurationException(
+            "Could not infer the target keyspace form the provided statement (schema.query).");
+      }
+    }
+    if (table == null) {
+      tableName = Metadata.quoteIfNecessary(definitions.getTable(0));
+      table = keyspace.getTable(tableName);
+      if (table == null) {
+        throw new BulkConfigurationException(
+            "Could not infer the target table form the provided statement (schema.query).");
+      }
+    }
+  }
+
   private void validateMappedRecords(
       BiMap<String, String> fieldsToVariables, boolean expectIndexedMapping) {
     if (expectIndexedMapping && !isIndexed(fieldsToVariables)) {
@@ -513,7 +582,7 @@ public class SchemaSettings {
   }
 
   /** Version for generated queries */
-  private void validateAllKeysPresent(BiMap<String, String> fieldsToVariables) {
+  private void validatePrimaryKeyPresent(BiMap<String, String> fieldsToVariables) {
     // if we generated the query, we know that the variable names
     // correspond to column names, so we can test the entire primary key.
     List<ColumnMetadata> primaryKey = table.getPrimaryKey();
@@ -528,33 +597,35 @@ public class SchemaSettings {
   }
 
   /** version for user-supplied queries */
-  private void validateAllKeysPresent(Session session, BiMap<String, String> fieldsToVariables) {
-    ColumnDefinitions definitions = preparedStatement.getVariables();
-    if (definitions == null || definitions.size() == 0) {
-      definitions = DriverCoreHooks.resultSetVariables(preparedStatement);
-    }
-    if (table == null) {
-      table = inferTable(session, definitions);
-    }
-    // table can only be null in rare cases e.g. if all variables are UDFs
-    if (table != null) {
-      // for a custom query, we cannot know if the user has named his variables
-      // like the column names or not. In this case we can only test the
-      // partition key since we know which variables are part of it.
-      List<ColumnMetadata> partitionKey = table.getPartitionKey();
-      int[] pkIndices = DriverCoreHooks.partitionKeyIndices(preparedStatement.getPreparedId());
-      for (int i = 0; i < partitionKey.size(); i++) {
-        ColumnMetadata pk = partitionKey.get(i);
-        int pki = pkIndices[i];
-        String variable = definitions.getName(pki);
-        if (!fieldsToVariables.containsValue(variable)) {
-          throw new BulkConfigurationException(
-              "Missing required primary key column "
-                  + Metadata.quoteIfNecessary(pk.getName())
-                  + " from schema.mapping or schema.query");
-        }
+  private void validatePartitionKeyPresentInWhereClause(
+      ColumnDefinitions definitions, BiMap<String, String> fieldsToVariables) {
+    // TODO DAT-294 validate entire PK by parsing the query
+    // for a custom query, we cannot know if the user has named his variables
+    // like the column names or not. In this case we can only test the
+    // partition key since we know which variables are part of it.
+    List<ColumnMetadata> partitionKey = table.getPartitionKey();
+    int[] pkIndices = DriverCoreHooks.partitionKeyIndices(preparedStatement.getPreparedId());
+    for (int i = 0; i < partitionKey.size(); i++) {
+      ColumnMetadata pk = partitionKey.get(i);
+      int pki = pkIndices[i];
+      String variable = definitions.getName(pki);
+      if (!fieldsToVariables.containsValue(variable)) {
+        throw new BulkConfigurationException(
+            "Missing required primary key column "
+                + Metadata.quoteIfNecessary(pk.getName())
+                + " from schema.mapping or schema.query");
       }
     }
+  }
+
+  private void validatePartitionKeyPresentInSelectClause(
+      ColumnDefinitions definitions, BiMap<String, String> fieldsToVariables) {
+    // TODO DAT-294 validate entire PK by parsing the query
+    // the query must contain the entire partition key in the select clause,
+    // and nothing else.
+    // For a custom query, we cannot know if the user has named his variables
+    // like the column names or not, and the prepared statement itself does
+    // not help here. So in this case we cannot check anything.
   }
 
   private Config getMapping() throws BulkConfigurationException {
@@ -713,12 +784,32 @@ public class SchemaSettings {
   }
 
   private String inferReadQuery(BiMap<String, String> fieldsToVariables) {
+    List<ColumnMetadata> partitionKey = table.getPartitionKey();
     StringBuilder sb = new StringBuilder("SELECT ");
     appendColumnNames(fieldsToVariables, sb);
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
-    appendTokenFunction(sb, table.getPartitionKey());
+    appendTokenFunction(sb, partitionKey);
     sb.append(" > :start AND ");
-    appendTokenFunction(sb, table.getPartitionKey());
+    appendTokenFunction(sb, partitionKey);
+    sb.append(" <= :end");
+    return sb.toString();
+  }
+
+  private String inferCountQuery() {
+    StringBuilder sb = new StringBuilder("SELECT ");
+    List<ColumnMetadata> partitionKey = table.getPartitionKey();
+    Iterator<ColumnMetadata> it = partitionKey.iterator();
+    while (it.hasNext()) {
+      ColumnMetadata col = it.next();
+      sb.append(Metadata.quoteIfNecessary(col.getName()));
+      if (it.hasNext()) {
+        sb.append(',');
+      }
+    }
+    sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
+    appendTokenFunction(sb, partitionKey);
+    sb.append(" > :start AND ");
+    appendTokenFunction(sb, partitionKey);
     sb.append(" <= :end");
     return sb.toString();
   }
@@ -829,17 +920,6 @@ public class SchemaSettings {
 
   private static String prettyPath(String path) {
     return String.format("schema%s%s", StringUtils.DELIMITER, path);
-  }
-
-  private static TableMetadata inferTable(Session session, ColumnDefinitions definitions) {
-    String keyspaceName = definitions.getKeyspace(0);
-    String tableName = definitions.getTable(0);
-    KeyspaceMetadata keyspace =
-        session.getCluster().getMetadata().getKeyspace(Metadata.quoteIfNecessary(keyspaceName));
-    if (keyspace == null) {
-      return null;
-    }
-    return keyspace.getTable(Metadata.quoteIfNecessary(tableName));
   }
 
   private static BiMap<String, String> removeMappingFunctions(

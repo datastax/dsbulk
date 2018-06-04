@@ -99,13 +99,18 @@ public class SettingsManager {
 
   public LoaderConfig getGlobalConfig() {
     // must be called after connector settings initialized
-    return config
-        .withoutPath("metaSettings")
-        // limit connector configuration to the selected connector
-        .withoutPath("connector")
-        .withFallback(
-            connectorSettings
-                .getConnectorConfig()
-                .atPath("connector." + connectorSettings.getConnectorName()));
+    LoaderConfig global =
+        config
+            .withoutPath("metaSettings")
+            // limit connector configuration to the selected connector
+            .withoutPath("connector");
+    if (connectorSettings.getConnectorConfig() != null) {
+      global =
+          global.withFallback(
+              connectorSettings
+                  .getConnectorConfig()
+                  .atPath("connector." + connectorSettings.getConnectorName()));
+    }
+    return global;
   }
 }

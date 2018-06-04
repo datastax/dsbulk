@@ -17,6 +17,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CL
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
+import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.truncateIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
@@ -56,6 +57,11 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
   @BeforeAll
   void createTables() {
     createIpByCountryTable(session);
+  }
+
+  @AfterEach
+  void truncateTable() {
+    truncateIpByCountryTable(session);
   }
 
   @BeforeEach

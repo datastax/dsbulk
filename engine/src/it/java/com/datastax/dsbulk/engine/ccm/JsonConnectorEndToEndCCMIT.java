@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.truncateIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
@@ -81,6 +82,11 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void setUpDirs() throws IOException {
     logDir = createTempDirectory("logs");
     unloadDir = createTempDirectory("unload");
+  }
+
+  @AfterEach
+  void truncateTable() {
+    truncateIpByCountryTable(session);
   }
 
   @AfterEach

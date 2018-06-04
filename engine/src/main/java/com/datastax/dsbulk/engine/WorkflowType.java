@@ -23,7 +23,15 @@ public enum WorkflowType {
     public Workflow newWorkflow(LoaderConfig config) {
       return new UnloadWorkflow(config);
     }
-  };
+  },
+
+  COUNT {
+    @Override
+    public Workflow newWorkflow(LoaderConfig config) {
+      return new CountWorkflow(config);
+    }
+  },
+  ;
 
   public abstract Workflow newWorkflow(LoaderConfig config);
 }

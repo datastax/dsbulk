@@ -138,7 +138,7 @@ Default: **-1**.
 
 #### -k,--schema.keyspace _&lt;string&gt;_
 
-Keyspace used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
+Keyspace used for loading, unloading or counting data. Required option if `schema.query` is not specified; otherwise, optional.
 
 Keyspace names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyKeyspace` will match
 a keyspace named "MyKeyspace" but will not match a keyspace named "mykeyspace".
@@ -147,7 +147,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
-Table used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
+Table used for loading or unloading or counting data. Required option if `schema.query` is not specified; otherwise, optional.
 
 Table names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyTable` will match
 a table named "MyTable" but will not match a table named "mytable".
@@ -156,7 +156,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### -m,--schema.mapping _&lt;string&gt;_
 
-The field-to-column mapping to use, that applies to both loading and unloading. If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping. Mappings should be specified as a map of the following form:
+The field-to-column mapping to use, that applies to both loading and unloading; ignored when counting. If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping. Mappings should be specified as a map of the following form:
 
 - Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
@@ -174,7 +174,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### -dryRun,--engine.dryRun _&lt;boolean&gt;_
 
-Enable or disable dry-run mode, a test mode that runs the command but does not load data. Not applicable for unloading.
+Enable or disable dry-run mode, a test mode that runs the command but does not load data. Not applicable for unloading nor counting.
 
 Default: **false**.
 
@@ -212,7 +212,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### -cl,--driver.query.consistency _&lt;string&gt;_
 
-The consistency level to use for both loading and unloading. Note that stronger consistency levels usually result in reduced throughput. In addition, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
+The consistency level to use for all queries. Note that stronger consistency levels usually result in reduced throughput. In addition, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
 
 Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
 
@@ -246,6 +246,8 @@ Default: **"5 seconds"**.
 ## Connector Settings
 
 Connector-specific settings. This section contains settings for the connector to use; it also contains sub-sections, one for each available connector.
+
+This setting is ignored when counting.
 
 #### -c,--connector.name _&lt;string&gt;_
 
@@ -499,7 +501,7 @@ Schema-specific settings.
 
 #### -k,--schema.keyspace _&lt;string&gt;_
 
-Keyspace used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
+Keyspace used for loading, unloading or counting data. Required option if `schema.query` is not specified; otherwise, optional.
 
 Keyspace names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyKeyspace` will match
 a keyspace named "MyKeyspace" but will not match a keyspace named "mykeyspace".
@@ -508,7 +510,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
-Table used for loading or unloading data. Required option if `schema.query` is not specified; otherwise, optional.
+Table used for loading or unloading or counting data. Required option if `schema.query` is not specified; otherwise, optional.
 
 Table names should not be quoted and will be treated in a case-sensitive manner, i.e., `MyTable` will match
 a table named "MyTable" but will not match a table named "mytable".
@@ -517,7 +519,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### -m,--schema.mapping _&lt;string&gt;_
 
-The field-to-column mapping to use, that applies to both loading and unloading. If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping. Mappings should be specified as a map of the following form:
+The field-to-column mapping to use, that applies to both loading and unloading; ignored when counting. If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping. Mappings should be specified as a map of the following form:
 
 - Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
@@ -537,11 +539,15 @@ Default: **&lt;unspecified&gt;**.
 
 Specify whether or not to accept records that contain extra fields that are not declared in the mapping. For example, if a record contains three fields A, B, and C, but the mapping only declares fields A and B, then if this option is true, C will be silently ignored and the record will be considered valid, and if false, the record will be rejected. Only applicable for loading, ignored otherwise.
 
+This setting is ignored when counting.
+
 Default: **true**.
 
 #### --schema.allowMissingFields _&lt;boolean&gt;_
 
 Specify whether or not to accept records that are missing fields declared in the mapping. For example, if the mapping declares three fields A, B, and C, but a record contains only fields A and B, then if this option is true, C will be silently assigned null and the record will be considered valid, and if false, the record will be rejected. If the missing field is mapped to a primary key column, the record will always be rejected, since the database will reject the record. Only applicable for loading, ignored otherwise.
+
+This setting is ignored when counting.
 
 Default: **false**.
 
@@ -550,6 +556,8 @@ Default: **false**.
 Specify whether to map `null` input values to "unset" in the database, i.e., don't modify a potentially pre-existing value of this field for this row. Valid for load scenarios, otherwise ignore. Note that setting to false creates tombstones to represent `null`.
 
 Note that this setting is applied after the *codec.nullStrings* setting, and may intercept `null`s produced by that setting.
+
+This setting is ignored when counting.
 
 Default: **true**.
 
@@ -561,6 +569,8 @@ For loading, the statement can be any `INSERT` or `UPDATE` statement.
 
 For unloading, the statement can be any regular `SELECT` statement; it can optionally contain a token range restriction clause of the form: `token(...) > :start and token(...) <= :end`. If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas.
 
+For counting, the statement must be a `SELECT token(...)` statement; it can optionally contain a token range restriction clause of the form: `token(...) > :start and token(...) <= :end`. If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas.
+
 Statements can use both positional and named bound variables. Positional variables will be named after their corresponding column in the destination table. Named bound variables usually have names matching those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those specified in the mapping.
 
 Note: The dsbulk query is parsed to discover which bound variables are present, to map the variable correctly to fields.
@@ -571,7 +581,7 @@ Default: **&lt;unspecified&gt;**.
 
 #### --schema.queryTimestamp _&lt;string&gt;_
 
-The timestamp of inserted/updated cells during load; otherwise, the current time of the system running the tool is used. Not applicable to unloading. The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
+The timestamp of inserted/updated cells during load; otherwise, the current time of the system running the tool is used. Not applicable to unloading nor counting. The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
 
 Query timestamps for DSE have microsecond resolution; any sub-microsecond information specified is lost. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
 
@@ -579,9 +589,20 @@ Default: **&lt;unspecified&gt;**.
 
 #### --schema.queryTtl _&lt;number&gt;_
 
-The Time-To-Live (TTL) of inserted/updated cells during load (seconds); a value of -1 means there is no TTL. Not applicable to unloading. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useTTL.html), and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useExpire.html).
+The Time-To-Live (TTL) of inserted/updated cells during load (seconds); a value of -1 means there is no TTL. Not applicable to unloading nor counting. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useTTL.html), and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useExpire.html).
 
 Default: **-1**.
+
+#### -stats,--schema.statisticsMode _&lt;string&gt;_
+
+Which kind of statistics to compute. Only applicaple for the count workflow, ignored otherwise. Possible values are:
+* `global`: count the total number of rows in the table.
+* `ranges`: count the total number of rows per token range in the table.
+* `hosts`: count the total number of rows per hosts in the table.
+* `all`: count the total number of rows in the table, the total number of rows per token range in the table, and count the total number of rows per hosts in the table.
+The default value is `global`.
+
+Default: **"global"**.
 
 <a name="batch"></a>
 ## Batch Settings
@@ -628,6 +649,8 @@ Conversion-specific settings. These settings apply for both load and unload work
 When writing, these settings determine how record fields emitted by connectors are parsed.
 
 When unloading, these settings determine how row cells emitted by DSE are formatted.
+
+When counting, these settings are ignored.
 
 #### --codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
 
@@ -1001,7 +1024,7 @@ Query-related settings.
 
 #### -cl,--driver.query.consistency _&lt;string&gt;_
 
-The consistency level to use for both loading and unloading. Note that stronger consistency levels usually result in reduced throughput. In addition, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
+The consistency level to use for all queries. Note that stronger consistency levels usually result in reduced throughput. In addition, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
 
 Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
 
@@ -1009,7 +1032,7 @@ Default: **"LOCAL_ONE"**.
 
 #### --driver.query.fetchSize _&lt;number&gt;_
 
-The page size, or how many rows will be retrieved simultaneously in a single network round trip. This setting will limit the number of results loaded into memory simultaneously during unloading. Not applicable for loading.
+The page size, or how many rows will be retrieved simultaneously in a single network round trip. This setting will limit the number of results loaded into memory simultaneously during unloading or counting. Not applicable for loading.
 
 Default: **5000**.
 
@@ -1118,7 +1141,7 @@ Workflow Engine-specific settings.
 
 #### -dryRun,--engine.dryRun _&lt;boolean&gt;_
 
-Enable or disable dry-run mode, a test mode that runs the command but does not load data. Not applicable for unloading.
+Enable or disable dry-run mode, a test mode that runs the command but does not load data. Not applicable for unloading nor counting.
 
 Default: **false**.
 

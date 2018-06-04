@@ -18,7 +18,6 @@ public class EngineSettings {
   private static final String EXECUTION_ID = "executionId";
 
   private final LoaderConfig config;
-
   private boolean dryRun;
   private String executionId;
 
