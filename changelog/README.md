@@ -3,6 +3,7 @@
 ### 1.1.0 (in progress)
 
 - [new feature] DAT-291: Add count workflow.
+- [improvement] DAT-287: Combine batch.mode and batch.enabled into a single setting.
 
 
 ### 1.0.3 (in progress)
