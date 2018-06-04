@@ -8,65 +8,41 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.driver.core.TypeCodec.cdouble;
-import static com.datastax.driver.core.TypeCodec.list;
-import static com.datastax.driver.core.TypeCodec.varchar;
+import static com.datastax.driver.core.DataType.cdouble;
+import static com.datastax.driver.core.DataType.list;
+import static com.datastax.driver.core.DataType.varchar;
+import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
-import static java.math.BigDecimal.ONE;
-import static java.math.BigDecimal.ZERO;
-import static java.math.RoundingMode.HALF_EVEN;
-import static java.time.Instant.EPOCH;
-import static java.time.ZoneOffset.UTC;
-import static java.util.Locale.US;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
-import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableMap;
-import io.netty.util.concurrent.FastThreadLocal;
-import java.math.RoundingMode;
-import java.text.NumberFormat;
-import java.util.List;
+import com.google.common.collect.ImmutableList;
+import com.google.common.reflect.TypeToken;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToListCodecTest {
 
   private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  private final FastThreadLocal<NumberFormat> numberFormat =
-      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+  private JsonNodeToListCodec<Double> codec1;
 
-  private final List<String> nullStrings = newArrayList("NULL");
+  private JsonNodeToListCodec<String> codec2;
 
-  private final JsonNodeToDoubleCodec eltCodec1 =
-      new JsonNodeToDoubleCodec(
-          numberFormat,
-          OverflowStrategy.REJECT,
-          RoundingMode.HALF_EVEN,
-          CqlTemporalFormat.DEFAULT_INSTANCE,
-          UTC,
-          MILLISECONDS,
-          EPOCH.atZone(UTC),
-          ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO),
-          nullStrings);
-
-  private final JsonNodeToStringCodec eltCodec2 =
-      new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
-
-  private final TypeCodec<List<Double>> listCodec1 = list(cdouble());
-  private final TypeCodec<List<String>> listCodec2 = list(varchar());
-
-  private final JsonNodeToListCodec<Double> codec1 =
-      new JsonNodeToListCodec<>(listCodec1, eltCodec1, objectMapper, nullStrings);
-
-  private final JsonNodeToListCodec<String> codec2 =
-      new JsonNodeToListCodec<>(listCodec2, eltCodec2, objectMapper, nullStrings);
+  @BeforeEach
+  void setUp() {
+    ExtendedCodecRegistry codecRegistry = newCodecRegistry("nullStrings = [NULL]");
+    codec1 =
+        (JsonNodeToListCodec<Double>)
+            codecRegistry.codecFor(list(cdouble()), TypeToken.of(JsonNode.class));
+    codec2 =
+        (JsonNodeToListCodec<String>)
+            codecRegistry.codecFor(list(varchar()), TypeToken.of(JsonNode.class));
+  }
 
   @Test
   void should_convert_from_valid_external() throws Exception {
@@ -81,10 +57,14 @@ class JsonNodeToListCodecTest {
         .toInternal(newArrayList(1234.56d, 78900d))
         .convertsFromExternal(objectMapper.readTree("[,]"))
         .toInternal(newArrayList(null, null))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null)
+        .convertsFromExternal(objectMapper.readTree("[]"))
+        .toInternal(ImmutableList.of())
         .convertsFromExternal(objectMapper.readTree(""))
         .toInternal(null);
     assertThat(codec2)
@@ -103,20 +83,23 @@ class JsonNodeToListCodecTest {
         .toInternal(newArrayList(null, null))
         .convertsFromExternal(objectMapper.readTree("[null,null]"))
         .toInternal(newArrayList(null, null))
+        // DAT-297: don't apply nullStrings to inner elements
         .convertsFromExternal(objectMapper.readTree("[\"\",\"\"]"))
         .toInternal(newArrayList("", ""))
         .convertsFromExternal(objectMapper.readTree("['','']"))
         .toInternal(newArrayList("", ""))
         .convertsFromExternal(objectMapper.readTree("[\"NULL\",\"NULL\"]"))
-        .toInternal(newArrayList(null, null))
+        .toInternal(newArrayList("NULL", "NULL"))
         .convertsFromExternal(objectMapper.readTree("['NULL','NULL']"))
-        .toInternal(newArrayList(null, null))
+        .toInternal(newArrayList("NULL", "NULL"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null)
         .convertsFromExternal(objectMapper.readTree("[]"))
-        .toInternal(null)
+        .toInternal(ImmutableList.of())
         .convertsFromExternal(objectMapper.readTree(""))
         .toInternal(null);
   }
@@ -134,6 +117,8 @@ class JsonNodeToListCodecTest {
         .toExternal(objectMapper.readTree("[null,0.0]"))
         .convertsFromInternal(newArrayList(null, null))
         .toExternal(objectMapper.readTree("[null,null]"))
+        .convertsFromInternal(ImmutableList.of())
+        .toExternal(objectMapper.readTree("[]"))
         .convertsFromInternal(null)
         .toExternal(null);
     assertThat(codec2)
@@ -145,8 +130,12 @@ class JsonNodeToListCodecTest {
         .toExternal(objectMapper.readTree("[\"\\\\foo\\\\\",\"\\\\bar\\\\\"]"))
         .convertsFromInternal(newArrayList(",foo,", ",bar,"))
         .toExternal(objectMapper.readTree("[\",foo,\",\",bar,\"]"))
+        .convertsFromInternal(newArrayList("", ""))
+        .toExternal(objectMapper.readTree("[\"\",\"\"]"))
         .convertsFromInternal(newArrayList(null, null))
         .toExternal(objectMapper.readTree("[null,null]"))
+        .convertsFromInternal(ImmutableList.of())
+        .toExternal(objectMapper.readTree("[]"))
         .convertsFromInternal(null)
         .toExternal(null);
   }

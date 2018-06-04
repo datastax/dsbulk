@@ -45,8 +45,6 @@ class StringToDateRangeCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     StringToDateRangeCodec codec = new StringToDateRangeCodec(nullStrings);
-    assertThat(codec)
-        .cannotConvertFromExternal("")
-        .cannotConvertFromExternal("not a valid date range literal");
+    assertThat(codec).cannotConvertFromExternal("not a valid date range literal");
   }
 }

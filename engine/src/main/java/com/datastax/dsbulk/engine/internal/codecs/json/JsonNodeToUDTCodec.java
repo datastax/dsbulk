@@ -40,14 +40,14 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
 
   @Override
   public UDTValue externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     if (!node.isObject()) {
       throw new InvalidTypeException("Expecting OBJECT node, got " + node.getNodeType());
     }
     if (node.size() == 0) {
-      return null;
+      return definition.newValue();
     }
     if (node.size() != definition.size()) {
       throw new InvalidTypeException(

@@ -19,7 +19,6 @@ import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountry
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createWithSpacesTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
-import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
@@ -42,6 +41,8 @@ import static org.slf4j.event.Level.WARN;
 
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.TupleValue;
+import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
@@ -70,6 +71,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -274,10 +276,12 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute(
         "CREATE TABLE complex ("
             + "pk int PRIMARY KEY, "
+            + "c_text text, "
+            + "c_int int, "
             + "c_tuple frozen<tuple<int, text, float, timestamp>>, "
-            + "c_map map<timestamp, time>,"
+            + "c_map map<timestamp, varchar>,"
             + "c_list list<timestamp>,"
-            + "c_set set<date>,"
+            + "c_set set<varchar>,"
             + "c_udt frozen<contacts>)");
 
     List<String> args = new ArrayList<>();
@@ -288,31 +292,19 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(escapeUserInput(getClass().getResource("/complex.csv")));
     args.add("--connector.csv.header");
     args.add("false");
+    args.add("--codec.nullStrings");
+    args.add("N/A");
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
     args.add("complex");
     args.add("--schema.mapping");
-    args.add("pk,c_tuple,c_map,c_list,c_set,c_udt");
+    args.add("pk,c_text,c_int,c_tuple,c_map,c_list,c_set,c_udt");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    Row row = session.execute("SELECT * FROM complex").one();
-    assertThat(row.getList("c_list", Instant.class))
-        .contains(Instant.parse("2018-05-25T11:25:00Z"), Instant.parse("2018-05-25T11:26:00Z"));
-    assertThat(row.getSet("c_set", LocalDate.class))
-        .contains(LocalDate.parse("2018-05-25"), LocalDate.parse("2018-05-26"));
-    assertThat(row.getMap("c_map", Instant.class, LocalTime.class))
-        .containsEntry(Instant.parse("2018-05-25T11:25:00Z"), LocalTime.parse("11:25"));
-    assertThat(row.getTupleValue("c_tuple").getInt(0)).isEqualTo(2);
-    assertThat(row.getTupleValue("c_tuple").getString(1)).isEqualTo("test1");
-    assertThat(row.getTupleValue("c_tuple").getFloat(2)).isEqualTo(2.7f);
-    assertThat(row.getTupleValue("c_tuple").get(3, Instant.class))
-        .isEqualTo(Instant.parse("2018-05-25T11:25:00Z"));
-    assertThat(row.getUDTValue("c_udt").getTupleValue("f_tuple"))
-        .isEqualTo(row.getTupleValue("c_tuple"));
-    assertThat(row.getUDTValue("c_udt").getList("f_list", Instant.class))
-        .isEqualTo(row.getList("c_list", Instant.class));
+
+    assertComplexRows(session);
 
     deleteDirectory(logDir);
 
@@ -326,18 +318,78 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
     args.add("1");
+    args.add("--codec.nullStrings");
+    args.add("N/A");
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
     args.add("complex");
     args.add("--schema.mapping");
-    args.add("pk,c_tuple,c_map,c_list,c_set,c_udt");
+    args.add("pk,c_text,c_int,c_tuple,c_map,c_list,c_set,c_udt");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(1, unloadDir);
-    assertThat(readAllLinesInDirectoryAsStream(unloadDir))
-        .containsExactly(readFile(Paths.get(getClass().getResource("/complex.csv").toURI())));
+    validateOutputFiles(2, unloadDir);
+
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--codec.nullStrings");
+    args.add("N/A");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("complex");
+    args.add("--schema.mapping");
+    args.add("pk,c_text,c_int,c_tuple,c_map,c_list,c_set,c_udt");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    assertComplexRows(session);
+  }
+
+  static void assertComplexRows(Session session) {
+    Instant i1 = Instant.parse("2018-05-25T11:25:00Z");
+    Instant i2 = Instant.parse("2018-05-25T11:26:00Z");
+    {
+      Row row = session.execute("SELECT * FROM complex WHERE pk = 0").one();
+      List<Instant> list = row.getList("c_list", Instant.class);
+      Set<String> set = row.getSet("c_set", String.class);
+      Map<Instant, String> map = row.getMap("c_map", Instant.class, String.class);
+      TupleValue tuple = row.getTupleValue("c_tuple");
+      UDTValue udt = row.getUDTValue("c_udt");
+      assertThat(row.getString("c_text")).isEqualTo("");
+      assertThat(row.getInt("c_int")).isEqualTo(42);
+      assertThat(list).containsOnly(i1, i2);
+      assertThat(set).containsOnly("foo", "");
+      assertThat(map).hasSize(1).containsEntry(i1, "");
+      assertThat(tuple.getInt(0)).isEqualTo(2);
+      assertThat(tuple.getString(1)).isEmpty();
+      assertThat(tuple.getFloat(2)).isEqualTo(2.7f);
+      assertThat(tuple.get(3, Instant.class)).isEqualTo(i1);
+      assertThat(udt.getTupleValue("f_tuple")).isEqualTo(tuple);
+      assertThat(udt.getList("f_list", Instant.class)).isEqualTo(list);
+    }
+    {
+      Row row = session.execute("SELECT * FROM complex WHERE pk = 1").one();
+      assertThat(row.getString("c_text")).isNull();
+      assertThat(row.isNull("c_int")).isTrue();
+      assertThat(row.getList("c_list", Instant.class)).isEmpty();
+      assertThat(row.getSet("c_set", String.class)).isEmpty();
+      assertThat(row.getMap("c_map", Instant.class, String.class)).isEmpty();
+      assertThat(row.getTupleValue("c_tuple").isNull(0)).isTrue();
+      assertThat(row.getTupleValue("c_tuple").getString(1)).isNull();
+      assertThat(row.getTupleValue("c_tuple").isNull(2)).isTrue();
+      assertThat(row.getTupleValue("c_tuple").get(3, Instant.class)).isNull();
+      assertThat(row.getUDTValue("c_udt").getTupleValue("f_tuple")).isNull();
+      assertThat(row.getUDTValue("c_udt").getList("f_list", Instant.class)).isEmpty();
+    }
   }
 
   /**

@@ -31,7 +31,7 @@ public class StringToUDTCodec extends StringConvertingCodec<UDTValue> {
 
   @Override
   public UDTValue externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     try {

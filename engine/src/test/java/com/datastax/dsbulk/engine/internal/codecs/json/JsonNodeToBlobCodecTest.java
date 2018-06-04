@@ -43,7 +43,7 @@ class JsonNodeToBlobCodecTest {
         .toInternal(dataBb)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("0x"))
         .toInternal(emptyBb)
-        .convertsFromExternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
         .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
@@ -64,8 +64,6 @@ class JsonNodeToBlobCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid binary"));
+    assertThat(codec).cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid binary"));
   }
 }

@@ -155,7 +155,7 @@ public class DefaultRecordMapper implements RecordMapper {
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
     ByteBuffer bb = codec.serialize(raw, protocolVersion);
     // Account for nullToUnset.
-    if (isNull(bb)) {
+    if (isNull(bb, cqlType)) {
       if (isPrimaryKey(variable)) {
         throw new InvalidMappingException(
             "Primary key column "
@@ -170,8 +170,23 @@ public class DefaultRecordMapper implements RecordMapper {
     bs.setBytesUnsafe(name, bb);
   }
 
-  private boolean isNull(ByteBuffer bb) {
-    return bb == null || !bb.hasRemaining();
+  private boolean isNull(ByteBuffer bb, DataType cqlType) {
+    if (bb == null) {
+      return true;
+    }
+    if (bb.hasRemaining()) {
+      return false;
+    }
+    switch (cqlType.getName()) {
+      case TEXT:
+      case VARCHAR:
+      case ASCII:
+        // empty strings are encoded as zero-length buffers,
+        // and should not be considered as nulls.
+        return false;
+      default:
+        return true;
+    }
   }
 
   private boolean isPrimaryKey(String variable) {

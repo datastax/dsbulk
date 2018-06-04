@@ -54,7 +54,7 @@ public class JsonNodeToDoubleCodec extends JsonNodeToNumberCodec<Double> {
 
   @Override
   public Double externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     if (node.isDouble()) {

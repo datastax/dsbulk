@@ -64,7 +64,6 @@ class JsonNodeToLineStringCodecTest {
   void should_not_convert_from_invalid_external() {
     JsonNodeToLineStringCodec codec = new JsonNodeToLineStringCodec(objectMapper, nullStrings);
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid linestring literal"));
   }
 }

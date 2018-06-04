@@ -59,7 +59,7 @@ abstract class JsonNodeToNumberCodec<N extends Number> extends JsonNodeConvertin
   }
 
   Number parseNumber(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     return CodecUtils.parseNumber(
