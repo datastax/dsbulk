@@ -34,11 +34,8 @@ public class SimpleTemporalFormat implements TemporalFormat {
 
   @Override
   public TemporalAccessor parse(String text) {
-    if (text == null) {
+    if (text == null || text.isEmpty()) {
       return null;
-    }
-    if (text.isEmpty()) {
-      throw new DateTimeParseException("Cannot convert empty string to temporal", text, 0);
     }
     ParsePosition pos = new ParsePosition(0);
     TemporalAccessor temporal = parser.parse(text.trim(), pos);

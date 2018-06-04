@@ -25,6 +25,10 @@ public abstract class StringConvertingCodec<T> extends ConvertingCodec<String, T
     return s == null || nullStrings.contains(s);
   }
 
+  protected boolean isNullOrEmpty(String s) {
+    return isNull(s) || s.isEmpty();
+  }
+
   protected String nullString() {
     return nullStrings.isEmpty() ? "" : nullStrings.get(0);
   }

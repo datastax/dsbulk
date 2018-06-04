@@ -31,7 +31,7 @@ public class StringToMapCodec<K, V> extends StringConvertingCodec<Map<K, V>> {
 
   @Override
   public Map<K, V> externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     try {

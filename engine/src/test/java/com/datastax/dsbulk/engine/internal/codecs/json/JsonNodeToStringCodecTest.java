@@ -46,7 +46,7 @@ class JsonNodeToStringCodecTest {
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
-        .toInternal("")
+        .toInternal("") // empty string should nto be converted to null
         .convertsFromExternal(null)
         .toInternal(null);
   }

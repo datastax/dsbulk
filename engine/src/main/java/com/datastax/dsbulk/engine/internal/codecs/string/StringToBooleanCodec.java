@@ -26,7 +26,7 @@ public class StringToBooleanCodec extends StringConvertingCodec<Boolean> {
 
   @Override
   public Boolean externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     Boolean b = inputs.get(s.toLowerCase());

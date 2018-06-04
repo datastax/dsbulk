@@ -31,7 +31,7 @@ public class StringToTupleCodec extends StringConvertingCodec<TupleValue> {
 
   @Override
   public TupleValue externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     try {

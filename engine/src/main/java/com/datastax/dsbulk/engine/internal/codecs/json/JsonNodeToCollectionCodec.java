@@ -25,29 +25,32 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
   private final ConvertingCodec<JsonNode, E> eltCodec;
   private final Supplier<C> collectionSupplier;
   private final ObjectMapper objectMapper;
+  private final C emptyCollection;
 
   JsonNodeToCollectionCodec(
       TypeCodec<C> collectionCodec,
       ConvertingCodec<JsonNode, E> eltCodec,
       ObjectMapper objectMapper,
       Supplier<C> collectionSupplier,
-      List<String> nullStrings) {
+      List<String> nullStrings,
+      C emptyCollection) {
     super(collectionCodec, nullStrings);
     this.eltCodec = eltCodec;
     this.objectMapper = objectMapper;
     this.collectionSupplier = collectionSupplier;
+    this.emptyCollection = emptyCollection;
   }
 
   @Override
   public C externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     if (!node.isArray()) {
       throw new InvalidTypeException("Expecting ARRAY node, got " + node.getNodeType());
     }
     if (node.size() == 0) {
-      return null;
+      return emptyCollection;
     }
     Iterator<JsonNode> elements = node.elements();
     C collection = collectionSupplier.get();

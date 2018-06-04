@@ -192,7 +192,7 @@ public class ExtendedCodecRegistry {
       if (javaType.getRawType().equals(String.class)) {
         // Never return the driver's built-in StringCodec because it does not handle
         // null words. We need StringToStringCodec here.
-        codec = (TypeCodec<T>) createStringConvertingCodec(cqlType);
+        codec = (TypeCodec<T>) createStringConvertingCodec(cqlType, true);
       } else {
         codec = (TypeCodec<T>) codecRegistry.codecFor(cqlType, javaType);
       }
@@ -224,10 +224,10 @@ public class ExtendedCodecRegistry {
   private ConvertingCodec<?, ?> maybeCreateConvertingCodec(
       @NotNull DataType cqlType, @NotNull TypeToken<?> javaType) {
     if (String.class.equals(javaType.getRawType())) {
-      return createStringConvertingCodec(cqlType);
+      return createStringConvertingCodec(cqlType, true);
     }
     if (JsonNode.class.equals(javaType.getRawType())) {
-      return createJsonNodeConvertingCodec(cqlType);
+      return createJsonNodeConvertingCodec(cqlType, true);
     }
     if (Number.class.isAssignableFrom(javaType.getRawType()) && isNumeric(cqlType)) {
       @SuppressWarnings("unchecked")
@@ -310,7 +310,10 @@ public class ExtendedCodecRegistry {
     return null;
   }
 
-  private ConvertingCodec<String, ?> createStringConvertingCodec(@NotNull DataType cqlType) {
+  private ConvertingCodec<String, ?> createStringConvertingCodec(
+      @NotNull DataType cqlType, boolean rootCodec) {
+    // Don't apply null strings for non-root codecs
+    List<String> nullStrings = rootCodec ? this.nullStrings : ImmutableList.of();
     DataType.Name name = cqlType.getName();
     switch (name) {
       case ASCII:
@@ -444,14 +447,16 @@ public class ExtendedCodecRegistry {
         {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
-              (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
+              (ConvertingCodec<String, Instant>)
+                  createStringConvertingCodec(DataType.timestamp(), false);
           return new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, generator, nullStrings);
         }
       case TIMEUUID:
         {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
-              (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
+              (ConvertingCodec<String, Instant>)
+                  createStringConvertingCodec(DataType.timestamp(), false);
           return new StringToUUIDCodec(TypeCodec.timeUUID(), instantCodec, generator, nullStrings);
         }
       case BLOB:
@@ -462,33 +467,33 @@ public class ExtendedCodecRegistry {
         {
           @SuppressWarnings("unchecked")
           JsonNodeToListCodec<Object> jsonCodec =
-              (JsonNodeToListCodec<Object>) createJsonNodeConvertingCodec(cqlType);
+              (JsonNodeToListCodec<Object>) createJsonNodeConvertingCodec(cqlType, false);
           return new StringToListCodec<>(jsonCodec, objectMapper, nullStrings);
         }
       case SET:
         {
           @SuppressWarnings("unchecked")
           JsonNodeToSetCodec<Object> jsonCodec =
-              (JsonNodeToSetCodec<Object>) createJsonNodeConvertingCodec(cqlType);
+              (JsonNodeToSetCodec<Object>) createJsonNodeConvertingCodec(cqlType, false);
           return new StringToSetCodec<>(jsonCodec, objectMapper, nullStrings);
         }
       case MAP:
         {
           @SuppressWarnings("unchecked")
           JsonNodeToMapCodec<Object, Object> jsonCodec =
-              (JsonNodeToMapCodec<Object, Object>) createJsonNodeConvertingCodec(cqlType);
+              (JsonNodeToMapCodec<Object, Object>) createJsonNodeConvertingCodec(cqlType, false);
           return new StringToMapCodec<>(jsonCodec, objectMapper, nullStrings);
         }
       case TUPLE:
         {
           JsonNodeToTupleCodec jsonCodec =
-              (JsonNodeToTupleCodec) createJsonNodeConvertingCodec(cqlType);
+              (JsonNodeToTupleCodec) createJsonNodeConvertingCodec(cqlType, false);
           return new StringToTupleCodec(jsonCodec, objectMapper, nullStrings);
         }
       case UDT:
         {
           JsonNodeToUDTCodec jsonCodec =
-              (JsonNodeToUDTCodec) createJsonNodeConvertingCodec(cqlType);
+              (JsonNodeToUDTCodec) createJsonNodeConvertingCodec(cqlType, false);
           return new StringToUDTCodec(jsonCodec, objectMapper, nullStrings);
         }
       case CUSTOM:
@@ -526,7 +531,10 @@ public class ExtendedCodecRegistry {
     }
   }
 
-  private ConvertingCodec<JsonNode, ?> createJsonNodeConvertingCodec(@NotNull DataType cqlType) {
+  private ConvertingCodec<JsonNode, ?> createJsonNodeConvertingCodec(
+      @NotNull DataType cqlType, boolean rootCodec) {
+    // Don't apply null strings for non-root codecs
+    List<String> nullStrings = rootCodec ? this.nullStrings : ImmutableList.of();
     DataType.Name name = cqlType.getName();
     switch (name) {
       case ASCII:
@@ -660,14 +668,16 @@ public class ExtendedCodecRegistry {
         {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
-              (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
+              (ConvertingCodec<String, Instant>)
+                  createStringConvertingCodec(DataType.timestamp(), false);
           return new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, generator, nullStrings);
         }
       case TIMEUUID:
         {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
-              (ConvertingCodec<String, Instant>) createStringConvertingCodec(DataType.timestamp());
+              (ConvertingCodec<String, Instant>)
+                  createStringConvertingCodec(DataType.timestamp(), false);
           return new JsonNodeToUUIDCodec(
               TypeCodec.timeUUID(), instantCodec, generator, nullStrings);
         }
@@ -682,7 +692,7 @@ public class ExtendedCodecRegistry {
           TypeCodec<List<Object>> collectionCodec = (TypeCodec<List<Object>>) codecFor(cqlType);
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> eltCodec =
-              (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(elementType);
+              (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(elementType, false);
           return new JsonNodeToListCodec<>(collectionCodec, eltCodec, objectMapper, nullStrings);
         }
       case SET:
@@ -692,7 +702,7 @@ public class ExtendedCodecRegistry {
           TypeCodec<Set<Object>> collectionCodec = (TypeCodec<Set<Object>>) codecFor(cqlType);
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> eltCodec =
-              (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(elementType);
+              (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(elementType, false);
           return new JsonNodeToSetCodec<>(collectionCodec, eltCodec, objectMapper, nullStrings);
         }
       case MAP:
@@ -704,10 +714,10 @@ public class ExtendedCodecRegistry {
               (TypeCodec<Map<Object, Object>>) codecFor(cqlType);
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Object> keyCodec =
-              (ConvertingCodec<String, Object>) createStringConvertingCodec(keyType);
+              (ConvertingCodec<String, Object>) createStringConvertingCodec(keyType, false);
           @SuppressWarnings("unchecked")
           ConvertingCodec<JsonNode, Object> valueCodec =
-              (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(valueType);
+              (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(valueType, false);
           return new JsonNodeToMapCodec<>(
               mapCodec, keyCodec, valueCodec, objectMapper, nullStrings);
         }
@@ -720,7 +730,7 @@ public class ExtendedCodecRegistry {
           for (DataType eltType : ((TupleType) cqlType).getComponentTypes()) {
             @SuppressWarnings("unchecked")
             ConvertingCodec<JsonNode, Object> eltCodec =
-                (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(eltType);
+                (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(eltType, false);
             eltCodecs.add(eltCodec);
           }
           return new JsonNodeToTupleCodec(tupleCodec, eltCodecs.build(), objectMapper, nullStrings);
@@ -734,7 +744,8 @@ public class ExtendedCodecRegistry {
           for (UserType.Field field : ((UserType) cqlType)) {
             @SuppressWarnings("unchecked")
             ConvertingCodec<JsonNode, Object> fieldCodec =
-                (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(field.getType());
+                (ConvertingCodec<JsonNode, Object>)
+                    createJsonNodeConvertingCodec(field.getType(), false);
             fieldCodecs.put(field.getName(), fieldCodec);
           }
           return new JsonNodeToUDTCodec(udtCodec, fieldCodecs.build(), objectMapper, nullStrings);

@@ -695,11 +695,21 @@ The locale to use for locale-sensitive conversions.
 
 Default: **"en_US"**.
 
-#### -nullStrings,--codec.nullStrings _&lt;list&lt;string&gt;&gt;_
+#### -nullStrings,--codec.nullStrings _&lt;list&gt;_
 
-Comma-separated list of strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required.
+Comma-separated list of case-sensitive strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first string specified will be used to change a row cell containing `null` to the specified string when written out.
 
-Default: **[""]**.
+For example, setting this to `["NULL"]` will cause a field containing the word `NULL` to be mapped to `null` while loading, and a column containing `null` to be converted to the word `NULL` while unloading.
+
+The default value is `[]` (no strings are mapped to `null`). In the default mode, DSBulk behaves as follows:
+* When loading, if the target CQL type is textual (i.e. text, varchar or ascii), the original field value is left untouched; for other types, if the value is an empty string, it is converted to `null`.
+* When unloading, all `null` values are converted to an empty string.
+
+Note that, regardless of this setting, DSBulk will always convert empty strings to `null` if the target CQL type is not textual (i.e. not text, varchar or ascii).
+
+This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required.
+
+Default: **[]**.
 
 #### --codec.number _&lt;string&gt;_
 

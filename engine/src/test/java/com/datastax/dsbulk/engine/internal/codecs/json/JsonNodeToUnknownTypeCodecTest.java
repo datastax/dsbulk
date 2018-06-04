@@ -30,6 +30,8 @@ class JsonNodeToUnknownTypeCodecTest {
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("banana"))
         .toInternal(banana)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
@@ -50,7 +52,6 @@ class JsonNodeToUnknownTypeCodecTest {
     JsonNodeToUnknownTypeCodec<Fruit> codec =
         new JsonNodeToUnknownTypeCodec<>(targetCodec, nullStrings);
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid fruit literal"));
   }
 }

@@ -38,6 +38,8 @@ class StringToBlobCodecTest {
         .toInternal(dataBb)
         .convertsFromExternal("0x")
         .toInternal(emptyBb)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
@@ -57,6 +59,6 @@ class StringToBlobCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec).cannotConvertFromExternal("").cannotConvertFromExternal("not a valid binary");
+    assertThat(codec).cannotConvertFromExternal("not a valid binary");
   }
 }
