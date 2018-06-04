@@ -70,6 +70,8 @@ class JsonNodeToFloatCodecTest {
         .toInternal(1f)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
         .toInternal(0f)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))

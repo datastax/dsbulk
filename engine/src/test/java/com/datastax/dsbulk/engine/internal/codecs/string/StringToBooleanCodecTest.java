@@ -37,6 +37,8 @@ class StringToBooleanCodecTest {
         .toInternal(true)
         .convertsFromExternal("bar")
         .toInternal(false)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

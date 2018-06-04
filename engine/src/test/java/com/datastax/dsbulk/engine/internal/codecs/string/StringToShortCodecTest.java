@@ -47,6 +47,8 @@ class StringToShortCodecTest {
         .toInternal((short) 1)
         .convertsFromExternal("FALSE")
         .toInternal((short) 0)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

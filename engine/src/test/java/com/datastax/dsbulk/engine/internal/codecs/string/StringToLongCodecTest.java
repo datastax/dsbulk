@@ -49,6 +49,8 @@ class StringToLongCodecTest {
         .toInternal(1L)
         .convertsFromExternal("FALSE")
         .toInternal(0L)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

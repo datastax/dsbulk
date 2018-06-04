@@ -53,6 +53,8 @@ class StringToFloatCodecTest {
         .toInternal(1f)
         .convertsFromExternal("FALSE")
         .toInternal(0f)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

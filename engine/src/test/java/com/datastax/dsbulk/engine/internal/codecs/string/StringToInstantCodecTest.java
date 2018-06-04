@@ -58,6 +58,8 @@ class StringToInstantCodecTest {
         .toInternal(Instant.parse("2016-07-24T19:34:00Z"))
         .convertsFromExternal("2016-07-24T20:34:12.999+01:00")
         .toInternal(Instant.parse("2016-07-24T19:34:12.999Z"))
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

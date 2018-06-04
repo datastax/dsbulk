@@ -35,6 +35,8 @@ class StringToLocalTimeCodecTest {
         .toInternal(LocalTime.parse("12:24:46"))
         .convertsFromExternal("12:24:46.999")
         .toInternal(LocalTime.parse("12:24:46.999"))
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

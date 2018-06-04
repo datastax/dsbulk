@@ -61,6 +61,8 @@ class JsonNodeToMapCodecTest {
         .toInternal(map(1d, list("NULL"), 2d, list("NULL")))
         .convertsFromExternal(objectMapper.readTree("{1: [\"\"], 2: ['']}"))
         .toInternal(map(1d, list(""), 2d, list("")))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))

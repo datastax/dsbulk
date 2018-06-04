@@ -52,6 +52,8 @@ class StringToMapCodecTest {
         .toInternal(map(1d, list("NULL"), 2d, list("NULL")))
         .convertsFromExternal("{1: [\"\"], 2: ['']}")
         .toInternal(map(1d, list(""), 2d, list("")))
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

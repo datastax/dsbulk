@@ -31,6 +31,8 @@ class StringToDurationCodecTest {
         .toInternal(duration)
         .convertsFromExternal("P0001-03-00T02:10:00") // alternative ISO 8601 pattern
         .toInternal(duration)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

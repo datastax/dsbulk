@@ -82,6 +82,8 @@ class StringToUDTCodecTest {
         .toInternal(udt1Empty)
         .convertsFromExternal("{ \"f1b\" :  null , \"f1a\" :  null }")
         .toInternal(udt1Empty)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

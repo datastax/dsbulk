@@ -43,7 +43,7 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
 
   @Override
   public C externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     if (!node.isArray()) {

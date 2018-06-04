@@ -49,6 +49,8 @@ class StringToSetCodecTest {
         .toInternal(newLinkedHashSet(1234.56d, 78900d))
         .convertsFromExternal("[,]")
         .toInternal(newLinkedHashSet(null, null))
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

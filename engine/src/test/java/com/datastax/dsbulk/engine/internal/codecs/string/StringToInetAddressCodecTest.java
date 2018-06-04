@@ -25,6 +25,8 @@ class StringToInetAddressCodecTest {
         .toInternal(InetAddress.getByName("1.2.3.4"))
         .convertsFromExternal("127.0.0.1")
         .toInternal(InetAddress.getByName("127.0.0.1"))
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

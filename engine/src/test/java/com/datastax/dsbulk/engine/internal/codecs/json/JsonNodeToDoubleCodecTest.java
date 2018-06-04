@@ -59,6 +59,8 @@ class JsonNodeToDoubleCodecTest {
         .toInternal(1d)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
         .toInternal(0d)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))

@@ -52,6 +52,8 @@ class JsonNodeToBigIntegerCodecTest {
         .toInternal(BigInteger.ONE)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
         .toInternal(BigInteger.ZERO)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))

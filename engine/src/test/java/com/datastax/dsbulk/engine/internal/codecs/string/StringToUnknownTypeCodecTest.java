@@ -33,6 +33,8 @@ public class StringToUnknownTypeCodecTest {
     assertThat(codec)
         .convertsFromExternal("banana")
         .toInternal(banana)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

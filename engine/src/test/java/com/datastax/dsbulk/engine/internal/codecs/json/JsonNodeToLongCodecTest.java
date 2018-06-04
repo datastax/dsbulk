@@ -57,6 +57,8 @@ class JsonNodeToLongCodecTest {
         .toInternal(1L)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
         .toInternal(0L)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))

@@ -20,7 +20,7 @@ public class StringToInetAddressCodec extends StringConvertingCodec<InetAddress>
 
   @Override
   public InetAddress externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     if (s.isEmpty()) {

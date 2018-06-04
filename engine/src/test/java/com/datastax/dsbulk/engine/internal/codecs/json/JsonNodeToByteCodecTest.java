@@ -51,6 +51,8 @@ class JsonNodeToByteCodecTest {
         .toInternal((byte) 1)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
         .toInternal((byte) 0)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))

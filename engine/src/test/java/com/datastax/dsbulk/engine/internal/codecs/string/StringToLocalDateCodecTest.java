@@ -33,6 +33,8 @@ class StringToLocalDateCodecTest {
     assertThat(codec)
         .convertsFromExternal("2016-07-24")
         .toInternal(LocalDate.parse("2016-07-24"))
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

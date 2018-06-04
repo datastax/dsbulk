@@ -25,12 +25,12 @@ class StringToStringCodecTest {
     assertThat(codec)
         .convertsFromExternal("foo")
         .toInternal("foo")
+        .convertsFromExternal("")
+        .toInternal("")
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
-        .toInternal(null)
-        .convertsFromExternal("")
-        .toInternal("");
+        .toInternal(null);
   }
 
   @Test

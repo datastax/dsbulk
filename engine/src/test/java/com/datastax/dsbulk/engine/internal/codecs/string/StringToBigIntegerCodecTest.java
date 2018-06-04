@@ -44,6 +44,8 @@ class StringToBigIntegerCodecTest {
         .toInternal(BigInteger.ONE)
         .convertsFromExternal("FALSE")
         .toInternal(BigInteger.ZERO)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

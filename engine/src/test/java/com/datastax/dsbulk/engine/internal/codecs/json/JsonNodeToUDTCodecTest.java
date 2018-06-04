@@ -90,6 +90,8 @@ class JsonNodeToUDTCodecTest {
         .toInternal(udt1Empty)
         .convertsFromExternal(objectMapper.readTree("{ \"f1b\" :  null , \"f1a\" :  null }"))
         .toInternal(udt1Empty)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))

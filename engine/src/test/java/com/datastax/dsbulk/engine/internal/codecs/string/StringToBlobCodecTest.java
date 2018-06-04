@@ -38,6 +38,8 @@ class StringToBlobCodecTest {
         .toInternal(dataBb)
         .convertsFromExternal("0x")
         .toInternal(emptyBb)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

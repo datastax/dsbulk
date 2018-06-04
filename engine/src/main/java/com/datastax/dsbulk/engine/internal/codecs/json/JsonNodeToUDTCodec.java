@@ -40,7 +40,7 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
 
   @Override
   public UDTValue externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     if (!node.isObject()) {

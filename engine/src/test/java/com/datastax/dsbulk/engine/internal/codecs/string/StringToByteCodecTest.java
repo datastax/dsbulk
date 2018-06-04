@@ -49,6 +49,8 @@ class StringToByteCodecTest {
         .toInternal((byte) 1)
         .convertsFromExternal("FALSE")
         .toInternal((byte) 0)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

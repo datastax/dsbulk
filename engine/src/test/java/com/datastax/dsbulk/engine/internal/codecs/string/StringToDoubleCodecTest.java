@@ -50,6 +50,8 @@ class StringToDoubleCodecTest {
         .toInternal(1d)
         .convertsFromExternal("FALSE")
         .toInternal(0d)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

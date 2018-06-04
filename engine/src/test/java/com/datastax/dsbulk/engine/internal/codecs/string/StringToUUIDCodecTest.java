@@ -54,6 +54,8 @@ class StringToUUIDCodecTest {
     assertThat(codec)
         .convertsFromExternal("a15341ec-ebef-4eab-b91d-ff16bf801a79")
         .toInternal(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

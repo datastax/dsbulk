@@ -50,6 +50,8 @@ class StringToBigDecimalCodecTest {
         .toInternal(ONE)
         .convertsFromExternal("FALSE")
         .toInternal(ZERO)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

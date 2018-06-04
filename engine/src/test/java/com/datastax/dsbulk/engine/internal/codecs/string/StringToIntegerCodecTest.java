@@ -51,6 +51,8 @@ class StringToIntegerCodecTest {
         .toInternal(1)
         .convertsFromExternal("FALSE")
         .toInternal(0)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

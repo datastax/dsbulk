@@ -59,6 +59,8 @@ class StringToTupleCodecTest {
         .toInternal(tupleType.newValue(null, null))
         .convertsFromExternal("[,]")
         .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
