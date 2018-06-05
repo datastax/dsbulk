@@ -39,6 +39,8 @@ class JsonNodeToBooleanCodecTest {
         .toInternal(true)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("bar"))
         .toInternal(false)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
@@ -60,8 +62,6 @@ class JsonNodeToBooleanCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid boolean"));
+    assertThat(codec).cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid boolean"));
   }
 }

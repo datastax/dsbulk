@@ -57,6 +57,8 @@ class JsonNodeToUUIDCodecTest {
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
         .toInternal(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
@@ -139,8 +141,6 @@ class JsonNodeToUUIDCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid UUID"));
+    assertThat(codec).cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid UUID"));
   }
 }

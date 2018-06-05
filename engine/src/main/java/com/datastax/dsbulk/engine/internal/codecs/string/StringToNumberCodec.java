@@ -66,7 +66,7 @@ public abstract class StringToNumberCodec<N extends Number> extends StringConver
   }
 
   Number parseNumber(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     return CodecUtils.parseNumber(

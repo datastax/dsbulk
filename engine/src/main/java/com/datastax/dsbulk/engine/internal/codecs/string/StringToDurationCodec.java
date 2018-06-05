@@ -19,7 +19,7 @@ public class StringToDurationCodec extends StringConvertingCodec<Duration> {
 
   @Override
   public Duration externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     return Duration.from(s);

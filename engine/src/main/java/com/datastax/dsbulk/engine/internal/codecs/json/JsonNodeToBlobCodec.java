@@ -25,6 +25,7 @@ public class JsonNodeToBlobCodec extends JsonNodeConvertingCodec<ByteBuffer> {
 
   @Override
   public ByteBuffer externalToInternal(JsonNode node) {
+    // Do not test isNullOrEmpty(), it returns true for empty binary nodes
     if (isNull(node)) {
       return null;
     }

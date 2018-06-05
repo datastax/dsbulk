@@ -30,6 +30,7 @@ public class JsonNodeToStringCodec extends JsonNodeConvertingCodec<String> {
 
   @Override
   public String externalToInternal(JsonNode node) {
+    // DAT-297: do not convert empty strings to null so do not use isNullOrEmpty() here
     if (isNull(node)) {
       return null;
     }

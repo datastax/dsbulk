@@ -54,7 +54,7 @@ public class JsonNodeToLongCodec extends JsonNodeToNumberCodec<Long> {
 
   @Override
   public Long externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     if (node.isLong()) {

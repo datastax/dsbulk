@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -93,7 +92,7 @@ public class CodecSettings {
   private ZonedDateTime epoch;
   private TimeUUIDGenerator generator;
 
-  CodecSettings(LoaderConfig config) {
+  public CodecSettings(LoaderConfig config) {
     this.config = config;
   }
 
@@ -154,8 +153,7 @@ public class CodecSettings {
     }
   }
 
-  public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {
-    CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
+  public ExtendedCodecRegistry createCodecRegistry(CodecRegistry codecRegistry) {
     return new ExtendedCodecRegistry(
         codecRegistry,
         nullStrings,

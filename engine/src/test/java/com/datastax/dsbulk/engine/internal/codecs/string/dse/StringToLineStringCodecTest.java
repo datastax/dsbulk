@@ -50,8 +50,6 @@ class StringToLineStringCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     StringToLineStringCodec codec = new StringToLineStringCodec(nullStrings);
-    assertThat(codec)
-        .cannotConvertFromExternal("")
-        .cannotConvertFromExternal("not a valid linestring literal");
+    assertThat(codec).cannotConvertFromExternal("not a valid linestring literal");
   }
 }

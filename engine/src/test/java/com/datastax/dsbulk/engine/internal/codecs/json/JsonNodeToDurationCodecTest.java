@@ -33,7 +33,7 @@ class JsonNodeToDurationCodecTest {
         .convertsFromExternal(
             JSON_NODE_FACTORY.textNode("P0001-03-00T02:10:00")) // alternative ISO 8601 pattern
         .toInternal(duration)
-        .convertsFromExternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
         .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
@@ -53,7 +53,6 @@ class JsonNodeToDurationCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(
             JSON_NODE_FACTORY.textNode("1Y3M4D")) // The minutes should be after days
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid duration"));

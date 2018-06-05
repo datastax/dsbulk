@@ -22,7 +22,7 @@ public class JsonNodeToUnknownTypeCodec<T> extends JsonNodeConvertingCodec<T> {
 
   @Override
   public T externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     return getInternalCodec().parse(node.asText());

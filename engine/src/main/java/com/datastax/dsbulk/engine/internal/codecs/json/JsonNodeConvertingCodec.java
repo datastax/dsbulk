@@ -27,4 +27,8 @@ public abstract class JsonNodeConvertingCodec<T> extends ConvertingCodec<JsonNod
         || node.isNull()
         || (node.isValueNode() && nullStrings.contains(node.asText()));
   }
+
+  protected boolean isNullOrEmpty(JsonNode node) {
+    return isNull(node) || (node.isValueNode() && node.asText().isEmpty());
+  }
 }

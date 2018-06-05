@@ -123,7 +123,7 @@ public class LoadWorkflow implements Workflow {
         schemaSettings.createRecordMapper(
             session,
             connector.getRecordMetadata(),
-            codecSettings.createCodecRegistry(cluster),
+            codecSettings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry()),
             !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     if (batchingEnabled) {
       batcher = batchSettings.newStatementBatcher(cluster);
