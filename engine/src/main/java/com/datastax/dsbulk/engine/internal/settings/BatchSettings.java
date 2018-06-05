@@ -20,9 +20,26 @@ import com.typesafe.config.ConfigException;
 public class BatchSettings {
 
   private enum BatchMode {
-    DISABLED,
-    PARTITION_KEY,
-    REPLICA_SET
+    DISABLED {
+      @Override
+      StatementBatcher.BatchMode asStatementBatcherMode() {
+        throw new IllegalStateException("Batching is disabled");
+      }
+    },
+    PARTITION_KEY {
+      @Override
+      StatementBatcher.BatchMode asStatementBatcherMode() {
+        return StatementBatcher.BatchMode.PARTITION_KEY;
+      }
+    },
+    REPLICA_SET {
+      @Override
+      StatementBatcher.BatchMode asStatementBatcherMode() {
+        return StatementBatcher.BatchMode.REPLICA_SET;
+      }
+    };
+
+    abstract StatementBatcher.BatchMode asStatementBatcherMode();
   }
 
   private static final String MODE = "mode";
@@ -65,22 +82,7 @@ public class BatchSettings {
   }
 
   public ReactorStatementBatcher newStatementBatcher(Cluster cluster) {
-    switch (mode) {
-      case PARTITION_KEY:
-        return new ReactorStatementBatcher(
-            cluster,
-            StatementBatcher.BatchMode.PARTITION_KEY,
-            BatchStatement.Type.UNLOGGED,
-            maxBatchSize);
-      case REPLICA_SET:
-        return new ReactorStatementBatcher(
-            cluster,
-            StatementBatcher.BatchMode.REPLICA_SET,
-            BatchStatement.Type.UNLOGGED,
-            maxBatchSize);
-      case DISABLED:
-      default:
-        throw new IllegalStateException();
-    }
+    return new ReactorStatementBatcher(
+        cluster, mode.asStatementBatcherMode(), BatchStatement.Type.UNLOGGED, maxBatchSize);
   }
 }
