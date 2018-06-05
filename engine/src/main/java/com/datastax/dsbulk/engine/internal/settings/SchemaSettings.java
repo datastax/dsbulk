@@ -25,6 +25,7 @@ import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.ParseUtils;
 import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
@@ -88,13 +89,6 @@ public class SchemaSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaSettings.class);
 
-  public enum StatisticsMode {
-    global,
-    ranges,
-    hosts,
-    all
-  }
-
   private static final String TTL_VARNAME = "dsbulk_internal_ttl";
   private static final String TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
 
@@ -108,7 +102,6 @@ public class SchemaSettings {
   private static final String QUERY = "query";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
-  private static final String STATS = "statisticsMode";
 
   // A mapping spec may refer to these special variables which are used to bind
   // input fields to the write timestamp or ttl of the record.
@@ -133,7 +126,6 @@ public class SchemaSettings {
   private String query;
   private PreparedStatement preparedStatement;
   private String writeTimeVariable;
-  private StatisticsMode statisticsMode;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
@@ -291,8 +283,6 @@ public class SchemaSettings {
         }
       }
 
-      statisticsMode = config.getEnum(StatisticsMode.class, STATS);
-
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
     } catch (IllegalArgumentException e) {
@@ -330,10 +320,18 @@ public class SchemaSettings {
     return new DefaultReadResultMapper(mapping, recordMetadata);
   }
 
-  public ReadResultCounter createReadResultCounter(Session session) {
+  public ReadResultCounter createReadResultCounter(
+      Session session,
+      ExtendedCodecRegistry codecRegistry,
+      StatsSettings.StatisticsMode statisticsMode,
+      int numPartitions) {
     prepareStatementAndCreateMapping(session, null, COUNT, false);
+    Cluster cluster = session.getCluster();
+    ProtocolVersion protocolVersion =
+        cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
+    Metadata metadata = cluster.getMetadata();
     return new DefaultReadResultCounter(
-        keyspaceName, session.getCluster().getMetadata(), statisticsMode);
+        keyspaceName, metadata, statisticsMode, numPartitions, protocolVersion, codecRegistry);
   }
 
   public List<Statement> createReadStatements(Cluster cluster) {

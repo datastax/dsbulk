@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterAll;
@@ -66,6 +67,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
   private Map<String, Map<String, Map<TokenRange, Integer>>> allRanges;
   private Map<String, Map<String, Map<Host, Integer>>> allHosts;
   private List<Record> records;
+  private int expectedTotal;
+  private Map<String, Map<String, Map<String, Integer>>> allBiggestPartitions;
 
   TableReadEndToEndCCMITBase(
       CCMCluster ccm, Session session, LogInterceptor logs, StreamInterceptor stdout) {
@@ -188,16 +191,17 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
   }
 
   private void assertUnload() {
-    assertThat(logs).hasMessageContaining("Reads: total: 10,000");
-    assertThat(records).hasSize(10000);
+    assertThat(logs).hasMessageContaining(String.format("Reads: total: %,d", expectedTotal));
+    assertThat(records).hasSize(expectedTotal);
   }
 
   private void assertCount(String keyspace, String table) {
-    assertThat(logs).hasMessageContaining("Reads: total: 10,000");
-    assertThat(stdout.getStreamAsString()).contains("Total rows in table: 10,000");
+    assertThat(logs).hasMessageContaining(String.format("Reads: total: %,d", expectedTotal));
+    List<String> lines = stdout.getStreamLines();
+    assertThat(lines).contains(Integer.toString(expectedTotal));
     Map<TokenRange, Integer> ranges = allRanges.get(keyspace).get(table);
     Map<Host, Integer> hosts = allHosts.get(keyspace).get(table);
-    List<String> lines = stdout.getStreamLines();
+    Map<String, Integer> biggestPartitions = allBiggestPartitions.get(keyspace).get(table);
     for (Map.Entry<TokenRange, Integer> entry : ranges.entrySet()) {
       assertThat(lines)
           .anyMatch(
@@ -212,6 +216,11 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
           .anyMatch(
               line -> line.startsWith(String.format("%s %s", entry.getKey(), entry.getValue())));
     }
+    for (Map.Entry<String, Integer> entry : biggestPartitions.entrySet()) {
+      assertThat(lines)
+          .anyMatch(
+              line -> line.startsWith(String.format("%s %s", entry.getKey(), entry.getValue())));
+    }
   }
 
   @BeforeAll
@@ -220,19 +229,23 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     session.execute(createKeyspaceSimpleStrategy("rf_2", 2));
     session.execute(createKeyspaceSimpleStrategy("rf_3", 3));
 
-    session.execute("CREATE TABLE \"RF_1\".\"SINGLE_PK\" (pk int PRIMARY KEY, v int)");
-    session.execute("CREATE TABLE rf_2.\"SINGLE_PK\" (pk int PRIMARY KEY, v int)");
-    session.execute("CREATE TABLE rf_3.\"SINGLE_PK\" (pk int PRIMARY KEY, v int)");
+    session.execute(
+        "CREATE TABLE \"RF_1\".\"SINGLE_PK\" (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+    session.execute(
+        "CREATE TABLE rf_2.\"SINGLE_PK\" (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+    session.execute(
+        "CREATE TABLE rf_3.\"SINGLE_PK\" (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
 
     session.execute(
-        "CREATE TABLE \"RF_1\".composite_pk (pk1 int, pk2 int, v int, PRIMARY KEY ((pk1, pk2)))");
+        "CREATE TABLE \"RF_1\".composite_pk (pk1 int, pk2 int, cc int, v int, PRIMARY KEY ((pk1, pk2), cc))");
     session.execute(
-        "CREATE TABLE rf_2.composite_pk (pk1 int, pk2 int, v int, PRIMARY KEY ((pk1, pk2)))");
+        "CREATE TABLE rf_2.composite_pk (pk1 int, pk2 int, cc int, v int, PRIMARY KEY ((pk1, pk2), cc))");
     session.execute(
-        "CREATE TABLE rf_3.composite_pk (pk1 int, pk2 int, v int, PRIMARY KEY ((pk1, pk2)))");
+        "CREATE TABLE rf_3.composite_pk (pk1 int, pk2 int, cc int, v int, PRIMARY KEY ((pk1, pk2), cc))");
 
     allRanges = new HashMap<>();
     allHosts = new HashMap<>();
+    allBiggestPartitions = new HashMap<>();
 
     populateSinglePkTable("RF_1");
     populateSinglePkTable("rf_2");
@@ -294,24 +307,25 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     Map<TokenRange, Integer> ranges = new HashMap<>();
     Map<Host, Integer> hosts = new HashMap<>();
     Metadata metadata = session.getCluster().getMetadata();
-    for (int i = 0; i < 10_000; i++) {
-      ByteBuffer bb1 = cint().serialize(i, V4);
-      Set<Host> replicas = metadata.getReplicas(keyspace, bb1);
-      for (Host replica : replicas) {
-        hosts.compute(replica, (r, t) -> t == null ? 1 : t + 1);
+    expectedTotal = 0;
+    for (int pk = 0; pk < 100; pk++) {
+      for (int cc = 0; cc < 100; cc++) {
+        insertIntoSinglePkTable(keyspace, ranges, hosts, metadata, pk, cc);
+        expectedTotal++;
       }
-      Token token = metadata.newToken(bb1);
-      TokenRange range =
-          metadata
-              .getTokenRanges()
-              .stream()
-              .filter(r -> r.contains(token))
-              .findFirst()
-              .orElse(null);
-      ranges.compute(range, (r, t) -> t == null ? 1 : t + 1);
-      session.execute(
-          String.format("INSERT INTO \"%s\".\"SINGLE_PK\" (pk, v) VALUES (?, ?)", keyspace), i, 42);
     }
+    Map<String, Integer> biggestPartitions = new TreeMap<>();
+    for (int pk = 100; pk < 110; pk++) {
+      int cc = 0;
+      for (; cc < pk + 1; cc++) {
+        insertIntoSinglePkTable(keyspace, ranges, hosts, metadata, pk, cc);
+        expectedTotal++;
+      }
+      biggestPartitions.put(Integer.toString(pk), cc);
+    }
+    allBiggestPartitions
+        .computeIfAbsent(keyspace, k -> new HashMap<>())
+        .put("SINGLE_PK", biggestPartitions);
     allRanges.computeIfAbsent(keyspace, k -> new HashMap<>()).put("SINGLE_PK", ranges);
     allHosts.computeIfAbsent(keyspace, k -> new HashMap<>()).put("SINGLE_PK", hosts);
   }
@@ -320,32 +334,78 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     Map<TokenRange, Integer> ranges = new HashMap<>();
     Map<Host, Integer> hosts = new HashMap<>();
     Metadata metadata = session.getCluster().getMetadata();
-    for (int i = 0; i < 100; i++) {
-      for (int j = 0; j < 100; j++) {
-        ByteBuffer bb1 = cint().serialize(i, V4);
-        ByteBuffer bb2 = cint().serialize(j, V4);
-        Set<Host> replicas = metadata.getReplicas(keyspace, compose(bb1, bb2));
-        for (Host replica : replicas) {
-          hosts.compute(replica, (r, t) -> t == null ? 1 : t + 1);
+    expectedTotal = 0;
+    for (int pk1 = 0; pk1 < 10; pk1++) {
+      for (int pk2 = 0; pk2 < 10; pk2++) {
+        for (int cc = 0; cc < 100; cc++) {
+          insertIntoCompositePkTable(keyspace, ranges, hosts, metadata, pk1, pk2, cc);
+          expectedTotal++;
         }
-        Token token = metadata.newToken(bb1, bb2);
-        TokenRange range =
-            metadata
-                .getTokenRanges()
-                .stream()
-                .filter(r -> r.contains(token))
-                .findFirst()
-                .orElse(null);
-        ranges.compute(range, (r, t) -> t == null ? 1 : t + 1);
-        session.execute(
-            String.format(
-                "INSERT INTO \"%s\".composite_pk (pk1, pk2, v) VALUES (?, ?, ?)", keyspace),
-            i,
-            j,
-            42);
       }
     }
+    Map<String, Integer> biggestPartitions = new TreeMap<>();
+    for (int pk1 = 10; pk1 < 20; pk1++) {
+      int cc = 0;
+      for (; cc < 91 + pk1; cc++) {
+        insertIntoCompositePkTable(keyspace, ranges, hosts, metadata, pk1, 0, cc);
+        expectedTotal++;
+      }
+      biggestPartitions.put(pk1 + "|0", cc);
+    }
+    allBiggestPartitions
+        .computeIfAbsent(keyspace, k -> new HashMap<>())
+        .put("composite_pk", biggestPartitions);
     allRanges.computeIfAbsent(keyspace, k -> new HashMap<>()).put("composite_pk", ranges);
     allHosts.computeIfAbsent(keyspace, k -> new HashMap<>()).put("composite_pk", hosts);
+  }
+
+  private void insertIntoSinglePkTable(
+      String keyspace,
+      Map<TokenRange, Integer> ranges,
+      Map<Host, Integer> hosts,
+      Metadata metadata,
+      int i,
+      int j) {
+    ByteBuffer bb1 = cint().serialize(i, V4);
+    Set<Host> replicas = metadata.getReplicas(keyspace, bb1);
+    for (Host replica : replicas) {
+      hosts.compute(replica, (r, t) -> t == null ? 1 : t + 1);
+    }
+    Token token = metadata.newToken(bb1);
+    TokenRange range =
+        metadata.getTokenRanges().stream().filter(r -> r.contains(token)).findFirst().orElse(null);
+    ranges.compute(range, (r, t) -> t == null ? 1 : t + 1);
+    session.execute(
+        String.format("INSERT INTO \"%s\".\"SINGLE_PK\" (pk, cc, v) VALUES (?, ?, ?)", keyspace),
+        i,
+        j,
+        42);
+  }
+
+  private void insertIntoCompositePkTable(
+      String keyspace,
+      Map<TokenRange, Integer> ranges,
+      Map<Host, Integer> hosts,
+      Metadata metadata,
+      int i,
+      int j,
+      int k) {
+    ByteBuffer bb1 = cint().serialize(i, V4);
+    ByteBuffer bb2 = cint().serialize(j, V4);
+    Set<Host> replicas = metadata.getReplicas(keyspace, compose(bb1, bb2));
+    for (Host replica : replicas) {
+      hosts.compute(replica, (r, t) -> t == null ? 1 : t + 1);
+    }
+    Token token = metadata.newToken(bb1, bb2);
+    TokenRange range =
+        metadata.getTokenRanges().stream().filter(r -> r.contains(token)).findFirst().orElse(null);
+    ranges.compute(range, (r, t) -> t == null ? 1 : t + 1);
+    session.execute(
+        String.format(
+            "INSERT INTO \"%s\".composite_pk (pk1, pk2, cc, v) VALUES (?, ?, ?, ?)", keyspace),
+        i,
+        j,
+        k,
+        42);
   }
 }

@@ -25,6 +25,7 @@ A template configuration file can be found [here](./application.template.conf).
 <a href="#executor">Executor Settings</a><br>
 <a href="#log">Log Settings</a><br>
 <a href="#monitoring">Monitoring Settings</a><br>
+<a href="#stats">Stats Settings</a><br>
 <a name="Common"></a>
 ## Common Settings
 
@@ -592,17 +593,6 @@ Default: **&lt;unspecified&gt;**.
 The Time-To-Live (TTL) of inserted/updated cells during load (seconds); a value of -1 means there is no TTL. Not applicable to unloading nor counting. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useTTL.html), and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useExpire.html).
 
 Default: **-1**.
-
-#### -stats,--schema.statisticsMode _&lt;string&gt;_
-
-Which kind of statistics to compute. Only applicaple for the count workflow, ignored otherwise. Possible values are:
-* `global`: count the total number of rows in the table.
-* `ranges`: count the total number of rows per token range in the table.
-* `hosts`: count the total number of rows per hosts in the table.
-* `all`: count the total number of rows in the table, the total number of rows per token range in the table, and count the total number of rows per hosts in the table.
-The default value is `global`.
-
-Default: **"global"**.
 
 <a name="batch"></a>
 ## Batch Settings
@@ -1335,4 +1325,27 @@ Default: **true**.
 The time unit used when printing throughput rates. Valid values: all `TimeUnit` enum constants.
 
 Default: **"SECONDS"**.
+
+<a name="stats"></a>
+## Stats Settings
+
+Settings applicable for the count workflow, ignored otherwise.
+
+#### -stats,--stats.mode _&lt;string&gt;_
+
+Which kind of statistics to compute. Only applicaple for the count workflow, ignored otherwise. Possible values are:
+* `global`: count the total number of rows in the table.
+* `ranges`: count the total number of rows per token range in the table.
+* `hosts`: count the total number of rows per hosts in the table.
+* `partitions`: count the total number of rows in the N biggest partitions in the table. When using this mode, you can chose how many partitions to tarck with the `schema.biggestPartitions` setting.
+* `all`: count the total number of rows in the table, the total number of rows per token range in the table, and count the total number of rows per hosts in the table.
+The default value is `global`.
+
+Default: **"global"**.
+
+#### -partitions,--stats.numPartitions _&lt;number&gt;_
+
+The number of distinct partitions to count rows for. Only applicaple for the count workflow when `stats.mode` is `partitions`, ignored otherwise.
+
+Default: **10**.
 

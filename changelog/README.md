@@ -4,6 +4,7 @@
 
 - [new feature] DAT-291: Add count workflow.
 - [improvement] DAT-298: Rename CQL_DATE_TIME to CQL_TIMESTAMP.
+- [improvement] DAT-299: Count the number of rows for the N biggest partitions.
 
 
 ### 1.0.3 (in progress)

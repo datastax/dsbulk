@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine;
 
-import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.TPC_THRESHOLD;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Statement;
@@ -16,6 +15,7 @@ import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
@@ -27,6 +27,7 @@ import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
+import com.datastax.dsbulk.engine.internal.settings.StatsSettings;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
@@ -34,7 +35,6 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -73,6 +73,7 @@ public class CountWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
+    StatsSettings statsSettings = settingsManager.getStatsSettings();
     engineSettings.init();
     // First verify that dry-run is off; that's unsupported for count.
     if (engineSettings.isDryRun()) {
@@ -85,6 +86,7 @@ public class CountWorkflow implements Workflow {
     monitoringSettings.init();
     executorSettings.init();
     driverSettings.init();
+    statsSettings.init();
     scheduler =
         Schedulers.newParallel(
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
@@ -103,7 +105,13 @@ public class CountWorkflow implements Workflow {
             cluster.getConfiguration().getCodecRegistry());
     metricsManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
-    readResultCounter = schemaSettings.createReadResultCounter(session);
+    ExtendedCodecRegistry codecRegistry =
+        codecSettings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+    StatsSettings.StatisticsMode statisticsMode = statsSettings.getStatisticsMode();
+    int numPartitions = statsSettings.getNumPartitions();
+    readResultCounter =
+        schemaSettings.createReadResultCounter(
+            session, codecRegistry, statisticsMode, numPartitions);
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
   }
@@ -112,13 +120,27 @@ public class CountWorkflow implements Workflow {
   public boolean execute() {
     LOGGER.info("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    Flux<Void> flux;
-    if (readStatements.size() >= TPC_THRESHOLD) {
-      flux = threadPerCoreFlux();
-    } else {
-      flux = parallelFlux();
-    }
-    flux.transform(logManager.newTerminationHandler()).blockLast();
+    Flux.fromIterable(readStatements)
+        .flatMap(
+            statement ->
+                executor
+                    .readReactive(statement)
+                    .transform(metricsManager.newTotalItemsMonitor())
+                    .transform(logManager.newTotalItemsCounter())
+                    .transform(metricsManager.newFailedItemsMonitor())
+                    .transform(logManager.newFailedReadsHandler())
+                    // Important:
+                    // 1) there must be one counting unit per thread / inner flow:
+                    // this is guaranteed by instantiating a new counting unit below for each inner
+                    // flow
+                    // 2) A partition cannot be split in two inner flows;
+                    // this is guaranteed by the way we create our read statements by token range.
+                    .doOnNext(readResultCounter.newCountingUnit()::update)
+                    .then()
+                    .subscribeOn(scheduler),
+            Runtime.getRuntime().availableProcessors())
+        .transform(logManager.newTerminationHandler())
+        .blockLast();
     timer.stop();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
@@ -133,45 +155,12 @@ public class CountWorkflow implements Workflow {
     return logManager.getTotalErrors() == 0;
   }
 
-  @NotNull
-  private Flux<Void> threadPerCoreFlux() {
-    LOGGER.info("Using thread-per-core pattern.");
-    return Flux.fromIterable(readStatements)
-        .flatMap(
-            statement ->
-                executor
-                    .readReactive(statement)
-                    .transform(metricsManager.newTotalItemsMonitor())
-                    .transform(logManager.newTotalItemsCounter())
-                    .transform(metricsManager.newFailedItemsMonitor())
-                    .transform(logManager.newFailedReadsHandler())
-                    .doOnNext(readResultCounter::update)
-                    .then()
-                    .subscribeOn(scheduler),
-            Runtime.getRuntime().availableProcessors());
-  }
-
-  @NotNull
-  private Flux<Void> parallelFlux() {
-    return Flux.fromIterable(readStatements)
-        .flatMap(executor::readReactive)
-        .parallel()
-        .runOn(scheduler)
-        .composeGroup(metricsManager.newTotalItemsMonitor())
-        .composeGroup(logManager.newTotalItemsCounter())
-        .composeGroup(metricsManager.newFailedItemsMonitor())
-        .composeGroup(logManager.newFailedReadsHandler())
-        .doOnNext(readResultCounter::update)
-        .sequential()
-        .then()
-        .flux();
-  }
-
   @Override
   public void close() throws Exception {
     if (closed.compareAndSet(false, true)) {
       LOGGER.info("{} closing.", this);
-      Exception e = WorkflowUtils.closeQuietly(metricsManager, null);
+      Exception e = WorkflowUtils.closeQuietly(readResultCounter, null);
+      e = WorkflowUtils.closeQuietly(metricsManager, e);
       e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);

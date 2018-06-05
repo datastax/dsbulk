@@ -34,9 +34,11 @@ import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.StatementWrapper;
@@ -114,9 +116,14 @@ class SchemaSettingsTest {
     col1 = mock(ColumnMetadata.class);
     col2 = mock(ColumnMetadata.class);
     col3 = mock(ColumnMetadata.class);
+    Configuration configuration = mock(Configuration.class);
+    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
     List<ColumnMetadata> columns = newArrayList(col1, col2, col3);
     when(session.getCluster()).thenReturn(cluster);
     when(cluster.getMetadata()).thenReturn(metadata);
+    when(cluster.getConfiguration()).thenReturn(configuration);
+    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
+    when(protocolOptions.getProtocolVersion()).thenReturn(V4);
     when(metadata.getKeyspace(anyString())).thenReturn(keyspace);
     when(metadata.getTokenRanges()).thenReturn(tokenRanges);
     when(keyspace.getTable(anyString())).thenReturn(table);
@@ -1016,7 +1023,9 @@ class SchemaSettingsTest {
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1, statisticsMode=all");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT);
-    ReadResultCounter counter = schemaSettings.createReadResultCounter(session);
+    ReadResultCounter counter =
+        schemaSettings.createReadResultCounter(
+            session, codecRegistry, StatsSettings.StatisticsMode.all, 10);
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
