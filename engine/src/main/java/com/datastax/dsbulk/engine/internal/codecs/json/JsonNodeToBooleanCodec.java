@@ -26,7 +26,7 @@ public class JsonNodeToBooleanCodec extends JsonNodeConvertingCodec<Boolean> {
 
   @Override
   public Boolean externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     if (node.isBoolean()) {

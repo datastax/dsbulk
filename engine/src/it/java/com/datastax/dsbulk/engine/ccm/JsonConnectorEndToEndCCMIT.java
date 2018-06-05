@@ -10,9 +10,8 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.truncateIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
-import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.assertComplexRows;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkNumbersWritten;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkTemporalsWritten;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
@@ -33,7 +32,6 @@ import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
@@ -41,13 +39,9 @@ import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -260,10 +254,12 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute(
         "CREATE TABLE complex ("
             + "pk int PRIMARY KEY, "
+            + "c_text text, "
+            + "c_int int, "
             + "c_tuple frozen<tuple<int, text, float, timestamp>>, "
-            + "c_map map<timestamp, time>,"
+            + "c_map map<timestamp, varchar>,"
             + "c_list list<timestamp>,"
-            + "c_set set<date>,"
+            + "c_set set<varchar>,"
             + "c_udt frozen<contacts>)");
 
     List<String> args = new ArrayList<>();
@@ -274,6 +270,10 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(escapeUserInput(logDir));
     args.add("--connector.json.url");
     args.add(escapeUserInput(getClass().getResource("/complex.json")));
+    args.add("--connector.json.mode");
+    args.add("SINGLE_DOCUMENT");
+    args.add("--codec.nullStrings");
+    args.add("N/A");
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -281,22 +281,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    Row row = session.execute("SELECT * FROM complex").one();
-    assertThat(row.getList("c_list", Instant.class))
-        .contains(Instant.parse("2018-05-25T11:25:00Z"), Instant.parse("2018-05-25T11:26:00Z"));
-    assertThat(row.getSet("c_set", LocalDate.class))
-        .contains(LocalDate.parse("2018-05-25"), LocalDate.parse("2018-05-26"));
-    assertThat(row.getMap("c_map", Instant.class, LocalTime.class))
-        .containsEntry(Instant.parse("2018-05-25T11:25:00Z"), LocalTime.parse("11:25"));
-    assertThat(row.getTupleValue("c_tuple").getInt(0)).isEqualTo(2);
-    assertThat(row.getTupleValue("c_tuple").getString(1)).isEqualTo("test1");
-    assertThat(row.getTupleValue("c_tuple").getFloat(2)).isEqualTo(2.7f);
-    assertThat(row.getTupleValue("c_tuple").get(3, Instant.class))
-        .isEqualTo(Instant.parse("2018-05-25T11:25:00Z"));
-    assertThat(row.getUDTValue("c_udt").getTupleValue("f_tuple"))
-        .isEqualTo(row.getTupleValue("c_tuple"));
-    assertThat(row.getUDTValue("c_udt").getList("f_list", Instant.class))
-        .isEqualTo(row.getList("c_list", Instant.class));
+
+    assertComplexRows(session);
 
     deleteDirectory(logDir);
 
@@ -308,8 +294,12 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(escapeUserInput(logDir));
     args.add("--connector.json.url");
     args.add(escapeUserInput(unloadDir));
+    args.add("--connector.json.mode");
+    args.add("SINGLE_DOCUMENT");
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
+    args.add("--codec.nullStrings");
+    args.add("N/A");
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -317,14 +307,30 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(1, unloadDir);
-    ObjectMapper objectMapper = new ObjectMapper();
-    assertThat(
-            objectMapper.readTree(
-                readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.joining())))
-        .isEqualTo(
-            objectMapper.readTree(
-                readFile(Paths.get(getClass().getResource("/complex.json").toURI()))));
+    // 2 documents + 2 lines for single document mode
+    validateOutputFiles(4, unloadDir);
+
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.json.mode");
+    args.add("SINGLE_DOCUMENT");
+    args.add("--codec.nullStrings");
+    args.add("N/A");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("complex");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    assertComplexRows(session);
   }
 
   /** Attempts to load and unload a larger dataset which can be batched. */

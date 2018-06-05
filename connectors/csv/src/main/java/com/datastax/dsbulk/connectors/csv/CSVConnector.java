@@ -166,6 +166,10 @@ public class CSVConnector implements Connector {
     if (read) {
       parserSettings = new CsvParserSettings();
       parserSettings.setFormat(format);
+      // use the empty string as the empty value and the null value, let the engine deal
+      // with conversions to null, if required.
+      parserSettings.setEmptyValue("");
+      parserSettings.setNullValue("");
       // do not use this feature as the parser throws an error if the file
       // has fewer lines than skipRecords;
       // we'll use the skip() operator instead.

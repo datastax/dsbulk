@@ -33,7 +33,7 @@ public abstract class StringToTemporalCodec<T extends TemporalAccessor>
   }
 
   TemporalAccessor parseTemporalAccessor(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     return temporalFormat.parse(s);

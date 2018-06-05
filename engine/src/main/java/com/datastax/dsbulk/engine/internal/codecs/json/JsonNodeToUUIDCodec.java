@@ -36,7 +36,7 @@ public class JsonNodeToUUIDCodec extends JsonNodeConvertingCodec<UUID> {
 
   @Override
   public UUID externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     return CodecUtils.parseUUID(node.asText(), instantCodec, generator);

@@ -8,47 +8,31 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import static com.datastax.driver.core.DataType.varint;
+import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
-import static com.google.common.collect.Lists.newArrayList;
-import static java.math.BigDecimal.ONE;
-import static java.math.BigDecimal.ZERO;
-import static java.math.RoundingMode.HALF_EVEN;
-import static java.time.Instant.EPOCH;
-import static java.time.ZoneOffset.UTC;
-import static java.util.Locale.US;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
-import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
-import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.google.common.collect.ImmutableMap;
-import io.netty.util.concurrent.FastThreadLocal;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.reflect.TypeToken;
 import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.text.NumberFormat;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToBigIntegerCodecTest {
 
-  private final FastThreadLocal<NumberFormat> numberFormat =
-      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+  private JsonNodeToBigIntegerCodec codec;
 
-  private final JsonNodeToBigIntegerCodec codec =
-      new JsonNodeToBigIntegerCodec(
-          numberFormat,
-          OverflowStrategy.REJECT,
-          RoundingMode.HALF_EVEN,
-          CqlTemporalFormat.DEFAULT_INSTANCE,
-          UTC,
-          MILLISECONDS,
-          EPOCH.atZone(UTC),
-          ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO),
-          newArrayList("NULL"));
+  @BeforeEach
+  void setUp() {
+    codec =
+        (JsonNodeToBigIntegerCodec)
+            newCodecRegistry("nullStrings = [NULL]")
+                .codecFor(varint(), TypeToken.of(JsonNode.class));
+  }
 
   @Test
-  void should_convert_from_valid_external() throws Exception {
+  void should_convert_from_valid_external() {
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.numberNode(0))
         .toInternal(BigInteger.ZERO)
@@ -68,6 +52,8 @@ class JsonNodeToBigIntegerCodecTest {
         .toInternal(BigInteger.ONE)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("FALSE"))
         .toInternal(BigInteger.ZERO)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
@@ -90,7 +76,6 @@ class JsonNodeToBigIntegerCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid biginteger"));
   }
 }

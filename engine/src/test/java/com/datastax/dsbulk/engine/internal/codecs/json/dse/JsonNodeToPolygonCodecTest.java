@@ -66,7 +66,6 @@ class JsonNodeToPolygonCodecTest {
   void should_not_convert_from_invalid_external() {
     JsonNodeToPolygonCodec codec = new JsonNodeToPolygonCodec(objectMapper, nullStrings);
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid polygon literal"));
   }
 }

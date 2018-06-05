@@ -113,12 +113,12 @@ class CSVConnectorTest {
             "1999",
             "Chevy",
             "Venture \"Extended Edition\"",
-            null,
+            "",
             "4900.00",
             "1999",
             "Chevy",
             "Venture \"Extended Edition\"",
-            null,
+            "",
             "4900.00");
     assertThat(actual.get(2).values())
         .containsExactly(
@@ -137,24 +137,24 @@ class CSVConnectorTest {
             "1999",
             "Chevy",
             "Venture \"Extended Edition, Very Large\"",
-            null,
+            "",
             "5000.00",
             "1999",
             "Chevy",
             "Venture \"Extended Edition, Very Large\"",
-            null,
+            "",
             "5000.00");
     assertThat(actual.get(4).values())
         .containsExactly(
-            null,
-            null,
+            "",
+            "",
             "Venture \"Extended Edition\"",
-            null,
+            "",
             "4900.00",
-            null,
-            null,
+            "",
+            "",
             "Venture \"Extended Edition\"",
-            null,
+            "",
             "4900.00");
   }
 

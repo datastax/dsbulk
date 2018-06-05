@@ -12,6 +12,7 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -23,6 +24,12 @@ public class JsonNodeToSetCodec<E> extends JsonNodeToCollectionCodec<E, Set<E>> 
       ConvertingCodec<JsonNode, E> eltCodec,
       ObjectMapper objectMapper,
       List<String> nullStrings) {
-    super(collectionCodec, eltCodec, objectMapper, LinkedHashSet::new, nullStrings);
+    super(
+        collectionCodec,
+        eltCodec,
+        objectMapper,
+        LinkedHashSet::new,
+        nullStrings,
+        ImmutableSet.of());
   }
 }

@@ -33,7 +33,7 @@ public class StringToUUIDCodec extends StringConvertingCodec<UUID> {
 
   @Override
   public UUID externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     return CodecUtils.parseUUID(s, instantCodec, generator);

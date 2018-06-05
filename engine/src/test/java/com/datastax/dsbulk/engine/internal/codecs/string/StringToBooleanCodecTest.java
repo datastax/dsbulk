@@ -37,6 +37,8 @@ class StringToBooleanCodecTest {
         .toInternal(true)
         .convertsFromExternal("bar")
         .toInternal(false)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
@@ -56,8 +58,6 @@ class StringToBooleanCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec)
-        .cannotConvertFromExternal("")
-        .cannotConvertFromExternal("not a valid boolean");
+    assertThat(codec).cannotConvertFromExternal("not a valid boolean");
   }
 }

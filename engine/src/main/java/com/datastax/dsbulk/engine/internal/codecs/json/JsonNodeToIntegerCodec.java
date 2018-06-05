@@ -54,7 +54,7 @@ public class JsonNodeToIntegerCodec extends JsonNodeToNumberCodec<Integer> {
 
   @Override
   public Integer externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     if (node.isInt()) {

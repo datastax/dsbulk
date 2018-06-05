@@ -37,14 +37,11 @@ public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
 
   @Override
   public TupleValue externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     if (!node.isArray()) {
       throw new InvalidTypeException("Expecting ARRAY node, got " + node.getNodeType());
-    }
-    if (node.size() == 0) {
-      return null;
     }
     int size = definition.getComponentTypes().size();
     if (node.size() != size) {

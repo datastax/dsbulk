@@ -27,6 +27,8 @@ class JsonNodeToInetAddressCodecTest {
         .toInternal(InetAddress.getByName("1.2.3.4"))
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("127.0.0.1"))
         .toInternal(InetAddress.getByName("127.0.0.1"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
@@ -47,7 +49,6 @@ class JsonNodeToInetAddressCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid inet address"));
   }
 }

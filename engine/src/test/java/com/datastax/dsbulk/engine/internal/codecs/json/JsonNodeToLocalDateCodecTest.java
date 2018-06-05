@@ -33,6 +33,8 @@ class JsonNodeToLocalDateCodecTest {
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("2016-07-24"))
         .toInternal(LocalDate.parse("2016-07-24"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
@@ -41,6 +43,8 @@ class JsonNodeToLocalDateCodecTest {
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("20160724"))
         .toInternal(LocalDate.parse("2016-07-24"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
@@ -67,7 +71,6 @@ class JsonNodeToLocalDateCodecTest {
   void should_not_convert_from_invalid_external() {
     JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, nullStrings);
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }
 }
