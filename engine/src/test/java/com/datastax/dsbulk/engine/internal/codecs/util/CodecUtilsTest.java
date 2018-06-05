@@ -96,7 +96,7 @@ class CodecUtilsTest {
       CodecSettings.getNumberFormat("#,###.##", US, UNNECESSARY, false);
 
   private final TemporalFormat timestampFormat1 =
-      CodecSettings.getTemporalFormat("CQL_DATE_TIME", UTC, US);
+      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US);
 
   private final Map<String, Boolean> booleanInputWords =
       ImmutableMap.of("true", true, "false", false);

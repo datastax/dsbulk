@@ -57,7 +57,7 @@ public class CodecSettings {
   public static final JsonNodeFactory JSON_NODE_FACTORY =
       JsonNodeFactory.withExactBigDecimals(true);
 
-  private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
+  private static final String CQL_TIMESTAMP = "CQL_TIMESTAMP";
   private static final String LOCALE = "locale";
   private static final String NULL_STRINGS = "nullStrings";
   private static final String BOOLEAN_STRINGS = "booleanStrings";
@@ -226,7 +226,7 @@ public class CodecSettings {
 
   @VisibleForTesting
   public static TemporalFormat getTemporalFormat(String pattern, ZoneId timeZone, Locale locale) {
-    if (pattern.equals(CQL_DATE_TIME)) {
+    if (pattern.equals(CQL_TIMESTAMP)) {
       return new CqlTemporalFormat(timeZone);
     } else {
       DateTimeFormatterBuilder builder =

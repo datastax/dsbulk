@@ -3,6 +3,7 @@
 ### 1.1.0 (in progress)
 
 - [new feature] DAT-291: Add count workflow.
+- [improvement] DAT-298: Rename CQL_DATE_TIME to CQL_TIMESTAMP.
 
 
 ### 1.0.3 (in progress)
