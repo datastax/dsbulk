@@ -31,9 +31,11 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import com.univocity.parsers.common.TextParsingException;
 import io.undertow.util.Headers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
@@ -690,6 +692,32 @@ class CSVConnectorTest {
         .isInstanceOf(UncheckedIOException.class)
         .hasMessageContaining(
             "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.csv");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_IOE_when_max_chars_per_column_exceeded() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", escape = \"\\\"\", comment = \"#\", maxCharsPerColumn = 15",
+                        url("/sample.csv")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.defer(connector.read()).collectList().block())
+        .satisfies(
+            t ->
+                assertThat(t.getCause())
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining(
+                        "Length of parsed input (16) exceeds the maximum number "
+                            + "of characters defined in your parser settings (15). "
+                            + "Please increase the value of the connector.csv.maxCharsPerColumn setting.")
+                    .hasCauseExactlyInstanceOf(TextParsingException.class)
+                    .hasRootCauseExactlyInstanceOf(ArrayIndexOutOfBoundsException.class));
     connector.close();
   }
 
