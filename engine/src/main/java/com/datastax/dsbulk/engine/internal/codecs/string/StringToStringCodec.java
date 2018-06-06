@@ -19,6 +19,7 @@ public class StringToStringCodec extends StringConvertingCodec<String> {
 
   @Override
   public String externalToInternal(String s) {
+    // DAT-297: do not convert empty strings to null so do not use isNullOrEmpty() here
     if (isNull(s)) {
       return null;
     }

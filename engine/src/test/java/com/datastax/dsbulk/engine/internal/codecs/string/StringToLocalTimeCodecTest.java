@@ -35,6 +35,8 @@ class StringToLocalTimeCodecTest {
         .toInternal(LocalTime.parse("12:24:46"))
         .convertsFromExternal("12:24:46.999")
         .toInternal(LocalTime.parse("12:24:46.999"))
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
@@ -60,8 +62,6 @@ class StringToLocalTimeCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     StringToLocalTimeCodec codec = new StringToLocalTimeCodec(format1, UTC, nullStrings);
-    assertThat(codec)
-        .cannotConvertFromExternal("")
-        .cannotConvertFromExternal("not a valid date format");
+    assertThat(codec).cannotConvertFromExternal("not a valid date format");
   }
 }

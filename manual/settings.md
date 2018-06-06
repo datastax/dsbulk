@@ -690,11 +690,21 @@ The locale to use for locale-sensitive conversions.
 
 Default: **"en_US"**.
 
-#### -nullStrings,--codec.nullStrings _&lt;list&lt;string&gt;&gt;_
+#### -nullStrings,--codec.nullStrings _&lt;list&gt;_
 
-Comma-separated list of strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first string specified will be used to change a row cell containing `null` to the specified string when written out. By default, empty strings are converted to `null` while loading, and `null` is converted to an empty string while unloading. This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required.
+Comma-separated list of case-sensitive strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first string specified will be used to change a row cell containing `null` to the specified string when written out.
 
-Default: **[""]**.
+For example, setting this to `["NULL"]` will cause a field containing the word `NULL` to be mapped to `null` while loading, and a column containing `null` to be converted to the word `NULL` while unloading.
+
+The default value is `[]` (no strings are mapped to `null`). In the default mode, DSBulk behaves as follows:
+* When loading, if the target CQL type is textual (i.e. text, varchar or ascii), the original field value is left untouched; for other types, if the value is an empty string, it is converted to `null`.
+* When unloading, all `null` values are converted to an empty string.
+
+Note that, regardless of this setting, DSBulk will always convert empty strings to `null` if the target CQL type is not textual (i.e. not text, varchar or ascii).
+
+This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required.
+
+Default: **[]**.
 
 #### --codec.number _&lt;string&gt;_
 
@@ -760,15 +770,15 @@ The temporal pattern to use for `String` to CQL `timestamp` conversion. Valid ch
 
 - A date-time pattern such as `yyyy-MM-dd HH:mm:ss`.
 - A pre-defined formatter such as `ISO_ZONED_DATE_TIME` or `ISO_INSTANT`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
-- The special formatter `CQL_DATE_TIME`, which is a special parser that accepts all valid CQL literal formats for the `timestamp` type.
+- The special formatter `CQL_TIMESTAMP`, which is a special parser that accepts all valid CQL literal formats for the `timestamp` type.
 
 For more information on patterns and pre-defined formatters, see [Patterns for Formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 
 For more information about CQL date, time and timestamp literals, see [Date, time, and timestamp format](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/refDateTimeFormats.html?hl=timestamp).
 
-The default value is the special `CQL_DATE_TIME` value. When parsing, this format recognizes all CQL temporal literals; if the input is a local date or date/time, the timestamp is resolved using the time zone specified under `timeZone`. When formatting, this format uses the `ISO_OFFSET_DATE_TIME` pattern, which is compliant with both CQL and ISO-8601.
+The default value is the special `CQL_TIMESTAMP` value. When parsing, this format recognizes all CQL temporal literals; if the input is a local date or date/time, the timestamp is resolved using the time zone specified under `timeZone`. When formatting, this format uses the `ISO_OFFSET_DATE_TIME` pattern, which is compliant with both CQL and ISO-8601.
 
-Default: **"CQL_DATE_TIME"**.
+Default: **"CQL_TIMESTAMP"**.
 
 #### --codec.unit _&lt;string&gt;_
 

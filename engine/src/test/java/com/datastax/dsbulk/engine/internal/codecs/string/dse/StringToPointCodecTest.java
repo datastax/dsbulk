@@ -45,8 +45,6 @@ class StringToPointCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     StringToPointCodec codec = new StringToPointCodec(nullStrings);
-    assertThat(codec)
-        .cannotConvertFromExternal("")
-        .cannotConvertFromExternal("not a valid point literal");
+    assertThat(codec).cannotConvertFromExternal("not a valid point literal");
   }
 }

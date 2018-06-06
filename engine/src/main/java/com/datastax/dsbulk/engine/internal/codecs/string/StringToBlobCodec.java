@@ -22,7 +22,7 @@ public class StringToBlobCodec extends StringConvertingCodec<ByteBuffer> {
 
   @Override
   public ByteBuffer externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     return CodecUtils.parseByteBuffer(s);

@@ -29,6 +29,7 @@ import com.google.common.collect.Streams;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
+import com.univocity.parsers.common.TextParsingException;
 import com.univocity.parsers.csv.CsvFormat;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
@@ -59,6 +60,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,6 +166,10 @@ public class CSVConnector implements Connector {
     if (read) {
       parserSettings = new CsvParserSettings();
       parserSettings.setFormat(format);
+      // use the empty string as the empty value and the null value, let the engine deal
+      // with conversions to null, if required.
+      parserSettings.setEmptyValue("");
+      parserSettings.setNullValue("");
       // do not use this feature as the parser throws an error if the file
       // has fewer lines than skipRecords;
       // we'll use the skip() operator instead.
@@ -372,6 +378,9 @@ public class CSVConnector implements Connector {
                 }
                 LOGGER.debug("Done reading {}", url);
                 sink.complete();
+              } catch (TextParsingException e) {
+                IOException ioe = launderTextParsingException(e);
+                sink.error(ioe);
               } catch (Exception e) {
                 sink.error(
                     new IOException(
@@ -517,5 +526,25 @@ public class CSVConnector implements Connector {
     }
     // assume we are writing to a single URL and ignore fileNameFormat
     return url;
+  }
+
+  @NotNull
+  private IOException launderTextParsingException(TextParsingException e) {
+    // TextParsingException messages are very verbose, so we wrap these exceptions
+    // in an IOE that only keeps the first sentence.
+    String message = e.getMessage();
+    int i = message.indexOf('\n');
+    if (i != -1) {
+      message = message.substring(0, i);
+    }
+    // Extra help for when maxCharsPerColumn is not big enough.
+    if (e.getCause() instanceof ArrayIndexOutOfBoundsException
+        && message.matches(
+            "Length of parsed input \\(\\d+\\) exceeds the maximum number "
+                + "of characters defined in your parser settings.*")) {
+      message += "Please increase the value of the connector.csv.maxCharsPerColumn setting.";
+    }
+    return new IOException(
+        String.format("Error reading from %s at line %d: %s", url, e.getLineIndex(), message), e);
   }
 }

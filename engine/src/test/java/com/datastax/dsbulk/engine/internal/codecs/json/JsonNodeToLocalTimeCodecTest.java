@@ -37,6 +37,8 @@ class JsonNodeToLocalTimeCodecTest {
         .toInternal(LocalTime.parse("12:24:46"))
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("12:24:46.999"))
         .toInternal(LocalTime.parse("12:24:46.999"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
@@ -45,6 +47,8 @@ class JsonNodeToLocalTimeCodecTest {
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("122446.999"))
         .toInternal(LocalTime.parse("12:24:46.999"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
@@ -72,7 +76,6 @@ class JsonNodeToLocalTimeCodecTest {
     JsonNodeToLocalTimeCodec codec =
         new JsonNodeToLocalTimeCodec(new SimpleTemporalFormat(ISO_LOCAL_DATE), nullStrings);
     assertThat(codec)
-        .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode(""))
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }
 }

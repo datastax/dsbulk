@@ -54,7 +54,7 @@ public class JsonNodeToFloatCodec extends JsonNodeToNumberCodec<Float> {
 
   @Override
   public Float externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     if (node.isFloat()) {

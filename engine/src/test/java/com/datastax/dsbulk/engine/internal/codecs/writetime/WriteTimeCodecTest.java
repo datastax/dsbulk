@@ -40,7 +40,7 @@ class WriteTimeCodecTest {
   private final ZonedDateTime epoch = EPOCH.atZone(UTC);
 
   private final TemporalFormat temporalFormat =
-      CodecSettings.getTemporalFormat("CQL_DATE_TIME", UTC, US);
+      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US);
 
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);

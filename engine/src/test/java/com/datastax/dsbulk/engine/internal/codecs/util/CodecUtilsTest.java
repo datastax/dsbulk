@@ -51,6 +51,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.driver.core.utils.Bytes;
 import com.datastax.driver.core.utils.UUIDs;
+import com.datastax.driver.dse.geometry.LineString;
+import com.datastax.driver.dse.geometry.Point;
+import com.datastax.driver.dse.geometry.Polygon;
+import com.datastax.driver.dse.search.DateRange;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.google.common.collect.ImmutableMap;
@@ -92,7 +96,7 @@ class CodecUtilsTest {
       CodecSettings.getNumberFormat("#,###.##", US, UNNECESSARY, false);
 
   private final TemporalFormat timestampFormat1 =
-      CodecSettings.getTemporalFormat("CQL_DATE_TIME", UTC, US);
+      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US);
 
   private final Map<String, Boolean> booleanInputWords =
       ImmutableMap.of("true", true, "false", false);
@@ -104,6 +108,7 @@ class CodecUtilsTest {
   @Test
   void should_parse_temporal_complex() {
     assertThat(parseTemporal(null, timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)).isNull();
+    assertThat(parseTemporal("", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)).isNull();
     assertThat(
             Instant.from(
                 parseTemporal(
@@ -154,6 +159,17 @@ class CodecUtilsTest {
     assertThat(
             parseNumber(
                 null,
+                numberFormat1,
+                timestampFormat1,
+                UTC,
+                MILLISECONDS,
+                EPOCH.atZone(UTC),
+                booleanInputWords,
+                booleanNumbers))
+        .isNull();
+    assertThat(
+            parseNumber(
+                "",
                 numberFormat1,
                 timestampFormat1,
                 UTC,
@@ -946,6 +962,7 @@ class CodecUtilsTest {
             EPOCH.atZone(UTC),
             newArrayList("NULL"));
     assertThat(CodecUtils.parseUUID(null, instantCodec, MIN)).isNull();
+    assertThat(CodecUtils.parseUUID("", instantCodec, MIN)).isNull();
     assertThat(CodecUtils.parseUUID("a15341ec-ebef-4eab-b91d-ff16bf801a79", instantCodec, MIN))
         .isEqualTo(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"));
     // time UUIDs with MIN strategy
@@ -991,8 +1008,70 @@ class CodecUtilsTest {
     String data64 = Base64.getEncoder().encodeToString(data);
     String dataHex = Bytes.toHexString(data);
     assertThat(CodecUtils.parseByteBuffer(null)).isNull();
+    assertThat(CodecUtils.parseByteBuffer("")).isNull();
     assertThat(CodecUtils.parseByteBuffer("0x")).isEqualTo(ByteBuffer.wrap(new byte[] {}));
     assertThat(CodecUtils.parseByteBuffer(data64)).isEqualTo(ByteBuffer.wrap(data));
     assertThat(CodecUtils.parseByteBuffer(dataHex)).isEqualTo(ByteBuffer.wrap(data));
+  }
+
+  @Test
+  void should_parse_point() {
+    assertThat(CodecUtils.parsePoint(null)).isNull();
+    assertThat(CodecUtils.parsePoint("")).isNull();
+    assertThat(CodecUtils.parsePoint("POINT (-1.1 -2.2)")).isEqualTo(new Point(-1.1d, -2.2d));
+    assertThat(CodecUtils.parsePoint("'POINT (-1.1 -2.2)'")).isEqualTo(new Point(-1.1d, -2.2d));
+    assertThat(CodecUtils.parsePoint("{\"type\":\"Point\",\"coordinates\":[-1.1,-2.2]}"))
+        .isEqualTo(new Point(-1.1d, -2.2d));
+    assertThatThrownBy(() -> CodecUtils.parsePoint("not a valid point"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid point literal");
+  }
+
+  @Test
+  void should_parse_line_string() {
+    LineString lineString = new LineString(new Point(30, 10), new Point(10, 30), new Point(40, 40));
+    assertThat(CodecUtils.parseLineString(null)).isNull();
+    assertThat(CodecUtils.parseLineString("")).isNull();
+    assertThat(CodecUtils.parseLineString("LINESTRING (30 10, 10 30, 40 40)"))
+        .isEqualTo(lineString);
+    assertThat(CodecUtils.parseLineString("'LINESTRING (30 10, 10 30, 40 40)'"))
+        .isEqualTo(lineString);
+    assertThat(
+            CodecUtils.parseLineString(
+                "{\"type\":\"LineString\",\"coordinates\":[[30.0,10.0],[10.0,30.0],[40.0,40.0]]}"))
+        .isEqualTo(lineString);
+    assertThatThrownBy(() -> CodecUtils.parseLineString("not a valid line string"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid line string literal");
+  }
+
+  @Test
+  void should_parse_polygon() {
+    Polygon polygon =
+        new Polygon(new Point(30, 10), new Point(10, 20), new Point(20, 40), new Point(40, 40));
+    assertThat(CodecUtils.parsePolygon(null)).isNull();
+    assertThat(CodecUtils.parsePolygon("")).isNull();
+    assertThat(CodecUtils.parsePolygon("POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))"))
+        .isEqualTo(polygon);
+    assertThat(CodecUtils.parsePolygon("'POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))'"))
+        .isEqualTo(polygon);
+    assertThat(
+            CodecUtils.parsePolygon(
+                "{\"type\":\"Polygon\",\"coordinates\":[[[30.0,10.0],[10.0,20.0],[20.0,40.0],[40.0,40.0],[30.0,10.0]]]}"))
+        .isEqualTo(polygon);
+    assertThatThrownBy(() -> CodecUtils.parsePolygon("not a valid polygon"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid polygon literal");
+  }
+
+  @Test
+  void should_parse_date_range() throws ParseException {
+    DateRange dateRange = DateRange.parse("[* TO 2014-12-01]");
+    assertThat(CodecUtils.parseDateRange(null)).isNull();
+    assertThat(CodecUtils.parseDateRange("")).isNull();
+    assertThat(CodecUtils.parseDateRange("[* TO 2014-12-01]")).isEqualTo(dateRange);
+    assertThatThrownBy(() -> CodecUtils.parseDateRange("not a valid date range"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid date range literal");
   }
 }

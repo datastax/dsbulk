@@ -22,7 +22,7 @@ public class JsonNodeToDurationCodec extends JsonNodeConvertingCodec<Duration> {
 
   @Override
   public Duration externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     String s = node.asText();

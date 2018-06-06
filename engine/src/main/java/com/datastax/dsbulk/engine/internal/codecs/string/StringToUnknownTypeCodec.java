@@ -19,7 +19,7 @@ public class StringToUnknownTypeCodec<T> extends StringConvertingCodec<T> {
 
   @Override
   public T externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     return getInternalCodec().parse(s);

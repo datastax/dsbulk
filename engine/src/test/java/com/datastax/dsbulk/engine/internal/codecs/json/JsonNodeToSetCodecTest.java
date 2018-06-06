@@ -8,67 +8,39 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.driver.core.TypeCodec.cdouble;
-import static com.datastax.driver.core.TypeCodec.set;
-import static com.datastax.driver.core.TypeCodec.varchar;
+import static com.datastax.driver.core.DataType.cdouble;
+import static com.datastax.driver.core.DataType.set;
+import static com.datastax.driver.core.DataType.varchar;
+import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
-import static com.google.common.collect.Lists.newArrayList;
-import static java.math.BigDecimal.ONE;
-import static java.math.BigDecimal.ZERO;
-import static java.math.RoundingMode.HALF_EVEN;
-import static java.time.Instant.EPOCH;
-import static java.time.ZoneOffset.UTC;
-import static java.util.Locale.US;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.util.Sets.newLinkedHashSet;
 
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
-import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableMap;
-import io.netty.util.concurrent.FastThreadLocal;
-import java.math.RoundingMode;
-import java.text.NumberFormat;
-import java.util.List;
-import java.util.Set;
+import com.google.common.reflect.TypeToken;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToSetCodecTest {
 
   private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  private final FastThreadLocal<NumberFormat> numberFormat =
-      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+  private JsonNodeToSetCodec<Double> codec1;
+  private JsonNodeToSetCodec<String> codec2;
 
-  private final List<String> nullStrings = newArrayList("NULL");
-
-  private final JsonNodeToDoubleCodec eltCodec1 =
-      new JsonNodeToDoubleCodec(
-          numberFormat,
-          OverflowStrategy.REJECT,
-          RoundingMode.HALF_EVEN,
-          CqlTemporalFormat.DEFAULT_INSTANCE,
-          UTC,
-          MILLISECONDS,
-          EPOCH.atZone(UTC),
-          ImmutableMap.of("true", true, "false", false),
-          newArrayList(ONE, ZERO),
-          nullStrings);
-
-  private final JsonNodeToStringCodec eltCodec2 =
-      new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
-
-  private final TypeCodec<Set<Double>> setCodec1 = set(cdouble());
-  private final TypeCodec<Set<String>> setCodec2 = set(varchar());
-
-  private final JsonNodeToSetCodec<Double> codec1 =
-      new JsonNodeToSetCodec<>(setCodec1, eltCodec1, objectMapper, nullStrings);
-
-  private final JsonNodeToSetCodec<String> codec2 =
-      new JsonNodeToSetCodec<>(setCodec2, eltCodec2, objectMapper, nullStrings);
+  @BeforeEach
+  void setUp() {
+    ExtendedCodecRegistry codecRegistry = newCodecRegistry("nullStrings = [NULL]");
+    codec1 =
+        (JsonNodeToSetCodec<Double>)
+            codecRegistry.codecFor(set(cdouble()), TypeToken.of(JsonNode.class));
+    codec2 =
+        (JsonNodeToSetCodec<String>)
+            codecRegistry.codecFor(set(varchar()), TypeToken.of(JsonNode.class));
+  }
 
   @Test
   void should_convert_from_valid_external() throws Exception {
@@ -83,10 +55,14 @@ class JsonNodeToSetCodecTest {
         .toInternal(newLinkedHashSet(1234.56d, 78900d))
         .convertsFromExternal(objectMapper.readTree("[,]"))
         .toInternal(newLinkedHashSet(null, null))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null)
+        .convertsFromExternal(objectMapper.readTree("[]"))
+        .toInternal(newLinkedHashSet())
         .convertsFromExternal(objectMapper.readTree(""))
         .toInternal(null);
     assertThat(codec2)
@@ -105,20 +81,23 @@ class JsonNodeToSetCodecTest {
         .toInternal(newLinkedHashSet(null, null))
         .convertsFromExternal(objectMapper.readTree("[null,null]"))
         .toInternal(newLinkedHashSet(null, null))
+        // DAT-297: don't apply nullStrings to inner elements
         .convertsFromExternal(objectMapper.readTree("[\"\",\"\"]"))
         .toInternal(newLinkedHashSet(""))
         .convertsFromExternal(objectMapper.readTree("['','']"))
         .toInternal(newLinkedHashSet(""))
         .convertsFromExternal(objectMapper.readTree("[\"NULL\",\"NULL\"]"))
-        .toInternal(newLinkedHashSet((String) null))
+        .toInternal(newLinkedHashSet((String) "NULL"))
         .convertsFromExternal(objectMapper.readTree("['NULL','NULL']"))
-        .toInternal(newLinkedHashSet((String) null))
+        .toInternal(newLinkedHashSet((String) "NULL"))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null)
         .convertsFromExternal(objectMapper.readTree("[]"))
-        .toInternal(null)
+        .toInternal(newLinkedHashSet())
         .convertsFromExternal(objectMapper.readTree(""))
         .toInternal(null);
   }
@@ -136,6 +115,8 @@ class JsonNodeToSetCodecTest {
         .toExternal(objectMapper.readTree("[null,0.0]"))
         .convertsFromInternal(newLinkedHashSet((Double) null))
         .toExternal(objectMapper.readTree("[null]"))
+        .convertsFromInternal(newLinkedHashSet())
+        .toExternal(objectMapper.readTree("[]"))
         .convertsFromInternal(null)
         .toExternal(null);
     assertThat(codec2)
@@ -147,8 +128,12 @@ class JsonNodeToSetCodecTest {
         .toExternal(objectMapper.readTree("[\"\\\\foo\\\\\",\"\\\\bar\\\\\"]"))
         .convertsFromInternal(newLinkedHashSet(",foo,", ",bar,"))
         .toExternal(objectMapper.readTree("[\",foo,\",\",bar,\"]"))
+        .convertsFromInternal(newLinkedHashSet(""))
+        .toExternal(objectMapper.readTree("[\"\"]"))
         .convertsFromInternal(newLinkedHashSet((String) null))
         .toExternal(objectMapper.readTree("[null]"))
+        .convertsFromInternal(newLinkedHashSet())
+        .toExternal(objectMapper.readTree("[]"))
         .convertsFromInternal(null)
         .toExternal(null);
   }
@@ -156,9 +141,8 @@ class JsonNodeToSetCodecTest {
   @Test
   void should_not_convert_from_invalid_external() throws Exception {
     assertThat(codec1)
-        .cannotConvertFromExternal(objectMapper.readTree("[1,\"not a valid double\"]"));
-    assertThat(codec1)
-        .cannotConvertFromExternal(objectMapper.readTree("{ \"not a valid array\" : 42 }"));
-    assertThat(codec1).cannotConvertFromExternal(objectMapper.readTree("42"));
+        .cannotConvertFromExternal(objectMapper.readTree("[1,\"not a valid double\"]"))
+        .cannotConvertFromExternal(objectMapper.readTree("{ \"not a valid array\" : 42 }"))
+        .cannotConvertFromExternal(objectMapper.readTree("42"));
   }
 }

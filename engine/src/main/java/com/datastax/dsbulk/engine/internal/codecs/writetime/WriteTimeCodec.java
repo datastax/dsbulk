@@ -30,6 +30,9 @@ public class WriteTimeCodec<T> extends ConvertingCodec<T, Long> {
       return null;
     }
     Instant i = innerCodec.externalToInternal(value);
+    if (i == null) {
+      return null;
+    }
     return CodecUtils.instantToNumber(i, MICROSECONDS, EPOCH);
   }
 

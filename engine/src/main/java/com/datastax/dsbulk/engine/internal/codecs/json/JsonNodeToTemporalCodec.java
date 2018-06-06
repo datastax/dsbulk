@@ -33,7 +33,7 @@ public abstract class JsonNodeToTemporalCodec<T extends TemporalAccessor>
   }
 
   TemporalAccessor parseTemporalAccessor(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     String s = node.asText();

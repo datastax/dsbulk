@@ -34,7 +34,7 @@ public abstract class StringToCollectionCodec<E, C extends Collection<E>>
 
   @Override
   public C externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     try {

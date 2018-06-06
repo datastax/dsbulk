@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -58,7 +57,7 @@ public class CodecSettings {
   public static final JsonNodeFactory JSON_NODE_FACTORY =
       JsonNodeFactory.withExactBigDecimals(true);
 
-  private static final String CQL_DATE_TIME = "CQL_DATE_TIME";
+  private static final String CQL_TIMESTAMP = "CQL_TIMESTAMP";
   private static final String LOCALE = "locale";
   private static final String NULL_STRINGS = "nullStrings";
   private static final String BOOLEAN_STRINGS = "booleanStrings";
@@ -93,7 +92,7 @@ public class CodecSettings {
   private ZonedDateTime epoch;
   private TimeUUIDGenerator generator;
 
-  CodecSettings(LoaderConfig config) {
+  public CodecSettings(LoaderConfig config) {
     this.config = config;
   }
 
@@ -154,8 +153,7 @@ public class CodecSettings {
     }
   }
 
-  public ExtendedCodecRegistry createCodecRegistry(Cluster cluster) {
-    CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
+  public ExtendedCodecRegistry createCodecRegistry(CodecRegistry codecRegistry) {
     return new ExtendedCodecRegistry(
         codecRegistry,
         nullStrings,
@@ -228,7 +226,7 @@ public class CodecSettings {
 
   @VisibleForTesting
   public static TemporalFormat getTemporalFormat(String pattern, ZoneId timeZone, Locale locale) {
-    if (pattern.equals(CQL_DATE_TIME)) {
+    if (pattern.equals(CQL_TIMESTAMP)) {
       return new CqlTemporalFormat(timeZone);
     } else {
       DateTimeFormatterBuilder builder =
