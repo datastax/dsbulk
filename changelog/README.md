@@ -2,19 +2,16 @@
 
 ### 1.1.0 (in progress)
 
-- [new feature] DAT-291: Add count workflow.
-- [improvement] DAT-298: Rename CQL_DATE_TIME to CQL_TIMESTAMP.
-- [improvement] DAT-286: Intercept Univocity exceptions and expose them in a user-friendly way.
-- [improvement] DAT-287: Combine batch.mode and batch.enabled into a single setting.
-
-
-### 1.0.3 (in progress)
-
 - [bug] DAT-289: Generated queries do not respect indexed mapping order.
 - [bug] DAT-288: DSBulk cannot handle columns of type list<timestamp>.
 - [improvement] DAT-292: Add support for counter tables.
 - [bug] DAT-295: Generated query does not always contain all token ranges.
 - [bug] DAT-297: Empty map values do not work when loading using DSBulk.
+- [new feature] DAT-291: Add count workflow.
+- [improvement] DAT-298: Rename CQL_DATE_TIME to CQL_TIMESTAMP.
+- [improvement] DAT-286: Intercept Univocity exceptions and expose them in a user-friendly way.
+- [improvement] DAT-287: Combine batch.mode and batch.enabled into a single setting.
+- [improvement] DAT-299: Count the number of rows for the N biggest partitions.
 
 
 ### 1.0.2

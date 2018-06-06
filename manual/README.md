@@ -227,13 +227,17 @@ When counting rows in a table, no connector is required, and `schema.mapping` sh
 
   `dsbulk count -k ks1 -t table1 -stats ranges`
 
-* Count the total number of rows per hosts in the `ks1.table1` table in a cluster with a `localhost` contact point. 
+* Count the total number of rows per host in the `ks1.table1` table in a cluster with a `localhost` contact point. 
 
   `dsbulk count -k ks1 -t table1 -stats hosts`
 
-* Count the total number of rows , the total number of rows per token range and the total number of rows per hosts in the `ks1.table1` table in a cluster with a `localhost` contact point. 
+* Count the total number of rows for the biggest 100 partitions in the `ks1.table1` table in a cluster with a `localhost` contact point (by default, DSBulk returns the number of rows for the 10 biggest partitions in the table). 
 
-  `dsbulk count -k ks1 -t table1 -stats all`
+  `dsbulk count -k ks1 -t table1 -stats partitions -partitions 100`
+
+* Count the total number of rows, the total number of rows per token range, the total number of rows per hosts in the `ks1.table1`, and the total number of rows for the biggest 10 partitions table in a cluster with a `localhost` contact point. 
+
+  `dsbulk count -k ks1 -t table1 -stats global,ranges,hosts,partitions`
 
 
 ## Command-line Help

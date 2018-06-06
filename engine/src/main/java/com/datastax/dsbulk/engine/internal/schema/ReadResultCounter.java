@@ -11,9 +11,14 @@ package com.datastax.dsbulk.engine.internal.schema;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import java.io.IOException;
 
-public interface ReadResultCounter {
+public interface ReadResultCounter extends AutoCloseable {
 
-  void update(ReadResult result);
+  CountingUnit newCountingUnit();
 
   void reportTotals() throws IOException;
+
+  interface CountingUnit extends AutoCloseable {
+
+    void update(ReadResult result);
+  }
 }

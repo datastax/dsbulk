@@ -788,7 +788,7 @@ public class ExtendedCodecRegistry {
 
   // DAT-288: avoid returning legacy temporal codecs or collection codecs whose elements are legacy
   // temporal codecs.
-  private @NotNull TypeCodec<?> codecFor(@NotNull DataType cqlType) {
+  public @NotNull TypeCodec<?> codecFor(@NotNull DataType cqlType) {
     switch (cqlType.getName()) {
       case TIMESTAMP:
         return InstantCodec.instance;

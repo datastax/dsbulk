@@ -11,12 +11,8 @@ package com.datastax.dsbulk.engine.internal.settings;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SettingsManager {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(SettingsManager.class);
 
   private final LoaderConfig config;
   private final WorkflowType workflowType;
@@ -32,6 +28,7 @@ public class SettingsManager {
   private CodecSettings codecSettings;
   private MonitoringSettings monitoringSettings;
   private EngineSettings engineSettings;
+  private StatsSettings statsSettings;
 
   public SettingsManager(LoaderConfig config, WorkflowType workflowType) {
     this.config = config;
@@ -55,6 +52,7 @@ public class SettingsManager {
     codecSettings = new CodecSettings(config.getConfig("codec"));
     schemaSettings = new SchemaSettings(config.getConfig("schema"));
     monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), this.executionId);
+    statsSettings = new StatsSettings(config.getConfig("stats"));
   }
 
   public String getExecutionId() {
@@ -95,6 +93,10 @@ public class SettingsManager {
 
   public EngineSettings getEngineSettings() {
     return engineSettings;
+  }
+
+  public StatsSettings getStatsSettings() {
+    return statsSettings;
   }
 
   public LoaderConfig getGlobalConfig() {

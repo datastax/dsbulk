@@ -19,6 +19,7 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTokenRange;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.wrappedStatement;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -34,9 +35,11 @@ import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.StatementWrapper;
@@ -59,6 +62,7 @@ import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,9 +118,14 @@ class SchemaSettingsTest {
     col1 = mock(ColumnMetadata.class);
     col2 = mock(ColumnMetadata.class);
     col3 = mock(ColumnMetadata.class);
+    Configuration configuration = mock(Configuration.class);
+    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
     List<ColumnMetadata> columns = newArrayList(col1, col2, col3);
     when(session.getCluster()).thenReturn(cluster);
     when(cluster.getMetadata()).thenReturn(metadata);
+    when(cluster.getConfiguration()).thenReturn(configuration);
+    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
+    when(protocolOptions.getProtocolVersion()).thenReturn(V4);
     when(metadata.getKeyspace(anyString())).thenReturn(keyspace);
     when(metadata.getTokenRanges()).thenReturn(tokenRanges);
     when(keyspace.getTable(anyString())).thenReturn(table);
@@ -1013,10 +1022,11 @@ class SchemaSettingsTest {
   @Test
   void should_create_row_counter() {
     when(table.getPartitionKey()).thenReturn(newArrayList(col1));
-    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1, statisticsMode=all");
+    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT);
-    ReadResultCounter counter = schemaSettings.createReadResultCounter(session);
+    ReadResultCounter counter =
+        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(global), 10);
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
