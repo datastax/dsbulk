@@ -8,6 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -21,11 +25,11 @@ class StatsSettingsTest {
   void should_report_statistics_mode() {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("mode = hosts")
+            ConfigFactory.parseString("modes = [hosts,ranges,partitions,global]")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.stats")));
     StatsSettings settings = new StatsSettings(config);
     settings.init();
-    assertThat(settings.getStatisticsMode()).isEqualTo(StatsSettings.StatisticsMode.hosts);
+    assertThat(settings.getStatisticsModes()).contains(hosts, ranges, partitions, global);
   }
 
   @Test

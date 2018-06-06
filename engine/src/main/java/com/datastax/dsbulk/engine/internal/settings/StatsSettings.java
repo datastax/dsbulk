@@ -12,6 +12,8 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.typesafe.config.ConfigException;
+import java.util.EnumSet;
+import java.util.List;
 
 public class StatsSettings {
 
@@ -19,16 +21,15 @@ public class StatsSettings {
     global,
     ranges,
     hosts,
-    partitions,
-    all
+    partitions
   }
 
-  private static final String MODE = "mode";
+  private static final String MODES = "modes";
   private static final String NUM_PARTITIONS = "numPartitions";
 
   private final LoaderConfig config;
 
-  private StatisticsMode statisticsMode;
+  private List<StatisticsMode> statisticsModes;
   private int numPartitions;
 
   StatsSettings(LoaderConfig config) {
@@ -37,7 +38,7 @@ public class StatsSettings {
 
   public void init() {
     try {
-      statisticsMode = config.getEnum(StatisticsMode.class, MODE);
+      statisticsModes = config.getEnumList(StatisticsMode.class, MODES);
       numPartitions = config.getInt(NUM_PARTITIONS);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "stats");
@@ -46,8 +47,8 @@ public class StatsSettings {
     }
   }
 
-  public StatisticsMode getStatisticsMode() {
-    return statisticsMode;
+  public EnumSet<StatisticsMode> getStatisticsModes() {
+    return EnumSet.copyOf(statisticsModes);
   }
 
   public int getNumPartitions() {

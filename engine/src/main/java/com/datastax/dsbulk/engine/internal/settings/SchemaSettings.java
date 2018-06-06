@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.engine.WorkflowType.COUNT;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
@@ -62,6 +63,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -323,15 +325,20 @@ public class SchemaSettings {
   public ReadResultCounter createReadResultCounter(
       Session session,
       ExtendedCodecRegistry codecRegistry,
-      StatsSettings.StatisticsMode statisticsMode,
+      EnumSet<StatsSettings.StatisticsMode> modes,
       int numPartitions) {
     prepareStatementAndCreateMapping(session, null, COUNT, false);
     Cluster cluster = session.getCluster();
     ProtocolVersion protocolVersion =
         cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
     Metadata metadata = cluster.getMetadata();
+    if (modes.contains(partitions) && table.getClusteringColumns().isEmpty()) {
+      throw new BulkConfigurationException(
+          String.format(
+              "Cannot count partitions for table %s: it has no clustering column.", tableName));
+    }
     return new DefaultReadResultCounter(
-        keyspaceName, metadata, statisticsMode, numPartitions, protocolVersion, codecRegistry);
+        keyspaceName, metadata, modes, numPartitions, protocolVersion, codecRegistry);
   }
 
   public List<Statement> createReadStatements(Cluster cluster) {

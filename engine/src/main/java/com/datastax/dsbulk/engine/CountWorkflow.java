@@ -33,6 +33,7 @@ import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
@@ -107,11 +108,10 @@ public class CountWorkflow implements Workflow {
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     ExtendedCodecRegistry codecRegistry =
         codecSettings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
-    StatsSettings.StatisticsMode statisticsMode = statsSettings.getStatisticsMode();
+    EnumSet<StatsSettings.StatisticsMode> modes = statsSettings.getStatisticsModes();
     int numPartitions = statsSettings.getNumPartitions();
     readResultCounter =
-        schemaSettings.createReadResultCounter(
-            session, codecRegistry, statisticsMode, numPartitions);
+        schemaSettings.createReadResultCounter(session, codecRegistry, modes, numPartitions);
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
   }

@@ -19,6 +19,7 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTokenRange;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.wrappedStatement;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -61,6 +62,7 @@ import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1020,12 +1022,11 @@ class SchemaSettingsTest {
   @Test
   void should_create_row_counter() {
     when(table.getPartitionKey()).thenReturn(newArrayList(col1));
-    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1, statisticsMode=all");
+    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT);
     ReadResultCounter counter =
-        schemaSettings.createReadResultCounter(
-            session, codecRegistry, StatsSettings.StatisticsMode.all, 10);
+        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(global), 10);
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());

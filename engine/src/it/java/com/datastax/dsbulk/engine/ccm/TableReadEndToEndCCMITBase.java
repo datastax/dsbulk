@@ -64,10 +64,10 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
   private final StreamInterceptor stdout;
 
   private Path logDir;
-  private Map<String, Map<String, Map<TokenRange, Integer>>> allRanges;
-  private Map<String, Map<String, Map<Host, Integer>>> allHosts;
   private List<Record> records;
   private int expectedTotal;
+  private Map<String, Map<String, Map<TokenRange, Integer>>> allRanges;
+  private Map<String, Map<String, Map<Host, Integer>>> allHosts;
   private Map<String, Map<String, Map<String, Integer>>> allBiggestPartitions;
 
   TableReadEndToEndCCMITBase(
@@ -148,7 +148,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
     args.add("-stats");
-    args.add("all");
+    args.add("global,ranges,hosts,partitions");
     args.add("--schema.keyspace");
     args.add(keyspace);
     args.add("--schema.table");
@@ -176,7 +176,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
     args.add("-stats");
-    args.add("all");
+    args.add("global,ranges,hosts,partitions");
     args.add("--schema.query");
     if (table.equals("SINGLE_PK")) {
       args.add(String.format("\"SELECT pk FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));

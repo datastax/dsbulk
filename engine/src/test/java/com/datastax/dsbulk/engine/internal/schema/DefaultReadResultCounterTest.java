@@ -14,6 +14,10 @@ import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newToken;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTokenRange;
 import static com.datastax.driver.core.ProtocolVersion.V4;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
 import static java.net.InetSocketAddress.createUnresolved;
 import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,19 +37,18 @@ import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
-import com.datastax.dsbulk.engine.internal.settings.StatsSettings;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.collect.Sets;
 import com.typesafe.config.ConfigFactory;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -164,17 +167,13 @@ class DefaultReadResultCounterTest {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    this.codecRegistry = settings.createCodecRegistry(CodecRegistry.DEFAULT_INSTANCE);
+    this.codecRegistry = settings.createCodecRegistry(new CodecRegistry());
   }
 
-  @ParameterizedTest
-  @EnumSource(
-    value = StatsSettings.StatisticsMode.class,
-    names = {"all", "global"}
-  )
-  void should_count_total_rows(StatsSettings.StatisticsMode mode, StreamInterceptor stdout) {
+  @Test
+  void should_count_total_rows(StreamInterceptor stdout) {
     DefaultReadResultCounter counter =
-        new DefaultReadResultCounter("ks", metadata, mode, 10, V4, codecRegistry);
+        new DefaultReadResultCounter("ks", metadata, EnumSet.of(global), 10, V4, codecRegistry);
 
     counter.newCountingUnit().update(result1);
     counter.consolidateUnitCounts();
@@ -188,14 +187,10 @@ class DefaultReadResultCounterTest {
     assertThat(stdout.getStreamLines()).contains("2");
   }
 
-  @ParameterizedTest
-  @EnumSource(
-    value = StatsSettings.StatisticsMode.class,
-    names = {"all", "hosts"}
-  )
-  void should_count_hosts(StatsSettings.StatisticsMode mode, StreamInterceptor stdout) {
+  @Test
+  void should_count_hosts(StreamInterceptor stdout) {
     DefaultReadResultCounter counter =
-        new DefaultReadResultCounter("ks", metadata, mode, 10, V4, codecRegistry);
+        new DefaultReadResultCounter("ks", metadata, EnumSet.of(hosts), 10, V4, codecRegistry);
 
     ReadResultCounter.CountingUnit unit = counter.newCountingUnit();
 
@@ -235,14 +230,10 @@ class DefaultReadResultCounterTest {
             String.format("%s 0 0.00", host3.getSocketAddress()));
   }
 
-  @ParameterizedTest
-  @EnumSource(
-    value = StatsSettings.StatisticsMode.class,
-    names = {"all", "ranges"}
-  )
-  void should_count_ranges(StatsSettings.StatisticsMode mode, StreamInterceptor stdout) {
+  @Test
+  void should_count_ranges(StreamInterceptor stdout) {
     DefaultReadResultCounter counter =
-        new DefaultReadResultCounter("ks", metadata, mode, 10, V4, codecRegistry);
+        new DefaultReadResultCounter("ks", metadata, EnumSet.of(ranges), 10, V4, codecRegistry);
 
     ReadResultCounter.CountingUnit unit = counter.newCountingUnit();
 
@@ -283,15 +274,10 @@ class DefaultReadResultCounterTest {
             String.format("%s %s 0 0.00", range3.getStart(), range3.getEnd()));
   }
 
-  @ParameterizedTest
-  @EnumSource(
-    value = StatsSettings.StatisticsMode.class,
-    names = {"all", "partitions"}
-  )
-  void should_count_biggest_partitions(
-      StatsSettings.StatisticsMode mode, StreamInterceptor stdout) {
+  @Test
+  void should_count_biggest_partitions(StreamInterceptor stdout) {
     DefaultReadResultCounter counter =
-        new DefaultReadResultCounter("ks", metadata, mode, 3, V4, codecRegistry);
+        new DefaultReadResultCounter("ks", metadata, EnumSet.of(partitions), 3, V4, codecRegistry);
 
     DefaultReadResultCounter.DefaultCountingUnit unit = counter.newCountingUnit();
 
@@ -516,15 +502,11 @@ class DefaultReadResultCounterTest {
     assertThat(stdout.getStreamLines()).contains("8 4 15.38", "9 5 19.23", "10 4 15.38");
   }
 
-  @ParameterizedTest
-  @EnumSource(
-    value = StatsSettings.StatisticsMode.class,
-    names = {"all", "partitions"}
-  )
-  void should_count_biggest_partitions_multi_threaded(
-      StatsSettings.StatisticsMode mode, StreamInterceptor stdout) throws InterruptedException {
+  @Test
+  void should_count_biggest_partitions_multi_threaded(StreamInterceptor stdout)
+      throws InterruptedException {
     DefaultReadResultCounter counter =
-        new DefaultReadResultCounter("ks", metadata, mode, 3, V4, codecRegistry);
+        new DefaultReadResultCounter("ks", metadata, EnumSet.of(partitions), 3, V4, codecRegistry);
 
     DefaultReadResultCounter.DefaultCountingUnit unit1 = counter.newCountingUnit();
     DefaultReadResultCounter.DefaultCountingUnit unit2 = counter.newCountingUnit();

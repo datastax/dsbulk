@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.all;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
@@ -36,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,11 +49,11 @@ public class DefaultReadResultCounter implements ReadResultCounter {
 
   private static final BiFunction<Long, Long, Long> SUM = (v1, v2) -> v1 + v2;
 
-  private final Metadata metadata;
   private final int numPartitions;
   private final ProtocolVersion protocolVersion;
   private final ExtendedCodecRegistry codecRegistry;
 
+  private final Metadata metadata;
   private final Set<TokenRange> allTokenRanges;
   private final Set<InetSocketAddress> allAddresses;
   private final Token[] ring;
@@ -74,7 +74,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
   public DefaultReadResultCounter(
       String keyspace,
       Metadata metadata,
-      StatsSettings.StatisticsMode statisticsMode,
+      EnumSet<StatsSettings.StatisticsMode> modes,
       int numPartitions,
       ProtocolVersion protocolVersion,
       ExtendedCodecRegistry codecRegistry) {
@@ -82,24 +82,21 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     this.numPartitions = numPartitions;
     this.protocolVersion = protocolVersion;
     this.codecRegistry = codecRegistry;
-    countGlobal = statisticsMode == all || statisticsMode == global;
-    countHosts = statisticsMode == all || statisticsMode == hosts;
-    countRanges = statisticsMode == all || statisticsMode == ranges;
-    countPartitions = statisticsMode == all || statisticsMode == partitions;
-    // Store required metadata in two data structures that will speed up lookups by token:
-    // 1) ring stores the range start tokens of all ranges, contents are identical to
-    // metadata.tokenMap.ring and are designed to allow binary searches by token.
-    // 2) replicaSets stores a) a given range and b) all of its replicas for the given keyspace,
-    // contents are identical to metadata.tokenMap.tokenToHostsByKeyspace.
-    // Both arrays are filled so that ring[i] == replicaSets[i].range.end,
-    // thus allowing to easily locate the range and replicas of a given token.
-    Set<TokenRange> ranges = metadata.getTokenRanges();
-    ring = new Token[ranges.size()];
-    replicaSets = new ReplicaSet[ranges.size()];
-    // these will only serve when printing final totals
-    allTokenRanges = new TreeSet<>(ranges);
-    allAddresses = new TreeSet<>(Comparator.comparing(InetSocketAddress::toString));
+    countGlobal = modes.contains(global);
+    countHosts = modes.contains(hosts);
+    countRanges = modes.contains(ranges);
+    countPartitions = modes.contains(partitions);
     if (countHosts || countRanges) {
+      // Store required metadata in two data structures that will speed up lookups by token:
+      // 1) 'ring' stores the range start tokens of all ranges, contents are identical to
+      // metadata.tokenMap.ring and are designed to allow binary searches by token.
+      // 2) 'replicaSets' stores a) a given range and b) all of its replicas for the given keyspace,
+      // contents are identical to metadata.tokenMap.tokenToHostsByKeyspace.
+      // Both arrays are filled so that ring[i] == replicaSets[i].range.end,
+      // thus allowing to easily locate the range and replicas of a given token.
+      Set<TokenRange> ranges = metadata.getTokenRanges();
+      ring = new Token[ranges.size()];
+      replicaSets = new ReplicaSet[ranges.size()];
       int i = 0;
       Map<Token, TokenRange> rangesByEndingToken =
           ranges.stream().collect(toMap(TokenRange::getEnd, identity()));
@@ -109,9 +106,24 @@ public class DefaultReadResultCounter implements ReadResultCounter {
         replicaSets[i] = new ReplicaSet(r2, metadata.getReplicas(keyspace, r2));
         i++;
       }
-    }
-    if (countHosts) {
-      metadata.getAllHosts().stream().map(Host::getSocketAddress).forEach(allAddresses::add);
+      // 'allTokenRanges' and 'allAddresses' are sorted structures that will only serve when
+      // printing final totals.
+      if (countRanges) {
+        allTokenRanges = new TreeSet<>(ranges);
+      } else {
+        allTokenRanges = null;
+      }
+      if (countHosts) {
+        allAddresses = new TreeSet<>(Comparator.comparing(InetSocketAddress::toString));
+        metadata.getAllHosts().stream().map(Host::getSocketAddress).forEach(allAddresses::add);
+      } else {
+        allAddresses = null;
+      }
+    } else {
+      ring = null;
+      replicaSets = null;
+      allTokenRanges = null;
+      allAddresses = null;
     }
   }
 
@@ -129,7 +141,6 @@ public class DefaultReadResultCounter implements ReadResultCounter {
 
   @VisibleForTesting
   void consolidateUnitCounts() {
-    // Consolidate individual unit counts
     totalRows = 0;
     totalsByRange = new HashMap<>();
     totalsByHost = new HashMap<>();
@@ -180,8 +191,15 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     }
   }
 
-  // Note: instances of this class are meant to be accessed by one thread at a time,
-  // so there is no need to use synchronization inside it.
+  /**
+   * A counting unit.
+   *
+   * <p>Each counting unit is meant to be accessed by one single thread at a time, and thus its
+   * internals do not require synchronization or concurrent structures.
+   *
+   * <p>Each thread/counting unit counts its own portion of the result set, then at the end, their
+   * results are consolidated.
+   */
   @VisibleForTesting
   class DefaultCountingUnit implements CountingUnit {
 
@@ -196,30 +214,24 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     public void update(ReadResult result) {
       Row row = result.getRow().orElseThrow(IllegalStateException::new);
       int size = row.getColumnDefinitions().size();
+      // First compute the partition key and the token for this row.
       Token token = null;
       PartitionKey pk = null;
-      if (size == 1) {
-        ByteBuffer bb = row.getBytesUnsafe(0).duplicate();
-        if (countHosts || countRanges || countPartitions) {
-          token = metadata.newToken(bb);
-        }
-        if (countPartitions) {
-          pk = new PartitionKey(row.getColumnDefinitions(), bb);
-        }
-      } else {
+      if (countRanges || countHosts || countPartitions) {
         ByteBuffer[] bbs = new ByteBuffer[size];
         for (int i = 0; i < size; i++) {
-          bbs[i] = row.getBytesUnsafe(i).duplicate();
+          bbs[i] = row.getBytesUnsafe(i);
         }
-        if (countHosts || countRanges || countPartitions) {
+        if (countRanges || countHosts) {
           token = metadata.newToken(bbs);
         }
         if (countPartitions) {
           pk = new PartitionKey(row.getColumnDefinitions(), bbs);
         }
       }
-      // we need to always increment this counter because it's used to compute percentages
-      // for other stats
+      // Then increment required counters.
+      // Note: we need to always increment the global counter because it's used to compute
+      // percentages for other stats.
       total++;
       if (countRanges || countHosts) {
         ReplicaSet replicaSet = getReplicaSet(token);
@@ -240,7 +252,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
         // partition will be entirely counted by the same unit,
         // and that partitions will be returned in order, i.e.,
         // all rows belonging to the same partition will appear in sequence.
-        if (pkChanged(pk)) {
+        if (!currentPk.equals(pk)) {
           rotatePk();
           currentPk = pk;
           currentPkCount = 1;
@@ -255,11 +267,15 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       rotatePk();
     }
 
+    /**
+     * Locate the end token of the range containing the given token then use it to lookup the entire
+     * range and its replicas. This search is identical to the search performed by
+     * Metadata.TokenMap.getReplicas(String keyspace, Token token). Only used when counting ranges
+     * or hosts.
+     */
     private ReplicaSet getReplicaSet(Token token) {
-      // Locate the end token of the range containing the given token
-      // then use it to lookup the entire range and its replicas.
-      // This search is identical to the search performed by
-      // Metadata.TokenMap.getReplicas(String keyspace, Token token).
+      assert ring != null;
+      assert replicaSets != null;
       int i = Arrays.binarySearch(ring, token);
       if (i < 0) {
         i = -i - 1;
@@ -270,16 +286,16 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       return replicaSets[i];
     }
 
-    boolean pkChanged(PartitionKey pk) {
-      if (currentPk.hashCode != pk.hashCode) {
-        return true;
-      }
-      return !currentPk.equals(pk);
-    }
-
+    /**
+     * Computes the total for the current partition key, stores it in 'totalsByPartitionKey' if the
+     * count is big enough to be included, otherwise discards it.
+     */
     void rotatePk() {
       if (currentPk != null) {
         long lowestPkCount = totalsByPartitionKey.isEmpty() ? 0 : totalsByPartitionKey.get(0).count;
+        // Include the count if
+        // 1) it's count is bigger than the lowest count in the list, or
+        // 2) if the list is not full yet.
         if (currentPkCount > lowestPkCount || totalsByPartitionKey.size() < numPartitions) {
           PartitionKeyCount pkc = new PartitionKeyCount(currentPk, currentPkCount);
           int pos = Collections.binarySearch(totalsByPartitionKey, pkc);
@@ -287,6 +303,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
             pos = -pos - 1;
           }
           totalsByPartitionKey.add(pos, pkc);
+          // If this addition caused the list to grow past the max, remove the lowest element.
           if (totalsByPartitionKey.size() > numPartitions) {
             totalsByPartitionKey.remove(0);
           }
@@ -321,6 +338,9 @@ public class DefaultReadResultCounter implements ReadResultCounter {
         return false;
       }
       PartitionKey that = (PartitionKey) o;
+      if (this.hashCode != that.hashCode) {
+        return false;
+      }
       return Arrays.equals(components, that.components);
     }
 
