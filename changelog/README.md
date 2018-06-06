@@ -5,6 +5,7 @@
 - [new feature] DAT-291: Add count workflow.
 - [improvement] DAT-298: Rename CQL_DATE_TIME to CQL_TIMESTAMP.
 - [improvement] DAT-286: Intercept Univocity exceptions and expose them in a user-friendly way.
+- [improvement] DAT-287: Combine batch.mode and batch.enabled into a single setting.
 
 
 ### 1.0.3 (in progress)

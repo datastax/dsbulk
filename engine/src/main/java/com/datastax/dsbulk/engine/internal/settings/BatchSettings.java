@@ -19,17 +19,38 @@ import com.typesafe.config.ConfigException;
 
 public class BatchSettings {
 
+  private enum BatchMode {
+    DISABLED {
+      @Override
+      StatementBatcher.BatchMode asStatementBatcherMode() {
+        throw new IllegalStateException("Batching is disabled");
+      }
+    },
+    PARTITION_KEY {
+      @Override
+      StatementBatcher.BatchMode asStatementBatcherMode() {
+        return StatementBatcher.BatchMode.PARTITION_KEY;
+      }
+    },
+    REPLICA_SET {
+      @Override
+      StatementBatcher.BatchMode asStatementBatcherMode() {
+        return StatementBatcher.BatchMode.REPLICA_SET;
+      }
+    };
+
+    abstract StatementBatcher.BatchMode asStatementBatcherMode();
+  }
+
   private static final String MODE = "mode";
   private static final String MAX_BATCH_SIZE = "maxBatchSize";
   private static final String BUFFER_SIZE = "bufferSize";
-  private static final String ENABLED = "enabled";
 
   private final LoaderConfig config;
 
-  private StatementBatcher.BatchMode mode;
+  private BatchMode mode;
   private int maxBatchSize;
   private int bufferSize;
-  private boolean enabled;
 
   BatchSettings(LoaderConfig config) {
     this.config = config;
@@ -37,8 +58,7 @@ public class BatchSettings {
 
   public void init() {
     try {
-      enabled = config.getBoolean(ENABLED);
-      mode = config.getEnum(StatementBatcher.BatchMode.class, MODE);
+      mode = config.getEnum(BatchMode.class, MODE);
       maxBatchSize = config.getInt(MAX_BATCH_SIZE);
       int bufferConfig = config.getInt(BUFFER_SIZE);
       bufferSize = bufferConfig > -1 ? bufferConfig : maxBatchSize;
@@ -54,7 +74,7 @@ public class BatchSettings {
   }
 
   public boolean isBatchingEnabled() {
-    return enabled;
+    return mode != BatchMode.DISABLED;
   }
 
   public int getBufferSize() {
@@ -62,6 +82,7 @@ public class BatchSettings {
   }
 
   public ReactorStatementBatcher newStatementBatcher(Cluster cluster) {
-    return new ReactorStatementBatcher(cluster, mode, BatchStatement.Type.UNLOGGED, maxBatchSize);
+    return new ReactorStatementBatcher(
+        cluster, mode.asStatementBatcherMode(), BatchStatement.Type.UNLOGGED, maxBatchSize);
   }
 }
