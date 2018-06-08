@@ -81,7 +81,7 @@ public class LoadWorkflow implements Workflow {
     settingsManager.init();
     executionId = settingsManager.getExecutionId();
     LogSettings logSettings = settingsManager.getLogSettings();
-    logSettings.init(false);
+    logSettings.init();
     ConnectorSettings connectorSettings = settingsManager.getConnectorSettings();
     connectorSettings.init();
     connector = connectorSettings.getConnector();
@@ -113,7 +113,7 @@ public class LoadWorkflow implements Workflow {
             WorkflowType.LOAD,
             batchingEnabled,
             logManager.getExecutionDirectory(),
-            logSettings.getMainLogFileAppender(),
+            logSettings.getVerbosity(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
             cluster.getConfiguration().getCodecRegistry());
@@ -140,7 +140,7 @@ public class LoadWorkflow implements Workflow {
 
   @Override
   public boolean execute() {
-    LOGGER.info("{} started.", this);
+    LOGGER.debug("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Void> flux;
     if (resourceCount >= WorkflowUtils.TPC_THRESHOLD) {
@@ -150,11 +150,12 @@ public class LoadWorkflow implements Workflow {
     }
     flux.transform(logManager.newTerminationHandler()).blockLast();
     timer.stop();
+    metricsManager.stopProgress();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
       LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
     } else {
-      LOGGER.info(
+      LOGGER.warn(
           "{} completed with {} errors in {}.",
           this,
           logManager.getTotalErrors(),
@@ -165,7 +166,6 @@ public class LoadWorkflow implements Workflow {
 
   @NotNull
   private Flux<Void> threadPerCoreFlux() {
-    LOGGER.info("Using thread-per-core pattern.");
     Scheduler scheduler =
         Schedulers.newParallel(
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
@@ -249,7 +249,7 @@ public class LoadWorkflow implements Workflow {
   @Override
   public void close() throws Exception {
     if (closed.compareAndSet(false, true)) {
-      LOGGER.info("{} closing.", this);
+      LOGGER.debug("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(metricsManager, null);
       e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(connector, e);
@@ -266,7 +266,7 @@ public class LoadWorkflow implements Workflow {
       if (logManager != null) {
         logManager.reportLastLocations();
       }
-      LOGGER.info("{} closed.", this);
+      LOGGER.debug("{} closed.", this);
       if (e != null) {
         throw e;
       }
@@ -275,6 +275,6 @@ public class LoadWorkflow implements Workflow {
 
   @Override
   public String toString() {
-    return "Load workflow engine execution " + executionId;
+    return "Operation " + executionId;
   }
 }

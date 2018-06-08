@@ -8,12 +8,9 @@
  */
 package com.datastax.dsbulk.engine.tests.utils;
 
-import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
-
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class LogUtils {
@@ -24,19 +21,5 @@ public class LogUtils {
     configurator.setContext(context);
     context.reset();
     configurator.doConfigure(ClassLoader.getSystemResource("logback-test.xml"));
-  }
-
-  public static void setProductionKey() {
-    ch.qos.logback.classic.Logger root =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    LoggerContext lc = root.getLoggerContext();
-    lc.putProperty(PRODUCTION_KEY, "true");
-  }
-
-  public static void removeProductionKey() {
-    ch.qos.logback.classic.Logger root =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    LoggerContext lc = root.getLoggerContext();
-    lc.putProperty(PRODUCTION_KEY, "false");
   }
 }

@@ -11,12 +11,12 @@ package com.datastax.dsbulk.executor.api.listener;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.dsbulk.commons.log.LogSink;
 import com.google.common.base.Preconditions;
 import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
 
 /**
  * A builder for {@link AbstractMetricsReportingExecutionListener}.
@@ -31,7 +31,7 @@ public abstract class AbstractMetricsReportingExecutionListenerBuilder<
   TimeUnit rateUnit = SECONDS;
   TimeUnit durationUnit = MILLISECONDS;
   ScheduledExecutorService scheduler;
-  Logger logger = null;
+  LogSink sink;
 
   AbstractMetricsReportingExecutionListenerBuilder() {}
 
@@ -104,15 +104,15 @@ public abstract class AbstractMetricsReportingExecutionListenerBuilder<
   }
 
   /**
-   * Use the given {@link Logger} to log messages.
+   * Use the given {@link LogSink} to log messages.
    *
-   * <p>If this method is not called, then a default logger is used.
+   * <p>If this method is not called, then a default log sink is used.
    *
-   * @param logger the {@link Logger} to use.
+   * @param sink the {@link LogSink} to use.
    * @return {@code this} (for method chaining).
    */
-  public AbstractMetricsReportingExecutionListenerBuilder<T> withLogger(Logger logger) {
-    this.logger = logger;
+  public AbstractMetricsReportingExecutionListenerBuilder<T> withLogSink(LogSink sink) {
+    this.sink = sink;
     return this;
   }
 

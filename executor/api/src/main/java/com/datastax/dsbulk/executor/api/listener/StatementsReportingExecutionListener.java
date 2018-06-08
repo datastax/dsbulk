@@ -18,6 +18,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import com.datastax.dsbulk.commons.log.LogSink;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -36,6 +37,9 @@ public class StatementsReportingExecutionListener extends AbstractMetricsReporti
   private static final Logger LOGGER =
       LoggerFactory.getLogger(StatementsReportingExecutionListener.class);
 
+  private static final LogSink DEFAULT_SINK =
+      LogSink.buildFrom(LOGGER::isInfoEnabled, LOGGER::info);
+
   private static final MetricFilter METRIC_FILTER =
       (name, metric) -> name.startsWith("executor/statements/");
 
@@ -53,13 +57,13 @@ public class StatementsReportingExecutionListener extends AbstractMetricsReporti
         StatementsReportingExecutionListener>() {
       @Override
       public StatementsReportingExecutionListener build() {
-        Logger l = logger == null ? LOGGER : logger;
+        LogSink s = sink == null ? DEFAULT_SINK : sink;
         if (scheduler == null) {
           return new StatementsReportingExecutionListener(
-              delegate, rateUnit, durationUnit, expectedTotal, l);
+              delegate, rateUnit, durationUnit, expectedTotal, s);
         } else {
           return new StatementsReportingExecutionListener(
-              delegate, rateUnit, durationUnit, expectedTotal, l, scheduler);
+              delegate, rateUnit, durationUnit, expectedTotal, s, scheduler);
         }
       }
     };
@@ -75,7 +79,7 @@ public class StatementsReportingExecutionListener extends AbstractMetricsReporti
   private final Counter inFlight;
   private final Meter sent;
   private final Meter received;
-  private final Logger logger;
+  private final LogSink sink;
 
   /**
    * Creates a default instance of {@link StatementsReportingExecutionListener}.
@@ -83,7 +87,7 @@ public class StatementsReportingExecutionListener extends AbstractMetricsReporti
    * <p>The instance will express rates in operations per second, and durations in milliseconds.
    */
   public StatementsReportingExecutionListener() {
-    this(new MetricsCollectingExecutionListener(), SECONDS, MILLISECONDS, -1, LOGGER);
+    this(new MetricsCollectingExecutionListener(), SECONDS, MILLISECONDS, -1, DEFAULT_SINK);
   }
 
   /**
@@ -95,7 +99,7 @@ public class StatementsReportingExecutionListener extends AbstractMetricsReporti
    * @param delegate the {@link StatementsReportingExecutionListener} to use as metrics source.
    */
   public StatementsReportingExecutionListener(MetricsCollectingExecutionListener delegate) {
-    this(delegate, SECONDS, MILLISECONDS, -1, LOGGER);
+    this(delegate, SECONDS, MILLISECONDS, -1, DEFAULT_SINK);
   }
 
   private StatementsReportingExecutionListener(
@@ -103,10 +107,10 @@ public class StatementsReportingExecutionListener extends AbstractMetricsReporti
       TimeUnit rateUnit,
       TimeUnit durationUnit,
       long expectedTotal,
-      Logger logger) {
+      LogSink sink) {
     super(delegate, REPORTER_NAME, METRIC_FILTER, rateUnit, durationUnit);
     this.expectedTotal = expectedTotal;
-    this.logger = logger;
+    this.sink = sink;
     countMessage = createCountMessageTemplate(expectedTotal);
     throughputMessage = createThroughputMessageTemplate();
     latencyMessage = createLatencyMessageTemplate();
@@ -123,11 +127,11 @@ public class StatementsReportingExecutionListener extends AbstractMetricsReporti
       TimeUnit rateUnit,
       TimeUnit durationUnit,
       long expectedTotal,
-      Logger logger,
+      LogSink sink,
       ScheduledExecutorService scheduler) {
     super(delegate, REPORTER_NAME, METRIC_FILTER, rateUnit, durationUnit, scheduler);
     this.expectedTotal = expectedTotal;
-    this.logger = logger;
+    this.sink = sink;
     countMessage = createCountMessageTemplate(expectedTotal);
     throughputMessage = createThroughputMessageTemplate();
     latencyMessage = createLatencyMessageTemplate();
@@ -146,17 +150,20 @@ public class StatementsReportingExecutionListener extends AbstractMetricsReporti
       SortedMap<String, Histogram> histograms,
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
+    if (!sink.isEnabled()) {
+      return;
+    }
     Snapshot snapshot = timer.getSnapshot();
     long total = timer.getCount();
     String durationUnit = getDurationUnit();
     String rateUnit = getRateUnit();
     if (expectedTotal < 0) {
-      logger.info(
+      sink.accept(
           String.format(
               countMessage, total, successful.getCount(), failed.getCount(), inFlight.getCount()));
     } else {
       float achieved = (float) total / (float) expectedTotal * 100f;
-      logger.info(
+      sink.accept(
           String.format(
               countMessage,
               total,
@@ -168,7 +175,7 @@ public class StatementsReportingExecutionListener extends AbstractMetricsReporti
     double throughput = timer.getMeanRate();
     double sizeSent = sent.getMeanRate();
     double sizeReceived = received.getMeanRate();
-    logger.info(
+    sink.accept(
         String.format(
             throughputMessage,
             convertRate(throughput),
@@ -179,7 +186,7 @@ public class StatementsReportingExecutionListener extends AbstractMetricsReporti
             rateUnit,
             throughput == 0 ? 0 : (sizeSent / BYTES_PER_KB) / throughput,
             throughput == 0 ? 0 : (sizeReceived / BYTES_PER_KB) / throughput));
-    logger.info(
+    sink.accept(
         String.format(
             latencyMessage,
             convertDuration(snapshot.getMean()),

@@ -19,9 +19,9 @@ import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Timer;
+import com.datastax.dsbulk.commons.log.LogSink;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
-import org.slf4j.Logger;
 
 public class MemoryReporter extends ScheduledReporter {
 
@@ -29,11 +29,11 @@ public class MemoryReporter extends ScheduledReporter {
       "Memory usage: used: %,d MB, free: %,d MB, allocated: %,d MB, available: %,d MB, "
           + "total gc count: %,d, total gc time: %,d ms";
 
-  private final Logger logger;
+  private final LogSink sink;
 
-  MemoryReporter(MetricRegistry registry, Logger logger, ScheduledExecutorService scheduler) {
+  MemoryReporter(MetricRegistry registry, LogSink sink, ScheduledExecutorService scheduler) {
     super(registry, "memory-reporter", createFilter(), SECONDS, MILLISECONDS, scheduler);
-    this.logger = logger;
+    this.sink = sink;
   }
 
   private static MetricFilter createFilter() {
@@ -53,6 +53,9 @@ public class MemoryReporter extends ScheduledReporter {
       SortedMap<String, Histogram> histograms,
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
+    if (!sink.isEnabled()) {
+      return;
+    }
     Gauge<?> freeMemoryGauge = gauges.get("memory/free");
     Gauge<?> allocatedMemoryGauge = gauges.get("memory/allocated");
     Gauge<?> usedMemoryGauge = gauges.get("memory/used");
@@ -65,7 +68,7 @@ public class MemoryReporter extends ScheduledReporter {
     long availableMemory = (Long) availableMemoryGauge.getValue();
     long gcCount = (Long) gcCountGauge.getValue();
     long gcTime = (Long) gcTimeGauge.getValue();
-    logger.info(
+    sink.accept(
         String.format(
             MSG, usedMemory, freeMemory, allocatedMemory, availableMemory, gcCount, gcTime));
   }

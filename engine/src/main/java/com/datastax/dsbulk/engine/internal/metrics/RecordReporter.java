@@ -16,25 +16,25 @@ import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Timer;
+import com.datastax.dsbulk.commons.log.LogSink;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
 
 public class RecordReporter extends ScheduledReporter {
 
   private final String msg;
   private final long expectedTotal;
-  private final Logger logger;
+  private final LogSink sink;
 
   RecordReporter(
       MetricRegistry registry,
-      Logger logger,
+      LogSink sink,
       TimeUnit rateUnit,
       ScheduledExecutorService scheduler,
       long expectedTotal) {
     super(registry, "record-reporter", createFilter(), rateUnit, TimeUnit.MILLISECONDS, scheduler);
-    this.logger = logger;
+    this.sink = sink;
     this.expectedTotal = expectedTotal;
     if (expectedTotal < 0) {
       msg = "Records: total: %,d, successful: %,d, failed: %,d";
@@ -60,6 +60,9 @@ public class RecordReporter extends ScheduledReporter {
       SortedMap<String, Histogram> histograms,
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
+    if (!sink.isEnabled()) {
+      return;
+    }
     Counter totalCounter = counters.get("records/total");
     Counter failedCounter = counters.get("records/failed");
     if (expectedTotal < 0) {
@@ -72,13 +75,13 @@ public class RecordReporter extends ScheduledReporter {
   private void reportWithoutExpectedTotal(Counter totalCounter, Counter failedCounter) {
     long total = totalCounter.getCount();
     long failed = failedCounter.getCount();
-    logger.info(String.format(msg, total, total - failed, failed));
+    sink.accept(String.format(msg, total, total - failed, failed));
   }
 
   private void reportWithExpectedTotal(Counter totalCounter, Counter failedCounter) {
     long total = totalCounter.getCount();
     long failed = failedCounter.getCount();
     float progression = (float) total / (float) expectedTotal * 100f;
-    logger.info(String.format(msg, total, total - failed, failed, progression));
+    sink.accept(String.format(msg, total, total - failed, failed, progression));
   }
 }

@@ -44,7 +44,7 @@ class MonitoringSettingsTest {
             WorkflowType.UNLOAD,
             true,
             null,
-            null,
+            LogSettings.Verbosity.normal,
             new MetricRegistry(),
             protocolVersion,
             codecRegistry);
@@ -80,7 +80,7 @@ class MonitoringSettingsTest {
             WorkflowType.UNLOAD,
             true,
             tmpPath,
-            null,
+            LogSettings.Verbosity.normal,
             new MetricRegistry(),
             protocolVersion,
             codecRegistry);

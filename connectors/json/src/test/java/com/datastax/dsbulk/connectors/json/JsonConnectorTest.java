@@ -15,9 +15,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.HttpTestServer;
@@ -49,7 +46,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
@@ -171,7 +167,6 @@ class JsonConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
-      assertThat(connector.isWriteToStandardOutput()).isFalse();
       List<Record> actual = Flux.defer(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(objectMapper.readTree(line));
@@ -186,10 +181,7 @@ class JsonConnectorTest {
   @Test
   void should_write_to_stdout_with_special_encoding() throws Exception {
     PrintStream stdout = System.out;
-    Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    Appender<ILoggingEvent> stdoutAppender = root.getAppender("STDOUT");
     try {
-      root.detachAppender(stdoutAppender);
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       PrintStream out = new PrintStream(baos);
       System.setOut(out);
@@ -200,7 +192,6 @@ class JsonConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      assertThat(connector.isWriteToStandardOutput()).isTrue();
       Flux.<Record>just(
               new DefaultRecord(
                   null,
@@ -217,7 +208,6 @@ class JsonConnectorTest {
       connector.close();
     } finally {
       System.setOut(stdout);
-      root.addAppender(stdoutAppender);
     }
   }
 
@@ -370,7 +360,6 @@ class JsonConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      assertThat(connector.isWriteToStandardOutput()).isFalse();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
@@ -403,7 +392,6 @@ class JsonConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      assertThat(connector.isWriteToStandardOutput()).isFalse();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
@@ -438,7 +426,6 @@ class JsonConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      assertThat(connector.isWriteToStandardOutput()).isFalse();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
@@ -471,7 +458,6 @@ class JsonConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      assertThat(connector.isWriteToStandardOutput()).isFalse();
       // repeat the records 200 times to fully exercise multiple file writing
       Flux.fromIterable(createRecords()).repeat(200).transform(connector.write()).blockLast();
       connector.close();
@@ -507,7 +493,6 @@ class JsonConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      assertThat(connector.isWriteToStandardOutput()).isFalse();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> json1 = Files.readAllLines(out.resolve("output-000001.json"));

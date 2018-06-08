@@ -8,8 +8,6 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
-import static com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory.STD;
-
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
@@ -236,11 +234,6 @@ public class JsonConnector implements Connector {
   @Override
   public int estimatedResourceCount() {
     return resourceCount;
-  }
-
-  @Override
-  public boolean isWriteToStandardOutput() {
-    return url.getProtocol().equalsIgnoreCase(STD) && !read;
   }
 
   @Override

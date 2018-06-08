@@ -233,7 +233,7 @@ Default: **"./logs"**.
 
 #### -reportRate,--monitoring.reportRate _&lt;string&gt;_
 
-The report interval for the console reporter. The console reporter will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
+The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 
@@ -1207,18 +1207,19 @@ The writable directory where all log files will be stored; if the directory spec
 
 Default: **"./logs"**.
 
-#### --log.ansiEnabled _&lt;boolean&gt;_
+#### --log.ansiMode _&lt;string&gt;_
 
-Whether or not to use ANSI colors and other escape sequences in log messages printed to standard output and standard error.
+Whether or not to use ANSI colors and other escape sequences in log messages printed to the console. Valid values are:
 
-By default, DSBulk will use colored output when the terminal is:
+- `normal`: this is the default option. DSBulk will only use ANSI when the terminal is:
+  - compatible with ANSI escape sequences; all common terminals on *nix and BSD systems, including MacOS, are ANSI-compatible, and some popular terminals for Windows (Mintty, MinGW);
+  - a standard Windows DOS command prompt (ANSI sequences are translated on the fly).
+- `force`: DSBulk will use ANSI, even if the terminal has not been detected as ANSI-compatible.
+- `disable`: DSBulk will not use ANSI.
 
-- compatible with ANSI escape sequences; all common terminals on *nix and BSD systems, including MacOS, are ANSI-compatible, and some popular terminals for Windows (Mintty, MinGW)
-- a standard Windows DOS command prompt (ANSI sequences are translated on the fly).
+Note to Windows users: ANSI support on Windows works best when the Microsoft Visual C++ 2008 SP1 Redistributable Package is installed; you can download it [here](https://www.microsoft.com/en-us/download/details.aspx?displaylang=en&id=5582).
 
-There should be no reason to disable ANSI escape sequences, but if, for some reason, colored messages are not desired or not printed correctly, this option allows disabling ANSI support altogether.
-
-Default: **true**.
+Default: **"normal"**.
 
 #### --log.stmt.level _&lt;string&gt;_
 
@@ -1262,6 +1263,18 @@ Setting this value to `-1` disables this feature (not recommended).
 
 Default: **500**.
 
+#### -verbosity,--log.verbosity _&lt;number&gt;_
+
+The desired level of verbosity. Valid values are:
+
+- 0 (quiet): DSBulk will only log WARN and ERROR messages.
+- 1 (normal): DSBulk will log INFO, WARN and ERROR messages.
+- 2 (verbose) DSBulk will log DEBUG, INFO, WARN and ERROR messages.
+
+The default level is 1 (normal).
+
+Default: **1**.
+
 <a name="monitoring"></a>
 ## Monitoring Settings
 
@@ -1269,7 +1282,7 @@ Monitoring-specific settings.
 
 #### -reportRate,--monitoring.reportRate _&lt;string&gt;_
 
-The report interval for the console reporter. The console reporter will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
+The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 

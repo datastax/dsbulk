@@ -9,15 +9,18 @@
 package com.datastax.dsbulk.engine.internal.metrics;
 
 import static com.datastax.driver.core.ProtocolVersion.V4;
+import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.createMainLogFileAppender;
+import static com.datastax.dsbulk.engine.internal.settings.LogSettings.setQuiet;
+import static com.datastax.dsbulk.engine.internal.settings.LogSettings.setVerbose;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.slf4j.event.Level.DEBUG;
 import static org.slf4j.event.Level.INFO;
+import static org.slf4j.event.Level.WARN;
 
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.driver.core.BatchStatement;
@@ -27,11 +30,15 @@ import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
@@ -48,6 +55,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
+@ExtendWith(StreamInterceptingExtension.class)
 class MetricsManagerTest {
 
   private Record record1;
@@ -88,7 +96,7 @@ class MetricsManagerTest {
   }
 
   @Test
-  void should_increment_records() throws Exception {
+  void should_increment_records() {
     try (MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),
@@ -102,7 +110,7 @@ class MetricsManagerTest {
             false,
             false,
             null,
-            null,
+            LogSettings.Verbosity.normal,
             Duration.ofSeconds(5),
             false,
             protocolVersion,
@@ -122,7 +130,7 @@ class MetricsManagerTest {
   }
 
   @Test
-  void should_increment_batches() throws Exception {
+  void should_increment_batches() {
     try (MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),
@@ -136,7 +144,7 @@ class MetricsManagerTest {
             false,
             false,
             null,
-            null,
+            LogSettings.Verbosity.normal,
             Duration.ofSeconds(5),
             true,
             protocolVersion,
@@ -154,12 +162,13 @@ class MetricsManagerTest {
   }
 
   @Test
-  void should_log_only_final_stats_to_main_log_file(
-      @LogCapture(value = MetricsManager.class, level = INFO) LogInterceptor logs)
+  void should_log_final_stats_to_main_log_file_in_normal_mode(
+      @LogCapture(value = MetricsManager.class, level = INFO) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr)
       throws Exception {
     Path executionDirectory = Files.createTempDirectory("test");
     Path mainLogFile = executionDirectory.resolve("operation.log");
-    FileAppender<ILoggingEvent> mainLogFileAppender = createMainLogFileAppender(mainLogFile);
+    createMainLogFileAppender(mainLogFile);
     MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),
@@ -173,7 +182,100 @@ class MetricsManagerTest {
             false,
             false,
             executionDirectory,
-            mainLogFileAppender,
+            LogSettings.Verbosity.normal,
+            Duration.ofSeconds(5),
+            true,
+            protocolVersion,
+            codecRegistry);
+    try {
+      manager.init();
+      WritesReportingExecutionListener writesReporter =
+          (WritesReportingExecutionListener)
+              ReflectionUtils.getInternalState(manager, "writesReporter");
+      writesReporter.report();
+      assertThat(logs.getLoggedMessages()).isEmpty();
+    } finally {
+      manager.close();
+    }
+    manager.reportFinalMetrics();
+    assertThat(logs)
+        .hasMessageContaining("Writes:")
+        .hasMessageContaining("Throughput:")
+        .hasMessageContaining("Latencies:");
+    assertThat(readFile(mainLogFile))
+        .contains("Final stats:")
+        .contains("Writes:")
+        .contains("Throughput:")
+        .contains("Latencies:");
+    assertThat(stderr.getStreamAsString())
+        .contains("total | failed | rows/s | mb/s | kb/row | p50 ms | p99ms | p999ms | batches");
+  }
+
+  @Test
+  void should_log_final_stats_to_main_log_file_in_quiet_mode(
+      @LogCapture(value = MetricsManager.class, level = WARN) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr)
+      throws Exception {
+    Path executionDirectory = Files.createTempDirectory("test");
+    Path mainLogFile = executionDirectory.resolve("operation.log");
+    createMainLogFileAppender(mainLogFile);
+    setQuiet();
+    MetricsManager manager =
+        new MetricsManager(
+            new MetricRegistry(),
+            WorkflowType.LOAD,
+            "test",
+            Executors.newSingleThreadScheduledExecutor(),
+            SECONDS,
+            MILLISECONDS,
+            -1,
+            -1,
+            false,
+            false,
+            executionDirectory,
+            LogSettings.Verbosity.quiet,
+            Duration.ofSeconds(5),
+            true,
+            protocolVersion,
+            codecRegistry);
+    try {
+      manager.init();
+      WritesReportingExecutionListener writesReporter =
+          (WritesReportingExecutionListener)
+              ReflectionUtils.getInternalState(manager, "writesReporter");
+      assertThat(writesReporter).isNull();
+    } finally {
+      manager.close();
+    }
+    manager.reportFinalMetrics();
+    assertThat(readFile(mainLogFile)).doesNotContain("Final stats:");
+    assertThat(logs.getLoggedMessages()).isEmpty();
+    assertThat(stderr.getStreamAsString()).isEmpty();
+  }
+
+  @Test
+  void should_log_periodic_stats_to_main_log_file_in_verbose_mode(
+      @LogCapture(value = MetricsManager.class, level = DEBUG) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr)
+      throws Exception {
+    Path executionDirectory = Files.createTempDirectory("test");
+    Path mainLogFile = executionDirectory.resolve("operation.log");
+    createMainLogFileAppender(mainLogFile);
+    setVerbose();
+    MetricsManager manager =
+        new MetricsManager(
+            new MetricRegistry(),
+            WorkflowType.LOAD,
+            "test",
+            Executors.newSingleThreadScheduledExecutor(),
+            SECONDS,
+            MILLISECONDS,
+            -1,
+            -1,
+            false,
+            false,
+            executionDirectory,
+            LogSettings.Verbosity.verbose,
             Duration.ofSeconds(5),
             true,
             protocolVersion,
@@ -188,18 +290,20 @@ class MetricsManagerTest {
           .hasMessageContaining("Writes:")
           .hasMessageContaining("Throughput:")
           .hasMessageContaining("Latencies:");
-      assertThat(readFile(mainLogFile))
-          .doesNotContain("Writes:")
-          .doesNotContain("Throughput:")
-          .doesNotContain("Latencies:");
     } finally {
       manager.close();
     }
     manager.reportFinalMetrics();
+    assertThat(logs)
+        .hasMessageContaining("Writes:")
+        .hasMessageContaining("Throughput:")
+        .hasMessageContaining("Latencies:");
     assertThat(readFile(mainLogFile))
         .contains("Final stats:")
         .contains("Writes:")
         .contains("Throughput:")
         .contains("Latencies:");
+    assertThat(stderr.getStreamAsString())
+        .contains("total | failed | rows/s | mb/s | kb/row | p50 ms | p99ms | p999ms | batches");
   }
 }

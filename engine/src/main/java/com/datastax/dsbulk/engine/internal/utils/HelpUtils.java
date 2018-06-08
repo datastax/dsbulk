@@ -40,6 +40,9 @@ import org.jetbrains.annotations.NotNull;
 public class HelpUtils {
 
   private static final Pattern CONNECTOR_SETTINGS_PAT = Pattern.compile("connector\\.[^.]+\\..+");
+  private static final String COLUMNS_ENV_NAME = "COLUMNS";
+  private static final int DEFAULT_LINE_LENGTH = 150;
+  private static final int LINE_LENGTH = getLineLength();
 
   public static void emitSectionHelp(String sectionName) {
     if (!GROUPS.containsKey(sectionName)) {
@@ -123,6 +126,21 @@ public class HelpUtils {
     return String.format("DataStax Bulk Loader v%s", version);
   }
 
+  public static int getLineLength() {
+    int columns = DEFAULT_LINE_LENGTH;
+    String columnsStr = System.getenv(COLUMNS_ENV_NAME);
+    if (columnsStr != null) {
+      try {
+        columns = Integer.parseInt(columnsStr);
+      } catch (NumberFormatException ignored) {
+      }
+      if (PlatformUtils.isWindows()) {
+        columns--;
+      }
+    }
+    return columns;
+  }
+
   @NotNull
   private static Set<String> getGroupNames() {
     Set<String> groupNames = GROUPS.keySet();
@@ -146,26 +164,9 @@ public class HelpUtils {
     private static final String HEADER =
         "Usage: dsbulk (load|unload) [options]\n       dsbulk help [section]\nOptions:";
 
-    private static final int DEFAULT_LINE_LENGTH = 150;
-    private static final int LINE_LENGTH = getLineLength();
     private static final int INDENT = 4;
 
     private final Set<Option> options = new TreeSet<>(new PriorityComparator(PREFERRED_SETTINGS));
-
-    private static int getLineLength() {
-      int columns = DEFAULT_LINE_LENGTH;
-      String columnsStr = System.getenv("COLUMNS");
-      if (columnsStr != null) {
-        try {
-          columns = Integer.parseInt(columnsStr);
-        } catch (NumberFormatException ignored) {
-        }
-        if (PlatformUtils.isWindows()) {
-          columns--;
-        }
-      }
-      return columns;
-    }
 
     HelpEmitter(Options options) {
       this.options.addAll(options.getOptions());

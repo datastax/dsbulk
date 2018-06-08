@@ -11,14 +11,19 @@ package com.datastax.dsbulk.executor.api.listener;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.slf4j.event.Level.DEBUG;
 
+import ch.qos.logback.classic.Level;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Timer;
+import com.datastax.dsbulk.commons.log.LogSink;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(LogInterceptingExtension.class)
 class ReadsReportingExecutionListenerTest {
@@ -27,18 +32,21 @@ class ReadsReportingExecutionListenerTest {
   private final MetricsCollectingExecutionListener delegate;
 
   public ReadsReportingExecutionListenerTest(
-      @LogCapture(ReadsReportingExecutionListener.class) LogInterceptor interceptor) {
+      @LogCapture(value = ReadsReportingExecutionListener.class, level = DEBUG)
+          LogInterceptor interceptor) {
     this.interceptor = interceptor;
     delegate = new MetricsCollectingExecutionListener();
   }
 
   @Test
   void should_report_reads() {
+    Logger logger = LoggerFactory.getLogger(ReadsReportingExecutionListener.class);
     ReadsReportingExecutionListener listener =
         ReadsReportingExecutionListener.builder()
             .convertDurationsTo(MILLISECONDS)
             .convertRatesTo(SECONDS)
             .extractingMetricsFrom(delegate)
+            .withLogSink(LogSink.buildFrom(logger::isDebugEnabled, logger::debug))
             .build();
 
     listener.report();
@@ -46,7 +54,13 @@ class ReadsReportingExecutionListenerTest {
     assertThat(interceptor)
         .hasMessageContaining("Reads: total: 0, successful: 0, failed: 0, in-flight: 0")
         .hasMessageContaining("Throughput: 0 reads/second, 0.00 mb/second (0.00 kb/read)")
-        .hasMessageContaining("Latencies: mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds");
+        .hasMessageContaining("Latencies: mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds")
+        .hasEventSatisfying(
+            event ->
+                event.getLevel() == Level.DEBUG
+                    && event
+                        .getLoggerName()
+                        .equals(ReadsReportingExecutionListener.class.getName()));
 
     // simulate 3 reads, 2 successful and 1 failed
     Timer total = delegate.getTotalReadsTimer();

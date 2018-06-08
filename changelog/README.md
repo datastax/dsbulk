@@ -13,6 +13,7 @@
 - [improvement] DAT-287: Combine batch.mode and batch.enabled into a single setting.
 - [improvement] DAT-299: Count the number of rows for the N biggest partitions.
 - [bug] DAT-300: DSBulk fails to start with Java 10+.
+- [improvement] DAT-290: DSBulk should avoid logging to stdout.
 
 
 ### 1.0.2

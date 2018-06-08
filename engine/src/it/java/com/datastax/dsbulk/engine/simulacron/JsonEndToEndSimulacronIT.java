@@ -31,7 +31,6 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_COMMENTS;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.SELECT_FROM_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.engine.tests.utils.LogUtils.setProductionKey;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
 import static java.nio.file.Files.createTempDirectory;
@@ -430,6 +429,8 @@ class JsonEndToEndSimulacronIT {
       escapeUserInput(logDir),
       "--log.maxErrors",
       "2",
+      "--log.verbosity",
+      "2",
       "--connector.json.url",
       escapeUserInput(getClass().getResource("/missing-extra.json")),
       "--driver.query.consistency",
@@ -482,6 +483,8 @@ class JsonEndToEndSimulacronIT {
       escapeUserInput(logDir),
       "--log.maxErrors",
       "1",
+      "--log.verbosity",
+      "2",
       "--connector.json.url",
       escapeUserInput(getClass().getResource("/missing-extra.json")),
       "--driver.query.consistency",
@@ -778,15 +781,10 @@ class JsonEndToEndSimulacronIT {
   }
 
   @Test
-  void validate_stdout(
-      @StreamCapture(STDOUT) StreamInterceptor stdOut,
-      @StreamCapture(STDERR) StreamInterceptor stdErr,
-      @LogCapture(LogSettings.class) LogInterceptor logs) {
+  void validate_stdout(@StreamCapture(STDOUT) StreamInterceptor stdOut) {
 
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
     simulacron.prime(new Prime(prime));
-
-    setProductionKey();
 
     String[] args = {
       "unload",
@@ -816,9 +814,5 @@ class JsonEndToEndSimulacronIT {
     assertThat(status).isZero();
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     assertThat(stdOut.getStreamLines().size()).isEqualTo(24);
-    assertThat(stdErr.getStreamAsString())
-        .contains("Standard output is reserved, log messages are redirected to standard error.");
-    assertThat(logs.getAllMessagesAsString())
-        .contains("Standard output is reserved, log messages are redirected to standard error.");
   }
 }
