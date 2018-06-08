@@ -65,6 +65,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
   private final boolean countHosts;
   private final boolean countRanges;
   private final boolean countPartitions;
+  private final boolean multiCount;
 
   @VisibleForTesting long totalRows;
   @VisibleForTesting Map<TokenRange, Long> totalsByRange;
@@ -86,6 +87,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     countHosts = modes.contains(hosts);
     countRanges = modes.contains(ranges);
     countPartitions = modes.contains(partitions);
+    multiCount = modes.size() > 1;
     if (countHosts || countRanges) {
       // Store required metadata in two data structures that will speed up lookups by token:
       // 1) 'ring' stores the range start tokens of all ranges, contents are identical to
@@ -163,9 +165,15 @@ public class DefaultReadResultCounter implements ReadResultCounter {
   public void reportTotals() {
     PrintStream out = System.out;
     if (countGlobal) {
+      if (multiCount) {
+        out.println("Total rows:");
+      }
       out.println(totalRows);
     }
     if (countHosts) {
+      if (multiCount) {
+        out.println("Total rows per host:");
+      }
       allAddresses.forEach(
           host -> {
             long totalPerHost = totalsByHost.containsKey(host) ? totalsByHost.get(host) : 0;
@@ -174,6 +182,9 @@ public class DefaultReadResultCounter implements ReadResultCounter {
           });
     }
     if (countRanges) {
+      if (multiCount) {
+        out.println("Total rows per token range:");
+      }
       allTokenRanges.forEach(
           range -> {
             long totalPerRange = totalsByRange.containsKey(range) ? totalsByRange.get(range) : 0;
@@ -183,6 +194,9 @@ public class DefaultReadResultCounter implements ReadResultCounter {
           });
     }
     if (countPartitions) {
+      if (multiCount) {
+        out.println("Total rows per partition:");
+      }
       totalsByPartitionKey.forEach(
           count -> {
             float percentage = (float) count.count / (float) totalRows * 100f;
