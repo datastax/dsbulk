@@ -35,7 +35,8 @@ for J in "$JAVA" "$JAVA_HOME"/bin/java "$(/usr/libexec/java_home 2> /dev/null)/b
     VER=$($J -version 2>&1 | head -1 | sed -e 's/[^"]*"//' -e 's/".*//' -e 's/\.[^\.]*$//')
     MAJOR=$(echo $VER | sed -e 's/\..*$//')
     MINOR=$(echo $VER | sed -e 's/^.*\.//')
-    if [ $MAJOR -ge 1 -a $MINOR -ge 8 ] ; then
+    # matches 1.8, 1.9, 1.10 etc. as well as 8, 9, 10...
+    if [ $MAJOR -eq 1 -a $MINOR -ge 8 -o $MAJOR -ge 8 ] ; then
       # This Java is at least 1.8.
       JAVA_CMD=$J
       break
