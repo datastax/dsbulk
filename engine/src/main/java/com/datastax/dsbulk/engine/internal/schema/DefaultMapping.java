@@ -21,6 +21,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.reflect.TypeToken;
 import java.time.Instant;
+import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 
 public class DefaultMapping implements Mapping {
@@ -48,6 +49,16 @@ public class DefaultMapping implements Mapping {
   @Override
   public String variableToField(@NotNull String variable) {
     return fieldsToVariables.inverse().get(variable);
+  }
+
+  @Override
+  public Set<String> fields() {
+    return fieldsToVariables.keySet();
+  }
+
+  @Override
+  public Set<String> variables() {
+    return fieldsToVariables.values();
   }
 
   @Override

@@ -12,6 +12,7 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.google.common.reflect.TypeToken;
+import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -67,4 +68,18 @@ public interface Mapping {
   <T> TypeCodec<T> codec(
       @NotNull String variable, @NotNull DataType cqlType, @NotNull TypeToken<? extends T> javaType)
       throws CodecNotFoundException;
+
+  /**
+   * Returns all the field names in this mapping.
+   *
+   * @return the field names in this mapping.
+   */
+  Set<String> fields();
+
+  /**
+   * Returns all the variable names in this mapping.
+   *
+   * @return the variable names in this mapping.
+   */
+  Set<String> variables();
 }

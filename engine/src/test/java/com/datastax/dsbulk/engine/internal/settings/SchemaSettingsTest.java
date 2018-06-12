@@ -135,6 +135,7 @@ class SchemaSettingsTest {
     when(table.getColumn(C2)).thenReturn(col2);
     when(table.getColumn(C3)).thenReturn(col3);
     when(table.getPrimaryKey()).thenReturn(Collections.singletonList(col1));
+    when(table.getPartitionKey()).thenReturn(Collections.singletonList(col1));
     when(col1.getName()).thenReturn(C1);
     when(col2.getName()).thenReturn(C2);
     when(col3.getName()).thenReturn(C3);
@@ -154,13 +155,13 @@ class SchemaSettingsTest {
   void should_create_record_mapper_when_mapping_keyspace_and_table_provided() {
     LoaderConfig config =
         makeLoaderConfig(
-            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+            String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -183,9 +184,9 @@ class SchemaSettingsTest {
     when(col3.getType()).thenReturn(counter());
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -202,13 +203,12 @@ class SchemaSettingsTest {
 
   @Test
   void should_fail_to_create_schema_settings_when_mapping_many_to_one() {
-    LoaderConfig config =
-        makeLoaderConfig("mapping = \"{ 0 = f1, 1 = f1}\", keyspace=ks, table=t1");
+    LoaderConfig config = makeLoaderConfig("mapping = \" 0 = f1, 1 = f1\", keyspace=ks, table=t1");
     assertThrows(
         BulkConfigurationException.class,
         () -> {
           SchemaSettings schemaSettings = new SchemaSettings(config);
-          schemaSettings.init(WorkflowType.LOAD);
+          schemaSettings.init(WorkflowType.LOAD, false);
         },
         "Multiple input values in mapping resolve to column f1");
   }
@@ -218,14 +218,13 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig(
             String.format(
-                    "mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s, 1=__ttl, 3=__timestamp }\", ",
-                    C1, C2)
+                    "mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s, 1=__ttl, 3=__timestamp \", ", C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -252,12 +251,12 @@ class SchemaSettingsTest {
   void should_create_record_mapper_when_mapping_function() {
     LoaderConfig config =
         makeLoaderConfig(
-            String.format("mapping = \"{ now() = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+            String.format("mapping = \" now() = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -271,11 +270,11 @@ class SchemaSettingsTest {
   void should_create_record_mapper_with_static_ttl() {
     LoaderConfig config =
         makeLoaderConfig(
-            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+            String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "keyspace=ks, table=t1, queryTtl=30");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
-    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.LOAD, false);
+    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -288,11 +287,11 @@ class SchemaSettingsTest {
   void should_create_record_mapper_with_static_timestamp() {
     LoaderConfig config =
         makeLoaderConfig(
-            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+            String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "keyspace=ks, table=t1, queryTimestamp=\"2017-01-02T00:00:01Z\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
-    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.LOAD, false);
+    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -308,11 +307,11 @@ class SchemaSettingsTest {
   void should_create_record_mapper_with_static_timestamp_and_ttl() {
     LoaderConfig config =
         makeLoaderConfig(
-            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+            String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "keyspace=ks, table=t1, queryTimestamp=\"2017-01-02T00:00:01Z\", queryTtl=25");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
-    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.LOAD, false);
+    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -336,9 +335,9 @@ class SchemaSettingsTest {
                 + "query = \"INSERT INTO ks.t1(c2, c1) VALUES (:c2var, :c1var)\", "
                 + "nullToUnset = true");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -353,16 +352,16 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_create_record_mapper_when_mapping_is_a_list() {
+  void should_create_record_mapper_when_mapping_is_a_list_and_indexed() {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, true);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -379,18 +378,40 @@ class SchemaSettingsTest {
   }
 
   @Test
+  void should_create_record_mapper_when_mapping_is_a_list_and_mapped() {
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
+                + "nullToUnset = true, "
+                + "keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.LOAD, false);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s)", C1, C2));
+    assertMapping(
+        (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"), C1, C1, C2, C2);
+    assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+  }
+
+  @Test
   void should_create_record_mapper_when_mapping_and_statement_provided() {
     LoaderConfig config =
         makeLoaderConfig(
-            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+            String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "nullToUnset = true, "
                 + String.format(
                     "query=\"insert into ks.table (%1$s,\\\"%2$s\\\") values (:%1$s,:\\\"%2$s\\\")\"",
                     C1, C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -410,9 +431,9 @@ class SchemaSettingsTest {
   void should_create_record_mapper_when_keyspace_and_table_provided() {
     LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -431,11 +452,11 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
-                + String.format("mapping = \"{ *=*, %1$s = %2$s }\"", C4, C3));
+                + String.format("mapping = \" *=*, %1$s = %2$s \"", C4, C3));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -461,11 +482,11 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
-                + String.format("mapping = \"{ *=\\\"-%1$s\\\" }\"", C2));
+                + String.format("mapping = \" *=-\\\"%1$s\\\" \"", C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -482,11 +503,11 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
-                + String.format("mapping = \"{ *=[\\\"-%1$s\\\", -%2$s] }\"", C2, C3));
+                + String.format("mapping = \" *=[-\\\"%1$s\\\", -%2$s] \"", C2, C3));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -501,9 +522,9 @@ class SchemaSettingsTest {
   void should_create_record_mapper_when_null_to_unset_is_false() {
     LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -520,20 +541,20 @@ class SchemaSettingsTest {
   void should_create_row_mapper_when_mapping_keyspace_and_table_provided() {
     LoaderConfig config =
         makeLoaderConfig(
-            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+            String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
                 C1, C2));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
@@ -544,23 +565,23 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_create_row_mapper_when_mapping_is_a_list() {
+  void should_create_row_mapper_when_mapping_is_a_list_and_indexed() {
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
+    schemaSettings.init(WorkflowType.UNLOAD, true);
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
                 C1, C2));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
@@ -571,23 +592,50 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_create_row_mapper_with_inferred_mapping_and_override() {
-    // Infer mapping, but override to set c4 source field to C3 column.
+  void should_create_row_mapper_when_mapping_is_a_list_and_mapped() {
     LoaderConfig config =
         makeLoaderConfig(
-            "nullToUnset = true, keyspace=ks, table=t1, "
-                + String.format("mapping = \"{ *=*, %1$s = %2$s }\"", C4, C3));
+            String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
+                + "nullToUnset = true, "
+                + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT %3$s,%1$s,\"%2$s\" FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                C1, C2));
+    assertMapping(
+        (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
+        C1,
+        C1,
+        C2,
+        C2);
+  }
+
+  @Test
+  void should_create_row_mapper_with_inferred_mapping_and_override() {
+    // Infer mapping, but override to set c4 source field to C3 column.
+    LoaderConfig config =
+        makeLoaderConfig(
+            "nullToUnset = true, keyspace=ks, table=t1, "
+                + String.format("mapping = \" *=*, %1$s = %2$s \"", C4, C3));
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
+    ReadResultMapper readResultMapper =
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    assertThat(readResultMapper).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "SELECT %3$s,%1$s,\"%2$s\" FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
                 C1, C2, C3));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
@@ -605,18 +653,19 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
-                + String.format("mapping = \"{ *=\\\"-%1$s\\\" }\"", C2));
+                + String.format("mapping = \" *=-\\\"%1$s\\\" \"", C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT %1$s,%2$s FROM ks.t1 WHERE token() > :start AND token() <= :end", C1, C3));
+                "SELECT %1$s,%2$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                C1, C3));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"),
         C1,
@@ -631,17 +680,18 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig(
             "nullToUnset = true, keyspace=ks, table=t1, "
-                + String.format("mapping = \"{ *=[\\\"-%1$s\\\", -%2$s] }\"", C2, C3));
+                + String.format("mapping = \" *=[-\\\"%1$s\\\", -%2$s] \"", C2, C3));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
-            String.format("SELECT %1$s FROM ks.t1 WHERE token() > :start AND token() <= :end", C1));
+            String.format(
+                "SELECT %1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end", C1));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"), C1, C1);
   }
@@ -650,13 +700,13 @@ class SchemaSettingsTest {
   void should_create_row_mapper_when_mapping_and_statement_provided() {
     LoaderConfig config =
         makeLoaderConfig(
-            String.format("mapping = \"{ 0 = \\\"%2$s\\\" , 2 = %1$s }\", ", C1, C2)
+            String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "nullToUnset = true, "
                 + String.format("query=\"select \\\"%2$s\\\",%1$s from ks.t1\"", C1, C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -674,16 +724,16 @@ class SchemaSettingsTest {
   void should_create_row_mapper_when_keyspace_and_table_provided() {
     LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
                 C1, C2, C3));
     assertMapping((DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"));
   }
@@ -692,16 +742,16 @@ class SchemaSettingsTest {
   void should_create_row_mapper_when_null_to_unset_is_false() {
     LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
     ReadResultMapper readResultMapper =
-        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token() > :start AND token() <= :end",
+                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
                 C1, C2, C3));
     assertMapping((DefaultMapping) ReflectionUtils.getInternalState(readResultMapper, "mapping"));
   }
@@ -709,11 +759,10 @@ class SchemaSettingsTest {
   @Test
   void should_use_default_writetime_var_name() {
     LoaderConfig config =
-        makeLoaderConfig("keyspace = ks, table = t1, mapping = \"{ *=*, f1 = __timestamp }\"");
+        makeLoaderConfig("keyspace = ks, table = t1, mapping = \" *=*, f1 = __timestamp \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
-    RecordMapper mapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.LOAD, false);
+    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable"))
@@ -731,11 +780,10 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig(
             "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1,:c2) USING TIMESTAMP :c3\","
-                + "mapping = \"{ f1 = c1 , f2 = c2 , f3 = c3 }\" ");
+                + "mapping = \" f1 = c1 , f2 = c2 , f3 = c3 \" ");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
-    RecordMapper mapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.LOAD, false);
+    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable")).isEqualTo("c3");
@@ -745,17 +793,16 @@ class SchemaSettingsTest {
   void should_detect_quoted_writetime_var_in_query() {
     ColumnDefinitions definitions =
         newColumnDefinitions(
-            newDefinition("k", varchar()),
-            newDefinition("c", varchar()),
+            newDefinition("c1", varchar()),
+            newDefinition("c2", varchar()),
             newDefinition("\"This is a quoted \\\" variable name\"", varchar()));
     when(ps.getVariables()).thenReturn(definitions);
     LoaderConfig config =
         makeLoaderConfig(
-            "query = \"INSERT INTO ks.t1 (k,c) VALUES (:k,:c) USING TTL 123 AND tImEsTaMp     :\\\"This is a quoted \\\"\\\" variable name\\\"\"");
+            "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1,:c2) USING TTL 123 AND tImEsTaMp     :\\\"This is a quoted \\\"\\\" variable name\\\"\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
-    RecordMapper mapper =
-        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.LOAD, false);
+    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable"))
@@ -767,10 +814,10 @@ class SchemaSettingsTest {
     when(ps.getVariables()).thenReturn(newColumnDefinitions());
     BoundStatement bs = mock(BoundStatement.class);
     when(ps.bind()).thenReturn(bs);
-    LoaderConfig config = makeLoaderConfig("query = \"SELECT a,b,c FROM table1\"");
+    LoaderConfig config = makeLoaderConfig("query = \"SELECT a,b,c FROM ks1.table1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
-    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     List<Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements).hasSize(1).containsExactly(bs);
   }
@@ -795,8 +842,8 @@ class SchemaSettingsTest {
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
     LoaderConfig config = makeLoaderConfig("keyspace = ks1, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
-    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     List<Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements)
         .hasSize(3)
@@ -857,8 +904,8 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "keyspace = ks1, query = \"SELECT a,b,c FROM table1 WHERE token(a) > :start and token(a) <= :end \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
-    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     List<Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements)
         .hasSize(3)
@@ -917,8 +964,8 @@ class SchemaSettingsTest {
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
     LoaderConfig config = makeLoaderConfig("keyspace = ks1, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.COUNT);
-    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.COUNT, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     List<Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements)
         .hasSize(3)
@@ -979,8 +1026,8 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "keyspace = ks1, query = \"SELECT token(a) FROM table1 WHERE token(a) > :start and token(a) <= :end \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.COUNT);
-    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.COUNT, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     List<Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements)
         .hasSize(3)
@@ -1024,7 +1071,7 @@ class SchemaSettingsTest {
     when(table.getPartitionKey()).thenReturn(newArrayList(col1));
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.COUNT);
+    schemaSettings.init(WorkflowType.COUNT, false);
     ReadResultCounter counter =
         schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(global), 10);
     assertThat(counter).isNotNull();
@@ -1043,8 +1090,8 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "keyspace = ks1, query = \"SELECT a,b,c FROM table1 WHERE token(a) > :foo and token(a) <= :bar \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
-    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
+    schemaSettings.init(WorkflowType.UNLOAD, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
@@ -1053,27 +1100,14 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_respect_mapping_order_of_columns_in_generated_read_statement() {
-    ColumnDefinitions definitions = newColumnDefinitions();
-    when(ps.getVariables()).thenReturn(definitions);
-    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1, mapping = \"c3, c1\" ");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD);
-    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry, false);
-    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
-    verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).startsWith("SELECT c3,c1 FROM");
-  }
-
-  @Test
   void should_warn_that_keyspace_was_not_found() {
     when(metadata.getKeyspace("\"MyKs\"")).thenReturn(null);
     when(metadata.getKeyspace("myks")).thenReturn(keyspace);
     LoaderConfig config = makeLoaderConfig("keyspace = MyKs, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false))
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Keyspace \"MyKs\" does not exist, however a keyspace myks was found. Did you mean to use -k myks?");
@@ -1085,9 +1119,9 @@ class SchemaSettingsTest {
     when(keyspace.getTable("mytable")).thenReturn(table);
     LoaderConfig config = makeLoaderConfig("keyspace = ks1, table = MyTable");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false))
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Table \"MyTable\" does not exist, however a table mytable was found. Did you mean to use -t mytable?");
@@ -1099,9 +1133,9 @@ class SchemaSettingsTest {
     when(metadata.getKeyspace("myks")).thenReturn(null);
     LoaderConfig config = makeLoaderConfig("keyspace = MyKs, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false))
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Keyspace \"MyKs\" does not exist");
   }
@@ -1112,9 +1146,9 @@ class SchemaSettingsTest {
     when(keyspace.getTable("mytable")).thenReturn(null);
     LoaderConfig config = makeLoaderConfig("keyspace = ks1, table = MyTable");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, false);
     assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, false))
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Table \"MyTable\" does not exist");
   }
@@ -1123,9 +1157,9 @@ class SchemaSettingsTest {
   void should_warn_that_mapped_fields_not_supported() {
     LoaderConfig config = makeLoaderConfig("keyspace = MyKs, table = t1, mapping = \"c1=c1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(WorkflowType.LOAD, true);
     assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry, true))
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Schema mapping contains named fields, but connector only supports indexed fields");

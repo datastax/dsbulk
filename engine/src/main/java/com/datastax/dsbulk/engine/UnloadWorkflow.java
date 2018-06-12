@@ -92,7 +92,8 @@ public class UnloadWorkflow implements Workflow {
     logSettings.init();
     logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
     codecSettings.init();
-    schemaSettings.init(WorkflowType.UNLOAD);
+    schemaSettings.init(
+        WorkflowType.UNLOAD, !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     monitoringSettings.init();
     executorSettings.init();
     driverSettings.init();
@@ -118,11 +119,7 @@ public class UnloadWorkflow implements Workflow {
     ExtendedCodecRegistry codecRegistry =
         codecSettings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
     readResultMapper =
-        schemaSettings.createReadResultMapper(
-            session,
-            recordMetadata,
-            codecRegistry,
-            !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
   }

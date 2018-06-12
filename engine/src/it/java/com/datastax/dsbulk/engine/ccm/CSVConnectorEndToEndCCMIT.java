@@ -39,6 +39,7 @@ import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
+import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TupleValue;
@@ -46,6 +47,7 @@ import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
+import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
@@ -54,9 +56,13 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
+import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import java.io.IOException;
@@ -73,6 +79,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -80,6 +87,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
@@ -479,6 +488,135 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(readAllLinesInDirectoryAsStream(unloadDir)).containsExactly("1,2,42,0,");
   }
 
+  @Test
+  void full_load_unload_counters_custom_query_positional() throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS counters");
+    session.execute(
+        "CREATE TABLE counters ("
+            + "pk1 int, "
+            + "\"PK2\" int, "
+            + "\"C1\" counter, "
+            + "c2 counter, "
+            + "c3 counter, "
+            + "PRIMARY KEY (pk1, \"PK2\"))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(getClass().getResource("/counters.csv")));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add(
+        escapeUserInput(
+            "UPDATE counters SET \"C1\" += ?, c2 = c2 + ? WHERE pk1 = ? AND \"PK2\" = ?"));
+    args.add("--schema.mapping");
+    args.add("pk1,PK2,C1,c2");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    Row row =
+        session.execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2").one();
+    assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
+    assertThat(row.getLong("c2")).isZero(); // present in the file
+    assertThat(row.isNull("c3")).isTrue(); // not present in the file
+
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("true");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    // Exercise aliased selectors and a custom mapping
+    args.add(
+        escapeUserInput(
+            "SELECT pk1 as \"Field A\", \"PK2\" AS \"Field B\", \"C1\" AS \"Field C\", "
+                + "c2 AS \"Field D\", c3 AS \"Field E\" FROM counters"));
+    args.add("--schema.mapping");
+    args.add("Field E,Field D,Field C,Field B,Field A");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(2, unloadDir);
+    assertThat(readAllLinesInDirectoryAsStream(unloadDir))
+        .containsExactly("Field E,Field D,Field C,Field B,Field A", ",0,42,2,1");
+  }
+
+  @Test
+  void full_load_unload_counters_custom_query_named() throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS counters");
+    session.execute(
+        "CREATE TABLE counters ("
+            + "pk1 int, "
+            + "\"PK2\" int, "
+            + "\"C1\" counter, "
+            + "c2 counter, "
+            + "c3 counter, "
+            + "PRIMARY KEY (pk1, \"PK2\"))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(getClass().getResource("/counters.csv")));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add(
+        escapeUserInput(
+            "UPDATE counters SET \"C1\" += :\"fieldC\", c2 = c2 + :\"fieldD\" WHERE pk1 = :\"fieldA\" AND \"PK2\" = :\"fieldB\""));
+    args.add("--schema.mapping");
+    args.add("fieldA,fieldB,fieldC,fieldD");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    Row row =
+        session.execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2").one();
+    assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
+    assertThat(row.getLong("c2")).isZero(); // present in the file
+    assertThat(row.isNull("c3")).isTrue(); // not present in the file
+
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add(escapeUserInput("SELECT pk1, \"PK2\", \"C1\", c2, c3 FROM counters"));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(1, unloadDir);
+    assertThat(readAllLinesInDirectoryAsStream(unloadDir)).containsExactly("1,2,42,0,");
+  }
+
   /** Attempts to load and unload a larger dataset which can be batched. */
   @Test
   void full_load_unload_large_batches() throws Exception {
@@ -670,10 +808,12 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
             "--driver.pooling.local.connections",
             "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
             "--schema.query",
-            "insert into "
-                + session.getLoggedKeyspace()
-                + ".table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :time_to_live and timestamp :created_at");
+            "insert into table_ttl_timestamp (key, value, loaded_at) "
+                + "values (:key, :value, now()) "
+                + "using ttl :time_to_live and timestamp :created_at");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -1075,6 +1215,240 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersWritten(REJECT, UNNECESSARY, session);
+  }
+
+  @Test
+  void delete_row_with_custom_query_positional() {
+
+    session.execute("DROP TABLE IF EXISTS test_delete");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_delete (pk int, cc int, value int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,1,1)");
+    session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,2,2)");
+
+    MockConnector.setDelegate(
+        new CSVConnector() {
+
+          @Override
+          public void init() {}
+
+          @Override
+          public void configure(LoaderConfig settings, boolean read) {}
+
+          @Override
+          public int estimatedResourceCount() {
+            return -1;
+          }
+
+          @Override
+          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
+            return () -> Flux.just(read().get());
+          }
+
+          @Override
+          public Supplier<? extends Publisher<Record>> read() {
+            return () -> Flux.just(new DefaultRecord("1,1", () -> null, 0, () -> null, "1", "1"));
+          }
+        });
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("DELETE FROM test_delete WHERE pk = ? and cc = ?");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+
+    assertThat(session.execute("SELECT * FROM test_delete WHERE pk = 1 AND cc = 1").one()).isNull();
+    assertThat(session.execute("SELECT * FROM test_delete WHERE pk = 1 AND cc = 2").one())
+        .isNotNull();
+  }
+
+  @Test
+  void delete_row_with_custom_query_named() {
+
+    session.execute("DROP TABLE IF EXISTS test_delete");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_delete (\"PK\" int, \"CC\" int, value int, PRIMARY KEY (\"PK\", \"CC\"))");
+    session.execute("INSERT INTO test_delete (\"PK\", \"CC\", value) VALUES (1,1,1)");
+    session.execute("INSERT INTO test_delete (\"PK\", \"CC\", value) VALUES (1,2,2)");
+
+    MockConnector.setDelegate(
+        new CSVConnector() {
+
+          @Override
+          public void init() {}
+
+          @Override
+          public void configure(LoaderConfig settings, boolean read) {}
+
+          @Override
+          public int estimatedResourceCount() {
+            return -1;
+          }
+
+          @Override
+          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
+            return () -> Flux.just(read().get());
+          }
+
+          @Override
+          public Supplier<? extends Publisher<Record>> read() {
+            return () -> Flux.just(new DefaultRecord("1,1", () -> null, 0, () -> null, "1", "1"));
+          }
+        });
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add(
+        escapeUserInput(
+            "DELETE FROM test_delete WHERE \"PK\" = :\"Field A\" and \"CC\" = :\"Field B\""));
+    args.add("--schema.mapping");
+    args.add("Field A,Field B");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+
+    assertThat(session.execute("SELECT * FROM test_delete WHERE \"PK\" = 1 AND \"CC\" = 1").one())
+        .isNull();
+    assertThat(session.execute("SELECT * FROM test_delete WHERE \"PK\" = 1 AND \"CC\" = 2").one())
+        .isNotNull();
+  }
+
+  @Test
+  void delete_column_with_custom_query() {
+
+    session.execute("DROP TABLE IF EXISTS test_delete");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_delete (pk int, cc int, value int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,1,1)");
+    session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,2,2)");
+
+    MockConnector.setDelegate(
+        new CSVConnector() {
+
+          @Override
+          public void init() {}
+
+          @Override
+          public void configure(LoaderConfig settings, boolean read) {}
+
+          @Override
+          public int estimatedResourceCount() {
+            return -1;
+          }
+
+          @Override
+          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
+            return () -> Flux.just(read().get());
+          }
+
+          @Override
+          public Supplier<? extends Publisher<Record>> read() {
+            return () -> Flux.just(new DefaultRecord("1,1", () -> null, 0, () -> null, "1", "1"));
+          }
+        });
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("DELETE value FROM test_delete WHERE pk = ? and cc = ?");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+
+    ResultSet rs1 = session.execute("SELECT value FROM test_delete WHERE pk = 1 AND cc = 1");
+    Row row1 = rs1.one();
+    assertThat(row1).isNotNull();
+    assertThat(row1.isNull(0)).isTrue();
+
+    ResultSet rs2 = session.execute("SELECT value FROM test_delete WHERE pk = 1 AND cc = 2");
+    Row row2 = rs2.one();
+    assertThat(row2).isNotNull();
+    assertThat(row2.isNull(0)).isFalse();
+  }
+
+  @Test
+  void delete_column_with_mapping() {
+
+    session.execute("DROP TABLE IF EXISTS test_delete");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_delete (\"PK\" int, cc int, value int, PRIMARY KEY (\"PK\", cc))");
+    session.execute("INSERT INTO test_delete (\"PK\", cc, value) VALUES (1,1,1)");
+    session.execute("INSERT INTO test_delete (\"PK\", cc, value) VALUES (1,2,2)");
+
+    MockConnector.setDelegate(
+        new CSVConnector() {
+
+          @Override
+          public void init() {}
+
+          @Override
+          public void configure(LoaderConfig settings, boolean read) {}
+
+          @Override
+          public int estimatedResourceCount() {
+            return -1;
+          }
+
+          @Override
+          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
+            return () -> Flux.just(read().get());
+          }
+
+          @Override
+          public Supplier<? extends Publisher<Record>> read() {
+            return () ->
+                Flux.just(new DefaultRecord("1,1", () -> null, 0, () -> null, "1", "1", ""));
+          }
+        });
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("test_delete");
+    args.add("--schema.mapping");
+    args.add("PK,cc,value");
+    args.add("--schema.nullToUnset");
+    args.add("false");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+
+    ResultSet rs1 = session.execute("SELECT value FROM test_delete WHERE \"PK\" = 1 AND cc = 1");
+    Row row1 = rs1.one();
+    assertThat(row1).isNotNull();
+    assertThat(row1.isNull(0)).isTrue();
+
+    ResultSet rs2 = session.execute("SELECT value FROM test_delete WHERE \"PK\" = 1 AND cc = 2");
+    Row row2 = rs2.one();
+    assertThat(row2).isNotNull();
+    assertThat(row2.isNull(0)).isFalse();
   }
 
   /** Test for DAT-236. */

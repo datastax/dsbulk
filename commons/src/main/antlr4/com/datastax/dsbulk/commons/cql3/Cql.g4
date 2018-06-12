@@ -19,11 +19,11 @@ grammar Cql;
 /** STATEMENTS **/
 
 cqlStatement
-    : selectStatement                 #cqlStatementSelectStatement
-    | insertStatement                 #cqlStatementInsertStatement
-    | updateStatement                 #cqlStatementUpdateStatement
-    | deleteStatement                 #cqlStatementDeleteStatement
-    | batchStatement                  #cqlStatementBatchStatement
+    : selectStatement
+    | insertStatement
+    | updateStatement
+    | deleteStatement
+    | batchStatement
     ;
 
 /**
@@ -80,8 +80,8 @@ whereClause
     ;
 
 relationOrExpression
-    : relation               #relationOrExpressionRelation
-    | customIndexExpression  #relationOrExpressionExpression
+    : relation
+    | customIndexExpression
     ;
 
 customIndexExpression
@@ -124,9 +124,9 @@ jsonInsertStatement
     ;
 
 jsonValue
-    : STRING_LITERAL    #jsonValueStringLiteral
-    | ':' noncolIdent   #jsonValueNonColIdent
-    | QMARK             #jsonValueQuestionMark
+    : STRING_LITERAL
+    | ':' noncolIdent
+    | QMARK
     ;
 
 usingClause
@@ -134,8 +134,8 @@ usingClause
     ;
 
 usingClauseObjective
-    : K_TIMESTAMP intValue #usingTimestamp
-    | K_TTL intValue       #usingTtl
+    : K_TIMESTAMP intValue
+    | K_TTL intValue
     ;
 
 /**
@@ -178,9 +178,9 @@ deleteSelection
     ;
 
 deleteOp
-    : cident                #deleteOpIdentSimple
-    | cident '[' term ']'   #deleteOpIdentArray
-    | cident '.' fident     #deleteOpIdentField
+    : cident
+    | cident '[' term ']'
+    | cident '.' fident
     ;
 
 usingClauseDelete
@@ -220,9 +220,9 @@ batchStatement
     ;
 
 batchStatementObjective
-    : insertStatement  #batchStatementObjectiveInsertStatement
-    | updateStatement  #batchStatementObjectiveUpdateStatement
-    | deleteStatement  #batchStatementObjectiveDeleteStatement
+    : insertStatement
+    | updateStatement
+    | deleteStatement
     ;
 
 
@@ -233,23 +233,23 @@ batchStatementObjective
 // identifiers because the underlying comparator is not necessarily text. See
 // CASSANDRA-8178 for details.
 cident
-    : IDENT               #cidentSimple
-    | QUOTED_NAME         #cidentQuoted
-    | unreservedKeyword   #cidentUnreservedKeyword
+    : IDENT
+    | QUOTED_NAME
+    | unreservedKeyword
     ;
 
 
 fident
-    : IDENT               #fidentSimple
-    | QUOTED_NAME         #fidentQuoted
-    | unreservedKeyword   #fidentUnreservedKeyword
+    : IDENT
+    | QUOTED_NAME
+    | unreservedKeyword
     ;
 
 // Identifiers that do not refer to columns
 noncolIdent
-    : IDENT               #nonColIdentSimple
-    | QUOTED_NAME         #nonColIdentQuoted
-    | unreservedKeyword   #nonColIdentUnreservedKeyword
+    : IDENT
+    | QUOTED_NAME
+    | unreservedKeyword
     ;
 
 // Keyspace & Column family names
@@ -266,35 +266,35 @@ userTypeName
     ;
 
 ksName
-    : IDENT                #ksNameSimple
-    | QUOTED_NAME          #ksNameQuoted
-    | unreservedKeyword   #ksNameUnreservedKeyword
-    | QMARK                #ksNameQuestionMark
+    : IDENT
+    | QUOTED_NAME
+    | unreservedKeyword
+    | QMARK
     ;
 
 cfName
-    : IDENT               #cfNameSimple
-    | QUOTED_NAME         #cfNameQuoted
-    | unreservedKeyword   #cfNameUnreservedKeyword
-    | QMARK               #cfNameQuestionMark
+    : IDENT
+    | QUOTED_NAME
+    | unreservedKeyword
+    | QMARK
     ;
 
 idxName
-    : IDENT               #idxNameSimple
-    | QUOTED_NAME         #idxNameQuoted
-    | unreservedKeyword   #idxNameUnreservedKeyword
-    | QMARK               #idxNameQuestionMark
+    : IDENT
+    | QUOTED_NAME
+    | unreservedKeyword
+    | QMARK
     ;
 
 constant
-    : STRING_LITERAL                       #constantStringLiteral
-    | INTEGER                              #constantInteger
-    | FLOAT                                #constantFloat
-    | BOOLEAN                              #constantBoolean
-    | DURATION                             #constantDuration
-    | UUID                                 #constantUUID
-    | HEXNUMBER                            #constantHexNumber
-    | ('-' )? (K_NAN | K_INFINITY)         #constantNanInfinity
+    : STRING_LITERAL
+    | INTEGER
+    | FLOAT
+    | BOOLEAN
+    | DURATION
+    | UUID
+    | HEXNUMBER
+    | ('-' )? (K_NAN | K_INFINITY)
     ;
 
 setOrMapLiteral
@@ -303,11 +303,11 @@ setOrMapLiteral
     ;
 
 collectionLiteral
-    : '[' ( term ( ',' term )* )? ']'  #collectionLiteralList
-    | '{' term setOrMapLiteral '}'     #collectionLiteralSetOrMap
+    : '[' ( term ( ',' term )* )? ']'
+    | '{' term setOrMapLiteral '}'
     // Note that we have an ambiguity between maps and set for "{}". So we force it to a set literal,
     // and deal with it later based on the type of the column (SetLiteral.java).
-    | '{' '}'                          #collectionLiteralSetOrMapEmpty
+    | '{' '}'
     ;
 
 usertypeLiteral
@@ -320,19 +320,19 @@ tupleLiteral
     ;
 
 value
-    : constant              #valueConstant
-    | collectionLiteral     #valueCollectionLiteral
-    | usertypeLiteral       #valueUserTypeLiteral
-    | tupleLiteral          #valueTupleLiteral
-    | K_NULL                #valueNull
-    | ':' noncolIdent       #valueNonColIdent
-    | QMARK                 #valueQuestionMark
+    : constant
+    | collectionLiteral
+    | usertypeLiteral
+    | tupleLiteral
+    | K_NULL
+    | ':' noncolIdent
+    | QMARK
     ;
 
 intValue
-    : INTEGER            #intValueSimple
-    | ':' noncolIdent    #intValueNonColIdent
-    | QMARK              #intValueQuestionMark
+    : INTEGER
+    | ':' noncolIdent
+    | QMARK
     ;
 
 functionName
@@ -340,16 +340,16 @@ functionName
     ;
 
 allowedFunctionName
-    : IDENT                        #allowedFunctionNameIdent
-    | QUOTED_NAME                  #allowedFunctionNameQuotedName
-    | unreservedFunctionKeyword    #allowedFunctionNameUnreservedKeyword
-    | K_TOKEN                      #allowedFunctionNameToken
-    | K_COUNT                      #allowedFunctionNameCount
+    : IDENT
+    | QUOTED_NAME
+    | unreservedFunctionKeyword
+    | K_TOKEN
+    | K_COUNT
     ;
 
 function
-    : functionName '(' ')'              #functionNameWithoutArgs
-    | functionName '(' functionArgs ')' #functionNameWithArgs
+    : functionName '(' ')'
+    | functionName '(' functionArgs ')'
     ;
 
 functionArgs
@@ -357,9 +357,9 @@ functionArgs
     ;
 
 term
-    : value                       #termValue
-    | function                    #termFunction
-    | '(' comparatorType ')' term #termTyped
+    : value
+    | function
+    | '(' comparatorType ')' term
     ;
 
 columnOperation
@@ -367,16 +367,16 @@ columnOperation
     ;
 
 columnOperationDifferentiator
-    : '=' normalColumnOperation                #columnOperationDifferentiatorEquals
-    | shorthandColumnOperation                 #columnOperationDifferentiatorShortHand
-    | '[' term ']' collectionColumnOperation   #columnOperationDifferentiatorArray
-    | '.' fident udtColumnOperation            #columnOperationDifferentiatorField
+    : '=' normalColumnOperation
+    | shorthandColumnOperation
+    | '[' term ']' collectionColumnOperation
+    | '.' fident udtColumnOperation
     ;
 
 normalColumnOperation
-    : term ('+' cident )?      #normalColumnOperationTerm
-    | cident ('+' | '-') term  #normalColumnOperationCidentTerm
-    | cident INTEGER           #normalColumnOperationCidentInteger
+    : term ('+' cident )?
+    | cident ('+' | '-') term
+    | cident INTEGER
     ;
 
 shorthandColumnOperation
@@ -426,14 +426,14 @@ relationType
     ;
 
 relation
-    : cident relationType term                     #relationCidentRelationTypeTerm
-    | cident K_LIKE term                           #relationCidentLikeTerm
-    | cident K_IS K_NOT K_NULL                     #relationCidentIsNotNull
-    | K_TOKEN tupleOfIdentifiers relationType term #relationToken
-    | cident K_IN inMarker                         #relationInMarker
-    | cident K_IN singleColumnInValues             #relationInSingle
-    | cident K_CONTAINS (K_KEY)? term              #relationContains
-    | cident '[' term ']' relationType term        #relationCidentArrayRelationTypeTerm
+    : cident relationType term
+    | cident K_LIKE term
+    | cident K_IS K_NOT K_NULL
+    | K_TOKEN tupleOfIdentifiers relationType term
+    | cident K_IN inMarker
+    | cident K_IN singleColumnInValues
+    | cident K_CONTAINS (K_KEY)? term
+    | cident '[' term ']' relationType term
     | tupleOfIdentifiers
       ( K_IN
           ( '(' ')'
@@ -443,13 +443,13 @@ relation
           )
       | relationType tupleLiteral /* (a, b, c) > (1, 2, 3) or (a, b, c) > (?, ?, ?) */
       | relationType markerForTuple /* (a, b, c) >= ? */
-      )                                            #relationInMultiple
-    | '(' relation ')'                             #relationParentheses
+      )
+    | '(' relation ')'
     ;
 
 inMarker
-    : QMARK             #inMarkerQuestionMark
-    | ':' noncolIdent   #inMarkerNonColIdent
+    : QMARK
+    | ':' noncolIdent
     ;
 
 tupleOfIdentifiers
@@ -465,8 +465,8 @@ tupleOfTupleLiterals
     ;
 
 markerForTuple
-    : QMARK            #markerForTupleQuestionMark
-    | ':' noncolIdent  #markerForTupleNonColIdent
+    : QMARK
+    | ':' noncolIdent
     ;
 
 tupleOfMarkersForTuples
@@ -474,16 +474,16 @@ tupleOfMarkersForTuples
     ;
 
 inMarkerForTuple
-    : QMARK            #inMarkerForTupleQuestionMark
-    | ':' noncolIdent  #inMarkerForTupleNonColIdent
+    : QMARK
+    | ':' noncolIdent
     ;
 
 comparatorType
-    : nativeType                      #comparatorTypeNativeType
-    | collectionType                  #comparatorTypeCollectionType
-    | tupleType                       #comparatorTypeTupleType
-    | userTypeName                    #comparatorTypeUserType
-    | K_FROZEN '<' comparatorType '>' #comparatorTypeFrozenType
+    : nativeType
+    | collectionType
+    | tupleType
+    | userTypeName
+    | K_FROZEN '<' comparatorType '>'
     ;
 
 nativeType
@@ -511,9 +511,9 @@ nativeType
     ;
 
 collectionType
-    : K_MAP  '<' comparatorType ',' comparatorType '>' #collectionTypeMap
-    | K_LIST '<' comparatorType '>'                    #collectionTypeList
-    | K_SET  '<' comparatorType '>'                    #collectionTypeSet
+    : K_MAP  '<' comparatorType ',' comparatorType '>'
+    | K_LIST '<' comparatorType '>'
+    | K_SET  '<' comparatorType '>'
     ;
 
 tupleType
@@ -524,20 +524,20 @@ tupleType
 // Basically the same as cident, but we need to exlude existing CQL3 types
 // (which for some reason are not reserved otherwise)
 nonTypeIdent
-    : IDENT                    #nonTypeIdentIdent
-    | QUOTED_NAME              #nonTypeIdentIdentQuotedName
-    | basicUnreservedKeyword   #nonTypeIdentBasicUnreservedKeyword
-    | K_KEY                    #nonTypeIdentKey
+    : IDENT
+    | QUOTED_NAME
+    | basicUnreservedKeyword
+    | K_KEY
     ;
 
 unreservedKeyword
-    : unreservedFunctionKeyword                                               #unreservedKeywordFunction
-    | (K_TTL | K_COUNT | K_WRITETIME | K_KEY | K_CAST | K_JSON | K_DISTINCT)  #unreservedKeywordConstant
+    : unreservedFunctionKeyword
+    | (K_TTL | K_COUNT | K_WRITETIME | K_KEY | K_CAST | K_JSON | K_DISTINCT)
     ;
 
 unreservedFunctionKeyword
-    : basicUnreservedKeyword  #unreservedFunctionKeywordBasic
-    | nativeType              #unreservedFunctionKeywordNativeType
+    : basicUnreservedKeyword
+    | nativeType
     ;
 
 basicUnreservedKeyword

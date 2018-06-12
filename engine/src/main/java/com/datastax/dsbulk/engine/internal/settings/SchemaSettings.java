@@ -21,7 +21,6 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.ParseUtils;
@@ -33,9 +32,6 @@ import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.cql3.CqlBaseListener;
-import com.datastax.dsbulk.commons.cql3.CqlLexer;
-import com.datastax.dsbulk.commons.cql3.CqlParser;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -44,6 +40,8 @@ import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
+import com.datastax.dsbulk.engine.internal.schema.MappingInspector;
+import com.datastax.dsbulk.engine.internal.schema.QueryInspector;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
@@ -53,14 +51,9 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
-import com.typesafe.config.ConfigFactory;
-import com.typesafe.config.ConfigValue;
-import com.typesafe.config.ConfigValueType;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -75,26 +68,13 @@ import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import org.antlr.v4.runtime.BaseErrorListener;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CodePointCharStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SchemaSettings {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaSettings.class);
 
   private static final String TTL_VARNAME = "dsbulk_internal_ttl";
   private static final String TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
 
-  private static final String INFERRED_MAPPING_TOKEN = "__INFERRED_MAPPING";
   private static final String NULL_TO_UNSET = "nullToUnset";
   private static final String KEYSPACE = "keyspace";
   private static final String TABLE = "table";
@@ -116,8 +96,7 @@ public class SchemaSettings {
   private boolean nullToUnset;
   private boolean allowExtraFields;
   private boolean allowMissingFields;
-  private String mappingString;
-  private Config mapping;
+  private MappingInspector mapping;
   private BiMap<String, String> explicitVariables;
   private String tableName;
   private String keyspaceName;
@@ -126,15 +105,18 @@ public class SchemaSettings {
   private TableMetadata table;
   private KeyspaceMetadata keyspace;
   private String query;
+  private QueryInspector queryInspector;
   private PreparedStatement preparedStatement;
   private String writeTimeVariable;
+  private boolean preferIndexedMapping;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
   }
 
-  public void init(WorkflowType workflowType) {
+  public void init(WorkflowType workflowType, boolean expectIndexedMapping) {
     try {
+      this.preferIndexedMapping = expectIndexedMapping;
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       ttlSeconds = config.getInt(QUERY_TTL);
       allowExtraFields = config.getBoolean(ALLOW_EXTRA_FIELDS);
@@ -172,8 +154,8 @@ public class SchemaSettings {
 
       // If mapping is present, make sure it is parseable as a map.
       if (config.hasPath(MAPPING)) {
-        mapping = getMapping();
-        if (mapping.hasPath(INFERRED_MAPPING_TOKEN) && !(keyspaceTablePresent || query != null)) {
+        mapping = new MappingInspector(config.getString(MAPPING), preferIndexedMapping);
+        if (mapping.isInferring() && !(keyspaceTablePresent || query != null)) {
           throw new BulkConfigurationException(
               String.format(
                   "%s, or %s and %s must be defined when using inferred mapping",
@@ -217,8 +199,9 @@ public class SchemaSettings {
 
       if (mapping != null) {
         Map<String, String> explicitVariables = new LinkedHashMap<>();
-        for (String fieldName : orderedMappingKeys()) {
-          String variableName = mapping.getString(fieldName);
+        for (Map.Entry<String, String> entry : mapping.getExplicitVariables().entrySet()) {
+          String fieldName = entry.getKey();
+          String variableName = entry.getValue();
 
           // Rename the user-specified __ttl and __timestamp vars to the (legal) bound variable
           // names.
@@ -237,7 +220,7 @@ public class SchemaSettings {
             }
             throw new BulkConfigurationException(
                 "Multiple input values in mapping resolve to column "
-                    + mapping.getString(fieldName)
+                    + variableName
                     + ". "
                     + "Please review schema.mapping for duplicates.");
           }
@@ -271,10 +254,11 @@ public class SchemaSettings {
         explicitVariables = null;
       }
 
-      // If a query is provided, check now if it contains a USING TIMESTAMP variable,
-      // and get its name
       if (query != null) {
-        writeTimeVariable = inferWriteTimeVariable();
+        queryInspector = new QueryInspector(query);
+        // If a query is provided, check now if it contains a USING TIMESTAMP variable,
+        // and get its name.
+        writeTimeVariable = queryInspector.getWriteTimeVariable();
       }
 
       if (workflowType == COUNT) {
@@ -293,13 +277,9 @@ public class SchemaSettings {
   }
 
   public RecordMapper createRecordMapper(
-      Session session,
-      RecordMetadata recordMetadata,
-      ExtendedCodecRegistry codecRegistry,
-      boolean expectIndexedMapping)
+      Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
-    DefaultMapping mapping =
-        prepareStatementAndCreateMapping(session, codecRegistry, LOAD, expectIndexedMapping);
+    DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, LOAD);
     return new DefaultRecordMapper(
         preparedStatement,
         mapping,
@@ -310,15 +290,11 @@ public class SchemaSettings {
   }
 
   public ReadResultMapper createReadResultMapper(
-      Session session,
-      RecordMetadata recordMetadata,
-      ExtendedCodecRegistry codecRegistry,
-      boolean expectIndexedMapping)
+      Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
     // wo don't check that mapping records are supported when unloading, the only thing that matters
     // is the order in which fields appear in the record.
-    DefaultMapping mapping =
-        prepareStatementAndCreateMapping(session, codecRegistry, UNLOAD, expectIndexedMapping);
+    DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, UNLOAD);
     return new DefaultReadResultMapper(mapping, recordMetadata);
   }
 
@@ -327,7 +303,7 @@ public class SchemaSettings {
       ExtendedCodecRegistry codecRegistry,
       EnumSet<StatsSettings.StatisticsMode> modes,
       int numPartitions) {
-    prepareStatementAndCreateMapping(session, null, COUNT, false);
+    prepareStatementAndCreateMapping(session, null, COUNT);
     Cluster cluster = session.getCluster();
     ProtocolVersion protocolVersion =
         cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
@@ -370,10 +346,7 @@ public class SchemaSettings {
 
   @NotNull
   private DefaultMapping prepareStatementAndCreateMapping(
-      Session session,
-      ExtendedCodecRegistry codecRegistry,
-      WorkflowType workflowType,
-      boolean expectIndexedMapping) {
+      Session session, ExtendedCodecRegistry codecRegistry, WorkflowType workflowType) {
     BiMap<String, String> fieldsToVariables = null;
     if (!config.hasPath(QUERY)) {
       // in the absence of user-provided queries, create the mapping *before* query generation and
@@ -386,11 +359,9 @@ public class SchemaSettings {
                       .getColumns()
                       .stream()
                       .map(ColumnMetadata::getName)
-                      .collect(Collectors.toList()),
-              expectIndexedMapping);
+                      .collect(Collectors.toList()));
       // query generation
-      if (workflowType == WorkflowType.LOAD) {
-        validatePrimaryKeyPresent(fieldsToVariables);
+      if (workflowType == LOAD) {
         if (isCounterTable()) {
           query = inferUpdateCounterQuery(fieldsToVariables);
         } else {
@@ -400,6 +371,11 @@ public class SchemaSettings {
         query = inferReadQuery(fieldsToVariables);
       } else if (workflowType == COUNT) {
         query = inferCountQuery();
+      }
+      queryInspector = new QueryInspector(query);
+      // validate generated query
+      if (workflowType == LOAD) {
+        validatePrimaryKeyPresent(fieldsToVariables);
       }
       // remove function mappings as we won't need them anymore from now on
       fieldsToVariables = removeMappingFunctions(fieldsToVariables);
@@ -417,14 +393,13 @@ public class SchemaSettings {
               () ->
                   StreamSupport.stream(variables.spliterator(), false)
                       .map(ColumnDefinitions.Definition::getName)
-                      .collect(Collectors.toList()),
-              expectIndexedMapping);
-      inferKeyspaceAndTable(session, variables);
+                      .collect(Collectors.toList()));
+      inferKeyspaceAndTableCustom(session);
       // validate user-provided query
       if (workflowType == LOAD) {
-        validatePartitionKeyPresentInWhereClause(variables, fieldsToVariables);
+        validatePrimaryKeyPresent(fieldsToVariables);
       } else if (workflowType == COUNT) {
-        validatePartitionKeyPresentInSelectClause(variables, fieldsToVariables);
+        validatePartitionKeyPresent();
       }
     }
     assert fieldsToVariables != null;
@@ -456,21 +431,16 @@ public class SchemaSettings {
     }
   }
 
-  private BiMap<String, String> createFieldsToVariablesMap(
-      Supplier<List<String>> columns, boolean expectIndexedMapping)
+  private BiMap<String, String> createFieldsToVariablesMap(Supplier<List<String>> columns)
       throws BulkConfigurationException {
     BiMap<String, String> fieldsToVariables;
     // create indexed mappings only for unload, and only if the connector really requires it, to
     // match the order in which the query declares variables.
     if (mapping == null) {
-      fieldsToVariables = inferFieldsToVariablesMap(columns, expectIndexedMapping);
+      fieldsToVariables = inferFieldsToVariablesMap(columns);
     } else {
-      if (mapping.hasPath(INFERRED_MAPPING_TOKEN)) {
-        fieldsToVariables =
-            inferFieldsToVariablesMap(
-                new InferredMappingSpec(mapping.getValue(INFERRED_MAPPING_TOKEN)),
-                columns,
-                expectIndexedMapping);
+      if (mapping.isInferring()) {
+        fieldsToVariables = inferFieldsToVariablesMap(columns);
       } else {
         fieldsToVariables = HashBiMap.create();
       }
@@ -495,12 +465,12 @@ public class SchemaSettings {
         "Mapping was absent and could not be inferred, please provide an explicit mapping");
 
     validateAllFieldsPresent(fieldsToVariables, columns);
-    validateMappedRecords(fieldsToVariables, expectIndexedMapping);
+    validateMappedRecords(fieldsToVariables);
 
     return fieldsToVariables;
   }
 
-  /** Version used wth generated queries. */
+  /** Version used with generated queries. */
   private void inferKeyspaceAndTable(Session session) {
     assert !config.hasPath(QUERY);
     assert keyspaceName != null && tableName != null;
@@ -533,11 +503,12 @@ public class SchemaSettings {
   }
 
   /** Version used with user-supplied queries. */
-  private void inferKeyspaceAndTable(Session session, ColumnDefinitions definitions) {
-    // TODO DAT-294 infer keyspace and table by parsing the query
+  private void inferKeyspaceAndTableCustom(Session session) {
     assert config.hasPath(QUERY);
     if (keyspace == null) {
-      keyspaceName = Metadata.quoteIfNecessary(definitions.getKeyspace(0));
+      if (keyspaceName == null) {
+        keyspaceName = Metadata.quoteIfNecessary(queryInspector.getKeyspaceName());
+      }
       keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
       if (keyspace == null) {
         throw new BulkConfigurationException(
@@ -545,7 +516,9 @@ public class SchemaSettings {
       }
     }
     if (table == null) {
-      tableName = Metadata.quoteIfNecessary(definitions.getTable(0));
+      if (tableName == null) {
+        tableName = Metadata.quoteIfNecessary(queryInspector.getTableName());
+      }
       table = keyspace.getTable(tableName);
       if (table == null) {
         throw new BulkConfigurationException(
@@ -554,9 +527,8 @@ public class SchemaSettings {
     }
   }
 
-  private void validateMappedRecords(
-      BiMap<String, String> fieldsToVariables, boolean expectIndexedMapping) {
-    if (expectIndexedMapping && !isIndexed(fieldsToVariables)) {
+  private void validateMappedRecords(BiMap<String, String> fieldsToVariables) {
+    if (preferIndexedMapping && !isIndexed(fieldsToVariables.keySet())) {
       throw new BulkConfigurationException(
           "Schema mapping contains named fields, but connector only supports indexed fields, "
               + "please enable support for named fields in the connector, or alternatively, "
@@ -586,34 +558,10 @@ public class SchemaSettings {
         });
   }
 
-  /** Version for generated queries */
   private void validatePrimaryKeyPresent(BiMap<String, String> fieldsToVariables) {
-    // if we generated the query, we know that the variable names
-    // correspond to column names, so we can test the entire primary key.
-    List<ColumnMetadata> primaryKey = table.getPrimaryKey();
-    for (ColumnMetadata key : primaryKey) {
-      if (!fieldsToVariables.containsValue(key.getName())) {
-        throw new BulkConfigurationException(
-            "Missing required primary key column "
-                + Metadata.quoteIfNecessary(key.getName())
-                + " from schema.mapping or schema.query");
-      }
-    }
-  }
-
-  /** version for user-supplied queries */
-  private void validatePartitionKeyPresentInWhereClause(
-      ColumnDefinitions definitions, BiMap<String, String> fieldsToVariables) {
-    // TODO DAT-294 validate entire PK by parsing the query
-    // for a custom query, we cannot know if the user has named his variables
-    // like the column names or not. In this case we can only test the
-    // partition key since we know which variables are part of it.
-    List<ColumnMetadata> partitionKey = table.getPartitionKey();
-    int[] pkIndices = DriverCoreHooks.partitionKeyIndices(preparedStatement.getPreparedId());
-    for (int i = 0; i < partitionKey.size(); i++) {
-      ColumnMetadata pk = partitionKey.get(i);
-      int pki = pkIndices[i];
-      String variable = definitions.getName(pki);
+    List<ColumnMetadata> partitionKey = table.getPrimaryKey();
+    for (ColumnMetadata pk : partitionKey) {
+      String variable = queryInspector.getColumnsToVariables().get(pk.getName());
       if (!fieldsToVariables.containsValue(variable)) {
         throw new BulkConfigurationException(
             "Missing required primary key column "
@@ -623,52 +571,42 @@ public class SchemaSettings {
     }
   }
 
-  private void validatePartitionKeyPresentInSelectClause(
-      ColumnDefinitions definitions, BiMap<String, String> fieldsToVariables) {
-    // TODO DAT-294 validate entire PK by parsing the query
+  // Used for the count workflow only.
+  private void validatePartitionKeyPresent() {
     // the query must contain the entire partition key in the select clause,
     // and nothing else.
-    // For a custom query, we cannot know if the user has named his variables
-    // like the column names or not, and the prepared statement itself does
-    // not help here. So in this case we cannot check anything.
-  }
-
-  private Config getMapping() throws BulkConfigurationException {
-    mappingString = config.getString(MAPPING).replaceAll("\\*", INFERRED_MAPPING_TOKEN);
-    try {
-      return ConfigFactory.parseString(ConfigUtils.ensureBraces(mappingString));
-    } catch (ConfigException.Parse e) {
-      // mappingString doesn't seem to be a map. Treat it as a list instead.
-      Map<String, String> indexMap = new LinkedHashMap<>();
-      int curInd = 0;
-      List<String> list =
-          ConfigFactory.parseString(
-                  "key = " + ConfigUtils.ensureBrackets(config.getString(MAPPING)))
-              .getStringList("key");
-      for (String s : list) {
-        indexMap.put(Integer.toString(curInd++), s);
+    List<ColumnMetadata> partitionKey = table.getPartitionKey();
+    Set<String> columns = new HashSet<>(queryInspector.getColumnsToVariables().values());
+    for (ColumnMetadata pk : partitionKey) {
+      if (!columns.remove(pk.getName())) {
+        throw new BulkConfigurationException(
+            "Missing required partition key column "
+                + Metadata.quoteIfNecessary(pk.getName())
+                + " from schema.query");
       }
-      return ConfigFactory.parseMap(indexMap);
+    }
+    if (!columns.isEmpty()) {
+      String offendingColumns =
+          columns.stream().map(Metadata::quoteIfNecessary).collect(Collectors.joining(", "));
+      throw new BulkConfigurationException(
+          String.format(
+              "The provided statement (schema.query) contains extraneous columns in the SELECT clause: "
+                  + "%s; it should contain only partition key columns.",
+              offendingColumns));
     }
   }
 
-  private ImmutableBiMap<String, String> inferFieldsToVariablesMap(
-      Supplier<List<String>> columns, boolean createIndexedMapping) {
-    return inferFieldsToVariablesMap(null, columns, createIndexedMapping);
-  }
-
-  private ImmutableBiMap<String, String> inferFieldsToVariablesMap(
-      InferredMappingSpec spec, Supplier<List<String>> columns, boolean createIndexedMapping) {
+  private ImmutableBiMap<String, String> inferFieldsToVariablesMap(Supplier<List<String>> columns) {
 
     // use a builder to preserve iteration order
     ImmutableBiMap.Builder<String, String> fieldsToVariables = new ImmutableBiMap.Builder<>();
 
     int i = 0;
     for (String colName : columns.get()) {
-      if (spec == null || spec.allow(colName)) {
+      if (mapping == null || !mapping.getExcludedVariables().contains(colName)) {
         // don't quote column names here, it will be done later on if required
         // for unload only, use the query's variable order
-        if (createIndexedMapping) {
+        if (preferIndexedMapping) {
           fieldsToVariables.put(Integer.toString(i), colName);
         } else {
           fieldsToVariables.put(colName, colName);
@@ -819,36 +757,6 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private String inferWriteTimeVariable() {
-    CodePointCharStream input = CharStreams.fromString(query);
-    CqlLexer lexer = new CqlLexer(input);
-    CommonTokenStream tokens = new CommonTokenStream(lexer);
-    CqlParser parser = new CqlParser(tokens);
-    parser.removeErrorListeners();
-    parser.addErrorListener(
-        new BaseErrorListener() {
-          @Override
-          public void syntaxError(
-              Recognizer<?, ?> recognizer,
-              Object offendingSymbol,
-              int line,
-              int charPositionInLine,
-              String msg,
-              RecognitionException e) {
-            LOGGER.warn(
-                "Supplied schema.query could not be parsed at line {}:{}: {}",
-                line,
-                charPositionInLine,
-                msg);
-          }
-        });
-    ParseTree query = parser.cqlStatement();
-    ParseTreeWalker walker = new ParseTreeWalker();
-    UsingTimestampListener listener = new UsingTimestampListener();
-    walker.walk(listener, query);
-    return listener.writeTimeVariable;
-  }
-
   private static void appendColumnNames(BiMap<String, String> fieldsToVariables, StringBuilder sb) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
@@ -885,19 +793,10 @@ public class SchemaSettings {
     sb.append(')');
   }
 
-  private @NotNull Iterable<String> orderedMappingKeys() {
-    // unfortunately typesafe config does not preserve iteration order of keys in a map :(
-    // this is an ugly workaround
-    List<String> orderedKeys =
-        new ArrayList<>(mapping.withoutPath(INFERRED_MAPPING_TOKEN).root().keySet());
-    orderedKeys.sort(Comparator.comparingInt(s -> mappingString.indexOf(s)));
-    return orderedKeys;
-  }
-
   @NotNull
   private static Set<String> maybeSortCols(BiMap<String, String> fieldsToVariables) {
     Set<String> cols;
-    if (isIndexed(fieldsToVariables)) {
+    if (isIndexed(fieldsToVariables.keySet())) {
       // order columns by index
       BiMap<String, String> variablesToFields = fieldsToVariables.inverse();
       cols =
@@ -910,8 +809,8 @@ public class SchemaSettings {
     return cols;
   }
 
-  private static boolean isIndexed(BiMap<String, String> fieldsToVariables) {
-    return fieldsToVariables.keySet().stream().allMatch(s -> s.matches("\\d+"));
+  private static boolean isIndexed(Set<String> keys) {
+    return keys.stream().allMatch(s -> s.matches("\\d+"));
   }
 
   private static boolean isFunction(String field) {
@@ -936,45 +835,5 @@ public class SchemaSettings {
       }
     }
     return builder.build();
-  }
-
-  private static class UsingTimestampListener extends CqlBaseListener {
-    private String writeTimeVariable;
-
-    @Override
-    public void enterUsingTimestamp(CqlParser.UsingTimestampContext ctx) {
-      if (ctx.getChildCount() > 1) {
-        String text = ctx.getChild(1).getText();
-        if (text.startsWith(":")) {
-          writeTimeVariable = DriverCoreHooks.handleId(text.substring(1));
-        }
-      }
-    }
-  }
-
-  private static class InferredMappingSpec {
-    private final Set<String> excludes = new HashSet<>();
-
-    InferredMappingSpec(ConfigValue spec) {
-      if (spec.valueType() == ConfigValueType.STRING) {
-        processSpec((String) spec.unwrapped());
-      } else if (spec.valueType() == ConfigValueType.LIST) {
-        @SuppressWarnings("unchecked")
-        List<Object> specList = (List<Object>) spec.unwrapped();
-        specList.forEach(x -> processSpec((String) x));
-      }
-    }
-
-    private void processSpec(String specString) {
-      if (specString.startsWith("-")) {
-        // We're excluding a particular column. This implies that
-        // we include all others.
-        excludes.add(specString.substring(1));
-      }
-    }
-
-    boolean allow(String name) {
-      return !excludes.contains(name);
-    }
   }
 }
