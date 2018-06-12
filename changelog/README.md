@@ -14,6 +14,7 @@
 - [improvement] DAT-299: Count the number of rows for the N biggest partitions.
 - [bug] DAT-300: DSBulk fails to start with Java 10+.
 - [improvement] DAT-290: DSBulk should avoid logging to stdout.
+- [improvement] DAT-294: Use Antlr to validate user-supplied queries and mappings.
 
 
 ### 1.0.2

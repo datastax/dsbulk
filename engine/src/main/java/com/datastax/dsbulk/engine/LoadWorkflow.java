@@ -100,7 +100,8 @@ public class LoadWorkflow implements Workflow {
     driverSettings.init();
     executorSettings.init();
     engineSettings.init();
-    schemaSettings.init(WorkflowType.LOAD);
+    schemaSettings.init(
+        WorkflowType.LOAD, !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     cluster = driverSettings.newCluster();
     checkProductCompatibility(cluster);
     DseSession session = cluster.connect();
@@ -123,8 +124,7 @@ public class LoadWorkflow implements Workflow {
         schemaSettings.createRecordMapper(
             session,
             connector.getRecordMetadata(),
-            codecSettings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry()),
-            !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
+            codecSettings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry()));
     if (batchingEnabled) {
       batcher = batchSettings.newStatementBatcher(cluster);
     }

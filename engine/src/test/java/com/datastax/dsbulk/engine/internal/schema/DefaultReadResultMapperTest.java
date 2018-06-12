@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.util.Sets.newLinkedHashSet;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -65,9 +66,10 @@ class DefaultReadResultMapperTest {
     ColumnDefinitions.Definition c3 = newDefinition(C3, DataType.varchar());
     ColumnDefinitions variables = newColumnDefinitions(c1, c2, c3);
     when(row.getColumnDefinitions()).thenReturn(variables);
-    when(mapping.variableToField(C1)).thenReturn("f0");
-    when(mapping.variableToField(C2)).thenReturn("f1");
-    when(mapping.variableToField(C3)).thenReturn("f2");
+    when(mapping.fields()).thenReturn(newLinkedHashSet("f0", "f1", "f2"));
+    when(mapping.fieldToVariable("f0")).thenReturn(C1);
+    when(mapping.fieldToVariable("f1")).thenReturn(C2);
+    when(mapping.fieldToVariable("f2")).thenReturn(C3);
     TypeCodec codec1 = TypeCodec.cint();
     TypeCodec codec2 = TypeCodec.varchar();
     when(mapping.codec(C1, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
