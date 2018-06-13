@@ -16,7 +16,6 @@ public class JsonUtils {
   public static final URL JSON_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.json");
   public static final URL JSON_RECORDS_UNIQUE =
       ClassLoader.getSystemResource("ip-by-country-unique.json");
-  public static final URL JSON_RECORDS_COMPLEX = ClassLoader.getSystemResource("complex.json");
   public static final URL JSON_RECORDS_CRLF =
       ClassLoader.getSystemResource("ip-by-country-crlf.json");
   public static final URL JSON_RECORDS_PARTIAL_BAD =
@@ -41,14 +40,12 @@ public class JsonUtils {
       "SELECT * FROM \"MYKS\".\"WITH_SPACES\"";
 
   public static final String IP_BY_COUNTRY_MAPPING =
-      "{"
-          + "beginning_ip_address=beginning_ip_address,"
+      "beginning_ip_address=beginning_ip_address,"
           + "ending_ip_address=ending_ip_address,"
           + "beginning_ip_number=beginning_ip_number,"
           + "ending_ip_number=ending_ip_number,"
           + "country_code=country_code,"
-          + "country_name=country_name"
-          + "}";
+          + "country_name=country_name";
 
   public static void createIpByCountryTable(Session session) {
     session.execute(

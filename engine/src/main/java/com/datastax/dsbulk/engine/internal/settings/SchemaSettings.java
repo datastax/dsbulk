@@ -13,6 +13,8 @@ import static com.datastax.dsbulk.engine.WorkflowType.COUNT;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
+import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -59,7 +61,6 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -72,9 +73,6 @@ import org.jetbrains.annotations.NotNull;
 
 public class SchemaSettings {
 
-  private static final String TTL_VARNAME = "dsbulk_internal_ttl";
-  private static final String TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
-
   private static final String NULL_TO_UNSET = "nullToUnset";
   private static final String KEYSPACE = "keyspace";
   private static final String TABLE = "table";
@@ -84,12 +82,6 @@ public class SchemaSettings {
   private static final String QUERY = "query";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
-
-  // A mapping spec may refer to these special variables which are used to bind
-  // input fields to the write timestamp or ttl of the record.
-
-  private static final String EXTERNAL_TTL_VARNAME = "__ttl";
-  private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
 
   private final LoaderConfig config;
 
@@ -198,45 +190,17 @@ public class SchemaSettings {
       }
 
       if (mapping != null) {
-        Map<String, String> explicitVariables = new LinkedHashMap<>();
-        for (Map.Entry<String, String> entry : mapping.getExplicitVariables().entrySet()) {
-          String fieldName = entry.getKey();
-          String variableName = entry.getValue();
-
-          // Rename the user-specified __ttl and __timestamp vars to the (legal) bound variable
-          // names.
-          if (variableName.equals(EXTERNAL_TTL_VARNAME)) {
-            variableName = TTL_VARNAME;
-          } else if (variableName.equals(EXTERNAL_TIMESTAMP_VARNAME)) {
-            variableName = TIMESTAMP_VARNAME;
-            // store the write time variable name for later
-            writeTimeVariable = TIMESTAMP_VARNAME;
-          }
-
-          if (explicitVariables.containsValue(variableName)) {
-            if (variableName.equals(explicitVariables.get(fieldName))) {
-              // This mapping already exists. Skip it.
-              continue;
-            }
-            throw new BulkConfigurationException(
-                "Multiple input values in mapping resolve to column "
-                    + variableName
-                    + ". "
-                    + "Please review schema.mapping for duplicates.");
-          }
-          explicitVariables.put(fieldName, variableName);
-        }
-
+        explicitVariables = mapping.getExplicitVariables();
         // Error out if the explicit variables map timestamp or ttl and
         // there is an explicit query.
         if (query != null) {
-          if (explicitVariables.containsValue(TIMESTAMP_VARNAME)) {
+          if (explicitVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME)) {
             throw new BulkConfigurationException(
                 String.format(
                     "%s must not be defined when mapping a field to query-timestamp",
                     prettyPath(QUERY)));
           }
-          if (explicitVariables.containsValue(TTL_VARNAME)) {
+          if (explicitVariables.containsValue(INTERNAL_TTL_VARNAME)) {
             throw new BulkConfigurationException(
                 String.format(
                     "%s must not be defined when mapping a field to query-ttl", prettyPath(QUERY)));
@@ -248,8 +212,10 @@ public class SchemaSettings {
                     prettyPath(QUERY)));
           }
         }
-        // preserve iteration order
-        this.explicitVariables = ImmutableBiMap.copyOf(explicitVariables);
+        // store the write time variable name for later if it was present in the mapping
+        if (explicitVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME)) {
+          writeTimeVariable = INTERNAL_TIMESTAMP_VARNAME;
+        }
       } else {
         explicitVariables = null;
       }
@@ -693,9 +659,9 @@ public class SchemaSettings {
   }
 
   private void addTimestampAndTTL(BiMap<String, String> fieldsToVariables, StringBuilder sb) {
-    boolean hasTtl = ttlSeconds != -1 || fieldsToVariables.containsValue(TTL_VARNAME);
+    boolean hasTtl = ttlSeconds != -1 || fieldsToVariables.containsValue(INTERNAL_TTL_VARNAME);
     boolean hasTimestamp =
-        timestampMicros != -1 || fieldsToVariables.containsValue(TIMESTAMP_VARNAME);
+        timestampMicros != -1 || fieldsToVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME);
     if (hasTtl || hasTimestamp) {
       if (isCounterTable()) {
         throw new BulkConfigurationException(
@@ -708,7 +674,7 @@ public class SchemaSettings {
           sb.append(ttlSeconds);
         } else {
           sb.append(':');
-          sb.append(TTL_VARNAME);
+          sb.append(INTERNAL_TTL_VARNAME);
         }
         if (hasTimestamp) {
           sb.append(" AND ");
@@ -720,7 +686,7 @@ public class SchemaSettings {
           sb.append(timestampMicros);
         } else {
           sb.append(':');
-          sb.append(TIMESTAMP_VARNAME);
+          sb.append(INTERNAL_TIMESTAMP_VARNAME);
         }
       }
     }
@@ -819,7 +785,7 @@ public class SchemaSettings {
   }
 
   private static boolean isPseudoColumn(String col) {
-    return col.equals(TTL_VARNAME) || col.equals(TIMESTAMP_VARNAME);
+    return col.equals(INTERNAL_TTL_VARNAME) || col.equals(INTERNAL_TIMESTAMP_VARNAME);
   }
 
   private static String prettyPath(String path) {
