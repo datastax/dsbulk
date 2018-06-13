@@ -13,8 +13,10 @@ import static com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
+import org.junit.jupiter.api.Tag;
 
 @CCMConfig(numberOfNodes = 3, createOptions = "--vnodes")
+@Tag("ccm")
 class M3PTokenVnodeTableScannerCCMIT extends TableScannerCCMITBase {
 
   M3PTokenVnodeTableScannerCCMIT(@SessionConfig(useKeyspace = NONE) Session session) {
