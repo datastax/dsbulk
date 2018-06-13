@@ -163,6 +163,8 @@ To specify that a column should be populated with the result of a function call,
 
 One can specify that all like-named fields be mapped, except for `c2`: `* = -c2`. To skip `c2` and `c3`: `* = [-c2, -c3]`.
 
+Any identifier, field or column, that is not strictly alphanumeric (i.e. not matching [a-zA-Z0-9_]+) must be surrounded by double-quotes: `"Field ""A""" = "Column 2"` (to escape a double-quote, simply double it).
+
 The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 
 Default: **&lt;unspecified&gt;**.
@@ -529,6 +531,8 @@ To specify that a field should be used as the timestamp (a.k.a. write-time) or t
 To specify that a column should be populated with the result of a function call, specify the function call as the input field (e.g. `now() = c4`). Note, this is only relevant for load operations. In addition, for mapped data sources, it is also possible to specify that the mapping be partly auto-generated and partly explicitly specified. For example, if a source row has fields `c1`, `c2`, `c3`, and `c5`, and the table has columns `c1`, `c2`, `c3`, `c4`, one can map all like-named columns and specify that `c5` in the source maps to `c4` in the table as follows: `* = *, c5 = c4`.
 
 One can specify that all like-named fields be mapped, except for `c2`: `* = -c2`. To skip `c2` and `c3`: `* = [-c2, -c3]`.
+
+Any identifier, field or column, that is not strictly alphanumeric (i.e. not matching [a-zA-Z0-9_]+) must be surrounded by double-quotes: `"Field ""A""" = "Column 2"` (to escape a double-quote, simply double it).
 
 The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 

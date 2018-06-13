@@ -19,6 +19,8 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTokenRange;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.wrappedStatement;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
+import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.time.Instant.EPOCH;
@@ -80,10 +82,6 @@ class SchemaSettingsTest {
   private static final String C2 = "This is column 2, and its name desperately needs quoting";
   private static final String C3 = "c3";
   private static final String C4 = "c4";
-  private static final String TTL_VARNAME =
-      (String) ReflectionUtils.getInternalState(SchemaSettings.class, "TTL_VARNAME");
-  private static final String TIMESTAMP_VARNAME =
-      (String) ReflectionUtils.getInternalState(SchemaSettings.class, "TIMESTAMP_VARNAME");
 
   private final Token token1 = newToken(-9223372036854775808L);
   private final Token token2 = newToken(-3074457345618258603L);
@@ -233,7 +231,7 @@ class SchemaSettingsTest {
             String.format(
                 "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) "
                     + "USING TTL :%3$s AND TIMESTAMP :%4$s",
-                C1, C2, TTL_VARNAME, TIMESTAMP_VARNAME));
+                C1, C2, INTERNAL_TTL_VARNAME, INTERNAL_TIMESTAMP_VARNAME));
     assertMapping(
         (DefaultMapping) ReflectionUtils.getInternalState(recordMapper, "mapping"),
         "0",
@@ -241,9 +239,9 @@ class SchemaSettingsTest {
         "2",
         C1,
         "1",
-        TTL_VARNAME,
+        INTERNAL_TTL_VARNAME,
         "3",
-        TIMESTAMP_VARNAME);
+        INTERNAL_TIMESTAMP_VARNAME);
     assertThat((Boolean) ReflectionUtils.getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
 
@@ -766,7 +764,7 @@ class SchemaSettingsTest {
     DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable"))
-        .isEqualTo(TIMESTAMP_VARNAME);
+        .isEqualTo(INTERNAL_TIMESTAMP_VARNAME);
   }
 
   @Test

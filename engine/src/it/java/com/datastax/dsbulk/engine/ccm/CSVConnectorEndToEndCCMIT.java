@@ -547,7 +547,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "SELECT pk1 as \"Field A\", \"PK2\" AS \"Field B\", \"C1\" AS \"Field C\", "
                 + "c2 AS \"Field D\", c3 AS \"Field E\" FROM counters"));
     args.add("--schema.mapping");
-    args.add("Field E,Field D,Field C,Field B,Field A");
+    args.add(escapeUserInput("\"Field E\",\"Field D\",\"Field C\",\"Field B\",\"Field A\""));
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -678,7 +678,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-url");
     args.add(escapeUserInput(CSV_RECORDS_WITH_SPACES));
     args.add("--schema.mapping");
-    args.add("key=key,my source=my destination");
+    args.add(escapeUserInput("key=key,\"my source\"=\"my destination\""));
     args.add("-header");
     args.add("true");
     args.add("-k");
@@ -700,7 +700,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.csv.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.mapping");
-    args.add("key=key,my source=my destination");
+    args.add(escapeUserInput("key=key,\"my source\"=\"my destination\""));
     args.add("-header");
     args.add("true");
     args.add("-k");
@@ -930,7 +930,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    validateErrorMessageLogged("Multiple input values in mapping resolve to column country_code");
+    validateErrorMessageLogged(
+        "Invalid schema.mapping: the following variables are mapped to more than one field: country_code");
   }
 
   @Test
@@ -1001,7 +1002,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("IPBYCOUNTRY");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE);
+    args.add(escapeUserInput(IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE));
     args.add("--codec.nullStrings");
     args.add("[NULL]");
 
@@ -1317,7 +1318,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         escapeUserInput(
             "DELETE FROM test_delete WHERE \"PK\" = :\"Field A\" and \"CC\" = :\"Field B\""));
     args.add("--schema.mapping");
-    args.add("Field A,Field B");
+    args.add(escapeUserInput("\"Field A\",\"Field B\""));
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_OK);

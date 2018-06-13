@@ -396,7 +396,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-url");
     args.add(escapeUserInput(JSON_RECORDS_WITH_SPACES));
     args.add("--schema.mapping");
-    args.add("key=key,my source=my destination");
+    args.add(escapeUserInput("key=key,\"my source\"=\"my destination\""));
     args.add("-k");
     args.add("MYKS");
     args.add("-t");
@@ -418,7 +418,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.mapping");
-    args.add("key=key,my source=my destination");
+    args.add(escapeUserInput("key=key,\"my source\"=\"my destination\""));
     args.add("-k");
     args.add("MYKS");
     args.add("-t");
