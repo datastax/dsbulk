@@ -44,4 +44,23 @@ public class StringUtils {
   public static String htmlEscape(String s) {
     return s.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   }
+
+  /**
+   * Left pad a string with spaces to a size of {@code size}.
+   *
+   * @param s String to pad.
+   * @param size the size.
+   * @return the padded string.
+   */
+  public static String leftPad(String s, int size) {
+    int repeat = size - s.length();
+    if (repeat <= 0) {
+      return s;
+    }
+    char[] buf = new char[repeat];
+    for (int i = 0; i < repeat; i++) {
+      buf[i] = ' ';
+    }
+    return new String(buf).concat(s);
+  }
 }

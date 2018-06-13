@@ -89,7 +89,7 @@ public class UnloadWorkflow implements Workflow {
     connector = connectorSettings.getConnector();
     connector.init();
     // No logs should be produced until the following statement returns
-    logSettings.init(connector.isWriteToStandardOutput());
+    logSettings.init();
     logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
     codecSettings.init();
     schemaSettings.init(WorkflowType.UNLOAD);
@@ -108,7 +108,7 @@ public class UnloadWorkflow implements Workflow {
             WorkflowType.UNLOAD,
             false,
             logManager.getExecutionDirectory(),
-            logSettings.getMainLogFileAppender(),
+            logSettings.getVerbosity(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
             cluster.getConfiguration().getCodecRegistry());
@@ -129,7 +129,7 @@ public class UnloadWorkflow implements Workflow {
 
   @Override
   public boolean execute() {
-    LOGGER.info("{} started.", this);
+    LOGGER.debug("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux<Record> flux;
     if (readStatements.size() >= TPC_THRESHOLD) {
@@ -145,11 +145,12 @@ public class UnloadWorkflow implements Workflow {
         .transform(logManager.newTerminationHandler())
         .blockLast();
     timer.stop();
+    metricsManager.stopProgress();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
       LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
     } else {
-      LOGGER.info(
+      LOGGER.warn(
           "{} completed with {} errors in {}.",
           this,
           logManager.getTotalErrors(),
@@ -160,7 +161,6 @@ public class UnloadWorkflow implements Workflow {
 
   @NotNull
   private Flux<Record> threadPerCoreFlux() {
-    LOGGER.info("Using thread-per-core pattern.");
     return Flux.fromIterable(readStatements)
         .flatMap(
             statement ->
@@ -196,7 +196,7 @@ public class UnloadWorkflow implements Workflow {
   @Override
   public void close() throws Exception {
     if (closed.compareAndSet(false, true)) {
-      LOGGER.info("{} closing.", this);
+      LOGGER.debug("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(metricsManager, null);
       e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(connector, e);
@@ -206,7 +206,7 @@ public class UnloadWorkflow implements Workflow {
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
       }
-      LOGGER.info("{} closed.", this);
+      LOGGER.debug("{} closed.", this);
       if (e != null) {
         throw e;
       }
@@ -215,6 +215,6 @@ public class UnloadWorkflow implements Workflow {
 
   @Override
   public String toString() {
-    return "Unload workflow engine execution " + executionId;
+    return "Operation " + executionId;
   }
 }

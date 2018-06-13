@@ -24,12 +24,12 @@ import java.util.concurrent.TimeUnit;
 public abstract class AbstractMetricsReportingExecutionListener extends ScheduledReporter
     implements ExecutionListener {
 
-  static final double BYTES_PER_KB = 1024;
-  static final double BYTES_PER_MB = 1024 * 1024;
+  protected static final double BYTES_PER_KB = 1024;
+  protected static final double BYTES_PER_MB = 1024 * 1024;
 
   private final MetricsCollectingExecutionListener delegate;
 
-  AbstractMetricsReportingExecutionListener(
+  protected AbstractMetricsReportingExecutionListener(
       MetricsCollectingExecutionListener delegate,
       String name,
       MetricFilter filter,
@@ -39,7 +39,7 @@ public abstract class AbstractMetricsReportingExecutionListener extends Schedule
     this.delegate = delegate;
   }
 
-  AbstractMetricsReportingExecutionListener(
+  protected AbstractMetricsReportingExecutionListener(
       MetricsCollectingExecutionListener delegate,
       String name,
       MetricFilter filter,

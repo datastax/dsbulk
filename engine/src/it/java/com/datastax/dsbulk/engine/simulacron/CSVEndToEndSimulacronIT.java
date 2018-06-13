@@ -135,11 +135,13 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void full_load(@LogCapture LogInterceptor logs, @StreamCapture(STDOUT) StreamInterceptor stdOut) {
+  void full_load(@LogCapture LogInterceptor logs) {
     String[] args = {
       "load",
       "--log.directory",
       escapeUserInput(logDir),
+      "--log.verbosity",
+      "2",
       "-header",
       "false",
       "--connector.csv.url",
@@ -160,8 +162,7 @@ class CSVEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
-    assertThat(stdOut.getStreamAsString())
-        .contains(logs.getLoggedMessages())
+    assertThat(logs.getLoggedMessages())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
@@ -453,6 +454,8 @@ class CSVEndToEndSimulacronIT {
       escapeUserInput(logDir),
       "--log.maxErrors",
       "9",
+      "--log.verbosity",
+      "2",
       "-header",
       "false",
       "--connector.csv.url",
@@ -502,6 +505,8 @@ class CSVEndToEndSimulacronIT {
       escapeUserInput(logDir),
       "--log.maxErrors",
       "2",
+      "--log.verbosity",
+      "2",
       "-header",
       "true",
       "--connector.csv.url",
@@ -549,6 +554,8 @@ class CSVEndToEndSimulacronIT {
       escapeUserInput(logDir),
       "--log.maxErrors",
       "2",
+      "--log.verbosity",
+      "2",
       "-header",
       "true",
       "--connector.csv.url",
@@ -580,8 +587,7 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void full_unload(@LogCapture LogInterceptor logs, @StreamCapture(STDOUT) StreamInterceptor stdOut)
-      throws Exception {
+  void full_unload(@LogCapture LogInterceptor logs) throws Exception {
 
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
     simulacron.prime(new Prime(prime));
@@ -590,6 +596,8 @@ class CSVEndToEndSimulacronIT {
       "unload",
       "--log.directory",
       escapeUserInput(logDir),
+      "--log.verbosity",
+      "2",
       "-header",
       "false",
       "--connector.csv.url",
@@ -612,8 +620,7 @@ class CSVEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
-    assertThat(stdOut.getStreamAsString())
-        .contains(logs.getLoggedMessages())
+    assertThat(logs.getLoggedMessages())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Reads: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
@@ -838,15 +845,10 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void validate_stdout(
-      @StreamCapture(STDOUT) StreamInterceptor stdOut,
-      @StreamCapture(STDERR) StreamInterceptor stdErr,
-      @LogCapture(LogSettings.class) LogInterceptor logs) {
+  void validate_stdout(@StreamCapture(STDOUT) StreamInterceptor stdOut) {
 
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
     simulacron.prime(new Prime(prime));
-
-    LogUtils.setProductionKey();
 
     String[] args = {
       "unload",
@@ -877,10 +879,6 @@ class CSVEndToEndSimulacronIT {
 
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     assertThat(stdOut.getStreamLines().size()).isEqualTo(24);
-    assertThat(stdErr.getStreamAsString())
-        .contains("Standard output is reserved, log messages are redirected to standard error.");
-    assertThat(logs.getAllMessagesAsString())
-        .contains("Standard output is reserved, log messages are redirected to standard error.");
   }
 
   private void verifyDelimiterCount(char delimiter, int expected) throws Exception {

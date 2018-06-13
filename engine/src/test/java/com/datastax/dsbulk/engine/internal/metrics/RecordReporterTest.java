@@ -10,9 +10,11 @@ package com.datastax.dsbulk.engine.internal.metrics;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.slf4j.event.Level.DEBUG;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
+import com.datastax.dsbulk.commons.log.LogSink;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -30,12 +32,14 @@ class RecordReporterTest {
   private MetricRegistry registry = new MetricRegistry();
 
   @Test
-  void should_report_batches(@LogCapture(RecordReporter.class) LogInterceptor interceptor) {
+  void should_report_batches(
+      @LogCapture(value = RecordReporter.class, level = DEBUG) LogInterceptor interceptor) {
     Counter totalCounter = registry.counter("records/total");
     Counter failedCounter = registry.counter("records/failed");
+    LogSink sink = LogSink.buildFrom(LOGGER::isDebugEnabled, LOGGER::debug);
     RecordReporter reporter =
         new RecordReporter(
-            registry, LOGGER, SECONDS, Executors.newSingleThreadScheduledExecutor(), -1);
+            registry, sink, SECONDS, Executors.newSingleThreadScheduledExecutor(), -1);
     reporter.report();
     assertThat(interceptor).hasMessageContaining("Records: total: 0, successful: 0, failed: 0");
     totalCounter.inc(3);
@@ -47,12 +51,13 @@ class RecordReporterTest {
 
   @Test
   void should_report_batches_with_expected_total(
-      @LogCapture(RecordReporter.class) LogInterceptor interceptor) {
+      @LogCapture(value = RecordReporter.class, level = DEBUG) LogInterceptor interceptor) {
     Counter totalCounter = registry.counter("records/total");
     Counter failedCounter = registry.counter("records/failed");
+    LogSink sink = LogSink.buildFrom(LOGGER::isDebugEnabled, LOGGER::debug);
     RecordReporter reporter =
         new RecordReporter(
-            registry, LOGGER, SECONDS, Executors.newSingleThreadScheduledExecutor(), 3);
+            registry, sink, SECONDS, Executors.newSingleThreadScheduledExecutor(), 3);
     reporter.report();
     assertThat(interceptor)
         .hasMessageContaining("Records: total: 0, successful: 0, failed: 0, progression: 0%");

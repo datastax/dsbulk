@@ -8,15 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.metrics;
 
-import static ch.qos.logback.core.spi.FilterReply.DENY;
-import static ch.qos.logback.core.spi.FilterReply.NEUTRAL;
+import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
+import static com.datastax.dsbulk.engine.internal.settings.LogSettings.Verbosity.normal;
+import static com.datastax.dsbulk.engine.internal.settings.LogSettings.Verbosity.quiet;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
-import ch.qos.logback.core.filter.Filter;
-import ch.qos.logback.core.spi.FilterReply;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.CsvReporter;
 import com.codahale.metrics.Histogram;
@@ -27,8 +25,10 @@ import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
+import com.datastax.dsbulk.commons.log.LogSink;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.listener.AbstractMetricsReportingExecutionListenerBuilder;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
@@ -40,7 +40,6 @@ import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.List;
 import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -49,11 +48,14 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.helpers.BasicMarkerFactory;
 import reactor.core.publisher.Flux;
 
 public class MetricsManager implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricsManager.class);
+  private static final Marker METRICS_MARKER = new BasicMarkerFactory().getMarker("METRICS");
 
   private final MetricRegistry registry;
   private final MetricsCollectingExecutionListener listener;
@@ -68,9 +70,9 @@ public class MetricsManager implements AutoCloseable {
   private final boolean jmx;
   private final boolean csv;
   private final Path executionDirectory;
-  private final Appender<ILoggingEvent> mainLogFileAppender;
   private final Duration reportInterval;
   private final boolean batchingEnabled;
+  private final LogSettings.Verbosity verbosity;
 
   private Counter totalRecords;
   private Counter failedRecords;
@@ -82,7 +84,10 @@ public class MetricsManager implements AutoCloseable {
   private ReadsReportingExecutionListener readsReporter;
   private JmxReporter jmxReporter;
   private CsvReporter csvReporter;
-  private List<Filter<ILoggingEvent>> mainLogFileAppenderFilters;
+  private ConsoleReporter consoleReporter;
+  private LogSink logSink;
+
+  private volatile boolean running;
 
   public MetricsManager(
       MetricRegistry driverRegistry,
@@ -96,7 +101,7 @@ public class MetricsManager implements AutoCloseable {
       boolean jmx,
       boolean csv,
       Path executionDirectory,
-      Appender<ILoggingEvent> mainLogFileAppender,
+      LogSettings.Verbosity verbosity,
       Duration reportInterval,
       boolean batchingEnabled,
       ProtocolVersion protocolVersion,
@@ -117,13 +122,12 @@ public class MetricsManager implements AutoCloseable {
     this.jmx = jmx;
     this.csv = csv;
     this.executionDirectory = executionDirectory;
-    this.mainLogFileAppender = mainLogFileAppender;
+    this.verbosity = verbosity;
     this.reportInterval = reportInterval;
     this.batchingEnabled = batchingEnabled;
   }
 
   public void init() {
-    setUpMetricsLogger();
     totalRecords = registry.counter("records/total");
     failedRecords = registry.counter("records/failed");
     batchSize = registry.histogram("batches/size", () -> new Histogram(new UniformReservoir()));
@@ -136,47 +140,42 @@ public class MetricsManager implements AutoCloseable {
       startCSVReporter();
     }
 
-    startMemoryReporter();
-    startRecordReporter();
-    switch (workflowType) {
-      case LOAD:
-        if (batchingEnabled) {
-          startBatchesReporter();
-        }
-        startWritesReporter();
-        break;
+    running = true;
+    logSink =
+        new LogSink() {
 
-      case UNLOAD:
-      case COUNT:
-        startReadsReporter();
-        break;
-    }
-  }
+          @Override
+          public boolean isEnabled() {
+            return running ? LOGGER.isDebugEnabled() : LOGGER.isInfoEnabled();
+          }
 
-  private void setUpMetricsLogger() {
-    if (mainLogFileAppender != null) {
-      // backup current filters
-      mainLogFileAppenderFilters = mainLogFileAppender.getCopyOfAttachedFiltersList();
-      mainLogFileAppender.addFilter(
-          new Filter<ILoggingEvent>() {
-            @Override
-            public FilterReply decide(ILoggingEvent event) {
-              // filter out ongoing metrics and only log the final ones (after close)
-              if (event.getLoggerName().equals(LOGGER.getName())) {
-                return DENY;
-              }
-              return NEUTRAL;
+          @Override
+          public void accept(String message, Object... args) {
+            if (running) {
+              LOGGER.debug(METRICS_MARKER, message, args);
+            } else {
+              LOGGER.info(METRICS_MARKER, message, args);
             }
-          });
-    }
-  }
+          }
+        };
 
-  private void tearDownMetricsLogger() {
-    if (mainLogFileAppender != null) {
-      // remove all filters, including the ongoing metrics filter
-      mainLogFileAppender.clearAllFilters();
-      // restore initial filters
-      mainLogFileAppenderFilters.forEach(mainLogFileAppender::addFilter);
+    if (verbosity.compareTo(quiet) > 0) {
+      startConsoleReporter();
+      startMemoryReporter();
+      startRecordReporter();
+      switch (workflowType) {
+        case LOAD:
+          if (batchingEnabled) {
+            startBatchesReporter();
+          }
+          startWritesReporter();
+          break;
+
+        case UNLOAD:
+        case COUNT:
+          startReadsReporter();
+          break;
+      }
     }
   }
 
@@ -286,25 +285,34 @@ public class MetricsManager implements AutoCloseable {
   }
 
   private void startRecordReporter() {
-    recordReporter = new RecordReporter(registry, LOGGER, rateUnit, scheduler, expectedWrites);
-    recordReporter.start(reportInterval.getSeconds(), SECONDS);
+    recordReporter = new RecordReporter(registry, logSink, rateUnit, scheduler, expectedWrites);
+    // periodic reporting is only enabled in verbose mode
+    if (verbosity.compareTo(normal) > 0) {
+      recordReporter.start(reportInterval.getSeconds(), SECONDS);
+    }
   }
 
   private void startBatchesReporter() {
-    batchesReporter = new BatchReporter(registry, LOGGER, scheduler);
-    batchesReporter.start(reportInterval.getSeconds(), SECONDS);
+    batchesReporter = new BatchReporter(registry, logSink, scheduler);
+    // periodic reporting is only enabled in verbose mode
+    if (verbosity.compareTo(normal) > 0) {
+      batchesReporter.start(reportInterval.getSeconds(), SECONDS);
+    }
   }
 
   private void startMemoryReporter() {
-    memoryReporter = new MemoryReporter(registry, LOGGER, scheduler);
-    memoryReporter.start(reportInterval.getSeconds(), SECONDS);
+    memoryReporter = new MemoryReporter(registry, logSink, scheduler);
+    // periodic reporting is only enabled in verbose mode
+    if (verbosity.compareTo(normal) > 0) {
+      memoryReporter.start(reportInterval.getSeconds(), SECONDS);
+    }
   }
 
   private void startWritesReporter() {
     AbstractMetricsReportingExecutionListenerBuilder<WritesReportingExecutionListener> builder =
         WritesReportingExecutionListener.builder()
             .withScheduler(scheduler)
-            .withLogger(LOGGER)
+            .withLogSink(logSink)
             .convertRatesTo(rateUnit)
             .convertDurationsTo(durationUnit)
             .extractingMetricsFrom(listener);
@@ -312,14 +320,17 @@ public class MetricsManager implements AutoCloseable {
       builder.expectingTotalEvents(expectedWrites);
     }
     writesReporter = builder.build();
-    writesReporter.start(reportInterval.getSeconds(), SECONDS);
+    // periodic reporting is only enabled in verbose mode
+    if (verbosity.compareTo(normal) > 0) {
+      writesReporter.start(reportInterval.getSeconds(), SECONDS);
+    }
   }
 
   private void startReadsReporter() {
     AbstractMetricsReportingExecutionListenerBuilder<ReadsReportingExecutionListener> builder =
         ReadsReportingExecutionListener.builder()
             .withScheduler(scheduler)
-            .withLogger(LOGGER)
+            .withLogSink(logSink)
             .convertRatesTo(rateUnit)
             .convertDurationsTo(durationUnit)
             .extractingMetricsFrom(listener);
@@ -327,18 +338,61 @@ public class MetricsManager implements AutoCloseable {
       builder.expectingTotalEvents(expectedReads);
     }
     readsReporter = builder.build();
-    readsReporter.start(reportInterval.getSeconds(), SECONDS);
+    // periodic reporting is only enabled in verbose mode
+    if (verbosity.compareTo(normal) > 0) {
+      readsReporter.start(reportInterval.getSeconds(), SECONDS);
+    }
+  }
+
+  private void startConsoleReporter() {
+    if (workflowType == LOAD) {
+      consoleReporter =
+          new ConsoleReporter(
+              registry,
+              () -> totalRecords.getCount(),
+              () -> failedRecords.getCount(),
+              listener.getTotalWritesTimer(),
+              listener.getBytesSentMeter(),
+              registry.histogram("batches/size"),
+              SECONDS,
+              MILLISECONDS,
+              expectedWrites,
+              scheduler);
+    } else {
+      consoleReporter =
+          new ConsoleReporter(
+              registry,
+              () -> totalRecords.getCount(),
+              () -> failedRecords.getCount(),
+              listener.getTotalReadsTimer(),
+              listener.getBytesReceivedMeter(),
+              null,
+              SECONDS,
+              MILLISECONDS,
+              expectedReads,
+              scheduler);
+    }
+    consoleReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
   @Override
   public void close() {
+    running = false;
+    stopProgress();
     closeReporters();
     MoreExecutors.shutdownAndAwaitTermination(scheduler, 1, MINUTES);
-    tearDownMetricsLogger();
+  }
+
+  public void stopProgress() {
+    if (consoleReporter != null) {
+      consoleReporter.report();
+      consoleReporter.close();
+      consoleReporter = null;
+    }
   }
 
   public void reportFinalMetrics() {
-    LOGGER.info("Final stats:");
+    LOGGER.info(METRICS_MARKER, "Final stats:");
     if (recordReporter != null) {
       recordReporter.report();
     }

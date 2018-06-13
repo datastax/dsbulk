@@ -9,9 +9,11 @@
 package com.datastax.dsbulk.engine.internal.metrics;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static org.slf4j.event.Level.DEBUG;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
+import com.datastax.dsbulk.commons.log.LogSink;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -29,11 +31,12 @@ class BatchReporterTest {
   private MetricRegistry registry = new MetricRegistry();
 
   @Test
-  void should_report_batches(@LogCapture(BatchReporter.class) LogInterceptor interceptor)
-      throws Exception {
+  void should_report_batches(
+      @LogCapture(value = BatchReporter.class, level = DEBUG) LogInterceptor interceptor) {
     Histogram size = registry.histogram("batches/size");
+    LogSink sink = LogSink.buildFrom(LOGGER::isDebugEnabled, LOGGER::debug);
     BatchReporter reporter =
-        new BatchReporter(registry, LOGGER, Executors.newSingleThreadScheduledExecutor());
+        new BatchReporter(registry, sink, Executors.newSingleThreadScheduledExecutor());
     reporter.report();
     assertThat(interceptor).hasMessageMatching("Batches: total: 0, size: 0.00 mean, 0 min, 0 max");
     size.update(2);

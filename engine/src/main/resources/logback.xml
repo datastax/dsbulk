@@ -14,35 +14,45 @@
   When editing this file, check that com.datastax.dsbulk.engine.internal.settings.LogSettings
   is still working as expected, since it modifies the Logback configuration
   programmatically.
+  Also, make sure that logback-test.xml is modified accordingly (it should contain the same
+  appender definitions and loggers).
   -->
 
   <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
-  
-  <property scope="context" name="com.datastax.dsbulk.PRODUCTION" value="true"/>
 
-  <appender name="STDOUT" class="com.datastax.dsbulk.engine.internal.log.JansiConsoleAppender">
-    <target>STDOUT</target>
-    <filter class="com.datastax.dsbulk.engine.internal.log.StandardOutFilter"/>
-    <encoder>
-      <pattern>%nopex%green(%date{yyyy-MM-dd,UTC}) %cyan(%date{HH:mm:ss,UTC}) %highlight(%-5level) %msg%n</pattern>
-      <charset>UTF-8</charset>
-    </encoder>
-  </appender>
+  <conversionRule conversionWord="msgx"
+                  converterClass="com.datastax.dsbulk.engine.internal.log.HighlightingMessageConverter"/>
 
-  <appender name="STDERR" class="com.datastax.dsbulk.engine.internal.log.JansiConsoleAppender">
-    <target>STDERR</target>
-    <filter class="com.datastax.dsbulk.engine.internal.log.StandardErrorFilter"/>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>INFO</level>
+    </filter>
+    <!--
+    Don't print metrics on the console;
+    metrics for the console are handled by ConsoleReporter
+    which bypasses the logging system.
+    -->
+    <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+      <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+        <marker>METRICS</marker>
+      </evaluator>
+      <onMismatch>NEUTRAL</onMismatch>
+      <onMatch>DENY</onMatch>
+    </filter>
     <encoder>
-      <pattern>%nopex%boldRed(%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg) %n</pattern>
+      <pattern>%nopex%msgx%n</pattern>
       <charset>UTF-8</charset>
     </encoder>
   </appender>
 
   <root level="INFO">
-    <appender-ref ref="STDOUT"/>
-    <appender-ref ref="STDERR"/>
+    <!-- main log file appender is created programmatically in LogSettings -->
+    <appender-ref ref="CONSOLE"/>
   </root>
 
   <logger name="com.datastax.driver" level="WARN"/>
+  <logger name="io.netty" level="WARN"/>
+  <logger name="reactor.core" level="WARN"/>
 
 </configuration>

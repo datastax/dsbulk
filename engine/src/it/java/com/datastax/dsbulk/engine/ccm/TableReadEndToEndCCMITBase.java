@@ -268,6 +268,12 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     logDir = createTempDirectory("logs");
   }
 
+  @BeforeEach
+  void clearLogs() {
+    logs.clear();
+    stdout.clear();
+  }
+
   @AfterEach
   void deleteDirs() {
     deleteDirectory(logDir);

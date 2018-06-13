@@ -199,19 +199,4 @@ public interface Connector extends AutoCloseable {
   default int estimatedResourceCount() {
     return -1;
   }
-
-  /**
-   * Returns whether this connector is configured to use {@link System#out Standard Output} for
-   * writes or not.
-   *
-   * <p>This method is ignored when the connector is configured for reads.
-   *
-   * <p>This method should only be called after the connector is properly {@link
-   * #configure(LoaderConfig, boolean) configured} and {@link #init() initialized}.
-   *
-   * @return {@code true} if the standard output is configured for writes, {@code false} otherwise.
-   */
-  default boolean isWriteToStandardOutput() {
-    return false;
-  }
 }

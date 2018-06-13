@@ -145,14 +145,14 @@ class DataStaxBulkLoaderTest {
   @Test
   void should_show_help_without_error_when_junk_subcommand_and_help() {
     new DataStaxBulkLoader(new String[] {"junk", "--help"}).run();
-    assertThat(stdOut.getStreamAsString()).doesNotContain("First argument must be subcommand");
+    assertThat(stdErr.getStreamAsString()).doesNotContain("First argument must be subcommand");
     assertGlobalHelp(false);
   }
 
   @Test
   void should_show_help_without_error_when_good_subcommand_and_help() {
     new DataStaxBulkLoader(new String[] {"load", "--help"}).run();
-    assertThat(stdOut.getStreamAsString()).doesNotContain("First argument must be subcommand");
+    assertThat(stdErr.getStreamAsString()).doesNotContain("First argument must be subcommand");
     assertGlobalHelp(false);
   }
 
@@ -324,7 +324,7 @@ class DataStaxBulkLoaderTest {
     new DataStaxBulkLoader(new String[] {"load", "--engine.executionId", "%4$s"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
-        .contains("Load workflow engine execution null failed")
+        .contains("Operation null failed")
         .contains("Could not generate execution ID with template: '%4$s'");
   }
 

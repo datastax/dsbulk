@@ -8,8 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ProtocolVersion;
@@ -68,7 +66,7 @@ public class MonitoringSettings {
       WorkflowType workflowType,
       boolean batchingEnabled,
       Path executionDirectory,
-      Appender<ILoggingEvent> mainLogFileAppender,
+      LogSettings.Verbosity verbosity,
       MetricRegistry registry,
       ProtocolVersion protocolVersion,
       CodecRegistry codecRegistry) {
@@ -91,7 +89,7 @@ public class MonitoringSettings {
         jmx,
         csv,
         executionDirectory,
-        mainLogFileAppender,
+        verbosity,
         reportRate,
         batchingEnabled,
         protocolVersion,

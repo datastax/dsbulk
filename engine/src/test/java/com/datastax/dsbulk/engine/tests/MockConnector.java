@@ -70,9 +70,4 @@ public final class MockConnector implements Connector {
   public int estimatedResourceCount() {
     return delegate.estimatedResourceCount();
   }
-
-  @Override
-  public boolean isWriteToStandardOutput() {
-    return delegate.isWriteToStandardOutput();
-  }
 }

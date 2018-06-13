@@ -11,31 +11,40 @@
 <configuration>
 
   <!-- for testing purposes, this file should contain exactly the same appenders
-  as the production configuration file "logback.xml" -->
+  and loggers as the production configuration file "logback.xml" -->
 
-  <appender name="STDOUT" class="com.datastax.dsbulk.engine.internal.log.JansiConsoleAppender">
-    <target>STDOUT</target>
-    <filter class="com.datastax.dsbulk.engine.internal.log.StandardOutFilter"/>
+  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
+
+  <conversionRule conversionWord="msgx" converterClass="com.datastax.dsbulk.engine.internal.log.HighlightingMessageConverter" />
+
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>INFO</level>
+    </filter>
+    <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+      <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+        <marker>METRICS</marker>
+      </evaluator>
+      <onMismatch>NEUTRAL</onMismatch>
+      <onMatch>DENY</onMatch>
+    </filter>
     <encoder>
-      <pattern>%nopex%green(%date{yyyy-MM-dd,UTC}) %cyan(%date{HH:mm:ss,UTC}) %highlight(%-5level) %msg%n</pattern>
+      <pattern>%nopex%msgx%n</pattern>
       <charset>UTF-8</charset>
     </encoder>
   </appender>
 
-  <appender name="STDERR" class="com.datastax.dsbulk.engine.internal.log.JansiConsoleAppender">
-    <target>STDERR</target>
-    <filter class="com.datastax.dsbulk.engine.internal.log.StandardErrorFilter"/>
-    <encoder>
-      <pattern>%nopex%boldRed(%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg) %n</pattern>
-      <charset>UTF-8</charset>
-    </encoder>
-  </appender>
-
-  <root level="${log.root.level:-OFF}">
-    <appender-ref ref="STDOUT"/>
-    <appender-ref ref="STDERR"/>
+  <root level="INFO">
+    <!-- main log file appender is created programmatically in LogSettings -->
+    <appender-ref ref="CONSOLE"/>
   </root>
 
+  <logger name="com.datastax.driver" level="WARN"/>
+  <logger name="io.netty" level="WARN"/>
+  <logger name="reactor.core" level="WARN"/>
+
+  <!-- test-specifc loggers -->
   <logger name="com.datastax.oss.simulacron" level="ERROR"/>
   <logger name="com.datastax.dsbulk.commons.tests.ccm" level="ERROR"/>
 

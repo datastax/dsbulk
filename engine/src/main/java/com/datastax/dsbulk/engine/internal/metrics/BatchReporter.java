@@ -20,19 +20,19 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import com.datastax.dsbulk.commons.log.LogSink;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
-import org.slf4j.Logger;
 
 public class BatchReporter extends ScheduledReporter {
 
   private static final String MSG = "Batches: total: %,d, size: %,.2f mean, %d min, %d max";
 
-  private final Logger logger;
+  private final LogSink sink;
 
-  BatchReporter(MetricRegistry registry, Logger logger, ScheduledExecutorService scheduler) {
+  BatchReporter(MetricRegistry registry, LogSink sink, ScheduledExecutorService scheduler) {
     super(registry, "batch-reporter", createFilter(), SECONDS, MILLISECONDS, scheduler);
-    this.logger = logger;
+    this.sink = sink;
   }
 
   private static MetricFilter createFilter() {
@@ -46,9 +46,12 @@ public class BatchReporter extends ScheduledReporter {
       SortedMap<String, Histogram> histograms,
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
+    if (!sink.isEnabled()) {
+      return;
+    }
     Histogram size = histograms.get("batches/size");
     Snapshot snapshot = size.getSnapshot();
-    logger.info(
+    sink.accept(
         String.format(
             MSG, size.getCount(), snapshot.getMean(), snapshot.getMin(), snapshot.getMax()));
   }

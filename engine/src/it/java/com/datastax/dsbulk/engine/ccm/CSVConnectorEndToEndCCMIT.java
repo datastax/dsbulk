@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.CSV_RECORDS;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
@@ -24,7 +26,6 @@ import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInpu
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
-import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_HEADER;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
@@ -37,8 +38,6 @@ import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
-import static org.slf4j.event.Level.ERROR;
-import static org.slf4j.event.Level.WARN;
 
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
@@ -47,15 +46,16 @@ import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
-import com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
-import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
@@ -82,15 +82,24 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(LogInterceptingExtension.class)
+@ExtendWith(StreamInterceptingExtension.class)
 @CCMConfig(numberOfNodes = 1)
 @Tag("ccm")
 class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
+  private final LogInterceptor logs;
+  private final StreamInterceptor stderr;
   private Path logDir;
   private Path unloadDir;
 
-  CSVConnectorEndToEndCCMIT(CCMCluster ccm, Session session) {
+  CSVConnectorEndToEndCCMIT(
+      CCMCluster ccm,
+      Session session,
+      @LogCapture LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
+    this.logs = logs;
+    this.stderr = stderr;
   }
 
   @BeforeAll
@@ -115,6 +124,12 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void deleteDirs() {
     deleteDirectory(logDir);
     deleteDirectory(unloadDir);
+  }
+
+  @BeforeEach
+  void clearLogs() {
+    logs.clear();
+    stderr.clear();
   }
 
   /** Simple test case which attempts to load and unload data using ccm. */
@@ -755,8 +770,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void duplicate_values(
-      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs) {
+  void duplicate_values() {
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -776,13 +790,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    validateErrorMessageLogged(
-        logs, "Multiple input values in mapping resolve to column country_code");
+    validateErrorMessageLogged("Multiple input values in mapping resolve to column country_code");
   }
 
   @Test
-  void missing_key(
-      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs) {
+  void missing_key() {
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -802,12 +814,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    validateErrorMessageLogged(logs, "Missing required primary key column country_code");
+    validateErrorMessageLogged("Missing required primary key column country_code");
   }
 
   @Test
-  void missing_key_with_custom_query(
-      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs) {
+  void missing_key_with_custom_query() {
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -827,12 +838,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    validateErrorMessageLogged(logs, "Missing required primary key column country_code");
+    validateErrorMessageLogged("Missing required primary key column country_code");
   }
 
   @Test
-  void error_load_primary_key_cannot_be_null_case_sensitive(@LogCapture LogInterceptor logs)
-      throws Exception {
+  void error_load_primary_key_cannot_be_null_case_sensitive() throws Exception {
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -840,6 +850,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(escapeUserInput(logDir));
     args.add("--log.maxErrors");
     args.add("9");
+    args.add("--log.verbosity");
+    args.add("2");
     args.add("--connector.csv.url");
     args.add(escapeUserInput(getClass().getResource("/ip-by-country-pk-null.csv")));
     args.add("--connector.csv.header");
@@ -869,8 +881,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void extra_mapping(
-      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs) {
+  void extra_mapping() {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
@@ -889,7 +900,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    validateErrorMessageLogged(logs, "doesn't match any column found in table", "extra");
+    validateErrorMessageLogged("doesn't match any column found in table", "extra");
   }
 
   /** Test for DAT-224. */
@@ -1177,8 +1188,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   /** Test for DAT-253. */
   @Test
-  void should_respect_mapping_variables_order(
-      @LogCapture(value = LogManager.class, level = WARN) LogInterceptor logs) throws Exception {
+  void should_respect_mapping_variables_order() throws Exception {
 
     session.execute("DROP TABLE IF EXISTS mapping");
     session.execute("CREATE TABLE IF NOT EXISTS mapping (key int PRIMARY KEY, value varchar)");
@@ -1232,8 +1242,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   /** Test for DAT-253. */
   @Test
-  void should_respect_query_variables_order(
-      @LogCapture(value = LogManager.class, level = WARN) LogInterceptor logs) throws Exception {
+  void should_respect_query_variables_order() throws Exception {
 
     session.execute("DROP TABLE IF EXISTS mapping");
     session.execute("CREATE TABLE IF NOT EXISTS mapping (key int PRIMARY KEY, value varchar)");
@@ -1572,12 +1581,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(cols.get(4)).isEqualTo("2018-03-09T17:12:32+01:00[Europe/Paris]");
   }
 
-  private void validateErrorMessageLogged(LogInterceptor logs, String... msg) {
-    CommonsAssertions.assertThat(logs)
-        .hasMessageContaining("Load workflow engine execution")
-        .hasMessageContaining("failed");
+  private void validateErrorMessageLogged(String... msg) {
+    assertThat(logs).hasMessageMatching("Operation [A-Z]+_\\d{8}-\\d{6}-\\d{6} failed");
     for (String s : msg) {
-      CommonsAssertions.assertThat(logs).hasMessageContaining(s);
+      assertThat(logs).hasMessageContaining(s);
+    }
+    String console = stderr.getStreamAsString();
+    assertThat(console).containsPattern("Operation [A-Z]+_\\d{8}-\\d{6}-\\d{6} failed");
+    for (String s : msg) {
+      assertThat(console).contains(s);
     }
   }
 }

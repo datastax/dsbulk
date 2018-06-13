@@ -8,13 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
-import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
-import static com.datastax.dsbulk.engine.internal.settings.LogSettings.MAIN_LOG_FILE_APPENDER;
-import static com.datastax.dsbulk.engine.internal.settings.LogSettings.PRODUCTION_KEY;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
@@ -22,9 +17,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
@@ -34,10 +26,7 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
-import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
-import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
-import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
@@ -63,7 +52,6 @@ class LogSettingsTest {
 
   private Path tempFolder;
 
-  @SuppressWarnings("Duplicates")
   @BeforeEach
   void setUp() {
     cluster = mock(Cluster.class);
@@ -84,19 +72,11 @@ class LogSettingsTest {
   @AfterEach
   void deleteTempFolder() {
     deleteDirectory(tempFolder);
-    deleteDirectory(Paths.get("./logs"));
+    deleteDirectory(Paths.get("./target/logs"));
   }
 
   @AfterEach
-  void removeMainLogFileAppender() throws JoranException {
-    ch.qos.logback.classic.Logger root =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    FileAppender<ILoggingEvent> appender =
-        (FileAppender<ILoggingEvent>) root.getAppender(MAIN_LOG_FILE_APPENDER);
-    if (appender != null) {
-      appender.stop();
-      root.detachAppender(appender);
-    }
+  void resetLogbackConfiguration() throws JoranException {
     LogUtils.resetLogbackConfiguration();
   }
 
@@ -104,12 +84,12 @@ class LogSettingsTest {
   void should_create_log_manager_with_default_output_directory() throws Exception {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.log"));
     LogSettings settings = new LogSettings(config, "test");
-    settings.init(false);
+    settings.init();
     try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster)) {
       logManager.init();
       assertThat(logManager).isNotNull();
       assertThat(logManager.getExecutionDirectory().toFile().getAbsolutePath())
-          .isEqualTo(Paths.get("./logs/test").normalize().toFile().getAbsolutePath());
+          .isEqualTo(Paths.get("./target/logs/test").normalize().toFile().getAbsolutePath());
     }
   }
 
@@ -120,7 +100,7 @@ class LogSettingsTest {
             ConfigFactory.parseString("maxErrors = 112 %")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
-    assertThatThrownBy(() -> settings.init(false))
+    assertThatThrownBy(settings::init)
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
 
@@ -130,7 +110,7 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
 
     LogSettings settings2 = new LogSettings(config, "test");
-    assertThatThrownBy(() -> settings2.init(false))
+    assertThatThrownBy(settings2::init)
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
   }
@@ -142,7 +122,7 @@ class LogSettingsTest {
             ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
-    settings.init(false);
+    settings.init();
     try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster)) {
       logManager.init();
       assertThat(logManager).isNotNull();
@@ -152,74 +132,84 @@ class LogSettingsTest {
   }
 
   @Test
-  void should_create_log_file_when_in_production() throws Exception {
+  void should_log_to_main_log_file_in_normal_mode() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     ch.qos.logback.classic.Logger root =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    LogUtils.setProductionKey();
     Level oldLevel = root.getLevel();
     try {
       LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-      settings.init(false);
-      root.setLevel(Level.ERROR);
-      LOGGER.error("this is a test");
+      settings.init();
+      assertThat(root.getLevel()).isEqualTo(Level.INFO);
+      root.info("this is a test 1");
+      root.debug("this should not appear");
+      LOGGER.info("this is a test 2");
+      LOGGER.debug("this should not appear");
+      // driver log level should be WARN
+      LoggerFactory.getLogger("com.datastax.driver").warn("this is a test 3");
+      LoggerFactory.getLogger("com.datastax.driver").info("this should not appear");
       Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
       assertThat(logFile).exists();
       String contents = Files.readAllLines(logFile).stream().collect(Collectors.joining());
-      assertThat(contents).contains("this is a test");
+      assertThat(contents)
+          .contains("this is a test 1", "this is a test 2", "this is a test 3")
+          .doesNotContain("this should not appear");
     } finally {
-      LogUtils.removeProductionKey();
       root.setLevel(oldLevel);
     }
   }
 
   @Test
-  void should_not_create_log_file_when_not_in_production() throws Exception {
+  void should_log_to_main_log_file_in_quiet_mode() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
+            ConfigFactory.parseString(
+                    "directory = \"" + escapeUserInput(tempFolder) + "\", verbosity = 0")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    settings.init(false);
-    LOGGER.error("this is a test");
+    settings.init();
+    ch.qos.logback.classic.Logger dsbulkLogger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.dsbulk");
+    dsbulkLogger.warn("this is a test 1");
+    dsbulkLogger.info("this should not appear");
+    LOGGER.warn("this is a test 2");
+    LOGGER.info("this should not appear");
+    LoggerFactory.getLogger("com.datastax.driver").warn("this is a test 3");
+    LoggerFactory.getLogger("com.datastax.driver").info("this should not appear");
     Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
-    assertThat(logFile).doesNotExist();
+    assertThat(logFile).exists();
+    String contents = Files.readAllLines(logFile).stream().collect(Collectors.joining());
+    assertThat(contents)
+        .contains("this is a test 1", "this is a test 2", "this is a test 3")
+        .doesNotContain("this should not appear");
   }
 
   @Test
-  void should_redirect_standard_output_when_in_production(
-      @StreamCapture(STDOUT) StreamInterceptor stdOut,
-      @StreamCapture(STDERR) StreamInterceptor stdErr)
-      throws Exception {
+  void should_log_to_main_log_file_in_verbose_mode() throws Exception {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
+            ConfigFactory.parseString(
+                    "directory = \"" + escapeUserInput(tempFolder) + "\", verbosity = 2")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    ch.qos.logback.classic.Logger root =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    LoggerContext lc = root.getLoggerContext();
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    lc.putProperty(PRODUCTION_KEY, "true");
-    Level oldLevel = root.getLevel();
-    try {
-      settings.init(true);
-      // info level would normally be printed to stdout, but has been redirected to
-      // stderr
-      root.setLevel(Level.INFO);
-      LOGGER.info("你好");
-      assertThat(stdOut.getStreamAsString()).isEmpty();
-      assertThat(stdErr.getStreamAsString()).contains("你好");
-      Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
-      assertThat(logFile).exists();
-      String contents = FileUtils.readFile(logFile, UTF_8);
-      assertThat(contents).contains("你好");
-    } finally {
-      lc.putProperty(PRODUCTION_KEY, "false");
-      root.setLevel(oldLevel);
-    }
+    settings.init();
+    ch.qos.logback.classic.Logger dsbulkLogger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.dsbulk");
+    assertThat(dsbulkLogger.getLevel()).isEqualTo(Level.DEBUG);
+    dsbulkLogger.debug("this is a test 1");
+    LOGGER.debug("this is a test 2");
+    // driver log level should now be INFO
+    LoggerFactory.getLogger("com.datastax.driver").info("this is a test 3");
+    LoggerFactory.getLogger("com.datastax.driver").debug("this should not appear");
+    Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
+    assertThat(logFile).exists();
+    String contents = Files.readAllLines(logFile).stream().collect(Collectors.joining());
+    assertThat(contents)
+        .contains("this is a test 1", "this is a test 2", "this is a test 3")
+        .doesNotContain("this should not appear");
   }
 
   @Test
@@ -232,7 +222,7 @@ class LogSettingsTest {
             ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(() -> settings.init(false))
+    assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Execution directory exists but is not empty: " + executionDir);
   }
@@ -250,7 +240,7 @@ class LogSettingsTest {
                   ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
           LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-          assertThatThrownBy(() -> settings.init(false))
+          assertThatThrownBy(settings::init)
               .isInstanceOf(IllegalArgumentException.class)
               .hasMessage("Execution directory exists but is not writable: " + executionDir);
         });
@@ -265,7 +255,7 @@ class LogSettingsTest {
             ConfigFactory.parseString("directory = \"" + escapeUserInput(tempFolder) + "\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(() -> settings.init(false))
+    assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Execution directory exists but is not a directory: " + executionDir);
   }
@@ -281,7 +271,7 @@ class LogSettingsTest {
                       .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
           char forbidden = '/';
           LogSettings settings = new LogSettings(config, forbidden + " IS FORBIDDEN");
-          assertThatThrownBy(() -> settings.init(false))
+          assertThatThrownBy(settings::init)
               .isInstanceOf(IOException.class)
               .hasMessageContaining(forbidden + " IS FORBIDDEN");
         });

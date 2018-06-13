@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.connectors.csv;
 
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
-import static com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory.STD;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -219,11 +218,6 @@ public class CSVConnector implements Connector {
   @Override
   public int estimatedResourceCount() {
     return resourceCount;
-  }
-
-  @Override
-  public boolean isWriteToStandardOutput() {
-    return url.getProtocol().equalsIgnoreCase(STD) && !read;
   }
 
   @Override

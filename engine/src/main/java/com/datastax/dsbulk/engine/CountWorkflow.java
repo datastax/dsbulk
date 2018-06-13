@@ -80,7 +80,7 @@ public class CountWorkflow implements Workflow {
     if (engineSettings.isDryRun()) {
       throw new BulkConfigurationException("Dry-run is not supported for count");
     }
-    logSettings.init(false);
+    logSettings.init();
     logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
     codecSettings.init();
     schemaSettings.init(WorkflowType.COUNT);
@@ -100,7 +100,7 @@ public class CountWorkflow implements Workflow {
             WorkflowType.COUNT,
             false,
             logManager.getExecutionDirectory(),
-            logSettings.getMainLogFileAppender(),
+            logSettings.getVerbosity(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
             cluster.getConfiguration().getCodecRegistry());
@@ -118,7 +118,7 @@ public class CountWorkflow implements Workflow {
 
   @Override
   public boolean execute() {
-    LOGGER.info("{} started.", this);
+    LOGGER.debug("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
     Flux.fromIterable(readStatements)
         .flatMap(
@@ -132,7 +132,7 @@ public class CountWorkflow implements Workflow {
                     // Important:
                     // 1) there must be one counting unit per thread / inner flow:
                     // this is guaranteed by instantiating a new counting unit below for each inner
-                    // flow
+                    // flow.
                     // 2) A partition cannot be split in two inner flows;
                     // this is guaranteed by the way we create our read statements by token range.
                     .doOnNext(readResultCounter.newCountingUnit()::update)
@@ -142,11 +142,12 @@ public class CountWorkflow implements Workflow {
         .transform(logManager.newTerminationHandler())
         .blockLast();
     timer.stop();
+    metricsManager.stopProgress();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
       LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
     } else {
-      LOGGER.info(
+      LOGGER.warn(
           "{} completed with {} errors in {}.",
           this,
           logManager.getTotalErrors(),
@@ -158,7 +159,7 @@ public class CountWorkflow implements Workflow {
   @Override
   public void close() throws Exception {
     if (closed.compareAndSet(false, true)) {
-      LOGGER.info("{} closing.", this);
+      LOGGER.debug("{} closing.", this);
       Exception e = WorkflowUtils.closeQuietly(readResultCounter, null);
       e = WorkflowUtils.closeQuietly(metricsManager, e);
       e = WorkflowUtils.closeQuietly(logManager, e);
@@ -168,10 +169,11 @@ public class CountWorkflow implements Workflow {
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
       }
-      if (readResultCounter != null) {
+      // only print totals if the operation was successful
+      if (logManager != null && logManager.getTotalErrors() == 0 && readResultCounter != null) {
         readResultCounter.reportTotals();
       }
-      LOGGER.info("{} closed.", this);
+      LOGGER.debug("{} closed.", this);
       if (e != null) {
         throw e;
       }
@@ -180,6 +182,6 @@ public class CountWorkflow implements Workflow {
 
   @Override
   public String toString() {
-    return "Count workflow engine execution " + executionId;
+    return "Operation " + executionId;
   }
 }
