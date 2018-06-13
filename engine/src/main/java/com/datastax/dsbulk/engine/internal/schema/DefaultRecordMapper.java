@@ -212,14 +212,16 @@ public class DefaultRecordMapper implements RecordMapper {
   }
 
   private void ensurePrimaryKeySet(BoundStatement bs) {
-    for (int pkIndex : pkIndices) {
-      if (!bs.isSet(pkIndex)) {
-        String variable = insertStatement.getVariables().getName(pkIndex);
-        throw new InvalidMappingException(
-            "Primary key column "
-                + Metadata.quoteIfNecessary(variable)
-                + " cannot be left unmapped. "
-                + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
+    if (pkIndices != null) {
+      for (int pkIndex : pkIndices) {
+        if (!bs.isSet(pkIndex)) {
+          String variable = insertStatement.getVariables().getName(pkIndex);
+          throw new InvalidMappingException(
+              "Primary key column "
+                  + Metadata.quoteIfNecessary(variable)
+                  + " cannot be left unmapped. "
+                  + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
+        }
       }
     }
   }

@@ -1452,6 +1452,74 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(row2.isNull(0)).isFalse();
   }
 
+  @Test
+  void batch_with_custom_query() {
+
+    session.execute("DROP TABLE IF EXISTS test_batch1");
+    session.execute("DROP TABLE IF EXISTS test_batch2");
+
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_batch1 (pk int, cc int, value int, PRIMARY KEY (pk, cc))");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_batch2 (pk int, cc int, value int, PRIMARY KEY (pk, cc))");
+
+    MockConnector.setDelegate(
+        new CSVConnector() {
+
+          @Override
+          public void init() {}
+
+          @Override
+          public void configure(LoaderConfig settings, boolean read) {}
+
+          @Override
+          public int estimatedResourceCount() {
+            return -1;
+          }
+
+          @Override
+          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
+            return () -> Flux.just(read().get());
+          }
+
+          @Override
+          public Supplier<? extends Publisher<Record>> read() {
+            return () ->
+                Flux.just(new DefaultRecord("1,1", () -> null, 0, () -> null, "1", "2", "3", "4"));
+          }
+        });
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.mapping");
+    args.add("pk,cc,value1,value2");
+    args.add("--schema.query");
+    args.add(
+        "BEGIN BATCH "
+            + "INSERT INTO test_batch1 (pk, cc, value) VALUES (:pk, :cc, :value1); "
+            + "INSERT INTO test_batch2 (pk, cc, value) VALUES (:pk, :cc, :value2); "
+            + "APPLY BATCH");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+
+    ResultSet rs1 = session.execute("SELECT value FROM test_batch1 WHERE pk = 1 AND cc = 2");
+    Row row1 = rs1.one();
+    assertThat(row1).isNotNull();
+    assertThat(row1.getInt(0)).isEqualTo(3);
+
+    ResultSet rs2 = session.execute("SELECT value FROM test_batch2 WHERE pk = 1 AND cc = 2");
+    Row row2 = rs2.one();
+    assertThat(row2).isNotNull();
+    assertThat(row2.getInt(0)).isEqualTo(4);
+  }
+
   /** Test for DAT-236. */
   @Test
   void temporal_roundtrip() throws Exception {
