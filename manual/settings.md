@@ -231,6 +231,16 @@ The writable directory where all log files will be stored; if the directory spec
 
 Default: **"./logs"**.
 
+#### -verbosity,--log.verbosity _&lt;number&gt;_
+
+The desired level of verbosity. Valid values are:
+
+- 0 (quiet): DSBulk will only log WARN and ERROR messages.
+- 1 (normal): DSBulk will log INFO, WARN and ERROR messages.
+- 2 (verbose) DSBulk will log DEBUG, INFO, WARN and ERROR messages.
+
+Default: **1**.
+
 #### -reportRate,--monitoring.reportRate _&lt;string&gt;_
 
 The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
@@ -1207,6 +1217,16 @@ The writable directory where all log files will be stored; if the directory spec
 
 Default: **"./logs"**.
 
+#### -verbosity,--log.verbosity _&lt;number&gt;_
+
+The desired level of verbosity. Valid values are:
+
+- 0 (quiet): DSBulk will only log WARN and ERROR messages.
+- 1 (normal): DSBulk will log INFO, WARN and ERROR messages.
+- 2 (verbose) DSBulk will log DEBUG, INFO, WARN and ERROR messages.
+
+Default: **1**.
+
 #### --log.ansiMode _&lt;string&gt;_
 
 Whether or not to use ANSI colors and other escape sequences in log messages printed to the console. Valid values are:
@@ -1262,18 +1282,6 @@ The maximum length for a query string. Query strings longer than this value will
 Setting this value to `-1` disables this feature (not recommended).
 
 Default: **500**.
-
-#### -verbosity,--log.verbosity _&lt;number&gt;_
-
-The desired level of verbosity. Valid values are:
-
-- 0 (quiet): DSBulk will only log WARN and ERROR messages.
-- 1 (normal): DSBulk will log INFO, WARN and ERROR messages.
-- 2 (verbose) DSBulk will log DEBUG, INFO, WARN and ERROR messages.
-
-The default level is 1 (normal).
-
-Default: **1**.
 
 <a name="monitoring"></a>
 ## Monitoring Settings
