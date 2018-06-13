@@ -141,7 +141,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(escapeUserInput(CSV_RECORDS_UNIQUE)));
+    args.add(escapeUserInput(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");

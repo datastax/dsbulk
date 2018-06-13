@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.commons.tests.utils;
 
-import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.google.common.base.CharMatcher;
 import java.net.URL;
 import java.nio.file.Path;
@@ -19,8 +18,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class StringUtils {
 
   private static final ConcurrentMap<String, AtomicInteger> SEQS = new ConcurrentHashMap<>();
-
-  private static final JsonStringEncoder JSON_STRING_ENCODER = new JsonStringEncoder();
 
   /**
    * Generates a unique CQL identifier with the given prefix.
@@ -37,7 +34,7 @@ public class StringUtils {
   }
 
   /**
-   * Escapes and normalizes the given path.
+   * CSVC Escapes and normalizes the given path.
    *
    * @param value the value to escape.
    * @return the escaped value.
@@ -67,6 +64,43 @@ public class StringUtils {
    * @return the escaped value.
    */
   public static String escapeUserInput(String value) {
-    return new String(JSON_STRING_ENCODER.quoteAsString(value));
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < value.length(); ++i) {
+      char c = value.charAt(i);
+      switch (c) {
+        case '"':
+          sb.append("\\\"");
+          break;
+        case '\\':
+          sb.append("\\\\");
+          break;
+        case '\n':
+          sb.append("\\n");
+          break;
+        case '\b':
+          sb.append("\\b");
+          break;
+        case '\f':
+          sb.append("\\f");
+          break;
+        case '\r':
+          sb.append("\\r");
+          break;
+        case '\t':
+          sb.append("\\t");
+          break;
+        default:
+          if (isC0Control(c)) {
+            sb.append(String.format("\\u%04x", (int) c));
+          } else {
+            sb.append(c);
+          }
+      }
+    }
+    return sb.toString();
+  }
+
+  private static boolean isC0Control(int codepoint) {
+    return (codepoint >= 0x0000 && codepoint <= 0x001F);
   }
 }
