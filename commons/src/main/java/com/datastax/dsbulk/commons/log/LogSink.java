@@ -27,7 +27,6 @@ import java.util.function.Supplier;
  *         return logger.isInfoEnabled();
  *       }
  *
- *
  *       public void accept(String message, Object... args) {
  *         logger.info(message, args);
  *       }
@@ -40,7 +39,7 @@ public interface LogSink {
   /**
    * Creates a new sink with the given enablement supplier and given message consumer.
    *
-   * <p>A typical invokation of this method is:
+   * <p>A typical invocation of this method is:
    *
    * <pre>
    * Logger logger = LoggerFactory.getLogger(...);
