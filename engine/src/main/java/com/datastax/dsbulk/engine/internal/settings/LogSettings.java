@@ -169,7 +169,7 @@ public class LogSettings {
 
   public void logEffectiveSettings(Config global) {
     LOGGER.debug("{} starting.", HelpUtils.getVersionMessage());
-    LOGGER.info("Operation directory:: {}.", executionDirectory);
+    LOGGER.info("Operation directory: {}.", executionDirectory);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Effective settings:");
       Set<Map.Entry<String, ConfigValue>> entries =
