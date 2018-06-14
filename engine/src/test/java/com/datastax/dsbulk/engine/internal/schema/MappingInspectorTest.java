@@ -111,7 +111,8 @@ class MappingInspectorTest {
   void should_detect_ttl_and_timestamp_vars() {
     MappingInspector inspector = new MappingInspector(" a = __ttl, b = __timestamp  ", false);
     assertThat(inspector.getExplicitVariables().values())
-        .containsExactly(MappingInspector.INTERNAL_TTL_VARNAME, MappingInspector.INTERNAL_TIMESTAMP_VARNAME);
+        .containsExactly(
+            MappingInspector.INTERNAL_TTL_VARNAME, MappingInspector.INTERNAL_TIMESTAMP_VARNAME);
   }
 
   @Test
