@@ -20,7 +20,10 @@ public class HighlightingMessageConverter extends MessageConverter {
   @Override
   public String convert(ILoggingEvent event) {
     String msg = super.convert(event);
-    if (event.getLevel().toInt() >= Level.WARN_INT) {
+    if (event.getLevel().toInt() == Level.WARN_INT) {
+      msg = ansi().fgYellow().a(event.getFormattedMessage()).reset().toString();
+    }
+    if (event.getLevel().toInt() >= Level.ERROR_INT) {
       msg = ansi().fgRed().a(event.getFormattedMessage()).reset().toString();
     }
     return msg;
