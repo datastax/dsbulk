@@ -126,8 +126,8 @@ public class ConsoleReporter extends ScheduledReporter {
     if (header.toString().length() < LINE_LENGTH) {
       double throughput = timer.getMeanRate();
       double rowsPerUnit = convertRate(throughput);
-      double bytes = this.bytes.getMeanRate() / BYTES_PER_MB;
-      double mbPerUnit = convertRate(bytes);
+      double bytes = this.bytes.getMeanRate();
+      double mbPerUnit = convertRate(bytes / BYTES_PER_MB);
       double kbPerRow = throughput == 0 ? 0 : (bytes / BYTES_PER_KB) / throughput;
       String rowsPerUnitStr = format("%,.0f", rowsPerUnit);
       String mbPerUnitStr = format("%,.2f", mbPerUnit);
