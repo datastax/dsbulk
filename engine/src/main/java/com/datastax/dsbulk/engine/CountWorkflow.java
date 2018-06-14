@@ -119,34 +119,32 @@ public class CountWorkflow implements Workflow {
   @Override
   public boolean execute() {
     LOGGER.debug("{} started.", this);
+    metricsManager.start();
     Stopwatch timer = Stopwatch.createStarted();
-    try {
-      Flux.fromIterable(readStatements)
-          .flatMap(
-              statement ->
-                  executor
-                      .readReactive(statement)
-                      .transform(metricsManager.newTotalItemsMonitor())
-                      .transform(logManager.newTotalItemsCounter())
-                      .transform(metricsManager.newFailedItemsMonitor())
-                      .transform(logManager.newFailedReadsHandler())
-                      // Important:
-                      // 1) there must be one counting unit per thread / inner flow:
-                      // this is guaranteed by instantiating a new counting unit below for each
-                      // inner
-                      // flow.
-                      // 2) A partition cannot be split in two inner flows;
-                      // this is guaranteed by the way we create our read statements by token range.
-                      .doOnNext(readResultCounter.newCountingUnit()::update)
-                      .then()
-                      .subscribeOn(scheduler),
-              Runtime.getRuntime().availableProcessors())
-          .transform(logManager.newTerminationHandler())
-          .blockLast();
-      timer.stop();
-    } finally {
-      metricsManager.stopProgress();
-    }
+    Flux.fromIterable(readStatements)
+        .flatMap(
+            statement ->
+                executor
+                    .readReactive(statement)
+                    .transform(metricsManager.newTotalItemsMonitor())
+                    .transform(logManager.newTotalItemsCounter())
+                    .transform(metricsManager.newFailedItemsMonitor())
+                    .transform(logManager.newFailedReadsHandler())
+                    // Important:
+                    // 1) there must be one counting unit per thread / inner flow:
+                    // this is guaranteed by instantiating a new counting unit below for each
+                    // inner
+                    // flow.
+                    // 2) A partition cannot be split in two inner flows;
+                    // this is guaranteed by the way we create our read statements by token range.
+                    .doOnNext(readResultCounter.newCountingUnit()::update)
+                    .then()
+                    .subscribeOn(scheduler),
+            Runtime.getRuntime().availableProcessors())
+        .transform(logManager.newTerminationHandler())
+        .blockLast();
+    timer.stop();
+    metricsManager.stop();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
       LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));

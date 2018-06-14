@@ -116,11 +116,13 @@ class MetricsManagerTest {
             protocolVersion,
             codecRegistry)) {
       manager.init();
+      manager.start();
       Flux<Record> records = Flux.just(record1, record2, record3);
       records
           .transform(manager.newTotalItemsMonitor())
           .transform(manager.newFailedItemsMonitor())
           .blockLast();
+      manager.stop();
       manager.close();
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
@@ -150,8 +152,10 @@ class MetricsManagerTest {
             protocolVersion,
             codecRegistry)) {
       manager.init();
+      manager.start();
       Flux<Statement> statements = Flux.just(batch, stmt3);
       statements.transform(manager.newBatcherMonitor()).blockLast();
+      manager.stop();
       manager.close();
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
@@ -189,12 +193,14 @@ class MetricsManagerTest {
             codecRegistry);
     try {
       manager.init();
+      manager.start();
       WritesReportingExecutionListener writesReporter =
           (WritesReportingExecutionListener)
               ReflectionUtils.getInternalState(manager, "writesReporter");
       writesReporter.report();
       assertThat(logs.getLoggedMessages()).isEmpty();
     } finally {
+      manager.stop();
       manager.close();
     }
     manager.reportFinalMetrics();
@@ -240,11 +246,13 @@ class MetricsManagerTest {
             codecRegistry);
     try {
       manager.init();
+      manager.start();
       WritesReportingExecutionListener writesReporter =
           (WritesReportingExecutionListener)
               ReflectionUtils.getInternalState(manager, "writesReporter");
       assertThat(writesReporter).isNull();
     } finally {
+      manager.stop();
       manager.close();
     }
     manager.reportFinalMetrics();
@@ -282,6 +290,7 @@ class MetricsManagerTest {
             codecRegistry);
     try {
       manager.init();
+      manager.start();
       WritesReportingExecutionListener writesReporter =
           (WritesReportingExecutionListener)
               ReflectionUtils.getInternalState(manager, "writesReporter");
@@ -291,6 +300,7 @@ class MetricsManagerTest {
           .hasMessageContaining("Throughput:")
           .hasMessageContaining("Latencies:");
     } finally {
+      manager.stop();
       manager.close();
     }
     manager.reportFinalMetrics();

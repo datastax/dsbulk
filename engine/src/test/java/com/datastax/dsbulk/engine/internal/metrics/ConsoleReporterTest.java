@@ -22,6 +22,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamType;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.fusesource.jansi.Ansi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +56,7 @@ class ConsoleReporterTest {
     ConsoleReporter reporter =
         new ConsoleReporter(
             registry,
+            new AtomicBoolean(true),
             writes::getCount,
             failed::getCount,
             writes,
@@ -101,6 +103,7 @@ class ConsoleReporterTest {
     ConsoleReporter reporter =
         new ConsoleReporter(
             registry,
+            new AtomicBoolean(true),
             writes::getCount,
             failed::getCount,
             writes,

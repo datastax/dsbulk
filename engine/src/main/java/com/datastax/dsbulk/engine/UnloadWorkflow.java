@@ -127,25 +127,23 @@ public class UnloadWorkflow implements Workflow {
   @Override
   public boolean execute() {
     LOGGER.debug("{} started.", this);
+    metricsManager.start();
     Stopwatch timer = Stopwatch.createStarted();
-    try {
-      Flux<Record> flux;
-      if (readStatements.size() >= TPC_THRESHOLD) {
-        flux = threadPerCoreFlux();
-      } else {
-        flux = parallelFlux();
-      }
-      flux.compose(connector.write())
-          .transform(metricsManager.newFailedItemsMonitor())
-          .transform(logManager.newFailedRecordsHandler())
-          .then()
-          .flux()
-          .transform(logManager.newTerminationHandler())
-          .blockLast();
-      timer.stop();
-    } finally {
-      metricsManager.stopProgress();
+    Flux<Record> flux;
+    if (readStatements.size() >= TPC_THRESHOLD) {
+      flux = threadPerCoreFlux();
+    } else {
+      flux = parallelFlux();
     }
+    flux.compose(connector.write())
+        .transform(metricsManager.newFailedItemsMonitor())
+        .transform(logManager.newFailedRecordsHandler())
+        .then()
+        .flux()
+        .transform(logManager.newTerminationHandler())
+        .blockLast();
+    timer.stop();
+    metricsManager.stop();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
       LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));

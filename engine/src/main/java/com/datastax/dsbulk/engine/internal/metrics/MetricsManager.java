@@ -43,6 +43,7 @@ import java.time.Duration;
 import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
@@ -87,7 +88,7 @@ public class MetricsManager implements AutoCloseable {
   private ConsoleReporter consoleReporter;
   private LogSink logSink;
 
-  private volatile boolean running;
+  private final AtomicBoolean running = new AtomicBoolean(false);
 
   public MetricsManager(
       MetricRegistry driverRegistry,
@@ -132,33 +133,33 @@ public class MetricsManager implements AutoCloseable {
     failedRecords = registry.counter("records/failed");
     batchSize = registry.histogram("batches/size", () -> new Histogram(new UniformReservoir()));
     createMemoryGauges();
-
-    if (jmx) {
-      startJMXReporter();
-    }
-    if (csv) {
-      startCSVReporter();
-    }
-
-    running = true;
     logSink =
         new LogSink() {
 
           @Override
           public boolean isEnabled() {
-            return running ? LOGGER.isDebugEnabled() : LOGGER.isInfoEnabled();
+            return running.get() ? LOGGER.isDebugEnabled() : LOGGER.isInfoEnabled();
           }
 
           @Override
           public void accept(String message, Object... args) {
-            if (running) {
+            if (running.get()) {
               LOGGER.debug(METRICS_MARKER, message, args);
             } else {
               LOGGER.info(METRICS_MARKER, message, args);
             }
           }
         };
+  }
 
+  public void start() {
+    running.set(true);
+    if (jmx) {
+      startJMXReporter();
+    }
+    if (csv) {
+      startCSVReporter();
+    }
     if (verbosity.compareTo(quiet) > 0) {
       startConsoleReporter();
       startMemoryReporter();
@@ -350,6 +351,7 @@ public class MetricsManager implements AutoCloseable {
       consoleReporter =
           new ConsoleReporter(
               registry,
+              running,
               () -> totalRecords.getCount(),
               () -> failedRecords.getCount() + listener.getFailedWritesCounter().getCount(),
               listener.getTotalWritesTimer(),
@@ -363,6 +365,7 @@ public class MetricsManager implements AutoCloseable {
       consoleReporter =
           new ConsoleReporter(
               registry,
+              running,
               () -> listener.getTotalReadsTimer().getCount(),
               () -> failedRecords.getCount() + listener.getFailedReadsCounter().getCount(),
               listener.getTotalReadsTimer(),
@@ -376,42 +379,21 @@ public class MetricsManager implements AutoCloseable {
     consoleReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
+  public void stop() {
+    if (consoleReporter != null) {
+      // print one last report to get final numbers on the console,
+      // if the workflow hasn't been interrupted,
+      // and before any closing message is printed.
+      consoleReporter.report();
+    }
+    running.set(false);
+  }
+
   @Override
   public void close() {
-    running = false;
-    stopProgress();
-    closeReporters();
-    MoreExecutors.shutdownAndAwaitTermination(scheduler, 1, MINUTES);
-  }
-
-  public void stopProgress() {
     if (consoleReporter != null) {
-      consoleReporter.report();
       consoleReporter.close();
-      consoleReporter = null;
     }
-  }
-
-  public void reportFinalMetrics() {
-    LOGGER.info(METRICS_MARKER, "Final stats:");
-    if (recordReporter != null) {
-      recordReporter.report();
-    }
-    if (batchesReporter != null) {
-      batchesReporter.report();
-    }
-    if (memoryReporter != null) {
-      memoryReporter.report();
-    }
-    if (writesReporter != null) {
-      writesReporter.report();
-    }
-    if (readsReporter != null) {
-      readsReporter.report();
-    }
-  }
-
-  private void closeReporters() {
     if (jmxReporter != null) {
       jmxReporter.close();
     }
@@ -432,6 +414,26 @@ public class MetricsManager implements AutoCloseable {
     }
     if (readsReporter != null) {
       readsReporter.close();
+    }
+    MoreExecutors.shutdownAndAwaitTermination(scheduler, 1, MINUTES);
+  }
+
+  public void reportFinalMetrics() {
+    LOGGER.info(METRICS_MARKER, "Final stats:");
+    if (recordReporter != null) {
+      recordReporter.report();
+    }
+    if (batchesReporter != null) {
+      batchesReporter.report();
+    }
+    if (memoryReporter != null) {
+      memoryReporter.report();
+    }
+    if (writesReporter != null) {
+      writesReporter.report();
+    }
+    if (readsReporter != null) {
+      readsReporter.report();
     }
   }
 

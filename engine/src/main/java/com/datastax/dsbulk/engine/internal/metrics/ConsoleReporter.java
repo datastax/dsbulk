@@ -29,6 +29,7 @@ import java.util.Locale;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import org.fusesource.jansi.Ansi;
 import org.jetbrains.annotations.NotNull;
@@ -47,6 +48,7 @@ public class ConsoleReporter extends ScheduledReporter {
   private static final int LINE_LENGTH = HelpUtils.getLineLength();
 
   private final long expectedTotal;
+  private final AtomicBoolean running;
   private final Supplier<Long> total;
   private final Supplier<Long> failed;
   private final Timer timer;
@@ -58,6 +60,7 @@ public class ConsoleReporter extends ScheduledReporter {
 
   ConsoleReporter(
       MetricRegistry registry,
+      AtomicBoolean running,
       Supplier<Long> total,
       Supplier<Long> failed,
       Timer timer,
@@ -68,6 +71,7 @@ public class ConsoleReporter extends ScheduledReporter {
       long expectedTotal,
       ScheduledExecutorService scheduler) {
     super(registry, REPORTER_NAME, (name, metric) -> true, rateUnit, durationUnit, scheduler);
+    this.running = running;
     this.total = total;
     this.failed = failed;
     this.timer = timer;
@@ -88,6 +92,10 @@ public class ConsoleReporter extends ScheduledReporter {
       SortedMap<String, Histogram> histograms,
       SortedMap<String, Meter> meters,
       SortedMap<String, Timer> timers) {
+
+    if (!running.get()) {
+      return;
+    }
 
     // NOTE: when modifying escape sequences, make sure
     // that they are supported on Windows.
