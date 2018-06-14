@@ -356,7 +356,7 @@ public class MetricsManager implements AutoCloseable {
               () -> failedRecords.getCount() + listener.getFailedWritesCounter().getCount(),
               listener.getTotalWritesTimer(),
               listener.getBytesSentMeter(),
-              registry.histogram("batches/size"),
+              batchingEnabled ? registry.histogram("batches/size") : null,
               SECONDS,
               MILLISECONDS,
               expectedWrites,
