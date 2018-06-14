@@ -43,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import org.fusesource.jansi.AnsiConsole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -59,17 +58,8 @@ public class LogSettings {
     verbose
   }
 
-  enum AnsiMode {
-    normal,
-    force,
-    disabled
-  }
-
   private static final String MAIN_LOG_FILE_APPENDER = "FILE";
   private static final String MAIN_LOG_FILE_NAME = "operation.log";
-
-  private static final String DISABLE_ANSI = "jansi.strip";
-  private static final String FORCE_ANSI = "jansi.force";
 
   /** The options for stack trace printing. */
   public static final ImmutableList<String> STACK_TRACE_PRINTER_OPTIONS =
@@ -110,7 +100,6 @@ public class LogSettings {
   private static final String LEVEL = STMT + DELIMITER + "level";
   private static final String MAX_ERRORS = "maxErrors";
   private static final String VERBOSITY = "verbosity";
-  private static final String ANSI_MODE = "ansiMode";
 
   private final LoaderConfig config;
   private final String executionId;
@@ -132,6 +121,7 @@ public class LogSettings {
 
   public void init() throws IOException {
     try {
+      // Note: log.ansiMode is handled upstream by com.datastax.dsbulk.engine.DataStaxBulkLoader
       executionDirectory = config.getPath("directory").resolve(executionId);
       checkExecutionDirectory();
       System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
@@ -149,7 +139,6 @@ public class LogSettings {
         maxErrors = config.getInt(MAX_ERRORS);
         maxErrorsRatio = 0;
       }
-      configureAnsi(config.getEnum(AnsiMode.class, ANSI_MODE));
       Path mainLogFile =
           executionDirectory.resolve(MAIN_LOG_FILE_NAME).normalize().toAbsolutePath();
       createMainLogFileAppender(mainLogFile);
@@ -254,15 +243,6 @@ public class LogSettings {
   private static void installJavaLoggingToSLF4JBridge() {
     SLF4JBridgeHandler.removeHandlersForRootLogger();
     SLF4JBridgeHandler.install();
-  }
-
-  private static void configureAnsi(AnsiMode ansiMode) {
-    if (ansiMode == AnsiMode.disabled) {
-      System.setProperty(DISABLE_ANSI, "true");
-    } else if (ansiMode == AnsiMode.force) {
-      System.setProperty(FORCE_ANSI, "true");
-    }
-    System.setErr(AnsiConsole.wrapSystemErr(System.err));
   }
 
   @VisibleForTesting

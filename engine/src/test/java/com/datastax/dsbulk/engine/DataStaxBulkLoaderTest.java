@@ -35,6 +35,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.apache.commons.cli.ParseException;
+import org.fusesource.jansi.AnsiConsole;
+import org.fusesource.jansi.AnsiString;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,11 @@ class DataStaxBulkLoaderTest {
     this.stdOut = stdOut;
     this.stdErr = stdErr;
     this.logs = logs;
+  }
+
+  @AfterEach
+  void resetAnsi() {
+    AnsiConsole.systemUninstall();
   }
 
   @BeforeEach
@@ -187,7 +194,7 @@ class DataStaxBulkLoaderTest {
   @Test
   void should_show_section_help_with_connector_shortcuts() {
     new DataStaxBulkLoader(new String[] {"help", "connector.csv"}).run();
-    String out = stdOut.getStreamAsString();
+    CharSequence out = new AnsiString(stdOut.getStreamAsString()).getPlain();
     assertThat(out).contains("-url, --connector.csv.url");
   }
 
@@ -983,7 +990,7 @@ class DataStaxBulkLoaderTest {
   }
 
   private void assertGlobalHelp(boolean jsonOnly) {
-    String out = stdOut.getStreamAsString();
+    CharSequence out = new AnsiString(stdOut.getStreamAsString()).getPlain();
     assertThat(out).contains(HelpUtils.getVersionMessage());
 
     // The following assures us that we're looking at global help, not section help.
@@ -1005,7 +1012,7 @@ class DataStaxBulkLoaderTest {
   }
 
   private void assertSectionHelp() {
-    String out = stdOut.getStreamAsString();
+    CharSequence out = new AnsiString(stdOut.getStreamAsString()).getPlain();
     assertThat(out).contains(HelpUtils.getVersionMessage());
 
     // The following assures us that we're looking at section help, not global help.

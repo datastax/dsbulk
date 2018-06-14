@@ -44,7 +44,7 @@
   <logger name="io.netty" level="WARN"/>
   <logger name="reactor.core" level="WARN"/>
 
-  <!-- test-specifc loggers -->
+  <!-- test-specific loggers -->
   <logger name="com.datastax.oss.simulacron" level="ERROR"/>
   <logger name="com.datastax.dsbulk.commons.tests.ccm" level="ERROR"/>
 

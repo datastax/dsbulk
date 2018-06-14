@@ -18,12 +18,8 @@ import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.google.common.base.CharMatcher;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
@@ -37,6 +33,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.fusesource.jansi.Ansi;
+import org.fusesource.jansi.AnsiConsole;
 import org.jetbrains.annotations.NotNull;
 
 public class HelpUtils {
@@ -104,13 +102,9 @@ public class HelpUtils {
   }
 
   private static void emitHelp(Options options, String footer) {
-    // Use the OS charset
-    PrintWriter pw =
-        new PrintWriter(
-            new BufferedWriter(new OutputStreamWriter(System.out, Charset.defaultCharset())));
+    AnsiConsole.systemInstall();
     HelpEmitter helpEmitter = new HelpEmitter(options);
-    helpEmitter.emit(pw, footer);
-    pw.flush();
+    helpEmitter.emit(footer);
   }
 
   public static String getVersionMessage() {
@@ -163,12 +157,20 @@ public class HelpUtils {
 
   private static class HelpEmitter {
 
-    private static final String HEADER =
-        String.format(
-            "Usage: dsbulk (%s) [options]\n       dsbulk help [section]\nOptions:",
-            Arrays.stream(WorkflowType.values())
-                .map(e -> e.name().toLowerCase())
-                .collect(Collectors.joining("|")));
+    private static final Ansi HEADER =
+        Ansi.ansi()
+            .a("Usage: ")
+            .fgRed()
+            .format(
+                "dsbulk (%s) [options]",
+                Arrays.stream(WorkflowType.values())
+                    .map(e -> e.name().toLowerCase())
+                    .collect(Collectors.joining("|")))
+            .newline()
+            .a("       dsbulk help [section]")
+            .reset()
+            .newline()
+            .a("Options:");
 
     private static final int INDENT = 4;
 
@@ -178,31 +180,33 @@ public class HelpUtils {
       this.options.addAll(options.getOptions());
     }
 
-    void emit(PrintWriter writer, String footer) {
-      writer.println(getVersionMessage());
-      writer.println(HEADER);
+    void emit(String footer) {
+      System.out.println(getVersionMessage());
+      System.out.println(HEADER);
       for (Option option : options) {
         String shortOpt = option.getOpt();
         String longOpt = option.getLongOpt();
+        Ansi message = Ansi.ansi();
         if (shortOpt != null) {
-          writer.print("-");
-          writer.print(shortOpt);
+          message.fgCyan().a("-");
+          message.a(shortOpt);
           if (longOpt != null) {
-            writer.print(", ");
+            message.reset().a(", ");
           }
         }
         if (longOpt != null) {
-          writer.print("--");
-          writer.print(longOpt);
+          message.fgGreen().a("--");
+          message.a(longOpt).reset();
         }
-        writer.print(" <");
-        writer.print(option.getArgName());
-        writer.println(">");
-        renderWrappedText(writer, option.getDescription());
-        writer.println("");
+        message.fgYellow().a(" <");
+        message.a(option.getArgName());
+        message.a(">").reset().newline();
+        message = renderWrappedText(message, option.getDescription());
+        message.newline();
+        System.out.print(message.toString());
       }
       if (footer != null) {
-        renderWrappedTextPreformatted(writer, footer);
+        renderWrappedTextPreformatted(footer);
       }
     }
 
@@ -238,7 +242,7 @@ public class HelpUtils {
       return lineLength;
     }
 
-    private void renderWrappedText(PrintWriter writer, String text) {
+    private Ansi renderWrappedText(Ansi message, String text) {
       // NB: Adapted from commons-cli HelpFormatter.renderWrappedText
       int indent = INDENT;
       if (indent >= LINE_LENGTH) {
@@ -257,19 +261,19 @@ public class HelpUtils {
         pos = findWrapPos(text, LINE_LENGTH);
 
         if (pos == -1) {
-          writer.println(text);
-          return;
+          message.a(text).newline();
+          return message;
         }
 
         if (text.length() > LINE_LENGTH && pos == indent - 1) {
           pos = LINE_LENGTH;
         }
 
-        writer.println(CharMatcher.whitespace().trimTrailingFrom(text.substring(0, pos)));
+        message.a(CharMatcher.whitespace().trimTrailingFrom(text.substring(0, pos))).newline();
       }
     }
 
-    private void renderWrappedTextPreformatted(PrintWriter writer, String text) {
+    private void renderWrappedTextPreformatted(String text) {
       // NB: Adapted from commons-cli HelpFormatter.renderWrappedText
       int pos = 0;
 
@@ -287,11 +291,11 @@ public class HelpUtils {
         pos = findWrapPos(text, LINE_LENGTH);
 
         if (pos == -1) {
-          writer.println(text);
+          System.out.println(text);
           return;
         }
 
-        writer.println(CharMatcher.whitespace().trimTrailingFrom(text.substring(0, pos)));
+        System.out.println(CharMatcher.whitespace().trimTrailingFrom(text.substring(0, pos)));
       }
     }
 

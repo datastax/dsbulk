@@ -39,6 +39,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.UnrecognizedOptionException;
+import org.fusesource.jansi.AnsiConsole;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,10 @@ public class DataStaxBulkLoader {
   public static final int STATUS_ABORTED_FATAL_ERROR = 3;
   public static final int STATUS_INTERRUPTED = 4;
   public static final int STATUS_CRASHED = 5;
+
+  private static final String DISABLE_ANSI = "jansi.strip";
+  private static final String FORCE_ANSI = "jansi.force";
+  private static final String ANSI_MODE = "log.ansiMode";
 
   // May be be overridden to handle the "-f" override for application.conf.
   public static Config DEFAULT;
@@ -267,6 +272,8 @@ public class DataStaxBulkLoader {
     List<String> remainingArgs = cmd.getArgList();
     String maybeSection = remainingArgs.isEmpty() ? null : remainingArgs.get(0);
 
+    configureAnsi(cmd);
+
     if (cmd.hasOption("help") || "help".equals(subCommand)) {
       // User is asking for help.
       if (maybeSection != null) {
@@ -329,6 +336,25 @@ public class DataStaxBulkLoader {
       }
     }
     return userSettings;
+  }
+
+  private static void configureAnsi(CommandLine cmd) {
+    // log.ansiMode should logically be handled by LogSettings,
+    // but this setting has to be processed very early
+    // (before the console is used).
+    String ansiMode = cmd.getOptionValue(ANSI_MODE);
+    if (ansiMode == null && DEFAULT.hasPath(ANSI_MODE)) {
+      ansiMode = DEFAULT.getString(ANSI_MODE);
+    }
+    boolean disableAnsi = ansiMode != null && ansiMode.equals("disabled");
+    if (disableAnsi) {
+      System.setProperty(DISABLE_ANSI, "true");
+    }
+    boolean forceAnsi = ansiMode != null && ansiMode.equals("force");
+    if (forceAnsi) {
+      System.setProperty(FORCE_ANSI, "true");
+    }
+    AnsiConsole.systemInstall();
   }
 
   private static void initDefaultConfig(String[] optionArgs) {
