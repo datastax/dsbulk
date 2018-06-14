@@ -142,15 +142,18 @@ public class LoadWorkflow implements Workflow {
   public boolean execute() {
     LOGGER.debug("{} started.", this);
     Stopwatch timer = Stopwatch.createStarted();
-    Flux<Void> flux;
-    if (resourceCount >= WorkflowUtils.TPC_THRESHOLD) {
-      flux = threadPerCoreFlux();
-    } else {
-      flux = parallelFlux();
+    try {
+      Flux<Void> flux;
+      if (resourceCount >= WorkflowUtils.TPC_THRESHOLD) {
+        flux = threadPerCoreFlux();
+      } else {
+        flux = parallelFlux();
+      }
+      flux.transform(logManager.newTerminationHandler()).blockLast();
+      timer.stop();
+    } finally {
+      metricsManager.stopProgress();
     }
-    flux.transform(logManager.newTerminationHandler()).blockLast();
-    timer.stop();
-    metricsManager.stopProgress();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
       LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
