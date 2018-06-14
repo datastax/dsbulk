@@ -346,11 +346,12 @@ public class MetricsManager implements AutoCloseable {
 
   private void startConsoleReporter() {
     if (workflowType == LOAD) {
+      registry.counter("records/failed");
       consoleReporter =
           new ConsoleReporter(
               registry,
               () -> totalRecords.getCount(),
-              () -> failedRecords.getCount(),
+              () -> failedRecords.getCount() + listener.getFailedWritesCounter().getCount(),
               listener.getTotalWritesTimer(),
               listener.getBytesSentMeter(),
               registry.histogram("batches/size"),
@@ -362,8 +363,8 @@ public class MetricsManager implements AutoCloseable {
       consoleReporter =
           new ConsoleReporter(
               registry,
-              () -> totalRecords.getCount(),
-              () -> failedRecords.getCount(),
+              () -> listener.getTotalReadsTimer().getCount(),
+              () -> failedRecords.getCount() + listener.getFailedReadsCounter().getCount(),
               listener.getTotalReadsTimer(),
               listener.getBytesReceivedMeter(),
               null,
