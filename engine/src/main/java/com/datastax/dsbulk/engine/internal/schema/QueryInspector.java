@@ -13,9 +13,7 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.cql3.CqlBaseVisitor;
 import com.datastax.dsbulk.commons.cql3.CqlLexer;
 import com.datastax.dsbulk.commons.cql3.CqlParser;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.ImmutableBiMap;
-import java.util.LinkedHashMap;
+import com.google.common.collect.ImmutableMultimap;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
@@ -27,9 +25,10 @@ public class QueryInspector extends CqlBaseVisitor<String> {
 
   private final String query;
 
-  private final LinkedHashMap<String, String> columnsToVariablesBuilder = new LinkedHashMap<>();
+  private final ImmutableMultimap.Builder<String, String> columnsToVariablesBuilder =
+      ImmutableMultimap.builder();
 
-  private final BiMap<String, String> columnsToVariables;
+  private final ImmutableMultimap<String, String> columnsToVariables;
 
   private String currentColumn;
   private String keyspaceName;
@@ -65,7 +64,7 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     parser.addErrorListener(listener);
     CqlParser.CqlStatementContext statement = parser.cqlStatement();
     visit(statement);
-    columnsToVariables = ImmutableBiMap.copyOf(columnsToVariablesBuilder);
+    columnsToVariables = columnsToVariablesBuilder.build();
   }
 
   public String getKeyspaceName() {
@@ -80,7 +79,7 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     return writeTimeVariable;
   }
 
-  public BiMap<String, String> getColumnsToVariables() {
+  public ImmutableMultimap<String, String> getColumnsToVariables() {
     return columnsToVariables;
   }
 

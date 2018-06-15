@@ -56,6 +56,7 @@ import com.google.common.collect.ImmutableBiMap;
 import com.typesafe.config.ConfigException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -527,8 +528,8 @@ public class SchemaSettings {
   private void validatePrimaryKeyPresent(BiMap<String, String> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPrimaryKey();
     for (ColumnMetadata pk : partitionKey) {
-      String variable = queryInspector.getColumnsToVariables().get(pk.getName());
-      if (!fieldsToVariables.containsValue(variable)) {
+      Collection<String> variables = queryInspector.getColumnsToVariables().get(pk.getName());
+      if (Collections.disjoint(fieldsToVariables.values(), variables)) {
         throw new BulkConfigurationException(
             "Missing required primary key column "
                 + Metadata.quoteIfNecessary(pk.getName())

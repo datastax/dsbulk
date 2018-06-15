@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
