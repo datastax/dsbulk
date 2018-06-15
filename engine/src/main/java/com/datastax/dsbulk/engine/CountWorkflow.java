@@ -58,6 +58,7 @@ public class CountWorkflow implements Workflow {
   private DseCluster cluster;
   private ReactorBulkReader executor;
   private List<Statement> readStatements;
+  private volatile boolean success;
 
   CountWorkflow(LoaderConfig config) {
     settingsManager = new SettingsManager(config, WorkflowType.COUNT);
@@ -114,6 +115,7 @@ public class CountWorkflow implements Workflow {
         schemaSettings.createReadResultCounter(session, codecRegistry, modes, numPartitions);
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
+    success = false;
   }
 
   @Override
@@ -147,6 +149,7 @@ public class CountWorkflow implements Workflow {
     metricsManager.stop();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
+      success = true;
       LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
     } else {
       LOGGER.warn(
@@ -172,7 +175,7 @@ public class CountWorkflow implements Workflow {
         metricsManager.reportFinalMetrics();
       }
       // only print totals if the operation was successful
-      if (logManager != null && logManager.getTotalErrors() == 0 && readResultCounter != null) {
+      if (success) {
         readResultCounter.reportTotals();
       }
       LOGGER.debug("{} closed.", this);
