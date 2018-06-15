@@ -1,6 +1,10 @@
 ## Changelog
 
-### 1.1.0 (in progress)
+### 1.1.1 (in progress)
+
+- [bug] DAT-302: CsvWriter trims leading/trailing spaces in values.
+
+### 1.1.0
 
 - [bug] DAT-289: Generated queries do not respect indexed mapping order.
 - [bug] DAT-288: DSBulk cannot handle columns of type list<timestamp>.

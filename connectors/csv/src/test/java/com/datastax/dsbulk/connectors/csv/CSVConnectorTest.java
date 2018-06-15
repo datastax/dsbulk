@@ -97,12 +97,12 @@ class CSVConnectorTest {
             "1997",
             "Ford",
             "E350",
-            "ac, abs, moon",
+            "  ac, abs, moon  ",
             "3000.00", // mapped
             "1997",
             "Ford",
             "E350",
-            "ac, abs, moon",
+            "  ac, abs, moon  ",
             "3000.00"); // indexed
     assertThat(actual.get(1).values())
         .containsExactly(
@@ -360,7 +360,7 @@ class CSVConnectorTest {
       assertThat(actual)
           .containsExactly(
               "Year,Make,Model,Description,Price",
-              "1997,Ford,E350,\"ac, abs, moon\",3000.00",
+              "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
               "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
               "1996,Jeep,Grand Cherokee,\"MUST SELL!",
               "air, moon roof, loaded\",4799.00",
@@ -397,7 +397,7 @@ class CSVConnectorTest {
           .containsExactly(
               ",,\"Venture \"\"Extended Edition\"\"\",,4900.00",
               "1996,Jeep,Grand Cherokee,\"MUST SELL!",
-              "1997,Ford,E350,\"ac, abs, moon\",3000.00",
+              "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
               "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
               "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
               "Year,Make,Model,Description,Price",
@@ -431,7 +431,7 @@ class CSVConnectorTest {
       assertThat(csv1)
           .containsExactly(
               "Year,Make,Model,Description,Price",
-              "1997,Ford,E350,\"ac, abs, moon\",3000.00",
+              "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
               "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
               "1996,Jeep,Grand Cherokee,\"MUST SELL!",
               "air, moon roof, loaded\",4799.00");
@@ -713,7 +713,7 @@ class CSVConnectorTest {
     String[] fields = new String[] {"Year", "Make", "Model", "Description", "Price"};
     records.add(
         new DefaultRecord(
-            null, null, -1, null, fields, "1997", "Ford", "E350", "ac, abs, moon", "3000.00"));
+            null, null, -1, null, fields, "1997", "Ford", "E350", "  ac, abs, moon  ", "3000.00"));
     records.add(
         new DefaultRecord(
             null,
