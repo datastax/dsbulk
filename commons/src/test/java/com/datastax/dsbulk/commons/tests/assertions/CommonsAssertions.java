@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.commons.tests.assertions;
 
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.google.common.collect.Multimap;
 import com.typesafe.config.Config;
 
 public class CommonsAssertions extends org.assertj.core.api.Assertions {
@@ -19,5 +20,9 @@ public class CommonsAssertions extends org.assertj.core.api.Assertions {
 
   public static LogInterceptorAssert assertThat(LogInterceptor logInterceptor) {
     return new LogInterceptorAssert(logInterceptor);
+  }
+
+  public static <K, V> MultimapAssert<K, V> assertThat(Multimap<K, V> map) {
+    return new MultimapAssert<>(map);
   }
 }
