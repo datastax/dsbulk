@@ -14,6 +14,8 @@ import com.datastax.dsbulk.commons.cql3.CqlBaseVisitor;
 import com.datastax.dsbulk.commons.cql3.CqlLexer;
 import com.datastax.dsbulk.commons.cql3.CqlParser;
 import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.MultimapBuilder;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
@@ -25,8 +27,8 @@ public class QueryInspector extends CqlBaseVisitor<String> {
 
   private final String query;
 
-  private final ImmutableMultimap.Builder<String, String> columnsToVariablesBuilder =
-      ImmutableMultimap.builder();
+  private final ListMultimap<String, String> columnsToVariablesBuilder =
+      MultimapBuilder.linkedHashKeys().arrayListValues().build();
 
   private final ImmutableMultimap<String, String> columnsToVariables;
 
@@ -64,7 +66,7 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     parser.addErrorListener(listener);
     CqlParser.CqlStatementContext statement = parser.cqlStatement();
     visit(statement);
-    columnsToVariables = columnsToVariablesBuilder.build();
+    columnsToVariables = ImmutableMultimap.copyOf(columnsToVariablesBuilder);
   }
 
   public String getKeyspaceName() {
