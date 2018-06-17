@@ -37,13 +37,13 @@ public class SimulacronUtils {
   private static final String SELECT_TABLES = "SELECT * FROM system_schema.tables";
   private static final String SELECT_COLUMNS = "SELECT * FROM system_schema.columns";
 
-  private static final Map<String, String> KEYSPACE_COLUMNS =
+  private static final ImmutableMap<String, String> KEYSPACE_COLUMNS =
       ImmutableMap.of(
           "keyspace_name", "varchar",
           "durable_writes", "boolean",
           "replication", "map<varchar, varchar>");
 
-  private static final Map<String, String> TABLE_COLUMNS =
+  private static final ImmutableMap<String, String> TABLE_COLUMNS =
       ImmutableMap.<String, String>builder()
           .put("keyspace_name", "varchar")
           .put("table_name", "varchar")
@@ -67,7 +67,7 @@ public class SimulacronUtils {
           .put("speculative_retry", "varchar")
           .build();
 
-  private static final Map<String, String> COLUMN_COLUMNS =
+  private static final ImmutableMap<String, String> COLUMN_COLUMNS =
       ImmutableMap.<String, String>builder()
           .put("keyspace_name", "varchar")
           .put("table_name", "varchar")
