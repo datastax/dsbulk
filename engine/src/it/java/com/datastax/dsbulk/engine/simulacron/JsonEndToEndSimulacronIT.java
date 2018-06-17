@@ -8,6 +8,10 @@
  */
 package com.datastax.dsbulk.engine.simulacron;
 
+import static com.datastax.driver.core.DataType.cboolean;
+import static com.datastax.driver.core.DataType.cfloat;
+import static com.datastax.driver.core.DataType.cint;
+import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
@@ -16,7 +20,8 @@ import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInpu
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createParameterizedQuery;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithError;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSet;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createSimpleParametrizedQuery;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createSimpleParameterizedQuery;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.primeIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
@@ -36,8 +41,8 @@ import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
 import static java.nio.file.Files.createTempDirectory;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.slf4j.event.Level.ERROR;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -49,6 +54,10 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
+import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
+import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils.Column;
+import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils.Table;
+import com.datastax.dsbulk.commons.tests.utils.CsvUtils;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.json.JsonConnector;
@@ -59,7 +68,6 @@ import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
-import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.FunctionFailureResult;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.result.SyntaxErrorResult;
@@ -77,14 +85,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -94,21 +100,35 @@ import org.reactivestreams.Publisher;
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Disabled
 class JsonEndToEndSimulacronIT {
 
   private final BoundCluster simulacron;
+  private final LogInterceptor logs;
+  private final StreamInterceptor stdOut;
+  private final StreamInterceptor stdErr;
   private final String hostname;
   private final String port;
 
   private Path unloadDir;
   private Path logDir;
 
-  JsonEndToEndSimulacronIT(BoundCluster simulacron) {
+  JsonEndToEndSimulacronIT(
+      BoundCluster simulacron,
+      @LogCapture LogInterceptor logs,
+      @StreamCapture(STDOUT) StreamInterceptor stdOut,
+      @StreamCapture(STDERR) StreamInterceptor stdErr) {
     this.simulacron = simulacron;
+    this.logs = logs;
+    this.stdOut = stdOut;
+    this.stdErr = stdErr;
     InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
     hostname = node.getHostName();
     port = Integer.toString(node.getPort());
+  }
+
+  @BeforeEach
+  void resetPrimes() {
+    simulacron.clearPrimes(true);
   }
 
   @BeforeEach
@@ -123,12 +143,6 @@ class JsonEndToEndSimulacronIT {
     deleteDirectory(unloadDir);
   }
 
-  @BeforeEach
-  void primeQueries() {
-    RequestPrime prime = createSimpleParametrizedQuery(INSERT_INTO_IP_BY_COUNTRY);
-    simulacron.prime(new Prime(prime));
-  }
-
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
     LogUtils.resetLogbackConfiguration();
@@ -136,6 +150,11 @@ class JsonEndToEndSimulacronIT {
 
   @Test
   void full_load() {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(CsvUtils.INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
     String[] args = {
       "load",
       "-c",
@@ -152,6 +171,8 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -160,11 +181,20 @@ class JsonEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
+    assertThat(logs.getAllMessagesAsString())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
+        .contains("Writes: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
 
   @Test
   void full_load_dry_run() {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(CsvUtils.INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
     String[] args = {
       "load",
       "-c",
@@ -183,6 +213,8 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -196,6 +228,10 @@ class JsonEndToEndSimulacronIT {
 
   @Test
   void full_load_crlf() {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(CsvUtils.INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
 
     String[] args = {
       "load",
@@ -213,6 +249,8 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -227,11 +265,10 @@ class JsonEndToEndSimulacronIT {
   @Test
   void full_load_custom_features() {
 
-    String query = "INSERT INTO table1 (key,value) VALUES (:key, :value)";
-    Map<String, String> types = ImmutableMap.of("key", "int", "value", "float");
-    Query when = new Query(query, emptyList(), emptyMap(), types);
-    SuccessResult then = new SuccessResult(emptyList(), emptyMap());
-    simulacron.prime(new Prime(new RequestPrime(when, then)));
+    SimulacronUtils.primeTables(
+        simulacron,
+        new SimulacronUtils.Keyspace(
+            "ks1", new Table("table1", new Column("key", cint()), new Column("value", cfloat()))));
 
     String[] args = {
       "load",
@@ -249,8 +286,10 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
-      query,
+      "INSERT INTO ks1.table1 (key,value) VALUES (:key,:value)",
       "--connector.json.parserFeatures",
       "{ALLOW_COMMENTS = true}",
       "--connector.json.deserializationFeatures",
@@ -259,11 +298,16 @@ class JsonEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
-    validateQueryCount(simulacron, 1, "INSERT INTO table1 (key,value) VALUES (:key, :value)", ONE);
+    validateQueryCount(
+        simulacron, 1, "INSERT INTO ks1.table1 (key,value) VALUES (:key,:value)", ONE);
   }
 
   @Test
   void partial_load() throws Exception {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(CsvUtils.INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
 
     String[] args = {
       "load",
@@ -281,6 +325,8 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -299,7 +345,8 @@ class JsonEndToEndSimulacronIT {
 
   @Test
   void load_errors() throws Exception {
-    simulacron.clearPrimes(true);
+
+    primeIpByCountryTable(simulacron);
 
     Map<String, Object> params = new HashMap<>();
     params.put("country_name", "Sweden");
@@ -357,16 +404,19 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
       IP_BY_COUNTRY_MAPPING
     };
 
-    // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
-    // the unavailable.
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+
+    // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
+    // the unavailable.
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(4, logPath);
@@ -375,6 +425,10 @@ class JsonEndToEndSimulacronIT {
 
   @Test
   void skip_test_load() throws Exception {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(CsvUtils.INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
 
     String[] args = {
       "load",
@@ -396,6 +450,8 @@ class JsonEndToEndSimulacronIT {
       "3",
       "--connector.json.maxRecords",
       "24",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -413,13 +469,18 @@ class JsonEndToEndSimulacronIT {
   }
 
   @Test
-  void error_load_missing_field(@LogCapture LogInterceptor logs) throws Exception {
-    String query = "INSERT INTO table1 (a,b,c,d) VALUES (:a, :b, :c, :d)";
-    Map<String, String> types =
-        ImmutableMap.of("a", "int", "b", "varchar", "c", "boolean", "d", "int");
-    Query when = new Query(query, emptyList(), emptyMap(), types);
-    SuccessResult then = new SuccessResult(emptyList(), emptyMap());
-    simulacron.prime(new Prime(new RequestPrime(when, then)));
+  void error_load_missing_field() throws Exception {
+
+    SimulacronUtils.primeTables(
+        simulacron,
+        new SimulacronUtils.Keyspace(
+            "ks1",
+            new Table(
+                "table1",
+                new Column("a", cint()),
+                new Column("b", varchar()),
+                new Column("c", cboolean()),
+                new Column("d", cint()))));
 
     String[] args = {
       "load",
@@ -442,7 +503,7 @@ class JsonEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      query,
+      "INSERT INTO ks1.table1 (a,b,c,d) VALUES (:a,:b,:c,:d)",
       "--schema.mapping",
       "A = a, B = b, C = c, D = d",
       "--schema.allowMissingFields",
@@ -468,12 +529,12 @@ class JsonEndToEndSimulacronIT {
   }
 
   @Test
-  void error_load_extra_field(@LogCapture LogInterceptor logs) throws Exception {
-    String query = "INSERT INTO table1 (a,b) VALUES (:a, :b)";
-    Map<String, String> types = ImmutableMap.of("a", "int", "b", "varchar");
-    Query when = new Query(query, emptyList(), emptyMap(), types);
-    SuccessResult then = new SuccessResult(emptyList(), emptyMap());
-    simulacron.prime(new Prime(new RequestPrime(when, then)));
+  void error_load_extra_field() throws Exception {
+
+    SimulacronUtils.primeTables(
+        simulacron,
+        new SimulacronUtils.Keyspace(
+            "ks1", new Table("table1", new Column("a", cint()), new Column("b", varchar()))));
 
     String[] args = {
       "load",
@@ -496,7 +557,7 @@ class JsonEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      query,
+      "INSERT INTO ks1.table1 (a,b) VALUES (:a,:b)",
       "--schema.mapping",
       "A = a, B = b",
       "--schema.allowExtraFields",
@@ -518,6 +579,7 @@ class JsonEndToEndSimulacronIT {
   @Test
   void full_unload() throws Exception {
 
+    primeIpByCountryTable(simulacron);
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
     simulacron.prime(new Prime(prime));
 
@@ -539,6 +601,8 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -547,6 +611,9 @@ class JsonEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
+    assertThat(logs.getAllMessagesAsString())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Reads: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     validateOutputFiles(24, unloadDir);
   }
@@ -554,6 +621,7 @@ class JsonEndToEndSimulacronIT {
   @Test
   void full_unload_multi_thread() throws Exception {
 
+    primeIpByCountryTable(simulacron);
     // 1000 rows required to fully exercise writing to 4 files
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 1000);
     simulacron.prime(new Prime(prime));
@@ -576,6 +644,8 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -591,19 +661,22 @@ class JsonEndToEndSimulacronIT {
   @Test
   void full_unload_custom_features() throws Exception {
 
-    String query = "SELECT pk, c1, c2 FROM table1";
-    Query when = new Query(query);
-    Map<String, String> columnTypes = new LinkedHashMap<>();
-    columnTypes.put("pk", "int");
-    columnTypes.put("c1", "varchar");
     List<Map<String, Object>> rows = new ArrayList<>();
     HashMap<String, Object> row = new HashMap<>();
     row.put("pk", 1);
     row.put("c1", null);
     rows.add(row);
-    SuccessResult then = new SuccessResult(rows, columnTypes);
-    RequestPrime prime = new RequestPrime(when, then);
-    simulacron.prime(new Prime(prime));
+
+    SimulacronUtils.primeTables(
+        simulacron,
+        new SimulacronUtils.Keyspace(
+            "ks1",
+            new Table(
+                "table1",
+                singletonList(new Column("pk", cint())),
+                emptyList(),
+                singletonList(new Column("c1", varchar())),
+                rows)));
 
     String[] unloadArgs = {
       "unload",
@@ -624,7 +697,7 @@ class JsonEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      query,
+      "SELECT pk,c1 FROM ks1.table1",
       "--connector.json.generatorFeatures",
       "{QUOTE_FIELD_NAMES = false}",
       "--connector.json.serializationStrategy",
@@ -633,7 +706,7 @@ class JsonEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
-    validateQueryCount(simulacron, 1, query, ONE);
+    validateQueryCount(simulacron, 1, "SELECT pk,c1 FROM ks1.table1", ONE);
     validateOutputFiles(1, unloadDir);
     Optional<String> line = readAllLinesInDirectoryAsStream(unloadDir).findFirst();
     assertThat(line).isPresent().hasValue("{pk:1}");
@@ -642,6 +715,7 @@ class JsonEndToEndSimulacronIT {
   @Test
   void unload_failure_during_read_single_thread() {
 
+    primeIpByCountryTable(simulacron);
     RequestPrime prime =
         createQueryWithError(
             SELECT_FROM_IP_BY_COUNTRY, new SyntaxErrorResult("Invalid table", 0L, false));
@@ -665,6 +739,8 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -680,6 +756,7 @@ class JsonEndToEndSimulacronIT {
   @Test
   void unload_failure_during_read_multi_thread() {
 
+    primeIpByCountryTable(simulacron);
     RequestPrime prime =
         createQueryWithError(
             SELECT_FROM_IP_BY_COUNTRY, new SyntaxErrorResult("Invalid table", 0L, false));
@@ -703,6 +780,8 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -716,9 +795,7 @@ class JsonEndToEndSimulacronIT {
   }
 
   @Test
-  void unload_write_error(
-      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs,
-      @StreamCapture(STDERR) StreamInterceptor stdErr) {
+  void unload_write_error() {
 
     MockConnector.setDelegate(
         new JsonConnector() {
@@ -749,6 +826,7 @@ class JsonEndToEndSimulacronIT {
           }
         });
 
+    primeIpByCountryTable(simulacron);
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 10);
     simulacron.prime(new Prime(prime));
 
@@ -766,6 +844,8 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -775,14 +855,17 @@ class JsonEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(stdErr.getStreamAsString())
-        .contains(logs.getLoggedMessages())
+        .contains("Error opening file:")
+        .contains("output-000001.json");
+    assertThat(logs.getAllMessagesAsString())
         .contains("Error opening file:")
         .contains("output-000001.json");
   }
 
   @Test
-  void validate_stdout(@StreamCapture(STDOUT) StreamInterceptor stdOut) {
+  void validate_stdout() {
 
+    primeIpByCountryTable(simulacron);
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
     simulacron.prime(new Prime(prime));
 
@@ -804,6 +887,8 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",

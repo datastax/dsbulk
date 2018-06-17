@@ -8,8 +8,12 @@
  */
 package com.datastax.dsbulk.engine.tests.utils;
 
+import static com.datastax.driver.core.DataType.bigint;
+import static com.datastax.driver.core.DataType.inet;
+import static com.datastax.driver.core.DataType.varchar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -36,10 +40,10 @@ import org.assertj.core.api.Assertions;
 
 public class EndToEndUtils {
 
-  public static RequestPrime createSimpleParametrizedQuery(String query) {
+  public static RequestPrime createSimpleParameterizedQuery(String query) {
     Map<String, String> paramTypes = new LinkedHashMap<>();
-    paramTypes.put("country_code", "ascii");
-    paramTypes.put("country_name", "ascii");
+    paramTypes.put("country_code", "varchar");
+    paramTypes.put("country_name", "varchar");
     paramTypes.put("beginning_ip_address", "inet");
     paramTypes.put("ending_ip_address", "inet");
     paramTypes.put("beginning_ip_number", "bigint");
@@ -52,8 +56,8 @@ public class EndToEndUtils {
   public static RequestPrime createQueryWithResultSet(String query, int numOfResults) {
     Query when = new Query(query);
     Map<String, String> columnTypes = new LinkedHashMap<>();
-    columnTypes.put("country_code", "ascii");
-    columnTypes.put("country_name", "ascii");
+    columnTypes.put("country_code", "varchar");
+    columnTypes.put("country_name", "varchar");
     columnTypes.put("beginning_ip_address", "inet");
     columnTypes.put("ending_ip_address", "inet");
     columnTypes.put("beginning_ip_number", "bigint");
@@ -76,8 +80,8 @@ public class EndToEndUtils {
   public static RequestPrime createQueryWithResultSetWithQuotes(String query, int numOfResults) {
     Query when = new Query(query);
     Map<String, String> columnTypes = new LinkedHashMap<>();
-    columnTypes.put("country_code", "ascii");
-    columnTypes.put("country_name", "ascii");
+    columnTypes.put("country_code", "varchar");
+    columnTypes.put("country_name", "varchar");
     columnTypes.put("beginning_ip_address", "inet");
     columnTypes.put("ending_ip_address", "inet");
     columnTypes.put("beginning_ip_number", "bigint");
@@ -105,8 +109,8 @@ public class EndToEndUtils {
   public static RequestPrime createParameterizedQuery(
       String query, Map<String, Object> params, Result then) {
     Map<String, String> paramTypes = new LinkedHashMap<>();
-    paramTypes.put("country_code", "ascii");
-    paramTypes.put("country_name", "ascii");
+    paramTypes.put("country_code", "varchar");
+    paramTypes.put("country_name", "varchar");
     paramTypes.put("beginning_ip_address", "inet");
     paramTypes.put("ending_ip_address", "inet");
     paramTypes.put("beginning_ip_number", "bigint");
@@ -175,5 +179,20 @@ public class EndToEndUtils {
             .filter(l -> l.getType().equals("PREPARE") && l.getQuery().startsWith(query))
             .collect(Collectors.toList());
     assertThat(ipLogs.size()).isEqualTo(1);
+  }
+
+  public static void primeIpByCountryTable(BoundCluster simulacron) {
+    SimulacronUtils.primeTables(
+        simulacron,
+        new SimulacronUtils.Keyspace(
+            "ks1",
+            new SimulacronUtils.Table(
+                "ip_by_country",
+                new SimulacronUtils.Column("country_code", varchar()),
+                new SimulacronUtils.Column("beginning_ip_address", inet()),
+                new SimulacronUtils.Column("country_name", varchar()),
+                new SimulacronUtils.Column("ending_ip_address", inet()),
+                new SimulacronUtils.Column("beginning_ip_number", bigint()),
+                new SimulacronUtils.Column("ending_ip_number", bigint()))));
   }
 }

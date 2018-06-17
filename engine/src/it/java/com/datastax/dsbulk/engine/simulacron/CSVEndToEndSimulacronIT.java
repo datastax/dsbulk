@@ -8,6 +8,9 @@
  */
 package com.datastax.dsbulk.engine.simulacron;
 
+import static com.datastax.driver.core.DataType.cboolean;
+import static com.datastax.driver.core.DataType.cint;
+import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
@@ -26,7 +29,8 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createParamet
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithError;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSet;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSetWithQuotes;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createSimpleParametrizedQuery;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createSimpleParameterizedQuery;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.primeIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
@@ -38,7 +42,6 @@ import static java.nio.file.Files.createTempDirectory;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.slf4j.event.Level.ERROR;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -50,6 +53,9 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
+import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
+import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils.Column;
+import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils.Table;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -61,7 +67,6 @@ import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
-import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.FunctionFailureResult;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.result.SyntaxErrorResult;
@@ -82,7 +87,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -94,27 +98,35 @@ import reactor.core.publisher.Mono;
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Disabled
 class CSVEndToEndSimulacronIT {
 
   private final BoundCluster simulacron;
+  private final LogInterceptor logs;
+  private final StreamInterceptor stdOut;
+  private final StreamInterceptor stdErr;
   private final String hostname;
   private final String port;
 
   private Path unloadDir;
   private Path logDir;
 
-  CSVEndToEndSimulacronIT(BoundCluster simulacron) {
+  CSVEndToEndSimulacronIT(
+      BoundCluster simulacron,
+      @LogCapture LogInterceptor logs,
+      @StreamCapture(STDOUT) StreamInterceptor stdOut,
+      @StreamCapture(STDERR) StreamInterceptor stdErr) {
     this.simulacron = simulacron;
+    this.logs = logs;
+    this.stdOut = stdOut;
+    this.stdErr = stdErr;
     InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
     hostname = node.getHostName();
     port = Integer.toString(node.getPort());
   }
 
   @BeforeEach
-  void primeQueries() {
-    RequestPrime prime = createSimpleParametrizedQuery(INSERT_INTO_IP_BY_COUNTRY);
-    simulacron.prime(new Prime(prime));
+  void resetPrimes() {
+    simulacron.clearPrimes(true);
   }
 
   @BeforeEach
@@ -135,7 +147,12 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void full_load(@LogCapture LogInterceptor logs) {
+  void full_load() {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
     String[] args = {
       "load",
       "--log.directory",
@@ -154,6 +171,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -162,7 +181,7 @@ class CSVEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
-    assertThat(logs.getLoggedMessages())
+    assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
@@ -171,6 +190,11 @@ class CSVEndToEndSimulacronIT {
 
   @Test
   void full_load_dry_run() {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
     String[] args = {
       "load",
       "--log.directory",
@@ -189,6 +213,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -202,6 +228,10 @@ class CSVEndToEndSimulacronIT {
 
   @Test
   void full_load_crlf() {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
 
     String[] args = {
       "load",
@@ -219,6 +249,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -232,6 +264,10 @@ class CSVEndToEndSimulacronIT {
 
   @Test
   void partial_load() throws Exception {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
 
     String[] args = {
       "load",
@@ -249,6 +285,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -267,7 +305,8 @@ class CSVEndToEndSimulacronIT {
 
   @Test
   void load_errors() throws Exception {
-    simulacron.clearPrimes(true);
+
+    primeIpByCountryTable(simulacron);
 
     Map<String, Object> params = new HashMap<>();
     params.put("country_name", "Sweden");
@@ -325,16 +364,19 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
       IP_BY_COUNTRY_MAPPING
     };
 
-    // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
-    // the unavailable.
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+
+    // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
+    // the unavailable.
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(4, logPath);
@@ -343,6 +385,10 @@ class CSVEndToEndSimulacronIT {
 
   @Test
   void skip_test_load() throws Exception {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
 
     String[] args = {
       "load",
@@ -364,6 +410,8 @@ class CSVEndToEndSimulacronIT {
       "3",
       "--connector.csv.maxRecords",
       "24",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -382,6 +430,11 @@ class CSVEndToEndSimulacronIT {
 
   @Test
   void load_long_column() {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
     // This will attempt to load a CSV file with column longer then 4096 characters.
     String[] args = {
       "load",
@@ -401,6 +454,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -413,8 +468,12 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void error_load_percentage(
-      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs) {
+  void error_load_percentage() {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
     String[] args = {
       "load",
       "--log.directory",
@@ -433,12 +492,14 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
       IP_BY_COUNTRY_MAPPING,
-      "--batch.enabled",
-      "false"
+      "--batch.mode",
+      "DISABLED"
     };
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
@@ -447,7 +508,12 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void error_load_primary_key_cannot_be_null(@LogCapture LogInterceptor logs) throws Exception {
+  void error_load_primary_key_cannot_be_null() throws Exception {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
     String[] args = {
       "load",
       "--log.directory",
@@ -470,6 +536,8 @@ class CSVEndToEndSimulacronIT {
       "1",
       "--codec.nullStrings",
       "[NULL]",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -491,13 +559,18 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void error_load_missing_field(@LogCapture LogInterceptor logs) throws Exception {
-    String query = "INSERT INTO table1 (a,b,c,d) VALUES (:a, :b, :c, :d)";
-    Map<String, String> types =
-        ImmutableMap.of("a", "int", "b", "varchar", "c", "boolean", "d", "int");
-    Query when = new Query(query, emptyList(), emptyMap(), types);
-    SuccessResult then = new SuccessResult(emptyList(), emptyMap());
-    simulacron.prime(new Prime(new RequestPrime(when, then)));
+  void error_load_missing_field() throws Exception {
+
+    SimulacronUtils.primeTables(
+        simulacron,
+        new SimulacronUtils.Keyspace(
+            "ks1",
+            new Table(
+                "table1",
+                new Column("a", cint()),
+                new Column("b", varchar()),
+                new Column("c", cboolean()),
+                new Column("d", cint()))));
 
     String[] args = {
       "load",
@@ -520,7 +593,7 @@ class CSVEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      query,
+      "INSERT INTO ks1.table1 (a,b,c,d) VALUES (:a,:b,:c,:d)",
       "--schema.mapping",
       "A = a, B = b, C = c, D = d",
       "--schema.allowMissingFields",
@@ -541,12 +614,12 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void error_load_extra_field(@LogCapture LogInterceptor logs) throws Exception {
-    String query = "INSERT INTO table1 (a,b) VALUES (:a, :b)";
-    Map<String, String> types = ImmutableMap.of("a", "int", "b", "varchar");
-    Query when = new Query(query, emptyList(), emptyMap(), types);
-    SuccessResult then = new SuccessResult(emptyList(), emptyMap());
-    simulacron.prime(new Prime(new RequestPrime(when, then)));
+  void error_load_extra_field() throws Exception {
+
+    SimulacronUtils.primeTables(
+        simulacron,
+        new SimulacronUtils.Keyspace(
+            "ks1", new Table("table1", new Column("a", cint()), new Column("b", varchar()))));
 
     String[] args = {
       "load",
@@ -569,7 +642,7 @@ class CSVEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      query,
+      "INSERT INTO ks1.table1 (a,b) VALUES (:a,:b)",
       "--schema.mapping",
       "A = a, B = b",
       "--schema.allowExtraFields",
@@ -587,10 +660,11 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void full_unload(@LogCapture LogInterceptor logs) throws Exception {
+  void full_unload() throws Exception {
 
-    RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
-    simulacron.prime(new Prime(prime));
+    primeIpByCountryTable(simulacron);
+    RequestPrime select = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
+    simulacron.prime(new Prime(select));
 
     String[] unloadArgs = {
       "unload",
@@ -612,6 +686,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -620,7 +696,7 @@ class CSVEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
-    assertThat(logs.getLoggedMessages())
+    assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Reads: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
@@ -634,8 +710,9 @@ class CSVEndToEndSimulacronIT {
   @Test
   void full_unload_csv_default_modification() throws Exception {
 
-    RequestPrime prime = createQueryWithResultSetWithQuotes(SELECT_FROM_IP_BY_COUNTRY, 24);
-    simulacron.prime(new Prime(prime));
+    primeIpByCountryTable(simulacron);
+    RequestPrime select = createQueryWithResultSetWithQuotes(SELECT_FROM_IP_BY_COUNTRY, 24);
+    simulacron.prime(new Prime(select));
 
     String[] unloadArgs = {
       "unload",
@@ -659,6 +736,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -676,6 +755,7 @@ class CSVEndToEndSimulacronIT {
   @Test
   void full_unload_multi_thread() throws Exception {
 
+    primeIpByCountryTable(simulacron);
     // 1000 rows required to fully exercise writing to 4 files
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 1000);
     simulacron.prime(new Prime(prime));
@@ -698,6 +778,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -713,6 +795,7 @@ class CSVEndToEndSimulacronIT {
   @Test
   void unload_failure_during_read_single_thread() {
 
+    primeIpByCountryTable(simulacron);
     RequestPrime prime =
         createQueryWithError(
             SELECT_FROM_IP_BY_COUNTRY, new SyntaxErrorResult("Invalid table", 0L, false));
@@ -736,6 +819,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -751,6 +836,7 @@ class CSVEndToEndSimulacronIT {
   @Test
   void unload_failure_during_read_multi_thread() {
 
+    primeIpByCountryTable(simulacron);
     RequestPrime prime =
         createQueryWithError(
             SELECT_FROM_IP_BY_COUNTRY, new SyntaxErrorResult("Invalid table", 0L, false));
@@ -774,6 +860,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -787,9 +875,7 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void unload_write_error(
-      @LogCapture(value = DataStaxBulkLoader.class, level = ERROR) LogInterceptor logs,
-      @StreamCapture(STDERR) StreamInterceptor stdErr) {
+  void unload_write_error() {
 
     MockConnector.setDelegate(
         new CSVConnector() {
@@ -814,6 +900,7 @@ class CSVEndToEndSimulacronIT {
           }
         });
 
+    primeIpByCountryTable(simulacron);
     RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 10);
     simulacron.prime(new Prime(prime));
 
@@ -831,6 +918,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -839,16 +928,16 @@ class CSVEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    assertThat(stdErr.getStreamAsString())
-        .contains(logs.getLoggedMessages())
-        .contains("failed: java.io.IOException: booo");
+    assertThat(stdErr.getStreamAsString()).contains("failed: java.io.IOException: booo");
+    assertThat(logs.getAllMessagesAsString()).contains("failed: java.io.IOException: booo");
   }
 
   @Test
-  void validate_stdout(@StreamCapture(STDOUT) StreamInterceptor stdOut) {
+  void validate_stdout() {
 
-    RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
-    simulacron.prime(new Prime(prime));
+    primeIpByCountryTable(simulacron);
+    RequestPrime select = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
+    simulacron.prime(new Prime(select));
 
     String[] args = {
       "unload",
@@ -868,6 +957,8 @@ class CSVEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
