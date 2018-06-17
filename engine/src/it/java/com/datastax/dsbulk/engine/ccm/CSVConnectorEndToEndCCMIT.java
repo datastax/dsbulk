@@ -38,6 +38,7 @@ import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static org.junit.jupiter.api.Assumptions.assumingThat;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
@@ -56,6 +57,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.csv.CSVConnector;
@@ -489,132 +491,146 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void full_load_unload_counters_custom_query_positional() throws Exception {
+  void full_load_unload_counters_custom_query_positional() {
 
-    session.execute("DROP TABLE IF EXISTS counters");
-    session.execute(
-        "CREATE TABLE counters ("
-            + "pk1 int, "
-            + "\"PK2\" int, "
-            + "\"C1\" counter, "
-            + "c2 counter, "
-            + "c3 counter, "
-            + "PRIMARY KEY (pk1, \"PK2\"))");
+    // the UPDATE SET += syntax is only supported in 5.1+
+    assumingThat(
+        ccm.getVersion().compareTo(Version.parse("5.1")) >= 0,
+        () -> {
+          session.execute("DROP TABLE IF EXISTS counters");
+          session.execute(
+              "CREATE TABLE counters ("
+                  + "pk1 int, "
+                  + "\"PK2\" int, "
+                  + "\"C1\" counter, "
+                  + "c2 counter, "
+                  + "c3 counter, "
+                  + "PRIMARY KEY (pk1, \"PK2\"))");
 
-    List<String> args = new ArrayList<>();
-    args.add("load");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
-    args.add("--connector.csv.url");
-    args.add(escapeUserInput(getClass().getResource("/counters.csv")));
-    args.add("--connector.csv.header");
-    args.add("false");
-    args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
-    args.add("--schema.query");
-    args.add(
-        escapeUserInput(
-            "UPDATE counters SET \"C1\" += ?, c2 = c2 + ? WHERE pk1 = ? AND \"PK2\" = ?"));
-    args.add("--schema.mapping");
-    args.add("pk1,PK2,C1,c2");
+          List<String> args = new ArrayList<>();
+          args.add("load");
+          args.add("--log.directory");
+          args.add(escapeUserInput(logDir));
+          args.add("--connector.csv.url");
+          args.add(escapeUserInput(getClass().getResource("/counters.csv")));
+          args.add("--connector.csv.header");
+          args.add("false");
+          args.add("--schema.keyspace");
+          args.add(session.getLoggedKeyspace());
+          args.add("--schema.query");
+          args.add(
+              escapeUserInput(
+                  "UPDATE counters SET \"C1\" += ?, c2 = c2 + ? WHERE pk1 = ? AND \"PK2\" = ?"));
+          args.add("--schema.mapping");
+          args.add("pk1,PK2,C1,c2");
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
-    Row row =
-        session.execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2").one();
-    assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
-    assertThat(row.getLong("c2")).isZero(); // present in the file
-    assertThat(row.isNull("c3")).isTrue(); // not present in the file
+          int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+          assertThat(status).isZero();
+          Row row =
+              session
+                  .execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2")
+                  .one();
+          assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
+          assertThat(row.getLong("c2")).isZero(); // present in the file
+          assertThat(row.isNull("c3")).isTrue(); // not present in the file
 
-    deleteDirectory(logDir);
+          deleteDirectory(logDir);
 
-    args = new ArrayList<>();
-    args.add("unload");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
-    args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
-    args.add("--connector.csv.header");
-    args.add("true");
-    args.add("--connector.csv.maxConcurrentFiles");
-    args.add("1");
-    args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
-    args.add("--schema.query");
-    // Exercise aliased selectors and a custom mapping
-    args.add(
-        escapeUserInput(
-            "SELECT pk1 as \"Field A\", \"PK2\" AS \"Field B\", \"C1\" AS \"Field C\", "
-                + "c2 AS \"Field D\", c3 AS \"Field E\" FROM counters"));
-    args.add("--schema.mapping");
-    args.add(escapeUserInput("\"Field E\",\"Field D\",\"Field C\",\"Field B\",\"Field A\""));
+          args = new ArrayList<>();
+          args.add("unload");
+          args.add("--log.directory");
+          args.add(escapeUserInput(logDir));
+          args.add("--connector.csv.url");
+          args.add(escapeUserInput(unloadDir));
+          args.add("--connector.csv.header");
+          args.add("true");
+          args.add("--connector.csv.maxConcurrentFiles");
+          args.add("1");
+          args.add("--schema.keyspace");
+          args.add(session.getLoggedKeyspace());
+          args.add("--schema.query");
+          // Exercise aliased selectors and a custom mapping
+          args.add(
+              escapeUserInput(
+                  "SELECT pk1 as \"Field A\", \"PK2\" AS \"Field B\", \"C1\" AS \"Field C\", "
+                      + "c2 AS \"Field D\", c3 AS \"Field E\" FROM counters"));
+          args.add("--schema.mapping");
+          args.add(escapeUserInput("\"Field E\",\"Field D\",\"Field C\",\"Field B\",\"Field A\""));
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
-    validateOutputFiles(2, unloadDir);
-    assertThat(readAllLinesInDirectoryAsStream(unloadDir))
-        .containsExactly("Field E,Field D,Field C,Field B,Field A", ",0,42,2,1");
+          status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+          assertThat(status).isZero();
+          validateOutputFiles(2, unloadDir);
+          assertThat(readAllLinesInDirectoryAsStream(unloadDir))
+              .containsExactly("Field E,Field D,Field C,Field B,Field A", ",0,42,2,1");
+        });
   }
 
   @Test
-  void full_load_unload_counters_custom_query_named() throws Exception {
+  void full_load_unload_counters_custom_query_named() {
 
-    session.execute("DROP TABLE IF EXISTS counters");
-    session.execute(
-        "CREATE TABLE counters ("
-            + "pk1 int, "
-            + "\"PK2\" int, "
-            + "\"C1\" counter, "
-            + "c2 counter, "
-            + "c3 counter, "
-            + "PRIMARY KEY (pk1, \"PK2\"))");
+    // the UPDATE SET += syntax is only supported in 5.1+
+    assumingThat(
+        ccm.getVersion().compareTo(Version.parse("5.1")) >= 0,
+        () -> {
+          session.execute("DROP TABLE IF EXISTS counters");
+          session.execute(
+              "CREATE TABLE counters ("
+                  + "pk1 int, "
+                  + "\"PK2\" int, "
+                  + "\"C1\" counter, "
+                  + "c2 counter, "
+                  + "c3 counter, "
+                  + "PRIMARY KEY (pk1, \"PK2\"))");
 
-    List<String> args = new ArrayList<>();
-    args.add("load");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
-    args.add("--connector.csv.url");
-    args.add(escapeUserInput(getClass().getResource("/counters.csv")));
-    args.add("--connector.csv.header");
-    args.add("false");
-    args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
-    args.add("--schema.query");
-    args.add(
-        escapeUserInput(
-            "UPDATE counters SET \"C1\" += :\"fieldC\", c2 = c2 + :\"fieldD\" WHERE pk1 = :\"fieldA\" AND \"PK2\" = :\"fieldB\""));
-    args.add("--schema.mapping");
-    args.add("fieldA,fieldB,fieldC,fieldD");
+          List<String> args = new ArrayList<>();
+          args.add("load");
+          args.add("--log.directory");
+          args.add(escapeUserInput(logDir));
+          args.add("--connector.csv.url");
+          args.add(escapeUserInput(getClass().getResource("/counters.csv")));
+          args.add("--connector.csv.header");
+          args.add("false");
+          args.add("--schema.keyspace");
+          args.add(session.getLoggedKeyspace());
+          args.add("--schema.query");
+          args.add(
+              escapeUserInput(
+                  "UPDATE counters SET \"C1\" += :\"fieldC\", c2 = c2 + :\"fieldD\" WHERE pk1 = :\"fieldA\" AND \"PK2\" = :\"fieldB\""));
+          args.add("--schema.mapping");
+          args.add("fieldA,fieldB,fieldC,fieldD");
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
-    Row row =
-        session.execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2").one();
-    assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
-    assertThat(row.getLong("c2")).isZero(); // present in the file
-    assertThat(row.isNull("c3")).isTrue(); // not present in the file
+          int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+          assertThat(status).isZero();
+          Row row =
+              session
+                  .execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2")
+                  .one();
+          assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
+          assertThat(row.getLong("c2")).isZero(); // present in the file
+          assertThat(row.isNull("c3")).isTrue(); // not present in the file
 
-    deleteDirectory(logDir);
+          deleteDirectory(logDir);
 
-    args = new ArrayList<>();
-    args.add("unload");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
-    args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
-    args.add("--connector.csv.header");
-    args.add("false");
-    args.add("--connector.csv.maxConcurrentFiles");
-    args.add("1");
-    args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
-    args.add("--schema.query");
-    args.add(escapeUserInput("SELECT pk1, \"PK2\", \"C1\", c2, c3 FROM counters"));
+          args = new ArrayList<>();
+          args.add("unload");
+          args.add("--log.directory");
+          args.add(escapeUserInput(logDir));
+          args.add("--connector.csv.url");
+          args.add(escapeUserInput(unloadDir));
+          args.add("--connector.csv.header");
+          args.add("false");
+          args.add("--connector.csv.maxConcurrentFiles");
+          args.add("1");
+          args.add("--schema.keyspace");
+          args.add(session.getLoggedKeyspace());
+          args.add("--schema.query");
+          args.add(escapeUserInput("SELECT pk1, \"PK2\", \"C1\", c2, c3 FROM counters"));
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
-    validateOutputFiles(1, unloadDir);
-    assertThat(readAllLinesInDirectoryAsStream(unloadDir)).containsExactly("1,2,42,0,");
+          status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+          assertThat(status).isZero();
+          validateOutputFiles(1, unloadDir);
+          assertThat(readAllLinesInDirectoryAsStream(unloadDir)).containsExactly("1,2,42,0,");
+        });
   }
 
   /** Attempts to load and unload a larger dataset which can be batched. */
