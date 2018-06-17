@@ -24,7 +24,7 @@ public class HighlightingMessageConverter extends MessageConverter {
       msg = ansi().fgYellow().a(event.getFormattedMessage()).reset().toString();
     }
     if (event.getLevel().toInt() >= Level.ERROR_INT) {
-      msg = ansi().fgRed().a(event.getFormattedMessage()).reset().toString();
+      msg = ansi().fgBrightRed().a(event.getFormattedMessage()).reset().toString();
     }
     return msg;
   }
