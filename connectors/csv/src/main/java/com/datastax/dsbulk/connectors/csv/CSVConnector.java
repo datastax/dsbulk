@@ -180,6 +180,8 @@ public class CSVConnector implements Connector {
       writerSettings = new CsvWriterSettings();
       writerSettings.setFormat(format);
       writerSettings.setQuoteEscapingEnabled(true);
+      writerSettings.setIgnoreLeadingWhitespaces(false);
+      writerSettings.setIgnoreTrailingWhitespaces(false);
       counter = new AtomicInteger(0);
     }
   }
