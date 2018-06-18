@@ -35,7 +35,7 @@ public class Version implements Comparable<Version> {
             System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CASSANDRA_VERSION", "3.10"));
 
     DEFAULT_DSE_VERSION =
-        parse(System.getProperty("com.datastax.dsbulk.commons.tests.ccm.DSE_VERSION", "5.1.4"));
+        parse(System.getProperty("com.datastax.dsbulk.commons.tests.ccm.DSE_VERSION", "6.0.0"));
   }
 
   public static Version parse(String versionStr) {

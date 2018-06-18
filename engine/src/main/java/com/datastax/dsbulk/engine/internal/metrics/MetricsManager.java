@@ -385,12 +385,14 @@ public class MetricsManager implements AutoCloseable {
       // if the workflow hasn't been interrupted,
       // and before any closing message is printed.
       consoleReporter.report();
+      consoleReporter = null;
     }
     running.set(false);
   }
 
   @Override
   public void close() {
+    stop();
     if (consoleReporter != null) {
       consoleReporter.close();
     }

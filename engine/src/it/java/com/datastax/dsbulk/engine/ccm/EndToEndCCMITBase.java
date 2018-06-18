@@ -25,7 +25,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class EndToEndCCMITBase {
 
-  private final CCMCluster ccm;
+  protected final CCMCluster ccm;
   final Session session;
 
   protected EndToEndCCMITBase(CCMCluster ccm, Session session) {
