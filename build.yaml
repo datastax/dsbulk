@@ -4,7 +4,7 @@ schedules:
     schedule: per_commit
     matrix:
       exclude:
-        - cassandra: ['dse-4.8', 'dse-5.0']
+        - cassandra: ['dse-5.0', 'dse-5.1']
   nightly:
     # Run full suite nightly on change for all primary branches if they have changes.
     schedule: nightly
@@ -23,6 +23,7 @@ os:
 cassandra:
   - dse-5.0
   - dse-5.1
+  - dse-6.0
 build:
   - type: maven
     version: 3.2.5
