@@ -473,18 +473,32 @@ public class DefaultCCMCluster implements CCMCluster {
     String storageItf = ip + ":" + storagePort;
     String binaryItf = ip + ":" + binaryPort;
     String remoteLogItf = ip + ":" + findAvailablePort();
-    execute(
-        CCM_COMMAND
-            + " add node%d -d dc%s -i %s -t %s -l %s --binary-itf %s -j %d -r %s -s -b"
-            + (dse ? " --dse" : ""),
-        n,
-        dc,
-        ip,
-        thriftItf,
-        storageItf,
-        binaryItf,
-        findAvailablePort(),
-        remoteLogItf);
+    if (version.compareTo(Version.parse("6.0.0"))>= 0) {
+      execute(
+          CCM_COMMAND
+              + " add node%d -d dc%s -i %s -l %s --binary-itf %s -j %d -r %s -s -b"
+              + (dse ? " --dse" : ""),
+          n,
+          dc,
+          ip,
+          storageItf,
+          binaryItf,
+          findAvailablePort(),
+          remoteLogItf);
+    } else {
+      execute(
+          CCM_COMMAND
+              + " add node%d -d dc%s -i %s -t %s -l %s --binary-itf %s -j %d -r %s -s -b"
+              + (dse ? " --dse" : ""),
+          n,
+          dc,
+          ip,
+          thriftItf,
+          storageItf,
+          binaryItf,
+          findAvailablePort(),
+          remoteLogItf);
+    }
   }
 
   @Override
@@ -840,21 +854,25 @@ public class DefaultCCMCluster implements CCMCluster {
       Map<String, Object> dseConfiguration = randomizePorts(this.dseConfiguration);
       if (dse && version.compareTo(Version.parse("5.0")) >= 0) {
         if (!dseConfiguration.containsKey("lease_netty_server_port")) {
-          dseConfiguration.put("lease_netty_server_port", NetworkUtils.findAvailablePort());
+          dseConfiguration.put("lease_netty_server_port", findAvailablePort());
         }
         if (!dseConfiguration.containsKey("internode_messaging_options.port")) {
           dseConfiguration.put(
-              "internode_messaging_options.port", NetworkUtils.findAvailablePort());
+              "internode_messaging_options.port", findAvailablePort());
         }
         // only useful if at least one node has graph workload
         if (!dseConfiguration.containsKey("graph.gremlin_server.port")) {
-          dseConfiguration.put("graph.gremlin_server.port", NetworkUtils.findAvailablePort());
+          dseConfiguration.put("graph.gremlin_server.port", findAvailablePort());
         }
       }
       int storagePort = Integer.parseInt(cassandraConfiguration.get("storage_port").toString());
       int thriftPort = Integer.parseInt(cassandraConfiguration.get("rpc_port").toString());
       int binaryPort =
           Integer.parseInt(cassandraConfiguration.get("native_transport_port").toString());
+      if (dse && version.compareTo(Version.parse("6.0.0")) >= 0) {
+        cassandraConfiguration.remove("start_rpc");
+        cassandraConfiguration.remove("rpc_port");
+      }
       DefaultCCMCluster ccm =
           new DefaultCCMCluster(
               clusterName,
