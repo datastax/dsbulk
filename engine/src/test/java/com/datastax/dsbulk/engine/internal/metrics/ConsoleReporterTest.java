@@ -69,9 +69,9 @@ class ConsoleReporterTest {
     reporter.report();
     assertThat(stderr.getStreamAsString())
         .isEqualTo(
-            "total | failed | rows/s | mb/s | kb/row | p50 ms | p99ms | p999ms"
+            "total | failed | rows/s | mb/s | kb/row | p50ms | p99ms | p999ms"
                 + System.lineSeparator()
-                + "    0 |      0 |      0 | 0.00 |   0.00 |   0.00 |  0.00 |   0.00"
+                + "    0 |      0 |      0 | 0.00 |   0.00 |  0.00 |  0.00 |   0.00"
                 + System.lineSeparator());
     stderr.clear();
     writes.update(10, MILLISECONDS);
@@ -86,7 +86,7 @@ class ConsoleReporterTest {
     reporter.report();
     assertThat(stderr.getStreamAsString())
         .matches(
-            "total \\| failed \\| rows/s \\| mb/s \\| kb/row \\| p50 ms \\| p99ms \\| p999ms"
+            "total \\| failed \\| rows/s \\| mb/s \\| kb/row \\| p50ms \\| p99ms \\| p999ms"
                 + System.lineSeparator()
                 + "    3 \\|      1 \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+"
                 + System.lineSeparator());
@@ -116,9 +116,9 @@ class ConsoleReporterTest {
     reporter.report();
     assertThat(stderr.getStreamAsString())
         .isEqualTo(
-            "total | failed | achieved | rows/s | mb/s | kb/row | p50 ms | p99ms | p999ms | batches"
+            "total | failed | achieved | rows/s | mb/s | kb/row | p50ms | p99ms | p999ms | batches"
                 + System.lineSeparator()
-                + "    0 |      0 |       0% |      0 | 0.00 |   0.00 |   0.00 |  0.00 |   0.00 |    0.00"
+                + "    0 |      0 |       0% |      0 | 0.00 |   0.00 |  0.00 |  0.00 |   0.00 |    0.00"
                 + System.lineSeparator());
     stderr.clear();
     writes.update(10, MILLISECONDS);
@@ -133,7 +133,7 @@ class ConsoleReporterTest {
     reporter.report();
     assertThat(stderr.getStreamAsString())
         .matches(
-            "total \\| failed \\| achieved \\| rows/s \\| mb/s \\| kb/row \\| p50 ms \\| p99ms \\| p999ms \\| batches"
+            "total \\| failed \\| achieved \\| rows/s \\| mb/s \\| kb/row \\| p50ms \\| p99ms \\| p999ms \\| batches"
                 + System.lineSeparator()
                 + "    3 \\|      1 \\|       0% \\|\\s+[\\d,]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|   15\\.00"
                 + System.lineSeparator());

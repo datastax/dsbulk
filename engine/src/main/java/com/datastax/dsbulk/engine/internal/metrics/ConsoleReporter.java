@@ -178,7 +178,7 @@ public class ConsoleReporter extends ScheduledReporter {
       String p50Str = format("%,.2f", p50);
       String p99Str = format("%,.2f", p99);
       String p999Str = format("%,.2f", p999);
-      String p50Label = "p50 " + durationUnit;
+      String p50Label = "p50" + durationUnit;
       String p99Label = "p99" + durationUnit;
       String p999Label = "p999" + durationUnit;
       int p50Length = max(p50Label.length(), p50Str.length());
