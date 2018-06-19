@@ -655,6 +655,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
           <configuration>
             <excludes>
               <exclude>com/datastax/dsbulk/commons/cql3/Cql*</exclude>
+              <exclude>com/datastax/dsbulk/engine/schema/generated/Mapping*</exclude>
             </excludes>
           </configuration>
         </plugin>
