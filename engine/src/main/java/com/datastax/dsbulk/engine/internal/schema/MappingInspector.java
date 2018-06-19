@@ -9,9 +9,9 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.engine.schema.MappingBaseVisitor;
-import com.datastax.dsbulk.engine.schema.MappingLexer;
-import com.datastax.dsbulk.engine.schema.MappingParser;
+import com.datastax.dsbulk.engine.schema.generated.MappingBaseVisitor;
+import com.datastax.dsbulk.engine.schema.generated.MappingLexer;
+import com.datastax.dsbulk.engine.schema.generated.MappingParser;
 import com.google.common.base.CharMatcher;
 import com.google.common.collect.ImmutableBiMap;
 import java.util.ArrayList;
