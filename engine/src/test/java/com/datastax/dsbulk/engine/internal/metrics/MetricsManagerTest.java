@@ -214,7 +214,7 @@ class MetricsManagerTest {
         .contains("Throughput:")
         .contains("Latencies:");
     assertThat(stderr.getStreamAsString())
-        .contains("total | failed | rows/s | mb/s | kb/row | p50 ms | p99ms | p999ms | batches");
+        .contains("total | failed | rows/s | mb/s | kb/row | p50ms | p99ms | p999ms | batches");
   }
 
   @Test
@@ -314,6 +314,6 @@ class MetricsManagerTest {
         .contains("Throughput:")
         .contains("Latencies:");
     assertThat(stderr.getStreamAsString())
-        .contains("total | failed | rows/s | mb/s | kb/row | p50 ms | p99ms | p999ms | batches");
+        .contains("total | failed | rows/s | mb/s | kb/row | p50ms | p99ms | p999ms | batches");
   }
 }
