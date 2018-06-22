@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.executor.api.listener;
 
-import com.datastax.driver.core.Statement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.Optional;
 
 /**

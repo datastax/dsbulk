@@ -15,13 +15,19 @@
 
   <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
 
-  <conversionRule conversionWord="msgx" converterClass="com.datastax.dsbulk.engine.internal.log.HighlightingMessageConverter" />
+  <conversionRule conversionWord="msgx"
+                  converterClass="com.datastax.dsbulk.engine.internal.log.HighlightingMessageConverter"/>
 
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <target>System.err</target>
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
       <level>INFO</level>
     </filter>
+    <!--
+    Don't print metrics on the console;
+    metrics for the console are handled by ConsoleReporter
+    which bypasses the logging system.
+    -->
     <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
       <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
         <marker>METRICS</marker>
@@ -40,7 +46,8 @@
     <appender-ref ref="CONSOLE"/>
   </root>
 
-  <logger name="com.datastax.driver" level="WARN"/>
+  <logger name="com.datastax.oss.driver" level="WARN"/>
+  <logger name="com.datastax.dse.driver" level="WARN"/>
   <logger name="io.netty" level="WARN"/>
   <logger name="reactor.core" level="WARN"/>
 

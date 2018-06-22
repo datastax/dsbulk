@@ -12,14 +12,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.CCMExtension;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
 import com.datastax.dsbulk.executor.api.BulkExecutorITBase;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.servererrors.SyntaxError;
 import io.reactivex.Flowable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -32,11 +32,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public abstract class BulkExecutorCCMITBase extends BulkExecutorITBase {
 
   private final CCMCluster ccm;
-  private final Session session;
+  private final CqlSession session;
 
   public BulkExecutorCCMITBase(
       CCMCluster ccm,
-      Session session,
+      CqlSession session,
       BulkExecutor failFastExecutor,
       BulkExecutor failSafeExecutor) {
     super(failFastExecutor, failSafeExecutor);

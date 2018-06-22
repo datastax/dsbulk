@@ -8,26 +8,26 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
-
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.ColumnDefinitions.Definition;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.Collection;
+import java.util.Set;
 import java.util.function.Supplier;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,22 +44,22 @@ public class DefaultReadResultMapper implements ReadResultMapper {
     this.recordMetadata = recordMetadata;
   }
 
-  @NotNull
+  @NonNull
   @Override
-  public Record map(@NotNull ReadResult result) {
+  public Record map(@NonNull ReadResult result) {
     Row row = result.getRow().orElseThrow(IllegalStateException::new);
     Supplier<URI> resource =
         () ->
             getRowResource(row, result.getExecutionInfo().orElseThrow(IllegalStateException::new));
     try {
       DefaultRecord record = new DefaultRecord(result, resource, -1);
-      for (Definition def : row.getColumnDefinitions()) {
-        CQLIdentifier variable = CQLIdentifier.fromInternal(def.getName());
-        String name = variable.render(VARIABLE);
+      for (ColumnDefinition def : row.getColumnDefinitions()) {
+        CQLWord variable = CQLWord.fromInternal(def.getName().asInternal());
+        CqlIdentifier name = variable.asIdentifier();
         DataType cqlType = def.getType();
-        Collection<Field> fields = mapping.variableToFields(variable);
+        Set<Field> fields = mapping.variableToFields(variable);
         for (Field field : fields) {
-          TypeToken<?> fieldType = null;
+          GenericType<?> fieldType = null;
           try {
             fieldType = recordMetadata.getFieldType(field, cqlType);
             TypeCodec<?> codec = mapping.codec(variable, cqlType, fieldType);
@@ -68,7 +68,8 @@ public class DefaultReadResultMapper implements ReadResultMapper {
           } catch (Exception e) {
             String msg =
                 String.format(
-                    "Could not deserialize column %s of type %s as %s", name, cqlType, fieldType);
+                    "Could not deserialize column %s of type %s as %s",
+                    name.asCql(true), cqlType, fieldType);
             throw new IllegalArgumentException(msg, e);
           }
         }
@@ -97,12 +98,15 @@ public class DefaultReadResultMapper implements ReadResultMapper {
    */
   private static URI getRowResource(Row row, ExecutionInfo executionInfo) {
     try {
-      InetSocketAddress host = executionInfo.getQueriedHost().getSocketAddress();
+      Node coordinator = executionInfo.getCoordinator();
+      // always present for executed queries
+      assert coordinator != null;
+      InetSocketAddress host = (InetSocketAddress) coordinator.getEndPoint().resolve();
       ColumnDefinitions resultVariables = row.getColumnDefinitions();
       // this might break if the statement has no result variables (unlikely)
       // or if the first variable is not associated to a keyspace and table (also unlikely)
-      String keyspace = resultVariables.getKeyspace(0);
-      String table = resultVariables.getTable(0);
+      String keyspace = resultVariables.get(0).getKeyspace().asInternal();
+      String table = resultVariables.get(0).getTable().asInternal();
       String sb =
           "cql://"
               + host.getAddress().getHostAddress()

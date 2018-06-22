@@ -8,12 +8,12 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.connectors.api.Record;
-import org.jetbrains.annotations.NotNull;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 public interface RecordMapper {
 
-  @NotNull
-  Statement map(@NotNull Record record);
+  @NonNull
+  BatchableStatement<?> map(@NonNull Record record);
 }

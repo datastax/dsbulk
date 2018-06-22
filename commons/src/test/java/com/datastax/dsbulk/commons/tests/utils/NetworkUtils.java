@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 public class NetworkUtils {
 
   /**
-   * The default IP prefix to use when assigning Ip addresses to nodes in a remote cluster.
+   * The default IP prefix to use when assigning Ip addresses to nodes in a remote session.
    *
    * <p>By default, the prefix is {@code 127.0.0.}, which means that IP addresses will be allocated
    * starting with {@code 127.0.0.1}, {@code 127.0.0.2}, etc.
@@ -106,7 +106,7 @@ public class NetworkUtils {
    * Returns all contact points for a given IP prefix and given numbers of nodes per DC.
    *
    * <p>The returned addresses can be used as contact points for clients wishing to connect to the
-   * remote cluster, e.g. when building a {@code Cluster} instance with the DataStax Java driver.
+   * remote cluster, e.g. when building a {@code Session} instance with the DataStax Java driver.
    *
    * @param ipPrefix The IP prefix to use (e.g. {@code 127.0.1.}).
    * @param nodesPerDC the number of nodes in each DC.

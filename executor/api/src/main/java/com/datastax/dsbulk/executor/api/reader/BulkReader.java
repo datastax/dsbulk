@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.reader;
 
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.util.concurrent.Uninterruptibles;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import org.reactivestreams.Publisher;

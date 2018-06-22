@@ -8,26 +8,26 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.math.BigInteger;
 import java.util.Objects;
-import org.jetbrains.annotations.NotNull;
 
 class RandomToken implements Token<BigInteger> {
 
   private final BigInteger value;
 
-  RandomToken(@NotNull BigInteger value) {
+  RandomToken(@NonNull BigInteger value) {
     this.value = value;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public BigInteger value() {
     return value;
   }
 
   @Override
-  public int compareTo(@NotNull Token<BigInteger> that) {
+  public int compareTo(@NonNull Token<BigInteger> that) {
     return this.value().compareTo(that.value());
   }
 

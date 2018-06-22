@@ -8,13 +8,12 @@
  */
 package com.datastax.dsbulk.engine.internal.metrics;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.createMainLogFileAppender;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.setQuiet;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.setVerbose;
-import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.slf4j.event.Level.DEBUG;
@@ -23,10 +22,6 @@ import static org.slf4j.event.Level.WARN;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.codahale.metrics.MetricRegistry;
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -43,6 +38,13 @@ import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.datastax.dsbulk.executor.api.listener.WritesReportingExecutionListener;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
+import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,12 +64,12 @@ class MetricsManagerTest {
   private Record record2;
   private Record record3;
 
-  private Statement stmt3;
+  private Statement<?> stmt3;
 
   private BatchStatement batch;
 
-  private ProtocolVersion protocolVersion = V4;
-  private CodecRegistry codecRegistry = new CodecRegistry();
+  private ProtocolVersion protocolVersion = ProtocolVersion.DEFAULT;
+  private CodecRegistry codecRegistry = CodecRegistry.DEFAULT;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -81,10 +83,12 @@ class MetricsManagerTest {
     record2 = DefaultRecord.indexed(source2, resource2, -1, "irrelevant");
     record3 =
         new DefaultErrorRecord(source3, () -> resource3, -1, new RuntimeException("irrelevant"));
-    Statement stmt1 = new BulkSimpleStatement<>(record1, "irrelevant");
-    Statement stmt2 = new BulkSimpleStatement<>(record2, "irrelevant");
+    BatchableStatement stmt1 =
+        new BulkSimpleStatement<>(record1, SimpleStatement.newInstance("irrelevant"));
+    BatchableStatement stmt2 =
+        new BulkSimpleStatement<>(record2, SimpleStatement.newInstance("irrelevant"));
     stmt3 = new UnmappableStatement(record3, new RuntimeException("irrelevant"));
-    batch = new BatchStatement().add(stmt1).add(stmt2);
+    batch = BatchStatement.newInstance(DefaultBatchType.UNLOGGED).add(stmt1).add(stmt2);
   }
 
   @AfterEach
@@ -152,7 +156,7 @@ class MetricsManagerTest {
             codecRegistry)) {
       manager.init();
       manager.start();
-      Flux<Statement> statements = Flux.just(batch, stmt3);
+      Flux<Statement<?>> statements = Flux.just(batch, stmt3);
       statements.transform(manager.newBatcherMonitor()).blockLast();
       manager.stop();
       manager.close();

@@ -8,12 +8,12 @@
  */
 package com.datastax.dsbulk.connectors.api;
 
-import org.jetbrains.annotations.NotNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 /** A field in a {@link Record} identified by an alphanumeric name. */
 public interface MappedField extends Field {
 
   /** @return The field name. */
-  @NotNull
+  @NonNull
   String getFieldName();
 }

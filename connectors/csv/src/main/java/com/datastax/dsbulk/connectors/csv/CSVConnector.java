@@ -29,8 +29,8 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.common.TextParsingException;
@@ -40,6 +40,7 @@ import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
 import java.io.Reader;
@@ -66,7 +67,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,7 +89,7 @@ import reactor.core.scheduler.Schedulers;
 public class CSVConnector implements Connector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
-  private static final TypeToken<String> STRING_TYPE_TOKEN = TypeToken.of(String.class);
+  private static final GenericType<String> STRING_TYPE = GenericType.STRING;
   private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
   private static final String URL = "url";
@@ -194,7 +194,7 @@ public class CSVConnector implements Connector {
     }
   }
 
-  @NotNull
+  @NonNull
   private List<URL> loadURLs(LoaderConfig settings) {
     if (isPathPresentAndNotEmpty(settings, URLFILE)) {
       // suppress URL option
@@ -290,7 +290,7 @@ public class CSVConnector implements Connector {
 
   @Override
   public RecordMetadata getRecordMetadata() {
-    return (field, cqlType) -> STRING_TYPE_TOKEN;
+    return (field, cqlType) -> STRING_TYPE;
   }
 
   @Override
@@ -604,7 +604,7 @@ public class CSVConnector implements Connector {
         LOGGER.trace("Writing record {} to {}", record, url);
         writer.writeRow(record.values());
       } catch (TextWritingException e) {
-        if ((!(e.getCause() instanceof ClosedChannelException))) {
+        if (!(e.getCause() instanceof ClosedChannelException)) {
           throw new IOException(String.format("Error writing to %s", url), e);
         }
       }
@@ -638,7 +638,7 @@ public class CSVConnector implements Connector {
           writer = null;
         } catch (RuntimeException e) {
           // all serious errors are wrapped in an IllegalStateException with no useful information
-          if ((!(e.getCause() instanceof ClosedChannelException))) {
+          if (!(e.getCause() instanceof ClosedChannelException)) {
             throw new IOException(String.format("Error closing %s", url), e.getCause());
           }
         }

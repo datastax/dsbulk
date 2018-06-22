@@ -8,14 +8,14 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
-import com.google.common.collect.ComparisonChain;
-import com.google.common.collect.Lists;
+import com.datastax.oss.driver.shaded.guava.common.collect.ComparisonChain;
+import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Groups small, contiguous token ranges sharing the same replicas in order to reduce the total
@@ -46,7 +46,7 @@ class TokenRangeClusterer<V extends Number, T extends Token<V>> {
    * latter favors data locality (i.e. groups even non-continguous ranges as long as they share at
    * least one common replica).
    */
-  @NotNull
+  @NonNull
   List<TokenRange<V, T>> group(List<TokenRange<V, T>> ranges) {
     Deque<TokenRange<V, T>> sorted = sortRanges(ranges);
     List<TokenRange<V, T>> grouped = new ArrayList<>();

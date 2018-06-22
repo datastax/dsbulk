@@ -9,14 +9,15 @@
 package com.datastax.dsbulk.engine.internal.statement;
 
 import com.datastax.dsbulk.connectors.api.Record;
-import com.google.common.base.MoreObjects;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.shaded.guava.common.base.MoreObjects;
 
 public class UnmappableStatement extends BulkSimpleStatement<Record> {
 
   private final Throwable error;
 
   public UnmappableStatement(Record record, Throwable error) {
-    super(record, error.getMessage());
+    super(record, SimpleStatement.newInstance(error.getMessage()));
     this.error = error;
   }
 

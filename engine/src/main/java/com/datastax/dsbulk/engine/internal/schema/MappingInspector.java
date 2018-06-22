@@ -29,10 +29,12 @@ import com.datastax.dsbulk.engine.generated.schema.MappingParser.IndexOrFunction
 import com.datastax.dsbulk.engine.generated.schema.MappingParser.KeyspaceNameContext;
 import com.datastax.dsbulk.engine.generated.schema.MappingParser.SimpleEntryContext;
 import com.datastax.dsbulk.engine.generated.schema.MappingParser.VariableContext;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.LinkedHashMultimap;
-import com.google.common.collect.Multimap;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMultimap;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
+import com.datastax.oss.driver.shaded.guava.common.collect.LinkedHashMultimap;
+import com.datastax.oss.driver.shaded.guava.common.collect.Multimap;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -49,8 +51,6 @@ import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class MappingInspector extends MappingBaseVisitor<MappingToken> {
 
@@ -60,12 +60,12 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   private static final String EXTERNAL_TTL_VARNAME = "__ttl";
   private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
 
-  private static final CQLIdentifier WRITETIME = CQLIdentifier.fromInternal("writetime");
+  private static final CQLWord WRITETIME = CQLWord.fromInternal("writetime");
 
   private final MappingPreference mappingPreference;
   private final WorkflowType workflowType;
-  private final CQLIdentifier usingTimestampVariable;
-  private final CQLIdentifier usingTTLVariable;
+  private final CQLWord usingTimestampVariable;
+  private final CQLWord usingTTLVariable;
 
   private final Set<CQLFragment> writeTimeVariablesBuilder = new LinkedHashSet<>();
   private final ImmutableSet<CQLFragment> writeTimeVariables;
@@ -82,11 +82,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   private boolean hasUsingTTL = false;
 
   public MappingInspector(
-      @NotNull String mapping,
-      @NotNull WorkflowType workflowType,
-      @NotNull MappingPreference mappingPreference,
-      @Nullable CQLIdentifier usingTimestampVariable,
-      @Nullable CQLIdentifier usingTTLVariable) {
+      @NonNull String mapping,
+      @NonNull WorkflowType workflowType,
+      @NonNull MappingPreference mappingPreference,
+      @Nullable CQLWord usingTimestampVariable,
+      @Nullable CQLWord usingTTLVariable) {
     this.workflowType = workflowType;
     this.mappingPreference = mappingPreference;
     this.usingTimestampVariable = usingTimestampVariable;
@@ -264,14 +264,14 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
     checkInferring();
     inferring = true;
     for (VariableContext variableContext : ctx.variable()) {
-      CQLIdentifier variable = visitVariable(variableContext);
+      CQLWord variable = visitVariable(variableContext);
       excludedVariables.add(variable);
     }
     return null;
   }
 
   @Override
-  @NotNull
+  @NonNull
   public MappingField visitFieldOrFunction(MappingParser.FieldOrFunctionContext ctx) {
     if (ctx.field() != null) {
       return visitField(ctx.field());
@@ -281,7 +281,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   @Override
-  @NotNull
+  @NonNull
   public MappedMappingField visitField(MappingParser.FieldContext ctx) {
     MappedMappingField field;
     if (ctx.QUOTED_IDENTIFIER() != null) {
@@ -293,7 +293,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   @Override
-  @NotNull
+  @NonNull
   public CQLFragment visitVariableOrFunction(MappingParser.VariableOrFunctionContext ctx) {
     if (ctx.variable() != null) {
       return visitVariable(ctx.variable());
@@ -303,11 +303,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   @Override
-  @NotNull
-  public CQLIdentifier visitVariable(VariableContext ctx) {
-    CQLIdentifier variable;
+  @NonNull
+  public CQLWord visitVariable(VariableContext ctx) {
+    CQLWord variable;
     if (ctx.QUOTED_IDENTIFIER() != null) {
-      variable = CQLIdentifier.fromCql(ctx.QUOTED_IDENTIFIER().getText());
+      variable = CQLWord.fromCql(ctx.QUOTED_IDENTIFIER().getText());
     } else {
       String text = ctx.UNQUOTED_IDENTIFIER().getText();
       // Rename the user-specified __ttl and __timestamp vars to the (legal) bound variable
@@ -332,7 +332,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
         // Note: contrary to how the CQL grammar handles unquoted identifiers,
         // in a mapping entry we do not lower-case the unquoted identifier,
         // to avoid forcing users to quote identifiers just because they are case-sensitive.
-        variable = CQLIdentifier.fromInternal(text);
+        variable = CQLWord.fromInternal(text);
       }
     }
     if (variable.equals(usingTimestampVariable)) {
@@ -346,7 +346,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   @Override
-  @NotNull
+  @NonNull
   public FunctionCall visitFunction(FunctionContext ctx) {
     FunctionCall functionCall;
     if (ctx.WRITETIME() != null) {
@@ -355,11 +355,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
               null, WRITETIME, Collections.singletonList(visitFunctionArg(ctx.functionArg())));
       writeTimeVariablesBuilder.add(functionCall);
     } else {
-      CQLIdentifier keyspaceName = null;
+      CQLWord keyspaceName = null;
       if (ctx.qualifiedFunctionName().keyspaceName() != null) {
         keyspaceName = visitKeyspaceName(ctx.qualifiedFunctionName().keyspaceName());
       }
-      CQLIdentifier functionName = visitFunctionName(ctx.qualifiedFunctionName().functionName());
+      CQLWord functionName = visitFunctionName(ctx.qualifiedFunctionName().functionName());
       List<CQLFragment> args = new ArrayList<>();
       if (ctx.functionArgs() != null) {
         for (FunctionArgContext arg : ctx.functionArgs().functionArg()) {
@@ -372,36 +372,36 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   @Override
-  public CQLIdentifier visitKeyspaceName(KeyspaceNameContext ctx) {
-    CQLIdentifier keyspaceName;
+  public CQLWord visitKeyspaceName(KeyspaceNameContext ctx) {
+    CQLWord keyspaceName;
     if (ctx.QUOTED_IDENTIFIER() != null) {
-      keyspaceName = CQLIdentifier.fromCql(ctx.QUOTED_IDENTIFIER().getText());
+      keyspaceName = CQLWord.fromCql(ctx.QUOTED_IDENTIFIER().getText());
     } else {
-      keyspaceName = CQLIdentifier.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
+      keyspaceName = CQLWord.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
     }
     return keyspaceName;
   }
 
   @Override
-  @NotNull
-  public CQLIdentifier visitFunctionName(FunctionNameContext ctx) {
-    CQLIdentifier functionName;
+  @NonNull
+  public CQLWord visitFunctionName(FunctionNameContext ctx) {
+    CQLWord functionName;
     if (ctx.QUOTED_IDENTIFIER() != null) {
-      functionName = CQLIdentifier.fromCql(ctx.QUOTED_IDENTIFIER().getText());
+      functionName = CQLWord.fromCql(ctx.QUOTED_IDENTIFIER().getText());
     } else {
-      functionName = CQLIdentifier.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
+      functionName = CQLWord.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
     }
     return functionName;
   }
 
   @Override
-  @NotNull
+  @NonNull
   public CQLFragment visitFunctionArg(FunctionArgContext ctx) {
     CQLFragment functionArg;
     if (ctx.QUOTED_IDENTIFIER() != null) {
-      functionArg = CQLIdentifier.fromCql(ctx.QUOTED_IDENTIFIER().getText());
+      functionArg = CQLWord.fromCql(ctx.QUOTED_IDENTIFIER().getText());
     } else if (ctx.UNQUOTED_IDENTIFIER() != null) {
-      functionArg = CQLIdentifier.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
+      functionArg = CQLWord.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
     } else {
       functionArg = new CQLLiteral(ctx.getText());
     }

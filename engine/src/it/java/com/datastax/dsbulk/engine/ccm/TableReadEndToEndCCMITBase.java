@@ -8,27 +8,19 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
-import static com.datastax.driver.core.DriverCoreEngineTestHooks.compose;
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static com.datastax.driver.core.TypeCodec.cint;
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.utils.CQLUtils.createKeyspaceSimpleStrategy;
-import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
-import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
-import static java.nio.file.Files.createTempDirectory;
+import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
+import static com.datastax.oss.driver.internal.core.util.RoutingKey.compose;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Duration.ONE_MINUTE;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Token;
-import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -38,10 +30,15 @@ import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode;
 import com.datastax.dsbulk.engine.tests.MockConnector;
-import com.google.common.collect.Lists;
-import java.io.IOException;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.metadata.Metadata;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
+import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import java.nio.ByteBuffer;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -53,7 +50,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -73,15 +69,14 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
   private final LogInterceptor logs;
   private final StreamInterceptor stdout;
 
-  private Path logDir;
   private AtomicInteger records;
   private int expectedTotal;
   private Map<String, Map<String, Map<TokenRange, Integer>>> allRanges;
-  private Map<String, Map<String, Map<Host, Integer>>> allHosts;
+  private Map<String, Map<String, Map<Node, Integer>>> allNodes;
   private Map<String, Map<String, Map<String, Integer>>> allBiggestPartitions;
 
   TableReadEndToEndCCMITBase(
-      CCMCluster ccm, Session session, LogInterceptor logs, StreamInterceptor stdout) {
+      CCMCluster ccm, CqlSession session, LogInterceptor logs, StreamInterceptor stdout) {
     super(ccm, session);
     this.logs = logs;
     this.stdout = stdout;
@@ -102,14 +97,12 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("mock");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--schema.keyspace");
     args.add(keyspace);
     args.add("--schema.table");
     args.add(table);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertUnload();
@@ -159,14 +152,12 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("mock");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--schema.keyspace");
     args.add(keyspace);
     args.add("--schema.table");
     args.add(table + "_mv");
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertUnload();
@@ -187,13 +178,11 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("mock");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--schema.query");
     args.add(quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
     args.add(table);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertUnload();
@@ -214,8 +203,6 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("mock");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--schema.query");
     if (table.equals("SINGLE_PK")) {
       args.add(
@@ -232,7 +219,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     }
     args.add(table);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertUnload();
@@ -244,8 +231,6 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
     List<String> args = new ArrayList<>();
     args.add("count");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("-stats");
     args.add(modes.stream().map(Enum::name).collect(Collectors.joining(",")));
     args.add("--schema.keyspace");
@@ -253,7 +238,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add(table);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertCount(keyspace, table, modes);
@@ -265,14 +250,12 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
     List<String> args = new ArrayList<>();
     args.add("count");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("-stats");
     args.add(modes.stream().map(Enum::name).collect(Collectors.joining(",")));
     args.add("--schema.query");
     args.add(quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertCount(keyspace, table, modes);
@@ -302,11 +285,13 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
       }
     }
     if (modes.contains(StatisticsMode.hosts)) {
-      Map<Host, Integer> hosts = allHosts.get(keyspace).get(table);
-      for (Map.Entry<Host, Integer> entry : hosts.entrySet()) {
+      Map<Node, Integer> hosts = allNodes.get(keyspace).get(table);
+      for (Map.Entry<Node, Integer> entry : hosts.entrySet()) {
         assertThat(lines)
             .anyMatch(
-                line -> line.startsWith(String.format("%s %s", entry.getKey(), entry.getValue())));
+                line ->
+                    line.startsWith(
+                        String.format("%s %s", entry.getKey().getEndPoint(), entry.getValue())));
       }
     }
     if (modes.contains(StatisticsMode.partitions)) {
@@ -340,7 +325,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
         "CREATE TABLE rf_3.composite_pk (\"PK1\" int, \"PK2\" int, cc int, v int, PRIMARY KEY ((\"PK1\", \"PK2\"), cc))");
 
     allRanges = new HashMap<>();
-    allHosts = new HashMap<>();
+    allNodes = new HashMap<>();
     allBiggestPartitions = new HashMap<>();
 
     populateSinglePkTable("RF_1");
@@ -360,19 +345,9 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
   }
 
   @BeforeEach
-  void setUpDirs() throws IOException {
-    logDir = createTempDirectory("logs");
-  }
-
-  @BeforeEach
   void clearLogs() {
     logs.clear();
     stdout.clear();
-  }
-
-  @AfterEach
-  void deleteDirs() {
-    deleteDirectory(logDir);
   }
 
   @BeforeEach
@@ -382,12 +357,12 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   private void populateSinglePkTable(String keyspace) {
     Map<TokenRange, Integer> ranges = new HashMap<>();
-    Map<Host, Integer> hosts = new HashMap<>();
-    Metadata metadata = session.getCluster().getMetadata();
+    Map<Node, Integer> nodes = new HashMap<>();
+    Metadata metadata = session.getMetadata();
     expectedTotal = 0;
     for (int pk = 0; pk < 100; pk++) {
       for (int cc = 0; cc < 100; cc++) {
-        insertIntoSinglePkTable(keyspace, ranges, hosts, metadata, pk, cc);
+        insertIntoSinglePkTable(keyspace, ranges, nodes, metadata, pk, cc);
         expectedTotal++;
       }
     }
@@ -395,7 +370,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     for (int pk = 100; pk < 110; pk++) {
       int cc = 0;
       for (; cc < pk + 1; cc++) {
-        insertIntoSinglePkTable(keyspace, ranges, hosts, metadata, pk, cc);
+        insertIntoSinglePkTable(keyspace, ranges, nodes, metadata, pk, cc);
         expectedTotal++;
       }
       biggestPartitions.put(Integer.toString(pk), cc);
@@ -404,18 +379,18 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
         .computeIfAbsent(keyspace, k -> new HashMap<>())
         .put("SINGLE_PK", biggestPartitions);
     allRanges.computeIfAbsent(keyspace, k -> new HashMap<>()).put("SINGLE_PK", ranges);
-    allHosts.computeIfAbsent(keyspace, k -> new HashMap<>()).put("SINGLE_PK", hosts);
+    allNodes.computeIfAbsent(keyspace, k -> new HashMap<>()).put("SINGLE_PK", nodes);
   }
 
   private void populateCompositePkTable(String keyspace) {
     Map<TokenRange, Integer> ranges = new HashMap<>();
-    Map<Host, Integer> hosts = new HashMap<>();
-    Metadata metadata = session.getCluster().getMetadata();
+    Map<Node, Integer> nodes = new HashMap<>();
+    Metadata metadata = session.getMetadata();
     expectedTotal = 0;
     for (int pk1 = 0; pk1 < 10; pk1++) {
       for (int pk2 = 0; pk2 < 10; pk2++) {
         for (int cc = 0; cc < 100; cc++) {
-          insertIntoCompositePkTable(keyspace, ranges, hosts, metadata, pk1, pk2, cc);
+          insertIntoCompositePkTable(keyspace, ranges, nodes, metadata, pk1, pk2, cc);
           expectedTotal++;
         }
       }
@@ -424,7 +399,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     for (int pk1 = 10; pk1 < 20; pk1++) {
       int cc = 0;
       for (; cc < 91 + pk1; cc++) {
-        insertIntoCompositePkTable(keyspace, ranges, hosts, metadata, pk1, 0, cc);
+        insertIntoCompositePkTable(keyspace, ranges, nodes, metadata, pk1, 0, cc);
         expectedTotal++;
       }
       biggestPartitions.put(pk1 + "|0", cc);
@@ -433,24 +408,25 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
         .computeIfAbsent(keyspace, k -> new HashMap<>())
         .put("composite_pk", biggestPartitions);
     allRanges.computeIfAbsent(keyspace, k -> new HashMap<>()).put("composite_pk", ranges);
-    allHosts.computeIfAbsent(keyspace, k -> new HashMap<>()).put("composite_pk", hosts);
+    allNodes.computeIfAbsent(keyspace, k -> new HashMap<>()).put("composite_pk", nodes);
   }
 
   private void insertIntoSinglePkTable(
       String keyspace,
       Map<TokenRange, Integer> ranges,
-      Map<Host, Integer> hosts,
+      Map<Node, Integer> nodes,
       Metadata metadata,
       int i,
       int j) {
-    ByteBuffer bb1 = cint().serialize(i, V4);
-    Set<Host> replicas = metadata.getReplicas(keyspace, bb1);
-    for (Host replica : replicas) {
-      hosts.compute(replica, (r, t) -> t == null ? 1 : t + 1);
+    ByteBuffer bb1 = TypeCodecs.INT.encode(i, V4);
+    TokenMap tokenMap = metadata.getTokenMap().get();
+    Set<Node> replicas = tokenMap.getReplicas(keyspace, bb1);
+    for (Node replica : replicas) {
+      nodes.compute(replica, (r, t) -> t == null ? 1 : t + 1);
     }
-    Token token = metadata.newToken(bb1);
+    Token token = tokenMap.newToken(bb1);
     TokenRange range =
-        metadata.getTokenRanges().stream().filter(r -> r.contains(token)).findFirst().orElse(null);
+        tokenMap.getTokenRanges().stream().filter(r -> r.contains(token)).findFirst().orElse(null);
     ranges.compute(range, (r, t) -> t == null ? 1 : t + 1);
     session.execute(
         String.format(
@@ -460,20 +436,21 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
   private void insertIntoCompositePkTable(
       String keyspace,
       Map<TokenRange, Integer> ranges,
-      Map<Host, Integer> hosts,
+      Map<Node, Integer> nodes,
       Metadata metadata,
       int i,
       int j,
       int k) {
-    ByteBuffer bb1 = cint().serialize(i, V4);
-    ByteBuffer bb2 = cint().serialize(j, V4);
-    Set<Host> replicas = metadata.getReplicas(keyspace, compose(bb1, bb2));
-    for (Host replica : replicas) {
-      hosts.compute(replica, (r, t) -> t == null ? 1 : t + 1);
+    ByteBuffer bb1 = TypeCodecs.INT.encode(i, V4);
+    ByteBuffer bb2 = TypeCodecs.INT.encode(j, V4);
+    TokenMap tokenMap = metadata.getTokenMap().get();
+    Set<Node> replicas = tokenMap.getReplicas(keyspace, compose(bb1, bb2));
+    for (Node replica : replicas) {
+      nodes.compute(replica, (r, t) -> t == null ? 1 : t + 1);
     }
-    Token token = metadata.newToken(bb1, bb2);
+    Token token = tokenMap.newToken(bb1, bb2);
     TokenRange range =
-        metadata.getTokenRanges().stream().filter(r -> r.contains(token)).findFirst().orElse(null);
+        tokenMap.getTokenRanges().stream().filter(r -> r.contains(token)).findFirst().orElse(null);
     ranges.compute(range, (r, t) -> t == null ? 1 : t + 1);
     session.execute(
         String.format(

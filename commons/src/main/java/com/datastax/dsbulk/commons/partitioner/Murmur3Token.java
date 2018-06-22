@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Objects;
-import org.jetbrains.annotations.NotNull;
 
 class Murmur3Token implements Token<Long> {
 
@@ -20,13 +20,13 @@ class Murmur3Token implements Token<Long> {
   }
 
   @Override
-  @NotNull
+  @NonNull
   public Long value() {
     return value;
   }
 
   @Override
-  public int compareTo(@NotNull Token<Long> that) {
+  public int compareTo(@NonNull Token<Long> that) {
     return Long.compare(this.value(), that.value());
   }
 

@@ -13,32 +13,35 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.codahale.metrics.MetricRegistry;
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.listener.DefaultExecutionContext;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import java.nio.ByteBuffer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class MetricsCollectingExecutionListenerTest {
 
-  private final Statement successfulRead = new SimpleStatement("irrelevant", 42);
-  private final Statement failedRead = new SimpleStatement("irrelevant", 42);
+  private final Statement successfulRead = SimpleStatement.newInstance("irrelevant", 42);
+  private final Statement failedRead = SimpleStatement.newInstance("irrelevant", 42);
 
   private final Statement successfulWrite =
-      new BatchStatement()
-          .add(new SimpleStatement("irrelevant", 42))
-          .add(new SimpleStatement("irrelevant", 42));
+      BatchStatement.newInstance(
+          DefaultBatchType.UNLOGGED,
+          SimpleStatement.newInstance("irrelevant", 42),
+          SimpleStatement.newInstance("irrelevant", 42));
   private final Statement failedWrite =
-      new BatchStatement()
-          .add(new SimpleStatement("irrelevant", 42))
-          .add(new SimpleStatement("irrelevant", 42));
+      BatchStatement.newInstance(
+          DefaultBatchType.UNLOGGED,
+          SimpleStatement.newInstance("irrelevant", 42),
+          SimpleStatement.newInstance("irrelevant", 42));
 
   private final Row row = mock(Row.class);
 
@@ -131,10 +134,7 @@ class MetricsCollectingExecutionListenerTest {
 
     MetricsCollectingExecutionListener listener =
         new MetricsCollectingExecutionListener(
-            new MetricRegistry(),
-            ProtocolVersion.NEWEST_SUPPORTED,
-            CodecRegistry.DEFAULT_INSTANCE,
-            false);
+            new MetricRegistry(), ProtocolVersion.DEFAULT, CodecRegistry.DEFAULT, false);
 
     assertThat(listener.getBytesSentMeter()).isNotPresent();
     assertThat(listener.getBytesReceivedMeter()).isNotPresent();

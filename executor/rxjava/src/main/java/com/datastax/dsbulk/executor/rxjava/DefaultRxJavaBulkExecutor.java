@@ -8,9 +8,6 @@
  */
 package com.datastax.dsbulk.executor.rxjava;
 
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutor;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
@@ -19,6 +16,9 @@ import com.datastax.dsbulk.executor.api.internal.publisher.ReadResultPublisher;
 import com.datastax.dsbulk.executor.api.internal.publisher.WriteResultPublisher;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import io.reactivex.Flowable;
 import io.reactivex.Single;
 import java.util.Objects;
@@ -36,22 +36,23 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
   /**
    * Creates a new builder of {@link DefaultRxJavaBulkExecutor} instances.
    *
-   * @param session The {@link Session} to use.
+   * @param session The {@link CqlSession} to use.
    * @return a new builder.
    */
-  public static DefaultRxJavaBulkExecutorBuilder builder(Session session) {
+  public static DefaultRxJavaBulkExecutorBuilder builder(CqlSession session) {
     return new DefaultRxJavaBulkExecutorBuilder(session);
   }
 
   /**
-   * Creates a new instance using the given {@link Session} and using defaults for all parameters.
+   * Creates a new instance using the given {@link CqlSession} and using defaults for all
+   * parameters.
    *
-   * <p>If you need to customize your executor, use the {@link #builder(Session) builder} method
+   * <p>If you need to customize your executor, use the {@link #builder(CqlSession) builder} method
    * instead.
    *
-   * @param session the {@link Session} to use.
+   * @param session the {@link CqlSession} to use.
    */
-  public DefaultRxJavaBulkExecutor(Session session) {
+  public DefaultRxJavaBulkExecutor(CqlSession session) {
     super(session);
   }
 
@@ -191,7 +192,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
 
   @Override
   public Flowable<ReadResult> readReactive(String statement) throws BulkExecutionException {
-    return readReactive(new SimpleStatement(statement));
+    return readReactive(SimpleStatement.newInstance(statement));
   }
 
   @Override

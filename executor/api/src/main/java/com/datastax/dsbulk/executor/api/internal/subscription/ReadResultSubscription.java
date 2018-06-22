@@ -8,35 +8,33 @@
  */
 package com.datastax.dsbulk.executor.api.internal.subscription;
 
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.collect.AbstractIterator;
-import com.google.common.util.concurrent.RateLimiter;
+import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.shaded.guava.common.collect.AbstractIterator;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
+import java.util.Iterator;
 import java.util.concurrent.Semaphore;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Subscriber;
 
 @SuppressWarnings("UnstableApiUsage")
-public class ReadResultSubscription extends ResultSubscription<ReadResult, ResultSet> {
-
-  private final int pageSize;
+public class ReadResultSubscription extends ResultSubscription<ReadResult, AsyncResultSet> {
 
   public ReadResultSubscription(
-      @NotNull Subscriber<? super ReadResult> subscriber,
-      @NotNull Statement statement,
+      @NonNull Subscriber<? super ReadResult> subscriber,
+      @NonNull Statement<?> statement,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
       @Nullable Semaphore maxConcurrentQueries,
       @Nullable RateLimiter rateLimiter,
-      boolean failFast,
-      int pageSize) {
+      boolean failFast) {
     super(
         subscriber,
         statement,
@@ -45,13 +43,27 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
         maxConcurrentQueries,
         rateLimiter,
         failFast);
-    this.pageSize = pageSize;
   }
 
   @Override
-  Page toPage(ResultSet rs, ExecutionContext local) {
-    return new Page(
-        new ReadResultIterator(rs, local), isLastPage(rs) ? rs::fetchMoreResults : null);
+  Page toPage(AsyncResultSet rs, ExecutionContext local) {
+    Iterator<Row> rows = rs.currentPage().iterator();
+    Iterator<ReadResult> results =
+        new AbstractIterator<ReadResult>() {
+
+          @Override
+          protected ReadResult computeNext() {
+            if (rows.hasNext()) {
+              Row row = rows.next();
+              if (listener != null) {
+                listener.onRowReceived(row, local);
+              }
+              return new DefaultReadResult(statement, rs.getExecutionInfo(), row);
+            }
+            return endOfData();
+          }
+        };
+    return new Page(results, rs.hasMorePages() ? rs::fetchNextPage : null);
   }
 
   @Override
@@ -67,7 +79,7 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
   }
 
   @Override
-  void onRequestSuccessful(ResultSet rs, ExecutionContext local) {
+  void onRequestSuccessful(AsyncResultSet resultSet, ExecutionContext local) {
     if (listener != null) {
       listener.onReadRequestSuccessful(statement, local);
     }
@@ -81,50 +93,9 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
   }
 
   @Override
-  boolean isLastPage(ResultSet page) {
-    return page.getExecutionInfo().getPagingState() != null;
-  }
-
-  @Override
   void onBeforeResultEmitted(ReadResult result) {
     if (rateLimiter != null) {
       rateLimiter.acquire();
-    }
-  }
-
-  private class ReadResultIterator extends AbstractIterator<ReadResult> {
-
-    private final ResultSet rs;
-    private final ExecutionContext local;
-    private int remaining;
-
-    public ReadResultIterator(ResultSet rs, ExecutionContext local) {
-      this.rs = rs;
-      this.remaining = pageSize;
-      this.local = local;
-    }
-
-    @Override
-    protected ReadResult computeNext() {
-      // DON'T rely on iterator.hasNext(), that
-      // iterator only stops when the result set is fully fetched,
-      // and triggers blocking background requests for the next pages.
-      // DON'T rely either on rs.getAvailableWithoutFetching(),
-      // it reports the total number of rows available in all pages,
-      // including subsequent ones that were preemptively fetched, and
-      // usually reports too many rows.
-      if (remaining-- > 0) {
-        Row row = rs.one();
-        // row will be null if this is the last page and the actual page size
-        // is less than pageSize
-        if (row != null) {
-          if (listener != null) {
-            listener.onRowReceived(row, local);
-          }
-          return new DefaultReadResult(statement, rs.getExecutionInfo(), row);
-        }
-      }
-      return endOfData();
     }
   }
 }

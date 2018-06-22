@@ -14,8 +14,8 @@ import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
-import com.google.common.base.Functions;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.shaded.guava.common.base.Functions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,7 +60,7 @@ public final class MockConnector implements Connector {
 
           @Override
           public RecordMetadata getRecordMetadata() {
-            return (field, cql) -> TypeToken.of(String.class);
+            return (field, cql) -> GenericType.STRING;
           }
 
           @Override
@@ -109,7 +109,7 @@ public final class MockConnector implements Connector {
 
           @Override
           public RecordMetadata getRecordMetadata() {
-            return (field, cql) -> TypeToken.of(String.class);
+            return (field, cql) -> GenericType.STRING;
           }
 
           @Override
@@ -160,7 +160,7 @@ public final class MockConnector implements Connector {
 
           @Override
           public RecordMetadata getRecordMetadata() {
-            return (field, cql) -> TypeToken.of(String.class);
+            return (field, cql) -> GenericType.STRING;
           }
 
           @Override

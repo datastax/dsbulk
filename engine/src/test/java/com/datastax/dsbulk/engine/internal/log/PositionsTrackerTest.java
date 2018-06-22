@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.log;
 
-import static com.google.common.collect.Lists.newArrayList;
+import static com.datastax.oss.driver.shaded.guava.common.collect.Lists.newArrayList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;

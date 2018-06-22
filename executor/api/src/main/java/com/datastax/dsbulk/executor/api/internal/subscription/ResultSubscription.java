@@ -8,19 +8,19 @@
  */
 package com.datastax.dsbulk.executor.api.internal.subscription;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.listener.DefaultExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.Result;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
-import com.google.common.util.concurrent.RateLimiter;
+import com.datastax.oss.driver.api.core.AsyncPagingIterable;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Queue;
@@ -32,8 +32,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.jctools.queues.SpscArrayQueue;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -41,15 +39,18 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A single-subscriber subscription that executes the provided {@link Statement} with the provided
- * {@link Session} and emits all the rows returned by the query to its {@link Subscriber}.
+ * {@link CqlSession} and emits all the rows returned by the query to its {@link Subscriber}.
  *
- * @param <P> the page type, one of {@link com.datastax.driver.core.ResultSet} or {@link
- *     com.datastax.driver.core.AsyncContinuousPagingResult}.
+ * @param <P> the page type, one of {@link com.datastax.oss.driver.api.core.cql.AsyncResultSet
+ *     AsyncResultSet} or {@link
+ *     com.datastax.dse.driver.api.core.cql.continuous.ContinuousAsyncResultSet
+ *     ContinuousAsyncResultSet}.
  * @param <R> the result type ({@link com.datastax.dsbulk.executor.api.result.WriteResult} or {@link
  *     com.datastax.dsbulk.executor.api.result.ReadResult}).
  */
 @SuppressWarnings("UnstableApiUsage")
-public abstract class ResultSubscription<R extends Result, P> implements Subscription {
+public abstract class ResultSubscription<R extends Result, P extends AsyncPagingIterable<Row, P>>
+    implements Subscription {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResultSubscription.class);
 
@@ -60,7 +61,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    */
 
   private Subscriber<? super R> subscriber;
-  final Statement statement;
+  final Statement<?> statement;
 
   /*
   The following are supplied by the BulkExecutor and
@@ -135,8 +136,8 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   private volatile boolean cancelled = false;
 
   ResultSubscription(
-      @NotNull Subscriber<? super R> subscriber,
-      @NotNull Statement statement,
+      @NonNull Subscriber<? super R> subscriber,
+      @NonNull Statement<?> statement,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
       @Nullable Semaphore maxConcurrentQueries,
@@ -161,7 +162,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    *
    * @param initial the future that, once complete, will produce the first page.
    */
-  public void start(Callable<ListenableFuture<P>> initial) {
+  public void start(Callable<CompletionStage<? extends P>> initial) {
     global.start();
     if (listener != null) {
       listener.onExecutionStarted(statement, global);
@@ -350,7 +351,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
                 maxConcurrentRequests.release();
               }
               if (maxConcurrentQueries != null) {
-                boolean isLastPageOrError = t != null || isLastPage(rs);
+                boolean isLastPageOrError = t != null || !rs.hasMorePages();
                 if (isLastPageOrError) {
                   maxConcurrentQueries.release();
                 }
@@ -534,16 +535,10 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   abstract Page toPage(P rs, ExecutionContext local);
 
   /** Converts the given error into a {@link Page}, containing the error as its only element. */
-  Page toErrorPage(Throwable t) {
+  private Page toErrorPage(Throwable t) {
     BulkExecutionException error = new BulkExecutionException(t, statement);
     return new Page(Collections.singleton(toErrorResult(error)).iterator(), null);
   }
-
-  /**
-   * @param page The page to inspect.
-   * @return {@code true} if this is the last page, {@code false} otherwise.
-   */
-  abstract boolean isLastPage(P page);
 
   /**
    * Creates a result from the given error.
@@ -563,17 +558,17 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   class Page {
 
     final Iterator<R> rows;
-    final Callable<ListenableFuture<P>> nextPage;
+    final Callable<CompletionStage<? extends P>> nextPage;
     final CompletableFuture<Void> fullyConsumed;
 
     /** called only from start() */
-    private Page(Callable<ListenableFuture<P>> nextPage) {
+    private Page(Callable<CompletionStage<? extends P>> nextPage) {
       this.nextPage = nextPage;
       this.rows = Collections.emptyIterator();
       fullyConsumed = initial;
     }
 
-    Page(Iterator<R> rows, Callable<ListenableFuture<P>> nextPage) {
+    Page(Iterator<R> rows, Callable<CompletionStage<? extends P>> nextPage) {
       this.nextPage = nextPage;
       this.rows = rows;
       fullyConsumed = new CompletableFuture<>();
@@ -583,9 +578,9 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
       return nextPage != null;
     }
 
-    CompletionStage<P> nextPage() {
+    CompletionStage<? extends P> nextPage() {
       try {
-        return toCompletableFuture(nextPage.call());
+        return nextPage.call();
       } catch (Exception e) {
         // This is a synchronous failure in the driver.
         // We treat it as a failed future.
@@ -602,24 +597,5 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     R nextRow() {
       return rows.next();
     }
-  }
-
-  private static <T> CompletableFuture<T> toCompletableFuture(ListenableFuture<T> guavaFuture) {
-    CompletableFuture<T> completableFuture = new CompletableFuture<>();
-    Futures.addCallback(
-        guavaFuture,
-        new FutureCallback<T>() {
-          @Override
-          public void onFailure(@NotNull Throwable throwable) {
-            completableFuture.completeExceptionally(throwable);
-          }
-
-          @Override
-          public void onSuccess(T t) {
-            completableFuture.complete(t);
-          }
-        },
-        MoreExecutors.directExecutor());
-    return completableFuture;
   }
 }

@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 class ConnectorSettingsTest {
 
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
-      ConfigFactory.defaultReference().getConfig("dsbulk.connector");
+      ConfigFactory.load().getConfig("dsbulk.connector");
 
   @Test
   void should_find_csv_connector_short_name() {

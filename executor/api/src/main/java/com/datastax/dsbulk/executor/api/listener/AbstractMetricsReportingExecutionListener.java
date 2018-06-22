@@ -10,9 +10,9 @@ package com.datastax.dsbulk.executor.api.listener;
 
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.ScheduledReporter;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -51,32 +51,33 @@ public abstract class AbstractMetricsReportingExecutionListener extends Schedule
   }
 
   @Override
-  public void onExecutionStarted(Statement statement, ExecutionContext context) {
+  public void onExecutionStarted(Statement<?> statement, ExecutionContext context) {
     delegate.onExecutionStarted(statement, context);
   }
 
   @Override
-  public void onWriteRequestStarted(Statement statement, ExecutionContext context) {
+  public void onWriteRequestStarted(Statement<?> statement, ExecutionContext context) {
     delegate.onWriteRequestStarted(statement, context);
   }
 
   @Override
-  public void onReadRequestStarted(Statement statement, ExecutionContext context) {
+  public void onReadRequestStarted(Statement<?> statement, ExecutionContext context) {
     delegate.onReadRequestStarted(statement, context);
   }
 
   @Override
-  public void onWriteRequestSuccessful(Statement statement, ExecutionContext context) {
+  public void onWriteRequestSuccessful(Statement<?> statement, ExecutionContext context) {
     delegate.onWriteRequestSuccessful(statement, context);
   }
 
   @Override
-  public void onWriteRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+  public void onWriteRequestFailed(
+      Statement<?> statement, Throwable error, ExecutionContext context) {
     delegate.onWriteRequestFailed(statement, error, context);
   }
 
   @Override
-  public void onReadRequestSuccessful(Statement statement, ExecutionContext context) {
+  public void onReadRequestSuccessful(Statement<?> statement, ExecutionContext context) {
     delegate.onReadRequestSuccessful(statement, context);
   }
 
@@ -86,12 +87,13 @@ public abstract class AbstractMetricsReportingExecutionListener extends Schedule
   }
 
   @Override
-  public void onReadRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+  public void onReadRequestFailed(
+      Statement<?> statement, Throwable error, ExecutionContext context) {
     delegate.onReadRequestFailed(statement, error, context);
   }
 
   @Override
-  public void onExecutionSuccessful(Statement statement, ExecutionContext context) {
+  public void onExecutionSuccessful(Statement<?> statement, ExecutionContext context) {
     delegate.onExecutionSuccessful(statement, context);
   }
 

@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.commons.config;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.commons.internal.reflection.ReflectionUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigMergeable;
@@ -25,78 +24,6 @@ public interface LoaderConfig extends Config {
   String TYPE_ANNOTATION = "@type";
 
   String LEAF_ANNOTATION = "@leaf";
-
-  /**
-   * Returns a new instance of the class name at the given path.
-   *
-   * <p>Short class names are allowed and will be resolved against common package names.
-   *
-   * @param <T> the expected type.
-   * @param path path expression.
-   * @param expected The expected class or interface that the object should be an instance of.
-   * @return the newly-allocated object corresponding to the class name at the requested path.
-   * @throws ConfigException.Missing if value is absent or null.
-   * @throws ConfigException.WrongType if value is not convertible to a Path.
-   * @throws ConfigException.BadValue if the object is not of the expected type.
-   */
-  default <T> T getInstance(String path, Class<T> expected) {
-    String setting = getString(path);
-    try {
-      Object o = ReflectionUtils.newInstance(setting);
-      if (expected.isAssignableFrom(o.getClass())) {
-        @SuppressWarnings("unchecked")
-        T ret = (T) o;
-        return ret;
-      }
-      throw new ConfigException.BadValue(
-          origin(),
-          path,
-          String.format(
-              "Object does not extend nor implement %s: %s",
-              expected.getSimpleName(), o.getClass().getSimpleName()));
-    } catch (Exception e) {
-      throw new ConfigException.WrongType(
-          origin(),
-          String.format("%s: Expecting FQCN or short class name, got '%s'", path, setting),
-          e);
-    }
-  }
-
-  /**
-   * Returns the {@link Class} object at the given path.
-   *
-   * <p>Short class names are allowed and will be resolved against common package names.
-   *
-   * @param <T> the expected type.
-   * @param path path expression.
-   * @param expected The expected class or interface that the object should be an instance of.
-   * @return the Class object corresponding to the class name at the requested path.
-   * @throws ConfigException.Missing if value is absent or null.
-   * @throws ConfigException.WrongType if value is not convertible to a Path.
-   * @throws ConfigException.BadValue if the object is not of the expected type.
-   */
-  default <T> Class<? extends T> getClass(String path, Class<T> expected) {
-    String setting = getString(path);
-    try {
-      Class<?> c = ReflectionUtils.resolveClass(setting);
-      if (expected.isAssignableFrom(c)) {
-        @SuppressWarnings("unchecked")
-        Class<T> ret = (Class<T>) c;
-        return ret;
-      }
-      throw new ConfigException.BadValue(
-          origin(),
-          path,
-          String.format(
-              "Class does not extend nor implement %s: %s",
-              expected.getSimpleName(), c.getSimpleName()));
-    } catch (Exception e) {
-      throw new ConfigException.WrongType(
-          origin(),
-          String.format("%s: Expecting FQCN or short class name, got '%s'", path, setting),
-          e);
-    }
-  }
 
   /**
    * Returns the {@link Path} object at the given path.

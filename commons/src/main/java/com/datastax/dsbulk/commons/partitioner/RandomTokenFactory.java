@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.math.BigInteger;
-import org.jetbrains.annotations.NotNull;
 
 /** A {@link TokenFactory} for the Random Partitioner. */
 public class RandomTokenFactory implements TokenFactory<BigInteger, Token<BigInteger>> {
@@ -26,27 +26,27 @@ public class RandomTokenFactory implements TokenFactory<BigInteger, Token<BigInt
 
   private RandomTokenFactory() {}
 
-  @NotNull
+  @NonNull
   @Override
   public Token<BigInteger> minToken() {
     return MIN_TOKEN;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Token<BigInteger> maxToken() {
     return MAX_TOKEN;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public BigInteger totalTokenCount() {
     return TOTAL_TOKEN_COUNT;
   }
 
-  @NotNull
+  @NonNull
   @Override
-  public BigInteger distance(@NotNull Token<BigInteger> token1, @NotNull Token<BigInteger> token2) {
+  public BigInteger distance(@NonNull Token<BigInteger> token1, @NonNull Token<BigInteger> token2) {
     BigInteger left = token1.value();
     BigInteger right = token2.value();
     if (right.compareTo(left) > 0) {
@@ -56,15 +56,15 @@ public class RandomTokenFactory implements TokenFactory<BigInteger, Token<BigInt
     }
   }
 
-  @NotNull
+  @NonNull
   @Override
   public TokenRangeSplitter<BigInteger, Token<BigInteger>> splitter() {
     return RandomTokenRangeSplitter.INSTANCE;
   }
 
-  @NotNull
+  @NonNull
   @Override
-  public RandomToken tokenFromString(@NotNull String string) {
+  public RandomToken tokenFromString(@NonNull String string) {
     return new RandomToken(new BigInteger(string));
   }
 }

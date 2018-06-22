@@ -8,12 +8,12 @@
  */
 package com.datastax.dsbulk.executor.reactor.ccm;
 
-import com.datastax.driver.core.SerializedSession;
-import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
-import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
+import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
+import com.datastax.dsbulk.executor.api.SerializedSession;
 import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
+import com.datastax.oss.driver.api.core.CqlSession;
 import org.junit.jupiter.api.Tag;
 
 @Tag("medium")
@@ -21,7 +21,8 @@ class DefaultReactorBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 
   DefaultReactorBulkExecutorCCMIT(
       CCMCluster ccm,
-      @ClusterConfig(queryOptions = "fetchSize:10" /* to force pagination */) Session session) {
+      @SessionConfig(settings = "basic.request.page-size=10" /* to force pagination */)
+          CqlSession session) {
     super(
         ccm,
         session,

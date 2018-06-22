@@ -1,5 +1,10 @@
 ## Changelog
 
+## 1.4.0
+
+- [improvement] DAT-303: Update DSBulk to Java DSE Driver 2.x.
+
+
 ### 1.3.4
 
 - [bug] DAT-414: DSBulk should allow INSERT queries without clustering column when all columns are static.
@@ -39,6 +44,12 @@
 
 
 ### 1.3.0
+### 2.0.0-alpha1 (in progress)
+
+- [improvement] DAT-303: Update DSBulk to use Java DSE Driver 2.0.
+
+
+### 1.3.0 (in progress)
 
 - [bug] DAT-334: Murmur3TokenRangeSplitter should allow long overflows when splitting ranges.
 - [improvement] DAT-336: Extend DSBulk's rate limiting capability to reads.

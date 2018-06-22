@@ -10,6 +10,8 @@ package com.datastax.dsbulk.commons.partitioner;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.List;
@@ -21,10 +23,14 @@ import org.junit.jupiter.api.Test;
 
 class TokenRangeClustererTest {
 
-  private InetSocketAddress node1 = InetSocketAddress.createUnresolved("192.168.123.1", 9042);
-  private InetSocketAddress node2 = InetSocketAddress.createUnresolved("192.168.123.2", 9042);
-  private InetSocketAddress node3 = InetSocketAddress.createUnresolved("192.168.123.3", 9042);
-  private InetSocketAddress node4 = InetSocketAddress.createUnresolved("192.168.123.4", 9042);
+  private EndPoint node1 =
+      new DefaultEndPoint(InetSocketAddress.createUnresolved("192.168.123.1", 9042));
+  private EndPoint node2 =
+      new DefaultEndPoint(InetSocketAddress.createUnresolved("192.168.123.2", 9042));
+  private EndPoint node3 =
+      new DefaultEndPoint(InetSocketAddress.createUnresolved("192.168.123.3", 9042));
+  private EndPoint node4 =
+      new DefaultEndPoint(InetSocketAddress.createUnresolved("192.168.123.4", 9042));
 
   @Test
   void testEmpty() {
@@ -114,8 +120,7 @@ class TokenRangeClustererTest {
     Assertions.assertThat(groups).containsExactly(tr1, tr2, tr3);
   }
 
-  private static TokenRange<Long, Token<Long>> range(
-      long start, long end, Set<InetSocketAddress> nodes) {
+  private static TokenRange<Long, Token<Long>> range(long start, long end, Set<EndPoint> nodes) {
     Token<Long> startToken = new Murmur3Token(start);
     Token<Long> endToken = new Murmur3Token(end);
     return new TokenRange<>(startToken, endToken, nodes, Murmur3TokenFactory.INSTANCE);

@@ -64,7 +64,7 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
   }
 
   @Override
-  public void afterEach(ExtensionContext context) throws Exception {
+  public void afterEach(ExtensionContext context) {
     BoundCluster boundCluster = getOrCreateBoundCluster(context);
     boundCluster.clearLogs();
     boundCluster.clearPrimes(true);

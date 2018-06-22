@@ -8,18 +8,16 @@
  */
 package com.datastax.dsbulk.executor.api.internal.publisher;
 
-import com.datastax.driver.core.Configuration;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.internal.subscription.ReadResultSubscription;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.util.concurrent.RateLimiter;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
@@ -31,8 +29,8 @@ import org.reactivestreams.Subscriber;
 @SuppressWarnings("UnstableApiUsage")
 public class ReadResultPublisher implements Publisher<ReadResult> {
 
-  private final Statement statement;
-  private final Session session;
+  private final Statement<?> statement;
+  private final CqlSession session;
   private final @Nullable ExecutionListener listener;
   private final @Nullable Semaphore maxConcurrentRequests;
   private final @Nullable Semaphore maxConcurrentQueries;
@@ -44,11 +42,11 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
    * throughput regulation.
    *
    * @param statement The {@link Statement} to execute.
-   * @param session The {@link Session} to use.
+   * @param session The {@link CqlSession} to use.
    * @param failFast whether to fail-fast in case of error.
    */
   public ReadResultPublisher(
-      @NotNull Statement statement, @NotNull Session session, boolean failFast) {
+      @NonNull Statement<?> statement, @NonNull CqlSession session, boolean failFast) {
     this(statement, session, failFast, null, null, null, null);
   }
 
@@ -56,7 +54,7 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
    * Creates a new {@link ReadResultPublisher}.
    *
    * @param statement The {@link Statement} to execute.
-   * @param session The {@link Session} to use.
+   * @param session The {@link CqlSession} to use.
    * @param failFast whether to fail-fast in case of error.
    * @param listener The {@link ExecutionListener} to use.
    * @param maxConcurrentRequests The {@link Semaphore} to use to regulate the amount of in-flight
@@ -66,8 +64,8 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
    * @param rateLimiter The {@link RateLimiter} to use to regulate throughput.
    */
   public ReadResultPublisher(
-      @NotNull Statement statement,
-      @NotNull Session session,
+      @NonNull Statement<?> statement,
+      @NonNull CqlSession session,
       boolean failFast,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
@@ -97,8 +95,7 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
             maxConcurrentRequests,
             maxConcurrentQueries,
             rateLimiter,
-            failFast,
-            getPageSize());
+            failFast);
     try {
       subscriber.onSubscribe(subscription);
       // must be called after onSubscribe
@@ -115,21 +112,5 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
               t));
     }
     // As per 2.13, this method must return normally (i.e. not throw)
-  }
-
-  private int getPageSize() {
-    session.getCluster().init();
-    Configuration configuration = session.getCluster().getConfiguration();
-    ProtocolVersion version = configuration.getProtocolOptions().getProtocolVersion();
-    int fetchSize;
-    if (version == ProtocolVersion.V1) {
-      fetchSize = Integer.MAX_VALUE;
-    } else {
-      fetchSize = statement.getFetchSize();
-      if (fetchSize <= 0) {
-        fetchSize = configuration.getQueryOptions().getFetchSize();
-      }
-    }
-    return fetchSize;
   }
 }

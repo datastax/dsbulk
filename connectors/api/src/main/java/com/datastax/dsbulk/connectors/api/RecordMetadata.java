@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.connectors.api;
 
-import com.datastax.driver.core.DataType;
-import com.google.common.reflect.TypeToken;
-import org.jetbrains.annotations.NotNull;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 /**
  * Defines metadata applicable to a {@link com.datastax.dsbulk.connectors.api.Record record}, in
@@ -25,6 +25,6 @@ public interface RecordMetadata {
    * @param cqlType the CQL type associated with the given field.
    * @return the type of the given field.
    */
-  @NotNull
-  TypeToken<?> getFieldType(@NotNull Field field, @NotNull DataType cqlType);
+  @NonNull
+  GenericType<?> getFieldType(@NonNull Field field, @NonNull DataType cqlType);
 }

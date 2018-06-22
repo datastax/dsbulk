@@ -10,17 +10,14 @@ package com.datastax.dsbulk.engine.simulacron;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
-import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createSimpleParameterizedQuery;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.primeIpByCountryTable;
-import static java.nio.file.Files.createTempDirectory;
 import static org.slf4j.event.Level.ERROR;
 
-import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -31,15 +28,10 @@ import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
-import com.datastax.dsbulk.engine.tests.utils.LogUtils;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
-import com.google.common.collect.ImmutableMap;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.file.Path;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,49 +39,23 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(SimulacronExtension.class)
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
-class LoadRestrictionsEndToEndSimulacronIT {
-
-  private final BoundCluster simulacron;
-  private final LogInterceptor logs;
-  private final StreamInterceptor stdErr;
-  private final String hostname;
-  private final String port;
-
-  private Path logDir;
+class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
   LoadRestrictionsEndToEndSimulacronIT(
       BoundCluster simulacron,
       @LogCapture(value = WorkflowUtils.class, level = ERROR) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stdOut,
       @StreamCapture(STDERR) StreamInterceptor stdErr) {
-    this.simulacron = simulacron;
-    this.logs = logs;
-    this.stdErr = stdErr;
-    InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
-    hostname = node.getHostName();
-    port = Integer.toString(node.getPort());
+    super(simulacron, logs, stdOut, stdErr);
   }
 
+  @Override
   @BeforeEach
   void resetPrimes() {
-    simulacron.clearPrimes(true);
+    super.resetPrimes();
     primeIpByCountryTable(simulacron);
     RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.prime(new Prime(insert));
-  }
-
-  @BeforeEach
-  void setUpDirs() throws IOException {
-    logDir = createTempDirectory("logs");
-  }
-
-  @AfterEach
-  void deleteDirs() {
-    deleteDirectory(logDir);
-  }
-
-  @AfterEach
-  void resetLogbackConfiguration() throws JoranException {
-    LogUtils.resetLogbackConfiguration();
   }
 
   @Test
@@ -170,7 +136,7 @@ class LoadRestrictionsEndToEndSimulacronIT {
   void should_allow_load_to_dse() {
     // DAT-322: presence of dse_version + presence of a DSE patch in release_version => DSE
     SimulacronUtils.primeSystemLocal(
-        simulacron, ImmutableMap.of("release_version", "4.0.0.2284", "dse_version", "5.1.11"));
+        simulacron, ImmutableMap.of("release_version", "4.0.0.2284", "dse_version", "5.0.11"));
     String[] args = {
       "load",
       "--log.directory",
@@ -185,6 +151,8 @@ class LoadRestrictionsEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
+      "--driver.policy.lbp.localDc",
+      "dc1",
       "--schema.keyspace",
       "ks1",
       "--schema.query",

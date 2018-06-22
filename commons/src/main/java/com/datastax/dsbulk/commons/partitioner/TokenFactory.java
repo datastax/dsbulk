@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.math.BigInteger;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * A factory for {@link Token} instances.
@@ -19,27 +19,30 @@ import org.jetbrains.annotations.NotNull;
  */
 public interface TokenFactory<V extends Number, T extends Token<V>> {
 
-  /** Creates a new instance for the given partitioner name. */
-  static TokenFactory<?, ?> forPartitioner(@NotNull String partitionerName) {
-    if (partitionerName.endsWith("Murmur3Partitioner")) {
+  /** Creates a new instance for the given driver token factory. */
+  static TokenFactory<?, ?> forDriverTokenFactory(
+      com.datastax.oss.driver.internal.core.metadata.token.TokenFactory driverTokenFactory) {
+    if (driverTokenFactory
+        instanceof com.datastax.oss.driver.internal.core.metadata.token.Murmur3TokenFactory) {
       return Murmur3TokenFactory.INSTANCE;
-    } else if (partitionerName.endsWith("RandomPartitioner")) {
+    } else if (driverTokenFactory
+        instanceof com.datastax.oss.driver.internal.core.metadata.token.RandomTokenFactory) {
       return RandomTokenFactory.INSTANCE;
     } else {
-      throw new IllegalArgumentException("Unknown partitioner: " + partitionerName);
+      throw new IllegalArgumentException("Unknown partitioner: " + driverTokenFactory);
     }
   }
 
   /** @return The minimum token for this factory. */
-  @NotNull
+  @NonNull
   T minToken();
 
   /** @return The maximum token for this factory. */
-  @NotNull
+  @NonNull
   T maxToken();
 
   /** @return Total token count in a ring. */
-  @NotNull
+  @NonNull
   BigInteger totalTokenCount();
 
   /**
@@ -47,8 +50,8 @@ public interface TokenFactory<V extends Number, T extends Token<V>> {
    * in a range from {@code token1} to {@code token2}. If {@code token2 &lt; token1}, then the range
    * wraps around.
    */
-  @NotNull
-  BigInteger distance(@NotNull T token1, @NotNull T token2);
+  @NonNull
+  BigInteger distance(@NonNull T token1, @NonNull T token2);
 
   /**
    * Returns the fraction of the ring in a range from {@code token1} to {@code token2}. If {@code
@@ -60,10 +63,10 @@ public interface TokenFactory<V extends Number, T extends Token<V>> {
   }
 
   /** Creates a token from its string representation */
-  @NotNull
-  T tokenFromString(@NotNull String string);
+  @NonNull
+  T tokenFromString(@NonNull String string);
 
   /** Returns a {@link TokenRangeSplitter} for the type of tokens managed by this token factory. */
-  @NotNull
+  @NonNull
   TokenRangeSplitter<V, T> splitter();
 }

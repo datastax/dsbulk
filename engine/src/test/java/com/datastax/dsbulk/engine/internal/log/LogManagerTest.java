@@ -8,34 +8,19 @@
  */
 package com.datastax.dsbulk.engine.internal.log;
 
-import static com.datastax.driver.core.ConsistencyLevel.ONE;
-import static com.datastax.driver.core.DataType.cint;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
-import static com.datastax.driver.core.ProtocolVersion.V4;
-import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
-import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.commons.internal.format.statement.StatementFormatVerbosity.EXTENDED;
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.mockBoundStatement;
+import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.mockRow;
+import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.mockSession;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.slf4j.event.Level.WARN;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.Configuration;
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ProtocolOptions;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.exceptions.DriverInternalError;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.driver.core.exceptions.OperationTimedOutException;
+import com.datastax.dsbulk.commons.internal.format.row.RowFormatter;
+import com.datastax.dsbulk.commons.internal.format.statement.StatementFormatter;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -44,26 +29,34 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
-import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
-import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.datastax.dsbulk.engine.internal.format.statement.BulkBoundStatementPrinter;
 import com.datastax.dsbulk.engine.internal.log.threshold.AbsoluteErrorThreshold;
 import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
 import com.datastax.dsbulk.engine.internal.log.threshold.RatioErrorThreshold;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
-import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
-import com.google.common.collect.ImmutableList;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.DriverExecutionException;
+import com.datastax.oss.driver.api.core.DriverTimeoutException;
+import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import java.net.URI;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.List;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,9 +83,9 @@ class LogManagerTest {
   private Record rowRecord2;
   private Record rowRecord3;
 
-  private Statement unmappableStmt1;
-  private Statement unmappableStmt2;
-  private Statement unmappableStmt3;
+  private BatchableStatement<?> unmappableStmt1;
+  private BatchableStatement<?> unmappableStmt2;
+  private BatchableStatement<?> unmappableStmt3;
 
   private WriteResult failedWriteResult1;
   private WriteResult failedWriteResult2;
@@ -107,7 +100,7 @@ class LogManagerTest {
 
   private ReadResult successfulReadResult1;
 
-  private Cluster cluster;
+  private CqlSession session;
 
   private final StatementFormatter statementFormatter =
       StatementFormatter.builder()
@@ -115,19 +108,14 @@ class LogManagerTest {
           .withMaxBoundValueLength(50)
           .withMaxBoundValues(10)
           .withMaxInnerStatements(10)
+          .addStatementPrinters(new BulkBoundStatementPrinter())
           .build();
 
   private final RowFormatter rowFormatter = new RowFormatter();
 
   @BeforeEach
   void setUp() throws Exception {
-    cluster = mock(Cluster.class);
-    Configuration configuration = mock(Configuration.class);
-    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
-    when(cluster.getConfiguration()).thenReturn(configuration);
-    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
-    when(protocolOptions.getProtocolVersion()).thenReturn(V4);
-    when(configuration.getCodecRegistry()).thenReturn(CodecRegistry.DEFAULT_INSTANCE);
+    session = mockSession();
     resource1 = new URI("file:///file1.csv");
     resource2 = new URI("file:///file2.csv");
     resource3 = new URI("file:///file3.csv");
@@ -143,45 +131,49 @@ class LogManagerTest {
     failedWriteResult1 =
         new DefaultWriteResult(
             new BulkExecutionException(
-                new OperationTimedOutException(null, "error 1"),
-                new BulkSimpleStatement<>(csvRecord1, "INSERT 1")));
+                new DriverTimeoutException("error 1"),
+                new BulkBoundStatement<>(csvRecord1, mockBoundStatement("INSERT 1"))));
     failedWriteResult2 =
         new DefaultWriteResult(
             new BulkExecutionException(
-                new OperationTimedOutException(null, "error 2"),
-                new BulkSimpleStatement<>(csvRecord2, "INSERT 2")));
+                new DriverTimeoutException("error 2"),
+                new BulkBoundStatement<>(csvRecord2, mockBoundStatement("INSERT 2"))));
     failedWriteResult3 =
         new DefaultWriteResult(
             new BulkExecutionException(
-                new OperationTimedOutException(null, "error 3"),
-                new BulkSimpleStatement<>(csvRecord3, "INSERT 3")));
+                new DriverTimeoutException("error 3"),
+                new BulkBoundStatement<>(csvRecord3, mockBoundStatement("INSERT 3"))));
     failedReadResult1 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new OperationTimedOutException(null, "error 1"), new SimpleStatement("SELECT 1")));
+                new DriverTimeoutException("error 1"),
+                new BulkBoundStatement<>(csvRecord1, mockBoundStatement("SELECT 1"))));
     failedReadResult2 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new OperationTimedOutException(null, "error 2"), new SimpleStatement("SELECT 2")));
+                new DriverTimeoutException("error 2"),
+                new BulkBoundStatement<>(csvRecord2, mockBoundStatement("SELECT 2"))));
     failedReadResult3 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new OperationTimedOutException(null, "error 3"), new SimpleStatement("SELECT 3")));
-    BatchStatement batch = new BatchStatement(BatchStatement.Type.UNLOGGED);
-    batch.add(new BulkSimpleStatement<>(csvRecord1, "INSERT 1", "foo", 42));
-    batch.add(new BulkSimpleStatement<>(csvRecord2, "INSERT 2", "bar", 43));
-    batch.add(new BulkSimpleStatement<>(csvRecord3, "INSERT 3", "qix", 44));
+                new DriverTimeoutException("error 3"),
+                new BulkBoundStatement<>(csvRecord3, mockBoundStatement("SELECT 3"))));
+    BatchStatement batch =
+        BatchStatement.newInstance(
+            DefaultBatchType.UNLOGGED,
+            new BulkBoundStatement<>(csvRecord1, mockBoundStatement("INSERT 1", "foo", 42)),
+            new BulkBoundStatement<>(csvRecord2, mockBoundStatement("INSERT 2", "bar", 43)),
+            new BulkBoundStatement<>(csvRecord3, mockBoundStatement("INSERT 3", "qix", 44)));
     batchWriteResult =
         new DefaultWriteResult(
-            new BulkExecutionException(new OperationTimedOutException(null, "error batch"), batch));
-    ExecutionInfo info =
-        new ExecutionInfo(0, 0, Collections.emptyList(), ONE, Collections.emptyMap());
+            new BulkExecutionException(new DriverTimeoutException("error batch"), batch));
+    ExecutionInfo info = mock(ExecutionInfo.class);
     row1 = mockRow(1);
     Row row2 = mockRow(2);
     Row row3 = mockRow(3);
-    Statement stmt1 = new SimpleStatement("SELECT 1");
-    Statement stmt2 = new SimpleStatement("SELECT 2");
-    Statement stmt3 = new SimpleStatement("SELECT 3");
+    Statement stmt1 = SimpleStatement.newInstance("SELECT 1");
+    Statement stmt2 = SimpleStatement.newInstance("SELECT 2");
+    Statement stmt3 = SimpleStatement.newInstance("SELECT 3");
     successfulReadResult1 = new DefaultReadResult(stmt1, info, row1);
     ReadResult successfulReadResult2 = new DefaultReadResult(stmt2, info, row2);
     ReadResult successfulReadResult3 = new DefaultReadResult(stmt3, info, row3);
@@ -202,7 +194,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.LOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
@@ -210,7 +202,8 @@ class LogManagerTest {
             EXTENDED,
             rowFormatter);
     logManager.init();
-    Flux<Statement> stmts = Flux.just(unmappableStmt1, unmappableStmt2, unmappableStmt3);
+    Flux<BatchableStatement<?>> stmts =
+        Flux.just(unmappableStmt1, unmappableStmt2, unmappableStmt3);
     try {
       stmts.transform(logManager.newUnmappableStatementsHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
@@ -227,12 +220,12 @@ class LogManagerTest {
     assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
-    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
@@ -252,7 +245,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.LOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(0),
             ErrorThreshold.forAbsoluteValue(0),
@@ -260,7 +253,7 @@ class LogManagerTest {
             EXTENDED,
             rowFormatter);
     logManager.init();
-    Flux<Statement> stmts = Flux.just(unmappableStmt1);
+    Flux<BatchableStatement<?>> stmts = Flux.just(unmappableStmt1);
     try {
       stmts.transform(logManager.newUnmappableStatementsHandler()).blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
@@ -277,10 +270,10 @@ class LogManagerTest {
     assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
-    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(1);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
@@ -294,7 +287,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.LOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.unlimited(),
             ErrorThreshold.forAbsoluteValue(0),
@@ -302,7 +295,8 @@ class LogManagerTest {
             EXTENDED,
             rowFormatter);
     logManager.init();
-    Flux<Statement> stmts = Flux.just(unmappableStmt1, unmappableStmt2, unmappableStmt3);
+    Flux<BatchableStatement<?>> stmts =
+        Flux.just(unmappableStmt1, unmappableStmt2, unmappableStmt3);
     // should not throw TooManyErrorsException
     stmts.transform(logManager.newUnmappableStatementsHandler()).blockLast();
     logManager.close();
@@ -314,12 +308,12 @@ class LogManagerTest {
     assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
-    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
@@ -339,7 +333,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.LOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
@@ -364,7 +358,7 @@ class LogManagerTest {
     assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
@@ -381,7 +375,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.LOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
@@ -404,14 +398,14 @@ class LogManagerTest {
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
@@ -429,7 +423,7 @@ class LogManagerTest {
         .contains("INSERT 3")
         .containsOnlyOnce(
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 3 (error 3)");
-    List<String> positionLines = Files.readAllLines(positions, Charset.forName("UTF-8"));
+    List<String> positionLines = Files.readAllLines(positions, UTF_8);
     assertThat(positionLines)
         .contains("file:///file1.csv:1")
         .contains("file:///file2.csv:2")
@@ -442,7 +436,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.LOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forRatio(0.2f, 100),
             ErrorThreshold.forAbsoluteValue(0),
@@ -459,14 +453,14 @@ class LogManagerTest {
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
@@ -484,7 +478,7 @@ class LogManagerTest {
         .contains("INSERT 3")
         .containsOnlyOnce(
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 3 (error 3)");
-    List<String> positionLines = Files.readAllLines(positions, Charset.forName("UTF-8"));
+    List<String> positionLines = Files.readAllLines(positions, UTF_8);
     assertThat(positionLines)
         .contains("file:///file1.csv:1")
         .contains("file:///file2.csv:2")
@@ -497,7 +491,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.LOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(1),
             ErrorThreshold.forAbsoluteValue(0),
@@ -520,14 +514,14 @@ class LogManagerTest {
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1.toString())
@@ -542,7 +536,7 @@ class LogManagerTest {
         .containsOnlyOnce(
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed")
         .contains("error batch");
-    List<String> positionLines = Files.readAllLines(positions, Charset.forName("UTF-8"));
+    List<String> positionLines = Files.readAllLines(positions, UTF_8);
     assertThat(positionLines)
         .contains("file:///file1.csv:1")
         .contains("file:///file2.csv:2")
@@ -555,7 +549,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.UNLOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
@@ -576,7 +570,7 @@ class LogManagerTest {
     assertThat(errors.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .contains("SELECT 1")
@@ -593,7 +587,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.UNLOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
@@ -614,7 +608,7 @@ class LogManagerTest {
     assertThat(errors.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .contains("SELECT 1")
@@ -632,7 +626,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.UNLOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
@@ -640,12 +634,12 @@ class LogManagerTest {
             EXTENDED,
             rowFormatter);
     // Emulate bad row with corrupted data, see DefaultReadResultMapper
-    InvalidTypeException ite =
-        new InvalidTypeException("Invalid 32-bits integer value, expecting 4 bytes but got 5");
+    IllegalArgumentException cause =
+        new IllegalArgumentException("Invalid 32-bits integer value, expecting 4 bytes but got 5");
     IllegalArgumentException iae =
         new IllegalArgumentException(
-            "Could not deserialize column c1 of type int as java.lang.Integer", ite);
-    when(row1.getObject(0)).thenThrow(ite);
+            "Could not deserialize column c1 of type int as java.lang.Integer", cause);
+    when(row1.getObject(0)).thenThrow(cause);
     when(row1.getBytesUnsafe(0)).thenReturn(ByteBuffer.wrap(new byte[] {1, 2, 3, 4, 5}));
     rowRecord1 = new DefaultErrorRecord(successfulReadResult1, () -> resource1, 1, iae);
     logManager.init();
@@ -656,13 +650,13 @@ class LogManagerTest {
     assertThat(errors.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .contains("SELECT 1")
-        .contains("c1: 0x0102030405 (malformed buffer for type int)")
+        .contains("c1: 0x0102030405 (malformed buffer for type INT)")
         .contains(iae.getMessage())
-        .contains(ite.getMessage());
+        .contains(cause.getMessage());
   }
 
   @Test
@@ -671,7 +665,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.UNLOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forRatio(0.01f, 100),
             ErrorThreshold.forAbsoluteValue(0),
@@ -689,7 +683,7 @@ class LogManagerTest {
     assertThat(errors.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .contains("SELECT 1")
@@ -706,7 +700,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.UNLOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forRatio(0.01f, 100),
             ErrorThreshold.forAbsoluteValue(0),
@@ -731,7 +725,7 @@ class LogManagerTest {
     assertThat(errors.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     assertThat(lines.stream().filter(l -> l.contains("BulkExecutionException")).count())
         .isEqualTo(100);
   }
@@ -742,7 +736,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.LOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(1000),
             ErrorThreshold.forAbsoluteValue(0),
@@ -753,14 +747,14 @@ class LogManagerTest {
     DefaultWriteResult result =
         new DefaultWriteResult(
             new BulkExecutionException(
-                new DriverInternalError("error 1"),
-                new BulkSimpleStatement<>(csvRecord1, "INSERT 1")));
+                new DriverExecutionException(new IllegalArgumentException("error 1")),
+                new BulkBoundStatement<>(csvRecord1, mockBoundStatement("INSERT 1"))));
     Flux<WriteResult> stmts = Flux.just(result);
     try {
       stmts.transform(logManager.newFailedWritesHandler()).blockLast();
-      fail("Expecting DriverInternalError to be thrown");
-    } catch (DriverInternalError e) {
-      assertThat(e).hasMessage("error 1");
+      fail("Expecting DriverExecutionException to be thrown");
+    } catch (DriverExecutionException e) {
+      assertThat(e.getCause()).isInstanceOf(IllegalArgumentException.class).hasMessage("error 1");
     }
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("load.bad");
@@ -769,20 +763,21 @@ class LogManagerTest {
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(1);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source1))
         .contains("INSERT 1")
+        .contains("error 1")
         .containsOnlyOnce(
-            "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 1 (error 1)");
-    List<String> positionLines = Files.readAllLines(positions, Charset.forName("UTF-8"));
+            "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 1");
+    List<String> positionLines = Files.readAllLines(positions, UTF_8);
     assertThat(positionLines).contains("file:///file1.csv:1");
   }
 
@@ -792,7 +787,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.UNLOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
@@ -803,42 +798,43 @@ class LogManagerTest {
     DefaultReadResult result =
         new DefaultReadResult(
             new BulkExecutionException(
-                new DriverInternalError("error 1"), new SimpleStatement("SELECT 1")));
+                new DriverExecutionException(new IllegalArgumentException("error 1")),
+                new BulkBoundStatement<>(csvRecord1, mockBoundStatement("SELECT 1"))));
     Flux<ReadResult> stmts = Flux.just(result);
     try {
       stmts.transform(logManager.newFailedReadsHandler()).blockLast();
-      fail("Expecting DriverInternalError to be thrown");
-    } catch (DriverInternalError e) {
-      assertThat(e).hasMessage("error 1");
+      fail("Expecting DriverExecutionException to be thrown");
+    } catch (DriverExecutionException e) {
+      assertThat(e.getCause()).isInstanceOf(IllegalArgumentException.class).hasMessage("error 1");
     }
     logManager.close();
     Path errors = logManager.getOperationDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .contains("SELECT 1")
+        .contains("error 1")
         .containsOnlyOnce(
-            "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: SELECT 1 (error 1)");
+            "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: SELECT 1");
   }
 
   @Test
   void should_stop_when_max_cas_errors_reached() throws Exception {
-    BatchStatement casBatch = new BatchStatement(BatchStatement.Type.UNLOGGED);
-    BoundStatement casStmt1 = mockBoundStatement(1, source1, resource1);
-    BoundStatement casStmt2 = mockBoundStatement(2, source2, resource2);
-    BoundStatement casStmt3 = mockBoundStatement(3, source3, resource3);
-    casBatch.add(casStmt1);
-    casBatch.add(casStmt2);
-    casBatch.add(casStmt3);
+    BatchStatement casBatch =
+        BatchStatement.newInstance(
+            DefaultBatchType.UNLOGGED,
+            mockBulkBoundStatement(1, source1, resource1),
+            mockBulkBoundStatement(2, source2, resource2),
+            mockBulkBoundStatement(3, source3, resource3));
     Row row1 = mockRow(1);
     Row row2 = mockRow(2);
     Row row3 = mockRow(3);
-    ResultSet rs = mock(ResultSet.class);
+    AsyncResultSet rs = mock(AsyncResultSet.class);
     when(rs.wasApplied()).thenReturn(false);
-    when(rs.spliterator()).thenReturn(Lists.newArrayList(row1, row2, row3).spliterator());
+    when(rs.currentPage()).thenReturn(Lists.newArrayList(row1, row2, row3));
     ExecutionInfo executionInfo = mock(ExecutionInfo.class);
     when(rs.getExecutionInfo()).thenReturn(executionInfo);
     DefaultWriteResult casBatchWriteResult = new DefaultWriteResult(casBatch, rs);
@@ -846,7 +842,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.LOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
@@ -869,14 +865,14 @@ class LogManagerTest {
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
-    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("INSERT INTO 1")
@@ -894,7 +890,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.UNLOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(100),
             ErrorThreshold.forAbsoluteValue(1),
@@ -907,8 +903,8 @@ class LogManagerTest {
     ExecutionInfo info2 = mock(ExecutionInfo.class);
     when(info2.getWarnings()).thenReturn(ImmutableList.of("warning3"));
     Flux.just(
-            new DefaultReadResult(new SimpleStatement("SELECT 1"), info1, mockRow(1)),
-            new DefaultReadResult(new SimpleStatement("SELECT 2"), info2, mockRow(2)))
+            new DefaultReadResult(SimpleStatement.newInstance("SELECT 1"), info1, mockRow(1)),
+            new DefaultReadResult(SimpleStatement.newInstance("SELECT 2"), info2, mockRow(2)))
         .transform(logManager.newQueryWarningsHandler())
         .blockLast();
     logManager.close();
@@ -928,7 +924,7 @@ class LogManagerTest {
     LogManager logManager =
         new LogManager(
             WorkflowType.UNLOAD,
-            cluster,
+            session,
             outputDir,
             ErrorThreshold.forAbsoluteValue(100),
             ErrorThreshold.forAbsoluteValue(1),
@@ -938,15 +934,15 @@ class LogManagerTest {
     logManager.init();
     ExecutionInfo info1 = mock(ExecutionInfo.class);
     when(info1.getWarnings()).thenReturn(ImmutableList.of("warning1", "warning2"));
-    ResultSet rs1 = mock(ResultSet.class);
+    AsyncResultSet rs1 = mock(AsyncResultSet.class);
     when(rs1.getExecutionInfo()).thenReturn(info1);
     ExecutionInfo info2 = mock(ExecutionInfo.class);
     when(info2.getWarnings()).thenReturn(ImmutableList.of("warning3"));
-    ResultSet rs2 = mock(ResultSet.class);
+    AsyncResultSet rs2 = mock(AsyncResultSet.class);
     when(rs2.getExecutionInfo()).thenReturn(info2);
     Flux.just(
-            new DefaultWriteResult(new SimpleStatement("SELECT 1"), rs1),
-            new DefaultWriteResult(new SimpleStatement("SELECT 2"), rs2))
+            new DefaultWriteResult(SimpleStatement.newInstance("SELECT 1"), rs1),
+            new DefaultWriteResult(SimpleStatement.newInstance("SELECT 2"), rs2))
         .transform(logManager.newQueryWarningsHandler())
         .blockLast();
     logManager.close();
@@ -959,25 +955,9 @@ class LogManagerTest {
                 + "subsequent warnings will not be logged.");
   }
 
-  private static Row mockRow(int value) {
-    Row row = mock(Row.class);
-    ColumnDefinitions cd = newColumnDefinitions(newDefinition("c1", cint()));
-    when(row.getColumnDefinitions()).thenReturn(cd);
-    when(row.getObject(0)).thenReturn(value);
-    return row;
-  }
-
-  private static BulkBoundStatement<?> mockBoundStatement(int value, Object source, URI resource) {
-    @SuppressWarnings("unchecked")
-    BulkBoundStatement<Record> bs = mock(BulkBoundStatement.class);
-    PreparedStatement ps = mock(PreparedStatement.class);
-    when(ps.getQueryString()).thenReturn("INSERT INTO " + value);
-    ColumnDefinitions variables = newColumnDefinitions(newDefinition("c1", cint()));
-    when(ps.getVariables()).thenReturn(variables);
-    when(bs.preparedStatement()).thenReturn(ps);
-    when(bs.isSet(0)).thenReturn(true);
-    when(bs.getObject(0)).thenReturn(value);
-    when(bs.getSource()).thenReturn(DefaultRecord.indexed(source, resource, 1, 1));
-    return bs;
+  private static BulkBoundStatement<?> mockBulkBoundStatement(
+      int value, Object source, URI resource) {
+    BoundStatement bs = mockBoundStatement("INSERT INTO " + value, value);
+    return new BulkBoundStatement<>(DefaultRecord.indexed(source, resource, 1, 1), bs);
   }
 }

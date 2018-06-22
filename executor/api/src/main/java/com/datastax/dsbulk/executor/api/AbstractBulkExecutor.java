@@ -8,13 +8,13 @@
  */
 package com.datastax.dsbulk.executor.api;
 
-import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
-import com.google.common.util.concurrent.RateLimiter;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /** Base class for implementations of {@link BulkExecutor}. */
 @SuppressWarnings("UnstableApiUsage")
@@ -29,7 +29,7 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
   /** The default maximum number of concurrent requests per second. */
   static final int DEFAULT_MAX_REQUESTS_PER_SECOND = 100_000;
 
-  protected final @NotNull Session session;
+  protected final @NonNull CqlSession session;
 
   protected final boolean failFast;
 
@@ -41,7 +41,7 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
 
   protected final @Nullable ExecutionListener listener;
 
-  protected AbstractBulkExecutor(Session session) {
+  protected AbstractBulkExecutor(CqlSession session) {
     this(
         session,
         true,
@@ -62,7 +62,7 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
   }
 
   private AbstractBulkExecutor(
-      @NotNull Session session,
+      @NonNull CqlSession session,
       boolean failFast,
       int maxInFlightRequests,
       int maxInFlightQueries,

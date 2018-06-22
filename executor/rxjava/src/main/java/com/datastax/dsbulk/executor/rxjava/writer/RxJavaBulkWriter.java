@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.executor.rxjava.writer;
 
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.api.writer.ReactiveBulkWriter;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import io.reactivex.Flowable;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
@@ -35,7 +35,7 @@ public interface RxJavaBulkWriter extends ReactiveBulkWriter {
    */
   @Override
   default Flowable<WriteResult> writeReactive(String statement) throws BulkExecutionException {
-    return writeReactive(new SimpleStatement(statement));
+    return writeReactive(SimpleStatement.newInstance(statement));
   }
 
   /**

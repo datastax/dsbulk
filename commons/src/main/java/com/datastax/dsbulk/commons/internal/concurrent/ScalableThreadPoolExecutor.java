@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.commons.internal.concurrent;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.LinkedTransferQueue;
@@ -15,7 +16,6 @@ import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TransferQueue;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * A scalable {@link ThreadPoolExecutor} that favors spawning new threads over enqueuing tasks.
@@ -55,7 +55,7 @@ public class ScalableThreadPoolExecutor extends ThreadPoolExecutor {
     private final TransferQueue<E> delegate = new LinkedTransferQueue<>();
 
     @Override
-    public boolean offer(@NotNull E o) {
+    public boolean offer(@NonNull E o) {
       // intercept calls to offer() and try to transfer the work directly to an available thread.
       // If this fails, the executor will spawn a new thread if possible. If a new thread could not
       // be created, the rejected execution handler above will be invoked and the element will be
@@ -64,17 +64,17 @@ public class ScalableThreadPoolExecutor extends ThreadPoolExecutor {
     }
 
     @Override
-    public boolean offer(E e, long timeout, @NotNull TimeUnit unit) throws InterruptedException {
+    public boolean offer(E e, long timeout, @NonNull TimeUnit unit) throws InterruptedException {
       return tryTransfer(e, timeout, unit);
     }
 
     @Override
-    public boolean add(@NotNull E o) {
+    public boolean add(@NonNull E o) {
       return this.delegate.add(o);
     }
 
     @Override
-    public void put(@NotNull E e) throws InterruptedException {
+    public void put(@NonNull E e) throws InterruptedException {
       this.delegate.put(e);
     }
 
@@ -84,11 +84,11 @@ public class ScalableThreadPoolExecutor extends ThreadPoolExecutor {
     }
 
     @Override
-    public E poll(long timeout, @NotNull TimeUnit unit) throws InterruptedException {
+    public E poll(long timeout, @NonNull TimeUnit unit) throws InterruptedException {
       return this.delegate.poll(timeout, unit);
     }
 
-    @NotNull
+    @NonNull
     @Override
     public E take() throws InterruptedException {
       return this.delegate.take();
@@ -124,42 +124,42 @@ public class ScalableThreadPoolExecutor extends ThreadPoolExecutor {
       return this.delegate.isEmpty();
     }
 
-    @NotNull
+    @NonNull
     @Override
     public Iterator<E> iterator() {
       return this.delegate.iterator();
     }
 
-    @NotNull
+    @NonNull
     @Override
     public Object[] toArray() {
       return this.delegate.toArray();
     }
 
-    @NotNull
+    @NonNull
     @SuppressWarnings("SuspiciousToArrayCall")
     @Override
-    public <T> T[] toArray(@NotNull T[] a) {
+    public <T> T[] toArray(@NonNull T[] a) {
       return this.delegate.toArray(a);
     }
 
     @Override
-    public boolean containsAll(@NotNull Collection<?> c) {
+    public boolean containsAll(@NonNull Collection<?> c) {
       return this.delegate.containsAll(c);
     }
 
     @Override
-    public boolean addAll(@NotNull Collection<? extends E> c) {
+    public boolean addAll(@NonNull Collection<? extends E> c) {
       return this.delegate.addAll(c);
     }
 
     @Override
-    public boolean removeAll(@NotNull Collection<?> c) {
+    public boolean removeAll(@NonNull Collection<?> c) {
       return this.delegate.removeAll(c);
     }
 
     @Override
-    public boolean retainAll(@NotNull Collection<?> c) {
+    public boolean retainAll(@NonNull Collection<?> c) {
       return this.delegate.retainAll(c);
     }
 
@@ -179,27 +179,27 @@ public class ScalableThreadPoolExecutor extends ThreadPoolExecutor {
     }
 
     @Override
-    public int drainTo(@NotNull Collection<? super E> c) {
+    public int drainTo(@NonNull Collection<? super E> c) {
       return this.delegate.drainTo(c);
     }
 
     @Override
-    public int drainTo(@NotNull Collection<? super E> c, int maxElements) {
+    public int drainTo(@NonNull Collection<? super E> c, int maxElements) {
       return this.delegate.drainTo(c, maxElements);
     }
 
     @Override
-    public boolean tryTransfer(@NotNull E e) {
+    public boolean tryTransfer(@NonNull E e) {
       return this.delegate.tryTransfer(e);
     }
 
     @Override
-    public void transfer(@NotNull E e) throws InterruptedException {
+    public void transfer(@NonNull E e) throws InterruptedException {
       this.delegate.transfer(e);
     }
 
     @Override
-    public boolean tryTransfer(@NotNull E e, long timeout, @NotNull TimeUnit unit)
+    public boolean tryTransfer(@NonNull E e, long timeout, @NonNull TimeUnit unit)
         throws InterruptedException {
       return this.delegate.tryTransfer(e, timeout, unit);
     }

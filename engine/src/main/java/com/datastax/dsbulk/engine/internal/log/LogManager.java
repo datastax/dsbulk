@@ -20,24 +20,13 @@ import static java.util.stream.Collectors.toList;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.pattern.ThrowableProxyConverter;
 import ch.qos.logback.classic.spi.ThrowableProxy;
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.exceptions.BusyConnectionException;
-import com.datastax.driver.core.exceptions.BusyPoolException;
-import com.datastax.driver.core.exceptions.InvalidQueryException;
-import com.datastax.driver.core.exceptions.OperationTimedOutException;
-import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.dsbulk.commons.internal.concurrent.ScalableThreadPoolExecutor;
+import com.datastax.dsbulk.commons.internal.format.row.RowFormatter;
+import com.datastax.dsbulk.commons.internal.format.statement.StatementFormatVerbosity;
+import com.datastax.dsbulk.commons.internal.format.statement.StatementFormatter;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.WorkflowType;
-import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
-import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
-import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
 import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
 import com.datastax.dsbulk.engine.internal.schema.InvalidMappingException;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
@@ -46,14 +35,29 @@ import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.Result;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.driver.api.core.AllNodesFailedException;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.DriverTimeoutException;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.RequestThrottlingException;
+import com.datastax.oss.driver.api.core.connection.BusyConnectionException;
+import com.datastax.oss.driver.api.core.connection.FrameTooLongException;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.servererrors.InvalidQueryException;
+import com.datastax.oss.driver.api.core.servererrors.QueryExecutionException;
+import com.datastax.oss.driver.api.core.servererrors.ServerError;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.MoreExecutors;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.google.common.base.Joiner;
-import com.google.common.util.concurrent.MoreExecutors;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
-import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -65,7 +69,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -94,7 +97,7 @@ public class LogManager implements AutoCloseable {
   private static final String POSITIONS_FILE = "positions.txt";
 
   private final WorkflowType workflowType;
-  private final Cluster cluster;
+  private final CqlSession session;
   private final Path operationDirectory;
   private final ErrorThreshold errorThreshold;
   private final ErrorThreshold queryWarningsThreshold;
@@ -138,7 +141,7 @@ public class LogManager implements AutoCloseable {
 
   public LogManager(
       WorkflowType workflowType,
-      Cluster cluster,
+      CqlSession session,
       Path operationDirectory,
       ErrorThreshold errorThreshold,
       ErrorThreshold queryWarningsThreshold,
@@ -146,7 +149,7 @@ public class LogManager implements AutoCloseable {
       StatementFormatVerbosity statementFormatVerbosity,
       RowFormatter rowFormatter) {
     this.workflowType = workflowType;
-    this.cluster = cluster;
+    this.session = session;
     this.operationDirectory = operationDirectory;
     this.errorThreshold = errorThreshold;
     this.queryWarningsThreshold = queryWarningsThreshold;
@@ -160,8 +163,8 @@ public class LogManager implements AutoCloseable {
         // Only spawn 1 thread initially, but stretch up to 8 in case lots of errors arrive
         new ScalableThreadPoolExecutor(1, 8, 60L, SECONDS);
     scheduler = Schedulers.fromExecutorService(executor);
-    codecRegistry = cluster.getConfiguration().getCodecRegistry();
-    protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
+    codecRegistry = session.getContext().getCodecRegistry();
+    protocolVersion = session.getContext().getProtocolVersion();
     stackTracePrinter = new StackTracePrinter();
     stackTracePrinter.setOptionList(LogSettings.STACK_TRACE_PRINTER_OPTIONS);
     stackTracePrinter.start();
@@ -221,10 +224,7 @@ public class LogManager implements AutoCloseable {
       positionsPrinter =
           new PrintWriter(
               Files.newBufferedWriter(
-                  operationDirectory.resolve(POSITIONS_FILE),
-                  Charset.forName("UTF-8"),
-                  CREATE_NEW,
-                  WRITE));
+                  operationDirectory.resolve(POSITIONS_FILE), UTF_8, CREATE_NEW, WRITE));
       // sort positions by URI
       new TreeMap<>(positionsTracker.getPositions())
           .forEach((resource, ranges) -> appendToPositionsFile(resource, ranges, positionsPrinter));
@@ -265,7 +265,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return a handler that is meant to be executed at the very end of the main workflow.
    */
-  @NotNull
+  @NonNull
   public Function<Flux<Void>, Flux<Void>> newTerminationHandler() {
     return upstream ->
         upstream
@@ -296,15 +296,16 @@ public class LogManager implements AutoCloseable {
    *
    * @return a handler for unmappable statements.
    */
-  @NotNull
-  public Function<Flux<Statement>, Flux<Statement>> newUnmappableStatementsHandler() {
+  @NonNull
+  public Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
+      newUnmappableStatementsHandler() {
     return upstream ->
         upstream
             .materialize()
             .map(
                 signal -> {
                   if (signal.isOnNext()) {
-                    Statement stmt = signal.get();
+                    Statement<?> stmt = signal.get();
                     if (stmt instanceof UnmappableStatement) {
                       try {
                         unmappableStatementSink.next((UnmappableStatement) stmt);
@@ -316,7 +317,7 @@ public class LogManager implements AutoCloseable {
                   }
                   return signal;
                 })
-            .<Statement>dematerialize()
+            .<BatchableStatement<?>>dematerialize()
             .filter(r -> !(r instanceof UnmappableStatement));
   }
 
@@ -331,7 +332,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return a handler for failed records.
    */
-  @NotNull
+  @NonNull
   public Function<Flux<Record>, Flux<Record>> newFailedRecordsHandler() {
     return upstream ->
         upstream
@@ -366,7 +367,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return a handler for unmappable records.
    */
-  @NotNull
+  @NonNull
   public Function<Flux<Record>, Flux<Record>> newUnmappableRecordsHandler() {
     return upstream ->
         upstream
@@ -400,7 +401,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return a handler for unsuccessful write results.
    */
-  @NotNull
+  @NonNull
   public Function<Flux<WriteResult>, Flux<WriteResult>> newFailedWritesHandler() {
     return upstream ->
         upstream
@@ -451,7 +452,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return a handler for unsuccessful read results.
    */
-  @NotNull
+  @NonNull
   public Function<Flux<ReadResult>, Flux<ReadResult>> newFailedReadsHandler() {
     return upstream ->
         upstream
@@ -533,14 +534,14 @@ public class LogManager implements AutoCloseable {
    *
    * @return a mapper from statements to records.
    */
-  @NotNull
+  @NonNull
   private Function<Flux<? extends Statement>, Flux<Record>> newStatementToRecordMapper() {
     return upstream ->
         upstream
             .flatMap(
                 statement -> {
                   if (statement instanceof BatchStatement) {
-                    return Flux.fromIterable(((BatchStatement) statement).getStatements());
+                    return Flux.fromIterable(((BatchStatement) statement));
                   } else {
                     return Flux.just(statement);
                   }
@@ -561,7 +562,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return A processor for failed records.
    */
-  @NotNull
+  @NonNull
   private FluxSink<ErrorRecord> newFailedRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
     Flux<ErrorRecord> flux =
@@ -586,7 +587,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return A processor for unmappable records.
    */
-  @NotNull
+  @NonNull
   private FluxSink<ErrorRecord> newUnmappableRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
     processor
@@ -607,7 +608,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return A processor for unmappable statements.
    */
-  @NotNull
+  @NonNull
   private FluxSink<UnmappableStatement> newUnmappableStatementSink() {
     UnicastProcessor<UnmappableStatement> processor = UnicastProcessor.create();
     processor
@@ -632,7 +633,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return A processor for failed write results.
    */
-  @NotNull
+  @NonNull
   private FluxSink<WriteResult> newFailedWriteResultSink() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
     processor
@@ -657,7 +658,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return A processor for failed CAS write results.
    */
-  @NotNull
+  @NonNull
   private FluxSink<WriteResult> newFailedCASWriteSink() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
     processor
@@ -680,7 +681,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return A processor for failed read results.
    */
-  @NotNull
+  @NonNull
   private FluxSink<ReadResult> newFailedReadResultSink() {
     UnicastProcessor<ReadResult> processor = UnicastProcessor.create();
     processor.publishOn(scheduler).doOnNext(this::appendFailedReadResultToDebugFile).subscribe();
@@ -696,7 +697,7 @@ public class LogManager implements AutoCloseable {
    *
    * @return A processor for record positions.
    */
-  @NotNull
+  @NonNull
   private FluxSink<Record> newPositionsSink() {
     UnicastProcessor<Record> processor = UnicastProcessor.create();
     processor
@@ -843,28 +844,36 @@ public class LogManager implements AutoCloseable {
   }
 
   private void maybeLogQueryWarnings(ExecutionInfo info) {
-    if (info.getWarnings() != null) {
-      for (String warning : info.getWarnings()) {
-        if (queryWarningsThreshold.checkThresholdExceeded(
-            queryWarnings.incrementAndGet(), totalItems)) {
-          queryWarningsEnabled.set(false);
-          LOGGER.warn(
-              "The maximum number of logged query warnings has been exceeded ({}); "
-                  + "subsequent warnings will not be logged.",
-              queryWarningsThreshold.thresholdAsString());
-          break;
-        } else {
-          LOGGER.warn("Query generated server-side warning: " + warning);
-        }
+    for (String warning : info.getWarnings()) {
+      if (queryWarningsThreshold.checkThresholdExceeded(
+          queryWarnings.incrementAndGet(), totalItems)) {
+        queryWarningsEnabled.set(false);
+        LOGGER.warn(
+            "The maximum number of logged query warnings has been exceeded ({}); "
+                + "subsequent warnings will not be logged.",
+            queryWarningsThreshold.thresholdAsString());
+        break;
+      } else {
+        LOGGER.warn("Query generated server-side warning: " + warning);
       }
     }
   }
 
   private static boolean isUnrecoverable(Throwable error) {
-    return !(error instanceof QueryExecutionException
+    if (error instanceof AllNodesFailedException) {
+      for (Throwable child : ((AllNodesFailedException) error).getErrors().values()) {
+        if (isUnrecoverable(child)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return !(error instanceof ServerError
+        || error instanceof QueryExecutionException
         || error instanceof InvalidQueryException
-        || error instanceof OperationTimedOutException
-        || error instanceof BusyPoolException
+        || error instanceof DriverTimeoutException
+        || error instanceof RequestThrottlingException
+        || error instanceof FrameTooLongException
         || error instanceof BusyConnectionException);
   }
 

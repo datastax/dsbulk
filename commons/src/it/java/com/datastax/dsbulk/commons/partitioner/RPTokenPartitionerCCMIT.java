@@ -10,17 +10,17 @@ package com.datastax.dsbulk.commons.partitioner;
 
 import static com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig.UseKeyspaceMode.NONE;
 
-import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
+import com.datastax.oss.driver.api.core.CqlSession;
 import org.junit.jupiter.api.Tag;
 
 @CCMConfig(numberOfNodes = 3, createOptions = "-p RandomPartitioner")
 @Tag("long")
 class RPTokenPartitionerCCMIT extends PartitionerCCMITBase {
 
-  RPTokenPartitionerCCMIT(CCMCluster ccm, @SessionConfig(useKeyspace = NONE) Session session) {
+  RPTokenPartitionerCCMIT(CCMCluster ccm, @SessionConfig(useKeyspace = NONE) CqlSession session) {
     super(ccm, session, false);
   }
 }

@@ -8,37 +8,40 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.driver.core.DataType.cint;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newToken;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newTokenRange;
-import static com.datastax.driver.core.ProtocolVersion.V4;
+import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.newToken;
+import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.newTokenRange;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
+import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
+import static com.datastax.oss.driver.api.core.type.DataTypes.INT;
 import static java.net.InetSocketAddress.createUnresolved;
 import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.util.Sets.newLinkedHashSet;
 import static org.mockito.Mockito.when;
 
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Token;
-import com.datastax.driver.core.TokenRange;
+import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.collect.Sets;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.api.core.metadata.Metadata;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
+import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
+import com.datastax.oss.driver.internal.core.metadata.token.Murmur3Token;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import com.datastax.oss.driver.shaded.guava.common.collect.Sets;
 import com.typesafe.config.ConfigFactory;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -46,6 +49,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,11 +74,18 @@ class DefaultReadResultCounterTest {
 
   private final Set<TokenRange> tokenRanges = Sets.newHashSet(range1, range2, range3);
 
-  @Mock private Metadata metadata;
+  private final EndPoint addr1 = new DefaultEndPoint(createUnresolved("node1.com", 9042));
+  private final EndPoint addr2 = new DefaultEndPoint(createUnresolved("node2.com", 9042));
+  private final EndPoint addr3 = new DefaultEndPoint(createUnresolved("node3.com", 9042));
 
-  @Mock private Host host1;
-  @Mock private Host host2;
-  @Mock private Host host3;
+  private final CqlIdentifier ks = CqlIdentifier.fromInternal("ks");
+
+  @Mock private Metadata metadata;
+  @Mock private TokenMap tokenMap;
+
+  @Mock private Node node1;
+  @Mock private Node node2;
+  @Mock private Node node3;
 
   @Mock private Row row1;
   @Mock private Row row2;
@@ -115,11 +126,15 @@ class DefaultReadResultCounterTest {
   @SuppressWarnings("unchecked")
   void setUp() {
     MockitoAnnotations.initMocks(this);
-    when(metadata.getTokenRanges()).thenReturn(tokenRanges);
-    when(metadata.getAllHosts()).thenReturn(newLinkedHashSet(host1, host2, host3));
-    when(metadata.getReplicas("ks", range1)).thenReturn(singleton(host1));
-    when(metadata.getReplicas("ks", range2)).thenReturn(singleton(host2));
-    when(metadata.getReplicas("ks", range3)).thenReturn(singleton(host3));
+    when(metadata.getTokenMap()).thenReturn((Optional) Optional.of(tokenMap));
+    when(metadata.getNodes())
+        .thenReturn(
+            ImmutableMap.of(
+                UUID.randomUUID(), node1, UUID.randomUUID(), node2, UUID.randomUUID(), node3));
+    when(tokenMap.getTokenRanges()).thenReturn(tokenRanges);
+    when(tokenMap.getReplicas(ks, range1)).thenReturn(singleton(node1));
+    when(tokenMap.getReplicas(ks, range2)).thenReturn(singleton(node2));
+    when(tokenMap.getReplicas(ks, range3)).thenReturn(singleton(node3));
     when(result1.getRow()).thenReturn(Optional.of(row1));
     when(result2.getRow()).thenReturn(Optional.of(row2));
     when(result3.getRow()).thenReturn(Optional.of(row3));
@@ -130,7 +145,8 @@ class DefaultReadResultCounterTest {
     when(result8.getRow()).thenReturn(Optional.of(row8));
     when(result9.getRow()).thenReturn(Optional.of(row9));
     when(result10.getRow()).thenReturn(Optional.of(row10));
-    ColumnDefinitions definitions = newColumnDefinitions(newDefinition("pk", cint()));
+    ColumnDefinitions definitions =
+        DriverUtils.mockColumnDefinitions(DriverUtils.mockColumnDefinition("pk", INT));
     when(row1.getColumnDefinitions()).thenReturn(definitions);
     when(row2.getColumnDefinitions()).thenReturn(definitions);
     when(row3.getColumnDefinitions()).thenReturn(definitions);
@@ -161,29 +177,29 @@ class DefaultReadResultCounterTest {
     when(row8.getToken(0)).thenReturn(token2a);
     when(row9.getToken(0)).thenReturn(token3);
     when(row10.getToken(0)).thenReturn(token1a);
-    when(metadata.newToken(bb1)).thenReturn(token1a);
-    when(metadata.newToken(bb2)).thenReturn(token2a);
-    when(metadata.newToken(bb3)).thenReturn(token3); // token happens to be a boundary token
-    when(metadata.newToken(bb4)).thenReturn(token1a);
-    when(metadata.newToken(bb5)).thenReturn(token2a);
-    when(metadata.newToken(bb6)).thenReturn(token3); // token happens to be a boundary token
-    when(metadata.newToken(bb7)).thenReturn(token1a);
-    when(metadata.newToken(bb8)).thenReturn(token2a);
-    when(metadata.newToken(bb9)).thenReturn(token3); // token happens to be a boundary token
-    when(metadata.newToken(bb10)).thenReturn(token1a); // token happens to be a boundary token
-    when(host1.getSocketAddress()).thenReturn(createUnresolved("host1.com", 9042));
-    when(host2.getSocketAddress()).thenReturn(createUnresolved("host2.com", 9042));
-    when(host3.getSocketAddress()).thenReturn(createUnresolved("host3.com", 9042));
+    when(tokenMap.newToken(bb1)).thenReturn(token1a);
+    when(tokenMap.newToken(bb2)).thenReturn(token2a);
+    when(tokenMap.newToken(bb3)).thenReturn(token3); // token happens to be a boundary token
+    when(tokenMap.newToken(bb4)).thenReturn(token1a);
+    when(tokenMap.newToken(bb5)).thenReturn(token2a);
+    when(tokenMap.newToken(bb6)).thenReturn(token3); // token happens to be a boundary token
+    when(tokenMap.newToken(bb7)).thenReturn(token1a);
+    when(tokenMap.newToken(bb8)).thenReturn(token2a);
+    when(tokenMap.newToken(bb9)).thenReturn(token3); // token happens to be a boundary token
+    when(tokenMap.newToken(bb10)).thenReturn(token1a); // token happens to be a boundary token
+    when(node1.getEndPoint()).thenReturn(addr1);
+    when(node2.getEndPoint()).thenReturn(addr2);
+    when(node3.getEndPoint()).thenReturn(addr3);
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    this.codecRegistry = settings.createCodecRegistry(new CodecRegistry(), false, false);
+    this.codecRegistry = settings.createCodecRegistry(false, false);
   }
 
   @Test
   void should_count_total_rows(StreamInterceptor stdout) {
     DefaultReadResultCounter counter =
-        new DefaultReadResultCounter("ks", metadata, EnumSet.of(global), 10, V4, codecRegistry);
+        new DefaultReadResultCounter(ks, metadata, EnumSet.of(global), 10, V4, codecRegistry);
 
     counter.newCountingUnit().update(result1);
     counter.consolidateUnitCounts();
@@ -198,56 +214,56 @@ class DefaultReadResultCounterTest {
   }
 
   @Test
-  void should_count_hosts(StreamInterceptor stdout) {
+  void should_count_nodes(StreamInterceptor stdout) {
     DefaultReadResultCounter counter =
-        new DefaultReadResultCounter("ks", metadata, EnumSet.of(hosts), 10, V4, codecRegistry);
+        new DefaultReadResultCounter(ks, metadata, EnumSet.of(hosts), 10, V4, codecRegistry);
 
     ReadResultCounter.CountingUnit unit = counter.newCountingUnit();
 
-    // add token1a, belongs to range1/host1
+    // add token1a, belongs to range1/node1
     unit.update(result1);
     counter.consolidateUnitCounts();
     assertThat(counter.totalRows).isOne();
-    assertThat(counter.totalsByHost)
-        .containsEntry(host1.getSocketAddress(), 1L)
-        .doesNotContainKey(host2.getSocketAddress())
-        .doesNotContainKey(host3.getSocketAddress());
+    assertThat(counter.totalsByNode)
+        .containsEntry(node1.getEndPoint(), 1L)
+        .doesNotContainKey(node2.getEndPoint())
+        .doesNotContainKey(node3.getEndPoint());
 
-    // add token2a, belongs to range2/host2
+    // add token2a, belongs to range2/node2
     unit.update(result2);
     counter.consolidateUnitCounts();
     assertThat(counter.totalRows).isEqualTo(2);
-    assertThat(counter.totalsByHost)
-        .containsEntry(host1.getSocketAddress(), 1L)
-        .containsEntry(host2.getSocketAddress(), 1L)
-        .doesNotContainKey(host3.getSocketAddress());
+    assertThat(counter.totalsByNode)
+        .containsEntry(node1.getEndPoint(), 1L)
+        .containsEntry(node2.getEndPoint(), 1L)
+        .doesNotContainKey(node3.getEndPoint());
 
-    // add token3, belongs to range2/host2 (its the range's end token)
+    // add token3, belongs to range2/node2 (its the range's end token)
     unit.update(result3);
     counter.consolidateUnitCounts();
     assertThat(counter.totalRows).isEqualTo(3);
-    assertThat(counter.totalsByHost)
-        .containsEntry(host1.getSocketAddress(), 1L)
-        .containsEntry(host2.getSocketAddress(), 2L)
-        .doesNotContainKey(host3.getSocketAddress());
+    assertThat(counter.totalsByNode)
+        .containsEntry(node1.getEndPoint(), 1L)
+        .containsEntry(node2.getEndPoint(), 2L)
+        .doesNotContainKey(node3.getEndPoint());
 
     counter.consolidateUnitCounts();
     counter.reportTotals();
     assertThat(stdout.getStreamLines())
         .contains(
-            String.format("%s 1 33.33", host1.getSocketAddress()),
-            String.format("%s 2 66.67", host2.getSocketAddress()),
-            String.format("%s 0 0.00", host3.getSocketAddress()));
+            String.format("%s 1 33.33", node1.getEndPoint()),
+            String.format("%s 2 66.67", node2.getEndPoint()),
+            String.format("%s 0 0.00", node3.getEndPoint()));
   }
 
   @Test
   void should_count_ranges(StreamInterceptor stdout) {
     DefaultReadResultCounter counter =
-        new DefaultReadResultCounter("ks", metadata, EnumSet.of(ranges), 10, V4, codecRegistry);
+        new DefaultReadResultCounter(ks, metadata, EnumSet.of(ranges), 10, V4, codecRegistry);
 
     ReadResultCounter.CountingUnit unit = counter.newCountingUnit();
 
-    // add token1a, belongs to range1/host1
+    // add token1a, belongs to range1/node1
     unit.update(result1);
     counter.consolidateUnitCounts();
     assertThat(counter.totalRows).isOne();
@@ -256,7 +272,7 @@ class DefaultReadResultCounterTest {
         .doesNotContainKey(range2)
         .doesNotContainKey(range3);
 
-    // add token2a, belongs to range2/host2
+    // add token2a, belongs to range2/node2
     unit.update(result2);
     counter.consolidateUnitCounts();
     assertThat(counter.totalRows).isEqualTo(2);
@@ -265,7 +281,7 @@ class DefaultReadResultCounterTest {
         .containsEntry(range2, 1L)
         .doesNotContainKey(range3);
 
-    // add token3, belongs to range2/host2 (its the range's end token)
+    // add token3, belongs to range2/node2 (its the range's end token)
     unit.update(result3);
     counter.consolidateUnitCounts();
     assertThat(counter.totalRows).isEqualTo(3);
@@ -279,15 +295,24 @@ class DefaultReadResultCounterTest {
 
     assertThat(stdout.getStreamLines())
         .contains(
-            String.format("%s %s 1 33.33", range1.getStart(), range1.getEnd()),
-            String.format("%s %s 2 66.67", range2.getStart(), range2.getEnd()),
-            String.format("%s %s 0 0.00", range3.getStart(), range3.getEnd()));
+            String.format(
+                "%s %s 1 33.33",
+                ((Murmur3Token) range1.getStart()).getValue(),
+                ((Murmur3Token) range1.getEnd()).getValue()),
+            String.format(
+                "%s %s 2 66.67",
+                ((Murmur3Token) range2.getStart()).getValue(),
+                ((Murmur3Token) range2.getEnd()).getValue()),
+            String.format(
+                "%s %s 0 0.00",
+                ((Murmur3Token) range3.getStart()).getValue(),
+                ((Murmur3Token) range3.getEnd()).getValue()));
   }
 
   @Test
   void should_count_biggest_partitions(StreamInterceptor stdout) {
     DefaultReadResultCounter counter =
-        new DefaultReadResultCounter("ks", metadata, EnumSet.of(partitions), 3, V4, codecRegistry);
+        new DefaultReadResultCounter(ks, metadata, EnumSet.of(partitions), 3, V4, codecRegistry);
 
     DefaultReadResultCounter.DefaultCountingUnit unit = counter.newCountingUnit();
 
@@ -516,7 +541,7 @@ class DefaultReadResultCounterTest {
   void should_count_biggest_partitions_multi_threaded(StreamInterceptor stdout)
       throws InterruptedException {
     DefaultReadResultCounter counter =
-        new DefaultReadResultCounter("ks", metadata, EnumSet.of(partitions), 3, V4, codecRegistry);
+        new DefaultReadResultCounter(ks, metadata, EnumSet.of(partitions), 3, V4, codecRegistry);
 
     DefaultReadResultCounter.DefaultCountingUnit unit1 = counter.newCountingUnit();
     DefaultReadResultCounter.DefaultCountingUnit unit2 = counter.newCountingUnit();

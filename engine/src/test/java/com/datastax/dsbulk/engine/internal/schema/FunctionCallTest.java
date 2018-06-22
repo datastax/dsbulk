@@ -17,7 +17,7 @@ import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.google.common.collect.Lists;
+import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import java.util.List;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -25,18 +25,18 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class FunctionCallTest {
 
-  private static final CQLIdentifier KS1 = CQLIdentifier.fromInternal("ks1");
-  private static final CQLIdentifier KS1_UP = CQLIdentifier.fromInternal("MyKs1");
+  private static final CQLWord KS1 = CQLWord.fromInternal("ks1");
+  private static final CQLWord KS1_UP = CQLWord.fromInternal("MyKs1");
 
-  private static final CQLIdentifier PLUS = CQLIdentifier.fromInternal("plus");
-  private static final CQLIdentifier MAX = CQLIdentifier.fromInternal("max");
-  private static final CQLIdentifier COL1 = CQLIdentifier.fromInternal("col1");
-  private static final CQLIdentifier COL2 = CQLIdentifier.fromInternal("col2");
+  private static final CQLWord PLUS = CQLWord.fromInternal("plus");
+  private static final CQLWord MAX = CQLWord.fromInternal("max");
+  private static final CQLWord COL1 = CQLWord.fromInternal("col1");
+  private static final CQLWord COL2 = CQLWord.fromInternal("col2");
 
-  private static final CQLIdentifier PLUS_UP = CQLIdentifier.fromInternal("PLUS");
-  private static final CQLIdentifier MAX_UP = CQLIdentifier.fromInternal("MAX");
-  private static final CQLIdentifier COL1_UP = CQLIdentifier.fromInternal("My Col 1");
-  private static final CQLIdentifier COL2_UP = CQLIdentifier.fromInternal("My Col 2");
+  private static final CQLWord PLUS_UP = CQLWord.fromInternal("PLUS");
+  private static final CQLWord MAX_UP = CQLWord.fromInternal("MAX");
+  private static final CQLWord COL1_UP = CQLWord.fromInternal("My Col 1");
+  private static final CQLWord COL2_UP = CQLWord.fromInternal("My Col 2");
 
   private static final CQLLiteral _42 = new CQLLiteral("42");
 

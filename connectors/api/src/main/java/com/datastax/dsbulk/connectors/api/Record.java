@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.connectors.api;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Set;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * An item emitted by a {@link Connector}. A record is composed of one or more {@linkplain Field
@@ -27,7 +27,7 @@ public interface Record {
    *
    * @return The record source.
    */
-  @NotNull
+  @NonNull
   Object getSource();
 
   /**
@@ -38,7 +38,7 @@ public interface Record {
    *
    * @return The record's resource.
    */
-  @NotNull
+  @NonNull
   URI getResource();
 
   /**
@@ -63,7 +63,7 @@ public interface Record {
    *
    * @return a set containing all the fields in this record.
    */
-  @NotNull
+  @NonNull
   Set<Field> fields();
 
   /**
@@ -73,7 +73,7 @@ public interface Record {
    *
    * @return a collection containing all the values in this record.
    */
-  @NotNull
+  @NonNull
   Collection<Object> values();
 
   /**
@@ -86,7 +86,7 @@ public interface Record {
    * @return the value associated with the given field.
    */
   @Nullable
-  Object getFieldValue(@NotNull Field field);
+  Object getFieldValue(@NonNull Field field);
 
   /**
    * Clear all fields in this record.

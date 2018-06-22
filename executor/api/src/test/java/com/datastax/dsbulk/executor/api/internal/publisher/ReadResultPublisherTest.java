@@ -9,26 +9,21 @@
 package com.datastax.dsbulk.executor.api.internal.publisher;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Configuration;
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.PagingState;
-import com.datastax.driver.core.ProtocolOptions;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.QueryOptions;
-import com.datastax.driver.core.ResultSetFuture;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import io.reactivex.Flowable;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Executor;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import org.reactivestreams.Publisher;
 
 public class ReadResultPublisherTest extends ResultPublisherTestBase<ReadResult> {
@@ -37,41 +32,31 @@ public class ReadResultPublisherTest extends ResultPublisherTestBase<ReadResult>
 
   @Override
   public Publisher<ReadResult> createPublisher(long elements) {
-    Statement statement = new SimpleStatement("irrelevant");
-    Session session = setUpSession(elements);
+    Statement<?> statement = SimpleStatement.newInstance("irrelevant");
+    CqlSession session = setUpSession(elements);
     return new ReadResultPublisher(statement, session, true);
   }
 
   @Override
   public Publisher<ReadResult> createFailedPublisher() {
-    Statement statement = new SimpleStatement("irrelevant");
-    Session session = setUpSession(1);
+    Statement statement = SimpleStatement.newInstance("irrelevant");
+    CqlSession session = setUpSession(1);
     return new ReadResultPublisher(statement, session, true, FAILED_LISTENER, null, null, null);
   }
 
-  private static Session setUpSession(long elements) {
-    Session session = mock(Session.class);
-    Cluster cluster = mock(Cluster.class);
-    when(session.getCluster()).thenReturn(cluster);
-    Configuration configuration = mock(Configuration.class);
-    when(cluster.getConfiguration()).thenReturn(configuration);
-    QueryOptions queryOptions = mock(QueryOptions.class);
-    when(configuration.getQueryOptions()).thenReturn(queryOptions);
-    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
-    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
-    when(queryOptions.getFetchSize()).thenReturn(PAGE_SIZE);
-    when(protocolOptions.getProtocolVersion()).thenReturn(ProtocolVersion.V4);
-    ResultSetFuture previous = mockPages(elements);
+  private static CqlSession setUpSession(long elements) {
+    CqlSession session = mock(CqlSession.class);
+    CompletionStage<AsyncResultSet> previous = mockPages(elements);
     when(session.executeAsync(any(SimpleStatement.class))).thenReturn(previous);
     return session;
   }
 
-  private static ResultSetFuture mockPages(long elements) {
+  private static CompletionStage<AsyncResultSet> mockPages(long elements) {
     // The TCK usually requests between 0 and 20 items, or Long.MAX_VALUE.
     // Past 3 elements it never checks how many elements have been effectively produced,
     // so we can safely cap at, say, 20.
     int effective = (int) Math.min(elements, 20L);
-    ResultSetFuture previous = null;
+    CompletionStage<AsyncResultSet> previous = null;
     if (effective > 0) {
       // create pages of 5 elements each to exercise pagination
       List<Integer> pages =
@@ -86,23 +71,13 @@ public class ReadResultPublisherTest extends ResultPublisherTestBase<ReadResult>
     return previous;
   }
 
-  private static ResultSetFuture mockPage(ResultSetFuture previous, int size) {
-    ResultSetFuture future = mock(ResultSetFuture.class);
+  private static CompletionStage<AsyncResultSet> mockPage(
+      CompletionStage<AsyncResultSet> previous, int size) {
+    CompletableFuture<AsyncResultSet> future = new CompletableFuture<>();
     ExecutionInfo executionInfo = mock(ExecutionInfo.class);
     when(executionInfo.getPagingState())
-        .thenReturn(previous == null ? null : mock(PagingState.class));
-    when(future.isDone()).thenReturn(true);
-    try {
-      when(future.get()).thenReturn(new MockResultSet(size, executionInfo, previous));
-    } catch (Exception ignored) {
-    }
-    doAnswer(
-            invocation -> {
-              ((Runnable) invocation.getArguments()[0]).run();
-              return null;
-            })
-        .when(future)
-        .addListener(any(Runnable.class), any(Executor.class));
+        .thenReturn(previous == null ? null : ByteBuffer.wrap(new byte[] {1}));
+    future.complete(new MockAsyncResultSet(size, executionInfo, previous));
     previous = future;
     return previous;
   }

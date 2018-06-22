@@ -8,12 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.driver.core.Configuration;
-import com.datastax.driver.core.ConsistencyLevel;
-import com.datastax.driver.core.ContinuousPagingOptions;
-import com.datastax.driver.core.ContinuousPagingSession;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
@@ -27,13 +21,29 @@ import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.reactor.ReactorBulkExecutor;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.datastax.dsbulk.executor.reactor.writer.ReactorBulkWriter;
+import com.datastax.dse.driver.api.core.DseProtocolVersion;
+import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.dse.driver.api.core.config.DseDriverOption;
+import com.datastax.dse.driver.api.core.cql.continuous.ContinuousSession;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
+import com.datastax.oss.driver.api.core.config.DriverOption;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ExecutorSettings {
+
+  enum PageUnit {
+    ROWS,
+    BYTES
+  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
@@ -52,11 +62,9 @@ public class ExecutorSettings {
   private int maxPerSecond;
   private int maxInFlight;
   private boolean continuousPagingEnabled;
-  private int pageSize;
-  private int maxPages;
-  private int maxPagesPerSecond;
-  private ContinuousPagingOptions.PageUnit pageUnit;
   private int maxConcurrentQueries;
+
+  private Map<DriverOption, Object> executorConfig;
 
   ExecutorSettings(LoaderConfig config) {
     this.config = config;
@@ -72,17 +80,28 @@ public class ExecutorSettings {
     try {
       Config continuousPagingConfig = config.getConfig(CONTINUOUS_PAGING);
       continuousPagingEnabled = continuousPagingConfig.getBoolean(ENABLED);
+      executorConfig = new HashMap<>();
       if (continuousPagingEnabled) {
-        pageSize = continuousPagingConfig.getInt(PAGE_SIZE);
-        pageUnit =
-            continuousPagingConfig.getEnum(ContinuousPagingOptions.PageUnit.class, PAGE_UNIT);
-        maxPages = continuousPagingConfig.getInt(MAX_PAGES);
-        maxPagesPerSecond = continuousPagingConfig.getInt(MAX_PAGES_PER_SECOND);
+        executorConfig.put(
+            DseDriverOption.CONTINUOUS_PAGING_PAGE_SIZE, continuousPagingConfig.getInt(PAGE_SIZE));
+        PageUnit pageUnit = continuousPagingConfig.getEnum(PageUnit.class, PAGE_UNIT);
+        executorConfig.put(
+            DseDriverOption.CONTINUOUS_PAGING_PAGE_SIZE_BYTES, pageUnit == PageUnit.BYTES);
+        executorConfig.put(
+            DseDriverOption.CONTINUOUS_PAGING_MAX_PAGES, continuousPagingConfig.getInt(MAX_PAGES));
+        executorConfig.put(
+            DseDriverOption.CONTINUOUS_PAGING_MAX_PAGES_PER_SECOND,
+            continuousPagingConfig.getInt(MAX_PAGES_PER_SECOND));
         maxConcurrentQueries = continuousPagingConfig.getInt(MAX_CONCURRENT_REQUESTS);
       }
+
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor.continuousPaging");
     }
+  }
+
+  public Map<DriverOption, Object> getExecutorConfig() {
+    return executorConfig;
   }
 
   public Optional<Integer> getMaxInFlight() {
@@ -93,17 +112,20 @@ public class ExecutorSettings {
     return maxConcurrentQueries > 0 ? Optional.of(maxConcurrentQueries) : Optional.empty();
   }
 
-  public ReactorBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
+  public ReactorBulkWriter newWriteExecutor(
+      CqlSession session, ExecutionListener executionListener) {
     return newBulkExecutor(session, executionListener, false, false);
   }
 
   public ReactorBulkReader newReadExecutor(
-      Session session, MetricsCollectingExecutionListener executionListener, boolean searchQuery) {
+      CqlSession session,
+      MetricsCollectingExecutionListener executionListener,
+      boolean searchQuery) {
     return newBulkExecutor(session, executionListener, true, searchQuery);
   }
 
   private ReactorBulkExecutor newBulkExecutor(
-      Session session, ExecutionListener executionListener, boolean read, boolean searchQuery) {
+      CqlSession session, ExecutionListener executionListener, boolean read, boolean searchQuery) {
     if (read) {
       if (continuousPagingEnabled) {
         if (searchQuery) {
@@ -112,7 +134,7 @@ public class ExecutorSettings {
           return newDefaultExecutor(session, executionListener);
         }
         if (continuousPagingAvailable(session)) {
-          return newContinuousExecutor((ContinuousPagingSession) session, executionListener);
+          return newContinuousExecutor((DseSession) session, executionListener);
         } else {
           LOGGER.warn(
               "Continuous paging is not available, read performance will not be optimal. "
@@ -127,36 +149,41 @@ public class ExecutorSettings {
   }
 
   private ReactorBulkExecutor newDefaultExecutor(
-      Session session, ExecutionListener executionListener) {
+      CqlSession session, ExecutionListener executionListener) {
     DefaultReactorBulkExecutorBuilder builder = DefaultReactorBulkExecutor.builder(session);
     configureExecutor(builder, executionListener);
     return builder.build();
   }
 
   private ReactorBulkExecutor newContinuousExecutor(
-      ContinuousPagingSession session, ExecutionListener executionListener) {
+      DseSession session, ExecutionListener executionListener) {
     ContinuousReactorBulkExecutorBuilder builder = ContinuousReactorBulkExecutor.builder(session);
     configureExecutor(builder, executionListener);
-    ContinuousPagingOptions options =
-        ContinuousPagingOptions.builder()
-            .withPageSize(pageSize, pageUnit)
-            .withMaxPages(maxPages)
-            .withMaxPagesPerSecond(maxPagesPerSecond)
-            .build();
-    return builder
-        .withContinuousPagingOptions(options)
-        .withMaxInFlightQueries(maxConcurrentQueries)
-        .build();
+    //    ContinuousPagingOptions options =
+    //        ContinuousPagingOptions.builder()
+    //            .withPageSize(pageSize, pageUnit)
+    //            .withMaxPages(maxPages)
+    //            .withMaxPagesPerSecond(maxPagesPerSecond)
+    //            .build();
+    return builder.withMaxInFlightQueries(maxConcurrentQueries).build();
   }
 
-  private boolean continuousPagingAvailable(Session session) {
-    Configuration configuration = session.getCluster().getConfiguration();
-    ProtocolVersion protocolVersion = configuration.getProtocolOptions().getProtocolVersion();
-    ConsistencyLevel consistencyLevel = configuration.getQueryOptions().getConsistencyLevel();
-    return session instanceof ContinuousPagingSession
-        && protocolVersion.compareTo(ProtocolVersion.DSE_V1) >= 0
-        && (consistencyLevel == ConsistencyLevel.ONE
-            || consistencyLevel == ConsistencyLevel.LOCAL_ONE);
+  private boolean continuousPagingAvailable(CqlSession session) {
+    if (session instanceof ContinuousSession) {
+      ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
+      if (protocolVersion.getCode() >= DseProtocolVersion.DSE_V1.getCode()) {
+        DefaultConsistencyLevel consistencyLevel =
+            DefaultConsistencyLevel.valueOf(
+                session
+                    .getContext()
+                    .getConfig()
+                    .getDefaultProfile()
+                    .getString(DefaultDriverOption.REQUEST_CONSISTENCY));
+        return consistencyLevel == DefaultConsistencyLevel.ONE
+            || consistencyLevel == DefaultConsistencyLevel.LOCAL_ONE;
+      }
+    }
+    return false;
   }
 
   private void configureExecutor(

@@ -8,41 +8,29 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode.PARTITION_KEY;
 import static com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode.REPLICA_SET;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.Configuration;
-import com.datastax.driver.core.ProtocolOptions;
-import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class BatchSettingsTest {
 
-  private Cluster cluster;
+  private CqlSession session;
 
-  @SuppressWarnings("Duplicates")
   @BeforeEach
   void setUp() {
-    cluster = mock(Cluster.class);
-    Configuration configuration = mock(Configuration.class);
-    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
-    when(cluster.getConfiguration()).thenReturn(configuration);
-    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
-    when(protocolOptions.getProtocolVersion()).thenReturn(ProtocolVersion.V4);
-    when(configuration.getCodecRegistry()).thenReturn(CodecRegistry.DEFAULT_INSTANCE);
+    session = DriverUtils.mockSession();
   }
 
   @Test
@@ -51,7 +39,7 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(128);
-    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(32);
   }
@@ -67,7 +55,7 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(32);
-    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(32);
   }
@@ -82,7 +70,7 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(32);
-    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(32);
   }
@@ -112,7 +100,7 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(128);
-    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(32);
   }
@@ -126,7 +114,7 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(5000);
-    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(32);
   }
@@ -143,7 +131,7 @@ class BatchSettingsTest {
     // buffer size should implicitly be updated when max batch size is changed and it isn't
     // specified.
     assertThat(settings.getBufferSize()).isEqualTo(40);
-    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(10);
   }
@@ -276,7 +264,7 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
-    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(1L);
   }
@@ -291,7 +279,7 @@ class BatchSettingsTest {
     settings.init();
     assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
     assertThat(ReflectionUtils.getInternalState(settings, "maxBatchStatements")).isEqualTo(10);
-    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(1L);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(10);
@@ -307,7 +295,7 @@ class BatchSettingsTest {
     settings.init();
     assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
     assertThat(ReflectionUtils.getInternalState(settings, "maxBatchStatements")).isEqualTo(10);
-    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(1L);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(10);

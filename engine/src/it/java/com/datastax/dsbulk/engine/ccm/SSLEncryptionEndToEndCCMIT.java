@@ -22,25 +22,22 @@ import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
-import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
-import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
+import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
-import java.io.IOException;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.CqlSession;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -49,10 +46,7 @@ import org.junit.jupiter.api.Test;
 @CCMRequirements(compatibleTypes = {DSE, DDAC})
 class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
 
-  private Path unloadDir;
-  private Path logDir;
-
-  SSLEncryptionEndToEndCCMIT(CCMCluster ccm, @ClusterConfig(ssl = true) Session session) {
+  SSLEncryptionEndToEndCCMIT(CCMCluster ccm, @SessionConfig(ssl = true) CqlSession session) {
     super(ccm, session);
   }
 
@@ -66,31 +60,21 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("TRUNCATE ip_by_country");
   }
 
-  @BeforeEach
-  void setUpDirs() throws IOException {
-    logDir = createTempDirectory("logs");
-    unloadDir = createTempDirectory("unload");
-  }
-
-  @AfterEach
-  void deleteDirs() {
-    deleteDirectory(logDir);
-    deleteDirectory(unloadDir);
-  }
-
   @Test
   void full_load_unload_jdk() throws Exception {
 
     List<String> args = new ArrayList<>();
     args.add("load");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
     args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
@@ -106,15 +90,13 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.ssl.truststore.password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
     args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
@@ -122,7 +104,11 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.csv.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
@@ -138,7 +124,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.ssl.truststore.password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -148,14 +134,16 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
 
     List<String> args = new ArrayList<>();
     args.add("load");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
     args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
@@ -171,15 +159,13 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.ssl.truststore.password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
     args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
@@ -187,7 +173,11 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.csv.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
@@ -203,7 +193,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.ssl.truststore.password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }

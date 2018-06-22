@@ -8,73 +8,53 @@
  */
 package com.datastax.dsbulk.executor.rxjava;
 
-import com.datastax.driver.core.ContinuousPagingOptions;
-import com.datastax.driver.core.ContinuousPagingSession;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
 import com.datastax.dsbulk.executor.api.internal.publisher.ContinuousReadResultPublisher;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import io.reactivex.Flowable;
 import java.util.Objects;
 
 /**
- * An implementation of {@link BulkExecutor} using <a
- * href="https://github.com/ReactiveX/RxJava/wiki">RxJava</a>, that executes all reads using
- * continuous paging. This executor can achieve significant performance improvements for reads,
- * provided that the read statements to be executed can be properly routed to a replica.
+ * An implementation of {@link BulkExecutor} using <a href="https://projectrxJava.io">RxJava</a>,
+ * that executes all reads using continuous paging. This executor can achieve significant
+ * performance improvements for reads, provided that the read statements to be executed can be
+ * properly routed to a replica.
  */
 public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
     implements RxJavaBulkExecutor {
 
   /**
    * Creates a new builder for {@link ContinuousRxJavaBulkExecutor} instances using the given {@link
-   * ContinuousPagingSession}.
+   * DseSession}.
    *
-   * @param session the {@link ContinuousPagingSession} to use.
+   * @param session the {@link DseSession} to use.
    * @return a new builder.
    */
-  public static ContinuousRxJavaBulkExecutorBuilder builder(ContinuousPagingSession session) {
+  public static ContinuousRxJavaBulkExecutorBuilder builder(DseSession session) {
     return new ContinuousRxJavaBulkExecutorBuilder(session);
   }
 
-  private final ContinuousPagingSession continuousPagingSession;
-  private final ContinuousPagingOptions continuousPagingOptions;
+  private final DseSession dseSession;
 
   /**
-   * Creates a new instance using the given {@link ContinuousPagingSession} and using defaults for
-   * all parameters.
+   * Creates a new instance using the given {@link DseSession} and using defaults for all
+   * parameters.
    *
-   * <p>If you need to customize your executor, use the {@link #builder(ContinuousPagingSession)
-   * builder} method instead.
+   * <p>If you need to customize your executor, use the {@link #builder(DseSession) builder} method
+   * instead.
    *
-   * @param continuousPagingSession the {@link ContinuousPagingSession} to use.
+   * @param dseSession the {@link DseSession} to use.
    */
-  public ContinuousRxJavaBulkExecutor(ContinuousPagingSession continuousPagingSession) {
-    this(continuousPagingSession, ContinuousPagingOptions.builder().build());
-  }
-
-  /**
-   * Creates a new instance using the given {@link ContinuousPagingSession}, the given {@link
-   * ContinuousPagingOptions}, and using defaults for all other parameters.
-   *
-   * <p>If you need to customize your executor, use the {@link #builder(ContinuousPagingSession)
-   * builder} method instead.
-   *
-   * @param continuousPagingSession the {@link ContinuousPagingSession} to use.
-   * @param continuousPagingOptions the {@link ContinuousPagingOptions} to use.
-   */
-  public ContinuousRxJavaBulkExecutor(
-      ContinuousPagingSession continuousPagingSession,
-      ContinuousPagingOptions continuousPagingOptions) {
-    super(continuousPagingSession);
-    this.continuousPagingSession = continuousPagingSession;
-    this.continuousPagingOptions = continuousPagingOptions;
+  public ContinuousRxJavaBulkExecutor(DseSession dseSession) {
+    super(dseSession);
+    this.dseSession = dseSession;
   }
 
   ContinuousRxJavaBulkExecutor(ContinuousRxJavaBulkExecutorBuilder builder) {
     super(builder);
-    this.continuousPagingSession = builder.continuousPagingSession;
-    this.continuousPagingOptions = builder.options;
+    this.dseSession = builder.dseSession;
   }
 
   @Override
@@ -83,8 +63,7 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
     return Flowable.fromPublisher(
         new ContinuousReadResultPublisher(
             statement,
-            continuousPagingSession,
-            continuousPagingOptions,
+            dseSession,
             failFast,
             listener,
             maxConcurrentRequests,

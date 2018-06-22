@@ -8,19 +8,23 @@
  */
 package com.datastax.dsbulk.commons.tests.simulacron;
 
-import static com.datastax.driver.core.Metadata.quoteIfNecessary;
+import static com.datastax.oss.driver.api.core.type.DataTypes.TEXT;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.request.Query;
+import com.datastax.oss.simulacron.common.result.ErrorResult;
+import com.datastax.oss.simulacron.common.result.ServerErrorResult;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
+import com.datastax.oss.simulacron.server.BoundNode;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap.SimpleEntry;
@@ -41,7 +45,14 @@ public class SimulacronUtils {
   private static final String SELECT_TABLES = "SELECT * FROM system_schema.tables";
   private static final String SELECT_COLUMNS = "SELECT * FROM system_schema.columns";
 
-  private static final String SELECT_SYSTEM_LOCAL = "SELECT * FROM system.local WHERE key='local'";
+  private static final String SELECT_SYSTEM_LOCAL = "SELECT * FROM system.local";
+  private static final String SELECT_SYSTEM_PEERS = "SELECT * FROM system.peers";
+  private static final String SELECT_SYSTEM_PEERS_V2 = "SELECT * FROM system.peers_v2";
+
+  private static final String SELECT_SYSTEM_LOCAL_SCHEMA_VERSION =
+      "SELECT schema_version FROM system.local WHERE key='local'";
+  private static final String SELECT_SYSTEM_PEERS_SCHEMA_VERSION =
+      "SELECT host_id, schema_version FROM system.peers";
 
   private static final ImmutableMap<String, String> KEYSPACE_COLUMNS =
       ImmutableMap.of(
@@ -124,12 +135,12 @@ public class SimulacronUtils {
           .put("bootstrapped", "COMPLETED")
           .put("cql_version", "3.4.5")
           .put("data_center", "dc1")
-          .put("dse_version", "6.0.0")
+          .put("dse_version", "5.0.0")
           .put("gossip_generation", 1532880775)
           .put("graph", false)
           .put("host_id", UUID.randomUUID())
           .put("jmx_port", "7100")
-          .put("native_protocol_version", ProtocolVersion.DSE_V2.toInt())
+          .put("native_protocol_version", DefaultProtocolVersion.V4)
           .put("native_transport_port", 9042)
           .put("native_transport_port_ssl", 9042)
           .put("partitioner", "org.apache.cassandra.dht.Murmur3Partitioner")
@@ -143,6 +154,30 @@ public class SimulacronUtils {
           .put("truncated_at", new HashMap<>())
           .put("workload", "Cassandra")
           .put("workloads", Sets.newLinkedHashSet("Cassandra"))
+          .build();
+
+  private static final ImmutableMap<String, String> SYSTEM_PEERS_COLUMNS =
+      ImmutableMap.<String, String>builder()
+          .put("peer", "inet")
+          .put("data_center", "varchar")
+          .put("host_id", "uuid")
+          .put("preferred_ip", "inet")
+          .put("rack", "varchar")
+          .put("release_version", "varchar")
+          .put("rpc_address", "inet")
+          .put("schema_version", "uuid")
+          .put("tokens", "set<varchar>")
+          .build();
+
+  private static final ImmutableMap<String, Object> SYSTEM_PEERS_ROW =
+      ImmutableMap.<String, Object>builder()
+          .put("data_center", "dc1")
+          .put("host_id", UUID.randomUUID())
+          .put("preferred_ip", InetSocketAddress.createUnresolved("1.2.3.4", 9042))
+          .put("rack", "rack1")
+          .put("release_version", "4.0.0.2284")
+          .put("schema_version", UUID.randomUUID())
+          .put("tokens", Sets.newLinkedHashSet("-9223372036854775808"))
           .build();
 
   private static final Collector<CharSequence, ?, String> COMMA = Collectors.joining(", ");
@@ -206,7 +241,7 @@ public class SimulacronUtils {
 
     private Map<String, String> allColumnTypes() {
       return allColumns().stream()
-          .map(col -> new SimpleEntry<>(col.name, col.type.toString()))
+          .map(col -> new SimpleEntry<>(col.name, col.getTypeAsString()))
           .collect(Collectors.toMap(SimpleEntry::getKey, SimpleEntry::getValue));
     }
   }
@@ -219,6 +254,10 @@ public class SimulacronUtils {
     public Column(String name, DataType type) {
       this.name = name;
       this.type = type;
+    }
+
+    String getTypeAsString() {
+      return type == TEXT ? "varchar" : type.toString().toLowerCase();
     }
   }
 
@@ -274,8 +313,7 @@ public class SimulacronUtils {
         tableRow.put("crc_check_chance", 1d);
         tableRow.put("dclocal_read_repair_chance", 0.1d);
         tableRow.put("default_time_to_live", 0);
-        // for some strange reason this column makes simulacron hang
-        // tableRow.put("extensions", null);
+        tableRow.put("extensions", null);
         tableRow.put("flags", ImmutableSet.of("compound"));
         tableRow.put("gc_grace_seconds", 864000);
         tableRow.put("id", UUID.randomUUID());
@@ -311,7 +349,7 @@ public class SimulacronUtils {
           columnRow.put("column_name_bytes", column.name.getBytes(StandardCharsets.UTF_8));
           columnRow.put("kind", "partition_key");
           columnRow.put("position", position++);
-          columnRow.put("type", column.type.toString());
+          columnRow.put("type", column.getTypeAsString());
           tableColumnsRows.add(columnRow);
         }
 
@@ -325,7 +363,7 @@ public class SimulacronUtils {
           columnRow.put("column_name_bytes", column.name.getBytes(StandardCharsets.UTF_8));
           columnRow.put("kind", "clustering");
           columnRow.put("position", position++);
-          columnRow.put("type", column.type.toString());
+          columnRow.put("type", column.getTypeAsString());
           tableColumnsRows.add(columnRow);
         }
 
@@ -338,7 +376,7 @@ public class SimulacronUtils {
           columnRow.put("column_name_bytes", column.name.getBytes(StandardCharsets.UTF_8));
           columnRow.put("kind", "regular");
           columnRow.put("position", -1);
-          columnRow.put("type", column.type.toString());
+          columnRow.put("type", column.getTypeAsString());
           tableColumnsRows.add(columnRow);
         }
 
@@ -362,14 +400,10 @@ public class SimulacronUtils {
             new Query(
                 String.format(
                     "INSERT INTO %s.%s (%s) VALUES (%s)",
-                    quoteIfNecessary(keyspace.name),
-                    quoteIfNecessary(table.name),
-                    table.allColumns().stream()
-                        .map(col -> quoteIfNecessary(col.name))
-                        .collect(COMMA),
-                    table.allColumns().stream()
-                        .map(col -> ":" + quoteIfNecessary(col.name))
-                        .collect(COMMA)),
+                    asCql(keyspace.name),
+                    asCql(table.name),
+                    table.allColumns().stream().map(col -> asCql(col.name)).collect(COMMA),
+                    table.allColumns().stream().map(col -> ":" + asCql(col.name)).collect(COMMA)),
                 emptyList(),
                 emptyMap(),
                 table.allColumnTypes());
@@ -382,10 +416,10 @@ public class SimulacronUtils {
             new Query(
                 String.format(
                     "UPDATE %s.%s SET %s",
-                    quoteIfNecessary(keyspace.name),
-                    quoteIfNecessary(table.name),
+                    asCql(keyspace.name),
+                    asCql(table.name),
                     table.allColumns().stream()
-                        .map(col -> quoteIfNecessary(col.name) + "=:" + quoteIfNecessary(col.name))
+                        .map(col -> asCql(col.name) + "=:" + asCql(col.name))
                         .collect(COMMA)),
                 emptyList(),
                 emptyMap(),
@@ -394,64 +428,49 @@ public class SimulacronUtils {
             new Prime(
                 new RequestPrime(whenUpdateIntoTable, new SuccessResult(emptyList(), emptyMap()))));
 
-        // SELECT from table
-        if (table.rows != null && !table.rows.isEmpty()) {
-          Query whenSelectFromTable =
-              new Query(
-                  String.format(
-                      "SELECT %s FROM %s.%s",
-                      table.allColumns().stream()
-                          .map(col -> quoteIfNecessary(col.name))
-                          .collect(COMMA),
-                      quoteIfNecessary(keyspace.name),
-                      quoteIfNecessary(table.name)));
-          simulacron.prime(
-              new Prime(
-                  new RequestPrime(
-                      whenSelectFromTable, new SuccessResult(table.rows, table.allColumnTypes()))));
+        // SELECT cols from table
+        Query whenSelectFromTable =
+            new Query(
+                String.format(
+                    "SELECT %s FROM %s.%s",
+                    table.allColumns().stream().map(col -> asCql(col.name)).collect(COMMA),
+                    asCql(keyspace.name),
+                    asCql(table.name)));
+        simulacron.prime(
+            new Prime(
+                new RequestPrime(
+                    whenSelectFromTable, new SuccessResult(table.rows, table.allColumnTypes()))));
 
-          // SELECT from table WHERE token...
-          Query whenSelectFromTableWhere =
-              new Query(
-                  String.format(
-                      "SELECT %s FROM %s.%s WHERE token(%s) > ? AND token(%s) <= ?",
-                      table.allColumns().stream()
-                          .map(col -> quoteIfNecessary(col.name))
-                          .collect(COMMA),
-                      quoteIfNecessary(keyspace.name),
-                      quoteIfNecessary(table.name),
-                      table.partitionKey.stream()
-                          .map(col -> quoteIfNecessary(col.name))
-                          .collect(COMMA),
-                      table.partitionKey.stream()
-                          .map(col -> quoteIfNecessary(col.name))
-                          .collect(COMMA)));
-          simulacron.prime(
-              new Prime(
-                  new RequestPrime(
-                      whenSelectFromTableWhere,
-                      new SuccessResult(table.rows, table.allColumnTypes()))));
-          whenSelectFromTableWhere =
-              new Query(
-                  String.format(
-                      "SELECT %s FROM %s.%s WHERE token(%s) > :start AND token(%s) <= :end",
-                      table.allColumns().stream()
-                          .map(col -> quoteIfNecessary(col.name))
-                          .collect(COMMA),
-                      quoteIfNecessary(keyspace.name),
-                      quoteIfNecessary(table.name),
-                      table.partitionKey.stream()
-                          .map(col -> quoteIfNecessary(col.name))
-                          .collect(COMMA),
-                      table.partitionKey.stream()
-                          .map(col -> quoteIfNecessary(col.name))
-                          .collect(COMMA)));
-          simulacron.prime(
-              new Prime(
-                  new RequestPrime(
-                      whenSelectFromTableWhere,
-                      new SuccessResult(table.rows, table.allColumnTypes()))));
-        }
+        // SELECT from table WHERE token...
+        Query whenSelectFromTableWhere =
+            new Query(
+                String.format(
+                    "SELECT %s FROM %s.%s WHERE token(%s) > ? AND token(%s) <= ?",
+                    table.allColumns().stream().map(col -> asCql(col.name)).collect(COMMA),
+                    asCql(keyspace.name),
+                    asCql(table.name),
+                    table.partitionKey.stream().map(col -> asCql(col.name)).collect(COMMA),
+                    table.partitionKey.stream().map(col -> asCql(col.name)).collect(COMMA)));
+
+        simulacron.prime(
+            new Prime(
+                new RequestPrime(
+                    whenSelectFromTableWhere,
+                    new SuccessResult(table.rows, table.allColumnTypes()))));
+        whenSelectFromTableWhere =
+            new Query(
+                String.format(
+                    "SELECT %s FROM %s.%s WHERE token(%s) > :start AND token(%s) <= :end",
+                    table.allColumns().stream().map(col -> asCql(col.name)).collect(COMMA),
+                    asCql(keyspace.name),
+                    asCql(table.name),
+                    table.partitionKey.stream().map(col -> asCql(col.name)).collect(COMMA),
+                    table.partitionKey.stream().map(col -> asCql(col.name)).collect(COMMA)));
+        simulacron.prime(
+            new Prime(
+                new RequestPrime(
+                    whenSelectFromTableWhere,
+                    new SuccessResult(table.rows, table.allColumnTypes()))));
       }
     }
 
@@ -473,23 +492,97 @@ public class SimulacronUtils {
   }
 
   public static void primeSystemLocal(BoundCluster simulacron, Map<String, Object> overrides) {
-    Query whenSelectSystemLocal = new Query(SELECT_SYSTEM_LOCAL);
-    List<Map<String, Object>> systemLocalResultSet = new ArrayList<>();
-    Map<String, Object> row = new HashMap<>(SYSTEM_LOCAL_ROW);
-    row.putAll(overrides);
-    // The following columns cannot be overridden and must have values that match the simulacron
-    // cluster
-    InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
-    row.put("cluster_name", simulacron.getName());
-    row.put("broadcast_address", node.getAddress());
-    row.put("listen_address", node.getAddress());
-    row.put("native_transport_address", node.getAddress());
-    row.put("rpc_address", node.getAddress());
-    row.put("native_transport_port", node.getPort());
-    systemLocalResultSet.add(row);
-    SuccessResult thenReturnLocalRow =
-        new SuccessResult(systemLocalResultSet, SYSTEM_LOCAL_COLUMNS);
-    RequestPrime primeSystemLocal = new RequestPrime(whenSelectSystemLocal, thenReturnLocalRow);
-    simulacron.prime(new Prime(primeSystemLocal));
+    {
+      Query whenSelectSystemLocal = new Query(SELECT_SYSTEM_LOCAL);
+      List<Map<String, Object>> systemLocalResultSet = new ArrayList<>();
+      Map<String, Object> row = new HashMap<>(SYSTEM_LOCAL_ROW);
+      row.putAll(overrides);
+      // The following columns cannot be overridden and must have values that match the simulacron
+      // cluster
+      InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
+      row.put("cluster_name", simulacron.getName());
+      row.put("broadcast_address", node.getAddress());
+      row.put("listen_address", node.getAddress());
+      row.put("native_transport_address", node.getAddress());
+      row.put("rpc_address", node.getAddress());
+      row.put("native_transport_port", node.getPort());
+      systemLocalResultSet.add(row);
+      SuccessResult thenReturnLocalRow =
+          new SuccessResult(systemLocalResultSet, SYSTEM_LOCAL_COLUMNS);
+      RequestPrime primeSystemLocal = new RequestPrime(whenSelectSystemLocal, thenReturnLocalRow);
+      simulacron.prime(new Prime(primeSystemLocal));
+    }
+    {
+      Query whenSelectSystemLocal = new Query(SELECT_SYSTEM_LOCAL_SCHEMA_VERSION);
+      List<Map<String, Object>> systemLocalResultSet = new ArrayList<>();
+      Map<String, Object> row = new HashMap<>(SYSTEM_LOCAL_ROW);
+      systemLocalResultSet.add(row);
+      SuccessResult thenReturnLocalRow =
+          new SuccessResult(systemLocalResultSet, SYSTEM_LOCAL_COLUMNS);
+      RequestPrime primeSystemLocal = new RequestPrime(whenSelectSystemLocal, thenReturnLocalRow);
+      simulacron.prime(new Prime(primeSystemLocal));
+    }
+  }
+
+  public static void primeSystemPeers(BoundCluster simulacron) {
+    {
+      Query whenSelectSystemPeers = new Query(SELECT_SYSTEM_PEERS);
+      List<Map<String, Object>> systemPeersResultSet = new ArrayList<>();
+      boolean local = true;
+      for (BoundNode node : simulacron.getNodes()) {
+        if (local) {
+          local = false;
+        } else {
+          Map<String, Object> row = new HashMap<>(SYSTEM_PEERS_ROW);
+          // The following columns cannot be overridden and must have values that match the
+          // simulacron cluster
+          InetSocketAddress addr = node.inetSocketAddress();
+          row.put("peer", addr.getAddress());
+          row.put("preferred_ip", addr.getAddress());
+          row.put("rpc_address", addr.getAddress());
+          systemPeersResultSet.add(row);
+        }
+      }
+      SuccessResult thenReturnLocalRow =
+          new SuccessResult(systemPeersResultSet, SYSTEM_PEERS_COLUMNS);
+      RequestPrime primeSystemLocal = new RequestPrime(whenSelectSystemPeers, thenReturnLocalRow);
+      simulacron.prime(new Prime(primeSystemLocal));
+    }
+    {
+      Query whenSelectSystemPeers = new Query(SELECT_SYSTEM_PEERS_SCHEMA_VERSION);
+      List<Map<String, Object>> systemPeersResultSet = new ArrayList<>();
+      boolean local = true;
+      for (BoundNode node : simulacron.getNodes()) {
+        if (local) {
+          local = false;
+        } else {
+          Map<String, Object> row = new HashMap<>(SYSTEM_PEERS_ROW);
+          // The following columns cannot be overridden and must have values that match the
+          // simulacron cluster
+          InetSocketAddress addr = node.inetSocketAddress();
+          row.put("peer", addr.getAddress());
+          row.put("preferred_ip", addr.getAddress());
+          row.put("rpc_address", addr.getAddress());
+          systemPeersResultSet.add(row);
+        }
+      }
+      SuccessResult thenReturnLocalRow =
+          new SuccessResult(systemPeersResultSet, SYSTEM_PEERS_COLUMNS);
+      RequestPrime primeSystemLocal = new RequestPrime(whenSelectSystemPeers, thenReturnLocalRow);
+      simulacron.prime(new Prime(primeSystemLocal));
+    }
+  }
+
+  public static void primeSystemPeersV2(BoundCluster simulacron) {
+    Query whenSelectSystemPeersV2 = new Query(SELECT_SYSTEM_PEERS_V2);
+    ErrorResult thenThrowServerError =
+        new ServerErrorResult("Unknown keyspace/cf pair (system.peers_v2)");
+    RequestPrime primeSystemPeersV2 =
+        new RequestPrime(whenSelectSystemPeersV2, thenThrowServerError);
+    simulacron.prime(new Prime(primeSystemPeersV2));
+  }
+
+  private static String asCql(String name) {
+    return CqlIdentifier.fromInternal(name).asCql(true);
   }
 }

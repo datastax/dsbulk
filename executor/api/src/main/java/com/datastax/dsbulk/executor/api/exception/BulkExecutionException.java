@@ -8,8 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.exception;
 
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 
 /**
  * Thrown when a {@link BulkExecutor} fails to execute a {@link Statement}.
@@ -19,16 +21,25 @@ import com.datastax.dsbulk.executor.api.BulkExecutor;
  */
 public class BulkExecutionException extends RuntimeException {
 
-  private final Statement statement;
+  private final Statement<?> statement;
 
-  public BulkExecutionException(Throwable cause, Statement statement) {
+  public BulkExecutionException(Throwable cause, Statement<?> statement) {
     super(cause);
     this.statement = statement;
   }
 
   @Override
   public String getMessage() {
-    return String.format("Statement execution failed: %s (%s)", statement, getCause().getMessage());
+    if (statement instanceof SimpleStatement) {
+      return String.format(
+          "Statement execution failed: %s (%s)",
+          ((SimpleStatement) statement).getQuery(), getCause().getMessage());
+    } else if (statement instanceof BoundStatement) {
+      return String.format(
+          "Statement execution failed: %s (%s)",
+          ((BoundStatement) statement).getPreparedStatement().getQuery(), getCause().getMessage());
+    }
+    return String.format("Statement execution failed (%s)", getCause().getMessage());
   }
 
   /**
@@ -36,7 +47,7 @@ public class BulkExecutionException extends RuntimeException {
    *
    * @return the {@link Statement} that caused the execution failure.
    */
-  public Statement getStatement() {
+  public Statement<?> getStatement() {
     return statement;
   }
 }

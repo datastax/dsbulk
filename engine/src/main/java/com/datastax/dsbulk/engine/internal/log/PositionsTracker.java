@@ -8,13 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.log;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import org.jetbrains.annotations.NotNull;
 
 public class PositionsTracker {
 
@@ -44,8 +44,8 @@ public class PositionsTracker {
     }
   }
 
-  @NotNull
-  private static List<Range> addPosition(@NotNull List<Range> positions, long position) {
+  @NonNull
+  private static List<Range> addPosition(@NonNull List<Range> positions, long position) {
     ListIterator<Range> iterator = positions.listIterator();
     while (iterator.hasNext()) {
       Range range = iterator.next();

@@ -8,13 +8,13 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
-import com.google.common.collect.ImmutableList;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.math.BigInteger;
-import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * A token range in a ring. Token ranges have an open lower bound and a closed upper bound.
@@ -22,21 +22,21 @@ import org.jetbrains.annotations.NotNull;
  * @param <V> The token value type.
  * @param <T> The token type.
  */
-public class TokenRange<V extends Number, T extends Token<V>> {
+public final class TokenRange<V extends Number, T extends Token<V>> {
 
   private final T start;
 
   private final T end;
 
-  private final Set<InetSocketAddress> replicas;
+  private final Set<EndPoint> replicas;
 
   private final TokenFactory<V, T> tokenFactory;
 
   public TokenRange(
-      @NotNull T start,
-      @NotNull T end,
-      @NotNull Set<InetSocketAddress> replicas,
-      @NotNull TokenFactory<V, T> tokenFactory) {
+      @NonNull T start,
+      @NonNull T end,
+      @NonNull Set<EndPoint> replicas,
+      @NonNull TokenFactory<V, T> tokenFactory) {
     this.start = start;
     this.end = end;
     this.replicas = replicas;
@@ -44,31 +44,31 @@ public class TokenRange<V extends Number, T extends Token<V>> {
   }
 
   /** @return This range's open lower bound. */
-  @NotNull
+  @NonNull
   public T start() {
     return start;
   }
 
   /** @return This range's closed upper bound. */
-  @NotNull
+  @NonNull
   public T end() {
     return end;
   }
 
   /** @return The replicas that own this range. */
-  @NotNull
-  public Set<InetSocketAddress> replicas() {
+  @NonNull
+  public Set<EndPoint> replicas() {
     return replicas;
   }
 
   /** @return The {@link TokenFactory} for the tokens in this range. */
-  @NotNull
+  @NonNull
   public TokenFactory<V, T> tokenFactory() {
     return tokenFactory;
   }
 
   /** @return The range size (i.e. the number of tokens it contains). */
-  @NotNull
+  @NonNull
   public BigInteger size() {
     return tokenFactory.distance(start, end);
   }
@@ -113,7 +113,7 @@ public class TokenRange<V extends Number, T extends Token<V>> {
    *
    * @return the list of non-wrapping ranges.
    */
-  @NotNull
+  @NonNull
   public List<TokenRange<V, T>> unwrap() {
     if (isWrappedAround()) {
       return ImmutableList.of(

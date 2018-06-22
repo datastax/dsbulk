@@ -8,14 +8,14 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TTL_VARNAME;
-import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.google.common.collect.Lists;
+import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -24,33 +24,33 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class QueryInspectorTest {
 
-  private static final CQLIdentifier NOW = CQLIdentifier.fromInternal("now");
-  private static final CQLIdentifier MAX = CQLIdentifier.fromInternal("max");
-  private static final CQLIdentifier SQRT = CQLIdentifier.fromInternal("sqrt");
+  private static final CQLWord NOW = CQLWord.fromInternal("now");
+  private static final CQLWord MAX = CQLWord.fromInternal("max");
+  private static final CQLWord SQRT = CQLWord.fromInternal("sqrt");
 
   private static final FunctionCall FUNC_NOW = new FunctionCall(null, NOW);
 
-  private static final CQLIdentifier KS = CQLIdentifier.fromInternal("ks");
-  private static final CQLIdentifier MY_KEYSPACE = CQLIdentifier.fromInternal("MyKeyspace");
+  private static final CQLWord KS = CQLWord.fromInternal("ks");
+  private static final CQLWord MY_KEYSPACE = CQLWord.fromInternal("MyKeyspace");
 
-  private static final CQLIdentifier TABLE_1 = CQLIdentifier.fromInternal("table1");
-  private static final CQLIdentifier MY_TABLE = CQLIdentifier.fromInternal("MyTable");
+  private static final CQLWord TABLE_1 = CQLWord.fromInternal("table1");
+  private static final CQLWord MY_TABLE = CQLWord.fromInternal("MyTable");
 
-  private static final CQLIdentifier COL_1 = CQLIdentifier.fromInternal("col1");
-  private static final CQLIdentifier MY_COL_2 = CQLIdentifier.fromInternal("My Col 2");
+  private static final CQLWord COL_1 = CQLWord.fromInternal("col1");
+  private static final CQLWord MY_COL_2 = CQLWord.fromInternal("My Col 2");
 
-  private static final CQLIdentifier PK = CQLIdentifier.fromInternal("pk");
-  private static final CQLIdentifier CC = CQLIdentifier.fromInternal("cc");
-  private static final CQLIdentifier V = CQLIdentifier.fromInternal("v");
-  private static final CQLIdentifier MY_PK = CQLIdentifier.fromInternal("My PK");
-  private static final CQLIdentifier MY_CC = CQLIdentifier.fromInternal("My CC");
-  private static final CQLIdentifier MY_VALUE = CQLIdentifier.fromInternal("My Value");
-  private static final CQLIdentifier WRITETIME = CQLIdentifier.fromInternal("writetime");
-  private static final CQLIdentifier TTL = CQLIdentifier.fromInternal("ttl");
-  private static final CQLIdentifier MY_WRITETIME = CQLIdentifier.fromInternal("My Writetime");
-  private static final CQLIdentifier MY_TTL = CQLIdentifier.fromInternal("My TTL");
-  private static final CQLIdentifier T_1 = CQLIdentifier.fromInternal("t1");
-  private static final CQLIdentifier T_2 = CQLIdentifier.fromInternal("t2");
+  private static final CQLWord PK = CQLWord.fromInternal("pk");
+  private static final CQLWord CC = CQLWord.fromInternal("cc");
+  private static final CQLWord V = CQLWord.fromInternal("v");
+  private static final CQLWord MY_PK = CQLWord.fromInternal("My PK");
+  private static final CQLWord MY_CC = CQLWord.fromInternal("My CC");
+  private static final CQLWord MY_VALUE = CQLWord.fromInternal("My Value");
+  private static final CQLWord WRITETIME = CQLWord.fromInternal("writetime");
+  private static final CQLWord TTL = CQLWord.fromInternal("ttl");
+  private static final CQLWord MY_WRITETIME = CQLWord.fromInternal("My Writetime");
+  private static final CQLWord MY_TTL = CQLWord.fromInternal("My TTL");
+  private static final CQLWord T_1 = CQLWord.fromInternal("t1");
+  private static final CQLWord T_2 = CQLWord.fromInternal("t2");
 
   private static final CQLLiteral _16 = new CQLLiteral("16");
   private static final CQLLiteral _2 = new CQLLiteral("2");
@@ -464,14 +464,14 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "SELECT myFunction(col1) as f1, \"MyFunction\"(\"My Col 2\") FROM ks.table1");
-    CQLIdentifier name1 = CQLIdentifier.fromInternal("myfunction");
-    CQLIdentifier name2 = CQLIdentifier.fromInternal("MyFunction");
+    CQLWord name1 = CQLWord.fromInternal("myfunction");
+    CQLWord name2 = CQLWord.fromInternal("MyFunction");
     FunctionCall f1 = new FunctionCall(null, name1, COL_1);
     FunctionCall f2 = new FunctionCall(null, name2, MY_COL_2);
     assertThat(inspector.getResultSetVariables())
         .hasSize(2)
         .containsKeys(f1, f2)
-        .containsValues(CQLIdentifier.fromInternal("f1"), f2);
+        .containsValues(CQLWord.fromInternal("f1"), f2);
   }
 
   @Test
@@ -545,9 +545,9 @@ class QueryInspectorTest {
       String query, int startIndex, int endIndex) {
     QueryInspector inspector = new QueryInspector(query);
     assertThat(inspector.getTokenRangeRestrictionStartVariable())
-        .contains(CQLIdentifier.fromInternal("begin"));
+        .contains(CQLWord.fromInternal("begin"));
     assertThat(inspector.getTokenRangeRestrictionEndVariable())
-        .contains(CQLIdentifier.fromInternal("finish"));
+        .contains(CQLWord.fromInternal("finish"));
     assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isEqualTo(startIndex);
     assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isEqualTo(endIndex);
   }
@@ -571,9 +571,9 @@ class QueryInspectorTest {
       String query, int startIndex, int endIndex) {
     QueryInspector inspector = new QueryInspector(query);
     assertThat(inspector.getTokenRangeRestrictionStartVariable())
-        .contains(CQLIdentifier.fromInternal("partition key token"));
+        .contains(CQLWord.fromInternal("partition key token"));
     assertThat(inspector.getTokenRangeRestrictionEndVariable())
-        .contains(CQLIdentifier.fromInternal("partition key token"));
+        .contains(CQLWord.fromInternal("partition key token"));
     assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isEqualTo(startIndex);
     assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isEqualTo(endIndex);
   }

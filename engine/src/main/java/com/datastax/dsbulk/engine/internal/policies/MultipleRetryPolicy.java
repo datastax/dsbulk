@@ -8,79 +8,85 @@
  */
 package com.datastax.dsbulk.engine.internal.policies;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.ConsistencyLevel;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.WriteType;
-import com.datastax.driver.core.exceptions.DriverException;
-import com.datastax.driver.core.policies.RetryPolicy;
+import com.datastax.dsbulk.engine.internal.settings.BulkDriverOption;
+import com.datastax.oss.driver.api.core.ConsistencyLevel;
+import com.datastax.oss.driver.api.core.connection.ClosedConnectionException;
+import com.datastax.oss.driver.api.core.connection.HeartbeatException;
+import com.datastax.oss.driver.api.core.context.DriverContext;
+import com.datastax.oss.driver.api.core.retry.RetryDecision;
+import com.datastax.oss.driver.api.core.retry.RetryPolicy;
+import com.datastax.oss.driver.api.core.servererrors.CoordinatorException;
+import com.datastax.oss.driver.api.core.servererrors.DefaultWriteType;
+import com.datastax.oss.driver.api.core.servererrors.ReadFailureException;
+import com.datastax.oss.driver.api.core.servererrors.WriteFailureException;
+import com.datastax.oss.driver.api.core.servererrors.WriteType;
+import com.datastax.oss.driver.api.core.session.Request;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 public class MultipleRetryPolicy implements RetryPolicy {
+
   private final int maxRetryCount;
 
-  public MultipleRetryPolicy(int maxRetryCount) {
-    this.maxRetryCount = maxRetryCount;
+  public MultipleRetryPolicy(DriverContext context, String profileName) {
+    this.maxRetryCount =
+        context
+            .getConfig()
+            .getProfile(profileName)
+            .getInt(BulkDriverOption.RETRY_POLICY_MAX_RETRIES, 10);
   }
 
   @Override
   public RetryDecision onReadTimeout(
-      Statement statement,
-      ConsistencyLevel cl,
-      int requiredResponses,
-      int receivedResponses,
-      boolean dataRetrieved,
-      int nbRetry) {
-    return retryManyTimesOrThrow(cl, nbRetry);
-  }
-
-  @Override
-  public RetryDecision onRequestError(
-      Statement statement, ConsistencyLevel cl, DriverException e, int nbRetry) {
-    return RetryDecision.rethrow();
+      @NonNull Request request,
+      @NonNull ConsistencyLevel cl,
+      int blockFor,
+      int received,
+      boolean dataPresent,
+      int retryCount) {
+    return (retryCount < maxRetryCount && received >= blockFor && !dataPresent)
+        ? RetryDecision.RETRY_SAME
+        : RetryDecision.RETHROW;
   }
 
   @Override
   public RetryDecision onWriteTimeout(
-      Statement statement,
-      ConsistencyLevel cl,
-      WriteType writeType,
-      int requiredAcks,
-      int receivedAcks,
-      int nbRetry) {
-    return retryManyTimesOrThrow(null, nbRetry);
+      @NonNull Request request,
+      @NonNull ConsistencyLevel cl,
+      @NonNull WriteType writeType,
+      int blockFor,
+      int received,
+      int retryCount) {
+    return (retryCount < maxRetryCount && writeType == DefaultWriteType.BATCH_LOG)
+        ? RetryDecision.RETRY_SAME
+        : RetryDecision.RETHROW;
   }
 
   @Override
   public RetryDecision onUnavailable(
-      Statement statement,
-      ConsistencyLevel cl,
-      int requiredReplica,
-      int aliveReplica,
-      int nbRetry) {
-    // We retry once in hope we connect to another
-    // coordinator that can see more nodes (e.g. on another side of the network partition):
-    return retryOnceOrThrow(nbRetry);
+      @NonNull Request request,
+      @NonNull ConsistencyLevel cl,
+      int required,
+      int alive,
+      int retryCount) {
+    return retryCount < maxRetryCount ? RetryDecision.RETRY_NEXT : RetryDecision.RETHROW;
   }
 
   @Override
-  public void init(Cluster cluster) {}
+  public RetryDecision onRequestAborted(
+      @NonNull Request request, @NonNull Throwable error, int retryCount) {
+    return (error instanceof ClosedConnectionException || error instanceof HeartbeatException)
+        ? RetryDecision.RETRY_NEXT
+        : RetryDecision.RETHROW;
+  }
+
+  @Override
+  public RetryDecision onErrorResponse(
+      @NonNull Request request, @NonNull CoordinatorException error, int retryCount) {
+    return (error instanceof ReadFailureException || error instanceof WriteFailureException)
+        ? RetryDecision.RETHROW
+        : RetryDecision.RETRY_NEXT;
+  }
 
   @Override
   public void close() {}
-
-  private RetryDecision retryManyTimesOrThrow(ConsistencyLevel cl, int nbRetry) {
-    if (nbRetry < maxRetryCount) {
-      return RetryDecision.retry(cl);
-    } else {
-      return RetryDecision.rethrow();
-    }
-  }
-
-  private RetryDecision retryOnceOrThrow(int nbRetry) {
-    if (nbRetry == 0) {
-      return RetryDecision.retry(null);
-    } else {
-      return RetryDecision.rethrow();
-    }
-  }
 }

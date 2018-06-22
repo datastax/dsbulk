@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.writer;
 
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
@@ -31,7 +31,7 @@ public interface SyncBulkWriter extends AutoCloseable {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   default WriteResult writeSync(String statement) throws BulkExecutionException {
-    return writeSync(new SimpleStatement(statement));
+    return writeSync(SimpleStatement.newInstance(statement));
   }
 
   /**

@@ -8,14 +8,14 @@
  */
 package com.datastax.dsbulk.executor.reactor;
 
-import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
+import com.datastax.oss.driver.api.core.CqlSession;
 
 /** A builder for {@link DefaultReactorBulkExecutor} instances. */
 public class DefaultReactorBulkExecutorBuilder
     extends AbstractBulkExecutorBuilder<DefaultReactorBulkExecutor> {
 
-  DefaultReactorBulkExecutorBuilder(Session session) {
+  DefaultReactorBulkExecutorBuilder(CqlSession session) {
     super(session);
   }
 

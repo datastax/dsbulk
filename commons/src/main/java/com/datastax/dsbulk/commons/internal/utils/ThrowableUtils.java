@@ -8,7 +8,8 @@
  */
 package com.datastax.dsbulk.commons.internal.utils;
 
-import com.google.common.base.Throwables;
+import com.datastax.oss.driver.shaded.guava.common.base.Throwables;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.FileNotFoundException;
 import java.io.InterruptedIOException;
 import java.io.PrintWriter;
@@ -28,7 +29,6 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
 import java.util.List;
 import java.util.function.Predicate;
-import org.jetbrains.annotations.NotNull;
 
 public class ThrowableUtils {
 
@@ -46,7 +46,7 @@ public class ThrowableUtils {
    * @return true if interrupted, false otherwise.
    */
   @SuppressWarnings("UnstableApiUsage")
-  public static boolean isInterrupted(@NotNull Throwable throwable) {
+  public static boolean isInterrupted(@NonNull Throwable throwable) {
     List<Throwable> chain = Throwables.getCausalChain(throwable);
     for (Throwable t : chain) {
       if (checkInterrupted(t)) {
@@ -76,8 +76,8 @@ public class ThrowableUtils {
    * @param error The throwable to extract a sanitized message from.
    * @return The sanitized message.
    */
-  @NotNull
-  public static String getSanitizedErrorMessage(@NotNull Throwable error) {
+  @NonNull
+  public static String getSanitizedErrorMessage(@NonNull Throwable error) {
     return getSanitizedErrorMessage(error, INCLUDE_ALL, 2);
   }
 
@@ -90,9 +90,9 @@ public class ThrowableUtils {
    * @param indentation The number of spaces to add when indenting a new line of message.
    * @return The sanitized message.
    */
-  @NotNull
+  @NonNull
   public static String getSanitizedErrorMessage(
-      @NotNull Throwable error, @NotNull Predicate<Throwable> filter, int indentation) {
+      @NonNull Throwable error, @NonNull Predicate<Throwable> filter, int indentation) {
     StringWriter sw = new StringWriter();
     PrintWriter pw = new PrintWriter(sw);
     printErrorMessage(error, filter, pw, indentation, 0);

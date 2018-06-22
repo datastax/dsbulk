@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.executor.reactor.reader;
 
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.reader.ReactiveBulkReader;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -34,7 +34,7 @@ public interface ReactorBulkReader extends ReactiveBulkReader {
    */
   @Override
   default Flux<ReadResult> readReactive(String statement) throws BulkExecutionException {
-    return readReactive(new SimpleStatement(statement));
+    return readReactive(SimpleStatement.newInstance(statement));
   }
 
   /**

@@ -8,161 +8,169 @@
  */
 package com.datastax.dsbulk.commons.internal.utils;
 
-import static com.datastax.driver.core.CodecRegistry.DEFAULT_INSTANCE;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newPreparedId;
-import static com.datastax.driver.core.ProtocolVersion.DSE_V2;
-import static com.google.common.base.Charsets.UTF_8;
+import static com.datastax.dse.driver.api.core.DseProtocolVersion.DSE_V2;
+import static com.datastax.oss.driver.shaded.guava.common.base.Charsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.PreparedId;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.StatementWrapper;
-import com.datastax.driver.core.utils.Bytes;
-import com.google.common.collect.ImmutableMap;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.detach.AttachmentPoint;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.internal.core.cql.DefaultColumnDefinition;
+import com.datastax.oss.driver.internal.core.cql.DefaultColumnDefinitions;
+import com.datastax.oss.driver.internal.core.type.codec.IntCodec;
+import com.datastax.oss.driver.internal.core.type.codec.StringCodec;
+import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import com.datastax.oss.driver.shaded.guava.common.collect.Iterators;
+import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import com.datastax.oss.protocol.internal.ProtocolConstants.DataType;
+import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
+import com.datastax.oss.protocol.internal.response.result.RawType;
+import com.datastax.oss.protocol.internal.util.Bytes;
 import java.nio.ByteBuffer;
-import org.junit.jupiter.api.BeforeAll;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StatementUtilsTest {
 
-  private static final byte[] MOCK_PAGING_STATE = Bytes.getArray(Bytes.fromHexString("0xdeadbeef"));
-  private static final ByteBuffer MOCK_PAYLOAD_VALUE1 = Bytes.fromHexString("0xabcd");
-  private static final ByteBuffer MOCK_PAYLOAD_VALUE2 = Bytes.fromHexString("0xef");
   private static final ImmutableMap<String, ByteBuffer> MOCK_PAYLOAD =
-      ImmutableMap.of("key1", MOCK_PAYLOAD_VALUE1, "key2", MOCK_PAYLOAD_VALUE2);
-
-  @Mock private PreparedStatement preparedStatement;
-  @Mock private Row row;
-
-  @BeforeAll
-  void setup() {
-    MockitoAnnotations.initMocks(this);
-
-    ColumnDefinitions columnDefinitions =
-        newColumnDefinitions(
-            newDefinition("ks", "table", "c1", DataType.cint()),
-            newDefinition("ks", "table", "c2", DataType.text()));
-
-    PreparedId preparedId = newPreparedId(columnDefinitions, new int[0], DSE_V2);
-    when(preparedStatement.getPreparedId()).thenReturn(preparedId);
-    when(preparedStatement.getVariables()).thenReturn(columnDefinitions);
-    when(preparedStatement.getCodecRegistry()).thenReturn(DEFAULT_INSTANCE);
-    when(row.getColumnDefinitions()).thenReturn(columnDefinitions);
-  }
+      ImmutableMap.of("key1", Bytes.fromHexString("0xabcd"), "key2", Bytes.fromHexString("0xef"));
 
   @Test
   void should_measure_size_of_simple_statement() {
     String queryString = "SELECT release_version FROM system.local WHERE key = ?";
-    SimpleStatement statement = new SimpleStatement(queryString);
+    SimpleStatement statement = SimpleStatement.newInstance(queryString);
     int expectedSize = 0;
-    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DEFAULT_INSTANCE))
+    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize);
 
-    SimpleStatement statementWithAnonymousValue =
-        new SimpleStatement(statement.getQueryString(), "local");
-    assertThat(StatementUtils.getDataSize(statementWithAnonymousValue, DSE_V2, DEFAULT_INSTANCE))
+    SimpleStatement statementWithPositionalValue =
+        SimpleStatement.newInstance(statement.getQuery(), "local");
+    assertThat(
+            StatementUtils.getDataSize(
+                statementWithPositionalValue, DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(
             expectedSize + "local".getBytes(UTF_8).length // value
             );
 
     SimpleStatement statementWithNamedValue =
-        new SimpleStatement(
-            statement.getQueryString(),
-            ImmutableMap.of("key", "local")); // key not taken into account
+        SimpleStatement.newInstance(
+            statement.getQuery(), ImmutableMap.of("key", "local")); // key not taken into account
 
-    assertThat(StatementUtils.getDataSize(statementWithNamedValue, DSE_V2, DEFAULT_INSTANCE))
+    assertThat(
+            StatementUtils.getDataSize(
+                statementWithNamedValue, DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(
             expectedSize + "local".getBytes(UTF_8).length // value
             );
 
-    statement.setOutgoingPayload(MOCK_PAYLOAD);
-    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DEFAULT_INSTANCE))
+    statement = statement.setCustomPayload(MOCK_PAYLOAD);
+    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize); // payload not taken into account
   }
 
   @Test
   void should_measure_size_of_bound_statement() {
-    BoundStatement statement = new BoundStatement(preparedStatement);
+    BoundStatement bs = mockBoundStatement(null, null);
+
     int expectedSize = 0;
-    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DEFAULT_INSTANCE))
+    assertThat(StatementUtils.getDataSize(bs, DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize);
 
-    statement.setInt(0, 0);
-    expectedSize += 4; // serialized value (we already have its size from when it was null above)
-    statement.setString(1, "test");
-    expectedSize += "test".getBytes(UTF_8).length;
-    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DEFAULT_INSTANCE))
+    bs = mockBoundStatement(0, "test");
+    expectedSize = bs.getBytesUnsafe(0).remaining() + bs.getBytesUnsafe(1).remaining();
+    assertThat(StatementUtils.getDataSize(bs, DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize);
 
-    statement.setPagingStateUnsafe(MOCK_PAGING_STATE); // not taken into account
-    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DEFAULT_INSTANCE))
-        .isEqualTo(expectedSize);
-
-    statement.setOutgoingPayload(MOCK_PAYLOAD); // not taken into account
-    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DEFAULT_INSTANCE))
-        .isEqualTo(expectedSize);
+    verify(bs, never()).getPagingState();
+    verify(bs, never()).getCustomPayload();
   }
 
   @Test
   void should_measure_size_of_batch_statement() {
-    String queryString = "SELECT release_version FROM system.local";
-    SimpleStatement statement1 = new SimpleStatement(queryString);
 
-    BoundStatement statement2 =
-        new BoundStatement(preparedStatement).setInt(0, 0).setString(1, "test");
-    BoundStatement statement3 =
-        new BoundStatement(preparedStatement).setInt(0, 0).setString(1, "test2");
+    SimpleStatement stmt1 = SimpleStatement.newInstance("SELECT release_version FROM system.local");
+    BoundStatement stmt2 = mockBoundStatement(1, "test1");
+    BoundStatement stmt3 = mockBoundStatement(2, "test2");
 
-    BatchStatement batchStatement =
-        new BatchStatement().add(statement1).add(statement2).add(statement3);
+    BatchStatement batch = mockBatchStatement(stmt1, stmt2, stmt3);
 
     int expectedSize =
-        4 // setInt(0)
-            + 4 // setInt(0)
-            + "test".getBytes(UTF_8).length
+        4 // setInt(1)
+            + 4 // setInt(2)
+            + "test1".getBytes(UTF_8).length
             + "test2".getBytes(UTF_8).length;
-    assertThat(StatementUtils.getDataSize(batchStatement, DSE_V2, DEFAULT_INSTANCE))
+    assertThat(StatementUtils.getDataSize(batch, DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize);
 
-    batchStatement.setOutgoingPayload(MOCK_PAYLOAD); // not taken into account
-    assertThat(StatementUtils.getDataSize(batchStatement, DSE_V2, DEFAULT_INSTANCE))
-        .isEqualTo(expectedSize);
-  }
+    stmt1 = stmt1.setCustomPayload(MOCK_PAYLOAD);
+    batch = mockBatchStatement(stmt1, stmt2, stmt3);
+    assertThat(StatementUtils.getDataSize(batch, DSE_V2, DefaultCodecRegistry.DEFAULT))
+        .isEqualTo(expectedSize); // payload not taken into account
 
-  @Test
-  void should_measure_size_of_wrapped_statement() {
-    String queryString = "SELECT release_version FROM system.local WHERE key = ?";
-    Statement statement = new StatementWrapper(new SimpleStatement(queryString)) {};
-    int expectedSize = 0;
-    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DEFAULT_INSTANCE))
-        .isEqualTo(expectedSize);
-
-    SimpleStatement statementWithAnonymousValue = new SimpleStatement(queryString, "local");
-    statement = new StatementWrapper(statementWithAnonymousValue) {};
-
-    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DEFAULT_INSTANCE))
-        .isEqualTo(expectedSize + "local".getBytes(UTF_8).length);
+    verify(batch, never()).getPagingState();
+    verify(batch, never()).getCustomPayload();
+    verify(stmt2, never()).getPagingState();
+    verify(stmt2, never()).getCustomPayload();
+    verify(stmt3, never()).getPagingState();
+    verify(stmt3, never()).getCustomPayload();
   }
 
   @Test
   void should_measure_size_of_row() {
+    Row row = mock(Row.class);
+    when(row.getColumnDefinitions()).thenReturn(mockColumnDefinitions());
     when(row.getBytesUnsafe(0)).thenReturn(Bytes.fromHexString("0xCAFEBABE"));
     when(row.getBytesUnsafe(1)).thenReturn(ByteBuffer.wrap(new byte[0]));
     // 1st col: 4 bytes + 2nd col: 0 bytes
     assertThat(StatementUtils.getDataSize(row)).isEqualTo(4);
+  }
+
+  private BatchStatement mockBatchStatement(BatchableStatement<?>... statements) {
+    BatchStatement batch = mock(BatchStatement.class);
+    when(batch.iterator()).thenAnswer(args -> Iterators.forArray(statements));
+    return batch;
+  }
+
+  private BoundStatement mockBoundStatement(Integer col1, String col2) {
+    PreparedStatement ps = mockPreparedStatement();
+    BoundStatement bs = mock(BoundStatement.class);
+    when(bs.getPreparedStatement()).thenReturn(ps);
+    ByteBuffer col1bb = new IntCodec().encode(col1, DSE_V2);
+    ByteBuffer col2bb =
+        new StringCodec(DataTypes.TEXT, StandardCharsets.UTF_8).encode(col2, DSE_V2);
+    when(bs.getBytesUnsafe(0)).thenReturn(col1bb);
+    when(bs.getBytesUnsafe(1)).thenReturn(col2bb);
+    return bs;
+  }
+
+  private PreparedStatement mockPreparedStatement() {
+    ColumnDefinitions columnDefinitions = mockColumnDefinitions();
+    PreparedStatement ps = mock(PreparedStatement.class);
+    when(ps.getVariableDefinitions()).thenReturn(columnDefinitions);
+    return ps;
+  }
+
+  private ColumnDefinitions mockColumnDefinitions() {
+    return DefaultColumnDefinitions.valueOf(
+        Lists.newArrayList(
+            new DefaultColumnDefinition(
+                new ColumnSpec("ks", "table", "c1", 0, RawType.PRIMITIVES.get(DataType.INT)),
+                AttachmentPoint.NONE),
+            new DefaultColumnDefinition(
+                new ColumnSpec("ks", "table", "c2", 1, RawType.PRIMITIVES.get(DataType.VARCHAR)),
+                AttachmentPoint.NONE)));
   }
 }

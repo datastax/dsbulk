@@ -12,24 +12,29 @@ import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.Statist
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
-import static com.google.common.base.Functions.identity;
+import static com.datastax.oss.driver.shaded.guava.common.base.Functions.identity;
 import static java.util.stream.Collectors.toMap;
 
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Token;
-import com.datastax.driver.core.TokenRange;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.annotations.VisibleForTesting;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.api.core.metadata.Metadata;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
+import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.internal.core.metadata.token.Murmur3Token;
+import com.datastax.oss.driver.internal.core.metadata.token.RandomToken;
+import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.PrintStream;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,60 +48,63 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiFunction;
-import org.jetbrains.annotations.NotNull;
 
 public class DefaultReadResultCounter implements ReadResultCounter {
 
-  private static final BiFunction<Long, Long, Long> SUM = (v1, v2) -> v1 + v2;
+  private static final BiFunction<Long, Long, Long> SUM = Long::sum;
 
   private final int numPartitions;
   private final ProtocolVersion protocolVersion;
   private final ExtendedCodecRegistry codecRegistry;
 
-  private final Metadata metadata;
+  private final TokenMap tokenMap;
   private final Set<TokenRange> allTokenRanges;
-  private final Set<InetSocketAddress> allAddresses;
+  private final Set<EndPoint> allAddresses;
   private final Token[] ring;
   private final ReplicaSet[] replicaSets;
 
   private final CopyOnWriteArrayList<DefaultCountingUnit> units = new CopyOnWriteArrayList<>();
 
   private final boolean countGlobal;
-  private final boolean countHosts;
+  private final boolean countNodes;
   private final boolean countRanges;
   private final boolean countPartitions;
   private final boolean multiCount;
 
   @VisibleForTesting long totalRows;
   @VisibleForTesting Map<TokenRange, Long> totalsByRange;
-  @VisibleForTesting Map<InetSocketAddress, Long> totalsByHost;
+  @VisibleForTesting Map<EndPoint, Long> totalsByNode;
   @VisibleForTesting List<PartitionKeyCount> totalsByPartitionKey;
 
   public DefaultReadResultCounter(
-      String keyspace,
+      CqlIdentifier keyspace,
       Metadata metadata,
       EnumSet<StatsSettings.StatisticsMode> modes,
       int numPartitions,
       ProtocolVersion protocolVersion,
       ExtendedCodecRegistry codecRegistry) {
-    this.metadata = metadata;
+    this.tokenMap =
+        metadata
+            .getTokenMap()
+            .orElseThrow(() -> new IllegalStateException("Token metadata not present"));
     this.numPartitions = numPartitions;
     this.protocolVersion = protocolVersion;
     this.codecRegistry = codecRegistry;
     countGlobal = modes.contains(global);
-    countHosts = modes.contains(hosts);
+    countNodes = modes.contains(hosts);
     countRanges = modes.contains(ranges);
     countPartitions = modes.contains(partitions);
     multiCount = modes.size() > 1;
-    if (countHosts || countRanges) {
+    if (countNodes || countRanges) {
       // Store required metadata in two data structures that will speed up lookups by token:
       // 1) 'ring' stores the range start tokens of all ranges, contents are identical to
       // metadata.tokenMap.ring and are designed to allow binary searches by token.
       // 2) 'replicaSets' stores a) a given range and b) all of its replicas for the given keyspace,
-      // contents are identical to metadata.tokenMap.tokenToHostsByKeyspace.
+      // contents are identical to metadata.tokenMap.tokenToNodesByKeyspace.
       // Both arrays are filled so that ring[i] == replicaSets[i].range.end,
       // thus allowing to easily locate the range and replicas of a given token.
-      Set<TokenRange> ranges = metadata.getTokenRanges();
+      Set<TokenRange> ranges =
+          metadata.getTokenMap().map(TokenMap::getTokenRanges).orElse(Collections.emptySet());
       ring = new Token[ranges.size()];
       replicaSets = new ReplicaSet[ranges.size()];
       int i = 0;
@@ -105,7 +113,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       for (TokenRange r1 : ranges) {
         ring[i] = r1.getStart();
         TokenRange r2 = rangesByEndingToken.get(r1.getStart());
-        replicaSets[i] = new ReplicaSet(r2, metadata.getReplicas(keyspace, r2));
+        replicaSets[i] = new ReplicaSet(r2, tokenMap.getReplicas(keyspace, r2));
         i++;
       }
       // 'allTokenRanges' and 'allAddresses' are sorted structures that will only serve when
@@ -115,9 +123,9 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       } else {
         allTokenRanges = null;
       }
-      if (countHosts) {
-        allAddresses = new TreeSet<>(Comparator.comparing(InetSocketAddress::toString));
-        metadata.getAllHosts().stream().map(Host::getSocketAddress).forEach(allAddresses::add);
+      if (countNodes) {
+        allAddresses = new TreeSet<>(Comparator.comparing(EndPoint::toString));
+        metadata.getNodes().values().stream().map(Node::getEndPoint).forEach(allAddresses::add);
       } else {
         allAddresses = null;
       }
@@ -145,12 +153,12 @@ public class DefaultReadResultCounter implements ReadResultCounter {
   void consolidateUnitCounts() {
     totalRows = 0;
     totalsByRange = new HashMap<>();
-    totalsByHost = new HashMap<>();
+    totalsByNode = new HashMap<>();
     totalsByPartitionKey = new ArrayList<>();
     for (DefaultCountingUnit unit : units) {
       unit.close();
       totalRows += unit.total;
-      unit.totalsByHost.forEach((key, value) -> totalsByHost.merge(key, value, SUM));
+      unit.totalsByNode.forEach((key, value) -> totalsByNode.merge(key, value, SUM));
       unit.totalsByRange.forEach((key, value) -> totalsByRange.merge(key, value, SUM));
       totalsByPartitionKey.addAll(unit.totalsByPartitionKey);
     }
@@ -170,15 +178,15 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       }
       out.println(totalRows);
     }
-    if (countHosts) {
+    if (countNodes) {
       if (multiCount) {
-        out.println("Total rows per host:");
+        out.println("Total rows per node:");
       }
       allAddresses.forEach(
-          host -> {
-            long totalPerHost = totalsByHost.containsKey(host) ? totalsByHost.get(host) : 0;
-            float percentage = (float) totalPerHost / (float) totalRows * 100f;
-            out.printf("%s %d %.2f%n", host, totalPerHost, percentage);
+          node -> {
+            long totalPerNode = totalsByNode.containsKey(node) ? totalsByNode.get(node) : 0;
+            float percentage = (float) totalPerNode / (float) totalRows * 100f;
+            out.printf("%s %d %.2f%n", node, totalPerNode, percentage);
           });
     }
     if (countRanges) {
@@ -190,7 +198,11 @@ public class DefaultReadResultCounter implements ReadResultCounter {
             long totalPerRange = totalsByRange.containsKey(range) ? totalsByRange.get(range) : 0;
             float percentage = (float) totalPerRange / (float) totalRows * 100f;
             out.printf(
-                "%s %s %d %.2f%n", range.getStart(), range.getEnd(), totalPerRange, percentage);
+                "%s %s %d %.2f%n",
+                tokenAsString(range.getStart()),
+                tokenAsString(range.getEnd()),
+                totalPerRange,
+                percentage);
           });
     }
     if (countPartitions) {
@@ -203,6 +215,17 @@ public class DefaultReadResultCounter implements ReadResultCounter {
             out.printf("%s %d %.2f%n", count.pk, count.count, percentage);
           });
     }
+  }
+
+  private static String tokenAsString(Token token) {
+    if (token instanceof Murmur3Token) {
+      return String.valueOf(((Murmur3Token) token).getValue());
+    }
+    if (token instanceof RandomToken) {
+      return String.valueOf(((RandomToken) token).getValue());
+    }
+    // other token types not supported, but handle gracefully
+    return token.toString();
   }
 
   /**
@@ -219,7 +242,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
 
     long total = 0;
     final Map<TokenRange, Long> totalsByRange = new HashMap<>();
-    final Map<InetSocketAddress, Long> totalsByHost = new HashMap<>();
+    final Map<EndPoint, Long> totalsByNode = new HashMap<>();
     final List<PartitionKeyCount> totalsByPartitionKey = new ArrayList<>(numPartitions + 1);
     long currentPkCount = 0;
     PartitionKey currentPk;
@@ -238,12 +261,12 @@ public class DefaultReadResultCounter implements ReadResultCounter {
         for (int i = 0; i < size; i++) {
           bbs[i] = row.getBytesUnsafe(i);
         }
-        if (countRanges || countHosts) {
+        if (countRanges || countNodes) {
           // compute the token client-side from the partition keys
-          token = metadata.newToken(bbs);
+          token = tokenMap.newToken(bbs);
         }
         pk = new PartitionKey(row.getColumnDefinitions(), bbs);
-      } else if (countRanges || countHosts) {
+      } else if (countRanges || countNodes) {
         // When counting hosts or ranges, without counting partitions,
         // the result set is expected to contain one single column containing
         // the partition key's token
@@ -253,14 +276,14 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       // Note: we need to always increment the global counter because it's used to compute
       // percentages for other stats.
       total++;
-      if (countRanges || countHosts) {
+      if (countRanges || countNodes) {
         ReplicaSet replicaSet = getReplicaSet(token);
         if (countRanges) {
           totalsByRange.merge(replicaSet.range, 1L, SUM);
         }
-        if (countHosts) {
-          for (InetSocketAddress address : replicaSet.addresses) {
-            totalsByHost.merge(address, 1L, SUM);
+        if (countNodes) {
+          for (EndPoint address : replicaSet.addresses) {
+            totalsByNode.merge(address, 1L, SUM);
           }
         }
       }
@@ -291,7 +314,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
      * Locate the end token of the range containing the given token then use it to lookup the entire
      * range and its replicas. This search is identical to the search performed by
      * Metadata.TokenMap.getReplicas(String keyspace, Token token). Only used when counting ranges
-     * or hosts.
+     * or nodes.
      */
     private ReplicaSet getReplicaSet(Token token) {
       assert ring != null;
@@ -345,7 +368,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       hashCode = Arrays.hashCode(components);
       types = new DataType[components.length];
       for (int i = 0; i < components.length; i++) {
-        types[i] = definitions.getType(i);
+        types[i] = definitions.get(i).getType();
       }
     }
 
@@ -376,9 +399,8 @@ public class DefaultReadResultCounter implements ReadResultCounter {
         if (i > 0) {
           sb.append('|');
         }
-        @SuppressWarnings("unchecked")
-        TypeCodec<Object> codec = (TypeCodec<Object>) codecRegistry.codecFor(types[i]);
-        Object o = codec.deserialize(components[i], protocolVersion);
+        TypeCodec<Object> codec = codecRegistry.codecFor(types[i]);
+        Object o = codec.decode(components[i], protocolVersion);
         sb.append(codec.format(o));
       }
       // Remove spaces from output to preserve the number of columns
@@ -398,7 +420,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     }
 
     @Override
-    public int compareTo(@NotNull DefaultReadResultCounter.PartitionKeyCount that) {
+    public int compareTo(@NonNull DefaultReadResultCounter.PartitionKeyCount that) {
       return Long.compare(this.count, that.count);
     }
   }
@@ -406,12 +428,11 @@ public class DefaultReadResultCounter implements ReadResultCounter {
   private static class ReplicaSet {
 
     final TokenRange range;
-    final InetSocketAddress[] addresses;
+    final EndPoint[] addresses;
 
-    ReplicaSet(TokenRange range, Set<Host> addresses) {
+    ReplicaSet(TokenRange range, Set<Node> addresses) {
       this.range = range;
-      this.addresses =
-          addresses.stream().map(Host::getSocketAddress).toArray(InetSocketAddress[]::new);
+      this.addresses = addresses.stream().map(Node::getEndPoint).toArray(EndPoint[]::new);
     }
   }
 }
