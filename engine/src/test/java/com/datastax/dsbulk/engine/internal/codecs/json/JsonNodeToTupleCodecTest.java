@@ -8,21 +8,20 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.driver.core.DataType.timestamp;
-import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
-import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.TupleType;
-import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.TupleType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.reflect.TypeToken;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,11 +38,16 @@ class JsonNodeToTupleCodecTest {
   void setUp() {
     tupleType =
         newTupleType(
-            V4, new CodecRegistry().register(InstantCodec.instance), timestamp(), varchar());
+            //            V4, new CodecRegistry().register(InstantCodec.instance),
+            // DataTypes.TIMESTAMP, varchar());
+            V4,
+            new DefaultCodecRegistry("test", TypeCodecs.TIMESTAMP),
+            DataTypes.TIMESTAMP,
+            DataTypes.TEXT);
     codec =
         (JsonNodeToTupleCodec)
             newCodecRegistry("nullStrings = [NULL, \"\"]")
-                .codecFor(tupleType, TypeToken.of(JsonNode.class));
+                .codecFor(tupleType, GenericType.of(JsonNode.class));
   }
 
   @Test

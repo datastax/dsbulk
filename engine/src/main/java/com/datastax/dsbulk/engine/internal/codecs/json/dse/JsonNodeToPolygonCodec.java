@@ -8,11 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json.dse;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.driver.dse.geometry.Polygon;
-import com.datastax.driver.dse.geometry.codecs.PolygonCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dse.driver.api.core.codec.DseTypeCodecs;
+import com.datastax.dse.driver.api.core.type.geometry.Polygon;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,7 +23,7 @@ public class JsonNodeToPolygonCodec extends JsonNodeConvertingCodec<Polygon> {
   private final ObjectMapper objectMapper;
 
   public JsonNodeToPolygonCodec(ObjectMapper objectMapper, List<String> nullStrings) {
-    super(PolygonCodec.INSTANCE, nullStrings);
+    super(DseTypeCodecs.POLYGON, nullStrings);
     this.objectMapper = objectMapper;
   }
 
@@ -47,7 +46,7 @@ public class JsonNodeToPolygonCodec extends JsonNodeConvertingCodec<Polygon> {
       }
       return CodecUtils.parsePolygon(s);
     } catch (JsonProcessingException e) {
-      throw new InvalidTypeException("Cannot deserialize node " + node, e);
+      throw new IllegalArgumentException("Cannot deserialize node " + node, e);
     }
   }
 
@@ -61,7 +60,7 @@ public class JsonNodeToPolygonCodec extends JsonNodeConvertingCodec<Polygon> {
       // use that rather than WKT.
       return objectMapper.readTree(value.asGeoJson());
     } catch (IOException e) {
-      throw new InvalidTypeException("Cannot serialize value " + value, e);
+      throw new IllegalArgumentException("Cannot serialize value " + value, e);
     }
   }
 }

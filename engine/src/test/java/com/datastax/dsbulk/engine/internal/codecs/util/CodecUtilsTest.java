@@ -49,14 +49,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.datastax.driver.core.utils.Bytes;
-import com.datastax.driver.core.utils.UUIDs;
-import com.datastax.driver.dse.geometry.LineString;
-import com.datastax.driver.dse.geometry.Point;
-import com.datastax.driver.dse.geometry.Polygon;
-import com.datastax.driver.dse.search.DateRange;
+import com.datastax.dsbulk.engine.internal.DateRange;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.datastax.dse.driver.api.core.type.geometry.LineString;
+import com.datastax.dse.driver.api.core.type.geometry.Polygon;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultLineString;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultPolygon;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.datastax.oss.protocol.internal.util.Bytes;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import java.math.BigDecimal;
@@ -965,38 +967,38 @@ class CodecUtilsTest {
     assertThat(CodecUtils.parseUUID("", instantCodec, MIN)).isNull();
     assertThat(CodecUtils.parseUUID("a15341ec-ebef-4eab-b91d-ff16bf801a79", instantCodec, MIN))
         .isEqualTo(UUID.fromString("a15341ec-ebef-4eab-b91d-ff16bf801a79"));
-    // time UUIDs with MIN strategy
+    // time Uuids with MIN strategy
     assertThat(CodecUtils.parseUUID("2017-12-05T12:44:36+01:00", instantCodec, MIN))
         .isEqualTo(
-            UUIDs.startOf(
+            Uuids.startOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
-    assertThat(CodecUtils.parseUUID("123456", instantCodec, MIN)).isEqualTo(UUIDs.startOf(123456L));
-    // time UUIDs with MAX strategy
+    assertThat(CodecUtils.parseUUID("123456", instantCodec, MIN)).isEqualTo(Uuids.startOf(123456L));
+    // time Uuids with MAX strategy
     // the driver's endOf method takes milliseconds and sets all the sub-millisecond digits to their
     // max, that's why we add .000999999
     assertThat(CodecUtils.parseUUID("2017-12-05T12:44:36.000999999+01:00", instantCodec, MAX))
         .isEqualTo(
-            UUIDs.endOf(
+            Uuids.endOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
     assertThat(CodecUtils.parseUUID("123456", instantCodec, MAX).timestamp())
-        .isEqualTo(UUIDs.endOf(123456L).timestamp() - 9999);
-    // time UUIDs with FIXED strategy
+        .isEqualTo(Uuids.endOf(123456L).timestamp() - 9999);
+    // time Uuids with FIXED strategy
     assertThat(CodecUtils.parseUUID("2017-12-05T12:44:36+01:00", instantCodec, FIXED).timestamp())
         .isEqualTo(
-            UUIDs.startOf(
+            Uuids.startOf(
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
     assertThat(CodecUtils.parseUUID("123456", instantCodec, FIXED).timestamp())
-        .isEqualTo(UUIDs.startOf(123456L).timestamp());
-    // time UUIDs with RANDOM strategy
+        .isEqualTo(Uuids.startOf(123456L).timestamp());
+    // time Uuids with RANDOM strategy
     assertThat(CodecUtils.parseUUID("2017-12-05T12:44:36+01:00", instantCodec, RANDOM).timestamp())
         .isEqualTo(
-            UUIDs.startOf(
+            Uuids.startOf(
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
     assertThat(CodecUtils.parseUUID("123456", instantCodec, RANDOM).timestamp())
-        .isEqualTo(UUIDs.startOf(123456L).timestamp());
-    // invalid UUIDs
+        .isEqualTo(Uuids.startOf(123456L).timestamp());
+    // invalid Uuids
     assertThrows(
         IllegalArgumentException.class,
         () -> CodecUtils.parseUUID("not a valid UUID", instantCodec, MIN));
@@ -1018,10 +1020,12 @@ class CodecUtilsTest {
   void should_parse_point() {
     assertThat(CodecUtils.parsePoint(null)).isNull();
     assertThat(CodecUtils.parsePoint("")).isNull();
-    assertThat(CodecUtils.parsePoint("POINT (-1.1 -2.2)")).isEqualTo(new Point(-1.1d, -2.2d));
-    assertThat(CodecUtils.parsePoint("'POINT (-1.1 -2.2)'")).isEqualTo(new Point(-1.1d, -2.2d));
+    assertThat(CodecUtils.parsePoint("POINT (-1.1 -2.2)"))
+        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+    assertThat(CodecUtils.parsePoint("'POINT (-1.1 -2.2)'"))
+        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
     assertThat(CodecUtils.parsePoint("{\"type\":\"Point\",\"coordinates\":[-1.1,-2.2]}"))
-        .isEqualTo(new Point(-1.1d, -2.2d));
+        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
     assertThatThrownBy(() -> CodecUtils.parsePoint("not a valid point"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid point literal");
@@ -1029,7 +1033,9 @@ class CodecUtilsTest {
 
   @Test
   void should_parse_line_string() {
-    LineString lineString = new LineString(new Point(30, 10), new Point(10, 30), new Point(40, 40));
+    LineString lineString =
+        new DefaultLineString(
+            new DefaultPoint(30, 10), new DefaultPoint(10, 30), new DefaultPoint(40, 40));
     assertThat(CodecUtils.parseLineString(null)).isNull();
     assertThat(CodecUtils.parseLineString("")).isNull();
     assertThat(CodecUtils.parseLineString("LINESTRING (30 10, 10 30, 40 40)"))
@@ -1048,7 +1054,11 @@ class CodecUtilsTest {
   @Test
   void should_parse_polygon() {
     Polygon polygon =
-        new Polygon(new Point(30, 10), new Point(10, 20), new Point(20, 40), new Point(40, 40));
+        new DefaultPolygon(
+            new DefaultPoint(30, 10),
+            new DefaultPoint(10, 20),
+            new DefaultPoint(20, 40),
+            new DefaultPoint(40, 40));
     assertThat(CodecUtils.parsePolygon(null)).isNull();
     assertThat(CodecUtils.parsePolygon("")).isNull();
     assertThat(CodecUtils.parsePolygon("POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))"))

@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import static com.datastax.driver.core.DataType.cfloat;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +26,7 @@ class StringToFloatCodecTest {
         (StringToFloatCodec)
             newCodecRegistry(
                     "nullStrings = [NULL], roundingStrategy = HALF_EVEN, formatNumbers = true")
-                .codecFor(cfloat(), TypeToken.of(String.class));
+                .codecFor(DataTypes.FLOAT, GenericType.of(String.class));
   }
 
   @Test

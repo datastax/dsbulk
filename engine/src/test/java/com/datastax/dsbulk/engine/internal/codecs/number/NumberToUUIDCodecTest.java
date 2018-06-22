@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.number;
 
-import static com.datastax.driver.core.TypeCodec.timeUUID;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.FIXED;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MAX;
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.MIN;
@@ -18,8 +17,9 @@ import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-import com.datastax.driver.core.utils.UUIDs;
 import com.datastax.dsbulk.engine.tests.EngineAssertions;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import java.time.ZonedDateTime;
 import org.junit.jupiter.api.Test;
 
@@ -31,83 +31,83 @@ class NumberToUUIDCodecTest {
   @Test
   void should_convert_when_valid_input() {
 
-    EngineAssertions.assertThat(new NumberToUUIDCodec<>(timeUUID(), instantCodec, MIN))
+    EngineAssertions.assertThat(new NumberToUUIDCodec<>(TypeCodecs.TIMEUUID, instantCodec, MIN))
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromInternal(null)
         .toExternal(null);
 
     assertThat(
-            new NumberToUUIDCodec<>(timeUUID(), instantCodec, MIN)
+            new NumberToUUIDCodec<>(TypeCodecs.TIMEUUID, instantCodec, MIN)
                 .externalToInternal(
                     ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli())
                 .timestamp())
         .isEqualTo(
-            UUIDs.startOf(
+            Uuids.startOf(
                     ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli())
                 .timestamp());
 
     assertThat(
-            new NumberToUUIDCodec<>(timeUUID(), instantCodec, MAX)
+            new NumberToUUIDCodec<>(TypeCodecs.TIMEUUID, instantCodec, MAX)
                 .externalToInternal(
                     ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli())
                 .timestamp())
         .isEqualTo(
-            UUIDs.startOf(
+            Uuids.startOf(
                     ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli())
                 .timestamp());
 
     assertThat(
-            new NumberToUUIDCodec<>(timeUUID(), instantCodec, FIXED)
+            new NumberToUUIDCodec<>(TypeCodecs.TIMEUUID, instantCodec, FIXED)
                 .externalToInternal(
                     ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli())
                 .timestamp())
         .isEqualTo(
-            UUIDs.startOf(
+            Uuids.startOf(
                     ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli())
                 .timestamp());
 
     assertThat(
-            new NumberToUUIDCodec<>(timeUUID(), instantCodec, RANDOM)
+            new NumberToUUIDCodec<>(TypeCodecs.TIMEUUID, instantCodec, RANDOM)
                 .externalToInternal(
                     ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli())
                 .timestamp())
         .isEqualTo(
-            UUIDs.startOf(
+            Uuids.startOf(
                     ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli())
                 .timestamp());
 
     assertThat(
-            new NumberToUUIDCodec<>(timeUUID(), instantCodec, MIN)
+            new NumberToUUIDCodec<>(TypeCodecs.TIMEUUID, instantCodec, MIN)
                 .internalToExternal(
-                    UUIDs.startOf(
+                    Uuids.startOf(
                         ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00")
                             .toInstant()
                             .toEpochMilli())))
         .isEqualTo(ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli());
 
     assertThat(
-            new NumberToUUIDCodec<>(timeUUID(), instantCodec, MAX)
+            new NumberToUUIDCodec<>(TypeCodecs.TIMEUUID, instantCodec, MAX)
                 .internalToExternal(
-                    UUIDs.startOf(
+                    Uuids.startOf(
                         ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00")
                             .toInstant()
                             .toEpochMilli())))
         .isEqualTo(ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli());
 
     assertThat(
-            new NumberToUUIDCodec<>(timeUUID(), instantCodec, FIXED)
+            new NumberToUUIDCodec<>(TypeCodecs.TIMEUUID, instantCodec, FIXED)
                 .internalToExternal(
-                    UUIDs.startOf(
+                    Uuids.startOf(
                         ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00")
                             .toInstant()
                             .toEpochMilli())))
         .isEqualTo(ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00").toInstant().toEpochMilli());
 
     assertThat(
-            new NumberToUUIDCodec<>(timeUUID(), instantCodec, RANDOM)
+            new NumberToUUIDCodec<>(TypeCodecs.TIMEUUID, instantCodec, RANDOM)
                 .internalToExternal(
-                    UUIDs.startOf(
+                    Uuids.startOf(
                         ZonedDateTime.parse("2010-06-30T00:00:00.999+01:00")
                             .toInstant()
                             .toEpochMilli())))

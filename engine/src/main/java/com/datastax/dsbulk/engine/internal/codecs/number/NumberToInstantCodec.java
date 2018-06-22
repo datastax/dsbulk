@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.number;
 
-import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
@@ -22,7 +22,7 @@ public class NumberToInstantCodec<EXTERNAL extends Number>
   private final ZonedDateTime epoch;
 
   public NumberToInstantCodec(Class<EXTERNAL> javaType, TimeUnit timeUnit, ZonedDateTime epoch) {
-    super(InstantCodec.instance, javaType);
+    super(TypeCodecs.TIMESTAMP, javaType);
     this.timeUnit = timeUnit;
     this.epoch = epoch;
   }

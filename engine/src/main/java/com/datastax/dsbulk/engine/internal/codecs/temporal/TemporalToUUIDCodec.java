@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.temporal;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import java.time.Instant;
 import java.time.temporal.TemporalAccessor;
 import java.util.UUID;
@@ -25,7 +25,7 @@ public class TemporalToUUIDCodec<EXTERNAL extends TemporalAccessor>
       TypeCodec<UUID> targetCodec,
       TemporalToTemporalCodec<EXTERNAL, Instant> instantCodec,
       TimeUUIDGenerator generator) {
-    super(targetCodec, instantCodec.getJavaType());
+    super(targetCodec, instantCodec.getRawJavaType());
     this.instantCodec = instantCodec;
     this.generator = generator;
   }

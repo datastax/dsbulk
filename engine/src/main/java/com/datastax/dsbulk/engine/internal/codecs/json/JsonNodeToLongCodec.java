@@ -13,6 +13,7 @@ import static java.util.stream.Collectors.toList;
 
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
+import com.datastax.oss.driver.api.core.type.codec.PrimitiveLongCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;

@@ -8,11 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import com.datastax.driver.core.TupleType;
-import com.datastax.driver.core.TupleValue;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import com.datastax.oss.driver.api.core.data.TupleValue;
+import com.datastax.oss.driver.api.core.type.TupleType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -41,11 +40,11 @@ public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
       return null;
     }
     if (!node.isArray()) {
-      throw new InvalidTypeException("Expecting ARRAY node, got " + node.getNodeType());
+      throw new IllegalArgumentException("Expecting ARRAY node, got " + node.getNodeType());
     }
     int size = definition.getComponentTypes().size();
     if (node.size() != size) {
-      throw new InvalidTypeException(
+      throw new IllegalArgumentException(
           String.format("Expecting %d elements, got %d", size, node.size()));
     }
     TupleValue tuple = definition.newValue();

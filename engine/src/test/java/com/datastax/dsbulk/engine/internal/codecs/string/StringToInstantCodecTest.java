@@ -8,12 +8,12 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import static com.datastax.driver.core.DataType.timestamp;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
 import com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,16 +33,16 @@ class StringToInstantCodecTest {
     codec1 =
         (StringToInstantCodec)
             CodecTestUtils.newCodecRegistry("nullStrings = [NULL]")
-                .codecFor(timestamp(), TypeToken.of(String.class));
+                .codecFor(DataTypes.TIMESTAMP, GenericType.of(String.class));
     codec2 =
         (StringToInstantCodec)
             CodecTestUtils.newCodecRegistry("nullStrings = [NULL], timestamp = yyyyMMddHHmmss")
-                .codecFor(timestamp(), TypeToken.of(String.class));
+                .codecFor(DataTypes.TIMESTAMP, GenericType.of(String.class));
     codec3 =
         (StringToInstantCodec)
             CodecTestUtils.newCodecRegistry(
                     "nullStrings = [NULL], unit = MINUTES, epoch = \"2000-01-01T00:00:00Z\"")
-                .codecFor(timestamp(), TypeToken.of(String.class));
+                .codecFor(DataTypes.TIMESTAMP, GenericType.of(String.class));
   }
 
   @Test

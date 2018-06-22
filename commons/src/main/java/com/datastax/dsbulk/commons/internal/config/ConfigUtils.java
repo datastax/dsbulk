@@ -12,7 +12,6 @@ import static com.datastax.dsbulk.commons.config.LoaderConfig.LEAF_ANNOTATION;
 import static com.datastax.dsbulk.commons.config.LoaderConfig.TYPE_ANNOTATION;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigList;

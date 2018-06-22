@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -36,7 +36,7 @@ public class StringToBigDecimalCodec extends StringToNumberCodec<BigDecimal> {
       List<BigDecimal> booleanNumbers,
       List<String> nullStrings) {
     super(
-        TypeCodec.decimal(),
+        TypeCodecs.DECIMAL,
         numberFormat,
         overflowStrategy,
         roundingMode,

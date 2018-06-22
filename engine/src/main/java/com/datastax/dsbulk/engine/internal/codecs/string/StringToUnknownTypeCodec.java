@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.TypeCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import java.util.List;
 
 public class StringToUnknownTypeCodec<T> extends StringConvertingCodec<T> {

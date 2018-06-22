@@ -11,10 +11,11 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -55,11 +56,11 @@ public class StringToUnknownTypeCodecTest {
     assertThat(codec).cannotConvertFromExternal("not a valid fruit literal");
   }
 
-  public static final DataType FRUIT_TYPE = DataType.custom("com.datastax.dse.FruitType");
+  private static final DataType FRUIT_TYPE = DataTypes.custom("com.datastax.dse.FruitType");
 
   public static class Fruit {
 
-    public final String name;
+    final String name;
 
     public Fruit(String name) {
       this.name = name;
@@ -83,34 +84,39 @@ public class StringToUnknownTypeCodecTest {
     }
   }
 
-  public static class FruitCodec extends TypeCodec<Fruit> {
-
-    public FruitCodec() {
-      super(FRUIT_TYPE, Fruit.class);
-    }
+  public static class FruitCodec implements TypeCodec<Fruit> {
+    private static GenericType<Fruit> javaType = GenericType.of(Fruit.class);
 
     @Override
-    public Fruit parse(String value) throws InvalidTypeException {
+    public Fruit parse(String value) {
       if (value.equalsIgnoreCase("banana")) {
         return new Fruit(value);
       }
-      throw new InvalidTypeException("Unknown fruit: " + value);
+      throw new IllegalArgumentException("Unknown fruit: " + value);
     }
 
     @Override
-    public String format(Fruit value) throws InvalidTypeException {
+    public String format(Fruit value) {
       return value.name;
     }
 
     @Override
-    public ByteBuffer serialize(Fruit value, ProtocolVersion protocolVersion)
-        throws InvalidTypeException {
+    public GenericType<Fruit> getJavaType() {
+      return javaType;
+    }
+
+    @Override
+    public DataType getCqlType() {
+      return FRUIT_TYPE;
+    }
+
+    @Override
+    public ByteBuffer encode(Fruit value, ProtocolVersion protocolVersion) {
       throw new UnsupportedOperationException("irrelevant");
     }
 
     @Override
-    public Fruit deserialize(ByteBuffer bytes, ProtocolVersion protocolVersion)
-        throws InvalidTypeException {
+    public Fruit decode(ByteBuffer bytes, ProtocolVersion protocolVersion) {
       throw new UnsupportedOperationException("irrelevant");
     }
   }

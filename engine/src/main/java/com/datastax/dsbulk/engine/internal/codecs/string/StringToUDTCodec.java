@@ -8,16 +8,15 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.UDTValue;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUDTCodec;
+import com.datastax.oss.driver.api.core.data.UdtValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
 
-public class StringToUDTCodec extends StringConvertingCodec<UDTValue> {
+public class StringToUDTCodec extends StringConvertingCodec<UdtValue> {
 
   private final JsonNodeToUDTCodec jsonCodec;
   private final ObjectMapper objectMapper;
@@ -30,7 +29,7 @@ public class StringToUDTCodec extends StringConvertingCodec<UDTValue> {
   }
 
   @Override
-  public UDTValue externalToInternal(String s) {
+  public UdtValue externalToInternal(String s) {
     if (isNullOrEmpty(s)) {
       return null;
     }
@@ -38,12 +37,12 @@ public class StringToUDTCodec extends StringConvertingCodec<UDTValue> {
       JsonNode node = objectMapper.readTree(s);
       return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
-      throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
+      throw new IllegalArgumentException(String.format("Could not parse '%s' as Json", s), e);
     }
   }
 
   @Override
-  public String internalToExternal(UDTValue udt) {
+  public String internalToExternal(UdtValue udt) {
     if (udt == null) {
       return nullString();
     }
@@ -51,7 +50,7 @@ public class StringToUDTCodec extends StringConvertingCodec<UDTValue> {
       JsonNode node = jsonCodec.internalToExternal(udt);
       return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
-      throw new InvalidTypeException(String.format("Could not format '%s' to Json", udt), e);
+      throw new IllegalArgumentException(String.format("Could not format '%s' to Json", udt), e);
     }
   }
 }

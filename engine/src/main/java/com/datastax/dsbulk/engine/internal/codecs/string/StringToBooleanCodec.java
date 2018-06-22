@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import java.util.List;
 import java.util.Map;
 
@@ -19,7 +19,7 @@ public class StringToBooleanCodec extends StringConvertingCodec<Boolean> {
 
   public StringToBooleanCodec(
       Map<String, Boolean> inputs, Map<Boolean, String> outputs, List<String> nullStrings) {
-    super(cboolean(), nullStrings);
+    super(TypeCodecs.BOOLEAN, nullStrings);
     this.inputs = inputs;
     this.outputs = outputs;
   }
@@ -31,7 +31,7 @@ public class StringToBooleanCodec extends StringConvertingCodec<Boolean> {
     }
     Boolean b = inputs.get(s.toLowerCase());
     if (b == null) {
-      throw new InvalidTypeException("Invalid boolean value: " + s);
+      throw new IllegalArgumentException("Invalid boolean value: " + s);
     }
     return b;
   }

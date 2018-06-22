@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;

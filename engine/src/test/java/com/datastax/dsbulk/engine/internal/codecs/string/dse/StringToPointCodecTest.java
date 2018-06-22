@@ -11,14 +11,15 @@ package com.datastax.dsbulk.engine.internal.codecs.string.dse;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.driver.dse.geometry.Point;
+import com.datastax.dse.driver.api.core.type.geometry.Point;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class StringToPointCodecTest {
 
   private List<String> nullStrings = newArrayList("NULL");
-  private Point point = new Point(-1.1, -2.2);
+  private Point point = new DefaultPoint(-1.1, -2.2);
 
   @Test
   void should_convert_from_valid_external() {

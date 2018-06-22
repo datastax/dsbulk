@@ -8,9 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.DateTimeException;
 import java.time.LocalTime;
@@ -20,7 +19,7 @@ import java.util.List;
 public class JsonNodeToLocalTimeCodec extends JsonNodeToTemporalCodec<LocalTime> {
 
   public JsonNodeToLocalTimeCodec(TemporalFormat parser, List<String> nullStrings) {
-    super(LocalTimeCodec.instance, parser, nullStrings);
+    super(TypeCodecs.TIME, parser, nullStrings);
   }
 
   @Override
@@ -32,7 +31,7 @@ public class JsonNodeToLocalTimeCodec extends JsonNodeToTemporalCodec<LocalTime>
     try {
       return LocalTime.from(temporal);
     } catch (DateTimeException e) {
-      throw new InvalidTypeException("Cannot parse local time:" + s, e);
+      throw new IllegalArgumentException("Cannot parse local time:" + s, e);
     }
   }
 }

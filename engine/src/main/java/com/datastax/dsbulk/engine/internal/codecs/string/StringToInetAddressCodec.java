@@ -8,14 +8,14 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import java.net.InetAddress;
 import java.util.List;
 
 public class StringToInetAddressCodec extends StringConvertingCodec<InetAddress> {
 
   public StringToInetAddressCodec(List<String> nullStrings) {
-    super(inet(), nullStrings);
+    super(TypeCodecs.INET, nullStrings);
   }
 
   @Override
@@ -24,12 +24,12 @@ public class StringToInetAddressCodec extends StringConvertingCodec<InetAddress>
       return null;
     }
     if (s.isEmpty()) {
-      throw new InvalidTypeException("Cannot create inet address from empty string");
+      throw new IllegalArgumentException("Cannot create inet address from empty string");
     }
     try {
       return InetAddress.getByName(s);
     } catch (Exception e) {
-      throw new InvalidTypeException("Cannot parse inet address: " + s);
+      throw new IllegalArgumentException("Cannot parse inet address: " + s);
     }
   }
 

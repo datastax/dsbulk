@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs;
 
-import com.datastax.driver.core.CodecRegistry;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
 import com.typesafe.config.ConfigFactory;
 
 public class CodecTestUtils {
@@ -23,6 +23,6 @@ public class CodecTestUtils {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.codec")));
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    return settings.createCodecRegistry(new CodecRegistry());
+    return settings.createCodecRegistry(new DefaultCodecRegistry("test"));
   }
 }

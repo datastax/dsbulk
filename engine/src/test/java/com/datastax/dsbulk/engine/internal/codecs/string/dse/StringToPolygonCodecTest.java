@@ -11,8 +11,9 @@ package com.datastax.dsbulk.engine.internal.codecs.string.dse;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.driver.dse.geometry.Point;
-import com.datastax.driver.dse.geometry.Polygon;
+import com.datastax.dse.driver.api.core.type.geometry.Polygon;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultPolygon;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +21,11 @@ class StringToPolygonCodecTest {
 
   private List<String> nullStrings = newArrayList("NULL");
   private Polygon polygon =
-      new Polygon(new Point(30, 10), new Point(10, 20), new Point(20, 40), new Point(40, 40));
+      new DefaultPolygon(
+          new DefaultPoint(30, 10),
+          new DefaultPoint(10, 20),
+          new DefaultPoint(20, 40),
+          new DefaultPoint(40, 40));
 
   @Test
   void should_convert_from_valid_external() {

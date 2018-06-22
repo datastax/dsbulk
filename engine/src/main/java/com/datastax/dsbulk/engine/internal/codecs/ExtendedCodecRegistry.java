@@ -8,20 +8,33 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs;
 
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.TupleType;
-import com.datastax.driver.core.TupleValue;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.UDTValue;
-import com.datastax.driver.core.UserType;
-import com.datastax.driver.core.exceptions.CodecNotFoundException;
-import com.datastax.driver.dse.geometry.codecs.LineStringCodec;
-import com.datastax.driver.dse.geometry.codecs.PointCodec;
-import com.datastax.driver.dse.geometry.codecs.PolygonCodec;
-import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
-import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
-import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BIGINT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BLOB;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BOOLEAN;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.COUNTER;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.CUSTOM;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.DATE;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.DECIMAL;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.DOUBLE;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.DURATION;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.FLOAT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INET;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.LIST;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.MAP;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.SET;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.SMALLINT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TIME;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TIMESTAMP;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TIMEUUID;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TINYINT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TUPLE;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.UDT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.UUID;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARCHAR;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARINT;
+
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToBigDecimalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToBigIntegerCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToBlobCodec;
@@ -88,11 +101,29 @@ import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
+import com.datastax.dse.driver.api.core.codec.geometry.LineStringCodec;
+import com.datastax.dse.driver.api.core.codec.geometry.PointCodec;
+import com.datastax.dse.driver.api.core.codec.geometry.PolygonCodec;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.data.TupleValue;
+import com.datastax.oss.driver.api.core.data.UdtValue;
+import com.datastax.oss.driver.api.core.type.CustomType;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.ListType;
+import com.datastax.oss.driver.api.core.type.MapType;
+import com.datastax.oss.driver.api.core.type.SetType;
+import com.datastax.oss.driver.api.core.type.TupleType;
+import com.datastax.oss.driver.api.core.type.UserDefinedType;
+import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.reflect.TypeToken;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -122,8 +153,6 @@ import org.slf4j.LoggerFactory;
 public class ExtendedCodecRegistry {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExtendedCodecRegistry.class);
-  private static final TypeToken<String> STRING_TYPE_TOKEN = TypeToken.of(String.class);
-  private static final TypeToken<JsonNode> JSON_NODE_TYPE_TOKEN = TypeToken.of(JsonNode.class);
   private static final String DATE_RANGE_CLASS_NAME =
       "org.apache.cassandra.db.marshal.DateRangeType";
 
@@ -178,18 +207,19 @@ public class ExtendedCodecRegistry {
     this.generator = generator;
     this.objectMapper = objectMapper;
     // register Java Time API codecs
-    codecRegistry.register(LocalDateCodec.instance, LocalTimeCodec.instance, InstantCodec.instance);
+    //    codecRegistry.register(LocalDateCodec.instance, LocalTimeCodec.instance,
+    // InstantCodec.instance);
   }
 
   @SuppressWarnings("unchecked")
   public <T> TypeCodec<T> codecFor(
-      @NotNull DataType cqlType, @NotNull TypeToken<? extends T> javaType) {
+      @NotNull DataType cqlType, @NotNull GenericType<? extends T> javaType) {
     // Implementation note: it's not required to cache codecs created on-the-fly by this method
     // as caching is meant to be handled by the caller, see
     // com.datastax.dsbulk.engine.internal.schema.DefaultMapping.codec()
     TypeCodec<T> codec;
     try {
-      if (javaType.getRawType().equals(String.class)) {
+      if (GenericType.STRING.equals(javaType)) {
         // Never return the driver's built-in StringCodec because it does not handle
         // null words. We need StringToStringCodec here.
         codec = (TypeCodec<T>) createStringConvertingCodec(cqlType, true);
@@ -207,102 +237,108 @@ public class ExtendedCodecRegistry {
 
   @SuppressWarnings("unchecked")
   public <EXTERNAL, INTERNAL> ConvertingCodec<EXTERNAL, INTERNAL> convertingCodecFor(
-      @NotNull DataType cqlType, @NotNull TypeToken<? extends EXTERNAL> javaType) {
+      @NotNull DataType cqlType, @NotNull GenericType<? extends EXTERNAL> javaType) {
     ConvertingCodec<EXTERNAL, INTERNAL> codec =
         (ConvertingCodec<EXTERNAL, INTERNAL>) maybeCreateConvertingCodec(cqlType, javaType);
     if (codec != null) {
       return codec;
     }
     throw new CodecNotFoundException(
-        String.format(
-            "ConvertingCodec not found for requested operation: [%s <-> %s]", cqlType, javaType),
+        new RuntimeException(
+            String.format(
+                "ConvertingCodec not found for requested operation: [%s <-> %s]",
+                cqlType, javaType)),
         cqlType,
         javaType);
   }
 
   @Nullable
   private ConvertingCodec<?, ?> maybeCreateConvertingCodec(
-      @NotNull DataType cqlType, @NotNull TypeToken<?> javaType) {
-    if (String.class.equals(javaType.getRawType())) {
+      @NotNull DataType cqlType, @NotNull GenericType<?> javaType) {
+    if (GenericType.STRING.equals(javaType)) {
       return createStringConvertingCodec(cqlType, true);
     }
-    if (JsonNode.class.equals(javaType.getRawType())) {
+    if (GenericType.of(JsonNode.class).equals(javaType)) {
       return createJsonNodeConvertingCodec(cqlType, true);
     }
-    if (Number.class.isAssignableFrom(javaType.getRawType()) && isNumeric(cqlType)) {
-      @SuppressWarnings("unchecked")
-      Class<Number> numberType = (Class<Number>) javaType.getRawType();
-      @SuppressWarnings("unchecked")
-      TypeCodec<Number> typeCodec = (TypeCodec<Number>) codecFor(cqlType);
-      return new NumberToNumberCodec<>(numberType, typeCodec);
+    if (javaType.isSubtypeOf(GenericType.of(Number.class))) {
+      if (isNumeric(cqlType)) {
+        @SuppressWarnings("unchecked")
+        Class<Number> numberType = (Class<Number>) javaType.getRawType();
+        @SuppressWarnings("unchecked")
+        TypeCodec<Number> typeCodec = (TypeCodec<Number>) codecFor(cqlType);
+        return new NumberToNumberCodec<>(numberType, typeCodec);
+      }
+      if (cqlType == DataTypes.TIMESTAMP) {
+        @SuppressWarnings("unchecked")
+        Class<Number> numberType = (Class<Number>) javaType.getRawType();
+        return new NumberToInstantCodec<>(numberType, timeUnit, epoch);
+      }
+      if (isUUID(cqlType)) {
+        @SuppressWarnings("unchecked")
+        TypeCodec<UUID> uuidCodec = (TypeCodec<UUID>) codecFor(cqlType);
+        @SuppressWarnings("unchecked")
+        Class<Number> numberType = (Class<Number>) javaType.getRawType();
+        NumberToInstantCodec<Number> instantCodec =
+            new NumberToInstantCodec<>(numberType, timeUnit, epoch);
+        return new NumberToUUIDCodec<>(uuidCodec, instantCodec, generator);
+      }
+      if (cqlType == DataTypes.BOOLEAN) {
+        @SuppressWarnings("unchecked")
+        Class<Number> numberType = (Class<Number>) javaType.getRawType();
+        return new NumberToBooleanCodec<>(numberType, booleanNumbers);
+      }
     }
-    if (Number.class.isAssignableFrom(javaType.getRawType()) && cqlType == DataType.timestamp()) {
-      @SuppressWarnings("unchecked")
-      Class<Number> numberType = (Class<Number>) javaType.getRawType();
-      return new NumberToInstantCodec<>(numberType, timeUnit, epoch);
-    }
-    if (Number.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
-      @SuppressWarnings("unchecked")
-      TypeCodec<UUID> uuidCodec = (TypeCodec<UUID>) codecFor(cqlType);
-      @SuppressWarnings("unchecked")
-      Class<Number> numberType = (Class<Number>) javaType.getRawType();
-      NumberToInstantCodec<Number> instantCodec =
-          new NumberToInstantCodec<>(numberType, timeUnit, epoch);
-      return new NumberToUUIDCodec<>(uuidCodec, instantCodec, generator);
-    }
-    if (Number.class.isAssignableFrom(javaType.getRawType()) && cqlType == DataType.cboolean()) {
-      @SuppressWarnings("unchecked")
-      Class<Number> numberType = (Class<Number>) javaType.getRawType();
-      return new NumberToBooleanCodec<>(numberType, booleanNumbers);
-    }
-    if (Temporal.class.isAssignableFrom(javaType.getRawType()) && isTemporal(cqlType)) {
+
+    GenericType<?> temporalGenericType = GenericType.of(Temporal.class);
+    if (javaType.isSubtypeOf(temporalGenericType) && isTemporal(cqlType)) {
       @SuppressWarnings("unchecked")
       Class<Temporal> fromTemporalType = (Class<Temporal>) javaType.getRawType();
-      if (cqlType == DataType.date()) {
-        return new TemporalToTemporalCodec<>(
-            fromTemporalType, LocalDateCodec.instance, timeZone, epoch);
+      if (cqlType == DataTypes.DATE) {
+        return new TemporalToTemporalCodec<>(fromTemporalType, TypeCodecs.DATE, timeZone, epoch);
       }
-      if (cqlType == DataType.time()) {
-        return new TemporalToTemporalCodec<>(
-            fromTemporalType, LocalTimeCodec.instance, timeZone, epoch);
+      if (cqlType == DataTypes.TIME) {
+        return new TemporalToTemporalCodec<>(fromTemporalType, TypeCodecs.TIME, timeZone, epoch);
       }
-      if (cqlType == DataType.timestamp()) {
+      if (cqlType == DataTypes.TIMESTAMP) {
         return new TemporalToTemporalCodec<>(
-            fromTemporalType, InstantCodec.instance, timeZone, epoch);
+            fromTemporalType, TypeCodecs.TIMESTAMP, timeZone, epoch);
       }
     }
-    if (Temporal.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
+    if (javaType.isSubtypeOf(temporalGenericType) && isUUID(cqlType)) {
       @SuppressWarnings("unchecked")
       TypeCodec<UUID> uuidCodec = (TypeCodec<UUID>) codecFor(cqlType);
       @SuppressWarnings("unchecked")
       TemporalToTemporalCodec<TemporalAccessor, Instant> instantCodec =
           (TemporalToTemporalCodec<TemporalAccessor, Instant>)
-              maybeCreateConvertingCodec(DataType.timestamp(), javaType);
+              maybeCreateConvertingCodec(DataTypes.TIMESTAMP, javaType);
       assert instantCodec != null;
       return new TemporalToUUIDCodec<>(uuidCodec, instantCodec, generator);
     }
-    if (Date.class.isAssignableFrom(javaType.getRawType()) && isTemporal(cqlType)) {
-      if (cqlType == DataType.date()) {
-        return new DateToTemporalCodec<>(Date.class, LocalDateCodec.instance, timeZone);
+
+    GenericType<Date> dateGenericType = GenericType.of(Date.class);
+    if (javaType.isSubtypeOf(dateGenericType) && isTemporal(cqlType)) {
+      if (cqlType == DataTypes.DATE) {
+        return new DateToTemporalCodec<>(Date.class, TypeCodecs.DATE, timeZone);
       }
-      if (cqlType == DataType.time()) {
-        return new DateToTemporalCodec<>(Date.class, LocalTimeCodec.instance, timeZone);
+      if (cqlType == DataTypes.TIME) {
+        return new DateToTemporalCodec<>(Date.class, TypeCodecs.TIME, timeZone);
       }
-      if (cqlType == DataType.timestamp()) {
-        return new DateToTemporalCodec<>(Date.class, InstantCodec.instance, timeZone);
+      if (cqlType == DataTypes.TIMESTAMP) {
+        return new DateToTemporalCodec<>(Date.class, TypeCodecs.TIMESTAMP, timeZone);
       }
     }
-    if (Date.class.isAssignableFrom(javaType.getRawType()) && isUUID(cqlType)) {
+    if (javaType.isSubtypeOf(dateGenericType) && isUUID(cqlType)) {
       @SuppressWarnings("unchecked")
       TypeCodec<UUID> uuidCodec = (TypeCodec<UUID>) codecFor(cqlType);
       @SuppressWarnings("unchecked")
       DateToTemporalCodec<Date, Instant> instantCodec =
           (DateToTemporalCodec<Date, Instant>)
-              maybeCreateConvertingCodec(DataType.timestamp(), javaType);
+              maybeCreateConvertingCodec(DataTypes.TIMESTAMP, javaType);
       assert instantCodec != null;
       return new DateToUUIDCodec<>(uuidCodec, instantCodec, generator);
     }
-    if (Boolean.class.isAssignableFrom(javaType.getRawType()) && isNumeric(cqlType)) {
+    if (javaType.isSubtypeOf(GenericType.BOOLEAN) && isNumeric(cqlType)) {
       @SuppressWarnings("unchecked")
       TypeCodec<Number> typeCodec = (TypeCodec<Number>) codecFor(cqlType);
       return new BooleanToNumberCodec<>(typeCodec, booleanNumbers);
@@ -314,10 +350,10 @@ public class ExtendedCodecRegistry {
       @NotNull DataType cqlType, boolean rootCodec) {
     // Don't apply null strings for non-root codecs
     List<String> nullStrings = rootCodec ? this.nullStrings : ImmutableList.of();
-    DataType.Name name = cqlType.getName();
-    switch (name) {
+    // DataType.Name name = cqlType.getName();
+    int cqlTypeCode = cqlType.getProtocolCode();
+    switch (cqlTypeCode) {
       case ASCII:
-      case TEXT:
       case VARCHAR:
         @SuppressWarnings("unchecked")
         TypeCodec<String> typeCodec = (TypeCodec<String>) codecFor(cqlType);
@@ -362,7 +398,7 @@ public class ExtendedCodecRegistry {
             nullStrings);
       case BIGINT:
         return new StringToLongCodec(
-            TypeCodec.bigint(),
+            TypeCodecs.BIGINT,
             numberFormat,
             overflowStrategy,
             roundingMode,
@@ -375,7 +411,7 @@ public class ExtendedCodecRegistry {
             nullStrings);
       case COUNTER:
         return new StringToLongCodec(
-            TypeCodec.counter(),
+            TypeCodecs.COUNTER,
             numberFormat,
             overflowStrategy,
             roundingMode,
@@ -448,16 +484,16 @@ public class ExtendedCodecRegistry {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
               (ConvertingCodec<String, Instant>)
-                  createStringConvertingCodec(DataType.timestamp(), false);
-          return new StringToUUIDCodec(TypeCodec.uuid(), instantCodec, generator, nullStrings);
+                  createStringConvertingCodec(DataTypes.TIMESTAMP, false);
+          return new StringToUUIDCodec(TypeCodecs.UUID, instantCodec, generator, nullStrings);
         }
       case TIMEUUID:
         {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
               (ConvertingCodec<String, Instant>)
-                  createStringConvertingCodec(DataType.timestamp(), false);
-          return new StringToUUIDCodec(TypeCodec.timeUUID(), instantCodec, generator, nullStrings);
+                  createStringConvertingCodec(DataTypes.TIMESTAMP, false);
+          return new StringToUUIDCodec(TypeCodecs.TIMEUUID, instantCodec, generator, nullStrings);
         }
       case BLOB:
         return new StringToBlobCodec(nullStrings);
@@ -498,8 +534,8 @@ public class ExtendedCodecRegistry {
         }
       case CUSTOM:
         {
-          DataType.CustomType customType = (DataType.CustomType) cqlType;
-          switch (customType.getCustomTypeClassName()) {
+          CustomType customType = (CustomType) cqlType;
+          switch (customType.getClassName()) {
             case PointCodec.CLASS_NAME:
               return new StringToPointCodec(nullStrings);
             case LineStringCodec.CLASS_NAME:
@@ -524,7 +560,8 @@ public class ExtendedCodecRegistry {
           String msg =
               String.format(
                   "Codec not found for requested operation: [%s <-> %s]", cqlType, String.class);
-          CodecNotFoundException e1 = new CodecNotFoundException(msg, cqlType, STRING_TYPE_TOKEN);
+          CodecNotFoundException e1 =
+              new CodecNotFoundException(new RuntimeException(msg, e), cqlType, GenericType.STRING);
           e1.addSuppressed(e);
           throw e1;
         }
@@ -535,10 +572,10 @@ public class ExtendedCodecRegistry {
       @NotNull DataType cqlType, boolean rootCodec) {
     // Don't apply null strings for non-root codecs
     List<String> nullStrings = rootCodec ? this.nullStrings : ImmutableList.of();
-    DataType.Name name = cqlType.getName();
-    switch (name) {
+    //    DataType.Name name = cqlType.getName();
+    int cqlTypeCode = cqlType.getProtocolCode();
+    switch (cqlTypeCode) {
       case ASCII:
-      case TEXT:
       case VARCHAR:
         @SuppressWarnings("unchecked")
         TypeCodec<String> typeCodec = (TypeCodec<String>) codecFor(cqlType);
@@ -583,7 +620,7 @@ public class ExtendedCodecRegistry {
             nullStrings);
       case BIGINT:
         return new JsonNodeToLongCodec(
-            TypeCodec.bigint(),
+            TypeCodecs.BIGINT,
             numberFormat,
             overflowStrategy,
             roundingMode,
@@ -596,7 +633,7 @@ public class ExtendedCodecRegistry {
             nullStrings);
       case COUNTER:
         return new JsonNodeToLongCodec(
-            TypeCodec.counter(),
+            TypeCodecs.COUNTER,
             numberFormat,
             overflowStrategy,
             roundingMode,
@@ -669,17 +706,16 @@ public class ExtendedCodecRegistry {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
               (ConvertingCodec<String, Instant>)
-                  createStringConvertingCodec(DataType.timestamp(), false);
-          return new JsonNodeToUUIDCodec(TypeCodec.uuid(), instantCodec, generator, nullStrings);
+                  createStringConvertingCodec(DataTypes.TIMESTAMP, false);
+          return new JsonNodeToUUIDCodec(TypeCodecs.UUID, instantCodec, generator, nullStrings);
         }
       case TIMEUUID:
         {
           @SuppressWarnings("unchecked")
           ConvertingCodec<String, Instant> instantCodec =
               (ConvertingCodec<String, Instant>)
-                  createStringConvertingCodec(DataType.timestamp(), false);
-          return new JsonNodeToUUIDCodec(
-              TypeCodec.timeUUID(), instantCodec, generator, nullStrings);
+                  createStringConvertingCodec(DataTypes.TIMESTAMP, false);
+          return new JsonNodeToUUIDCodec(TypeCodecs.TIMEUUID, instantCodec, generator, nullStrings);
         }
       case BLOB:
         return new JsonNodeToBlobCodec(nullStrings);
@@ -687,7 +723,7 @@ public class ExtendedCodecRegistry {
         return new JsonNodeToDurationCodec(nullStrings);
       case LIST:
         {
-          DataType elementType = cqlType.getTypeArguments().get(0);
+          DataType elementType = ((ListType) cqlType).getElementType();
           @SuppressWarnings("unchecked")
           TypeCodec<List<Object>> collectionCodec = (TypeCodec<List<Object>>) codecFor(cqlType);
           @SuppressWarnings("unchecked")
@@ -697,7 +733,7 @@ public class ExtendedCodecRegistry {
         }
       case SET:
         {
-          DataType elementType = cqlType.getTypeArguments().get(0);
+          DataType elementType = ((SetType) cqlType).getElementType();
           @SuppressWarnings("unchecked")
           TypeCodec<Set<Object>> collectionCodec = (TypeCodec<Set<Object>>) codecFor(cqlType);
           @SuppressWarnings("unchecked")
@@ -707,8 +743,8 @@ public class ExtendedCodecRegistry {
         }
       case MAP:
         {
-          DataType keyType = cqlType.getTypeArguments().get(0);
-          DataType valueType = cqlType.getTypeArguments().get(1);
+          DataType keyType = ((MapType) cqlType).getKeyType();
+          DataType valueType = ((MapType) cqlType).getValueType();
           @SuppressWarnings("unchecked")
           TypeCodec<Map<Object, Object>> mapCodec =
               (TypeCodec<Map<Object, Object>>) codecFor(cqlType);
@@ -738,22 +774,27 @@ public class ExtendedCodecRegistry {
       case UDT:
         {
           @SuppressWarnings("unchecked")
-          TypeCodec<UDTValue> udtCodec = (TypeCodec<UDTValue>) codecFor(cqlType);
-          ImmutableMap.Builder<String, ConvertingCodec<JsonNode, Object>> fieldCodecs =
+          TypeCodec<UdtValue> udtCodec = (TypeCodec<UdtValue>) codecFor(cqlType);
+          ImmutableMap.Builder<CqlIdentifier, ConvertingCodec<JsonNode, Object>> fieldCodecs =
               new ImmutableMap.Builder<>();
-          for (UserType.Field field : ((UserType) cqlType)) {
+          List<CqlIdentifier> fieldNames = ((UserDefinedType) cqlType).getFieldNames();
+          List<DataType> fieldTypes = ((UserDefinedType) cqlType).getFieldTypes();
+          assert (fieldNames.size() == fieldTypes.size());
+
+          for (int idx = 0; idx < fieldNames.size(); idx++) {
+            CqlIdentifier fieldName = fieldNames.get(idx);
+            DataType fieldType = fieldTypes.get(idx);
             @SuppressWarnings("unchecked")
             ConvertingCodec<JsonNode, Object> fieldCodec =
-                (ConvertingCodec<JsonNode, Object>)
-                    createJsonNodeConvertingCodec(field.getType(), false);
-            fieldCodecs.put(field.getName(), fieldCodec);
+                (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(fieldType, false);
+            fieldCodecs.put(fieldName, fieldCodec);
           }
           return new JsonNodeToUDTCodec(udtCodec, fieldCodecs.build(), objectMapper, nullStrings);
         }
       case CUSTOM:
         {
-          DataType.CustomType customType = (DataType.CustomType) cqlType;
-          switch (customType.getCustomTypeClassName()) {
+          CustomType customType = (CustomType) cqlType;
+          switch (customType.getClassName()) {
             case PointCodec.CLASS_NAME:
               return new JsonNodeToPointCodec(objectMapper, nullStrings);
             case LineStringCodec.CLASS_NAME:
@@ -779,7 +820,8 @@ public class ExtendedCodecRegistry {
               String.format(
                   "Codec not found for requested operation: [%s <-> %s]", cqlType, JsonNode.class);
           CodecNotFoundException e1 =
-              new CodecNotFoundException(msg, cqlType, JSON_NODE_TYPE_TOKEN);
+              new CodecNotFoundException(
+                  new RuntimeException(msg, e), cqlType, GenericType.of(JsonNode.class));
           e1.addSuppressed(e);
           throw e1;
         }
@@ -789,44 +831,43 @@ public class ExtendedCodecRegistry {
   // DAT-288: avoid returning legacy temporal codecs or collection codecs whose elements are legacy
   // temporal codecs.
   public @NotNull TypeCodec<?> codecFor(@NotNull DataType cqlType) {
-    switch (cqlType.getName()) {
+    int protocolCode = cqlType.getProtocolCode();
+    switch (protocolCode) {
       case TIMESTAMP:
-        return InstantCodec.instance;
+        return TypeCodecs.TIMESTAMP;
       case DATE:
-        return LocalDateCodec.instance;
+        return TypeCodecs.DATE;
       case TIME:
-        return LocalTimeCodec.instance;
+        return TypeCodecs.TIME;
       case LIST:
-        return TypeCodec.list(codecFor(cqlType.getTypeArguments().get(0)));
+        return TypeCodecs.listOf(codecFor(((ListType) cqlType).getElementType()));
       case SET:
-        return TypeCodec.set(codecFor(cqlType.getTypeArguments().get(0)));
+        return TypeCodecs.setOf(codecFor(((SetType) cqlType).getElementType()));
       case MAP:
-        return TypeCodec.map(
-            codecFor(cqlType.getTypeArguments().get(0)),
-            codecFor(cqlType.getTypeArguments().get(1)));
+        return TypeCodecs.mapOf(
+            codecFor(((MapType) cqlType).getKeyType()),
+            codecFor(((MapType) cqlType).getValueType()));
       default:
         return codecRegistry.codecFor(cqlType);
     }
   }
 
   private static boolean isNumeric(@NotNull DataType cqlType) {
-    return cqlType == DataType.tinyint()
-        || cqlType == DataType.smallint()
-        || cqlType == DataType.cint()
-        || cqlType == DataType.bigint()
-        || cqlType == DataType.cfloat()
-        || cqlType == DataType.cdouble()
-        || cqlType == DataType.varint()
-        || cqlType == DataType.decimal();
+    return cqlType == DataTypes.TINYINT
+        || cqlType == DataTypes.SMALLINT
+        || cqlType == DataTypes.INT
+        || cqlType == DataTypes.BIGINT
+        || cqlType == DataTypes.FLOAT
+        || cqlType == DataTypes.DOUBLE
+        || cqlType == DataTypes.VARINT
+        || cqlType == DataTypes.DECIMAL;
   }
 
   private static boolean isTemporal(@NotNull DataType cqlType) {
-    return cqlType == DataType.date()
-        || cqlType == DataType.time()
-        || cqlType == DataType.timestamp();
+    return cqlType == DataTypes.DATE || cqlType == DataTypes.TIME || cqlType == DataTypes.TIMESTAMP;
   }
 
   private static boolean isUUID(@NotNull DataType cqlType) {
-    return cqlType == DataType.uuid() || cqlType == DataType.timeuuid();
+    return cqlType == DataTypes.UUID || cqlType == DataTypes.TIMEUUID;
   }
 }

@@ -8,28 +8,20 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.driver.core.DataType.cdouble;
-import static com.datastax.driver.core.DataType.cint;
-import static com.datastax.driver.core.DataType.date;
-import static com.datastax.driver.core.DataType.list;
-import static com.datastax.driver.core.DataType.map;
-import static com.datastax.driver.core.DataType.varchar;
-import static com.datastax.driver.core.DriverCoreEngineTestHooks.newField;
-import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.UDTValue;
-import com.datastax.driver.core.UserType;
-import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.datastax.oss.driver.api.core.data.UdtValue;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.UserDefinedType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.internal.core.type.UserDefinedTypeBuilder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.reflect.TypeToken;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -42,26 +34,31 @@ class JsonNodeToUDTCodecTest {
 
   private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
 
-  private final CodecRegistry codecRegistry = new CodecRegistry().register(LocalDateCodec.instance);
+  private final UserDefinedType udt1 =
+      new UserDefinedTypeBuilder("ks", "udt")
+          .withField("f1a", DataTypes.INT)
+          .withField("f1b", DataTypes.mapOf(DataTypes.TEXT, DataTypes.DOUBLE))
+          .build();
 
-  private final UserType udt1 =
-      newUserType(
-          codecRegistry, newField("f1a", cint()), newField("f1b", map(varchar(), cdouble())));
+  private final UserDefinedType udt2 =
+      new UserDefinedTypeBuilder("ks", "udt")
+          .withField("f2a", udt1)
+          .withField("f2b", DataTypes.listOf(DataTypes.DATE))
+          .build();
 
-  private final UserType udt2 =
-      newUserType(codecRegistry, newField("f2a", udt1), newField("f2b", list(date())));
+  private final UdtValue udt1Empty = udt1.newValue().setToNull("f1a").setToNull("f1b");
 
-  private final UDTValue udt1Empty = udt1.newValue().setToNull("f1a").setToNull("f1b");
+  private final UdtValue udt2Empty = udt2.newValue().setToNull("f2a").setToNull("f2b");
 
-  private final UDTValue udt2Empty = udt2.newValue().setToNull("f2a").setToNull("f2b");
+  private final UdtValue udt1Value =
+      udt1.newValue()
+          .setInt("f1a", 42)
+          .setMap("f1b", newMap("foo", 1234.56d, "", 0.12d), String.class, Double.class);
 
-  private final UDTValue udt1Value =
-      udt1.newValue().setInt("f1a", 42).setMap("f1b", newMap("foo", 1234.56d, "", 0.12d));
-
-  private final UDTValue udt2Value =
+  private final UdtValue udt2Value =
       udt2.newValue()
-          .setUDTValue("f2a", udt1Value)
-          .set("f2b", newList(LocalDate.of(2017, 9, 22)), TypeCodec.list(LocalDateCodec.instance));
+          .setUdtValue("f2a", udt1Value)
+          .set("f2b", newList(LocalDate.of(2017, 9, 22)), TypeCodecs.listOf(TypeCodecs.DATE));
 
   private JsonNodeToUDTCodec udtCodec1;
 
@@ -70,8 +67,8 @@ class JsonNodeToUDTCodecTest {
   @BeforeEach
   void setUp() {
     ExtendedCodecRegistry codecRegistry = newCodecRegistry("nullStrings = [NULL, \"\"]");
-    udtCodec1 = (JsonNodeToUDTCodec) codecRegistry.codecFor(udt1, TypeToken.of(JsonNode.class));
-    udtCodec2 = (JsonNodeToUDTCodec) codecRegistry.codecFor(udt2, TypeToken.of(JsonNode.class));
+    udtCodec1 = (JsonNodeToUDTCodec) codecRegistry.codecFor(udt1, GenericType.of(JsonNode.class));
+    udtCodec2 = (JsonNodeToUDTCodec) codecRegistry.codecFor(udt2, GenericType.of(JsonNode.class));
   }
 
   @Test

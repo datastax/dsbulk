@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
 

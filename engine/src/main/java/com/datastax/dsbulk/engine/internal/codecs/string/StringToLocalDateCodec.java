@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAccessor;
@@ -21,7 +21,7 @@ public class StringToLocalDateCodec extends StringToTemporalCodec<LocalDate> {
   private final ZoneId timeZone;
 
   public StringToLocalDateCodec(TemporalFormat parser, ZoneId timeZone, List<String> nullStrings) {
-    super(LocalDateCodec.instance, parser, nullStrings);
+    super(TypeCodecs.DATE, parser, nullStrings);
     this.timeZone = timeZone;
   }
 

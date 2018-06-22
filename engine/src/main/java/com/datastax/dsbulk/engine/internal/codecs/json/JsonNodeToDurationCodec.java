@@ -10,27 +10,28 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
-import com.datastax.driver.core.Duration;
+import com.datastax.oss.driver.api.core.data.CqlDuration;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 
-public class JsonNodeToDurationCodec extends JsonNodeConvertingCodec<Duration> {
+public class JsonNodeToDurationCodec extends JsonNodeConvertingCodec<CqlDuration> {
 
   public JsonNodeToDurationCodec(List<String> nullStrings) {
-    super(duration(), nullStrings);
+    super(TypeCodecs.DURATION, nullStrings);
   }
 
   @Override
-  public Duration externalToInternal(JsonNode node) {
+  public CqlDuration externalToInternal(JsonNode node) {
     if (isNullOrEmpty(node)) {
       return null;
     }
     String s = node.asText();
-    return Duration.from(s);
+    return CqlDuration.from(s);
   }
 
   @Override
-  public JsonNode internalToExternal(Duration value) {
+  public JsonNode internalToExternal(CqlDuration value) {
     return value == null ? null : JSON_NODE_FACTORY.textNode(value.toString());
   }
 }

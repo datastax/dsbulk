@@ -19,8 +19,8 @@ import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatt
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatterSymbols.summaryStart;
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatterSymbols.truncatedOutput;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.Statement;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 
 public class BatchStatementPrinter implements StatementPrinter<BatchStatement> {
 
@@ -48,13 +48,13 @@ public class BatchStatementPrinter implements StatementPrinter<BatchStatement> {
     if (verbosity.compareTo(NORMAL) >= 0 && out.getLimits().maxInnerStatements > 0) {
       out.newLine();
       int i = 1;
-      for (Statement stmt : statement.getStatements()) {
+      for (Statement<?> stmt : statement) {
         if (i > out.getLimits().maxInnerStatements) {
           out.append(truncatedOutput);
           break;
         }
         out.append(i++).append(nameValueSeparator);
-        StatementPrinter<? super Statement> printer =
+        StatementPrinter<? extends Statement<?>> printer =
             out.getPrinterRegistry().findPrinter(stmt.getClass());
         out.indent();
         printer.print(stmt, out.createChildWriter(), verbosity);

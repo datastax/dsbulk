@@ -10,7 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.InetAddress;
 import java.util.List;
@@ -18,7 +18,7 @@ import java.util.List;
 public class JsonNodeToInetAddressCodec extends JsonNodeConvertingCodec<InetAddress> {
 
   public JsonNodeToInetAddressCodec(List<String> nullStrings) {
-    super(inet(), nullStrings);
+    super(TypeCodecs.INET, nullStrings);
   }
 
   @Override
@@ -28,12 +28,12 @@ public class JsonNodeToInetAddressCodec extends JsonNodeConvertingCodec<InetAddr
     }
     String s = node.asText();
     if (s.isEmpty()) {
-      throw new InvalidTypeException("Cannot create inet address from empty string");
+      throw new IllegalArgumentException("Cannot create inet address from empty string");
     }
     try {
       return InetAddress.getByName(s);
     } catch (Exception e) {
-      throw new InvalidTypeException("Cannot parse inet address: " + s);
+      throw new IllegalArgumentException("Cannot parse inet address: " + s);
     }
   }
 

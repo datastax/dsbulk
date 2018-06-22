@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string.dse;
 
-import com.datastax.driver.dse.search.DateRange;
-import com.datastax.driver.dse.search.DateRangeCodec;
+import com.datastax.dsbulk.engine.internal.DateRange;
+import com.datastax.dsbulk.engine.internal.DateRangeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.util.List;
@@ -17,7 +17,7 @@ import java.util.List;
 public class StringToDateRangeCodec extends StringConvertingCodec<DateRange> {
 
   public StringToDateRangeCodec(List<String> nullStrings) {
-    super(DateRangeCodec.INSTANCE, nullStrings);
+    super(new DateRangeCodec(), nullStrings);
   }
 
   @Override

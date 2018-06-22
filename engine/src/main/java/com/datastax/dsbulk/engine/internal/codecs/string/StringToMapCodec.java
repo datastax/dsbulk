@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToMapCodec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -38,7 +37,7 @@ public class StringToMapCodec<K, V> extends StringConvertingCodec<Map<K, V>> {
       JsonNode node = objectMapper.readTree(s);
       return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
-      throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
+      throw new IllegalArgumentException(String.format("Could not parse '%s' as Json", s), e);
     }
   }
 
@@ -51,7 +50,7 @@ public class StringToMapCodec<K, V> extends StringConvertingCodec<Map<K, V>> {
       JsonNode node = jsonCodec.internalToExternal(map);
       return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
-      throw new InvalidTypeException(String.format("Could not format '%s' to Json", map), e);
+      throw new IllegalArgumentException(String.format("Could not format '%s' to Json", map), e);
     }
   }
 }

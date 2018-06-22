@@ -8,10 +8,11 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.util;
 
-import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.pid;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.oss.driver.internal.core.os.Native;
 import com.google.common.base.Charsets;
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -196,6 +197,19 @@ public enum TimeUUIDGenerator {
       return node | 0x0000010000000000L;
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  private static int pid() {
+    if (Native.isGetProcessIdAvailable()) {
+      return Native.getProcessId();
+    } else {
+      try {
+        String pidJmx = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
+        return Integer.parseInt(pidJmx);
+      } catch (Exception ignored) {
+        return new java.util.Random(System.currentTimeMillis()).nextInt();
+      }
     }
   }
 

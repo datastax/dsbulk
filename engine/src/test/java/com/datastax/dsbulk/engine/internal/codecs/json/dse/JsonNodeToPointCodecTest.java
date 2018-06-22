@@ -12,8 +12,9 @@ import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NO
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.driver.dse.geometry.Point;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.datastax.dse.driver.api.core.type.geometry.Point;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -23,7 +24,7 @@ import org.junit.jupiter.api.Test;
 class JsonNodeToPointCodecTest {
 
   private List<String> nullStrings = newArrayList("NULL");
-  private Point point = new Point(-1.1, -2.2);
+  private Point point = new DefaultPoint(-1.1, -2.2);
   private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
   private JsonNode geoJsonNode =
       objectMapper.readTree("{\"type\":\"Point\",\"coordinates\":[-1.1,-2.2]}");

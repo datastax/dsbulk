@@ -8,11 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json.dse;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.driver.dse.geometry.Point;
-import com.datastax.driver.dse.geometry.codecs.PointCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dse.driver.api.core.codec.DseTypeCodecs;
+import com.datastax.dse.driver.api.core.type.geometry.Point;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,7 +23,7 @@ public class JsonNodeToPointCodec extends JsonNodeConvertingCodec<Point> {
   private final ObjectMapper objectMapper;
 
   public JsonNodeToPointCodec(ObjectMapper objectMapper, List<String> nullStrings) {
-    super(PointCodec.INSTANCE, nullStrings);
+    super(DseTypeCodecs.POINT, nullStrings);
     this.objectMapper = objectMapper;
   }
 
@@ -47,7 +46,7 @@ public class JsonNodeToPointCodec extends JsonNodeConvertingCodec<Point> {
       }
       return CodecUtils.parsePoint(s);
     } catch (JsonProcessingException e) {
-      throw new InvalidTypeException("Cannot deserialize node " + node, e);
+      throw new IllegalArgumentException("Cannot deserialize node " + node, e);
     }
   }
 
@@ -61,7 +60,7 @@ public class JsonNodeToPointCodec extends JsonNodeConvertingCodec<Point> {
       // use that rather than WKT.
       return objectMapper.readTree(value.asGeoJson());
     } catch (IOException e) {
-      throw new InvalidTypeException("Cannot serialize value " + value, e);
+      throw new IllegalArgumentException("Cannot serialize value " + value, e);
     }
   }
 }

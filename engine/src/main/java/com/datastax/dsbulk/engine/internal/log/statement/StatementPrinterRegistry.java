@@ -8,14 +8,12 @@
  */
 package com.datastax.dsbulk.engine.internal.log.statement;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.StatementWrapper;
-import com.datastax.driver.core.querybuilder.BuiltStatement;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -33,10 +31,8 @@ public final class StatementPrinterRegistry {
           .put(BulkSimpleStatement.class, new BulkSimpleStatementPrinter())
           .put(BulkBoundStatement.class, new BulkBoundStatementPrinter())
           .put(SimpleStatement.class, new SimpleStatementPrinter<>())
-          .put(BuiltStatement.class, new BuiltStatementPrinter())
           .put(BoundStatement.class, new BoundStatementPrinter<>())
           .put(BatchStatement.class, new BatchStatementPrinter())
-          .put(StatementWrapper.class, new StatementWrapperPrinter())
           .put(Statement.class, new DefaultStatementPrinter())
           .build();
 
@@ -44,28 +40,18 @@ public final class StatementPrinterRegistry {
 
   StatementPrinterRegistry() {}
 
-  /**
-   * Attempts to locate the best {@link StatementPrinter printer} for the given statement.
-   *
-   * <p>The registry first tries to locate a user-defined printer that is capable of printing the
-   * given statement; if none is found, then built-in printers will be used.
-   *
-   * @param statementClass The statement class to find a printer for.
-   * @return The best {@link StatementPrinter printer} for the given statement. Cannot be {@code
-   *     null}.
-   */
-  public StatementPrinter<Statement> findPrinter(Class<?> statementClass) {
+  public <S extends Statement<S>> StatementPrinter<S> findPrinter(Class<S> statementClass) {
     StatementPrinter<?> printer = lookupPrinter(statementClass, printers);
     if (printer == null) {
       printer = lookupPrinter(statementClass, BUILT_IN_PRINTERS);
     }
     assert printer != null;
     @SuppressWarnings("unchecked")
-    StatementPrinter<Statement> sp = (StatementPrinter<Statement>) printer;
+    StatementPrinter<S> sp = (StatementPrinter<S>) printer;
     return sp;
   }
 
-  public <S extends Statement> void register(StatementPrinter<S> printer) {
+  public <S extends Statement<S>> void register(StatementPrinter<S> printer) {
     printers.put(printer.getSupportedStatementClass(), printer);
   }
 

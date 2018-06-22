@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.temporal;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
@@ -21,6 +21,7 @@ public class TemporalToTemporalCodec<
 
   private final ZoneId timeZone;
   private final ZonedDateTime epoch;
+  private final Class<EXTERNAL> rawJavaType;
 
   public TemporalToTemporalCodec(
       Class<EXTERNAL> javaType,
@@ -28,8 +29,13 @@ public class TemporalToTemporalCodec<
       ZoneId timeZone,
       ZonedDateTime epoch) {
     super(targetCodec, javaType);
+    rawJavaType = javaType;
     this.timeZone = timeZone;
     this.epoch = epoch;
+  }
+
+  public Class<EXTERNAL> getRawJavaType() {
+    return rawJavaType;
   }
 
   @Override

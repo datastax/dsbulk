@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.number;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -19,11 +19,12 @@ public class NumberToUUIDCodec<EXTERNAL extends Number> extends ConvertingCodec<
   private final NumberToInstantCodec<EXTERNAL> instantCodec;
   private final TimeUUIDGenerator generator;
 
+  @SuppressWarnings("unchecked")
   public NumberToUUIDCodec(
       TypeCodec<UUID> targetCodec,
       NumberToInstantCodec<EXTERNAL> instantCodec,
       TimeUUIDGenerator generator) {
-    super(targetCodec, instantCodec.getJavaType());
+    super(targetCodec, (Class<EXTERNAL>) instantCodec.getJavaType().getRawType());
     this.instantCodec = instantCodec;
     this.generator = generator;
   }

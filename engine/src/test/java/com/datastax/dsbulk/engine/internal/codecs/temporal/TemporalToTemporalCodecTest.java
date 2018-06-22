@@ -13,9 +13,7 @@ import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
 import static java.time.ZoneOffset.ofHours;
 
-import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
-import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
-import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,7 +30,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                ZonedDateTime.class, LocalDateCodec.instance, UTC, EPOCH.atZone(UTC)))
+                ZonedDateTime.class, TypeCodecs.DATE, UTC, EPOCH.atZone(UTC)))
         .convertsFromExternal(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
         .toInternal(LocalDate.parse("2010-06-30"))
         .convertsFromExternal(null)
@@ -42,7 +40,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                ZonedDateTime.class, LocalDateCodec.instance, ofHours(1), EPOCH.atZone(UTC)))
+                ZonedDateTime.class, TypeCodecs.DATE, ofHours(1), EPOCH.atZone(UTC)))
         .convertsFromExternal(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
         .toInternal(LocalDate.parse("2010-06-30"))
         .convertsFromExternal(null)
@@ -52,7 +50,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                ZonedDateTime.class, LocalDateCodec.instance, ofHours(-1), EPOCH.atZone(UTC)))
+                ZonedDateTime.class, TypeCodecs.DATE, ofHours(-1), EPOCH.atZone(UTC)))
         .convertsFromExternal(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
         .toInternal(LocalDate.parse("2010-06-30"))
         .convertsFromExternal(null)
@@ -62,7 +60,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                ZonedDateTime.class, LocalTimeCodec.instance, UTC, EPOCH.atZone(UTC)))
+                ZonedDateTime.class, TypeCodecs.TIME, UTC, EPOCH.atZone(UTC)))
         .convertsFromExternal(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"))
         .toInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)
@@ -72,7 +70,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                ZonedDateTime.class, LocalTimeCodec.instance, ofHours(1), EPOCH.atZone(UTC)))
+                ZonedDateTime.class, TypeCodecs.TIME, ofHours(1), EPOCH.atZone(UTC)))
         .convertsFromExternal(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"))
         .toInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)
@@ -82,7 +80,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                ZonedDateTime.class, LocalTimeCodec.instance, ofHours(-1), EPOCH.atZone(UTC)))
+                ZonedDateTime.class, TypeCodecs.TIME, ofHours(-1), EPOCH.atZone(UTC)))
         .convertsFromExternal(ZonedDateTime.parse("1970-01-01T23:59:59+01:00"))
         .toInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)
@@ -92,7 +90,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                ZonedDateTime.class, InstantCodec.instance, UTC, EPOCH.atZone(UTC)))
+                ZonedDateTime.class, TypeCodecs.TIMESTAMP, UTC, EPOCH.atZone(UTC)))
         .convertsFromExternal(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
         .toInternal(Instant.parse("2010-06-29T23:00:00Z"))
         .convertsFromExternal(null)
@@ -102,7 +100,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                ZonedDateTime.class, InstantCodec.instance, ofHours(1), EPOCH.atZone(UTC)))
+                ZonedDateTime.class, TypeCodecs.TIMESTAMP, ofHours(1), EPOCH.atZone(UTC)))
         .convertsFromExternal(ZonedDateTime.parse("2010-06-30T00:00:00+01:00"))
         .toInternal(Instant.parse("2010-06-29T23:00:00Z"))
         .convertsFromExternal(null)
@@ -113,8 +111,7 @@ class TemporalToTemporalCodecTest {
     // Instant -> *
 
     assertThat(
-            new TemporalToTemporalCodec<>(
-                Instant.class, LocalDateCodec.instance, UTC, EPOCH.atZone(UTC)))
+            new TemporalToTemporalCodec<>(Instant.class, TypeCodecs.DATE, UTC, EPOCH.atZone(UTC)))
         .convertsFromExternal(Instant.parse("2010-06-30T00:00:00Z"))
         .toInternal(LocalDate.parse("2010-06-30"))
         .convertsFromExternal(null)
@@ -124,7 +121,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                Instant.class, LocalDateCodec.instance, ofHours(-1), EPOCH.atZone(UTC)))
+                Instant.class, TypeCodecs.DATE, ofHours(-1), EPOCH.atZone(UTC)))
         .convertsFromExternal(Instant.parse("2010-06-30T00:00:00Z"))
         .toInternal(LocalDate.parse("2010-06-29"))
         .convertsFromExternal(null)
@@ -134,7 +131,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                Instant.class, LocalDateCodec.instance, ofHours(1), EPOCH.atZone(UTC)))
+                Instant.class, TypeCodecs.DATE, ofHours(1), EPOCH.atZone(UTC)))
         .convertsFromExternal(Instant.parse("2010-06-30T23:59:59Z"))
         .toInternal(LocalDate.parse("2010-07-01"))
         .convertsFromExternal(null)
@@ -143,8 +140,7 @@ class TemporalToTemporalCodecTest {
         .toExternal(null);
 
     assertThat(
-            new TemporalToTemporalCodec<>(
-                Instant.class, LocalTimeCodec.instance, UTC, EPOCH.atZone(UTC)))
+            new TemporalToTemporalCodec<>(Instant.class, TypeCodecs.TIME, UTC, EPOCH.atZone(UTC)))
         .convertsFromExternal(Instant.parse("1970-01-01T23:59:59Z"))
         .toInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)
@@ -154,7 +150,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                Instant.class, LocalTimeCodec.instance, ofHours(1), EPOCH.atZone(UTC)))
+                Instant.class, TypeCodecs.TIME, ofHours(1), EPOCH.atZone(UTC)))
         .convertsFromExternal(Instant.parse("1970-01-01T23:59:59Z"))
         .toInternal(LocalTime.parse("00:59:59"))
         .convertsFromExternal(null)
@@ -164,7 +160,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                Instant.class, LocalTimeCodec.instance, ofHours(-1), EPOCH.atZone(UTC)))
+                Instant.class, TypeCodecs.TIME, ofHours(-1), EPOCH.atZone(UTC)))
         .convertsFromExternal(Instant.parse("1970-01-01T23:59:59Z"))
         .toInternal(LocalTime.parse("22:59:59"))
         .convertsFromExternal(null)
@@ -176,7 +172,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                LocalDateTime.class, LocalDateCodec.instance, UTC, EPOCH.atZone(UTC)))
+                LocalDateTime.class, TypeCodecs.DATE, UTC, EPOCH.atZone(UTC)))
         .convertsFromExternal(LocalDateTime.parse("2010-06-30T00:00:00"))
         .toInternal(LocalDate.parse("2010-06-30"))
         .convertsFromExternal(null)
@@ -186,7 +182,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                LocalDateTime.class, LocalTimeCodec.instance, UTC, EPOCH.atZone(UTC)))
+                LocalDateTime.class, TypeCodecs.TIME, UTC, EPOCH.atZone(UTC)))
         .convertsFromExternal(LocalDateTime.parse("1970-01-01T23:59:59"))
         .toInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)
@@ -196,7 +192,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                LocalDateTime.class, InstantCodec.instance, UTC, EPOCH.atZone(UTC)))
+                LocalDateTime.class, TypeCodecs.TIMESTAMP, UTC, EPOCH.atZone(UTC)))
         .convertsFromExternal(LocalDateTime.parse("2010-06-30T23:59:59"))
         .toInternal(Instant.parse("2010-06-30T23:59:59Z"))
         .convertsFromExternal(null)
@@ -208,7 +204,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                LocalDate.class, InstantCodec.instance, UTC, EPOCH.atZone(UTC)))
+                LocalDate.class, TypeCodecs.TIMESTAMP, UTC, EPOCH.atZone(UTC)))
         .convertsFromExternal(LocalDate.parse("2010-06-30"))
         .toInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .convertsFromExternal(null)
@@ -220,7 +216,7 @@ class TemporalToTemporalCodecTest {
 
     assertThat(
             new TemporalToTemporalCodec<>(
-                LocalTime.class, InstantCodec.instance, UTC, EPOCH.atZone(UTC)))
+                LocalTime.class, TypeCodecs.TIMESTAMP, UTC, EPOCH.atZone(UTC)))
         .convertsFromExternal(LocalTime.parse("23:59:59"))
         .toInternal(Instant.parse("1970-01-01T23:59:59Z"))
         .convertsFromExternal(null)
@@ -234,8 +230,7 @@ class TemporalToTemporalCodecTest {
 
     // LocalDate <-> LocalTime is not supported
     assertThat(
-            new TemporalToTemporalCodec<>(
-                LocalDate.class, LocalTimeCodec.instance, UTC, EPOCH.atZone(UTC)))
+            new TemporalToTemporalCodec<>(LocalDate.class, TypeCodecs.TIME, UTC, EPOCH.atZone(UTC)))
         .cannotConvertFromExternal(LocalDate.parse("2010-06-30"))
         .cannotConvertFromInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)

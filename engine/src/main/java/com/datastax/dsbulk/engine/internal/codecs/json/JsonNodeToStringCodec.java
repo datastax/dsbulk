@@ -10,8 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,7 +37,7 @@ public class JsonNodeToStringCodec extends JsonNodeConvertingCodec<String> {
       try {
         return objectMapper.writeValueAsString(node);
       } catch (JsonProcessingException e) {
-        throw new InvalidTypeException("Cannot deserialize node " + node, e);
+        throw new IllegalArgumentException("Cannot deserialize node " + node, e);
       }
     } else {
       return node.asText();

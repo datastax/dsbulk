@@ -13,6 +13,7 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import java.time.Instant;
 
 public class WriteTimeCodec<T> extends ConvertingCodec<T, Long> {
@@ -20,7 +21,7 @@ public class WriteTimeCodec<T> extends ConvertingCodec<T, Long> {
   private final ConvertingCodec<T, Instant> innerCodec;
 
   public WriteTimeCodec(ConvertingCodec<T, Instant> innerCodec) {
-    super(bigint(), innerCodec.getJavaType());
+    super(TypeCodecs.BIGINT, innerCodec.getJavaType());
     this.innerCodec = innerCodec;
   }
 

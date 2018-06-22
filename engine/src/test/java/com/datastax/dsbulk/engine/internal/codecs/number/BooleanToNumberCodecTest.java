@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.number;
 
-import static com.datastax.driver.core.TypeCodec.tinyInt;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import org.junit.jupiter.api.Test;
 
 class BooleanToNumberCodecTest {
@@ -20,7 +20,7 @@ class BooleanToNumberCodecTest {
   @Test
   void should_convert_from_valid_external() {
 
-    assertThat(new BooleanToNumberCodec<>(tinyInt(), newArrayList(ONE, ONE.negate())))
+    assertThat(new BooleanToNumberCodec<>(TypeCodecs.TINYINT, newArrayList(ONE, ONE.negate())))
         .convertsFromExternal(true)
         .toInternal((byte) 1)
         .convertsFromExternal(false)

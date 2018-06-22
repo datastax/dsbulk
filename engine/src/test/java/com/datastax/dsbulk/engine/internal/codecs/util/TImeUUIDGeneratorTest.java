@@ -14,7 +14,7 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.
 import static com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator.RANDOM;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.driver.core.utils.UUIDs;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import org.junit.jupiter.api.Test;
@@ -59,37 +59,37 @@ class TImeUUIDGeneratorTest {
   @Test
   void should_generate_uuid() {
 
-    // time UUIDs with MIN strategy
+    // time Uuids with MIN strategy
     assertThat(MIN.generate(ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant()))
         .isEqualTo(
-            UUIDs.startOf(
+            Uuids.startOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
 
-    // time UUIDs with MAX strategy
+    // time Uuids with MAX strategy
     // the driver's endOf method takes milliseconds and sets all the sub-millisecond digits to their
     // max, that's why we add .000999999
     assertThat(MAX.generate(ZonedDateTime.parse("2017-12-05T12:44:36.000999999+01:00").toInstant()))
         .isEqualTo(
-            UUIDs.endOf(
+            Uuids.endOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
 
-    // time UUIDs with FIXED strategy
+    // time Uuids with FIXED strategy
     assertThat(
             FIXED
                 .generate(ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant())
                 .timestamp())
         .isEqualTo(
-            UUIDs.startOf(
+            Uuids.startOf(
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
 
-    // time UUIDs with RANDOM strategy
+    // time Uuids with RANDOM strategy
     assertThat(
             RANDOM
                 .generate(ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant())
                 .timestamp())
         .isEqualTo(
-            UUIDs.startOf(
+            Uuids.startOf(
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
   }

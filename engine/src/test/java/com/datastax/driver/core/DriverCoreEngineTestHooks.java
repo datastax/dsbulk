@@ -8,66 +8,88 @@
  */
 package com.datastax.driver.core;
 
-import java.nio.ByteBuffer;
+import com.datastax.dse.driver.api.core.DseProtocolVersion;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.detach.AttachmentPoint;
+import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.TupleType;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.driver.internal.core.metadata.token.Murmur3Token;
+import com.datastax.oss.driver.internal.core.metadata.token.Murmur3TokenFactory;
+import com.datastax.oss.driver.internal.core.metadata.token.Murmur3TokenRange;
+import com.datastax.oss.driver.internal.core.type.DefaultTupleType;
+import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
 import java.util.Arrays;
 
 @SuppressWarnings("SameParameterValue")
 public class DriverCoreEngineTestHooks {
+  private static final CodecRegistry CODEC_REGISTRY = new DefaultCodecRegistry("test");
 
-  public static PreparedId newPreparedId(
-      ColumnDefinitions cd, int[] pkIndices, ProtocolVersion version) {
-    return new PreparedId(
-        new PreparedId.PreparedMetadata(null, null),
-        new PreparedId.PreparedMetadata(null, cd),
-        pkIndices,
-        version);
-  }
+  // TODO: Update to work with next-gen Java driver.
+  //  public static PreparedId newPreparedId(
+  //      ColumnDefinitions cd, int[] pkIndices, ProtocolVersion version) {
+  //    return new PreparedId(
+  //        new PreparedId.PreparedMetadata(null, null),
+  //        new PreparedId.PreparedMetadata(null, cd),
+  //        pkIndices,
+  //        version);
+  //  }
 
   public static TupleType newTupleType(DataType... types) {
-    return newTupleType(ProtocolVersion.NEWEST_SUPPORTED, CodecRegistry.DEFAULT_INSTANCE, types);
+    return newTupleType(DseProtocolVersion.DSE_V2, CODEC_REGISTRY, types);
   }
 
   public static TupleType newTupleType(
       ProtocolVersion protocolVersion, CodecRegistry codecRegistry, DataType... types) {
-    return new TupleType(Arrays.asList(types), protocolVersion, codecRegistry);
+    return new DefaultTupleType(
+        Arrays.asList(types),
+        new AttachmentPoint() {
+          @Override
+          public ProtocolVersion protocolVersion() {
+            return protocolVersion;
+          }
+
+          @Override
+          public CodecRegistry codecRegistry() {
+            return codecRegistry;
+          }
+        });
   }
 
-  public static UserType newUserType(UserType.Field... fields) {
-    return newUserType(
-        "ks", "udt", ProtocolVersion.NEWEST_SUPPORTED, CodecRegistry.DEFAULT_INSTANCE, fields);
-  }
-
-  public static UserType newUserType(CodecRegistry codecRegistry, UserType.Field... fields) {
-    return newUserType("ks", "udt", ProtocolVersion.NEWEST_SUPPORTED, codecRegistry, fields);
-  }
-
-  private static UserType newUserType(
-      String keyspace,
-      String typeName,
-      ProtocolVersion protocolVersion,
-      CodecRegistry codecRegistry,
-      UserType.Field... fields) {
-    return new UserType(
-        keyspace, typeName, true, Arrays.asList(fields), protocolVersion, codecRegistry);
-  }
-
-  public static UserType.Field newField(String name, DataType type) {
-    return new UserType.Field(name, type);
-  }
+  //  public static UserDefinedType newUserType(String[] fieldNames, String[] fieldTypes) {
+  //    return newUserType(
+  //        "ks", "udt", DseProtocolVersion.DSE_V2, CODEC_REGISTRY, fields);
+  //  }
+  //
+  //  public static UserDefinedType newUserType(CodecRegistry codecRegistry, String[] fieldNames,
+  // String[] fieldTypes) {
+  //    return newUserType("ks", "udt", ProtocolVersion.NEWEST_SUPPORTED, codecRegistry, fields);
+  //  }
+  //
+  //  private static UserDefinedType newUserType(
+  //      String keyspace,
+  //      String typeName,
+  //      ProtocolVersion protocolVersion,
+  //      CodecRegistry codecRegistry,
+  //      String[] fieldNames,
+  //      String[] fieldTypes) {
+  //    UserDefinedTypeBuilder
+  //    return new UserDefinedType()(
+  //        keyspace, typeName, true, Arrays.asList(fields), protocolVersion, codecRegistry);
+  //  }
 
   public static TokenRange newTokenRange(Token start, Token end) {
-    return new TokenRange(start, end, Token.M3PToken.FACTORY);
+    return new Murmur3TokenRange((Murmur3Token) start, (Murmur3Token) end);
   }
 
   public static Token newToken(long value) {
-    return Token.M3PToken.FACTORY.fromString(Long.toString(value));
+    return new Murmur3TokenFactory().parse(Long.toString(value));
   }
 
-  public static ByteBuffer compose(ByteBuffer... bbs) {
-    return SimpleStatement.compose(bbs);
-  }
-
-  public static Statement wrappedStatement(StatementWrapper wrapper) {
-    return wrapper.getWrappedStatement();
-  }
+  // TODO: Update to work with next-gen Java driver.
+  //  public static ByteBuffer compose(ByteBuffer... bbs) {
+  //    return SimpleStatement.compose(bbs);
+  //  }
 }

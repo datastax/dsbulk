@@ -8,9 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.driver.core.DataType.cdouble;
-import static com.datastax.driver.core.DataType.list;
-import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
@@ -18,10 +15,11 @@ import static com.google.common.collect.Lists.newArrayList;
 
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.google.common.reflect.TypeToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -38,10 +36,12 @@ class JsonNodeToListCodecTest {
     ExtendedCodecRegistry codecRegistry = newCodecRegistry("nullStrings = [NULL]");
     codec1 =
         (JsonNodeToListCodec<Double>)
-            codecRegistry.codecFor(list(cdouble()), TypeToken.of(JsonNode.class));
+            codecRegistry.codecFor(
+                DataTypes.listOf(DataTypes.DOUBLE), GenericType.of(JsonNode.class));
     codec2 =
         (JsonNodeToListCodec<String>)
-            codecRegistry.codecFor(list(varchar()), TypeToken.of(JsonNode.class));
+            codecRegistry.codecFor(
+                DataTypes.listOf(DataTypes.TEXT), GenericType.of(JsonNode.class));
   }
 
   @Test

@@ -12,8 +12,7 @@ import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NO
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.driver.dse.search.DateRange;
-import java.text.ParseException;
+import com.datastax.dsbulk.engine.internal.DateRange;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +21,7 @@ class JsonNodeToDateRangeCodecTest {
   private List<String> nullStrings = newArrayList("NULL");
   private DateRange dateRange = DateRange.parse("[* TO 2014-12-01]");
 
-  JsonNodeToDateRangeCodecTest() throws ParseException {}
+  JsonNodeToDateRangeCodecTest() {}
 
   @Test
   void should_convert_from_valid_external() {

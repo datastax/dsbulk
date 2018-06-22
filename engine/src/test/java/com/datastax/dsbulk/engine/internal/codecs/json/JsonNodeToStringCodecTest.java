@@ -12,8 +12,8 @@ import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NO
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
@@ -27,7 +27,7 @@ class JsonNodeToStringCodecTest {
   @Test
   void should_convert_from_valid_external() throws IOException {
     JsonNodeToStringCodec codec =
-        new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
+        new JsonNodeToStringCodec(TypeCodecs.TEXT, objectMapper, nullStrings);
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("foo"))
         .toInternal("foo")
@@ -54,7 +54,7 @@ class JsonNodeToStringCodecTest {
   @Test
   void should_convert_from_valid_internal() throws IOException {
     JsonNodeToStringCodec codec =
-        new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
+        new JsonNodeToStringCodec(TypeCodecs.TEXT, objectMapper, nullStrings);
     assertThat(codec)
         .convertsFromInternal("foo")
         .toExternal(JSON_NODE_FACTORY.textNode("foo"))

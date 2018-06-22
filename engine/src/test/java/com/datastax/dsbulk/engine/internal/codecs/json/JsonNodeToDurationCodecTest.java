@@ -12,14 +12,14 @@ import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NO
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.driver.core.Duration;
+import com.datastax.oss.driver.api.core.data.CqlDuration;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToDurationCodecTest {
 
   private final long nanosPerMinute = 60 * 1000L * 1000L * 1000L;
 
-  private final Duration duration = Duration.newInstance(15, 0, 130 * nanosPerMinute);
+  private final CqlDuration duration = CqlDuration.newInstance(15, 0, 130 * nanosPerMinute);
 
   private final JsonNodeToDurationCodec codec = new JsonNodeToDurationCodec(newArrayList("NULL"));
 

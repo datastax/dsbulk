@@ -16,13 +16,13 @@ import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToInstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.sql.Timestamp;
 import java.text.NumberFormat;
@@ -91,7 +91,7 @@ class WriteTimeCodecTest {
 
     assertThat(
             new WriteTimeCodec<>(
-                new TemporalToTemporalCodec<>(Instant.class, InstantCodec.instance, UTC, epoch)))
+                new TemporalToTemporalCodec<>(Instant.class, TypeCodecs.TIMESTAMP, UTC, epoch)))
         .convertsFromExternal(ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant())
         .toInternal(
             MILLISECONDS.toMicros(
@@ -100,7 +100,7 @@ class WriteTimeCodecTest {
     assertThat(
             new WriteTimeCodec<>(
                 new TemporalToTemporalCodec<>(
-                    ZonedDateTime.class, InstantCodec.instance, UTC, epoch)))
+                    ZonedDateTime.class, TypeCodecs.TIMESTAMP, UTC, epoch)))
         .convertsFromExternal(ZonedDateTime.parse("2017-11-30T14:46:56+01:00"))
         .toInternal(
             MILLISECONDS.toMicros(
@@ -108,7 +108,7 @@ class WriteTimeCodecTest {
 
     assertThat(
             new WriteTimeCodec<>(
-                new DateToTemporalCodec<>(java.util.Date.class, InstantCodec.instance, UTC)))
+                new DateToTemporalCodec<>(java.util.Date.class, TypeCodecs.TIMESTAMP, UTC)))
         .convertsFromExternal(
             Date.from(ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant()))
         .toInternal(
@@ -117,7 +117,7 @@ class WriteTimeCodecTest {
 
     assertThat(
             new WriteTimeCodec<>(
-                new DateToTemporalCodec<>(java.sql.Timestamp.class, InstantCodec.instance, UTC)))
+                new DateToTemporalCodec<>(java.sql.Timestamp.class, TypeCodecs.TIMESTAMP, UTC)))
         .convertsFromExternal(
             Timestamp.from(ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant()))
         .toInternal(

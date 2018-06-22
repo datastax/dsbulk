@@ -10,8 +10,9 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
-import com.datastax.driver.core.utils.Bytes;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.protocol.internal.util.Bytes;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -20,7 +21,7 @@ import java.util.List;
 public class JsonNodeToBlobCodec extends JsonNodeConvertingCodec<ByteBuffer> {
 
   public JsonNodeToBlobCodec(List<String> nullStrings) {
-    super(blob(), nullStrings);
+    super(TypeCodecs.BLOB, nullStrings);
   }
 
   @Override

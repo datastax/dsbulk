@@ -8,16 +8,16 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string.dse;
 
-import com.datastax.driver.dse.geometry.LineString;
-import com.datastax.driver.dse.geometry.codecs.LineStringCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dse.driver.api.core.codec.DseTypeCodecs;
+import com.datastax.dse.driver.api.core.type.geometry.LineString;
 import java.util.List;
 
 public class StringToLineStringCodec extends StringConvertingCodec<LineString> {
 
   public StringToLineStringCodec(List<String> nullStrings) {
-    super(LineStringCodec.INSTANCE, nullStrings);
+    super(DseTypeCodecs.LINE_STRING, nullStrings);
   }
 
   @Override

@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.log.statement;
 
-import com.datastax.driver.core.Statement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 
 /**
  * A statement printer is responsible for printing a specific type of {@link Statement statement},
@@ -17,7 +17,7 @@ import com.datastax.driver.core.Statement;
  *
  * @param <S> The type of statement that this printer handles
  */
-public interface StatementPrinter<S extends Statement> {
+public interface StatementPrinter<S extends Statement<S>> {
 
   /**
    * The concrete {@link Statement} subclass that this printer handles.
@@ -27,7 +27,7 @@ public interface StatementPrinter<S extends Statement> {
    *
    * @return The concrete {@link Statement} subclass that this printer handles.
    */
-  Class<? extends Statement> getSupportedStatementClass();
+  Class<? extends Statement<S>> getSupportedStatementClass();
 
   /**
    * Prints the given {@link Statement statement}, using the given {@link StatementWriter statement

@@ -8,16 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import static com.datastax.driver.core.DataType.cdouble;
-import static com.datastax.driver.core.DataType.list;
-import static com.datastax.driver.core.DataType.timestamp;
-import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,13 +33,15 @@ class StringToListCodecTest {
     ExtendedCodecRegistry codecRegistry = newCodecRegistry("nullStrings = [NULL]");
     codec1 =
         (StringToListCodec<Double>)
-            codecRegistry.codecFor(list(cdouble()), TypeToken.of(String.class));
+            codecRegistry.codecFor(
+                DataTypes.listOf(DataTypes.DOUBLE), GenericType.of(String.class));
     codec2 =
         (StringToListCodec<Instant>)
-            codecRegistry.codecFor(list(timestamp()), TypeToken.of(String.class));
+            codecRegistry.codecFor(
+                DataTypes.listOf(DataTypes.TIMESTAMP), GenericType.of(String.class));
     codec3 =
         (StringToListCodec<String>)
-            codecRegistry.codecFor(list(varchar()), TypeToken.of(String.class));
+            codecRegistry.codecFor(DataTypes.listOf(DataTypes.TEXT), GenericType.of(String.class));
   }
 
   @Test

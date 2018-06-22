@@ -8,15 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import static com.datastax.driver.core.DataType.cdouble;
-import static com.datastax.driver.core.DataType.set;
-import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static org.assertj.core.util.Sets.newLinkedHashSet;
 
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,10 +28,10 @@ class StringToSetCodecTest {
     ExtendedCodecRegistry codecRegistry = newCodecRegistry("nullStrings = [NULL]");
     codec1 =
         (StringToSetCodec<Double>)
-            codecRegistry.codecFor(set(cdouble()), TypeToken.of(String.class));
+            codecRegistry.codecFor(DataTypes.setOf(DataTypes.DOUBLE), GenericType.of(String.class));
     codec2 =
         (StringToSetCodec<String>)
-            codecRegistry.codecFor(set(varchar()), TypeToken.of(String.class));
+            codecRegistry.codecFor(DataTypes.setOf(DataTypes.TEXT), GenericType.of(String.class));
   }
 
   @Test

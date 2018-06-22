@@ -8,8 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.utils.Bytes;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.protocol.internal.util.Bytes;
 import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.List;
@@ -17,7 +18,7 @@ import java.util.List;
 public class StringToBlobCodec extends StringConvertingCodec<ByteBuffer> {
 
   public StringToBlobCodec(List<String> nullStrings) {
-    super(blob(), nullStrings);
+    super(TypeCodecs.BLOB, nullStrings);
   }
 
   @Override

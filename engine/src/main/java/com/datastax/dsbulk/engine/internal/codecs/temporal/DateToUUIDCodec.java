@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.temporal;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;

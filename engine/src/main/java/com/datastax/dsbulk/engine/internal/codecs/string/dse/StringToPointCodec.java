@@ -8,16 +8,16 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string.dse;
 
-import com.datastax.driver.dse.geometry.Point;
-import com.datastax.driver.dse.geometry.codecs.PointCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dse.driver.api.core.codec.DseTypeCodecs;
+import com.datastax.dse.driver.api.core.type.geometry.Point;
 import java.util.List;
 
 public class StringToPointCodec extends StringConvertingCodec<Point> {
 
   public StringToPointCodec(List<String> nullStrings) {
-    super(PointCodec.INSTANCE, nullStrings);
+    super(DseTypeCodecs.POINT, nullStrings);
   }
 
   @Override

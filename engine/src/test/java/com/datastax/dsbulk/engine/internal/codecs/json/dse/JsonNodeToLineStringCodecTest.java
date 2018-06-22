@@ -12,9 +12,10 @@ import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NO
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.driver.dse.geometry.LineString;
-import com.datastax.driver.dse.geometry.Point;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.datastax.dse.driver.api.core.type.geometry.LineString;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultLineString;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -25,7 +26,8 @@ class JsonNodeToLineStringCodecTest {
 
   private List<String> nullStrings = newArrayList("NULL");
   private LineString lineString =
-      new LineString(new Point(30, 10), new Point(10, 30), new Point(40, 40));
+      new DefaultLineString(
+          new DefaultPoint(30, 10), new DefaultPoint(10, 30), new DefaultPoint(40, 40));
   private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
   private JsonNode geoJsonNode =
       objectMapper.readTree(

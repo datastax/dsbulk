@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.UDTValue;
-import com.datastax.driver.core.UserType;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.data.UdtValue;
+import com.datastax.oss.driver.api.core.type.UserDefinedType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -21,46 +21,47 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
+public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UdtValue> {
 
-  private final Map<String, ConvertingCodec<JsonNode, Object>> fieldCodecs;
-  private final UserType definition;
+  private final Map<CqlIdentifier, ConvertingCodec<JsonNode, Object>> fieldCodecs;
+  private final UserDefinedType definition;
   private final ObjectMapper objectMapper;
 
   public JsonNodeToUDTCodec(
-      TypeCodec<UDTValue> udtCodec,
-      Map<String, ConvertingCodec<JsonNode, Object>> fieldCodecs,
+      TypeCodec<UdtValue> udtCodec,
+      Map<CqlIdentifier, ConvertingCodec<JsonNode, Object>> fieldCodecs,
       ObjectMapper objectMapper,
       List<String> nullStrings) {
     super(udtCodec, nullStrings);
     this.fieldCodecs = fieldCodecs;
-    definition = (UserType) udtCodec.getCqlType();
+    definition = (UserDefinedType) udtCodec.getCqlType();
     this.objectMapper = objectMapper;
   }
 
   @Override
-  public UDTValue externalToInternal(JsonNode node) {
+  public UdtValue externalToInternal(JsonNode node) {
     if (isNullOrEmpty(node)) {
       return null;
     }
     if (!node.isObject()) {
-      throw new InvalidTypeException("Expecting OBJECT node, got " + node.getNodeType());
+      throw new IllegalArgumentException("Expecting OBJECT node, got " + node.getNodeType());
     }
     if (node.size() == 0) {
       return definition.newValue();
     }
-    if (node.size() != definition.size()) {
-      throw new InvalidTypeException(
-          String.format("Expecting %d fields, got %d", definition.size(), node.size()));
+    if (node.size() != definition.getFieldNames().size()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Expecting %d fields, got %d", definition.getFieldNames().size(), node.size()));
     }
-    UDTValue value = definition.newValue();
+    UdtValue value = definition.newValue();
     Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-    Collection<String> fieldNames = definition.getFieldNames();
+    Collection<CqlIdentifier> fieldNames = definition.getFieldNames();
     while (fields.hasNext()) {
       Map.Entry<String, JsonNode> entry = fields.next();
-      String name = entry.getKey();
+      CqlIdentifier name = CqlIdentifier.fromInternal(entry.getKey());
       if (!fieldNames.contains(name)) {
-        throw new InvalidTypeException(
+        throw new IllegalArgumentException(
             String.format("Unknown field %s in UDT %s", name, definition.getName()));
       }
       ConvertingCodec<JsonNode, Object> fieldCodec = fieldCodecs.get(name);
@@ -71,17 +72,16 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
   }
 
   @Override
-  public JsonNode internalToExternal(UDTValue value) {
+  public JsonNode internalToExternal(UdtValue value) {
     if (value == null) {
       return null;
     }
     ObjectNode root = objectMapper.createObjectNode();
-    for (UserType.Field field : definition) {
-      String name = field.getName();
+    for (CqlIdentifier name : definition.getFieldNames()) {
       ConvertingCodec<JsonNode, Object> eltCodec = fieldCodecs.get(name);
       Object o = value.get(name, eltCodec.getInternalJavaType());
       JsonNode node = eltCodec.internalToExternal(o);
-      root.set(name, node);
+      root.set(name.asInternal(), node);
     }
     return root;
   }

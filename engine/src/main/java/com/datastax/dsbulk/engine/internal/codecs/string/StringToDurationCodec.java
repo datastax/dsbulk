@@ -8,25 +8,26 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.Duration;
+import com.datastax.oss.driver.api.core.data.CqlDuration;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import java.util.List;
 
-public class StringToDurationCodec extends StringConvertingCodec<Duration> {
+public class StringToDurationCodec extends StringConvertingCodec<CqlDuration> {
 
   public StringToDurationCodec(List<String> nullStrings) {
-    super(duration(), nullStrings);
+    super(TypeCodecs.DURATION, nullStrings);
   }
 
   @Override
-  public Duration externalToInternal(String s) {
+  public CqlDuration externalToInternal(String s) {
     if (isNullOrEmpty(s)) {
       return null;
     }
-    return Duration.from(s);
+    return CqlDuration.from(s);
   }
 
   @Override
-  public String internalToExternal(Duration value) {
+  public String internalToExternal(CqlDuration value) {
     if (value == null) {
       return nullString();
     }

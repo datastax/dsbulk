@@ -8,10 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.number;
 
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -49,7 +48,7 @@ public class BooleanToNumberCodec<INTERNAL extends Number>
     }
     int i = booleanNumbers.indexOf(value);
     if (i == -1) {
-      throw new InvalidTypeException(
+      throw new IllegalArgumentException(
           String.format(
               "Invalid boolean number %s, accepted values are %s (true) and %s (false)",
               value, booleanNumbers.get(0), booleanNumbers.get(1)));

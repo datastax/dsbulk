@@ -8,16 +8,16 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.util;
 
-import static com.datastax.driver.core.ParseUtils.unquote;
+import static com.datastax.oss.driver.internal.core.util.Strings.unquote;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import com.datastax.driver.core.utils.Bytes;
-import com.datastax.driver.dse.geometry.LineString;
-import com.datastax.driver.dse.geometry.Point;
-import com.datastax.driver.dse.geometry.Polygon;
-import com.datastax.driver.dse.search.DateRange;
+import com.datastax.dsbulk.engine.internal.DateRange;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import com.datastax.dse.driver.api.core.type.geometry.LineString;
+import com.datastax.dse.driver.api.core.type.geometry.Point;
+import com.datastax.dse.driver.api.core.type.geometry.Polygon;
+import com.datastax.oss.protocol.internal.util.Bytes;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;

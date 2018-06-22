@@ -8,16 +8,16 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string.dse;
 
-import com.datastax.driver.dse.geometry.Polygon;
-import com.datastax.driver.dse.geometry.codecs.PolygonCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.dse.driver.api.core.codec.DseTypeCodecs;
+import com.datastax.dse.driver.api.core.type.geometry.Polygon;
 import java.util.List;
 
 public class StringToPolygonCodec extends StringConvertingCodec<Polygon> {
 
   public StringToPolygonCodec(List<String> nullStrings) {
-    super(PolygonCodec.INSTANCE, nullStrings);
+    super(DseTypeCodecs.POLYGON, nullStrings);
   }
 
   @Override

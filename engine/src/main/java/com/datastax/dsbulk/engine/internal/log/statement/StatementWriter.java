@@ -15,14 +15,15 @@ import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatt
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatterSymbols.truncatedOutput;
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatterSymbols.unsetValue;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.internal.log.LogUtils;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import java.nio.ByteBuffer;
 
 /**
@@ -227,7 +228,7 @@ public final class StatementWriter implements Appendable {
         byteBuffer.limit(maxBufferLengthInBytes);
         // force usage of blob codec as any other codec would probably fail to format
         // a cropped byte buffer anyway
-        String formatted = TypeCodec.blob().format(byteBuffer);
+        String formatted = TypeCodecs.BLOB.format(byteBuffer);
         doAppendBoundValue(name, formatted);
         buffer.append(truncatedOutput);
         return;

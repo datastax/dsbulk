@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.time.Instant;
@@ -34,7 +34,7 @@ public class StringToInstantCodec extends StringToTemporalCodec<Instant> {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       List<String> nullStrings) {
-    super(InstantCodec.instance, temporalFormat, nullStrings);
+    super(TypeCodecs.TIMESTAMP, temporalFormat, nullStrings);
     this.numberFormat = numberFormat;
     this.timeZone = timeZone;
     this.timeUnit = timeUnit;

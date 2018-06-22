@@ -10,9 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.temporal;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
-import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
-import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
-import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,7 +24,7 @@ class DateToTemporalCodecTest {
   @Test
   void should_convert_from_java_util_date() {
 
-    assertThat(new DateToTemporalCodec<>(Date.class, InstantCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.TIMESTAMP, ZoneOffset.UTC))
         .convertsFromExternal(Date.from(Instant.parse("2010-06-30T00:00:00Z")))
         .toInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .convertsFromExternal(null)
@@ -34,7 +32,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new DateToTemporalCodec<>(Date.class, InstantCodec.instance, ZoneOffset.ofHours(-1)))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.TIMESTAMP, ZoneOffset.ofHours(-1)))
         .convertsFromExternal(Date.from(Instant.parse("2010-06-30T00:00:00Z")))
         .toInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .convertsFromExternal(null)
@@ -42,7 +40,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new DateToTemporalCodec<>(Date.class, LocalDateCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.DATE, ZoneOffset.UTC))
         .convertsFromExternal(Date.from(Instant.parse("2010-06-30T00:00:00Z")))
         .toInternal(LocalDate.parse("2010-06-30"))
         .convertsFromExternal(null)
@@ -50,8 +48,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(Date.class, LocalDateCodec.instance, ZoneOffset.ofHours(-1)))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.DATE, ZoneOffset.ofHours(-1)))
         .convertsFromExternal(Date.from(Instant.parse("2010-06-30T00:00:00Z")))
         .toInternal(LocalDate.parse("2010-06-29"))
         .convertsFromExternal(null)
@@ -59,8 +56,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(Date.class, LocalDateCodec.instance, ZoneOffset.ofHours(1)))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.DATE, ZoneOffset.ofHours(1)))
         .convertsFromExternal(Date.from(Instant.parse("2010-06-30T23:59:59Z")))
         .toInternal(LocalDate.parse("2010-07-01"))
         .convertsFromExternal(null)
@@ -68,7 +64,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new DateToTemporalCodec<>(Date.class, LocalTimeCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.TIME, ZoneOffset.UTC))
         .convertsFromExternal(Date.from(Instant.parse("1970-01-01T23:59:59Z")))
         .toInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)
@@ -76,8 +72,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(Date.class, LocalTimeCodec.instance, ZoneOffset.ofHours(1)))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.TIME, ZoneOffset.ofHours(1)))
         .convertsFromExternal(Date.from(Instant.parse("1970-01-01T23:59:59Z")))
         .toInternal(LocalTime.parse("00:59:59"))
         .convertsFromExternal(null)
@@ -85,8 +80,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(Date.class, LocalTimeCodec.instance, ZoneOffset.ofHours(-1)))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.TIME, ZoneOffset.ofHours(-1)))
         .convertsFromExternal(Date.from(Instant.parse("1970-01-01T23:59:59Z")))
         .toInternal(LocalTime.parse("22:59:59"))
         .convertsFromExternal(null)
@@ -98,7 +92,7 @@ class DateToTemporalCodecTest {
   @Test
   void should_convert_to_java_util_date() {
 
-    assertThat(new DateToTemporalCodec<>(Date.class, InstantCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.TIMESTAMP, ZoneOffset.UTC))
         .convertsFromInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .toExternal(Date.from(Instant.parse("2010-06-30T00:00:00Z")))
         .convertsFromExternal(null)
@@ -106,7 +100,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new DateToTemporalCodec<>(Date.class, InstantCodec.instance, ZoneOffset.ofHours(-1)))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.TIMESTAMP, ZoneOffset.ofHours(-1)))
         .convertsFromInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .toExternal(Date.from(Instant.parse("2010-06-30T00:00:00Z")))
         .convertsFromExternal(null)
@@ -114,7 +108,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new DateToTemporalCodec<>(Date.class, LocalDateCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.DATE, ZoneOffset.UTC))
         .convertsFromInternal(LocalDate.parse("2010-06-30"))
         .toExternal(Date.from(Instant.parse("2010-06-30T00:00:00Z")))
         .convertsFromExternal(null)
@@ -122,8 +116,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(Date.class, LocalDateCodec.instance, ZoneOffset.ofHours(-1)))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.DATE, ZoneOffset.ofHours(-1)))
         .convertsFromInternal(LocalDate.parse("2010-06-29"))
         .toExternal(Date.from(Instant.parse("2010-06-29T01:00:00Z")))
         .convertsFromExternal(null)
@@ -131,8 +124,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(Date.class, LocalDateCodec.instance, ZoneOffset.ofHours(1)))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.DATE, ZoneOffset.ofHours(1)))
         .convertsFromInternal(LocalDate.parse("2010-07-01"))
         .toExternal(Date.from(Instant.parse("2010-06-30T23:00:00Z")))
         .convertsFromExternal(null)
@@ -140,7 +132,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new DateToTemporalCodec<>(Date.class, LocalTimeCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.TIME, ZoneOffset.UTC))
         .convertsFromInternal(LocalTime.parse("23:59:59"))
         .toExternal(Date.from(Instant.parse("1970-01-01T23:59:59Z")))
         .convertsFromExternal(null)
@@ -148,8 +140,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(Date.class, LocalTimeCodec.instance, ZoneOffset.ofHours(1)))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.TIME, ZoneOffset.ofHours(1)))
         .convertsFromInternal(LocalTime.parse("00:59:59"))
         .toExternal(Date.from(Instant.parse("1969-12-31T23:59:59Z")))
         .convertsFromExternal(null)
@@ -157,8 +148,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(Date.class, LocalTimeCodec.instance, ZoneOffset.ofHours(-1)))
+    assertThat(new DateToTemporalCodec<>(Date.class, TypeCodecs.TIME, ZoneOffset.ofHours(-1)))
         .convertsFromInternal(LocalTime.parse("22:59:59"))
         .toExternal(Date.from(Instant.parse("1970-01-01T23:59:59Z")))
         .convertsFromExternal(null)
@@ -172,7 +162,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, InstantCodec.instance, ZoneOffset.UTC))
+                java.sql.Timestamp.class, TypeCodecs.TIMESTAMP, ZoneOffset.UTC))
         .convertsFromExternal(Timestamp.from(Instant.parse("2010-06-30T00:00:00Z")))
         .toInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .convertsFromExternal(null)
@@ -182,7 +172,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, InstantCodec.instance, ZoneOffset.ofHours(-1)))
+                java.sql.Timestamp.class, TypeCodecs.TIMESTAMP, ZoneOffset.ofHours(-1)))
         .convertsFromExternal(Timestamp.from(Instant.parse("2010-06-30T00:00:00Z")))
         .toInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .convertsFromExternal(null)
@@ -190,9 +180,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalDateCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Timestamp.class, TypeCodecs.DATE, ZoneOffset.UTC))
         .convertsFromExternal(Timestamp.from(Instant.parse("2010-06-30T00:00:00Z")))
         .toInternal(LocalDate.parse("2010-06-30"))
         .convertsFromExternal(null)
@@ -202,7 +190,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalDateCodec.instance, ZoneOffset.ofHours(-1)))
+                java.sql.Timestamp.class, TypeCodecs.DATE, ZoneOffset.ofHours(-1)))
         .convertsFromExternal(Timestamp.from(Instant.parse("2010-06-30T00:00:00Z")))
         .toInternal(LocalDate.parse("2010-06-29"))
         .convertsFromExternal(null)
@@ -212,7 +200,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalDateCodec.instance, ZoneOffset.ofHours(1)))
+                java.sql.Timestamp.class, TypeCodecs.DATE, ZoneOffset.ofHours(1)))
         .convertsFromExternal(Timestamp.from(Instant.parse("2010-06-30T23:59:59Z")))
         .toInternal(LocalDate.parse("2010-07-01"))
         .convertsFromExternal(null)
@@ -220,9 +208,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalTimeCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Timestamp.class, TypeCodecs.TIME, ZoneOffset.UTC))
         .convertsFromExternal(Timestamp.from(Instant.parse("1970-01-01T23:59:59Z")))
         .toInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)
@@ -232,7 +218,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalTimeCodec.instance, ZoneOffset.ofHours(1)))
+                java.sql.Timestamp.class, TypeCodecs.TIME, ZoneOffset.ofHours(1)))
         .convertsFromExternal(Timestamp.from(Instant.parse("1970-01-01T23:59:59Z")))
         .toInternal(LocalTime.parse("00:59:59"))
         .convertsFromExternal(null)
@@ -242,7 +228,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalTimeCodec.instance, ZoneOffset.ofHours(-1)))
+                java.sql.Timestamp.class, TypeCodecs.TIME, ZoneOffset.ofHours(-1)))
         .convertsFromExternal(Timestamp.from(Instant.parse("1970-01-01T23:59:59Z")))
         .toInternal(LocalTime.parse("22:59:59"))
         .convertsFromExternal(null)
@@ -256,7 +242,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, InstantCodec.instance, ZoneOffset.UTC))
+                java.sql.Timestamp.class, TypeCodecs.TIMESTAMP, ZoneOffset.UTC))
         .convertsFromInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .toExternal(Timestamp.from(Instant.parse("2010-06-30T00:00:00Z")))
         .convertsFromExternal(null)
@@ -266,7 +252,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, InstantCodec.instance, ZoneOffset.ofHours(-1)))
+                java.sql.Timestamp.class, TypeCodecs.TIMESTAMP, ZoneOffset.ofHours(-1)))
         .convertsFromInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .toExternal(Timestamp.from(Instant.parse("2010-06-30T00:00:00Z")))
         .convertsFromExternal(null)
@@ -274,9 +260,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalDateCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Timestamp.class, TypeCodecs.DATE, ZoneOffset.UTC))
         .convertsFromInternal(LocalDate.parse("2010-06-30"))
         .toExternal(Timestamp.from(Instant.parse("2010-06-30T00:00:00Z")))
         .convertsFromExternal(null)
@@ -286,7 +270,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalDateCodec.instance, ZoneOffset.ofHours(-1)))
+                java.sql.Timestamp.class, TypeCodecs.DATE, ZoneOffset.ofHours(-1)))
         .convertsFromInternal(LocalDate.parse("2010-06-29"))
         .toExternal(Timestamp.from(Instant.parse("2010-06-29T01:00:00Z")))
         .convertsFromExternal(null)
@@ -296,7 +280,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalDateCodec.instance, ZoneOffset.ofHours(1)))
+                java.sql.Timestamp.class, TypeCodecs.DATE, ZoneOffset.ofHours(1)))
         .convertsFromInternal(LocalDate.parse("2010-07-01"))
         .toExternal(Timestamp.from(Instant.parse("2010-06-30T23:00:00Z")))
         .convertsFromExternal(null)
@@ -304,9 +288,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalTimeCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Timestamp.class, TypeCodecs.TIME, ZoneOffset.UTC))
         .convertsFromInternal(LocalTime.parse("23:59:59"))
         .toExternal(Timestamp.from(Instant.parse("1970-01-01T23:59:59Z")))
         .convertsFromExternal(null)
@@ -316,7 +298,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalTimeCodec.instance, ZoneOffset.ofHours(1)))
+                java.sql.Timestamp.class, TypeCodecs.TIME, ZoneOffset.ofHours(1)))
         .convertsFromInternal(LocalTime.parse("00:59:59"))
         .toExternal(Timestamp.from(Instant.parse("1969-12-31T23:59:59Z")))
         .convertsFromExternal(null)
@@ -326,7 +308,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Timestamp.class, LocalTimeCodec.instance, ZoneOffset.ofHours(-1)))
+                java.sql.Timestamp.class, TypeCodecs.TIME, ZoneOffset.ofHours(-1)))
         .convertsFromInternal(LocalTime.parse("22:59:59"))
         .toExternal(Timestamp.from(Instant.parse("1970-01-01T23:59:59Z")))
         .convertsFromExternal(null)
@@ -338,8 +320,7 @@ class DateToTemporalCodecTest {
   @Test
   void should_convert_from_java_sql_date() {
 
-    assertThat(
-            new DateToTemporalCodec<>(java.sql.Date.class, InstantCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Date.class, TypeCodecs.TIMESTAMP, ZoneOffset.UTC))
         .convertsFromExternal(java.sql.Date.valueOf(LocalDate.parse("2010-06-30")))
         .toInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .convertsFromExternal(null)
@@ -349,7 +330,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Date.class, InstantCodec.instance, ZoneOffset.ofHours(-1)))
+                java.sql.Date.class, TypeCodecs.TIMESTAMP, ZoneOffset.ofHours(-1)))
         .convertsFromExternal(java.sql.Date.valueOf(LocalDate.parse("2010-06-30")))
         .toInternal(Instant.parse("2010-06-30T01:00:00Z"))
         .convertsFromExternal(null)
@@ -357,8 +338,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(java.sql.Date.class, LocalDateCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Date.class, TypeCodecs.DATE, ZoneOffset.UTC))
         .convertsFromExternal(java.sql.Date.valueOf(LocalDate.parse("2010-06-30")))
         .toInternal(LocalDate.parse("2010-06-30"))
         .convertsFromExternal(null)
@@ -367,8 +347,7 @@ class DateToTemporalCodecTest {
         .toExternal(null);
 
     assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Date.class, LocalDateCodec.instance, ZoneOffset.ofHours(-1)))
+            new DateToTemporalCodec<>(java.sql.Date.class, TypeCodecs.DATE, ZoneOffset.ofHours(-1)))
         .convertsFromExternal(java.sql.Date.valueOf(LocalDate.parse("2010-06-30")))
         .toInternal(LocalDate.parse("2010-06-30"))
         .convertsFromExternal(null)
@@ -380,8 +359,7 @@ class DateToTemporalCodecTest {
   @Test
   void should_convert_to_java_sql_date() {
 
-    assertThat(
-            new DateToTemporalCodec<>(java.sql.Date.class, InstantCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Date.class, TypeCodecs.TIMESTAMP, ZoneOffset.UTC))
         .convertsFromInternal(Instant.parse("2010-06-30T00:00:00Z"))
         .toExternal(java.sql.Date.valueOf(LocalDate.parse("2010-06-30")))
         .convertsFromExternal(null)
@@ -391,7 +369,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Date.class, InstantCodec.instance, ZoneOffset.ofHours(-1)))
+                java.sql.Date.class, TypeCodecs.TIMESTAMP, ZoneOffset.ofHours(-1)))
         .convertsFromInternal(Instant.parse("2010-06-30T01:00:00Z"))
         .toExternal(java.sql.Date.valueOf(LocalDate.parse("2010-06-30")))
         .convertsFromExternal(null)
@@ -399,8 +377,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(java.sql.Date.class, LocalDateCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Date.class, TypeCodecs.DATE, ZoneOffset.UTC))
         .convertsFromInternal(LocalDate.parse("2010-06-30"))
         .toExternal(java.sql.Date.valueOf(LocalDate.parse("2010-06-30")))
         .convertsFromExternal(null)
@@ -409,8 +386,7 @@ class DateToTemporalCodecTest {
         .toExternal(null);
 
     assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Date.class, LocalDateCodec.instance, ZoneOffset.ofHours(-1)))
+            new DateToTemporalCodec<>(java.sql.Date.class, TypeCodecs.DATE, ZoneOffset.ofHours(-1)))
         .convertsFromInternal(LocalDate.parse("2010-06-30"))
         .toExternal(java.sql.Date.valueOf(LocalDate.parse("2010-06-30")))
         .convertsFromExternal(null)
@@ -422,8 +398,7 @@ class DateToTemporalCodecTest {
   @Test
   void should_convert_from_java_sql_time() {
 
-    assertThat(
-            new DateToTemporalCodec<>(java.sql.Time.class, InstantCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.TIMESTAMP, ZoneOffset.UTC))
         .convertsFromExternal(java.sql.Time.valueOf(LocalTime.parse("00:00:00")))
         .toInternal(Instant.parse("1970-01-01T00:00:00Z"))
         .convertsFromExternal(null)
@@ -433,7 +408,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Time.class, InstantCodec.instance, ZoneOffset.ofHours(-1)))
+                java.sql.Time.class, TypeCodecs.TIMESTAMP, ZoneOffset.ofHours(-1)))
         .convertsFromExternal(java.sql.Time.valueOf(LocalTime.parse("00:00:00")))
         .toInternal(Instant.parse("1970-01-01T01:00:00Z"))
         .convertsFromExternal(null)
@@ -441,8 +416,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(java.sql.Time.class, LocalTimeCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.TIME, ZoneOffset.UTC))
         .convertsFromExternal(java.sql.Time.valueOf(LocalTime.parse("23:59:59")))
         .toInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)
@@ -451,8 +425,7 @@ class DateToTemporalCodecTest {
         .toExternal(null);
 
     assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Time.class, LocalTimeCodec.instance, ZoneOffset.ofHours(1)))
+            new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.TIME, ZoneOffset.ofHours(1)))
         .convertsFromExternal(java.sql.Time.valueOf(LocalTime.parse("23:59:59")))
         .toInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)
@@ -461,8 +434,7 @@ class DateToTemporalCodecTest {
         .toExternal(null);
 
     assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Time.class, LocalTimeCodec.instance, ZoneOffset.ofHours(-1)))
+            new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.TIME, ZoneOffset.ofHours(-1)))
         .convertsFromExternal(java.sql.Time.valueOf(LocalTime.parse("23:59:59")))
         .toInternal(LocalTime.parse("23:59:59"))
         .convertsFromExternal(null)
@@ -474,8 +446,7 @@ class DateToTemporalCodecTest {
   @Test
   void should_convert_to_java_sql_time() {
 
-    assertThat(
-            new DateToTemporalCodec<>(java.sql.Time.class, InstantCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.TIMESTAMP, ZoneOffset.UTC))
         .convertsFromInternal(Instant.parse("1970-01-01T00:00:00Z"))
         .toExternal(java.sql.Time.valueOf(LocalTime.parse("00:00:00")))
         .convertsFromExternal(null)
@@ -485,7 +456,7 @@ class DateToTemporalCodecTest {
 
     assertThat(
             new DateToTemporalCodec<>(
-                java.sql.Time.class, InstantCodec.instance, ZoneOffset.ofHours(-1)))
+                java.sql.Time.class, TypeCodecs.TIMESTAMP, ZoneOffset.ofHours(-1)))
         .convertsFromInternal(Instant.parse("1970-01-01T01:00:00Z"))
         .toExternal(java.sql.Time.valueOf(LocalTime.parse("00:00:00")))
         .convertsFromExternal(null)
@@ -493,8 +464,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(java.sql.Time.class, LocalTimeCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.TIME, ZoneOffset.UTC))
         .convertsFromInternal(LocalTime.parse("23:59:59"))
         .toExternal(java.sql.Time.valueOf(LocalTime.parse("23:59:59")))
         .convertsFromExternal(null)
@@ -503,8 +473,7 @@ class DateToTemporalCodecTest {
         .toExternal(null);
 
     assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Time.class, LocalTimeCodec.instance, ZoneOffset.ofHours(1)))
+            new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.TIME, ZoneOffset.ofHours(1)))
         .convertsFromInternal(LocalTime.parse("23:59:59"))
         .toExternal(java.sql.Time.valueOf(LocalTime.parse("23:59:59")))
         .convertsFromExternal(null)
@@ -513,8 +482,7 @@ class DateToTemporalCodecTest {
         .toExternal(null);
 
     assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Time.class, LocalTimeCodec.instance, ZoneOffset.ofHours(-1)))
+            new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.TIME, ZoneOffset.ofHours(-1)))
         .convertsFromInternal(LocalTime.parse("23:59:59"))
         .toExternal(java.sql.Time.valueOf(LocalTime.parse("23:59:59")))
         .convertsFromExternal(null)
@@ -526,8 +494,7 @@ class DateToTemporalCodecTest {
   @Test
   void should_not_convert_between_incompatible_types() {
 
-    assertThat(
-            new DateToTemporalCodec<>(java.sql.Date.class, LocalTimeCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Date.class, TypeCodecs.TIME, ZoneOffset.UTC))
         .cannotConvertFromExternal(
             new java.sql.Date(Instant.parse("1970-01-01T23:59:59Z").toEpochMilli()))
         .convertsFromExternal(null)
@@ -536,8 +503,7 @@ class DateToTemporalCodecTest {
         .toExternal(null);
 
     assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Date.class, LocalTimeCodec.instance, ZoneOffset.ofHours(1)))
+            new DateToTemporalCodec<>(java.sql.Date.class, TypeCodecs.TIME, ZoneOffset.ofHours(1)))
         .cannotConvertFromExternal(
             new java.sql.Date(Instant.parse("1970-01-01T23:59:59Z").toEpochMilli()))
         .convertsFromExternal(null)
@@ -545,8 +511,7 @@ class DateToTemporalCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(
-            new DateToTemporalCodec<>(java.sql.Time.class, LocalDateCodec.instance, ZoneOffset.UTC))
+    assertThat(new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.DATE, ZoneOffset.UTC))
         .cannotConvertFromExternal(java.sql.Time.valueOf(LocalTime.parse("23:59:59")))
         .convertsFromExternal(null)
         .toInternal(null)
@@ -554,8 +519,7 @@ class DateToTemporalCodecTest {
         .toExternal(null);
 
     assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Time.class, LocalDateCodec.instance, ZoneOffset.ofHours(-1)))
+            new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.DATE, ZoneOffset.ofHours(-1)))
         .cannotConvertFromExternal(java.sql.Time.valueOf(LocalTime.parse("23:59:59")))
         .convertsFromExternal(null)
         .toInternal(null)
@@ -563,8 +527,7 @@ class DateToTemporalCodecTest {
         .toExternal(null);
 
     assertThat(
-            new DateToTemporalCodec<>(
-                java.sql.Time.class, LocalDateCodec.instance, ZoneOffset.ofHours(1)))
+            new DateToTemporalCodec<>(java.sql.Time.class, TypeCodecs.DATE, ZoneOffset.ofHours(1)))
         .cannotConvertFromExternal(java.sql.Time.valueOf(LocalTime.parse("23:59:59")))
         .convertsFromExternal(null)
         .toInternal(null)

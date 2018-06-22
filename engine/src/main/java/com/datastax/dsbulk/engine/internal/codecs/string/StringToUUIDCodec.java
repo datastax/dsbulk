@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

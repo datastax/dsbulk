@@ -10,7 +10,7 @@ package com.datastax.dsbulk.engine.internal.codecs.number;
 
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
-import com.datastax.driver.core.TypeCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import org.junit.jupiter.api.Test;
@@ -20,7 +20,7 @@ class NumberToNumberCodecTest {
   @Test
   void should_convert_when_valid_input() {
 
-    assertThat(new NumberToNumberCodec<>(Byte.class, TypeCodec.cdouble()))
+    assertThat(new NumberToNumberCodec<>(Byte.class, TypeCodecs.DOUBLE))
         .convertsFromExternal((byte) 123)
         .toInternal(123d)
         .convertsFromInternal(123d)
@@ -30,7 +30,7 @@ class NumberToNumberCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new NumberToNumberCodec<>(Byte.class, TypeCodec.varint()))
+    assertThat(new NumberToNumberCodec<>(Byte.class, TypeCodecs.VARINT))
         .convertsFromExternal((byte) 123)
         .toInternal(new BigInteger("123"))
         .convertsFromInternal(new BigInteger("123"))
@@ -40,7 +40,7 @@ class NumberToNumberCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new NumberToNumberCodec<>(BigInteger.class, TypeCodec.cint()))
+    assertThat(new NumberToNumberCodec<>(BigInteger.class, TypeCodecs.INT))
         .convertsFromExternal(new BigInteger("123456"))
         .toInternal(123456)
         .convertsFromInternal(123456)
@@ -50,7 +50,7 @@ class NumberToNumberCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new NumberToNumberCodec<>(Integer.class, TypeCodec.bigint()))
+    assertThat(new NumberToNumberCodec<>(Integer.class, TypeCodecs.BIGINT))
         .convertsFromExternal(123456)
         .toInternal(123456L)
         .convertsFromInternal(123456L)
@@ -60,7 +60,7 @@ class NumberToNumberCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new NumberToNumberCodec<>(Float.class, TypeCodec.decimal()))
+    assertThat(new NumberToNumberCodec<>(Float.class, TypeCodecs.DECIMAL))
         .convertsFromExternal(-123.456f)
         .toInternal(new BigDecimal("-123.456"))
         .convertsFromInternal(new BigDecimal("-123.456"))
@@ -70,7 +70,7 @@ class NumberToNumberCodecTest {
         .convertsFromInternal(null)
         .toExternal(null);
 
-    assertThat(new NumberToNumberCodec<>(BigDecimal.class, TypeCodec.cint()))
+    assertThat(new NumberToNumberCodec<>(BigDecimal.class, TypeCodecs.INT))
         .convertsFromExternal(new BigDecimal("123"))
         .toInternal(123)
         .convertsFromExternal(null)
@@ -82,19 +82,19 @@ class NumberToNumberCodecTest {
   @Test
   void should_not_convert_when_invalid_input() {
 
-    assertThat(new NumberToNumberCodec<>(Double.class, TypeCodec.cint()))
+    assertThat(new NumberToNumberCodec<>(Double.class, TypeCodecs.INT))
         .cannotConvertFromExternal(123.45d);
 
-    assertThat(new NumberToNumberCodec<>(Long.class, TypeCodec.cint()))
+    assertThat(new NumberToNumberCodec<>(Long.class, TypeCodecs.INT))
         .cannotConvertFromExternal(Long.MAX_VALUE);
 
-    assertThat(new NumberToNumberCodec<>(Short.class, TypeCodec.tinyInt()))
+    assertThat(new NumberToNumberCodec<>(Short.class, TypeCodecs.TINYINT))
         .cannotConvertFromExternal((short) 1234);
 
-    assertThat(new NumberToNumberCodec<>(BigInteger.class, TypeCodec.cint()))
+    assertThat(new NumberToNumberCodec<>(BigInteger.class, TypeCodecs.INT))
         .cannotConvertFromExternal(new BigInteger("123000000000000000000000"));
 
-    assertThat(new NumberToNumberCodec<>(BigDecimal.class, TypeCodec.cint()))
+    assertThat(new NumberToNumberCodec<>(BigDecimal.class, TypeCodecs.INT))
         .cannotConvertFromExternal(new BigDecimal("123.1"));
   }
 }

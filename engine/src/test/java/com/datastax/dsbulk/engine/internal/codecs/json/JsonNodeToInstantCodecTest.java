@@ -8,14 +8,14 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.driver.core.DataType.timestamp;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
 import com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils;
 import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.reflect.TypeToken;
 import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,16 +35,16 @@ class JsonNodeToInstantCodecTest {
     codec1 =
         (JsonNodeToInstantCodec)
             CodecTestUtils.newCodecRegistry("nullStrings = [NULL]")
-                .codecFor(timestamp(), TypeToken.of(JsonNode.class));
+                .codecFor(DataTypes.TIMESTAMP, GenericType.of(JsonNode.class));
     codec2 =
         (JsonNodeToInstantCodec)
             CodecTestUtils.newCodecRegistry("nullStrings = [NULL], timestamp = yyyyMMddHHmmss")
-                .codecFor(timestamp(), TypeToken.of(JsonNode.class));
+                .codecFor(DataTypes.TIMESTAMP, GenericType.of(JsonNode.class));
     codec3 =
         (JsonNodeToInstantCodec)
             CodecTestUtils.newCodecRegistry(
                     "nullStrings = [NULL], unit = MINUTES, epoch = \"2000-01-01T00:00:00Z\"")
-                .codecFor(timestamp(), TypeToken.of(JsonNode.class));
+                .codecFor(DataTypes.TIMESTAMP, GenericType.of(JsonNode.class));
   }
 
   @Test

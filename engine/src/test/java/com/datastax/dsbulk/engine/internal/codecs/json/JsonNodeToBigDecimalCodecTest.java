@@ -8,15 +8,15 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.driver.core.DataType.decimal;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
 
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.reflect.TypeToken;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ class JsonNodeToBigDecimalCodecTest {
     codec =
         (JsonNodeToBigDecimalCodec)
             newCodecRegistry("nullStrings = [NULL]")
-                .codecFor(decimal(), TypeToken.of(JsonNode.class));
+                .codecFor(DataTypes.DECIMAL, GenericType.of(JsonNode.class));
   }
 
   @Test

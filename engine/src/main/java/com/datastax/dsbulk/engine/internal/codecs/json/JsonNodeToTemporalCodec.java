@@ -10,8 +10,8 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;

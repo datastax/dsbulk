@@ -8,14 +8,12 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import static com.datastax.driver.core.DataType.cdouble;
-import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
-import com.datastax.driver.core.DataType;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.reflect.TypeToken;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,7 +31,8 @@ class StringToMapCodecTest {
         (StringToMapCodec<Double, List<String>>)
             newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
                 .codecFor(
-                    DataType.map(cdouble(), DataType.list(varchar())), TypeToken.of(String.class));
+                    DataTypes.mapOf(DataTypes.DOUBLE, DataTypes.listOf(DataTypes.TEXT)),
+                    GenericType.of(String.class));
   }
 
   @Test

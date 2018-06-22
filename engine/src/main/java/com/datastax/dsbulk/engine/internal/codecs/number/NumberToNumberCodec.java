@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.number;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 
 public class NumberToNumberCodec<EXTERNAL extends Number, INTERNAL extends Number>
     extends ConvertingCodec<EXTERNAL, INTERNAL> {

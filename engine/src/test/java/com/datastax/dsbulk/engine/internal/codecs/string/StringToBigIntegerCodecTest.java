@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import static com.datastax.driver.core.DataType.varint;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import java.math.BigInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,7 +26,7 @@ class StringToBigIntegerCodecTest {
     codec =
         (StringToBigIntegerCodec)
             newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
-                .codecFor(varint(), TypeToken.of(String.class));
+                .codecFor(DataTypes.VARINT, GenericType.of(String.class));
   }
 
   @Test

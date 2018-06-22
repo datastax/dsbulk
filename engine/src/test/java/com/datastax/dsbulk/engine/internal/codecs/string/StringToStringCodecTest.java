@@ -11,7 +11,7 @@ package com.datastax.dsbulk.engine.internal.codecs.string;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.driver.core.TypeCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +21,7 @@ class StringToStringCodecTest {
 
   @Test
   void should_convert_from_valid_external() {
-    StringToStringCodec codec = new StringToStringCodec(TypeCodec.varchar(), nullStrings);
+    StringToStringCodec codec = new StringToStringCodec(TypeCodecs.TEXT, nullStrings);
     assertThat(codec)
         .convertsFromExternal("foo")
         .toInternal("foo")
@@ -35,7 +35,7 @@ class StringToStringCodecTest {
 
   @Test
   void should_convert_from_valid_internal() {
-    StringToStringCodec codec = new StringToStringCodec(TypeCodec.varchar(), nullStrings);
+    StringToStringCodec codec = new StringToStringCodec(TypeCodecs.TEXT, nullStrings);
     assertThat(codec)
         .convertsFromInternal("foo")
         .toExternal("foo")

@@ -473,7 +473,7 @@ public class DefaultCCMCluster implements CCMCluster {
     String storageItf = ip + ":" + storagePort;
     String binaryItf = ip + ":" + binaryPort;
     String remoteLogItf = ip + ":" + findAvailablePort();
-    if (version.compareTo(Version.parse("6.0.0"))>= 0) {
+    if (version.compareTo(Version.parse("6.0.0")) >= 0) {
       execute(
           CCM_COMMAND
               + " add node%d -d dc%s -i %s -l %s --binary-itf %s -j %d -r %s -s -b"
@@ -857,8 +857,7 @@ public class DefaultCCMCluster implements CCMCluster {
           dseConfiguration.put("lease_netty_server_port", findAvailablePort());
         }
         if (!dseConfiguration.containsKey("internode_messaging_options.port")) {
-          dseConfiguration.put(
-              "internode_messaging_options.port", findAvailablePort());
+          dseConfiguration.put("internode_messaging_options.port", findAvailablePort());
         }
         // only useful if at least one node has graph workload
         if (!dseConfiguration.containsKey("graph.gremlin_server.port")) {

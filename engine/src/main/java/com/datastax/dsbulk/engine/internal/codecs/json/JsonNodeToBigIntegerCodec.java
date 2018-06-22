@@ -11,9 +11,9 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static java.util.stream.Collectors.toList;
 
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
@@ -40,7 +40,7 @@ public class JsonNodeToBigIntegerCodec extends JsonNodeToNumberCodec<BigInteger>
       List<BigDecimal> booleanNumbers,
       List<String> nullStrings) {
     super(
-        TypeCodec.varint(),
+        TypeCodecs.VARINT,
         numberFormat,
         overflowStrategy,
         roundingMode,

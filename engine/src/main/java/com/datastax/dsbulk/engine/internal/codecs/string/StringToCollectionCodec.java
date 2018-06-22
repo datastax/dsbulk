@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToCollectionCodec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -41,7 +40,7 @@ public abstract class StringToCollectionCodec<E, C extends Collection<E>>
       JsonNode node = objectMapper.readTree(s);
       return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
-      throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
+      throw new IllegalArgumentException(String.format("Could not parse '%s' as Json", s), e);
     }
   }
 
@@ -54,7 +53,8 @@ public abstract class StringToCollectionCodec<E, C extends Collection<E>>
       JsonNode node = jsonCodec.internalToExternal(collection);
       return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
-      throw new InvalidTypeException(String.format("Could not format '%s' to Json", collection), e);
+      throw new IllegalArgumentException(
+          String.format("Could not format '%s' to Json", collection), e);
     }
   }
 }

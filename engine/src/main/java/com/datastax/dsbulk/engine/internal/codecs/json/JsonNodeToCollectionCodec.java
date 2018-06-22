@@ -8,9 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -47,7 +46,7 @@ public abstract class JsonNodeToCollectionCodec<E, C extends Collection<E>>
       return null;
     }
     if (!node.isArray()) {
-      throw new InvalidTypeException("Expecting ARRAY node, got " + node.getNodeType());
+      throw new IllegalArgumentException("Expecting ARRAY node, got " + node.getNodeType());
     }
     if (node.size() == 0) {
       return emptyCollection;

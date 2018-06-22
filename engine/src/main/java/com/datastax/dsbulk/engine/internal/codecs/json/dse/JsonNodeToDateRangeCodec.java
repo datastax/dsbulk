@@ -10,8 +10,8 @@ package com.datastax.dsbulk.engine.internal.codecs.json.dse;
 
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 
-import com.datastax.driver.dse.search.DateRange;
-import com.datastax.driver.dse.search.DateRangeCodec;
+import com.datastax.dsbulk.engine.internal.DateRange;
+import com.datastax.dsbulk.engine.internal.DateRangeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,7 +20,7 @@ import java.util.List;
 public class JsonNodeToDateRangeCodec extends JsonNodeConvertingCodec<DateRange> {
 
   public JsonNodeToDateRangeCodec(List<String> nullStrings) {
-    super(DateRangeCodec.INSTANCE, nullStrings);
+    super(new DateRangeCodec(), nullStrings);
   }
 
   @Override

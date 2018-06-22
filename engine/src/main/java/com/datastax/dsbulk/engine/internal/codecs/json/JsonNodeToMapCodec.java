@@ -8,9 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -46,7 +45,7 @@ public class JsonNodeToMapCodec<K, V> extends JsonNodeConvertingCodec<Map<K, V>>
       return null;
     }
     if (!node.isObject()) {
-      throw new InvalidTypeException("Expecting OBJECT node, got " + node.getNodeType());
+      throw new IllegalArgumentException("Expecting OBJECT node, got " + node.getNodeType());
     }
     if (node.size() == 0) {
       return emptyMap;

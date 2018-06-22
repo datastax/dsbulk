@@ -8,13 +8,19 @@
  */
 package com.datastax.driver.core;
 
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class DriverCoreHooks {
 
   public static int valuesCount(
-      RegularStatement statement, ProtocolVersion protocolVersion, CodecRegistry codecRegistry) {
+      BoundStatement statement, ProtocolVersion protocolVersion, CodecRegistry codecRegistry) {
     ByteBuffer[] values = statement.getValues(protocolVersion, codecRegistry);
     if (values != null) {
       return values.length;
@@ -30,12 +36,9 @@ public class DriverCoreHooks {
   public static int valuesCount(
       BatchStatement batchStatement, ProtocolVersion protocolVersion, CodecRegistry codecRegistry) {
     int count = 0;
-    for (Statement statement : batchStatement.getStatements()) {
-      if (statement instanceof StatementWrapper) {
-        statement = ((StatementWrapper) statement).getWrappedStatement();
-      }
-      if (statement instanceof RegularStatement) {
-        count += valuesCount((RegularStatement) statement, protocolVersion, codecRegistry);
+    for (Statement statement : batchStatement) {
+      if (statement instanceof BoundStatement) {
+        count += valuesCount((BoundStatement) statement, protocolVersion, codecRegistry);
       } else {
         assert statement instanceof BoundStatement;
         BoundStatement st = (BoundStatement) statement;

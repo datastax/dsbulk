@@ -11,8 +11,9 @@ package com.datastax.dsbulk.engine.internal.codecs.string.dse;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.driver.dse.geometry.LineString;
-import com.datastax.driver.dse.geometry.Point;
+import com.datastax.dse.driver.api.core.type.geometry.LineString;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultLineString;
+import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +21,8 @@ class StringToLineStringCodecTest {
 
   private List<String> nullStrings = newArrayList("NULL");
   private LineString lineString =
-      new LineString(new Point(30, 10), new Point(10, 30), new Point(40, 40));
+      new DefaultLineString(
+          new DefaultPoint(30, 10), new DefaultPoint(10, 30), new DefaultPoint(40, 40));
 
   @Test
   void should_convert_from_valid_external() {

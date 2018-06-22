@@ -8,13 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.driver.core.DataType.cint;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.reflect.TypeToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +26,8 @@ class JsonNodeToIntegerCodecTest {
   void setUp() {
     codec =
         (JsonNodeToIntegerCodec)
-            newCodecRegistry("nullStrings = [NULL]").codecFor(cint(), TypeToken.of(JsonNode.class));
+            newCodecRegistry("nullStrings = [NULL]")
+                .codecFor(DataTypes.INT, GenericType.of(JsonNode.class));
   }
 
   @Test

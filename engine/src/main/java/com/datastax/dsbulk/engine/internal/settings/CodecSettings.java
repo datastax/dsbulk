@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.driver.core.CodecRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
@@ -21,6 +20,7 @@ import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.datastax.dsbulk.engine.internal.codecs.util.ToStringNumberFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.ZonedTemporalFormat;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;

@@ -8,9 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import com.datastax.driver.core.TupleValue;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToTupleCodec;
+import com.datastax.oss.driver.api.core.data.TupleValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,7 +37,7 @@ public class StringToTupleCodec extends StringConvertingCodec<TupleValue> {
       JsonNode node = objectMapper.readTree(s);
       return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
-      throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
+      throw new IllegalArgumentException(String.format("Could not parse '%s' as Json", s), e);
     }
   }
 
@@ -51,7 +50,7 @@ public class StringToTupleCodec extends StringConvertingCodec<TupleValue> {
       JsonNode node = jsonCodec.internalToExternal(tuple);
       return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
-      throw new InvalidTypeException(String.format("Could not format '%s' to Json", tuple), e);
+      throw new IllegalArgumentException(String.format("Could not format '%s' to Json", tuple), e);
     }
   }
 }

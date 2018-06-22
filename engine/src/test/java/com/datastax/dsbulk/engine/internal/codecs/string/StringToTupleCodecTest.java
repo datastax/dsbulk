@@ -8,17 +8,15 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
-import static com.datastax.driver.core.DataType.timestamp;
-import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTupleType;
-import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.TupleType;
-import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.TupleType;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,12 +30,15 @@ class StringToTupleCodecTest {
   @BeforeEach
   void setUp() {
     tupleType =
-        newTupleType(
-            V4, new CodecRegistry().register(InstantCodec.instance), timestamp(), varchar());
+        newTupleType(V4, new DefaultCodecRegistry("test"), DataTypes.TIMESTAMP, DataTypes.TEXT);
+
+    //        newTupleType(
+    //            V4, new CodecRegistry().register(InstantCodec.instance), DataTypes.TIMESTAMP,
+    // varchar());
     codec =
         (StringToTupleCodec)
             newCodecRegistry("nullStrings = [NULL, \"\"]")
-                .codecFor(tupleType, TypeToken.of(String.class));
+                .codecFor(tupleType, GenericType.of(String.class));
   }
 
   @Test

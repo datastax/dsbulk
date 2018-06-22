@@ -41,7 +41,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <driver.version>1.6.6</driver.version>
+    <driver.version>2.0.0-alpha1-SNAPSHOT</driver.version>
     <reactive-streams.version>1.0.2</reactive-streams.version>
     <rx-java.version>2.1.13</rx-java.version>
     <reactor.version>Bismuth-SR9</reactor.version>
@@ -143,12 +143,6 @@
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dse-java-driver-core</artifactId>
-        <version>${driver.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>com.datastax.dse</groupId>
-        <artifactId>dse-java-driver-extras</artifactId>
         <version>${driver.version}</version>
       </dependency>
 

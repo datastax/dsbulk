@@ -8,10 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.temporal;
 
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import java.sql.Time;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -45,26 +44,25 @@ public class DateToTemporalCodec<EXTERNAL extends Date, INTERNAL extends Tempora
     return (INTERNAL) convert(value, internalCodec.getJavaType());
   }
 
-  private TemporalAccessor convert(Date value, TypeToken<? extends TemporalAccessor> targetType) {
+  private TemporalAccessor convert(Date value, GenericType<? extends TemporalAccessor> targetType) {
     if (value == null) {
       return null;
     }
-    Class<?> rawType = targetType.getRawType();
-    if (rawType.equals(LocalDate.class)) {
+    if (targetType.equals(GenericType.LOCAL_DATE)) {
       if (value instanceof java.sql.Date) {
         return ((java.sql.Date) value).toLocalDate();
       } else {
         return value.toInstant().atZone(timeZone).toLocalDate();
       }
     }
-    if (rawType.equals(LocalTime.class)) {
+    if (targetType.equals(GenericType.LOCAL_TIME)) {
       if (value instanceof java.sql.Time) {
         return ((Time) value).toLocalTime();
       } else {
         return value.toInstant().atZone(timeZone).toLocalTime();
       }
     }
-    if (rawType.equals(LocalDateTime.class)) {
+    if (targetType.equals(GenericType.of(LocalDateTime.class))) {
       if (value instanceof java.sql.Date) {
         return ((java.sql.Date) value).toLocalDate().atStartOfDay();
       } else if (value instanceof java.sql.Time) {
@@ -73,7 +71,7 @@ public class DateToTemporalCodec<EXTERNAL extends Date, INTERNAL extends Tempora
         return value.toInstant().atZone(timeZone).toLocalDateTime();
       }
     }
-    if (rawType.equals(Instant.class)) {
+    if (targetType.equals(GenericType.INSTANT)) {
       if (value instanceof java.sql.Date) {
         return ((java.sql.Date) value).toLocalDate().atStartOfDay(timeZone).toInstant();
       } else if (value instanceof java.sql.Time) {
@@ -86,7 +84,7 @@ public class DateToTemporalCodec<EXTERNAL extends Date, INTERNAL extends Tempora
         return value.toInstant();
       }
     }
-    if (rawType.equals(ZonedDateTime.class)) {
+    if (targetType.equals(GenericType.of(ZonedDateTime.class))) {
       if (value instanceof java.sql.Date) {
         return ((java.sql.Date) value).toLocalDate().atStartOfDay(timeZone);
       } else if (value instanceof java.sql.Time) {
@@ -95,11 +93,11 @@ public class DateToTemporalCodec<EXTERNAL extends Date, INTERNAL extends Tempora
         return value.toInstant().atZone(timeZone);
       }
     }
-    throw new InvalidTypeException(
-        String.format("Cannot convert %s of type %s to %s", value, value.getClass(), rawType));
+    throw new IllegalArgumentException(
+        String.format("Cannot convert %s of type %s to %s", value, value.getClass(), targetType));
   }
 
-  private Date convert(TemporalAccessor value, TypeToken<? extends Date> targetType) {
+  private Date convert(TemporalAccessor value, GenericType<? extends Date> targetType) {
     if (value == null) {
       return null;
     }
@@ -153,7 +151,7 @@ public class DateToTemporalCodec<EXTERNAL extends Date, INTERNAL extends Tempora
         return java.util.Date.from(((ZonedDateTime) value).toInstant());
       }
     }
-    throw new InvalidTypeException(
+    throw new IllegalArgumentException(
         String.format("Cannot convert %s of type %s to %s", value, value.getClass(), rawType));
   }
 }
