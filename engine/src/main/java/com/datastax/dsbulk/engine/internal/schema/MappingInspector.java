@@ -12,6 +12,7 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.engine.schema.MappingBaseVisitor;
 import com.datastax.dsbulk.engine.schema.MappingLexer;
 import com.datastax.dsbulk.engine.schema.MappingParser;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.google.common.base.CharMatcher;
 import com.google.common.collect.ImmutableBiMap;
 import java.util.ArrayList;
@@ -42,11 +43,11 @@ public class MappingInspector extends MappingBaseVisitor<String> {
 
   private final boolean preferIndexedMapping;
 
-  private LinkedHashMap<String, String> explicitVariables;
-  private ImmutableBiMap<String, String> explicitVariablesBimap;
+  private LinkedHashMap<String, CqlIdentifier> explicitVariables;
+  private ImmutableBiMap<String, CqlIdentifier> explicitVariablesBimap;
   private int currentIndex;
   private boolean inferring;
-  private List<String> excludedVariables;
+  private List<CqlIdentifier> excludedVariables;
 
   public MappingInspector(String mapping, boolean preferIndexedMapping) {
     this.preferIndexedMapping = preferIndexedMapping;
@@ -80,7 +81,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
     visit(ctx);
   }
 
-  public ImmutableBiMap<String, String> getExplicitVariables() {
+  public ImmutableBiMap<String, CqlIdentifier> getExplicitVariables() {
     return explicitVariablesBimap;
   }
 
@@ -88,7 +89,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
     return inferring;
   }
 
-  public List<String> getExcludedVariables() {
+  public List<CqlIdentifier> getExcludedVariables() {
     return excludedVariables;
   }
 
@@ -108,7 +109,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
     }
     // if keys are indices, sort by index
     if (explicitVariables.keySet().stream().allMatch(DIGIT::matchesAllOf)) {
-      LinkedHashMap<String, String> unsorted = explicitVariables;
+      LinkedHashMap<String, CqlIdentifier> unsorted = explicitVariables;
       explicitVariables = new LinkedHashMap<>();
       unsorted
           .entrySet()
@@ -125,9 +126,13 @@ public class MappingInspector extends MappingBaseVisitor<String> {
   public String visitIndexedEntry(MappingParser.IndexedEntryContext ctx) {
     String variable = visitVariable(ctx.variable());
     if (preferIndexedMapping) {
-      explicitVariables.put(Integer.toString(currentIndex++), variable);
+      explicitVariables.put(Integer.toString(currentIndex++), CqlIdentifier.fromCql(variable));
     } else {
-      explicitVariables.put(variable, variable);
+      // TODO: This may argue for making the key of the map a CqlIdentifier...
+      // the reason we haven't is that in some cases the "variable" may be a function call and
+      // thus should probably not be an id.
+      CqlIdentifier variableId = CqlIdentifier.fromCql(variable);
+      explicitVariables.put(variableId.asInternal(), variableId);
     }
     return null;
   }
@@ -136,7 +141,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
   public String visitRegularMappedEntry(MappingParser.RegularMappedEntryContext ctx) {
     String field = visitField(ctx.field());
     String variable = visitVariable(ctx.variable());
-    explicitVariables.put(field, variable);
+    explicitVariables.put(field, CqlIdentifier.fromCql(variable));
     return null;
   }
 
@@ -146,7 +151,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
     inferring = true;
     for (MappingParser.VariableContext variableContext : ctx.variable()) {
       String variable = visitVariable(variableContext);
-      excludedVariables.add(variable);
+      excludedVariables.add(CqlIdentifier.fromCql(variable));
     }
     return null;
   }
@@ -163,9 +168,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
   @Override
   public String visitVariable(MappingParser.VariableContext ctx) {
     String variable = ctx.getText();
-    if (ctx.QUOTED_STRING() != null) {
-      variable = variable.substring(1, variable.length() - 1).replace("\"\"", "\"");
-    } else {
+    if (ctx.QUOTED_STRING() == null) {
       // Rename the user-specified __ttl and __timestamp vars to the (legal) bound variable
       // names.
       if (variable.equals(EXTERNAL_TTL_VARNAME)) {
@@ -185,7 +188,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
   }
 
   private void checkDuplicates() {
-    List<String> duplicates =
+    List<CqlIdentifier> duplicates =
         explicitVariables
             .values()
             .stream()
@@ -198,7 +201,11 @@ public class MappingInspector extends MappingBaseVisitor<String> {
     if (!duplicates.isEmpty()) {
       throw new BulkConfigurationException(
           "Invalid schema.mapping: the following variables are mapped to more than one field: "
-              + duplicates.stream().collect(Collectors.joining(", "))
+              + duplicates
+                  .stream()
+                  .map(CqlIdentifier::asInternal)
+                  .sorted()
+                  .collect(Collectors.joining(", "))
               + ". "
               + "Please review schema.mapping for duplicates.");
     }

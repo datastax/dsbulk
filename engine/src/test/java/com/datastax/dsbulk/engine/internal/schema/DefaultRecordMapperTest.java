@@ -8,8 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.driver.core.DataType.bigint;
-import static com.datastax.driver.core.ProtocolVersion.V4;
+import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
@@ -27,14 +26,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToIntegerCodec;
@@ -45,14 +36,25 @@ import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.ZonedTemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.reflect.TypeToken;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.assertj.core.util.Sets;
@@ -67,17 +69,17 @@ class DefaultRecordMapperTest {
   private static final String F2 = "field2";
   private static final String F3 = "field3";
 
-  private static final String C1 = "col1";
-  private static final String C2 = "col2";
-  private static final String C3 = "My Fancy Column Name";
+  private static final CqlIdentifier C1 = CqlIdentifier.fromInternal("col1");
+  private static final CqlIdentifier C2 = CqlIdentifier.fromInternal("col2");
+  private static final CqlIdentifier C3 = CqlIdentifier.fromInternal("My Fancy Column Name");
 
   private final URI location = URI.create("file://file1?line=1");
 
   private final TypeCodec codec1 = mock(StringToIntegerCodec.class);
   private final TypeCodec codec2 = mock(StringToLongCodec.class);
-  private final TypeCodec codec3 = TypeCodec.varchar();
+  private final TypeCodec codec3 = TypeCodecs.TEXT;
 
-  private final int[] pkIndices = {0, 1, 2};
+  private final List<Integer> pkIndices = Arrays.asList(0, 1, 2);
 
   private final List<String> nullStrings = newArrayList("");
 
@@ -86,7 +88,7 @@ class DefaultRecordMapperTest {
   private PreparedStatement insertStatement;
   private BoundStatement boundStatement;
   private ColumnDefinitions variables;
-  private ArgumentCaptor<String> variableCaptor;
+  private ArgumentCaptor<CqlIdentifier> variableCaptor;
   private ArgumentCaptor<ByteBuffer> valueCaptor;
   private RecordMetadata recordMetadata;
   private final FastThreadLocal<NumberFormat> formatter =
@@ -94,18 +96,18 @@ class DefaultRecordMapperTest {
 
   @BeforeEach
   void setUp() {
-    variableCaptor = ArgumentCaptor.forClass(String.class);
+    variableCaptor = ArgumentCaptor.forClass(CqlIdentifier.class);
     valueCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
 
     recordMetadata =
         new TestRecordMetadata(
             ImmutableMap.of(
                 F1,
-                TypeToken.of(String.class),
+                GenericType.of(String.class),
                 F2,
-                TypeToken.of(String.class),
+                GenericType.of(String.class),
                 F3,
-                TypeToken.of(String.class)));
+                GenericType.of(String.class)));
 
     boundStatement = mock(BoundStatement.class);
     mapping = mock(Mapping.class);
@@ -113,21 +115,34 @@ class DefaultRecordMapperTest {
     insertStatement = mock(PreparedStatement.class);
     variables = mock(ColumnDefinitions.class);
 
-    when(boundStatement.preparedStatement()).thenReturn(insertStatement);
+    when(boundStatement.getPreparedStatement()).thenReturn(insertStatement);
+    when(boundStatement.protocolVersion()).thenReturn(V4);
     when(boundStatement.isSet(0)).thenReturn(true);
     when(boundStatement.isSet(1)).thenReturn(true);
     when(boundStatement.isSet(2)).thenReturn(true);
-    when(insertStatement.getVariables()).thenReturn(variables);
+    when(insertStatement.getVariableDefinitions()).thenReturn(variables);
+    when(insertStatement.getPrimaryKeyIndices()).thenReturn(pkIndices);
+    ColumnDefinition c1Def = mock(ColumnDefinition.class);
+    ColumnDefinition c2Def = mock(ColumnDefinition.class);
+    ColumnDefinition c3Def = mock(ColumnDefinition.class);
+    when(variables.get(C1)).thenReturn(c1Def);
+    when(variables.get(C2)).thenReturn(c2Def);
+    when(variables.get(C3)).thenReturn(c3Def);
 
-    when(variables.getType(C1)).thenReturn(DataType.cint());
-    when(variables.getType(C2)).thenReturn(DataType.bigint());
-    when(variables.getType(C3)).thenReturn(DataType.varchar());
-    when(variables.getIndexOf(C1)).thenReturn(0);
-    when(variables.getIndexOf(C2)).thenReturn(1);
-    when(variables.getIndexOf(C3)).thenReturn(2);
-    when(variables.getName(0)).thenReturn(C1);
-    when(variables.getName(1)).thenReturn(C2);
-    when(variables.getName(2)).thenReturn(C3);
+    when(c1Def.getType()).thenReturn(DataTypes.INT);
+    when(c2Def.getType()).thenReturn(DataTypes.BIGINT);
+    when(c3Def.getType()).thenReturn(DataTypes.TEXT);
+    when(variables.firstIndexOf(C1)).thenReturn(0);
+    when(variables.firstIndexOf(C2)).thenReturn(1);
+    when(variables.firstIndexOf(C3)).thenReturn(2);
+
+    when(variables.get(0)).thenReturn(c1Def);
+    when(variables.get(1)).thenReturn(c2Def);
+    when(variables.get(2)).thenReturn(c3Def);
+
+    when(c1Def.getName()).thenReturn(C1);
+    when(c2Def.getName()).thenReturn(C2);
+    when(c3Def.getName()).thenReturn(C3);
     when(variables.size()).thenReturn(3);
 
     when(record.getFieldValue(F1)).thenReturn("42");
@@ -145,28 +160,28 @@ class DefaultRecordMapperTest {
     when(mapping.variableToField(C2)).thenReturn(F2);
     when(mapping.variableToField(C3)).thenReturn(F3);
 
-    when(mapping.codec(C1, DataType.cint(), TypeToken.of(String.class))).thenReturn(codec1);
-    when(mapping.codec(C2, DataType.bigint(), TypeToken.of(String.class))).thenReturn(codec2);
-    when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec3);
+    when(mapping.codec(C1, DataTypes.INT, GenericType.of(String.class))).thenReturn(codec1);
+    when(mapping.codec(C2, DataTypes.BIGINT, GenericType.of(String.class))).thenReturn(codec2);
+    when(mapping.codec(C3, DataTypes.TEXT, GenericType.of(String.class))).thenReturn(codec3);
 
     // emulate the behavior of a ConvertingCodec (StringToXCodec)
-    when(codec1.serialize(any(), any()))
+    when(codec1.encode(any(), any()))
         .thenAnswer(
             invocation -> {
               String s = invocation.getArgument(0);
               if (s == null) {
                 return null;
               }
-              return TypeCodec.cint().serialize(Integer.parseInt(s), invocation.getArgument(1));
+              return TypeCodecs.INT.encode(Integer.parseInt(s), invocation.getArgument(1));
             });
-    when(codec2.serialize(any(), any()))
+    when(codec2.encode(any(), any()))
         .thenAnswer(
             invocation -> {
               String s = invocation.getArgument(0);
               if (s == null) {
                 return null;
               }
-              return TypeCodec.bigint().serialize(Long.parseLong(s), invocation.getArgument(1));
+              return TypeCodecs.BIGINT.encode(Long.parseLong(s), invocation.getArgument(1));
             });
   }
 
@@ -176,8 +191,6 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
-            V4,
             mapping,
             recordMetadata,
             true,
@@ -188,21 +201,21 @@ class DefaultRecordMapperTest {
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement, times(3))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
-    assertParameter(0, C1, TypeCodec.cint().serialize(42, V4));
-    assertParameter(1, C2, TypeCodec.bigint().serialize(4242L, V4));
-    assertParameter(2, C3, TypeCodec.varchar().serialize("foo", V4));
+    assertParameter(0, C1, TypeCodecs.INT.encode(42, V4));
+    assertParameter(1, C2, TypeCodecs.BIGINT.encode(4242L, V4));
+    assertParameter(2, C3, TypeCodecs.TEXT.encode("foo", V4));
   }
 
   @Test
   void should_bind_mapped_numeric_timestamp() {
     when(record.fields()).thenReturn(set(F1));
-    when(variables.getType(C1)).thenReturn(bigint());
+    when(variables.get(C1).getType()).thenReturn(DataTypes.BIGINT);
     // timestamp is 123456 minutes before unix epoch
     when(record.getFieldValue(F1)).thenReturn("-123456");
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
-                TypeCodec.bigint(),
+                TypeCodecs.BIGINT,
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
@@ -213,12 +226,10 @@ class DefaultRecordMapperTest {
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
                 nullStrings));
-    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
+    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
-            V4,
             mapping,
             recordMetadata,
             true,
@@ -227,20 +238,20 @@ class DefaultRecordMapperTest {
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).setBytesUnsafe(C1, TypeCodec.bigint().serialize(-123456L, V4));
+    verify(boundStatement).setBytesUnsafe(C1, TypeCodecs.BIGINT.encode(-123456L, V4));
   }
 
   @Test
   void should_bind_mapped_numeric_timestamp_with_custom_unit_and_epoch() {
     when(record.fields()).thenReturn(set(F1));
-    when(variables.getType(C1)).thenReturn(bigint());
+    when(variables.get(C1).getType()).thenReturn(DataTypes.BIGINT);
     // timestamp is one minute before year 2000
     when(record.getFieldValue(F1)).thenReturn("-1");
     Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
-                TypeCodec.bigint(),
+                TypeCodecs.BIGINT,
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
@@ -251,12 +262,10 @@ class DefaultRecordMapperTest {
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
                 nullStrings));
-    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
+    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
-            V4,
             mapping,
             recordMetadata,
             true,
@@ -265,18 +274,18 @@ class DefaultRecordMapperTest {
             (mappedRecord, statement) -> boundStatement);
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
-    verify(boundStatement).setBytesUnsafe(C1, TypeCodec.bigint().serialize(-1L, V4));
+    verify(boundStatement).setBytesUnsafe(C1, TypeCodecs.BIGINT.encode(-1L, V4));
   }
 
   @Test
   void should_bind_mapped_alphanumeric_timestamp() {
     when(record.fields()).thenReturn(set(F1));
-    when(variables.getType(C1)).thenReturn(bigint());
+    when(variables.get(C1).getType()).thenReturn(DataTypes.BIGINT);
     when(record.getFieldValue(F1)).thenReturn("2017-01-02T00:00:02");
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
-                TypeCodec.bigint(),
+                TypeCodecs.BIGINT,
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
@@ -287,12 +296,10 @@ class DefaultRecordMapperTest {
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
                 nullStrings));
-    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
+    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
-            V4,
             mapping,
             recordMetadata,
             true,
@@ -303,21 +310,20 @@ class DefaultRecordMapperTest {
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement)
         .setBytesUnsafe(
-            C1,
-            TypeCodec.bigint().serialize(Instant.parse("2017-01-02T00:00:02Z").toEpochMilli(), V4));
+            C1, TypeCodecs.BIGINT.encode(Instant.parse("2017-01-02T00:00:02Z").toEpochMilli(), V4));
   }
 
   @Test
   void should_bind_mapped_alphanumeric_timestamp_with_custom_pattern() {
     when(record.fields()).thenReturn(set(F1));
-    when(variables.getType(C1)).thenReturn(bigint());
+    when(variables.get(C1).getType()).thenReturn(DataTypes.BIGINT);
     when(record.getFieldValue(F1)).thenReturn("20171123-123456");
     TemporalFormat timestampFormat =
         new ZonedTemporalFormat(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"), UTC);
     StringToLongCodec codec =
         spy(
             new StringToLongCodec(
-                TypeCodec.bigint(),
+                TypeCodecs.BIGINT,
                 formatter,
                 OverflowStrategy.REJECT,
                 HALF_EVEN,
@@ -328,12 +334,10 @@ class DefaultRecordMapperTest {
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
                 nullStrings));
-    when(mapping.codec(C1, bigint(), TypeToken.of(String.class))).thenReturn(codec);
+    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.of(String.class))).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
-            V4,
             mapping,
             recordMetadata,
             true,
@@ -344,19 +348,17 @@ class DefaultRecordMapperTest {
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement)
         .setBytesUnsafe(
-            C1,
-            TypeCodec.bigint().serialize(Instant.parse("2017-11-23T12:34:56Z").toEpochMilli(), V4));
+            C1, TypeCodecs.BIGINT.encode(Instant.parse("2017-11-23T12:34:56Z").toEpochMilli(), V4));
   }
 
   @Test
   void should_map_null_to_unset() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
     when(record.getFieldValue(F2)).thenReturn(null);
+    when(insertStatement.getPrimaryKeyIndices()).thenReturn(Arrays.asList(0, 2));
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            new int[] {0, 2},
-            V4,
             mapping,
             recordMetadata,
             true,
@@ -367,19 +369,18 @@ class DefaultRecordMapperTest {
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement, times(2))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
-    assertParameter(0, C1, TypeCodec.cint().serialize(42, V4));
-    assertParameter(1, C3, TypeCodec.varchar().serialize("foo", V4));
+    assertParameter(0, C1, TypeCodecs.INT.encode(42, V4));
+    assertParameter(1, C3, TypeCodecs.TEXT.encode("foo", V4));
   }
 
   @Test
   void should_map_null_to_null() {
     when(record.fields()).thenReturn(set(F1));
     when(record.getFieldValue(F1)).thenReturn(null);
+    when(insertStatement.getPrimaryKeyIndices()).thenReturn(Arrays.asList(1, 2));
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            new int[] {1, 2},
-            V4,
             mapping,
             recordMetadata,
             false,
@@ -395,13 +396,11 @@ class DefaultRecordMapperTest {
   @Test
   void should_return_unmappable_statement_when_mapping_fails() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
-    when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class)))
+    when(mapping.codec(C3, DataTypes.TEXT, GenericType.of(String.class)))
         .thenThrow(CodecNotFoundException.class);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
-            V4,
             mapping,
             recordMetadata,
             false,
@@ -412,11 +411,11 @@ class DefaultRecordMapperTest {
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     assertThat(((UnmappableStatement) result).getSource()).isEqualTo(record);
     assertThat(((UnmappableStatement) result).getLocation().toString())
-        .isEqualTo(location.toString() + "&field=field3&My+Fancy+Column+Name=foo&cqlType=varchar");
+        .isEqualTo(location.toString() + "&field=field3&My+Fancy+Column+Name=foo&cqlType=TEXT");
     verify(boundStatement, times(2))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
-    assertParameter(0, C1, TypeCodec.cint().serialize(42, V4));
-    assertParameter(1, C2, TypeCodec.bigint().serialize(4242L, V4));
+    assertParameter(0, C1, TypeCodecs.INT.encode(42, V4));
+    assertParameter(1, C2, TypeCodecs.BIGINT.encode(4242L, V4));
   }
 
   @Test
@@ -426,8 +425,6 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
-            V4,
             mapping,
             recordMetadata,
             false,
@@ -445,14 +442,14 @@ class DefaultRecordMapperTest {
   @Test
   void should_return_unmappable_statement_when_pk_column_unmapped() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
-    when(variables.getIndexOf(C1)).thenReturn(3);
-    when(variables.getName(3)).thenReturn(C1);
+    when(variables.firstIndexOf(C1)).thenReturn(3);
+    ColumnDefinition def = mock(ColumnDefinition.class);
+    when(variables.get(3)).thenReturn(def);
+    when(def.getName()).thenReturn(C1);
     when(boundStatement.isSet(0)).thenReturn(false);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
-            V4,
             mapping,
             recordMetadata,
             false,
@@ -474,8 +471,6 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
-            V4,
             mapping,
             recordMetadata,
             false,
@@ -499,8 +494,6 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
-            V4,
             mapping,
             recordMetadata,
             false,
@@ -518,9 +511,9 @@ class DefaultRecordMapperTest {
                 + "or set schema.allowMissingFields to true.");
   }
 
-  private void assertParameter(int index, String expectedVariable, ByteBuffer expectedValue) {
-    assertThat(variableCaptor.getAllValues().get(index))
-        .isEqualTo(Metadata.quoteIfNecessary(expectedVariable));
+  private void assertParameter(
+      int index, CqlIdentifier expectedVariable, ByteBuffer expectedValue) {
+    assertThat(variableCaptor.getAllValues().get(index)).isEqualTo(expectedVariable);
     assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
   }
 

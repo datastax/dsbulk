@@ -15,18 +15,16 @@ import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.Statist
 import static com.google.common.base.Functions.identity;
 import static java.util.stream.Collectors.toMap;
 
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Token;
-import com.datastax.driver.core.TokenRange;
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings;
-import com.datastax.dsbulk.executor.api.result.ReadResult;
+
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.metadata.Metadata;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
+import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
@@ -73,7 +71,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
   @VisibleForTesting List<PartitionKeyCount> totalsByPartitionKey;
 
   public DefaultReadResultCounter(
-      String keyspace,
+      CqlIdentifier keyspace,
       Metadata metadata,
       EnumSet<StatsSettings.StatisticsMode> modes,
       int numPartitions,
@@ -96,7 +94,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       // contents are identical to metadata.tokenMap.tokenToHostsByKeyspace.
       // Both arrays are filled so that ring[i] == replicaSets[i].range.end,
       // thus allowing to easily locate the range and replicas of a given token.
-      Set<TokenRange> ranges = metadata.getTokenRanges();
+      Set<TokenRange> ranges = metadata.getTokenMap().map(TokenMap::getTokenRanges).orElse(Collections.emptySet());
       ring = new Token[ranges.size()];
       replicaSets = new ReplicaSet[ranges.size()];
       int i = 0;

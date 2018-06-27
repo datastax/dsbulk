@@ -8,10 +8,11 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.CodecNotFoundException;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -36,7 +37,7 @@ public interface Mapping {
    *     does not map to any known bound statement variable.
    */
   @Nullable
-  String fieldToVariable(@NotNull String field);
+  CqlIdentifier fieldToVariable(@NotNull String field);
 
   /**
    * Maps the given row variable to a field. Used in read workflows.
@@ -49,7 +50,7 @@ public interface Mapping {
    *     to any known field.
    */
   @Nullable
-  String variableToField(@NotNull String variable);
+  String variableToField(@NotNull CqlIdentifier variable);
 
   /**
    * Returns the codec to use for the given bound statement or row variable.
@@ -66,7 +67,9 @@ public interface Mapping {
    */
   @NotNull
   <T> TypeCodec<T> codec(
-      @NotNull String variable, @NotNull DataType cqlType, @NotNull TypeToken<? extends T> javaType)
+      @NotNull CqlIdentifier variable,
+      @NotNull DataType cqlType,
+      @NotNull GenericType<? extends T> javaType)
       throws CodecNotFoundException;
 
   /**
@@ -81,5 +84,5 @@ public interface Mapping {
    *
    * @return the variable names in this mapping.
    */
-  Set<String> variables();
+  Set<CqlIdentifier> variables();
 }

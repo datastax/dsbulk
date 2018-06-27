@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.cql3.CqlBaseVisitor;
 import com.datastax.dsbulk.commons.cql3.CqlLexer;
 import com.datastax.dsbulk.commons.cql3.CqlParser;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
@@ -27,15 +27,15 @@ public class QueryInspector extends CqlBaseVisitor<String> {
 
   private final String query;
 
-  private final ListMultimap<String, String> columnsToVariablesBuilder =
+  private final ListMultimap<CqlIdentifier, String> columnsToVariablesBuilder =
       MultimapBuilder.linkedHashKeys().arrayListValues().build();
 
-  private final ImmutableMultimap<String, String> columnsToVariables;
+  private final ImmutableMultimap<CqlIdentifier, String> columnsToVariables;
 
-  private String currentColumn;
-  private String keyspaceName;
-  private String tableName;
-  private String writeTimeVariable;
+  private CqlIdentifier currentColumn;
+  private CqlIdentifier keyspaceName;
+  private CqlIdentifier tableName;
+  private CqlIdentifier writeTimeVariable;
 
   public QueryInspector(String query) {
     this.query = query;
@@ -69,19 +69,19 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     columnsToVariables = ImmutableMultimap.copyOf(columnsToVariablesBuilder);
   }
 
-  public String getKeyspaceName() {
+  public CqlIdentifier getKeyspaceName() {
     return keyspaceName;
   }
 
-  public String getTableName() {
+  public CqlIdentifier getTableName() {
     return tableName;
   }
 
-  public String getWriteTimeVariable() {
+  public CqlIdentifier getWriteTimeVariable() {
     return writeTimeVariable;
   }
 
-  public ImmutableMultimap<String, String> getColumnsToVariables() {
+  public ImmutableMultimap<CqlIdentifier, String> getColumnsToVariables() {
     return columnsToVariables;
   }
 
@@ -102,7 +102,7 @@ public class QueryInspector extends CqlBaseVisitor<String> {
               ctx.cident().size(), ctx.term().size(), query));
     }
     for (int i = 0; i < ctx.cident().size(); i++) {
-      currentColumn = visitCident(ctx.cident().get(i));
+      currentColumn = CqlIdentifier.fromCql(visitCident(ctx.cident().get(i)));
       String variable = visitTerm(ctx.term().get(i));
       if (variable != null) {
         columnsToVariablesBuilder.put(currentColumn, variable);
@@ -126,7 +126,7 @@ public class QueryInspector extends CqlBaseVisitor<String> {
   public String visitUpdateStatement(CqlParser.UpdateStatementContext ctx) {
     visitColumnFamilyName(ctx.columnFamilyName());
     for (CqlParser.ColumnOperationContext op : ctx.columnOperation()) {
-      currentColumn = visitCident(op.cident());
+      currentColumn = CqlIdentifier.fromCql(visitCident(op.cident()));
       String variable = visitColumnOperationDifferentiator(op.columnOperationDifferentiator());
       if (variable != null) {
         columnsToVariablesBuilder.put(currentColumn, variable);
@@ -170,10 +170,10 @@ public class QueryInspector extends CqlBaseVisitor<String> {
   public String visitSelector(CqlParser.SelectorContext ctx) {
     if (ctx.unaliasedSelector().getChildCount() == 1 && ctx.unaliasedSelector().cident() != null) {
       // selection of a column, possibly aliased
-      String column = visitCident(ctx.unaliasedSelector().cident());
+      CqlIdentifier column = CqlIdentifier.fromCql(visitCident(ctx.unaliasedSelector().cident()));
       if (ctx.noncolIdent() == null) {
         // unaliased selection
-        columnsToVariablesBuilder.put(column, column);
+        columnsToVariablesBuilder.put(column, column.asInternal());
       } else {
         // aliased selection
         String variable = visitNoncolIdent(ctx.noncolIdent());
@@ -210,7 +210,7 @@ public class QueryInspector extends CqlBaseVisitor<String> {
         && ctx.getChild(1) instanceof CqlParser.RelationTypeContext
         && ctx.getChild(2) instanceof CqlParser.TermContext) {
       // restriction on a column, as in WHERE col = :value
-      currentColumn = visitCident(ctx.cident());
+      currentColumn = CqlIdentifier.fromCql(visitCident(ctx.cident()));
       String variable = visitTerm(ctx.term().get(0));
       if (variable != null) {
         columnsToVariablesBuilder.put(currentColumn, variable);
@@ -244,7 +244,7 @@ public class QueryInspector extends CqlBaseVisitor<String> {
   public String visitValue(CqlParser.ValueContext ctx) {
     // value is a positional bind marker
     if (ctx.QMARK() != null) {
-      return currentColumn;
+      return currentColumn.asInternal();
     }
     // value is a named bound variable
     if (ctx.noncolIdent() != null) {
@@ -259,30 +259,30 @@ public class QueryInspector extends CqlBaseVisitor<String> {
   @Override
   public String visitColumnFamilyName(CqlParser.ColumnFamilyNameContext ctx) {
     if (ctx.ksName() != null) {
-      keyspaceName = visitKsName(ctx.ksName());
+      keyspaceName = CqlIdentifier.fromCql(visitKsName(ctx.ksName()));
     }
-    tableName = visitCfName(ctx.cfName());
+    tableName = CqlIdentifier.fromCql(visitCfName(ctx.cfName()));
     return null;
   }
 
   @Override
   public String visitKsName(CqlParser.KsNameContext ctx) {
-    return DriverCoreHooks.handleId(ctx.getText());
+    return ctx.getText();
   }
 
   @Override
   public String visitCfName(CqlParser.CfNameContext ctx) {
-    return DriverCoreHooks.handleId(ctx.getText());
+    return ctx.getText();
   }
 
   @Override
   public String visitCident(CqlParser.CidentContext ctx) {
-    return DriverCoreHooks.handleId(ctx.getText());
+    return ctx.getText();
   }
 
   @Override
   public String visitNoncolIdent(CqlParser.NoncolIdentContext ctx) {
-    return DriverCoreHooks.handleId(ctx.getText());
+    return CqlIdentifier.fromCql(ctx.getText()).asInternal();
   }
 
   // USING TIMESTAMP AND TTL
@@ -305,7 +305,8 @@ public class QueryInspector extends CqlBaseVisitor<String> {
 
   private void visitUsingTimestamp(CqlParser.IntValueContext intValueContext) {
     if (intValueContext.noncolIdent() != null) {
-      writeTimeVariable = visitNoncolIdent(intValueContext.noncolIdent());
+      writeTimeVariable =
+          CqlIdentifier.fromInternal(visitNoncolIdent(intValueContext.noncolIdent()));
     } else if (intValueContext.QMARK() != null) {
       throw new BulkConfigurationException(
           String.format(

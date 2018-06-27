@@ -23,9 +23,9 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Streams;
-import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.common.TextParsingException;
@@ -82,7 +82,7 @@ import reactor.core.scheduler.Schedulers;
 public class CSVConnector implements Connector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
-  private static final TypeToken<String> STRING_TYPE_TOKEN = TypeToken.of(String.class);
+  private static final GenericType<String> STRING_TYPE = GenericType.of(String.class);
 
   private static final String URL = "url";
   private static final String FILE_NAME_PATTERN = "fileNamePattern";
@@ -186,7 +186,7 @@ public class CSVConnector implements Connector {
 
   @Override
   public RecordMetadata getRecordMetadata() {
-    return (field, cqlType) -> STRING_TYPE_TOKEN;
+    return (field, cqlType) -> STRING_TYPE;
   }
 
   @Override

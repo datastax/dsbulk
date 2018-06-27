@@ -8,16 +8,17 @@
  */
 package com.datastax.dsbulk.commons.internal.uri;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.DriverCoreHooks;
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.GettableData;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.TypeCodec;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.data.GettableById;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -83,12 +84,12 @@ public class URIUtils {
    * @return The read result row resource URI.
    */
   public static URI getRowResource(Row row, ExecutionInfo executionInfo) {
-    InetSocketAddress host = executionInfo.getQueriedHost().getSocketAddress();
+    InetSocketAddress host = executionInfo.getCoordinator().getConnectAddress();
     ColumnDefinitions resultVariables = row.getColumnDefinitions();
     // this might break if the statement has no result variables (unlikely)
     // or if the first variable is not associated to a keyspace and table (also unlikely)
-    String keyspace = resultVariables.getKeyspace(0);
-    String table = resultVariables.getTable(0);
+    CqlIdentifier keyspace = resultVariables.get(0).getKeyspace();
+    CqlIdentifier table = resultVariables.get(0).getTable();
     String sb =
         "cql://"
             + host.getAddress().getHostAddress()
@@ -121,13 +122,14 @@ public class URIUtils {
    * @return The read result row location URI.
    */
   public static URI getRowLocation(Row row, ExecutionInfo executionInfo, Statement statement) {
-    InetSocketAddress host = executionInfo.getQueriedHost().getSocketAddress();
+    InetSocketAddress host = executionInfo.getCoordinator().getConnectAddress();
     ColumnDefinitions resultVariables = row.getColumnDefinitions();
-    CodecRegistry codecRegistry = DriverCoreHooks.getCodecRegistry(resultVariables);
+
+    CodecRegistry codecRegistry = row.codecRegistry();
     // this might break if the statement has no result variables (unlikely)
     // or if the first variable is not associated to a keyspace and table (also unlikely)
-    String keyspace = resultVariables.getKeyspace(0);
-    String table = resultVariables.getTable(0);
+    CqlIdentifier keyspace = resultVariables.get(0).getKeyspace();
+    CqlIdentifier table = resultVariables.get(0).getTable();
     StringBuilder sb =
         new StringBuilder("cql://")
             .append(host.getAddress().getHostAddress())
@@ -149,7 +151,10 @@ public class URIUtils {
     // the resulting URI.
     if (statement instanceof BoundStatement) {
       BoundStatement bs = (BoundStatement) statement;
-      n = appendVariables(sb, bs.preparedStatement().getVariables(), bs, codecRegistry, n);
+      // TODO: DAT-303: Should this be getVariableDefinitions or getResultSetDefinitions()?
+      n =
+          appendVariables(
+              sb, bs.getPreparedStatement().getVariableDefinitions(), bs, codecRegistry, n);
     }
     appendVariables(sb, resultVariables, row, codecRegistry, n);
     return URI.create(sb.toString());
@@ -158,16 +163,17 @@ public class URIUtils {
   private static int appendVariables(
       StringBuilder sb,
       ColumnDefinitions variables,
-      GettableData data,
+      GettableById data,
       CodecRegistry codecRegistry,
       int n) {
-    for (ColumnDefinitions.Definition variable : variables) {
-      String name = variable.getName();
+    for (ColumnDefinition variable : variables) {
+      CqlIdentifier name = variable.getName();
       DataType type = variable.getType();
       String value;
       try {
         TypeCodec<Object> codec = codecRegistry.codecFor(type);
-        value = codec.format(data.getObject(name));
+        // TODO: DAT-303: Is this the right migration for driver 4.0?
+        value = data.get(name, codec).toString();
       } catch (Exception e) {
         // This is unlikely to happen. We can safely assume that all values
         // retrieved with getObject() can be formatted using
@@ -179,7 +185,7 @@ public class URIUtils {
         sb.append('&');
       }
       try {
-        sb.append(URLEncoder.encode(name, "UTF-8"))
+        sb.append(URLEncoder.encode(name.asInternal(), "UTF-8"))
             .append('=')
             .append(URLEncoder.encode(value, "UTF-8"));
       } catch (UnsupportedEncodingException ignored) {

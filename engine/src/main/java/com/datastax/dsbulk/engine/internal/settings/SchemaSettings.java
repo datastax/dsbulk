@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.driver.core.DriverCoreHooks.resultSetVariables;
 import static com.datastax.dsbulk.engine.WorkflowType.COUNT;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
@@ -19,19 +18,6 @@ import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.Statist
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.KeyspaceMetadata;
-import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.ParseUtils;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.TableMetadata;
-import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
@@ -39,16 +25,27 @@ import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
-import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultCounter;
-import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
 import com.datastax.dsbulk.engine.internal.schema.MappingInspector;
 import com.datastax.dsbulk.engine.internal.schema.QueryInspector;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
-import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dsbulk.engine.internal.utils.StringUtils;
-import com.datastax.dsbulk.executor.api.statement.TableScanner;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.SimpleStatementBuilder;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.metadata.Metadata;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
+import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
+import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -65,6 +62,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
@@ -84,15 +82,20 @@ public class SchemaSettings {
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
 
+  private static final CqlIdentifier TTL_VAR_IDENTIFIER =
+      CqlIdentifier.fromCql(INTERNAL_TTL_VARNAME);
+  private static final CqlIdentifier TIMESTAMP_VAR_IDENTIFIER =
+      CqlIdentifier.fromCql(INTERNAL_TIMESTAMP_VARNAME);
+
   private final LoaderConfig config;
 
   private boolean nullToUnset;
   private boolean allowExtraFields;
   private boolean allowMissingFields;
   private MappingInspector mapping;
-  private BiMap<String, String> explicitVariables;
-  private String tableName;
-  private String keyspaceName;
+  private BiMap<String, CqlIdentifier> explicitVariables;
+  private CqlIdentifier tableName;
+  private CqlIdentifier keyspaceName;
   private int ttlSeconds;
   private long timestampMicros;
   private TableMetadata table;
@@ -100,7 +103,7 @@ public class SchemaSettings {
   private String query;
   private QueryInspector queryInspector;
   private PreparedStatement preparedStatement;
-  private String writeTimeVariable;
+  private CqlIdentifier writeTimeVariable;
   private boolean preferIndexedMapping;
 
   SchemaSettings(LoaderConfig config) {
@@ -131,12 +134,16 @@ public class SchemaSettings {
       this.query = config.hasPath(QUERY) ? config.getString(QUERY) : null;
 
       boolean keyspaceTablePresent = false;
+
+      // Get keyspace and table names, if present. We use CqlIdentifier.fromInternal
+      // rather than CqlIdentifier.fromCql because we want to treat the given values
+      // as case-sensitive.
       if (config.hasPath(KEYSPACE)) {
-        keyspaceName = Metadata.quoteIfNecessary(config.getString(KEYSPACE));
+        keyspaceName = CqlIdentifier.fromInternal(config.getString(KEYSPACE));
       }
       if (keyspaceName != null && config.hasPath(TABLE)) {
         keyspaceTablePresent = true;
-        tableName = Metadata.quoteIfNecessary(config.getString(TABLE));
+        tableName = CqlIdentifier.fromInternal(config.getString(TABLE));
       }
 
       // If table is present, keyspace must be, but not necessarily the other way around.
@@ -195,13 +202,13 @@ public class SchemaSettings {
         // Error out if the explicit variables map timestamp or ttl and
         // there is an explicit query.
         if (query != null) {
-          if (explicitVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME)) {
+          if (explicitVariables.containsValue(TIMESTAMP_VAR_IDENTIFIER)) {
             throw new BulkConfigurationException(
                 String.format(
                     "%s must not be defined when mapping a field to query-timestamp",
                     prettyPath(QUERY)));
           }
-          if (explicitVariables.containsValue(INTERNAL_TTL_VARNAME)) {
+          if (explicitVariables.containsValue(TTL_VAR_IDENTIFIER)) {
             throw new BulkConfigurationException(
                 String.format(
                     "%s must not be defined when mapping a field to query-ttl", prettyPath(QUERY)));
@@ -214,8 +221,8 @@ public class SchemaSettings {
           }
         }
         // store the write time variable name for later if it was present in the mapping
-        if (explicitVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME)) {
-          writeTimeVariable = INTERNAL_TIMESTAMP_VARNAME;
+        if (explicitVariables.containsValue(TIMESTAMP_VAR_IDENTIFIER)) {
+          writeTimeVariable = TIMESTAMP_VAR_IDENTIFIER;
         }
       } else {
         explicitVariables = null;
@@ -244,7 +251,7 @@ public class SchemaSettings {
   }
 
   public RecordMapper createRecordMapper(
-      Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
+      CqlSession session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, LOAD);
     return new DefaultRecordMapper(
@@ -257,24 +264,22 @@ public class SchemaSettings {
   }
 
   public ReadResultMapper createReadResultMapper(
-      Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
+      CqlSession session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
-    // wo don't check that mapping records are supported when unloading, the only thing that matters
+    // we don't check that mapping records are supported when unloading, the only thing that matters
     // is the order in which fields appear in the record.
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, UNLOAD);
     return new DefaultReadResultMapper(mapping, recordMetadata);
   }
 
   public ReadResultCounter createReadResultCounter(
-      Session session,
+      CqlSession session,
       ExtendedCodecRegistry codecRegistry,
       EnumSet<StatsSettings.StatisticsMode> modes,
       int numPartitions) {
     prepareStatementAndCreateMapping(session, null, COUNT);
-    Cluster cluster = session.getCluster();
-    ProtocolVersion protocolVersion =
-        cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
-    Metadata metadata = cluster.getMetadata();
+    ProtocolVersion protocolVersion = session.getContext().protocolVersion();
+    Metadata metadata = session.getMetadata();
     if (modes.contains(partitions) && table.getClusteringColumns().isEmpty()) {
       throw new BulkConfigurationException(
           String.format(
@@ -284,15 +289,18 @@ public class SchemaSettings {
         keyspaceName, metadata, modes, numPartitions, protocolVersion, codecRegistry);
   }
 
-  public List<Statement> createReadStatements(Cluster cluster) {
-    ColumnDefinitions variables = preparedStatement.getVariables();
+  public List<Statement> createReadStatements(CqlSession session) {
+    ColumnDefinitions variables = preparedStatement.getVariableDefinitions();
     if (variables.size() == 0) {
       return Collections.singletonList(preparedStatement.bind());
     }
-    List<String> unrecognized =
+    List<CqlIdentifier> unrecognized =
         StreamSupport.stream(variables.spliterator(), false)
-            .map(ColumnDefinitions.Definition::getName)
-            .filter(name -> !name.equals("start") && !name.equals("end"))
+            .map(ColumnDefinition::getName)
+            .filter(
+                name ->
+                    !name.asInternal().equals("start")
+                        && !name.asInternal().equals("end"))
             .collect(Collectors.toList());
     if (!unrecognized.isEmpty()) {
       throw new BulkConfigurationException(
@@ -301,20 +309,22 @@ public class SchemaSettings {
                   + "only 'start' and 'end' can be used to define a token range",
               unrecognized));
     }
-    Set<TokenRange> ring = cluster.getMetadata().getTokenRanges();
-    return TableScanner.scan(
-        ring,
-        range ->
-            preparedStatement
-                .bind()
-                .setToken("start", range.getStart())
-                .setToken("end", range.getEnd()));
+
+        Optional<TokenMap> tokenMap = session.getMetadata().getTokenMap();
+        Set<TokenRange> ring = tokenMap.map(TokenMap::getTokenRanges).orElse(Collections.emptySet());
+        return TableScanner.scan(
+            ring,
+            range ->
+                preparedStatement
+                    .bind()
+                    .setToken("start", range.getStart())
+                    .setToken("end", range.getEnd()));
   }
 
   @NotNull
   private DefaultMapping prepareStatementAndCreateMapping(
-      Session session, ExtendedCodecRegistry codecRegistry, WorkflowType workflowType) {
-    BiMap<String, String> fieldsToVariables = null;
+      CqlSession session, ExtendedCodecRegistry codecRegistry, WorkflowType workflowType) {
+    BiMap<String, CqlIdentifier> fieldsToVariables = null;
     if (!config.hasPath(QUERY)) {
       // in the absence of user-provided queries, create the mapping *before* query generation and
       // preparation
@@ -324,6 +334,7 @@ public class SchemaSettings {
               () ->
                   table
                       .getColumns()
+                      .values()
                       .stream()
                       .map(ColumnMetadata::getName)
                       .collect(Collectors.toList()));
@@ -348,8 +359,7 @@ public class SchemaSettings {
       fieldsToVariables = removeMappingFunctions(fieldsToVariables);
     }
     if (keyspaceName != null) {
-      // keyspace is already properly quoted
-      session.execute("USE " + keyspaceName);
+      session.execute(new SimpleStatementBuilder("USE " + keyspaceName.asCql(true)).build());
     }
     preparedStatement = session.prepare(query);
     if (config.hasPath(QUERY)) {
@@ -359,7 +369,7 @@ public class SchemaSettings {
           createFieldsToVariablesMap(
               () ->
                   StreamSupport.stream(variables.spliterator(), false)
-                      .map(ColumnDefinitions.Definition::getName)
+                      .map(ColumnDefinition::getName)
                       .collect(Collectors.toList()));
       inferKeyspaceAndTableCustom(session);
       // validate user-provided query
@@ -382,25 +392,26 @@ public class SchemaSettings {
   private boolean isCounterTable() {
     return table
         .getColumns()
+        .values()
         .stream()
-        .anyMatch(c -> c.getType().getName() == DataType.Name.COUNTER);
+        .anyMatch(c -> c.getType().equals(DataTypes.COUNTER));
   }
 
   private ColumnDefinitions getVariables(WorkflowType workflowType) {
     switch (workflowType) {
       case LOAD:
-        return preparedStatement.getVariables();
+        return preparedStatement.getVariableDefinitions();
       case UNLOAD:
       case COUNT:
-        return resultSetVariables(preparedStatement);
+        return preparedStatement.getResultSetDefinitions();
       default:
         throw new AssertionError();
     }
   }
 
-  private BiMap<String, String> createFieldsToVariablesMap(Supplier<List<String>> columns)
-      throws BulkConfigurationException {
-    BiMap<String, String> fieldsToVariables;
+  private BiMap<String, CqlIdentifier> createFieldsToVariablesMap(
+      Supplier<List<CqlIdentifier>> columns) throws BulkConfigurationException {
+    BiMap<String, CqlIdentifier> fieldsToVariables;
     // create indexed mappings only for unload, and only if the connector really requires it, to
     // match the order in which the query declares variables.
     if (mapping == null) {
@@ -413,11 +424,11 @@ public class SchemaSettings {
       }
 
       if (!explicitVariables.isEmpty()) {
-        ImmutableBiMap.Builder<String, String> builder = ImmutableBiMap.builder();
-        for (Map.Entry<String, String> entry : explicitVariables.entrySet()) {
+        ImmutableBiMap.Builder<String, CqlIdentifier> builder = ImmutableBiMap.builder();
+        for (Map.Entry<String, CqlIdentifier> entry : explicitVariables.entrySet()) {
           builder.put(entry.getKey(), entry.getValue());
         }
-        for (Map.Entry<String, String> entry : fieldsToVariables.entrySet()) {
+        for (Map.Entry<String, CqlIdentifier> entry : fieldsToVariables.entrySet()) {
           if (!explicitVariables.containsKey(entry.getKey())
               && !explicitVariables.containsValue(entry.getValue())) {
             builder.put(entry.getKey(), entry.getValue());
@@ -438,63 +449,63 @@ public class SchemaSettings {
   }
 
   /** Version used with generated queries. */
-  private void inferKeyspaceAndTable(Session session) {
+  private void inferKeyspaceAndTable(CqlSession session) {
     assert !config.hasPath(QUERY);
     assert keyspaceName != null && tableName != null;
-    Metadata metadata = session.getCluster().getMetadata();
+    Metadata metadata = session.getMetadata();
     keyspace = metadata.getKeyspace(keyspaceName);
     if (keyspace == null) {
-      String lowerCaseKeyspaceName = ParseUtils.unDoubleQuote(keyspaceName).toLowerCase();
+      String lowerCaseKeyspaceName = keyspaceName.asInternal().toLowerCase();
       if (metadata.getKeyspace(lowerCaseKeyspaceName) != null) {
         throw new IllegalArgumentException(
             String.format(
                 "Keyspace %s does not exist, however a keyspace %s was found. Did you mean to use -k %s?",
-                keyspaceName, lowerCaseKeyspaceName, lowerCaseKeyspaceName));
+                keyspaceName.asCql(true), lowerCaseKeyspaceName, lowerCaseKeyspaceName));
       } else {
         throw new IllegalArgumentException(
-            String.format("Keyspace %s does not exist", keyspaceName));
+            String.format("Keyspace %s does not exist", keyspaceName.asCql(true)));
       }
     }
     table = keyspace.getTable(tableName);
     if (table == null) {
-      String lowerCaseTableName = ParseUtils.unDoubleQuote(tableName).toLowerCase();
+      String lowerCaseTableName = tableName.asInternal().toLowerCase();
       if (keyspace.getTable(lowerCaseTableName) != null) {
         throw new IllegalArgumentException(
             String.format(
                 "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
-                tableName, lowerCaseTableName, lowerCaseTableName));
+                tableName.asCql(true), lowerCaseTableName, lowerCaseTableName));
       } else {
-        throw new IllegalArgumentException(String.format("Table %s does not exist", tableName));
+        throw new IllegalArgumentException(String.format("Table %s does not exist", tableName.asCql(true)));
       }
     }
   }
 
   /** Version used with user-supplied queries. */
-  private void inferKeyspaceAndTableCustom(Session session) {
+  private void inferKeyspaceAndTableCustom(CqlSession session) {
     assert config.hasPath(QUERY);
     if (keyspace == null) {
       if (keyspaceName == null) {
-        keyspaceName = Metadata.quoteIfNecessary(queryInspector.getKeyspaceName());
+        keyspaceName = queryInspector.getKeyspaceName();
       }
-      keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
+      keyspace = session.getMetadata().getKeyspace(keyspaceName);
       if (keyspace == null) {
         throw new BulkConfigurationException(
-            "Could not infer the target keyspace form the provided statement (schema.query).");
+            "Could not infer the target keyspace from the provided statement (schema.query).");
       }
     }
     if (table == null) {
       if (tableName == null) {
-        tableName = Metadata.quoteIfNecessary(queryInspector.getTableName());
+        tableName = queryInspector.getTableName();
       }
       table = keyspace.getTable(tableName);
       if (table == null) {
         throw new BulkConfigurationException(
-            "Could not infer the target table form the provided statement (schema.query).");
+            "Could not infer the target table from the provided statement (schema.query).");
       }
     }
   }
 
-  private void validateMappedRecords(BiMap<String, String> fieldsToVariables) {
+  private void validateMappedRecords(BiMap<String, CqlIdentifier> fieldsToVariables) {
     if (preferIndexedMapping && !isIndexed(fieldsToVariables.keySet())) {
       throw new BulkConfigurationException(
           "Schema mapping contains named fields, but connector only supports indexed fields, "
@@ -504,8 +515,8 @@ public class SchemaSettings {
   }
 
   private void validateAllFieldsPresent(
-      BiMap<String, String> fieldsToVariables, Supplier<List<String>> columns) {
-    List<String> colNames = columns.get();
+      BiMap<String, CqlIdentifier> fieldsToVariables, Supplier<List<CqlIdentifier>> columns) {
+    List<CqlIdentifier> colNames = columns.get();
     fieldsToVariables.forEach(
         (key, value) -> {
           if (!isPseudoColumn(value) && !colNames.contains(value)) {
@@ -525,14 +536,14 @@ public class SchemaSettings {
         });
   }
 
-  private void validatePrimaryKeyPresent(BiMap<String, String> fieldsToVariables) {
+  private void validatePrimaryKeyPresent(BiMap<String, CqlIdentifier> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPrimaryKey();
     for (ColumnMetadata pk : partitionKey) {
       Collection<String> variables = queryInspector.getColumnsToVariables().get(pk.getName());
-      if (Collections.disjoint(fieldsToVariables.values(), variables)) {
+      if (Collections.disjoint(fieldsToVariables.values().stream().map(CqlIdentifier::asInternal).collect(Collectors.toSet()), variables)) {
         throw new BulkConfigurationException(
             "Missing required primary key column "
-                + Metadata.quoteIfNecessary(pk.getName())
+                + pk.getName().asCql(true)
                 + " from schema.mapping or schema.query");
       }
     }
@@ -545,16 +556,21 @@ public class SchemaSettings {
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
     Set<String> columns = new HashSet<>(queryInspector.getColumnsToVariables().values());
     for (ColumnMetadata pk : partitionKey) {
-      if (!columns.remove(pk.getName())) {
+      if (!columns.remove(pk.getName().asInternal())) {
         throw new BulkConfigurationException(
             "Missing required partition key column "
-                + Metadata.quoteIfNecessary(pk.getName())
+                + pk.getName().asCql(true)
                 + " from schema.query");
       }
     }
     if (!columns.isEmpty()) {
+      // TODO: This is a little hokey and may argue for "variables" to be CqlIdentifier's as well.
+      // Watch out for function calls in that case.
       String offendingColumns =
-          columns.stream().map(Metadata::quoteIfNecessary).collect(Collectors.joining(", "));
+          columns
+              .stream()
+              .map(c -> CqlIdentifier.fromInternal(c).asCql(true))
+              .collect(Collectors.joining(", "));
       throw new BulkConfigurationException(
           String.format(
               "The provided statement (schema.query) contains extraneous columns in the SELECT clause: "
@@ -563,20 +579,22 @@ public class SchemaSettings {
     }
   }
 
-  private ImmutableBiMap<String, String> inferFieldsToVariablesMap(Supplier<List<String>> columns) {
+  private ImmutableBiMap<String, CqlIdentifier> inferFieldsToVariablesMap(
+      Supplier<List<CqlIdentifier>> columns) {
 
     // use a builder to preserve iteration order
-    ImmutableBiMap.Builder<String, String> fieldsToVariables = new ImmutableBiMap.Builder<>();
+    ImmutableBiMap.Builder<String, CqlIdentifier> fieldsToVariables =
+        new ImmutableBiMap.Builder<>();
 
     int i = 0;
-    for (String colName : columns.get()) {
+    for (CqlIdentifier colName : columns.get()) {
       if (mapping == null || !mapping.getExcludedVariables().contains(colName)) {
         // don't quote column names here, it will be done later on if required
         // for unload only, use the query's variable order
         if (preferIndexedMapping) {
           fieldsToVariables.put(Integer.toString(i), colName);
         } else {
-          fieldsToVariables.put(colName, colName);
+          fieldsToVariables.put(colName.asInternal(), colName);
         }
       }
       i++;
@@ -584,16 +602,16 @@ public class SchemaSettings {
     return fieldsToVariables.build();
   }
 
-  private String inferInsertQuery(BiMap<String, String> fieldsToVariables) {
+  private String inferInsertQuery(BiMap<String, CqlIdentifier> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
     appendColumnNames(fieldsToVariables, sb);
     sb.append(") VALUES (");
-    Set<String> cols = maybeSortCols(fieldsToVariables);
-    Iterator<String> it = cols.iterator();
+    Set<CqlIdentifier> cols = maybeSortCols(fieldsToVariables);
+    Iterator<CqlIdentifier> it = cols.iterator();
     boolean isFirst = true;
     while (it.hasNext()) {
-      String col = it.next();
+      CqlIdentifier col = it.next();
       if (isPseudoColumn(col)) {
         // This isn't a real column name.
         continue;
@@ -609,7 +627,7 @@ public class SchemaSettings {
         sb.append(field);
       } else {
         sb.append(':');
-        sb.append(Metadata.quoteIfNecessary(col));
+        sb.append(col.asCql(true));
       }
     }
     sb.append(')');
@@ -617,20 +635,20 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private String inferUpdateCounterQuery(BiMap<String, String> fieldsToVariables) {
+  private String inferUpdateCounterQuery(BiMap<String, CqlIdentifier> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("UPDATE ");
     sb.append(keyspaceName).append('.').append(tableName);
     // Note: TTL and timestamp are not allowed in counter queries;
     // a test is made inside the following method
     addTimestampAndTTL(fieldsToVariables, sb);
     sb.append(" SET ");
-    Set<String> cols = maybeSortCols(fieldsToVariables);
-    Iterator<String> it = cols.iterator();
+    Set<CqlIdentifier> cols = maybeSortCols(fieldsToVariables);
+    Iterator<CqlIdentifier> it = cols.iterator();
     boolean isFirst = true;
-    List<String> pks =
+    List<CqlIdentifier> pks =
         table.getPrimaryKey().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
     while (it.hasNext()) {
-      String col = it.next();
+      CqlIdentifier col = it.next();
       if (pks.contains(col)) {
         continue;
       }
@@ -642,27 +660,29 @@ public class SchemaSettings {
         sb.append(',');
       }
       isFirst = false;
-      String quoted = Metadata.quoteIfNecessary(col);
+      String quoted = col.asCql(true);
       sb.append(quoted).append('=').append(quoted).append("+:").append(quoted);
     }
     sb.append(" WHERE ");
     it = pks.iterator();
     isFirst = true;
     while (it.hasNext()) {
-      String col = it.next();
+      CqlIdentifier col = it.next();
       if (!isFirst) {
         sb.append(" AND ");
       }
       isFirst = false;
-      sb.append(Metadata.quoteIfNecessary(col)).append("=:").append(Metadata.quoteIfNecessary(col));
+      String quoted = col.asCql(true);
+      sb.append(quoted).append("=:").append(quoted);
     }
     return sb.toString();
   }
 
-  private void addTimestampAndTTL(BiMap<String, String> fieldsToVariables, StringBuilder sb) {
-    boolean hasTtl = ttlSeconds != -1 || fieldsToVariables.containsValue(INTERNAL_TTL_VARNAME);
+  private void addTimestampAndTTL(
+      BiMap<String, CqlIdentifier> fieldsToVariables, StringBuilder sb) {
+    boolean hasTtl = ttlSeconds != -1 || fieldsToVariables.containsValue(TTL_VAR_IDENTIFIER);
     boolean hasTimestamp =
-        timestampMicros != -1 || fieldsToVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME);
+        timestampMicros != -1 || fieldsToVariables.containsValue(TIMESTAMP_VAR_IDENTIFIER);
     if (hasTtl || hasTimestamp) {
       if (isCounterTable()) {
         throw new BulkConfigurationException(
@@ -693,7 +713,7 @@ public class SchemaSettings {
     }
   }
 
-  private String inferReadQuery(BiMap<String, String> fieldsToVariables) {
+  private String inferReadQuery(BiMap<String, CqlIdentifier> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
     StringBuilder sb = new StringBuilder("SELECT ");
     appendColumnNames(fieldsToVariables, sb);
@@ -711,7 +731,7 @@ public class SchemaSettings {
     Iterator<ColumnMetadata> it = partitionKey.iterator();
     while (it.hasNext()) {
       ColumnMetadata col = it.next();
-      sb.append(Metadata.quoteIfNecessary(col.getName()));
+      sb.append(col.getName().asCql(true));
       if (it.hasNext()) {
         sb.append(',');
       }
@@ -724,16 +744,17 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private static void appendColumnNames(BiMap<String, String> fieldsToVariables, StringBuilder sb) {
+  private static void appendColumnNames(
+      BiMap<String, CqlIdentifier> fieldsToVariables, StringBuilder sb) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
-    Set<String> cols = maybeSortCols(fieldsToVariables);
-    Iterator<String> it = cols.iterator();
+    Set<CqlIdentifier> cols = maybeSortCols(fieldsToVariables);
+    Iterator<CqlIdentifier> it = cols.iterator();
     boolean isFirst = true;
     while (it.hasNext()) {
       // this assumes that the variable name found in the mapping
       // corresponds to a CQL column having the exact same name.
-      String col = it.next();
+      CqlIdentifier col = it.next();
       if (isPseudoColumn(col)) {
         // This is not a real column. Skip it.
         continue;
@@ -743,7 +764,7 @@ public class SchemaSettings {
         sb.append(',');
       }
       isFirst = false;
-      sb.append(Metadata.quoteIfNecessary(col));
+      sb.append(col.asCql(true));
     }
   }
 
@@ -752,7 +773,7 @@ public class SchemaSettings {
     Iterator<ColumnMetadata> pks = partitionKey.iterator();
     while (pks.hasNext()) {
       ColumnMetadata pk = pks.next();
-      sb.append(Metadata.quoteIfNecessary(pk.getName()));
+      sb.append(pk.getName().asCql(true));
       if (pks.hasNext()) {
         sb.append(',');
       }
@@ -761,11 +782,11 @@ public class SchemaSettings {
   }
 
   @NotNull
-  private static Set<String> maybeSortCols(BiMap<String, String> fieldsToVariables) {
-    Set<String> cols;
+  private static Set<CqlIdentifier> maybeSortCols(BiMap<String, CqlIdentifier> fieldsToVariables) {
+    Set<CqlIdentifier> cols;
     if (isIndexed(fieldsToVariables.keySet())) {
       // order columns by index
-      BiMap<String, String> variablesToFields = fieldsToVariables.inverse();
+      BiMap<CqlIdentifier, String> variablesToFields = fieldsToVariables.inverse();
       cols =
           new TreeSet<>(Comparator.comparingInt(o -> Integer.parseInt(variablesToFields.get(o))));
       cols.addAll(fieldsToVariables.values());
@@ -785,18 +806,18 @@ public class SchemaSettings {
     return field.contains("(");
   }
 
-  private static boolean isPseudoColumn(String col) {
-    return col.equals(INTERNAL_TTL_VARNAME) || col.equals(INTERNAL_TIMESTAMP_VARNAME);
+  private static boolean isPseudoColumn(CqlIdentifier col) {
+    return col.equals(TTL_VAR_IDENTIFIER) || col.equals(TIMESTAMP_VAR_IDENTIFIER);
   }
 
   private static String prettyPath(String path) {
     return String.format("schema%s%s", StringUtils.DELIMITER, path);
   }
 
-  private static BiMap<String, String> removeMappingFunctions(
-      BiMap<String, String> fieldsToVariables) {
-    ImmutableBiMap.Builder<String, String> builder = ImmutableBiMap.builder();
-    for (Map.Entry<String, String> entry : fieldsToVariables.entrySet()) {
+  private static BiMap<String, CqlIdentifier> removeMappingFunctions(
+      BiMap<String, CqlIdentifier> fieldsToVariables) {
+    ImmutableBiMap.Builder<String, CqlIdentifier> builder = ImmutableBiMap.builder();
+    for (Map.Entry<String, CqlIdentifier> entry : fieldsToVariables.entrySet()) {
       if (!isFunction(entry.getKey())) {
         builder.put(entry);
       }

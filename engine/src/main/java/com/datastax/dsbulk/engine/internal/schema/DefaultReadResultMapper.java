@@ -21,6 +21,7 @@ import com.google.common.base.Suppliers;
 import com.google.common.reflect.TypeToken;
 import java.net.URI;
 import java.util.function.Supplier;
+import sun.jvm.hotspot.debugger.ReadResult;
 
 public class DefaultReadResultMapper implements ReadResultMapper {
 

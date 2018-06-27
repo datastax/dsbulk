@@ -8,22 +8,15 @@
  */
 package com.datastax.dsbulk.executor.api.statement;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.gt;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.token;
 import static java.util.stream.Collectors.toList;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.StatementWrapper;
-import com.datastax.driver.core.TableMetadata;
-import com.datastax.driver.core.Token;
-import com.datastax.driver.core.TokenRange;
-import com.datastax.driver.core.querybuilder.Clause;
-import com.datastax.driver.core.querybuilder.Select;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
+import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
+import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import com.datastax.oss.driver.api.core.session.Session;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -35,32 +28,32 @@ public class TableScanner {
    * Creates and returns as many {@link Statement}s as necessary to read the entire table, one per
    * token range.
    *
-   * @param cluster a running {@link Cluster} to gather metadata from.
+   * @param session a running {@link Session} to gather metadata from.
    * @param keyspace the keyspace to query.
    * @param table the table to read.
    * @return as many {@link Statement}s as necessary to read the entire table, one per token range.
    */
-  public static List<Statement> scan(Cluster cluster, String keyspace, String table) {
-    return scan(cluster, cluster.getMetadata().getKeyspace(keyspace).getTable(table));
+  public static List<Statement> scan(Session session, String keyspace, String table) {
+    return scan(session, session.getMetadata().getKeyspace(keyspace).getTable(table));
   }
 
   /**
    * Creates and returns as many {@link Statement}s as necessary to read the entire table, one per
    * token range.
    *
-   * @param cluster a running {@link Cluster} to gather metadata from.
+   * @param session a running {@link Session} to gather metadata from.
    * @param table the table to read.
    * @return as many {@link Statement}s as necessary to read the entire table, one per token range.
    */
-  public static List<Statement> scan(Cluster cluster, TableMetadata table) {
-    return scan(cluster.getMetadata().getTokenRanges(), table);
+  public static List<Statement> scan(Session session, TableMetadata table) {
+    return scan(session.getMetadata().getTokenMap().map(TokenMap::getTokenRanges).orElse(null), table);
   }
 
   /**
    * Creates and returns as many {@link Statement}s as necessary to read the entire table, one per
    * token range.
    *
-   * @param ring the token ranges that define {@link Metadata#getTokenRanges() data distribution} in
+   * @param ring the token ranges that define {@link TokenMap#getTokenRanges() data distribution} in
    *     the ring.
    * @param table the table to read.
    * @return as many {@link Statement}s as necessary to read the entire table, one per token range.
@@ -73,7 +66,7 @@ public class TableScanner {
    * Creates and returns as many {@link Statement}s as necessary to read the entire table, one per
    * token range, applying an optional WHERE clause.
    *
-   * @param ring the token ranges that define {@link Metadata#getTokenRanges() data distribution} in
+   * @param ring the token ranges that define {@link TokenMap#getTokenRanges() data distribution} in
    *     the ring.
    * @param table the table to read.
    * @param where An optional WHERE clause to apply to each statement.
@@ -87,7 +80,7 @@ public class TableScanner {
    * Creates and returns as many {@link Statement}s as necessary to read the entire table, one per
    * token range, applying an optional WHERE clause.
    *
-   * @param ring the token ranges that define {@link Metadata#getTokenRanges() data distribution} in
+   * @param ring the token ranges that define {@link TokenMap#getTokenRanges() data distribution} in
    *     the ring.
    * @param statementFactory a factory for statements to associate with each token range; supplied
    *     statements must have their keyspace correctly set.

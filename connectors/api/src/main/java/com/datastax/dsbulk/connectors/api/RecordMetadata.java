@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.connectors.api;
 
-import com.datastax.driver.core.DataType;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -25,5 +25,5 @@ public interface RecordMetadata {
    * @param cqlType the CQL type associated with the given field.
    * @return the type of the given field, or {@code null} if the field isn't defined in this schema.
    */
-  TypeToken<?> getFieldType(@NotNull String field, @NotNull DataType cqlType);
+  GenericType<?> getFieldType(@NotNull String field, @NotNull DataType cqlType);
 }

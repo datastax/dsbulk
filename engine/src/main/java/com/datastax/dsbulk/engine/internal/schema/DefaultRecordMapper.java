@@ -8,25 +8,26 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.DriverCoreHooks;
-import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.TypeCodec;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARCHAR;
+
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
-import com.google.common.reflect.TypeToken;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BiFunction;
 
@@ -36,8 +37,7 @@ public class DefaultRecordMapper implements RecordMapper {
   private static final String CQL_TYPE = "cqlType";
 
   private final PreparedStatement insertStatement;
-  private final int[] pkIndices;
-  private final ProtocolVersion protocolVersion;
+  private final List<Integer> pkIndices;
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
   private final boolean allowExtraFields;
@@ -57,21 +57,18 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields) {
     this(
         insertStatement,
-        DriverCoreHooks.partitionKeyIndices(insertStatement.getPreparedId()),
-        DriverCoreHooks.protocolVersion(insertStatement.getPreparedId()),
         mapping,
         recordMetadata,
         nullToUnset,
         allowExtraFields,
         allowMissingFields,
-        (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
+        (mappedRecord, statement) ->
+            new BulkBoundStatement<>(mappedRecord, insertStatement.bind()));
   }
 
   @VisibleForTesting
   DefaultRecordMapper(
       PreparedStatement insertStatement,
-      int[] pkIndices,
-      ProtocolVersion protocolVersion,
       Mapping mapping,
       RecordMetadata recordMetadata,
       boolean nullToUnset,
@@ -79,8 +76,7 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
-    this.pkIndices = pkIndices;
-    this.protocolVersion = protocolVersion;
+    this.pkIndices = insertStatement.getPrimaryKeyIndices();
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
     this.nullToUnset = nullToUnset;
@@ -92,7 +88,7 @@ public class DefaultRecordMapper implements RecordMapper {
   @Override
   public Statement map(Record record) {
     String currentField = null;
-    String variable = null;
+    CqlIdentifier variable = null;
     Object raw = null;
     DataType cqlType = null;
     try {
@@ -100,12 +96,13 @@ public class DefaultRecordMapper implements RecordMapper {
         ensureAllFieldsPresent(record.fields());
       }
       BoundStatement bs = boundStatementFactory.apply(record, insertStatement);
+      ColumnDefinitions variableDefinitions = insertStatement.getVariableDefinitions();
       for (String field : record.fields()) {
         currentField = field;
         variable = mapping.fieldToVariable(field);
         if (variable != null) {
-          cqlType = insertStatement.getVariables().getType(variable);
-          TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
+          cqlType = variableDefinitions.get(variable).getType();
+          GenericType<?> fieldType = recordMetadata.getFieldType(field, cqlType);
           if (fieldType != null) {
             raw = record.getFieldValue(field);
             bindColumn(bs, variable, raw, cqlType, fieldType);
@@ -124,7 +121,7 @@ public class DefaultRecordMapper implements RecordMapper {
       return bs;
     } catch (Exception e) {
       String finalCurrentField = currentField;
-      String finalVariable = variable;
+      CqlIdentifier finalVariable = variable;
       Object finalRaw = raw;
       DataType finalCqlType = cqlType;
       return new UnmappableStatement(
@@ -135,7 +132,7 @@ public class DefaultRecordMapper implements RecordMapper {
                       record.getLocation(),
                       FIELD,
                       finalCurrentField,
-                      finalVariable,
+                      finalVariable == null ? null : finalVariable.asInternal(),
                       finalRaw == null ? "" : finalRaw.toString(),
                       CQL_TYPE,
                       finalCqlType == null ? "" : finalCqlType.toString())),
@@ -145,21 +142,20 @@ public class DefaultRecordMapper implements RecordMapper {
 
   private <T> void bindColumn(
       BoundStatement bs,
-      String variable,
+      CqlIdentifier variable,
       T raw,
       DataType cqlType,
-      TypeToken<? extends T> javaType) {
+      GenericType<? extends T> javaType) {
     // the mapping provides unquoted variable names,
     // so we need to quote them now
-    String name = Metadata.quoteIfNecessary(variable);
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
-    ByteBuffer bb = codec.serialize(raw, protocolVersion);
+    ByteBuffer bb = codec.encode(raw, bs.protocolVersion());
     // Account for nullToUnset.
     if (isNull(bb, cqlType)) {
       if (isPrimaryKey(variable)) {
         throw new InvalidMappingException(
             "Primary key column "
-                + Metadata.quoteIfNecessary(variable)
+                + variable.asCql(true)
                 + " cannot be mapped to null. "
                 + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
       }
@@ -167,7 +163,7 @@ public class DefaultRecordMapper implements RecordMapper {
         return;
       }
     }
-    bs.setBytesUnsafe(name, bb);
+    bs.setBytesUnsafe(variable, bb);
   }
 
   private boolean isNull(ByteBuffer bb, DataType cqlType) {
@@ -177,8 +173,7 @@ public class DefaultRecordMapper implements RecordMapper {
     if (bb.hasRemaining()) {
       return false;
     }
-    switch (cqlType.getName()) {
-      case TEXT:
+    switch (cqlType.getProtocolCode()) {
       case VARCHAR:
       case ASCII:
         // empty strings are encoded as zero-length buffers,
@@ -189,21 +184,21 @@ public class DefaultRecordMapper implements RecordMapper {
     }
   }
 
-  private boolean isPrimaryKey(String variable) {
-    return Arrays.binarySearch(pkIndices, insertStatement.getVariables().getIndexOf(variable)) >= 0;
+  private boolean isPrimaryKey(CqlIdentifier variable) {
+    return pkIndices.contains(insertStatement.getVariableDefinitions().firstIndexOf(variable));
   }
 
   private void ensureAllFieldsPresent(Set<String> recordFields) {
-    ColumnDefinitions variables = insertStatement.getVariables();
+    ColumnDefinitions variables = insertStatement.getVariableDefinitions();
     for (int i = 0; i < variables.size(); i++) {
-      String variable = variables.getName(i);
+      CqlIdentifier variable = variables.get(i).getName();
       String field = mapping.variableToField(variable);
       if (!recordFields.contains(field)) {
         throw new InvalidMappingException(
             "Required field "
                 + field
                 + " (mapped to column "
-                + Metadata.quoteIfNecessary(variable)
+                + variable.asCql(true)
                 + ") was missing from record. "
                 + "Please remove it from the mapping "
                 + "or set schema.allowMissingFields to true.");
@@ -215,10 +210,10 @@ public class DefaultRecordMapper implements RecordMapper {
     if (pkIndices != null) {
       for (int pkIndex : pkIndices) {
         if (!bs.isSet(pkIndex)) {
-          String variable = insertStatement.getVariables().getName(pkIndex);
+          CqlIdentifier variable = insertStatement.getVariableDefinitions().get(pkIndex).getName();
           throw new InvalidMappingException(
               "Primary key column "
-                  + Metadata.quoteIfNecessary(variable)
+                  + variable.asCql(true)
                   + " cannot be left unmapped. "
                   + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
         }
