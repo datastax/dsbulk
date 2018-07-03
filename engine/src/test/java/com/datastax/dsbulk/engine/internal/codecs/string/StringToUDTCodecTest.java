@@ -60,8 +60,8 @@ class StringToUDTCodecTest {
   @BeforeEach
   void setUp() {
     ExtendedCodecRegistry codecRegistry = newCodecRegistry("nullStrings = [NULL]");
-    udtCodec1 = (StringToUDTCodec) codecRegistry.codecFor(udt1, GenericType.of(String.class));
-    udtCodec2 = (StringToUDTCodec) codecRegistry.codecFor(udt2, GenericType.of(String.class));
+    udtCodec1 = (StringToUDTCodec) codecRegistry.codecFor(udt1, GenericType.STRING);
+    udtCodec2 = (StringToUDTCodec) codecRegistry.codecFor(udt2, GenericType.STRING);
   }
 
   @Test

@@ -25,7 +25,6 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 class DefaultMappingTest {
-  private static final GenericType<String> STRING_TYPE = GenericType.of(String.class);
 
   @Test
   void should_create_mapping() {
@@ -34,7 +33,7 @@ class DefaultMappingTest {
         ImmutableBiMap.<String, CqlIdentifier>builder().put("f1", c1).build();
     ExtendedCodecRegistry extendedCodecRegistry = mock(ExtendedCodecRegistry.class);
 
-    when(extendedCodecRegistry.codecFor(DataTypes.TEXT, STRING_TYPE)).thenReturn(TypeCodecs.TEXT);
+    when(extendedCodecRegistry.codecFor(DataTypes.TEXT, GenericType.STRING)).thenReturn(TypeCodecs.TEXT);
     DefaultMapping mapping =
         new DefaultMapping(
             fieldsToVariables, extendedCodecRegistry, CqlIdentifier.fromCql("irrelevant"));
@@ -42,7 +41,7 @@ class DefaultMappingTest {
     assertThat(mapping.fieldToVariable("nonexistent")).isNull();
     assertThat(mapping.variableToField(c1)).isEqualTo("f1");
     assertThat(mapping.variableToField(CqlIdentifier.fromCql("nonexistent"))).isNull();
-    assertThat(mapping.codec(c1, DataTypes.TEXT, STRING_TYPE))
+    assertThat(mapping.codec(c1, DataTypes.TEXT, GenericType.STRING))
         .isInstanceOf(TypeCodecs.TEXT.getClass());
   }
 
@@ -52,12 +51,12 @@ class DefaultMappingTest {
     ConvertingCodec<String, Instant> codec =
         new StringToInstantCodec(null, null, null, null, null, null);
     when(extendedCodecRegistry.<String, Instant>convertingCodecFor(
-            DataTypes.TIMESTAMP, STRING_TYPE))
+            DataTypes.TIMESTAMP, GenericType.STRING))
         .thenReturn(codec);
     CqlIdentifier myWriteTimeVar = CqlIdentifier.fromCql("myWriteTimeVar");
     DefaultMapping mapping =
         new DefaultMapping(ImmutableBiMap.of(), extendedCodecRegistry, myWriteTimeVar);
-    assertThat(mapping.codec(myWriteTimeVar, DataTypes.BIGINT, STRING_TYPE))
+    assertThat(mapping.codec(myWriteTimeVar, DataTypes.BIGINT, GenericType.STRING))
         .isNotNull()
         .isInstanceOf(WriteTimeCodec.class);
   }

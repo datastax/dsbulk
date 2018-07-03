@@ -38,7 +38,7 @@ class StringToTupleCodecTest {
     codec =
         (StringToTupleCodec)
             newCodecRegistry("nullStrings = [NULL, \"\"]")
-                .codecFor(tupleType, GenericType.of(String.class));
+                .codecFor(tupleType, GenericType.STRING);
   }
 
   @Test

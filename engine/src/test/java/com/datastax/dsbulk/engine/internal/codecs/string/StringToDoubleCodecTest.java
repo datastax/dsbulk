@@ -26,7 +26,7 @@ class StringToDoubleCodecTest {
         (StringToDoubleCodec)
             newCodecRegistry(
                     "nullStrings = [NULL], roundingStrategy = HALF_EVEN, formatNumbers = true")
-                .codecFor(DataTypes.DOUBLE, GenericType.of(String.class));
+                .codecFor(DataTypes.DOUBLE, GenericType.STRING);
   }
 
   @Test

@@ -25,7 +25,7 @@ class StringToIntegerCodecTest {
     codec =
         (StringToIntegerCodec)
             newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
-                .codecFor(DataTypes.INT, GenericType.of(String.class));
+                .codecFor(DataTypes.INT, GenericType.STRING);
   }
 
   @Test

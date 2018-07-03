@@ -32,7 +32,7 @@ class StringToMapCodecTest {
             newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
                 .codecFor(
                     DataTypes.mapOf(DataTypes.DOUBLE, DataTypes.listOf(DataTypes.TEXT)),
-                    GenericType.of(String.class));
+                    GenericType.STRING);
   }
 
   @Test

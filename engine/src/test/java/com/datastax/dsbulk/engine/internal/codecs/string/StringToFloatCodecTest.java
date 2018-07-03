@@ -26,7 +26,7 @@ class StringToFloatCodecTest {
         (StringToFloatCodec)
             newCodecRegistry(
                     "nullStrings = [NULL], roundingStrategy = HALF_EVEN, formatNumbers = true")
-                .codecFor(DataTypes.FLOAT, GenericType.of(String.class));
+                .codecFor(DataTypes.FLOAT, GenericType.STRING);
   }
 
   @Test

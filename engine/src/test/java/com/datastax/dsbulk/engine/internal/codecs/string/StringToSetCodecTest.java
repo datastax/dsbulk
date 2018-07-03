@@ -28,10 +28,10 @@ class StringToSetCodecTest {
     ExtendedCodecRegistry codecRegistry = newCodecRegistry("nullStrings = [NULL]");
     codec1 =
         (StringToSetCodec<Double>)
-            codecRegistry.codecFor(DataTypes.setOf(DataTypes.DOUBLE), GenericType.of(String.class));
+            codecRegistry.codecFor(DataTypes.setOf(DataTypes.DOUBLE), GenericType.STRING);
     codec2 =
         (StringToSetCodec<String>)
-            codecRegistry.codecFor(DataTypes.setOf(DataTypes.TEXT), GenericType.of(String.class));
+            codecRegistry.codecFor(DataTypes.setOf(DataTypes.TEXT), GenericType.STRING);
   }
 
   @Test

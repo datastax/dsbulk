@@ -103,11 +103,11 @@ class DefaultRecordMapperTest {
         new TestRecordMetadata(
             ImmutableMap.of(
                 F1,
-                GenericType.of(String.class),
+                GenericType.STRING,
                 F2,
-                GenericType.of(String.class),
+                GenericType.STRING,
                 F3,
-                GenericType.of(String.class)));
+                GenericType.STRING));
 
     boundStatement = mock(BoundStatement.class);
     mapping = mock(Mapping.class);
@@ -160,9 +160,9 @@ class DefaultRecordMapperTest {
     when(mapping.variableToField(C2)).thenReturn(F2);
     when(mapping.variableToField(C3)).thenReturn(F3);
 
-    when(mapping.codec(C1, DataTypes.INT, GenericType.of(String.class))).thenReturn(codec1);
-    when(mapping.codec(C2, DataTypes.BIGINT, GenericType.of(String.class))).thenReturn(codec2);
-    when(mapping.codec(C3, DataTypes.TEXT, GenericType.of(String.class))).thenReturn(codec3);
+    when(mapping.codec(C1, DataTypes.INT, GenericType.STRING)).thenReturn(codec1);
+    when(mapping.codec(C2, DataTypes.BIGINT, GenericType.STRING)).thenReturn(codec2);
+    when(mapping.codec(C3, DataTypes.TEXT, GenericType.STRING)).thenReturn(codec3);
 
     // emulate the behavior of a ConvertingCodec (StringToXCodec)
     when(codec1.encode(any(), any()))
@@ -226,7 +226,7 @@ class DefaultRecordMapperTest {
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
                 nullStrings));
-    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.of(String.class))).thenReturn(codec);
+    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.STRING)).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
@@ -262,7 +262,7 @@ class DefaultRecordMapperTest {
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
                 nullStrings));
-    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.of(String.class))).thenReturn(codec);
+    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.STRING)).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
@@ -296,7 +296,7 @@ class DefaultRecordMapperTest {
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
                 nullStrings));
-    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.of(String.class))).thenReturn(codec);
+    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.STRING)).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
@@ -334,7 +334,7 @@ class DefaultRecordMapperTest {
                 ImmutableMap.of("true", true, "false", false),
                 newArrayList(ONE, ZERO),
                 nullStrings));
-    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.of(String.class))).thenReturn(codec);
+    when(mapping.codec(C1, DataTypes.BIGINT, GenericType.STRING)).thenReturn(codec);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
@@ -396,7 +396,7 @@ class DefaultRecordMapperTest {
   @Test
   void should_return_unmappable_statement_when_mapping_fails() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
-    when(mapping.codec(C3, DataTypes.TEXT, GenericType.of(String.class)))
+    when(mapping.codec(C3, DataTypes.TEXT, GenericType.STRING))
         .thenThrow(CodecNotFoundException.class);
     RecordMapper mapper =
         new DefaultRecordMapper(

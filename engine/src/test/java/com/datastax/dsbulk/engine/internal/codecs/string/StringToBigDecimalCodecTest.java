@@ -28,7 +28,7 @@ class StringToBigDecimalCodecTest {
     codec =
         (StringToBigDecimalCodec)
             newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
-                .codecFor(DataTypes.DECIMAL, GenericType.of(String.class));
+                .codecFor(DataTypes.DECIMAL, GenericType.STRING);
   }
 
   @Test

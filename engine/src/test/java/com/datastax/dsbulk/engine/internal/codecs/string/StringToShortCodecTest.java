@@ -25,7 +25,7 @@ class StringToShortCodecTest {
     codec =
         (StringToShortCodec)
             newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
-                .codecFor(DataTypes.SMALLINT, GenericType.of(String.class));
+                .codecFor(DataTypes.SMALLINT, GenericType.STRING);
   }
 
   @Test

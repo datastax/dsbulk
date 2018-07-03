@@ -82,7 +82,7 @@ import reactor.core.scheduler.Schedulers;
 public class CSVConnector implements Connector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
-  private static final GenericType<String> STRING_TYPE = GenericType.of(String.class);
+  private static final GenericType<String> STRING_TYPE = GenericType.STRING;
 
   private static final String URL = "url";
   private static final String FILE_NAME_PATTERN = "fileNamePattern";

@@ -33,16 +33,16 @@ class StringToInstantCodecTest {
     codec1 =
         (StringToInstantCodec)
             CodecTestUtils.newCodecRegistry("nullStrings = [NULL]")
-                .codecFor(DataTypes.TIMESTAMP, GenericType.of(String.class));
+                .codecFor(DataTypes.TIMESTAMP, GenericType.STRING);
     codec2 =
         (StringToInstantCodec)
             CodecTestUtils.newCodecRegistry("nullStrings = [NULL], timestamp = yyyyMMddHHmmss")
-                .codecFor(DataTypes.TIMESTAMP, GenericType.of(String.class));
+                .codecFor(DataTypes.TIMESTAMP, GenericType.STRING);
     codec3 =
         (StringToInstantCodec)
             CodecTestUtils.newCodecRegistry(
                     "nullStrings = [NULL], unit = MINUTES, epoch = \"2000-01-01T00:00:00Z\"")
-                .codecFor(DataTypes.TIMESTAMP, GenericType.of(String.class));
+                .codecFor(DataTypes.TIMESTAMP, GenericType.STRING);
   }
 
   @Test

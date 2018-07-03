@@ -25,7 +25,7 @@ class StringToByteCodecTest {
     codec =
         (StringToByteCodec)
             newCodecRegistry("nullStrings = [NULL]")
-                .codecFor(DataTypes.TINYINT, GenericType.of(String.class));
+                .codecFor(DataTypes.TINYINT, GenericType.STRING);
   }
 
   @Test

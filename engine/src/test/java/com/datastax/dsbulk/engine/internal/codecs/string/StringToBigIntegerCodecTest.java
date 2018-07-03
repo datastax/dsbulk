@@ -26,7 +26,7 @@ class StringToBigIntegerCodecTest {
     codec =
         (StringToBigIntegerCodec)
             newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
-                .codecFor(DataTypes.VARINT, GenericType.of(String.class));
+                .codecFor(DataTypes.VARINT, GenericType.STRING);
   }
 
   @Test

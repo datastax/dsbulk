@@ -25,7 +25,7 @@ class StringToLongCodecTest {
     codec =
         (StringToLongCodec)
             newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
-                .codecFor(DataTypes.BIGINT, GenericType.of(String.class));
+                .codecFor(DataTypes.BIGINT, GenericType.STRING);
   }
 
   @Test

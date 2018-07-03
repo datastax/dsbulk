@@ -112,7 +112,7 @@ class SchemaSettingsTest {
   private ColumnMetadata col3;
 
   private final ExtendedCodecRegistry codecRegistry = mock(ExtendedCodecRegistry.class);
-  private final RecordMetadata recordMetadata = (field, cqlType) -> GenericType.of(String.class);
+  private final RecordMetadata recordMetadata = (field, cqlType) -> GenericType.STRING;
 
   @BeforeEach
   void setUp() {
