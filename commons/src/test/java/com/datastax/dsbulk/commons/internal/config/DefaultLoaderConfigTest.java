@@ -10,12 +10,12 @@ package com.datastax.dsbulk.commons.internal.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
-import com.datastax.driver.core.TimestampGenerator;
-import com.datastax.driver.core.policies.DefaultRetryPolicy;
-import com.datastax.driver.core.policies.RetryPolicy;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
+import com.datastax.oss.driver.api.core.retry.RetryPolicy;
+import com.datastax.oss.driver.api.core.time.TimestampGenerator;
+import com.datastax.oss.driver.internal.core.retry.DefaultRetryPolicy;
+import com.datastax.oss.driver.internal.core.time.AtomicTimestampGenerator;
 import com.typesafe.config.ConfigFactory;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -123,26 +123,4 @@ class DefaultLoaderConfigTest {
     assertThat(charset2).isEqualTo(Charset.forName("UTF-8"));
   }
 
-  @Test
-  void should_resolve_class() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("class1 = java.lang.String, class2 = DefaultRetryPolicy"));
-    Class<? extends String> class1 = config.getClass("class1", String.class);
-    assertThat(class1).isEqualTo(String.class);
-    Class<?> class2 = config.getClass("class2", RetryPolicy.class);
-    assertThat(class2).isEqualTo(DefaultRetryPolicy.class);
-  }
-
-  @Test
-  void should_resolve_instance() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "class1 = java.lang.String, class2 = AtomicMonotonicTimestampGenerator"));
-    Object o1 = config.getInstance("class1", String.class);
-    assertThat(o1).isInstanceOf(String.class);
-    Object o2 = config.getInstance("class2", TimestampGenerator.class);
-    assertThat(o2).isInstanceOf(AtomicMonotonicTimestampGenerator.class);
-  }
 }

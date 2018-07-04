@@ -16,7 +16,7 @@ import com.datastax.oss.simulacron.server.BoundCluster;
 import com.datastax.oss.simulacron.server.BoundNode;
 import com.datastax.oss.simulacron.server.Server;
 import java.lang.reflect.Parameter;
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -64,7 +64,7 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
   }
 
   @Override
-  public void afterEach(ExtensionContext context) throws Exception {
+  public void afterEach(ExtensionContext context) {
     BoundCluster boundCluster = getOrCreateBoundCluster(context);
     boundCluster.clearLogs();
     boundCluster.clearPrimes(true);
@@ -88,12 +88,12 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
   }
 
   @Override
-  protected List<InetAddress> getContactPoints(ExtensionContext context) {
+  protected List<InetSocketAddress> getContactPoints(ExtensionContext context) {
     return getOrCreateBoundCluster(context)
         .dc(0)
         .getNodes()
         .stream()
-        .map(BoundNode::inet)
+        .map(BoundNode::inetSocketAddress)
         .collect(Collectors.toList());
   }
 

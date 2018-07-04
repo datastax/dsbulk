@@ -78,7 +78,7 @@ public interface LoaderConfig extends Config {
   default <T> Class<? extends T> getClass(String path, Class<T> expected) {
     String setting = getString(path);
     try {
-      Class<?> c = ReflectionUtils.resolveClass(setting);
+      Class<?> c = Class.forName(setting);
       if (expected.isAssignableFrom(c)) {
         @SuppressWarnings("unchecked")
         Class<T> ret = (Class<T>) c;

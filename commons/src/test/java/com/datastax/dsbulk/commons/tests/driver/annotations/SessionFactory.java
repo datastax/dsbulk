@@ -15,12 +15,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Annotation that marks a method as being a factory for {@link com.datastax.driver.core.Cluster}
- * instances.
+ * Annotation that marks a method as being a factory for {@link
+ * com.datastax.oss.driver.api.core.CqlSession} instances.
  *
  * <p>Such methods must be static and their return type must be {@link
- * com.datastax.driver.core.Cluster.Builder}.
+ * com.datastax.oss.driver.api.core.CqlSessionBuilder}.
  */
 @Retention(RUNTIME)
 @Target(METHOD)
-public @interface ClusterFactory {}
+public @interface SessionFactory {}

@@ -11,12 +11,21 @@ package com.datastax.dsbulk.commons.tests.driver.annotations;
 import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import com.datastax.dse.driver.api.core.DseProtocolVersion;
+import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 @Retention(RUNTIME)
 @Target(PARAMETER)
 public @interface SessionConfig {
+
+  /** The session configuration; each entry is of the form setting=value. */
+  String[] settings() default {};
+
+  /** Whether to enable SSL with a default set of credentials, keystores and truststores. */
+  boolean ssl() default false;
 
   /**
    * Whether to set the current session to a specific keyspace through a {@code USE} statement.
@@ -47,8 +56,8 @@ public @interface SessionConfig {
   String loggedKeyspaceName() default "";
 
   /**
-   * The strategy to adopt when initializing a {@link com.datastax.driver.core.Session}: whether to
-   * create a new random keyspace, a keyspace with a fixed name, or no keyspace.
+   * The strategy to adopt when initializing a {@link com.datastax.oss.driver.api.core.CqlSession}:
+   * whether to create a new random keyspace, a keyspace with a fixed name, or no keyspace.
    */
   enum UseKeyspaceMode {
     NONE,

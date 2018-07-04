@@ -8,19 +8,17 @@
  */
 package com.datastax.dsbulk.commons.tests.utils;
 
-import com.datastax.driver.core.Metadata;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
 
 public abstract class CQLUtils {
 
   private static final String CREATE_KEYSPACE_FORMAT =
-      "CREATE KEYSPACE %s WITH replication = { 'class' : '%s', 'replication_factor' : %d }";
+      "CREATE KEYSPACE %s WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : %d }";
 
   public static String createKeyspaceSimpleStrategy(String keyspace, int replicationFactor) {
-    return createKeyspace(keyspace, "SimpleStrategy", replicationFactor);
-  }
-
-  private static String createKeyspace(String keyspace, String strategy, int replicationFactor) {
     return String.format(
-        CREATE_KEYSPACE_FORMAT, Metadata.quoteIfNecessary(keyspace), strategy, replicationFactor);
+        CREATE_KEYSPACE_FORMAT,
+        CqlIdentifier.fromInternal(keyspace).asCql(true),
+        replicationFactor);
   }
 }

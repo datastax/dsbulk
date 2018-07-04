@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.commons.tests.utils;
 
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.exceptions.AlreadyExistsException;
-import com.datastax.driver.core.exceptions.InvalidQueryException;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.servererrors.AlreadyExistsException;
+import com.datastax.oss.driver.api.core.servererrors.InvalidQueryException;
 import com.google.common.util.concurrent.Uninterruptibles;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,7 +28,7 @@ public class SessionUtils {
    * @param session The session to use.
    * @param keyspace The keyspace name to create. Should be quoted if necessary.
    */
-  public static void createSimpleKeyspace(Session session, String keyspace) {
+  public static void createSimpleKeyspace(CqlSession session, String keyspace) {
     try {
       LOGGER.debug("Using keyspace " + keyspace);
       session.execute(CQLUtils.createKeyspaceSimpleStrategy(keyspace, 1));
@@ -44,7 +44,7 @@ public class SessionUtils {
    * @param session The session to use.
    * @param keyspace The keyspace to USE.
    */
-  public static void useKeyspace(Session session, String keyspace) {
+  public static void useKeyspace(CqlSession session, String keyspace) {
     int maxTries = 3;
     for (int i = 1; i <= maxTries; i++) {
       try {
@@ -65,7 +65,7 @@ public class SessionUtils {
    * @param session The session to use.
    * @param statements The statements to execute.
    */
-  public static void execute(Session session, String... statements) {
+  public static void execute(CqlSession session, String... statements) {
     execute(session, Arrays.asList(statements));
   }
 
@@ -75,7 +75,7 @@ public class SessionUtils {
    * @param session The session to use.
    * @param statements The statements to execute.
    */
-  private static void execute(Session session, Collection<String> statements) {
+  private static void execute(CqlSession session, Collection<String> statements) {
     for (String stmt : statements) {
       session.execute(stmt);
     }

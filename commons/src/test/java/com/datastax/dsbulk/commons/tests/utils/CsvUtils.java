@@ -10,11 +10,11 @@ package com.datastax.dsbulk.commons.tests.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SimpleStatement;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.google.common.collect.ImmutableMap;
 import com.univocity.parsers.common.record.Record;
 import com.univocity.parsers.conversions.Conversion;
@@ -28,6 +28,7 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.Map;
+import java.util.Objects;
 
 public class CsvUtils {
 
@@ -77,7 +78,7 @@ public class CsvUtils {
       "0=\"BEGINNING IP ADDRESS\",1=\"ENDING IP ADDRESS\",2=\"BEGINNING IP NUMBER\",3=\"ENDING IP NUMBER\","
           + "4=\"COUNTRY CODE\",5=\"COUNTRY NAME\"";
 
-  public static void createIpByCountryTable(Session session) {
+  public static void createIpByCountryTable(CqlSession session) {
     session.execute(
         "CREATE TABLE IF NOT EXISTS ip_by_country ("
             + "country_code varchar,"
@@ -89,7 +90,7 @@ public class CsvUtils {
             + "PRIMARY KEY(country_code, beginning_ip_address))");
   }
 
-  public static void createWithSpacesTable(Session session) {
+  public static void createWithSpacesTable(CqlSession session) {
     session.execute(
         "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "
             + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
@@ -98,7 +99,7 @@ public class CsvUtils {
             + "key int PRIMARY KEY, \"my destination\" text)");
   }
 
-  public static void createIpByCountryCaseSensitiveTable(Session session) {
+  public static void createIpByCountryCaseSensitiveTable(CqlSession session) {
     session.execute(
         "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "
             + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
@@ -113,7 +114,7 @@ public class CsvUtils {
             + "PRIMARY KEY(\"COUNTRY CODE\", \"BEGINNING IP ADDRESS\"))");
   }
 
-  public static PreparedStatement prepareInsertStatement(Session session) {
+  public static PreparedStatement prepareInsertStatement(CqlSession session) {
     return session.prepare(INSERT_INTO_IP_BY_COUNTRY);
   }
 
@@ -121,7 +122,7 @@ public class CsvUtils {
     return RECORD_MAP;
   }
 
-  public static void truncateIpByCountryTable(Session session) {
+  public static void truncateIpByCountryTable(CqlSession session) {
     session.execute("TRUNCATE ip_by_country");
   }
 
@@ -131,7 +132,8 @@ public class CsvUtils {
 
   public static Record recordForRow(Row row) {
     return RECORD_MAP.get(
-        row.getString("country_code") + row.getInet("beginning_ip_address").getHostAddress());
+        row.getString("country_code")
+            + Objects.requireNonNull(row.getInetAddress("beginning_ip_address")).getHostAddress());
   }
 
   public static Flowable<SimpleStatement> simpleStatements() {
@@ -161,7 +163,7 @@ public class CsvUtils {
 
   private static SimpleStatement toSimpleStatement(Record record) {
     SimpleStatement statement =
-        new SimpleStatement(
+        SimpleStatement.newInstance(
             INSERT_INTO_IP_BY_COUNTRY,
             record.getString("ISO 3166 Country Code"),
             record.getString("Country Name"),
@@ -189,9 +191,9 @@ public class CsvUtils {
   public static void assertRowEqualsRecord(Row row, Record record) {
     assertThat(row.getString("country_code")).isEqualTo(record.getString("ISO 3166 Country Code"));
     assertThat(row.getString("country_name")).isEqualTo(record.getString("Country Name"));
-    assertThat(row.getInet("beginning_ip_address"))
+    assertThat(row.getInetAddress("beginning_ip_address"))
         .isEqualTo(record.getValue("beginning IP Address", InetAddress.class, INET_CONVERTER));
-    assertThat(row.getInet("ending_ip_address"))
+    assertThat(row.getInetAddress("ending_ip_address"))
         .isEqualTo(record.getValue("ending IP Address", InetAddress.class, INET_CONVERTER));
     assertThat(row.getLong("beginning_ip_number")).isEqualTo(record.getLong("beginning IP Number"));
     assertThat(row.getLong("ending_ip_number")).isEqualTo(record.getLong("ending IP Number"));

@@ -11,8 +11,8 @@ package com.datastax.dsbulk.commons.tests.simulacron;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Metadata;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
@@ -295,17 +295,17 @@ public class SimulacronUtils {
             new Query(
                 String.format(
                     "INSERT INTO %s.%s (%s) VALUES (%s)",
-                    Metadata.quoteIfNecessary(keyspace.name),
-                    Metadata.quoteIfNecessary(table.name),
+                    CqlIdentifier.fromInternal(keyspace.name).asCql(true),
+                    CqlIdentifier.fromInternal(table.name).asCql(true),
                     table
                         .allColumns()
                         .stream()
-                        .map(col -> Metadata.quoteIfNecessary(col.name))
+                        .map(col -> CqlIdentifier.fromInternal(col.name).asCql(true))
                         .collect(Collectors.joining(",")),
                     table
                         .allColumns()
                         .stream()
-                        .map(col -> ":" + Metadata.quoteIfNecessary(col.name))
+                        .map(col -> ":" + CqlIdentifier.fromInternal(col.name).asCql(true))
                         .collect(Collectors.joining(","))),
                 emptyList(),
                 emptyMap(),
@@ -319,16 +319,16 @@ public class SimulacronUtils {
             new Query(
                 String.format(
                     "UPDATE %s.%s SET %s",
-                    Metadata.quoteIfNecessary(keyspace.name),
-                    Metadata.quoteIfNecessary(table.name),
+                    CqlIdentifier.fromInternal(keyspace.name).asCql(true),
+                    CqlIdentifier.fromInternal(table.name).asCql(true),
                     table
                         .allColumns()
                         .stream()
                         .map(
                             col ->
-                                Metadata.quoteIfNecessary(col.name)
+                                CqlIdentifier.fromInternal(col.name).asCql(true)
                                     + "=:"
-                                    + Metadata.quoteIfNecessary(col.name))
+                                    + CqlIdentifier.fromInternal(col.name).asCql(true))
                         .collect(Collectors.joining(","))),
                 emptyList(),
                 emptyMap(),
@@ -345,10 +345,10 @@ public class SimulacronUtils {
                     table
                         .allColumns()
                         .stream()
-                        .map(col -> Metadata.quoteIfNecessary(col.name))
+                        .map(col -> CqlIdentifier.fromInternal(col.name).asCql(true))
                         .collect(Collectors.joining(",")),
-                    Metadata.quoteIfNecessary(keyspace.name),
-                    Metadata.quoteIfNecessary(table.name)));
+                    CqlIdentifier.fromInternal(keyspace.name).asCql(true),
+                    CqlIdentifier.fromInternal(table.name).asCql(true)));
         simulacron.prime(
             new Prime(
                 new RequestPrime(

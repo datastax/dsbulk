@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 public class NetworkUtils {
 
   /**
-   * The default IP prefix to use when assigning Ip addresses to nodes in a remote cluster.
+   * The default IP prefix to use when assigning Ip addresses to nodes in a remote session.
    *
    * <p>
    *
@@ -46,8 +46,8 @@ public class NetworkUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(NetworkUtils.class);
 
   /**
-   * Returns the address of the {@code n}th host in the cluster (counting from 1, e.g. {@code
-   * addressOfNode("127.0.1.", 3)} returns the address of the third node in the cluster, that is,
+   * Returns the address of the {@code n}th host in the session (counting from 1, e.g. {@code
+   * addressOfNode("127.0.1.", 3)} returns the address of the third node in the session, that is,
    * {@code 127.0.1.3}.
    *
    * <p>
@@ -57,7 +57,7 @@ public class NetworkUtils {
    *
    * @param ipPrefix The IP prefix to use (e.g. {@code 127.0.1.}).
    * @param node the node number (starting from 1).
-   * @return the address of the host in the cluster.
+   * @return the address of the host in the session.
    */
   public static InetAddress addressOfNode(String ipPrefix, int node) {
     String host = ipPrefix + node;
@@ -70,16 +70,16 @@ public class NetworkUtils {
   }
 
   /**
-   * Returns the address of the {@code n}th host in the {@code dc}th DC in the cluster (counting
+   * Returns the address of the {@code n}th host in the {@code dc}th DC in the session (counting
    * from 1, e.g. {@code addressOfNode("127.0.1.", {3,3}, 2, 1)} returns the address of the first
-   * node of the second DC; because this cluster has 2 DCs with 3 nodes each, that node would
+   * node of the second DC; because this session has 2 DCs with 3 nodes each, that node would
    * actually be {@code 127.0.1.4}.
    *
    * @param ipPrefix The IP prefix to use (e.g. {@code 127.0.1.}).
    * @param nodesPerDC the number of nodes in each DC.
    * @param dc the DC number (starting from 1).
    * @param node the node number (starting from 1).
-   * @return the address of the host in the cluster.
+   * @return the address of the host in the session.
    * @throws IndexOutOfBoundsException if {@code dc} or {@code n} are out of bounds.
    */
   public static InetAddress addressOfNode(String ipPrefix, int[] nodesPerDC, int dc, int node) {
@@ -95,7 +95,7 @@ public class NetworkUtils {
 
   /**
    * Converts a node number relative to its DC to an "absolute" number (i.e., relative to the whole
-   * cluster).
+   * session).
    *
    * @param nodesPerDC the number of nodes in each DC.
    * @param dc the DC number (starting from 1).
@@ -116,11 +116,11 @@ public class NetworkUtils {
    * <p>
    *
    * <p>The returned addresses can be used as contact points for clients wishing to connect to the
-   * remote cluster, e.g. when building a {@code Cluster} instance with the DataStax Java driver.
+   * remote session, e.g. when building a {@code Session} instance with the DataStax Java driver.
    *
    * @param ipPrefix The IP prefix to use (e.g. {@code 127.0.1.}).
    * @param nodesPerDC the number of nodes in each DC.
-   * @return the contact points for the remote cluster.
+   * @return the contact points for the remote session.
    */
   public static List<InetAddress> allContactPoints(String ipPrefix, int[] nodesPerDC) {
     List<InetAddress> contactPoints = new ArrayList<>();

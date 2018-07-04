@@ -8,16 +8,10 @@
  */
 package com.datastax.dsbulk.commons.tests;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.ContinuousPagingSession;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.dse.DseCluster;
-import com.datastax.driver.dse.DseSession;
-import com.datastax.dsbulk.commons.tests.driver.factory.ClusterFactory;
 import com.datastax.dsbulk.commons.tests.driver.factory.SessionFactory;
-import java.io.Closeable;
+import com.datastax.dse.driver.api.core.DseSession;
 import java.lang.reflect.Parameter;
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class RemoteClusterExtension implements AfterAllCallback, ParameterResolver {
 
-  public static final ExtensionContext.Namespace TEST_NAMESPACE =
+  protected static final ExtensionContext.Namespace TEST_NAMESPACE =
       ExtensionContext.Namespace.create("com.datastax.dsbulk.commons.tests");
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RemoteClusterExtension.class);
@@ -43,9 +37,7 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
     Class<?> type = parameterContext.getParameter().getType();
-    return type.isAssignableFrom(DseCluster.class)
-        || type.isAssignableFrom(DseSession.class)
-        || type.isAssignableFrom(ContinuousPagingSession.class);
+    return type.isAssignableFrom(DseSession.class);
   }
 
   @Override
@@ -54,13 +46,9 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
       throws ParameterResolutionException {
     Parameter parameter = parameterContext.getParameter();
     Class<?> type = parameter.getType();
-    Closeable value;
-    if (type.isAssignableFrom(DseSession.class)
-        || type.isAssignableFrom(ContinuousPagingSession.class)) {
+    AutoCloseable value;
+    if (type.isAssignableFrom(DseSession.class)) {
       value = createSession(parameter, extensionContext);
-      registerCloseable(value, extensionContext);
-    } else if (type.isAssignableFrom(DseCluster.class)) {
-      value = createCluster(parameter, extensionContext);
       registerCloseable(value, extensionContext);
     } else {
       throw new ParameterResolutionException("Cannot resolve parameter " + parameter);
@@ -73,39 +61,23 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
     closeCloseables(context);
   }
 
-  private Session createSession(Parameter parameter, ExtensionContext context) {
+  private DseSession createSession(Parameter parameter, ExtensionContext context) {
     Class<?> testClass = context.getRequiredTestClass();
     SessionFactory sessionFactory =
         SessionFactory.createInstanceForAnnotatedElement(parameter, testClass);
     return createSession(sessionFactory, context);
   }
 
-  private Session createSession(SessionFactory sessionFactory, ExtensionContext context) {
-    Cluster cluster = createCluster(sessionFactory.getClusterFactory(), context);
-    Session session = cluster.connect();
+  private DseSession createSession(SessionFactory sessionFactory, ExtensionContext context) {
+    DseSession session =
+        sessionFactory.createSessionBuilder().addContactPoints(getContactPoints(context)).build();
     sessionFactory.configureSession(session);
     return session;
   }
 
-  private Cluster createCluster(Parameter parameter, ExtensionContext context) {
-    Class<?> testClass = context.getRequiredTestClass();
-    ClusterFactory config = ClusterFactory.createInstanceForAnnotatedElement(parameter, testClass);
-    return createCluster(config, context);
-  }
-
-  private Cluster createCluster(ClusterFactory config, ExtensionContext context) {
-    Cluster.Builder clusterBuilder = config.createClusterBuilder();
-    // add contact points only if the provided builder didn't do so
-    if (clusterBuilder.getContactPoints().isEmpty()) {
-      clusterBuilder.addContactPoints(getContactPoints(context));
-    }
-    clusterBuilder.withPort(getBinaryPort(context));
-    return clusterBuilder.build();
-  }
-
   protected abstract int getBinaryPort(ExtensionContext context);
 
-  protected abstract List<InetAddress> getContactPoints(ExtensionContext context);
+  protected abstract List<InetSocketAddress> getContactPoints(ExtensionContext context);
 
   private void registerCloseable(AutoCloseable value, ExtensionContext context) {
     ExtensionContext.Store store = context.getStore(TEST_NAMESPACE);
@@ -115,7 +87,7 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
     closeables.add(value);
   }
 
-  private void closeCloseables(ExtensionContext context) throws Exception {
+  private void closeCloseables(ExtensionContext context) {
     ExtensionContext.Store store = context.getStore(TEST_NAMESPACE);
     @SuppressWarnings("unchecked")
     Set<AutoCloseable> closeables = store.remove(CLOSEABLES_KEY, Set.class);
@@ -128,11 +100,7 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
 
   private void closeQuietly(AutoCloseable value) {
     try {
-      if (value instanceof Session) {
-        ((Session) value).getCluster().close();
-      } else {
-        value.close();
-      }
+      value.close();
     } catch (Exception e) {
       LOGGER.error("Could not close " + value, e);
     }

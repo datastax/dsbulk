@@ -124,7 +124,6 @@ public class URIUtils {
   public static URI getRowLocation(Row row, ExecutionInfo executionInfo, Statement statement) {
     InetSocketAddress host = executionInfo.getCoordinator().getConnectAddress();
     ColumnDefinitions resultVariables = row.getColumnDefinitions();
-
     CodecRegistry codecRegistry = row.codecRegistry();
     // this might break if the statement has no result variables (unlikely)
     // or if the first variable is not associated to a keyspace and table (also unlikely)
@@ -151,7 +150,6 @@ public class URIUtils {
     // the resulting URI.
     if (statement instanceof BoundStatement) {
       BoundStatement bs = (BoundStatement) statement;
-      // TODO: DAT-303: Should this be getVariableDefinitions or getResultSetDefinitions()?
       n =
           appendVariables(
               sb, bs.getPreparedStatement().getVariableDefinitions(), bs, codecRegistry, n);
@@ -172,8 +170,7 @@ public class URIUtils {
       String value;
       try {
         TypeCodec<Object> codec = codecRegistry.codecFor(type);
-        // TODO: DAT-303: Is this the right migration for driver 4.0?
-        value = data.get(name, codec).toString();
+        value = codec.format(data.getObject(name));
       } catch (Exception e) {
         // This is unlikely to happen. We can safely assume that all values
         // retrieved with getObject() can be formatted using

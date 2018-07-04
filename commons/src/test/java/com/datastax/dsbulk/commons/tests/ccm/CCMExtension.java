@@ -19,8 +19,9 @@ import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.commons.tests.utils.VersionRequirement;
 import java.lang.reflect.Parameter;
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -96,8 +97,13 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
   }
 
   @Override
-  protected List<InetAddress> getContactPoints(ExtensionContext context) {
-    return getOrCreateCCM(context).getInitialContactPoints();
+  protected List<InetSocketAddress> getContactPoints(ExtensionContext context) {
+    int binaryPort = getBinaryPort(context);
+    return getOrCreateCCM(context)
+        .getInitialContactPoints()
+        .stream()
+        .map(addr -> new InetSocketAddress(addr, binaryPort))
+        .collect(Collectors.toList());
   }
 
   private CCMCluster getOrCreateCCM(ExtensionContext context) {
