@@ -20,6 +20,7 @@ import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -37,7 +38,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.base.Suppliers;
-import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.BufferedReader;
@@ -91,7 +91,7 @@ public class JsonConnector implements Connector {
   }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JsonConnector.class);
-  private static final TypeToken<JsonNode> JSON_NODE_TYPE_TOKEN = TypeToken.of(JsonNode.class);
+  private static final GenericType<JsonNode> JSON_NODE_TYPE_TOKEN = GenericType.of(JsonNode.class);
 
   private static final String URL = "url";
   private static final String MODE = "mode";
