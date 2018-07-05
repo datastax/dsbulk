@@ -59,7 +59,7 @@ public class ContinuousReadResultSubscription
   @Override
   public void cancel() {
     Page current = pages.peek();
-    if (current != null && current instanceof ContinuousPage) {
+    if (current instanceof ContinuousPage) {
       // forcibly cancel the continuous paging request
       ((ContinuousPage) current).rs.cancel();
     }
