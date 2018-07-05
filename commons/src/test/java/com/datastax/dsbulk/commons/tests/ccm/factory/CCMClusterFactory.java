@@ -59,7 +59,7 @@ public abstract class CCMClusterFactory {
       if (config != null) {
         throw new IllegalStateException(
             String.format(
-                "%s can be annotated with either @CCMClusterFactory or @CCMFactoryRef, but not both",
+                "%s can be annotated with either @CCMConfig or @CCMFactoryMethod, but not both",
                 testClass));
       }
       return new CCMClusterMethodFactory(factoryRef, testClass);

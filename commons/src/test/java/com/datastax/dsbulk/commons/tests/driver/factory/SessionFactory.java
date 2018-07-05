@@ -52,7 +52,7 @@ public abstract class SessionFactory {
       if (config != null) {
         throw new IllegalStateException(
             String.format(
-                "Field %s can be annotated with either @SessionFactory or @SessionFactoryRef, but not both",
+                "Field %s can be annotated with either @SessionConfig or @SessionFactoryMethod, but not both",
                 element));
       }
       return new SessionMethodFactory(factoryRef, testClass);
@@ -168,7 +168,9 @@ public abstract class SessionFactory {
         throw new IllegalArgumentException(
             String.format("Cannot find factory method %s in %s", methodName, factoryClass));
       }
-      if (method.getAnnotation(SessionConfig.class) == null) {
+      if (method.getAnnotation(
+              com.datastax.dsbulk.commons.tests.driver.annotations.SessionFactory.class)
+          == null) {
         throw new IllegalArgumentException(
             String.format("Method %s must be annotated with @SessionFactory", method));
       }
