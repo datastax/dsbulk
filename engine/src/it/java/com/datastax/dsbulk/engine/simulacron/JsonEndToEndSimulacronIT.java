@@ -17,6 +17,9 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createParameterizedQuery;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithError;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSet;
@@ -27,15 +30,12 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExcep
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePrepare;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateQueryCount;
-import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.INSERT_INTO_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_CRLF;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_ERROR;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_PARTIAL_BAD;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_COMMENTS;
-import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
 import static java.nio.file.Files.createTempDirectory;
@@ -57,7 +57,6 @@ import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils.Column;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils.Table;
-import com.datastax.dsbulk.commons.tests.utils.CsvUtils;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.json.JsonConnector;
@@ -152,7 +151,7 @@ class JsonEndToEndSimulacronIT {
   void full_load() {
 
     primeIpByCountryTable(simulacron);
-    RequestPrime insert = createSimpleParameterizedQuery(CsvUtils.INSERT_INTO_IP_BY_COUNTRY);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.prime(new Prime(insert));
 
     String[] args = {
@@ -176,7 +175,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(args).run();
@@ -192,7 +191,7 @@ class JsonEndToEndSimulacronIT {
   void full_load_dry_run() {
 
     primeIpByCountryTable(simulacron);
-    RequestPrime insert = createSimpleParameterizedQuery(CsvUtils.INSERT_INTO_IP_BY_COUNTRY);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.prime(new Prime(insert));
 
     String[] args = {
@@ -218,7 +217,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(args).run();
@@ -230,7 +229,7 @@ class JsonEndToEndSimulacronIT {
   void full_load_crlf() {
 
     primeIpByCountryTable(simulacron);
-    RequestPrime insert = createSimpleParameterizedQuery(CsvUtils.INSERT_INTO_IP_BY_COUNTRY);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.prime(new Prime(insert));
 
     String[] args = {
@@ -254,7 +253,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(args).run();
@@ -306,7 +305,7 @@ class JsonEndToEndSimulacronIT {
   void partial_load() throws Exception {
 
     primeIpByCountryTable(simulacron);
-    RequestPrime insert = createSimpleParameterizedQuery(CsvUtils.INSERT_INTO_IP_BY_COUNTRY);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.prime(new Prime(insert));
 
     String[] args = {
@@ -330,7 +329,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING,
+      IP_BY_COUNTRY_MAPPING_NAMED,
       "--schema.allowMissingFields",
       "true"
     };
@@ -409,7 +408,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(args).run();
@@ -427,7 +426,7 @@ class JsonEndToEndSimulacronIT {
   void skip_test_load() throws Exception {
 
     primeIpByCountryTable(simulacron);
-    RequestPrime insert = createSimpleParameterizedQuery(CsvUtils.INSERT_INTO_IP_BY_COUNTRY);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.prime(new Prime(insert));
 
     String[] args = {
@@ -455,7 +454,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING,
+      IP_BY_COUNTRY_MAPPING_NAMED,
       "--schema.allowMissingFields",
       "true"
     };
@@ -606,7 +605,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -649,7 +648,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -744,7 +743,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -785,7 +784,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -849,7 +848,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -892,7 +891,7 @@ class JsonEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(args).run();

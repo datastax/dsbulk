@@ -12,6 +12,7 @@ import java.net.URL;
 
 public class CsvUtils {
 
+  public static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
   public static final URL CSV_RECORDS_UNIQUE =
       ClassLoader.getSystemResource("ip-by-country-unique.csv");
   public static final URL CSV_RECORDS_HEADER =

@@ -13,9 +13,6 @@ import static com.datastax.driver.core.DataType.cint;
 import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_CRLF;
@@ -25,6 +22,9 @@ import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_PARTIA
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_PARTIAL_BAD_LONG;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createParameterizedQuery;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithError;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSet;
@@ -176,7 +176,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(args).run();
@@ -218,7 +218,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(args).run();
@@ -254,7 +254,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(args).run();
@@ -290,7 +290,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING,
+      IP_BY_COUNTRY_MAPPING_INDEXED,
       "--schema.allowMissingFields",
       "true"
     };
@@ -369,7 +369,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(args).run();
@@ -415,7 +415,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING,
+      IP_BY_COUNTRY_MAPPING_INDEXED,
       "--schema.allowMissingFields",
       "true"
     };
@@ -459,7 +459,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(args).run();
@@ -497,7 +497,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING,
+      IP_BY_COUNTRY_MAPPING_INDEXED,
       "--batch.mode",
       "DISABLED"
     };
@@ -541,7 +541,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
@@ -691,7 +691,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -741,7 +741,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -783,7 +783,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -824,7 +824,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -865,7 +865,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -923,7 +923,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
@@ -962,7 +962,7 @@ class CSVEndToEndSimulacronIT {
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(args).run();

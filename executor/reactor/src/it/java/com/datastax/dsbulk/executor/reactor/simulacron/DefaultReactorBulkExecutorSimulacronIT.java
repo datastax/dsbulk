@@ -19,7 +19,6 @@ class DefaultReactorBulkExecutorSimulacronIT extends BulkExecutorSimulacronITBas
   DefaultReactorBulkExecutorSimulacronIT(BoundCluster simulacron, Session session) {
     super(
         simulacron,
-        session,
         DefaultReactorBulkExecutor.builder(new SerializedSession(session)).build(),
         DefaultReactorBulkExecutor.builder(new SerializedSession(session)).failSafe().build());
   }

@@ -19,7 +19,6 @@ class DefaultRxJavaBulkExecutorSimulacronIT extends BulkExecutorSimulacronITBase
   DefaultRxJavaBulkExecutorSimulacronIT(BoundCluster simulacron, Session session) {
     super(
         simulacron,
-        session,
         DefaultRxJavaBulkExecutor.builder(new SerializedSession(session)).build(),
         DefaultRxJavaBulkExecutor.builder(new SerializedSession(session)).failSafe().build());
   }
