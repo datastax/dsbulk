@@ -13,7 +13,7 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 public abstract class CQLUtils {
 
   private static final String CREATE_KEYSPACE_FORMAT =
-      "CREATE KEYSPACE %s WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : %d }";
+      "CREATE KEYSPACE IF NOT EXISTS %s WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : %d }";
 
   public static String createKeyspaceSimpleStrategy(String keyspace, int replicationFactor) {
     return String.format(

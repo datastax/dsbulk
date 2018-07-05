@@ -102,12 +102,7 @@ class DefaultRecordMapperTest {
     recordMetadata =
         new TestRecordMetadata(
             ImmutableMap.of(
-                F1,
-                GenericType.STRING,
-                F2,
-                GenericType.STRING,
-                F3,
-                GenericType.STRING));
+                F1, GenericType.STRING, F2, GenericType.STRING, F3, GenericType.STRING));
 
     boundStatement = mock(BoundStatement.class);
     mapping = mock(Mapping.class);

@@ -33,7 +33,8 @@ class DefaultMappingTest {
         ImmutableBiMap.<String, CqlIdentifier>builder().put("f1", c1).build();
     ExtendedCodecRegistry extendedCodecRegistry = mock(ExtendedCodecRegistry.class);
 
-    when(extendedCodecRegistry.codecFor(DataTypes.TEXT, GenericType.STRING)).thenReturn(TypeCodecs.TEXT);
+    when(extendedCodecRegistry.codecFor(DataTypes.TEXT, GenericType.STRING))
+        .thenReturn(TypeCodecs.TEXT);
     DefaultMapping mapping =
         new DefaultMapping(
             fieldsToVariables, extendedCodecRegistry, CqlIdentifier.fromCql("irrelevant"));

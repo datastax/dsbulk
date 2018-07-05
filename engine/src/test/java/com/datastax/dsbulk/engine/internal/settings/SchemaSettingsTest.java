@@ -8,10 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.driver.core.DriverCoreEngineTestHooks.newPreparedId;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newToken;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTokenRange;
-import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
@@ -61,7 +59,6 @@ import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
-import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -91,7 +88,7 @@ class SchemaSettingsTest {
   private static final CqlIdentifier C3_IDENT = CqlIdentifier.fromInternal(C3);
 
   private static final CqlIdentifier KS_ID = CqlIdentifier.fromCql("ks");
-  private static final CqlIdentifier TABLE_ID  = CqlIdentifier.fromCql("t1");
+  private static final CqlIdentifier TABLE_ID = CqlIdentifier.fromCql("t1");
 
   private final Token token1 = newToken(-9223372036854775808L);
   private final Token token2 = newToken(-3074457345618258603L);
@@ -126,18 +123,19 @@ class SchemaSettingsTest {
     col3 = mock(ColumnMetadata.class);
 
     DriverContext configuration = mock(DriverContext.class);
-//    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
-    Map<CqlIdentifier, ColumnMetadata> columns = ImmutableMap.<CqlIdentifier, ColumnMetadata>builder()
-        .put(C1_IDENT, col1)
-        .put(C2_IDENT, col2)
-        .put(C3_IDENT, col3)
-        .build();
+    //    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
+    Map<CqlIdentifier, ColumnMetadata> columns =
+        ImmutableMap.<CqlIdentifier, ColumnMetadata>builder()
+            .put(C1_IDENT, col1)
+            .put(C2_IDENT, col2)
+            .put(C3_IDENT, col3)
+            .build();
     when(session.getMetadata()).thenReturn(metadata);
     when(session.getContext()).thenReturn(configuration);
-//    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
-//    when(protocolOptions.getProtocolVersion()).thenReturn(V4);
+    //    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
+    //    when(protocolOptions.getProtocolVersion()).thenReturn(V4);
     when(metadata.getKeyspace(KS_ID)).thenReturn(keyspace);
-//    when(metadata.getTokenRanges()).thenReturn(tokenRanges);
+    //    when(metadata.getTokenRanges()).thenReturn(tokenRanges);
     when(keyspace.getTable(TABLE_ID)).thenReturn(table);
     when(session.prepare(anyString())).thenReturn(ps);
     when(table.getColumns()).thenReturn(columns);
@@ -154,7 +152,7 @@ class SchemaSettingsTest {
     when(col3.getType()).thenReturn(DataTypes.TEXT);
     ColumnDefinitions definitions = newColumnDefinitions(C1_IDENT, C2_IDENT, C3_IDENT);
     when(ps.getVariableDefinitions()).thenReturn(definitions);
-//    when(ps.getPreparedId()).thenReturn(newPreparedId(definitions, new int[] {0}, V4));
+    //    when(ps.getPreparedId()).thenReturn(newPreparedId(definitions, new int[] {0}, V4));
   }
 
   @Test
@@ -333,7 +331,8 @@ class SchemaSettingsTest {
   @Test
   void should_create_record_mapper_when_using_custom_query() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(CqlIdentifier.fromInternal("c1var"), CqlIdentifier.fromInternal("c2var"));
+        newColumnDefinitions(
+            CqlIdentifier.fromInternal("c1var"), CqlIdentifier.fromInternal("c2var"));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     LoaderConfig config =
         makeLoaderConfig(
@@ -789,13 +788,17 @@ class SchemaSettingsTest {
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) ReflectionUtils.getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
-    assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable")).isEqualTo(CqlIdentifier.fromInternal("c3"));
+    assertThat(ReflectionUtils.getInternalState(mapping, "writeTimeVariable"))
+        .isEqualTo(CqlIdentifier.fromInternal("c3"));
   }
 
   @Test
   void should_detect_quoted_writetime_var_in_query() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(C1_IDENT, CqlIdentifier.fromInternal("c2"), CqlIdentifier.fromCql("\"This is a quoted \\\" variable name\""));
+        newColumnDefinitions(
+            C1_IDENT,
+            CqlIdentifier.fromInternal("c2"),
+            CqlIdentifier.fromCql("\"This is a quoted \\\" variable name\""));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     LoaderConfig config =
         makeLoaderConfig(
@@ -825,7 +828,8 @@ class SchemaSettingsTest {
   @Test
   void should_create_multiple_read_statements() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("start", DataTypes.BIGINT, 0), newDefinition("end", DataTypes.BIGINT, 1));
+        newColumnDefinitions(
+            newDefinition("start", DataTypes.BIGINT, 0), newDefinition("end", DataTypes.BIGINT, 1));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken("start", token1)).thenReturn(bs1);
@@ -885,7 +889,8 @@ class SchemaSettingsTest {
   @Test
   void should_create_multiple_read_statements_when_token_range_provided_in_query() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("start", DataTypes.BIGINT, 0), newDefinition("end", DataTypes.BIGINT, 1));
+        newColumnDefinitions(
+            newDefinition("start", DataTypes.BIGINT, 0), newDefinition("end", DataTypes.BIGINT, 1));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken("start", token1)).thenReturn(bs1);
@@ -947,7 +952,8 @@ class SchemaSettingsTest {
   @Test
   void should_create_multiple_read_statements_for_counting() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("start", DataTypes.BIGINT, 0), newDefinition("end", DataTypes.BIGINT, 1));
+        newColumnDefinitions(
+            newDefinition("start", DataTypes.BIGINT, 0), newDefinition("end", DataTypes.BIGINT, 1));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken("start", token1)).thenReturn(bs1);
@@ -1007,7 +1013,8 @@ class SchemaSettingsTest {
   @Test
   void should_create_multiple_read_statements_when_token_range_provided_in_query_for_counting() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("start", DataTypes.BIGINT, 0), newDefinition("end", DataTypes.BIGINT, 1));
+        newColumnDefinitions(
+            newDefinition("start", DataTypes.BIGINT, 0), newDefinition("end", DataTypes.BIGINT, 1));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken("start", token1)).thenReturn(bs1);
@@ -1084,7 +1091,8 @@ class SchemaSettingsTest {
   @Test
   void should_throw_configuration_exception_when_read_statement_variables_not_recognized() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("foo", DataTypes.BIGINT, 0), newDefinition("bar", DataTypes.BIGINT, 1));
+        newColumnDefinitions(
+            newDefinition("foo", DataTypes.BIGINT, 0), newDefinition("bar", DataTypes.BIGINT, 1));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     LoaderConfig config =
         makeLoaderConfig(
@@ -1188,8 +1196,7 @@ class SchemaSettingsTest {
     assertThat(fieldsToVariables).isEqualTo(expected);
   }
 
-  private static ColumnDefinitions newColumnDefinitions(CqlIdentifier... columns)
-  {
+  private static ColumnDefinitions newColumnDefinitions(CqlIdentifier... columns) {
     List<ColumnDefinition> defs = new ArrayList<>();
     for (int i = 0; i < columns.length; i++) {
       defs.add(newDefinition(columns[i], DataTypes.TEXT, i));
@@ -1200,15 +1207,14 @@ class SchemaSettingsTest {
   private static ColumnDefinitions newColumnDefinitions(ColumnDefinition... defs) {
     return DefaultColumnDefinitions.valueOf(Arrays.asList(defs));
   }
-  
-  private static ColumnDefinition newDefinition(CqlIdentifier name, DataType type, int index)
-  {
+
+  private static ColumnDefinition newDefinition(CqlIdentifier name, DataType type, int index) {
     return newDefinition(name.asInternal(), type, index);
   }
 
-  private static ColumnDefinition newDefinition(String name, DataType type, int index)
-  {
-    return new DefaultColumnDefinition(new ColumnSpec("ks", "t1", name, index, RawType.PRIMITIVES.get(type.getProtocolCode())), null);
+  private static ColumnDefinition newDefinition(String name, DataType type, int index) {
+    return new DefaultColumnDefinition(
+        new ColumnSpec("ks", "t1", name, index, RawType.PRIMITIVES.get(type.getProtocolCode())),
+        null);
   }
-
 }

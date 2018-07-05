@@ -23,9 +23,7 @@ import com.datastax.oss.driver.internal.testinfra.session.TestConfigLoader;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 @SuppressWarnings("SimplifiableIfStatement")
 public abstract class SessionFactory {
@@ -92,13 +90,17 @@ public abstract class SessionFactory {
     private SessionAnnotationFactory(SessionConfig config) {
       useKeyspaceMode = config.useKeyspace();
       loggedKeyspaceName = config.loggedKeyspaceName();
-      String[] settings;
+      String[] settings =
+          new String[config.settings().length + (config.ssl() ? SSL_OPTIONS.length : 0) + 1];
+      settings[0] = "basic.load-balancing-policy.local-datacenter=\"Cassandra\"";
+      int curIdx = 1;
+      for (String opt : config.settings()) {
+        settings[curIdx++] = opt;
+      }
       if (config.ssl()) {
-        settings =
-            Stream.concat(Arrays.stream(config.settings()), Arrays.stream(SSL_OPTIONS))
-                .toArray(String[]::new);
-      } else {
-        settings = config.settings();
+        for (String opt : SSL_OPTIONS) {
+          settings[curIdx++] = opt;
+        }
       }
       configLoader = new TestConfigLoader(settings);
     }

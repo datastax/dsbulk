@@ -37,8 +37,7 @@ class StringToTupleCodecTest {
     // varchar());
     codec =
         (StringToTupleCodec)
-            newCodecRegistry("nullStrings = [NULL, \"\"]")
-                .codecFor(tupleType, GenericType.STRING);
+            newCodecRegistry("nullStrings = [NULL, \"\"]").codecFor(tupleType, GenericType.STRING);
   }
 
   @Test

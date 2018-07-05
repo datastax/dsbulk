@@ -46,7 +46,8 @@ public class TableScanner {
    * @return as many {@link Statement}s as necessary to read the entire table, one per token range.
    */
   public static List<Statement> scan(Session session, TableMetadata table) {
-    return scan(session.getMetadata().getTokenMap().map(TokenMap::getTokenRanges).orElse(null), table);
+    return scan(
+        session.getMetadata().getTokenMap().map(TokenMap::getTokenRanges).orElse(null), table);
   }
 
   /**

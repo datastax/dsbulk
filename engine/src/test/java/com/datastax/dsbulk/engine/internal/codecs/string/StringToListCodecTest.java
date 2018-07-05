@@ -33,12 +33,10 @@ class StringToListCodecTest {
     ExtendedCodecRegistry codecRegistry = newCodecRegistry("nullStrings = [NULL]");
     codec1 =
         (StringToListCodec<Double>)
-            codecRegistry.codecFor(
-                DataTypes.listOf(DataTypes.DOUBLE), GenericType.STRING);
+            codecRegistry.codecFor(DataTypes.listOf(DataTypes.DOUBLE), GenericType.STRING);
     codec2 =
         (StringToListCodec<Instant>)
-            codecRegistry.codecFor(
-                DataTypes.listOf(DataTypes.TIMESTAMP), GenericType.STRING);
+            codecRegistry.codecFor(DataTypes.listOf(DataTypes.TIMESTAMP), GenericType.STRING);
     codec3 =
         (StringToListCodec<String>)
             codecRegistry.codecFor(DataTypes.listOf(DataTypes.TEXT), GenericType.STRING);

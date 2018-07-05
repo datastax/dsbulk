@@ -12,10 +12,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
-import com.datastax.oss.driver.api.core.retry.RetryPolicy;
-import com.datastax.oss.driver.api.core.time.TimestampGenerator;
-import com.datastax.oss.driver.internal.core.retry.DefaultRetryPolicy;
-import com.datastax.oss.driver.internal.core.time.AtomicTimestampGenerator;
 import com.typesafe.config.ConfigFactory;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -122,5 +118,4 @@ class DefaultLoaderConfigTest {
     Charset charset2 = config.getCharset("charset2");
     assertThat(charset2).isEqualTo(Charset.forName("UTF-8"));
   }
-
 }

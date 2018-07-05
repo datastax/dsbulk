@@ -915,7 +915,7 @@ public class DefaultCCMCluster implements CCMCluster {
     }
 
     private String joinJvmArgs() {
-      StringBuilder allJvmArgs = new StringBuilder("");
+      StringBuilder allJvmArgs = new StringBuilder();
       for (String jvmArg : jvmArgs) {
         allJvmArgs.append(" --jvm_arg=");
         allJvmArgs.append(randomizePorts(jvmArg));

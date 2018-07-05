@@ -297,10 +297,7 @@ public class SchemaSettings {
     List<CqlIdentifier> unrecognized =
         StreamSupport.stream(variables.spliterator(), false)
             .map(ColumnDefinition::getName)
-            .filter(
-                name ->
-                    !name.asInternal().equals("start")
-                        && !name.asInternal().equals("end"))
+            .filter(name -> !name.asInternal().equals("start") && !name.asInternal().equals("end"))
             .collect(Collectors.toList());
     if (!unrecognized.isEmpty()) {
       throw new BulkConfigurationException(
@@ -310,15 +307,15 @@ public class SchemaSettings {
               unrecognized));
     }
 
-        Optional<TokenMap> tokenMap = session.getMetadata().getTokenMap();
-        Set<TokenRange> ring = tokenMap.map(TokenMap::getTokenRanges).orElse(Collections.emptySet());
-        return TableScanner.scan(
-            ring,
-            range ->
-                preparedStatement
-                    .bind()
-                    .setToken("start", range.getStart())
-                    .setToken("end", range.getEnd()));
+    Optional<TokenMap> tokenMap = session.getMetadata().getTokenMap();
+    Set<TokenRange> ring = tokenMap.map(TokenMap::getTokenRanges).orElse(Collections.emptySet());
+    return TableScanner.scan(
+        ring,
+        range ->
+            preparedStatement
+                .bind()
+                .setToken("start", range.getStart())
+                .setToken("end", range.getEnd()));
   }
 
   @NotNull
@@ -475,7 +472,8 @@ public class SchemaSettings {
                 "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
                 tableName.asCql(true), lowerCaseTableName, lowerCaseTableName));
       } else {
-        throw new IllegalArgumentException(String.format("Table %s does not exist", tableName.asCql(true)));
+        throw new IllegalArgumentException(
+            String.format("Table %s does not exist", tableName.asCql(true)));
       }
     }
   }
@@ -540,7 +538,13 @@ public class SchemaSettings {
     List<ColumnMetadata> partitionKey = table.getPrimaryKey();
     for (ColumnMetadata pk : partitionKey) {
       Collection<String> variables = queryInspector.getColumnsToVariables().get(pk.getName());
-      if (Collections.disjoint(fieldsToVariables.values().stream().map(CqlIdentifier::asInternal).collect(Collectors.toSet()), variables)) {
+      if (Collections.disjoint(
+          fieldsToVariables
+              .values()
+              .stream()
+              .map(CqlIdentifier::asInternal)
+              .collect(Collectors.toSet()),
+          variables)) {
         throw new BulkConfigurationException(
             "Missing required primary key column "
                 + pk.getName().asCql(true)

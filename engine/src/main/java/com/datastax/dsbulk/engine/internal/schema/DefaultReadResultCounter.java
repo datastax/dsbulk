@@ -17,7 +17,6 @@ import static java.util.stream.Collectors.toMap;
 
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings;
-
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.Row;
@@ -94,7 +93,8 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       // contents are identical to metadata.tokenMap.tokenToHostsByKeyspace.
       // Both arrays are filled so that ring[i] == replicaSets[i].range.end,
       // thus allowing to easily locate the range and replicas of a given token.
-      Set<TokenRange> ranges = metadata.getTokenMap().map(TokenMap::getTokenRanges).orElse(Collections.emptySet());
+      Set<TokenRange> ranges =
+          metadata.getTokenMap().map(TokenMap::getTokenRanges).orElse(Collections.emptySet());
       ring = new Token[ranges.size()];
       replicaSets = new ReplicaSet[ranges.size()];
       int i = 0;

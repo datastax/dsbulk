@@ -11,9 +11,6 @@ package com.datastax.dsbulk.commons.tests.driver.annotations;
 import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-import com.datastax.dse.driver.api.core.DseProtocolVersion;
-import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
-import com.datastax.oss.driver.api.core.ProtocolVersion;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 

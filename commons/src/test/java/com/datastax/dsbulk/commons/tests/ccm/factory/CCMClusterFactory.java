@@ -136,8 +136,7 @@ public abstract class CCMClusterFactory {
       for (int perDc : config.numberOfNodes()) {
         total += perDc;
       }
-      List<CCMCluster.Workload[]> workloads =
-          new ArrayList<>(Collections.<CCMCluster.Workload[]>nCopies(total, null));
+      List<CCMCluster.Workload[]> workloads = new ArrayList<>(Collections.nCopies(total, null));
       CCMWorkload[] annWorkloads = config.workloads();
       for (int i = 0; i < annWorkloads.length; i++) {
         CCMWorkload nodeWorkloads = annWorkloads[i];
