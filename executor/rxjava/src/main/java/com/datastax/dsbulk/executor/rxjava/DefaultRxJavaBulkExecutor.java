@@ -226,13 +226,9 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
       // As per rule 1.11, this publisher supports multiple subscribers in a unicast configuration,
       // i.e., each subscriber triggers an independent execution/subscription and gets its own copy
       // of the results.
-      int fetchSize = statement.getFetchSize();
-      if (fetchSize <= 0) {
-        fetchSize = session.getCluster().getConfiguration().getQueryOptions().getFetchSize();
-      }
       ReadResultSubscription subscription =
           new ReadResultSubscription(
-              subscriber, statement, listener, requestPermits, rateLimiter, failFast, fetchSize);
+              subscriber, statement, listener, requestPermits, rateLimiter, failFast);
       try {
         subscriber.onSubscribe(subscription);
         // must be called after onSubscribe

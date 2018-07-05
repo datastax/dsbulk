@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.executor.api.internal.result;
 
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.Optional;
 
 public final class DefaultReadResult extends DefaultResult implements ReadResult {

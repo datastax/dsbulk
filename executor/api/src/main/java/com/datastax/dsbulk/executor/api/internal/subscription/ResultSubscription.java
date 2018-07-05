@@ -8,18 +8,14 @@
  */
 package com.datastax.dsbulk.executor.api.internal.subscription;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.listener.DefaultExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.Result;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Collections;
 import java.util.Iterator;
@@ -40,10 +36,12 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A single-subscriber subscription that executes the provided {@link Statement} with the provided
- * {@link Session} and emits all the rows returned by the query to its {@link Subscriber}.
+ * {@link CqlSession} and emits all the rows returned by the query to its {@link Subscriber}.
  *
- * @param <P> the page type, one of {@link com.datastax.driver.core.ResultSet} or {@link
- *     com.datastax.driver.core.AsyncContinuousPagingResult}.
+ * @param <P> the page type, one of {@link com.datastax.oss.driver.api.core.cql.AsyncResultSet
+ *     AsyncResultSet} or {@link
+ *     com.datastax.dse.driver.api.core.cql.continuous.ContinuousAsyncResultSet
+ *     ContinuousAsyncResultSet}.
  * @param <R> the result type ({@link com.datastax.dsbulk.executor.api.result.WriteResult} or {@link
  *     com.datastax.dsbulk.executor.api.result.ReadResult}).
  */
@@ -157,7 +155,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    *
    * @param initial the future that, once complete, will produce the first page.
    */
-  public void start(Callable<ListenableFuture<P>> initial) {
+  public void start(Callable<CompletionStage<? extends P>> initial) {
     global.start();
     listener.ifPresent(l -> l.onExecutionStarted(statement, global));
     fetchNextPage(new Page(initial));
@@ -528,17 +526,17 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   class Page {
 
     final Iterator<R> rows;
-    final Callable<ListenableFuture<P>> nextPage;
+    final Callable<CompletionStage<? extends P>> nextPage;
     final CompletableFuture<Void> fullyConsumed;
 
     /** called only from start() */
-    private Page(Callable<ListenableFuture<P>> nextPage) {
+    private Page(Callable<CompletionStage<? extends P>> nextPage) {
       this.nextPage = nextPage;
       this.rows = Collections.emptyIterator();
       fullyConsumed = initial;
     }
 
-    Page(Iterator<R> rows, Callable<ListenableFuture<P>> nextPage) {
+    Page(Iterator<R> rows, Callable<CompletionStage<? extends P>> nextPage) {
       this.nextPage = nextPage;
       this.rows = rows;
       fullyConsumed = new CompletableFuture<>();
@@ -548,9 +546,9 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
       return nextPage != null;
     }
 
-    CompletionStage<P> nextPage() {
+    CompletionStage<? extends P> nextPage() {
       try {
-        return toCompletableFuture(nextPage.call());
+        return nextPage.call();
       } catch (Exception e) {
         // This is a synchronous failure in the driver.
         // We treat it as a failed future.
@@ -569,22 +567,22 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     }
   }
 
-  private static <T> CompletableFuture<T> toCompletableFuture(ListenableFuture<T> guavaFuture) {
-    CompletableFuture<T> completableFuture = new CompletableFuture<>();
-    Futures.addCallback(
-        guavaFuture,
-        new FutureCallback<T>() {
-          @Override
-          public void onFailure(Throwable throwable) {
-            completableFuture.completeExceptionally(throwable);
-          }
-
-          @Override
-          public void onSuccess(T t) {
-            completableFuture.complete(t);
-          }
-        },
-        MoreExecutors.directExecutor());
-    return completableFuture;
-  }
+  //  private static <T> CompletableFuture<T> toCompletableFuture(ListenableFuture<T> guavaFuture) {
+  //    CompletableFuture<T> completableFuture = new CompletableFuture<>();
+  //    Futures.addCallback(
+  //        guavaFuture,
+  //        new FutureCallback<T>() {
+  //          @Override
+  //          public void onFailure(Throwable throwable) {
+  //            completableFuture.completeExceptionally(throwable);
+  //          }
+  //
+  //          @Override
+  //          public void onSuccess(T t) {
+  //            completableFuture.complete(t);
+  //          }
+  //        },
+  //        MoreExecutors.directExecutor());
+  //    return completableFuture;
+  //  }
 }

@@ -14,19 +14,22 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.GettableData;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.histogram.HdrHistogramReservoir;
+import com.datastax.dse.driver.api.core.DseProtocolVersion;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.data.GettableByIndex;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.driver.internal.core.cql.Conversions;
+import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 
 /** A {@link ExecutionListener} that records useful metrics about the ongoing bulk operations. */
 public class MetricsCollectingExecutionListener implements ExecutionListener {
@@ -59,7 +62,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
 
   /** Creates a new instance using a newly-allocated {@link MetricRegistry}. */
   public MetricsCollectingExecutionListener() {
-    this(new MetricRegistry(), ProtocolVersion.NEWEST_SUPPORTED, CodecRegistry.DEFAULT_INSTANCE);
+    this(new MetricRegistry(), DseProtocolVersion.DSE_V2, DefaultCodecRegistry.DEFAULT);
   }
 
   /**
@@ -366,25 +369,33 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     long size = 0L;
     if (statement instanceof BoundStatement) {
       BoundStatement bs = (BoundStatement) statement;
-      ColumnDefinitions metadata = bs.preparedStatement().getVariables();
+      ColumnDefinitions metadata = bs.getPreparedStatement().getVariableDefinitions();
       size += size(bs, metadata);
     } else if (statement instanceof BatchStatement) {
       BatchStatement batch = (BatchStatement) statement;
-      for (Statement child : batch.getStatements()) {
+      for (Statement child : batch) {
         size += size(child);
       }
     } else if (statement instanceof SimpleStatement) {
       SimpleStatement stmt = (SimpleStatement) statement;
       try {
-        ByteBuffer[] bbs = stmt.getValues(protocolVersion, codecRegistry);
-        if (bbs != null) {
-          for (ByteBuffer bb : bbs) {
-            if (bb != null) {
-              size += bb.remaining();
-            }
-          }
-        }
-      } catch (InvalidTypeException ignored) {
+        size +=
+            sizeOfValues(
+                Conversions.encode(stmt.getPositionalValues(), codecRegistry, protocolVersion));
+        size +=
+            sizeOfValues(
+                Conversions.encode(stmt.getNamedValues(), codecRegistry, protocolVersion).values());
+      } catch (RuntimeException ignored) {
+      }
+    }
+    return size;
+  }
+
+  private long sizeOfValues(Collection<ByteBuffer> bbs) {
+    long size = 0L;
+    for (ByteBuffer bb : bbs) {
+      if (bb != null) {
+        size += bb.remaining();
       }
     }
     return size;
@@ -394,7 +405,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     return size(row, row.getColumnDefinitions());
   }
 
-  private long size(GettableData data, ColumnDefinitions metadata) {
+  private long size(GettableByIndex data, ColumnDefinitions metadata) {
     long size = 0L;
     if (metadata.size() > 0) {
       for (int i = 0; i < metadata.size(); i++) {

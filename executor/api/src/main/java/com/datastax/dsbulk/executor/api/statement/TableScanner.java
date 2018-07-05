@@ -8,8 +8,11 @@
  */
 package com.datastax.dsbulk.executor.api.statement;
 
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilderDsl.literal;
+import static com.datastax.oss.driver.api.querybuilder.relation.Relation.token;
 import static java.util.stream.Collectors.toList;
 
+import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
 import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
@@ -17,6 +20,9 @@ import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.api.core.session.Session;
+import com.datastax.oss.driver.api.querybuilder.QueryBuilderDsl;
+import com.datastax.oss.driver.api.querybuilder.relation.Relation;
+import com.datastax.oss.driver.api.querybuilder.select.Select;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -33,8 +39,15 @@ public class TableScanner {
    * @param table the table to read.
    * @return as many {@link Statement}s as necessary to read the entire table, one per token range.
    */
-  public static List<Statement> scan(Session session, String keyspace, String table) {
-    return scan(session, session.getMetadata().getKeyspace(keyspace).getTable(table));
+  public static List<Statement<?>> scan(Session session, String keyspace, String table) {
+    return scan(
+        session,
+        session
+            .getMetadata()
+            .getKeyspace(keyspace)
+            .orElseThrow(IllegalArgumentException::new)
+            .getTable(table)
+            .orElseThrow(IllegalArgumentException::new));
   }
 
   /**
@@ -45,7 +58,7 @@ public class TableScanner {
    * @param table the table to read.
    * @return as many {@link Statement}s as necessary to read the entire table, one per token range.
    */
-  public static List<Statement> scan(Session session, TableMetadata table) {
+  public static List<Statement<?>> scan(Session session, TableMetadata table) {
     return scan(
         session.getMetadata().getTokenMap().map(TokenMap::getTokenRanges).orElse(null), table);
   }
@@ -59,7 +72,7 @@ public class TableScanner {
    * @param table the table to read.
    * @return as many {@link Statement}s as necessary to read the entire table, one per token range.
    */
-  public static List<Statement> scan(Set<TokenRange> ring, TableMetadata table) {
+  public static List<Statement<?>> scan(Set<TokenRange> ring, TableMetadata table) {
     return scan(ring, table, null);
   }
 
@@ -73,7 +86,7 @@ public class TableScanner {
    * @param where An optional WHERE clause to apply to each statement.
    * @return as many {@link Statement}s as necessary to read the entire table, one per token range.
    */
-  public static List<Statement> scan(Set<TokenRange> ring, TableMetadata table, Clause where) {
+  public static List<Statement<?>> scan(Set<TokenRange> ring, TableMetadata table, Relation where) {
     return scan(ring, (range) -> createStatement(table, range, where));
   }
 
@@ -87,7 +100,7 @@ public class TableScanner {
    *     statements must have their keyspace correctly set.
    * @return as many {@link Statement}s as necessary to read the entire table, one per token range.
    */
-  public static List<Statement> scan(
+  public static List<Statement<?>> scan(
       Set<TokenRange> ring, Function<TokenRange, Statement> statementFactory) {
     return ring.stream()
         .flatMap(
@@ -97,37 +110,39 @@ public class TableScanner {
                     .stream()
                     .map(
                         unwrapped -> {
-                          Statement stmt = statementFactory.apply(unwrapped);
+                          Statement<?> stmt = statementFactory.apply(unwrapped);
                           return route(stmt, unwrapped, stmt.getKeyspace());
                         }))
         .collect(toList());
   }
 
-  private static Statement createStatement(TableMetadata table, TokenRange range, Clause where) {
+  private static Statement<?> createStatement(TableMetadata table, TokenRange range, Relation where) {
     String[] columns =
         table.getPartitionKey().stream().map(ColumnMetadata::getName).toArray(String[]::new);
-    Select.Where stmt =
-        select()
+    Select stmt =
+        QueryBuilderDsl.selectFrom(table.getKeyspace(), table.getName())
             .all()
-            .from(table)
-            .where(gt(token(columns), range.getStart()))
-            .and(lte(token(columns), range.getEnd()));
+            .where(
+                token(columns).isGreaterThan(literal(range.getStart())),
+                token(columns).isLessThanOrEqualTo(literal(range.getEnd())));
     if (where != null) {
-      stmt = stmt.and(where);
+      stmt = stmt.where(where);
     }
-    return route(stmt, range, table.getKeyspace().getName());
+    return route(stmt.build(), range, table.getKeyspace());
   }
 
-  private static Statement route(Statement stmt, TokenRange range, String keyspace) {
-    return new StatementWrapper(stmt) {
+  private static <T extends Statement<T>> WrappedStatement<T> route(
+      Statement<T> stmt, TokenRange range, CqlIdentifier keyspace) {
+    return new WrappedStatement<T>(stmt) {
+
       @Override
-      public Token getRoutingToken() {
-        return range.getEnd();
+      public CqlIdentifier getRoutingKeyspace() {
+        return keyspace;
       }
 
       @Override
-      public String getKeyspace() {
-        return keyspace;
+      public Token getRoutingToken() {
+        return range.getEnd();
       }
     };
   }

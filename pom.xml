@@ -148,9 +148,15 @@
       </dependency>
 
       <dependency>
-        <groupId>com.datastax.dse</groupId>
-        <artifactId>dse-java-driver-extras</artifactId>
-        <version>${dse.driver.version}</version>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>java-driver-core</artifactId>
+        <version>${oss.driver.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>java-driver-query-builder</artifactId>
+        <version>${oss.driver.version}</version>
       </dependency>
 
       <dependency>

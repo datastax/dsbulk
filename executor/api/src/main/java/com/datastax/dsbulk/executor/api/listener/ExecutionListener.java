@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.listener;
 
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
 
 /**
  * A listener for bulk executions.

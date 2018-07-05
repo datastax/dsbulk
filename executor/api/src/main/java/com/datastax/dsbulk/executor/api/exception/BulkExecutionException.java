@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.executor.api.exception;
 
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
+import com.datastax.oss.driver.api.core.cql.Statement;
 
 /**
  * Thrown when a {@link BulkExecutor} fails to execute a {@link Statement}.

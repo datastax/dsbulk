@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.reader;
 
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
 
@@ -30,7 +30,7 @@ public interface ReactiveBulkReader extends AutoCloseable {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   default Publisher<ReadResult> readReactive(String statement) throws BulkExecutionException {
-    return readReactive(new SimpleStatement(statement));
+    return readReactive(SimpleStatement.newInstance(statement));
   }
 
   /**

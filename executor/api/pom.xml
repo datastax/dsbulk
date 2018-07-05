@@ -39,6 +39,17 @@
     </dependency>
 
     <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-query-builder</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <dependency>
       <groupId>org.reactivestreams</groupId>
       <artifactId>reactive-streams</artifactId>
     </dependency>
@@ -157,6 +168,11 @@
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
       <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jetbrains</groupId>
+      <artifactId>annotations</artifactId>
     </dependency>
 
   </dependencies>

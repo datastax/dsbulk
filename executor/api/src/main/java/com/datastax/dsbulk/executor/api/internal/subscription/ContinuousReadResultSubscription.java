@@ -8,14 +8,14 @@
  */
 package com.datastax.dsbulk.executor.api.internal.subscription;
 
-import com.datastax.driver.core.AsyncContinuousPagingResult;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.dse.driver.api.core.cql.continuous.ContinuousAsyncResultSet;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Iterator;
@@ -25,7 +25,7 @@ import org.reactivestreams.Subscriber;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class ContinuousReadResultSubscription
-    extends ResultSubscription<ReadResult, AsyncContinuousPagingResult> {
+    extends ResultSubscription<ReadResult, ContinuousAsyncResultSet> {
 
   public ContinuousReadResultSubscription(
       Subscriber<? super ReadResult> subscriber,
@@ -38,7 +38,7 @@ public class ContinuousReadResultSubscription
   }
 
   @Override
-  Page toPage(AsyncContinuousPagingResult rs, ExecutionContext local) {
+  Page toPage(ContinuousAsyncResultSet rs, ExecutionContext local) {
     Iterator<Row> rows = rs.currentPage().iterator();
     Iterator<ReadResult> results =
         new AbstractIterator<ReadResult>() {
@@ -59,11 +59,16 @@ public class ContinuousReadResultSubscription
   @Override
   public void cancel() {
     Page current = pages.peek();
-    if (current != null && current instanceof ContinuousPage) {
+    if (current instanceof ContinuousPage) {
       // forcibly cancel the continuous paging request
       ((ContinuousPage) current).rs.cancel();
     }
     super.cancel();
+  }
+
+  @Override
+  protected ReadResult toErrorResult(BulkExecutionException error) {
+    return new DefaultReadResult(error);
   }
 
   @Override
@@ -72,7 +77,7 @@ public class ContinuousReadResultSubscription
   }
 
   @Override
-  void onRequestSuccessful(AsyncContinuousPagingResult page, ExecutionContext local) {
+  void onRequestSuccessful(ContinuousAsyncResultSet page, ExecutionContext local) {
     listener.ifPresent(l -> l.onReadRequestSuccessful(statement, local));
   }
 
@@ -81,17 +86,12 @@ public class ContinuousReadResultSubscription
     listener.ifPresent(l -> l.onReadRequestFailed(statement, t, local));
   }
 
-  @Override
-  protected ReadResult toErrorResult(BulkExecutionException error) {
-    return new DefaultReadResult(error);
-  }
-
   private class ContinuousPage extends Page {
 
-    final AsyncContinuousPagingResult rs;
+    final ContinuousAsyncResultSet rs;
 
-    private ContinuousPage(AsyncContinuousPagingResult rs, Iterator<ReadResult> rows) {
-      super(rows, rs.isLast() ? null : rs::nextPage);
+    private ContinuousPage(ContinuousAsyncResultSet rs, Iterator<ReadResult> rows) {
+      super(rows, rs.hasMorePages() ? rs::fetchNextPage : null);
       this.rs = rs;
     }
   }

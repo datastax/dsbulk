@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.internal.result;
 
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.Result;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.Optional;
 
 abstract class DefaultResult implements Result {

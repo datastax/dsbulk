@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.reader;
 
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
@@ -33,7 +33,7 @@ public interface SyncBulkReader extends AutoCloseable {
    */
   default void readSync(String statement, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException {
-    readSync(new SimpleStatement(statement), consumer);
+    readSync(SimpleStatement.newInstance(statement), consumer);
   }
 
   /**

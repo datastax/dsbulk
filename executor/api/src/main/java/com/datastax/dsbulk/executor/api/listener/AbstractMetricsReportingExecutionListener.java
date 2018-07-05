@@ -10,9 +10,9 @@ package com.datastax.dsbulk.executor.api.listener;
 
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.ScheduledReporter;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 

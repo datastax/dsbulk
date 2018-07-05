@@ -50,11 +50,11 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   void should_batch_by_replica_set_and_routing_key_reactive() throws Exception {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
-    when(cluster.getMetadata()).thenReturn(metadata);
+    when(session.getMetadata()).thenReturn(metadata);
     when(metadata.getReplicas("ks", key1)).thenReturn(replicaSet1);
     when(metadata.getReplicas("ks", key2)).thenReturn(replicaSet2);
     when(metadata.getReplicas("ks", key3)).thenReturn(replicaSet1);
-    ReactorStatementBatcher batcher = new ReactorStatementBatcher(cluster, REPLICA_SET);
+    ReactorStatementBatcher batcher = new ReactorStatementBatcher(session, REPLICA_SET);
     Flux<Statement> statements =
         Flux.from(batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.collectList().block())
@@ -66,11 +66,11 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   void should_batch_by_replica_set_and_routing_token_reactive() throws Exception {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
-    when(cluster.getMetadata()).thenReturn(metadata);
+    when(session.getMetadata()).thenReturn(metadata);
     when(metadata.getReplicas("ks", key1)).thenReturn(replicaSet1);
     when(metadata.getReplicas("ks", key2)).thenReturn(replicaSet2);
     when(metadata.getReplicas("ks", key3)).thenReturn(replicaSet1);
-    ReactorStatementBatcher batcher = new ReactorStatementBatcher(cluster, REPLICA_SET);
+    ReactorStatementBatcher batcher = new ReactorStatementBatcher(session, REPLICA_SET);
     Flux<Statement> statements =
         Flux.from(batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.collectList().block())
@@ -82,11 +82,11 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   void should_batch_by_routing_key_when_replica_set_info_not_available_reactive() throws Exception {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
-    when(cluster.getMetadata()).thenReturn(metadata);
+    when(session.getMetadata()).thenReturn(metadata);
     when(metadata.getReplicas("ks", key1)).thenReturn(new HashSet<>());
     when(metadata.getReplicas("ks", key2)).thenReturn(new HashSet<>());
     when(metadata.getReplicas("ks", key3)).thenReturn(new HashSet<>());
-    ReactorStatementBatcher batcher = new ReactorStatementBatcher(cluster, REPLICA_SET);
+    ReactorStatementBatcher batcher = new ReactorStatementBatcher(session, REPLICA_SET);
     Flux<Statement> statements =
         Flux.from(batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.collectList().block())
@@ -99,11 +99,11 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
       throws Exception {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
-    when(cluster.getMetadata()).thenReturn(metadata);
+    when(session.getMetadata()).thenReturn(metadata);
     when(metadata.getReplicas("ks", key1)).thenReturn(new HashSet<>());
     when(metadata.getReplicas("ks", key2)).thenReturn(new HashSet<>());
     when(metadata.getReplicas("ks", key3)).thenReturn(new HashSet<>());
-    ReactorStatementBatcher batcher = new ReactorStatementBatcher(cluster, REPLICA_SET);
+    ReactorStatementBatcher batcher = new ReactorStatementBatcher(session, REPLICA_SET);
     Flux<Statement> statements =
         Flux.from(batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.collectList().block())

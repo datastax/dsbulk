@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.executor.api;
 
-import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
+import com.datastax.oss.driver.api.core.session.Session;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Objects;
 import java.util.Optional;
