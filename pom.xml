@@ -779,9 +779,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
               <goal>verify</goal>
             </goals>
             <configuration>
-              <properties>
-                <excludeTags>ccm</excludeTags>
-              </properties>
+              <excludedGroups>ccm</excludedGroups>
               <reportNameSuffix>simulacron</reportNameSuffix>
             </configuration>
           </execution>
@@ -855,9 +853,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
                   <goal>verify</goal>
                 </goals>
                 <configuration>
-                  <properties>
-                    <includeTags>ccm</includeTags>
-                  </properties>
+                  <groups>ccm</groups>
                   <reportNameSuffix>ccm</reportNameSuffix>
                   <forkCount>${max.ccm.clusters}</forkCount>
                 </configuration>
