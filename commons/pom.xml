@@ -67,12 +67,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dse-java-driver-extras</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-test-infra</artifactId>
       <scope>test</scope>

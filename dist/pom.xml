@@ -76,11 +76,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dse-java-driver-extras</artifactId>
-    </dependency>
-
-    <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <exclusions>

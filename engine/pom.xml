@@ -54,11 +54,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dse-java-driver-extras</artifactId>
-    </dependency>
-
-    <dependency>
       <groupId>com.typesafe</groupId>
       <artifactId>config</artifactId>
     </dependency>

@@ -213,7 +213,8 @@ public class StatementBatcher {
    * @param statements the statements to batch together.
    * @return A list of batched statements.
    */
-  public List<Statement<?>> batchByGroupingKey(Iterable<? extends BatchableStatement<?>> statements) {
+  public List<Statement<?>> batchByGroupingKey(
+      Iterable<? extends BatchableStatement<?>> statements) {
     return StreamSupport.stream(statements.spliterator(), false)
         .collect(Collectors.groupingBy(this::groupingKey))
         .values()

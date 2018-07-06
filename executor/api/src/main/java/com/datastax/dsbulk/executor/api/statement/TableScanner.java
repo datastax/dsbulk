@@ -116,7 +116,8 @@ public class TableScanner {
         .collect(toList());
   }
 
-  private static Statement<?> createStatement(TableMetadata table, TokenRange range, Relation where) {
+  private static Statement<?> createStatement(
+      TableMetadata table, TokenRange range, Relation where) {
     String[] columns =
         table.getPartitionKey().stream().map(ColumnMetadata::getName).toArray(String[]::new);
     Select stmt =
