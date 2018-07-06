@@ -135,8 +135,7 @@ public class CountWorkflow implements Workflow {
                     // Important:
                     // 1) there must be one counting unit per thread / inner flow:
                     // this is guaranteed by instantiating a new counting unit below for each
-                    // inner
-                    // flow.
+                    // inner flow.
                     // 2) A partition cannot be split in two inner flows;
                     // this is guaranteed by the way we create our read statements by token range.
                     .doOnNext(readResultCounter.newCountingUnit()::update)
