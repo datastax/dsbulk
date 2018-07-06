@@ -10,11 +10,11 @@ package com.datastax.dsbulk.engine.simulacron;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
 import static java.nio.file.Files.createTempDirectory;
 import static org.slf4j.event.Level.ERROR;
 
@@ -109,7 +109,7 @@ class CassLoadEndToEndSimulacronIT {
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING
+      IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
     int status = new DataStaxBulkLoader(args).run();

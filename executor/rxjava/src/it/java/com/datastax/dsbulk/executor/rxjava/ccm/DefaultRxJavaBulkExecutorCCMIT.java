@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.executor.rxjava.ccm;
 
-import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.SerializedSession;
+import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
 import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.dsbulk.executor.rxjava.DefaultRxJavaBulkExecutor;
@@ -19,8 +19,7 @@ import org.junit.jupiter.api.Tag;
 class DefaultRxJavaBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 
   DefaultRxJavaBulkExecutorCCMIT(
-      @ClusterConfig(queryOptions = "fetchSize:100" /* to force pagination */)
-          ContinuousPagingSession session) {
+      @ClusterConfig(queryOptions = "fetchSize:10" /* to force pagination */) Session session) {
     super(
         session,
         DefaultRxJavaBulkExecutor.builder(new SerializedSession(session)).build(),

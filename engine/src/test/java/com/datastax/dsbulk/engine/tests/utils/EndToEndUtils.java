@@ -13,6 +13,7 @@ import static com.datastax.driver.core.DataType.inet;
 import static com.datastax.driver.core.DataType.varchar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
@@ -39,6 +40,36 @@ import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
 
 public class EndToEndUtils {
+
+  public static final String INSERT_INTO_IP_BY_COUNTRY =
+      "INSERT INTO ip_by_country "
+          + "(country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
+          + "VALUES (?,?,?,?,?,?)";
+
+  public static final String SELECT_FROM_IP_BY_COUNTRY = "SELECT * FROM ip_by_country";
+
+  public static final String SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES =
+      "SELECT * FROM \"MYKS\".\"WITH_SPACES\"";
+
+  public static final String IP_BY_COUNTRY_MAPPING_INDEXED =
+      "0=beginning_ip_address,"
+          + "1=ending_ip_address,"
+          + "2=beginning_ip_number,"
+          + "3=ending_ip_number,"
+          + "4=country_code,"
+          + "5=country_name";
+
+  public static final String IP_BY_COUNTRY_MAPPING_NAMED =
+      "beginning_ip_address=beginning_ip_address,"
+          + "ending_ip_address=ending_ip_address,"
+          + "beginning_ip_number=beginning_ip_number,"
+          + "ending_ip_number=ending_ip_number,"
+          + "country_code=country_code,"
+          + "country_name=country_name";
+
+  public static final String IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE =
+      "0=\"BEGINNING IP ADDRESS\",1=\"ENDING IP ADDRESS\",2=\"BEGINNING IP NUMBER\",3=\"ENDING IP NUMBER\","
+          + "4=\"COUNTRY CODE\",5=\"COUNTRY NAME\"";
 
   public static RequestPrime createSimpleParameterizedQuery(String query) {
     Map<String, String> paramTypes = new LinkedHashMap<>();
@@ -194,5 +225,55 @@ public class EndToEndUtils {
                 new SimulacronUtils.Column("ending_ip_address", inet()),
                 new SimulacronUtils.Column("beginning_ip_number", bigint()),
                 new SimulacronUtils.Column("ending_ip_number", bigint()))));
+  }
+
+  public static void createIpByCountryTable(Session session) {
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS ip_by_country ("
+            + "country_code varchar,"
+            + "country_name varchar static,"
+            + "beginning_ip_address inet,"
+            + "ending_ip_address inet,"
+            + "beginning_ip_number bigint,"
+            + "ending_ip_number bigint,"
+            + "PRIMARY KEY(country_code, beginning_ip_address))");
+  }
+
+  public static void createIpByCountryTable(Session session, String keyspace) {
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS "
+            + keyspace
+            + ".ip_by_country ("
+            + "country_code varchar,"
+            + "country_name varchar static,"
+            + "beginning_ip_address inet,"
+            + "ending_ip_address inet,"
+            + "beginning_ip_number bigint,"
+            + "ending_ip_number bigint,"
+            + "PRIMARY KEY(country_code, beginning_ip_address))");
+  }
+
+  public static void createWithSpacesTable(Session session) {
+    session.execute(
+        "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "
+            + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS \"MYKS\".\"WITH_SPACES\" ("
+            + "key int PRIMARY KEY, \"my destination\" text)");
+  }
+
+  public static void createIpByCountryCaseSensitiveTable(Session session) {
+    session.execute(
+        "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "
+            + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS \"MYKS\".\"IPBYCOUNTRY\" ("
+            + "\"COUNTRY CODE\" varchar,"
+            + "\"COUNTRY NAME\" varchar static,"
+            + "\"BEGINNING IP ADDRESS\" inet,"
+            + "\"ENDING IP ADDRESS\" inet,"
+            + "\"BEGINNING IP NUMBER\" bigint,"
+            + "\"ENDING IP NUMBER\" bigint,"
+            + "PRIMARY KEY(\"COUNTRY CODE\", \"BEGINNING IP ADDRESS\"))");
   }
 }

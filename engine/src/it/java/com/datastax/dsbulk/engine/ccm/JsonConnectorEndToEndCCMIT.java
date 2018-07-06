@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.truncateIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.assertComplexRows;
@@ -16,18 +15,18 @@ import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkNumb
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkTemporalsWritten;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
-import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.IP_BY_COUNTRY_MAPPING;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_SPACES;
-import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.SELECT_FROM_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES;
-import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createIpByCountryTable;
-import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.createWithSpacesTable;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -80,7 +79,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @AfterEach
   void truncateTable() {
-    truncateIpByCountryTable(session);
+    session.execute("TRUNCATE ip_by_country");
   }
 
   @AfterEach
@@ -106,7 +105,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -128,7 +127,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -154,7 +153,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -178,7 +177,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -204,7 +203,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -228,7 +227,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -350,7 +349,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -372,7 +371,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -446,7 +445,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
     args.add("--connector.json.skipRecords");
     args.add("3");
     args.add("--connector.json.maxRecords");
@@ -477,7 +476,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();

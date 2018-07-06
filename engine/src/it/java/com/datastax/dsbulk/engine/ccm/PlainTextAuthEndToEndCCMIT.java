@@ -8,13 +8,12 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.truncateIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,7 +61,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
 
   @AfterEach
   void truncateTable() {
-    truncateIpByCountryTable(session);
+    session.execute("TRUNCATE ip_by_country");
   }
 
   @AfterEach
@@ -87,7 +86,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     args.add("--driver.auth.provider");
     args.add("PlainTextAuthProvider");
     args.add("--driver.auth.username");

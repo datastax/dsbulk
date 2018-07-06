@@ -10,26 +10,25 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.CSV_RECORDS;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.INSERT_INTO_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryCaseSensitiveTable;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createIpByCountryTable;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.createWithSpacesTable;
-import static com.datastax.dsbulk.commons.tests.utils.CsvUtils.truncateIpByCountryTable;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_HEADER;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_WITH_SPACES;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryCaseSensitiveTable;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
@@ -128,7 +127,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @BeforeEach
   void truncateTable() {
-    truncateIpByCountryTable(session);
+    session.execute("TRUNCATE ip_by_country");
   }
 
   @AfterEach
@@ -160,7 +159,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -182,7 +181,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -208,7 +207,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -232,7 +231,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -258,7 +257,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -282,7 +281,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -650,7 +649,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -672,7 +671,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -746,7 +745,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     args.add("--connector.csv.skipRecords");
     args.add("3");
     args.add("--connector.csv.maxRecords");
@@ -777,7 +776,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
