@@ -362,7 +362,7 @@ public class DriverSettings {
   }
 
   public DseCluster newCluster() throws BulkConfigurationException {
-    DseCluster.Builder builder = DseCluster.builder().withClusterName(executionId + "-driver");
+    DseCluster.Builder builder = DseCluster.builder();
     hosts.forEach(builder::addContactPoints);
     builder
         .withPort(port)
