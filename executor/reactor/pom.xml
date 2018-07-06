@@ -84,12 +84,6 @@
 
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
       <scope>test</scope>
     </dependency>
@@ -125,12 +119,6 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apiguardian</groupId>
-      <artifactId>apiguardian-api</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
       <groupId>com.datastax.oss.simulacron</groupId>
       <artifactId>simulacron-native-server</artifactId>
       <scope>test</scope>
@@ -155,38 +143,5 @@
     </dependency>
 
   </dependencies>
-
-  <build>
-
-    <plugins>
-
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <configuration>
-          <properties>
-            <!-- tell TestNG not to run jUnit tests -->
-            <property>
-              <name>junit</name>
-              <value>false</value>
-            </property>
-          </properties>
-        </configuration>
-        <dependencies>
-          <dependency>
-            <groupId>org.junit.platform</groupId>
-            <artifactId>junit-platform-surefire-provider</artifactId>
-            <version>${junit-platform.version}</version>
-          </dependency>
-          <dependency>
-            <groupId>org.apache.maven.surefire</groupId>
-            <artifactId>surefire-testng</artifactId>
-            <version>${surefire.version}</version>
-          </dependency>
-        </dependencies>
-      </plugin>
-
-    </plugins>
-
-  </build>
 
 </project>

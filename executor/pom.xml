@@ -8,7 +8,9 @@
     https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
 
@@ -31,5 +33,64 @@
     <module>reactor</module>
     <module>rxjava</module>
   </modules>
+
+  <build>
+
+    <plugins>
+
+      <!--
+      Unit tests in this module's submodules use both jUnit (for regular tests)
+      and TestNG (for Reactive Streams TCK tests).
+      This requires a special configuration for both the surefire and the failsafe plugins,
+      inspired by this how-to article on using jUnit and TestNG together:
+      https://maven.apache.org/surefire/maven-surefire-plugin/examples/testng.html#Running_TestNG_and_JUnit_Tests
+      -->
+
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <properties>
+            <!-- tell TestNG not to run jUnit tests -->
+            <property>
+              <name>junit</name>
+              <value>false</value>
+            </property>
+          </properties>
+          <threadCount>1</threadCount>
+        </configuration>
+        <dependencies>
+          <!-- add both jUnit and TestNG dependencies as we need both for unit tests -->
+          <dependency>
+            <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-junit-platform</artifactId>
+            <version>${surefire.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-testng</artifactId>
+            <version>${surefire.version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <dependencies>
+          <!--
+          integration tests in this module's submodules only require jUnit; but we still need to
+          explicitly add the jUnit dependency below to force failsafe to pick the jUnit framework
+          in spite of TestNG being present on the test classpath.
+          -->
+          <dependency>
+            <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-junit-platform</artifactId>
+            <version>${surefire.version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+
+    </plugins>
+
+  </build>
 
 </project>
