@@ -15,7 +15,7 @@ import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.Statist
 import static com.google.common.base.Functions.identity;
 import static java.util.stream.Collectors.toMap;
 
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.ProtocolVersion;

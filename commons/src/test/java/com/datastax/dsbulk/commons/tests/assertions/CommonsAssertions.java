@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.commons.tests.assertions;
 
+import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
+import com.datastax.dsbulk.commons.codecs.ConvertingCodecAssert;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.google.common.collect.Multimap;
 import com.typesafe.config.Config;
@@ -24,5 +26,10 @@ public class CommonsAssertions extends org.assertj.core.api.Assertions {
 
   public static <K, V> MultimapAssert<K, V> assertThat(Multimap<K, V> map) {
     return new MultimapAssert<>(map);
+  }
+
+  public static <FROM, TO> ConvertingCodecAssert<FROM, TO> assertThat(
+      ConvertingCodec<FROM, TO> actual) {
+    return new ConvertingCodecAssert<>(actual);
   }
 }

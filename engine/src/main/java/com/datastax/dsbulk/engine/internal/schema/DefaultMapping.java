@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.writetime.WriteTimeCodec;
+import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
+import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.commons.codecs.writetime.WriteTimeCodec;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.DataTypes;

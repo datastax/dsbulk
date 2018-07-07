@@ -21,7 +21,7 @@ import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dsbulk.engine.internal.settings.BatchSettings;
-import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
+import com.datastax.dsbulk.commons.config.CodecSettings;
 import com.datastax.dsbulk.engine.internal.settings.ConnectorSettings;
 import com.datastax.dsbulk.engine.internal.settings.DriverSettings;
 import com.datastax.dsbulk.engine.internal.settings.EngineSettings;
