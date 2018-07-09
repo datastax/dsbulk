@@ -12,6 +12,7 @@ import static com.datastax.dsbulk.commons.tests.utils.SessionUtils.createSimpleK
 import static com.datastax.dsbulk.commons.tests.utils.SessionUtils.useKeyspace;
 
 import com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionFactoryMethod;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
@@ -48,6 +49,7 @@ public abstract class SessionFactory {
       AnnotatedElement element, Class<?> testClass) {
     SessionFactoryMethod factoryRef = element.getAnnotation(SessionFactoryMethod.class);
     SessionConfig config = element.getAnnotation(SessionConfig.class);
+    CCMConfig ccmConfig = ReflectionUtils.locateClassAnnotation(testClass, CCMConfig.class);
     if (factoryRef != null) {
       if (config != null) {
         throw new IllegalStateException(
@@ -60,7 +62,8 @@ public abstract class SessionFactory {
     if (config == null) {
       config = DEFAULT_SESSION_CONFIG;
     }
-    return new SessionAnnotationFactory(config);
+    return new SessionAnnotationFactory(
+        config, ccmConfig != null ? ccmConfig.numberOfNodes().length : 1);
   }
 
   public abstract DseSessionBuilder createSessionBuilder();
@@ -87,12 +90,13 @@ public abstract class SessionFactory {
     private final String loggedKeyspaceName;
     private final TestConfigLoader configLoader;
 
-    private SessionAnnotationFactory(SessionConfig config) {
+    private SessionAnnotationFactory(SessionConfig config, int numDcs) {
       useKeyspaceMode = config.useKeyspace();
       loggedKeyspaceName = config.loggedKeyspaceName();
+      String defaultDc = numDcs == 1 ? "Cassandra" : "dc1";
       String[] settings =
           new String[config.settings().length + (config.ssl() ? SSL_OPTIONS.length : 0) + 1];
-      settings[0] = "basic.load-balancing-policy.local-datacenter=\"Cassandra\"";
+      settings[0] = String.format("basic.load-balancing-policy.local-datacenter=\"%s\"", defaultDc);
       int curIdx = 1;
       for (String opt : config.settings()) {
         settings[curIdx++] = opt;
