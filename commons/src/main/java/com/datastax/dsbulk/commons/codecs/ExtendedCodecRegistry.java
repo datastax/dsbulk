@@ -35,6 +35,8 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.UUID
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARCHAR;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARINT;
 
+import com.datastax.dsbulk.commons.codecs.collection.CollectionToCollectionCodec;
+import com.datastax.dsbulk.commons.codecs.collection.CollectionToTupleCodec;
 import com.datastax.dsbulk.commons.codecs.json.JsonNodeToBigDecimalCodec;
 import com.datastax.dsbulk.commons.codecs.json.JsonNodeToBigIntegerCodec;
 import com.datastax.dsbulk.commons.codecs.json.JsonNodeToBlobCodec;
@@ -125,6 +127,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.netty.util.concurrent.FastThreadLocal;
+import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -133,12 +136,16 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -261,6 +268,44 @@ public class ExtendedCodecRegistry {
     if (GenericType.of(JsonNode.class).equals(javaType)) {
       return createJsonNodeConvertingCodec(cqlType, true);
     }
+    if (javaType.isSubtypeOf(GenericType.of(Collection.class))) {
+      GenericType<?> componentType =
+          GenericType.of(((ParameterizedType) javaType.getType()).getActualTypeArguments()[0]);
+      @SuppressWarnings("unchecked")
+      Class<Collection> collType = (Class<Collection>) javaType.getRawType();
+
+      if (isCollection(cqlType)) {
+        TypeCodec<?> typeCodec = codecFor(cqlType);
+
+        TypeCodec<?> elementCodec = null;
+        Supplier<? extends Collection> collectionCreator;
+        if (cqlType instanceof SetType) {
+          elementCodec = codecFor(((SetType) cqlType).getElementType(), componentType);
+        } else if (cqlType instanceof ListType) {
+          elementCodec = codecFor(((ListType) cqlType).getElementType(), componentType);
+        }
+        if (cqlType instanceof SetType) {
+          collectionCreator = HashSet::new;
+        } else {
+          collectionCreator = ArrayList::new;
+        }
+        //noinspection unchecked
+        return new CollectionToCollectionCodec(
+            collType, typeCodec, elementCodec, collectionCreator);
+      } else if (cqlType instanceof TupleType) {
+        @SuppressWarnings("unchecked")
+        TypeCodec<TupleValue> tupleCodec = (TypeCodec<TupleValue>) codecFor(cqlType);
+        ImmutableList.Builder<TypeCodec<?>> eltCodecs = new ImmutableList.Builder<>();
+        for (DataType eltType : ((TupleType) cqlType).getComponentTypes()) {
+          @SuppressWarnings("unchecked")
+          TypeCodec<?> eltCodec = codecFor(eltType, componentType);
+          eltCodecs.add(eltCodec);
+        }
+        //noinspection unchecked
+        return new CollectionToTupleCodec(collType, tupleCodec, eltCodecs.build());
+      }
+    }
+
     if (javaType.isSubtypeOf(GenericType.of(Number.class))) {
       if (isNumeric(cqlType)) {
         @SuppressWarnings("unchecked")
@@ -861,6 +906,10 @@ public class ExtendedCodecRegistry {
         || cqlType == DataTypes.DOUBLE
         || cqlType == DataTypes.VARINT
         || cqlType == DataTypes.DECIMAL;
+  }
+
+  private static boolean isCollection(@NotNull DataType cqlType) {
+    return cqlType instanceof SetType || cqlType instanceof ListType;
   }
 
   private static boolean isTemporal(@NotNull DataType cqlType) {
