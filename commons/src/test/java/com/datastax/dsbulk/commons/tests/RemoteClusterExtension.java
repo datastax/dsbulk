@@ -11,7 +11,10 @@ package com.datastax.dsbulk.commons.tests;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
+import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.datastax.driver.dse.DseCluster;
+import com.datastax.driver.dse.DseLoadBalancingPolicy;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.tests.driver.factory.ClusterFactory;
 import com.datastax.dsbulk.commons.tests.driver.factory.SessionFactory;
@@ -31,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class RemoteClusterExtension implements AfterAllCallback, ParameterResolver {
 
-  public static final ExtensionContext.Namespace TEST_NAMESPACE =
+  protected static final ExtensionContext.Namespace TEST_NAMESPACE =
       ExtensionContext.Namespace.create("com.datastax.dsbulk.commons.tests");
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RemoteClusterExtension.class);
@@ -100,8 +103,14 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
       clusterBuilder.addContactPoints(getContactPoints(context));
     }
     clusterBuilder.withPort(getBinaryPort(context));
+    clusterBuilder.withLoadBalancingPolicy(
+        new DseLoadBalancingPolicy(
+            new TokenAwarePolicy(
+                DCAwareRoundRobinPolicy.builder().withLocalDc(getLocalDCName(context)).build())));
     return clusterBuilder.build();
   }
+
+  protected abstract String getLocalDCName(ExtensionContext context);
 
   protected abstract int getBinaryPort(ExtensionContext context);
 
@@ -115,7 +124,7 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
     closeables.add(value);
   }
 
-  private void closeCloseables(ExtensionContext context) throws Exception {
+  private void closeCloseables(ExtensionContext context) {
     ExtensionContext.Store store = context.getStore(TEST_NAMESPACE);
     @SuppressWarnings("unchecked")
     Set<AutoCloseable> closeables = store.remove(CLOSEABLES_KEY, Set.class);

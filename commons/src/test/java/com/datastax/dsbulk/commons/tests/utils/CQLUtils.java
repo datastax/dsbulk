@@ -12,15 +12,27 @@ import com.datastax.driver.core.Metadata;
 
 public abstract class CQLUtils {
 
-  private static final String CREATE_KEYSPACE_FORMAT =
-      "CREATE KEYSPACE %s WITH replication = { 'class' : '%s', 'replication_factor' : %d }";
+  private static final String CREATE_KEYSPACE_SIMPLE_FORMAT =
+      "CREATE KEYSPACE IF NOT EXISTS %s WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : %d }";
 
   public static String createKeyspaceSimpleStrategy(String keyspace, int replicationFactor) {
-    return createKeyspace(keyspace, "SimpleStrategy", replicationFactor);
+    return String.format(
+        CREATE_KEYSPACE_SIMPLE_FORMAT, Metadata.quoteIfNecessary(keyspace), replicationFactor);
   }
 
-  private static String createKeyspace(String keyspace, String strategy, int replicationFactor) {
-    return String.format(
-        CREATE_KEYSPACE_FORMAT, Metadata.quoteIfNecessary(keyspace), strategy, replicationFactor);
+  public static String createKeyspaceNetworkTopologyStrategy(
+      String keyspace, int... replicationFactors) {
+    StringBuilder sb =
+        new StringBuilder("CREATE KEYSPACE IF NOT EXISTS ")
+            .append(Metadata.quoteIfNecessary(keyspace))
+            .append(" WITH replication = { 'class' : 'NetworkTopologyStrategy', ");
+    for (int i = 0; i < replicationFactors.length; i++) {
+      if (i > 0) {
+        sb.append(", ");
+      }
+      int rf = replicationFactors[i];
+      sb.append("'dc").append(i + 1).append("' : ").append(rf);
+    }
+    return sb.append('}').toString();
   }
 }

@@ -1,8 +1,9 @@
 ## Changelog
 
-### 1.1.1 (in progress)
+### 1.2.0 (in progress)
 
 - [bug] DAT-302: CsvWriter trims leading/trailing spaces in values.
+- [improvement] DAT-252: Improve range split algorithm in multi-dc and/or vnodes environments.
 
 
 ### 1.1.0

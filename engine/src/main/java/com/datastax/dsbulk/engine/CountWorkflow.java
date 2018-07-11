@@ -57,7 +57,7 @@ public class CountWorkflow implements Workflow {
   private LogManager logManager;
   private DseCluster cluster;
   private ReactorBulkReader executor;
-  private List<Statement> readStatements;
+  private List<? extends Statement> readStatements;
   private volatile boolean success;
 
   CountWorkflow(LoaderConfig config) {
@@ -113,7 +113,8 @@ public class CountWorkflow implements Workflow {
     int numPartitions = statsSettings.getNumPartitions();
     readResultCounter =
         schemaSettings.createReadResultCounter(session, codecRegistry, modes, numPartitions);
-    readStatements = schemaSettings.createReadStatements(cluster);
+    readStatements =
+        schemaSettings.createReadStatements(cluster, Runtime.getRuntime().availableProcessors());
     closed.set(false);
     success = false;
   }

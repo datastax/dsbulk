@@ -62,7 +62,7 @@ public class UnloadWorkflow implements Workflow {
   private LogManager logManager;
   private DseCluster cluster;
   private ReactorBulkReader executor;
-  private List<Statement> readStatements;
+  private List<? extends Statement> readStatements;
 
   UnloadWorkflow(LoaderConfig config) {
     settingsManager = new SettingsManager(config, WorkflowType.UNLOAD);
@@ -120,7 +120,8 @@ public class UnloadWorkflow implements Workflow {
         codecSettings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
     readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    readStatements = schemaSettings.createReadStatements(cluster);
+    readStatements =
+        schemaSettings.createReadStatements(cluster, Runtime.getRuntime().availableProcessors());
     closed.set(false);
   }
 

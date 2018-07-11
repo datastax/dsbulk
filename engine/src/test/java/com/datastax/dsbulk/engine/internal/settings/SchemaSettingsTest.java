@@ -13,10 +13,10 @@ import static com.datastax.driver.core.DataType.counter;
 import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
+import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newToken;
+import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newTokenRange;
 import static com.datastax.driver.core.DriverCoreEngineTestHooks.newPreparedId;
-import static com.datastax.driver.core.DriverCoreEngineTestHooks.newToken;
-import static com.datastax.driver.core.DriverCoreEngineTestHooks.newTokenRange;
-import static com.datastax.driver.core.DriverCoreEngineTestHooks.wrappedStatement;
+import static com.datastax.driver.core.DriverCoreHooks.wrappedStatement;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
@@ -28,6 +28,7 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -51,6 +52,7 @@ import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatement;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -126,7 +128,13 @@ class SchemaSettingsTest {
     when(protocolOptions.getProtocolVersion()).thenReturn(V4);
     when(metadata.getKeyspace(anyString())).thenReturn(keyspace);
     when(metadata.getTokenRanges()).thenReturn(tokenRanges);
+    when(metadata.newToken(token1.toString())).thenReturn(token1);
+    when(metadata.newToken(token2.toString())).thenReturn(token2);
+    when(metadata.newToken(token3.toString())).thenReturn(token3);
+    when(metadata.getPartitioner()).thenReturn("Murmur3Partitioner");
+    when(metadata.getReplicas(anyString(), any(Token.class))).thenReturn(Collections.emptySet());
     when(keyspace.getTable(anyString())).thenReturn(table);
+    when(keyspace.getName()).thenReturn("ks");
     when(session.prepare(anyString())).thenReturn(ps);
     when(table.getColumns()).thenReturn(columns);
     when(table.getColumn(C1)).thenReturn(col1);
@@ -134,6 +142,8 @@ class SchemaSettingsTest {
     when(table.getColumn(C3)).thenReturn(col3);
     when(table.getPrimaryKey()).thenReturn(Collections.singletonList(col1));
     when(table.getPartitionKey()).thenReturn(Collections.singletonList(col1));
+    when(table.getKeyspace()).thenReturn(keyspace);
+    when(table.getName()).thenReturn("t1");
     when(col1.getName()).thenReturn(C1);
     when(col2.getName()).thenReturn(C2);
     when(col3.getName()).thenReturn(C3);
@@ -816,8 +826,9 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.UNLOAD, false);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<Statement> statements = schemaSettings.createReadStatements(cluster);
-    assertThat(statements).hasSize(1).containsExactly(bs);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster, 3);
+    assertThat(statements).hasSize(1);
+    assertThat(statements.get(0)).isEqualTo(bs);
   }
 
   @Test
@@ -828,55 +839,52 @@ class SchemaSettingsTest {
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken("start", token1)).thenReturn(bs1);
     when(bs1.setToken("end", token2)).thenReturn(bs1);
-    when(bs1.getKeyspace()).thenReturn("ks1");
     BoundStatement bs2 = mock(BoundStatement.class);
     when(bs2.setToken("start", token2)).thenReturn(bs2);
     when(bs2.setToken("end", token3)).thenReturn(bs2);
-    when(bs2.getKeyspace()).thenReturn("ks1");
     BoundStatement bs3 = mock(BoundStatement.class);
     when(bs3.setToken("start", token3)).thenReturn(bs3);
     when(bs3.setToken("end", token1)).thenReturn(bs3);
-    when(bs3.getKeyspace()).thenReturn("ks1");
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config = makeLoaderConfig("keyspace = ks1, table = t1");
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.UNLOAD, false);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<Statement> statements = schemaSettings.createReadStatements(cluster);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster, 3);
     assertThat(statements)
         .hasSize(3)
         .anySatisfy(
             // token range 1
             stmt -> {
-              assertThat(stmt).isInstanceOf(StatementWrapper.class);
+              assertThat(stmt).isInstanceOf(TokenRangeReadStatement.class);
               Statement wrapped = wrappedStatement((StatementWrapper) stmt);
               assertThat(wrapped).isInstanceOf(BoundStatement.class);
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs1);
               assertThat(stmt.getRoutingToken()).isEqualTo(token2);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             })
         .anySatisfy(
             // token range 2
             stmt -> {
-              assertThat(stmt).isInstanceOf(StatementWrapper.class);
+              assertThat(stmt).isInstanceOf(TokenRangeReadStatement.class);
               Statement wrapped = wrappedStatement((StatementWrapper) stmt);
               assertThat(wrapped).isInstanceOf(BoundStatement.class);
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs2);
               assertThat(stmt.getRoutingToken()).isEqualTo(token3);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             })
         .anySatisfy(
             // token range 3
             stmt -> {
-              assertThat(stmt).isInstanceOf(StatementWrapper.class);
+              assertThat(stmt).isInstanceOf(TokenRangeReadStatement.class);
               Statement wrapped = wrappedStatement((StatementWrapper) stmt);
               assertThat(wrapped).isInstanceOf(BoundStatement.class);
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs3);
               assertThat(stmt.getRoutingToken()).isEqualTo(token1);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             });
   }
 
@@ -888,23 +896,20 @@ class SchemaSettingsTest {
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken("start", token1)).thenReturn(bs1);
     when(bs1.setToken("end", token2)).thenReturn(bs1);
-    when(bs1.getKeyspace()).thenReturn("ks1");
     BoundStatement bs2 = mock(BoundStatement.class);
     when(bs2.setToken("start", token2)).thenReturn(bs2);
     when(bs2.setToken("end", token3)).thenReturn(bs2);
-    when(bs2.getKeyspace()).thenReturn("ks1");
     BoundStatement bs3 = mock(BoundStatement.class);
     when(bs3.setToken("start", token3)).thenReturn(bs3);
     when(bs3.setToken("end", token1)).thenReturn(bs3);
-    when(bs3.getKeyspace()).thenReturn("ks1");
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
     LoaderConfig config =
         makeLoaderConfig(
-            "keyspace = ks1, query = \"SELECT a,b,c FROM table1 WHERE token(a) > :start and token(a) <= :end \"");
+            "keyspace = ks, query = \"SELECT a,b,c FROM table1 WHERE token(a) > :start and token(a) <= :end \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.UNLOAD, false);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<Statement> statements = schemaSettings.createReadStatements(cluster);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster, 3);
     assertThat(statements)
         .hasSize(3)
         .anySatisfy(
@@ -916,7 +921,7 @@ class SchemaSettingsTest {
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs1);
               assertThat(stmt.getRoutingToken()).isEqualTo(token2);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             })
         .anySatisfy(
             // token range 2
@@ -927,7 +932,7 @@ class SchemaSettingsTest {
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs2);
               assertThat(stmt.getRoutingToken()).isEqualTo(token3);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             })
         .anySatisfy(
             // token range 3
@@ -938,7 +943,7 @@ class SchemaSettingsTest {
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs3);
               assertThat(stmt.getRoutingToken()).isEqualTo(token1);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             });
   }
 
@@ -950,21 +955,18 @@ class SchemaSettingsTest {
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken("start", token1)).thenReturn(bs1);
     when(bs1.setToken("end", token2)).thenReturn(bs1);
-    when(bs1.getKeyspace()).thenReturn("ks1");
     BoundStatement bs2 = mock(BoundStatement.class);
     when(bs2.setToken("start", token2)).thenReturn(bs2);
     when(bs2.setToken("end", token3)).thenReturn(bs2);
-    when(bs2.getKeyspace()).thenReturn("ks1");
     BoundStatement bs3 = mock(BoundStatement.class);
     when(bs3.setToken("start", token3)).thenReturn(bs3);
     when(bs3.setToken("end", token1)).thenReturn(bs3);
-    when(bs3.getKeyspace()).thenReturn("ks1");
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config = makeLoaderConfig("keyspace = ks1, table = t1");
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, false);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<Statement> statements = schemaSettings.createReadStatements(cluster);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster, 3);
     assertThat(statements)
         .hasSize(3)
         .anySatisfy(
@@ -976,7 +978,7 @@ class SchemaSettingsTest {
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs1);
               assertThat(stmt.getRoutingToken()).isEqualTo(token2);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             })
         .anySatisfy(
             // token range 2
@@ -987,7 +989,7 @@ class SchemaSettingsTest {
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs2);
               assertThat(stmt.getRoutingToken()).isEqualTo(token3);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             })
         .anySatisfy(
             // token range 3
@@ -998,7 +1000,7 @@ class SchemaSettingsTest {
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs3);
               assertThat(stmt.getRoutingToken()).isEqualTo(token1);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             });
   }
 
@@ -1010,23 +1012,20 @@ class SchemaSettingsTest {
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken("start", token1)).thenReturn(bs1);
     when(bs1.setToken("end", token2)).thenReturn(bs1);
-    when(bs1.getKeyspace()).thenReturn("ks1");
     BoundStatement bs2 = mock(BoundStatement.class);
     when(bs2.setToken("start", token2)).thenReturn(bs2);
     when(bs2.setToken("end", token3)).thenReturn(bs2);
-    when(bs2.getKeyspace()).thenReturn("ks1");
     BoundStatement bs3 = mock(BoundStatement.class);
     when(bs3.setToken("start", token3)).thenReturn(bs3);
     when(bs3.setToken("end", token1)).thenReturn(bs3);
-    when(bs3.getKeyspace()).thenReturn("ks1");
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
     LoaderConfig config =
         makeLoaderConfig(
-            "keyspace = ks1, query = \"SELECT token(a) FROM table1 WHERE token(a) > :start and token(a) <= :end \"");
+            "keyspace = ks, query = \"SELECT token(a) FROM table1 WHERE token(a) > :start and token(a) <= :end \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, false);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<Statement> statements = schemaSettings.createReadStatements(cluster);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster, 3);
     assertThat(statements)
         .hasSize(3)
         .anySatisfy(
@@ -1038,7 +1037,7 @@ class SchemaSettingsTest {
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs1);
               assertThat(stmt.getRoutingToken()).isEqualTo(token2);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             })
         .anySatisfy(
             // token range 2
@@ -1049,7 +1048,7 @@ class SchemaSettingsTest {
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs2);
               assertThat(stmt.getRoutingToken()).isEqualTo(token3);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             })
         .anySatisfy(
             // token range 3
@@ -1060,7 +1059,7 @@ class SchemaSettingsTest {
               BoundStatement bs = (BoundStatement) wrapped;
               assertThat(bs).isSameAs(bs3);
               assertThat(stmt.getRoutingToken()).isEqualTo(token1);
-              assertThat(stmt.getKeyspace()).isEqualTo("ks1");
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
             });
   }
 
@@ -1090,7 +1089,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.UNLOAD, false);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster))
+    assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster, 3))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "The provided statement (schema.query) contains unrecognized bound variables: [foo, bar]; "

@@ -55,19 +55,7 @@ public class DriverCoreEngineTestHooks {
     return new UserType.Field(name, type);
   }
 
-  public static TokenRange newTokenRange(Token start, Token end) {
-    return new TokenRange(start, end, Token.M3PToken.FACTORY);
-  }
-
-  public static Token newToken(long value) {
-    return Token.M3PToken.FACTORY.fromString(Long.toString(value));
-  }
-
   public static ByteBuffer compose(ByteBuffer... bbs) {
     return SimpleStatement.compose(bbs);
-  }
-
-  public static Statement wrappedStatement(StatementWrapper wrapper) {
-    return wrapper.getWrappedStatement();
   }
 }

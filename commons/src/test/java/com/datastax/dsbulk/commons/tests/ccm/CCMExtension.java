@@ -100,6 +100,11 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
     return getOrCreateCCM(context).getInitialContactPoints();
   }
 
+  @Override
+  protected String getLocalDCName(ExtensionContext context) {
+    return getOrCreateCCM(context).isMultiDC() ? "dc1" : "Cassandra";
+  }
+
   private CCMCluster getOrCreateCCM(ExtensionContext context) {
     return context
         .getStore(TEST_NAMESPACE)

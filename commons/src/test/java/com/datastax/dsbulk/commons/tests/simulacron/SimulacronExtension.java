@@ -97,6 +97,11 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
         .collect(Collectors.toList());
   }
 
+  @Override
+  protected String getLocalDCName(ExtensionContext context) {
+    return getOrCreateBoundCluster(context).dc(0).getName();
+  }
+
   private BoundCluster getOrCreateBoundCluster(ExtensionContext context) {
     return context
         .getStore(TEST_NAMESPACE)
