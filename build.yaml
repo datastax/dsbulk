@@ -25,7 +25,7 @@ schedules:
     matrix:
       exclude:
         - cassandra: ['dse-4.8', 'dse-5.0', 'dse-5.1']
-        java: ['oraclejdk10']
+        - java: ['oraclejdk10']
     branches:
       exclude: ["/\\d+(\\.[\\dx]+)+/"]
     env_vars: |
