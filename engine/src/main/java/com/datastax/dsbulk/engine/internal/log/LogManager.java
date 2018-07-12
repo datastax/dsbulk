@@ -83,7 +83,6 @@ import reactor.core.publisher.Signal;
 import reactor.core.publisher.UnicastProcessor;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.concurrent.Queues;
 
 public class LogManager implements AutoCloseable {
 
@@ -547,24 +546,16 @@ public class LogManager implements AutoCloseable {
     return upstream ->
         upstream
             .filter(record -> record.getPosition() > 0)
-            .window(Queues.SMALL_BUFFER_SIZE)
-            .flatMap(
-                window ->
-                    window
-                        .groupBy(Record::getResource, Record::getPosition)
-                        .flatMap(
-                            group ->
-                                group
-                                    .reduceWith(ArrayList::new, LogManager::addPosition)
-                                    .doOnNext(
-                                        ranges ->
-                                            positionsThreadLocal
-                                                .get()
-                                                .merge(
-                                                    group.key(),
-                                                    ranges,
-                                                    LogManager::mergePositions)),
-                            Queues.SMALL_BUFFER_SIZE))
+            .doOnNext(
+                record ->
+                    positionsThreadLocal
+                        .get()
+                        .compute(
+                            record.getResource(),
+                            (uri, ranges) ->
+                                addPosition(
+                                    ranges == null ? new ArrayList<>() : ranges,
+                                    record.getPosition())))
             .then()
             .flux();
   }
