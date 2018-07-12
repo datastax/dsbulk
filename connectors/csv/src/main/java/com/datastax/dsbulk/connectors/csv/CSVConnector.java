@@ -98,6 +98,7 @@ public class CSVConnector implements Connector {
   private static final String HEADER = "header";
   private static final String FILE_NAME_FORMAT = "fileNameFormat";
   private static final String MAX_CHARS_PER_COLUMN = "maxCharsPerColumn";
+  private static final String MAX_COLUMNS = "maxColumns";
 
   private boolean read;
   private URL url;
@@ -115,6 +116,7 @@ public class CSVConnector implements Connector {
   private boolean header;
   private String fileNameFormat;
   private int maxCharsPerColumn;
+  private int maxColumns;
   private int resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
@@ -145,6 +147,7 @@ public class CSVConnector implements Connector {
       header = settings.getBoolean(HEADER);
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
       maxCharsPerColumn = settings.getInt(MAX_CHARS_PER_COLUMN);
+      maxColumns = settings.getInt(MAX_COLUMNS);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
     }
@@ -176,12 +179,14 @@ public class CSVConnector implements Connector {
       parserSettings.setHeaderExtractionEnabled(header);
       parserSettings.setLineSeparatorDetectionEnabled(true);
       parserSettings.setMaxCharsPerColumn(maxCharsPerColumn);
+      parserSettings.setMaxColumns(maxColumns);
     } else {
       writerSettings = new CsvWriterSettings();
       writerSettings.setFormat(format);
       writerSettings.setQuoteEscapingEnabled(true);
       writerSettings.setIgnoreLeadingWhitespaces(false);
       writerSettings.setIgnoreTrailingWhitespaces(false);
+      writerSettings.setMaxColumns(maxColumns);
       counter = new AtomicInteger(0);
     }
   }
@@ -323,11 +328,11 @@ public class CSVConnector implements Connector {
               // DAT-177: Do not call sink.onDispose nor sink.onCancel,
               // as doing so seems to prevent the flow from completing in rare occasions.
               sink.onRequest(controller::signalRequested);
+              long recordNumber = 1;
               LOGGER.debug("Reading {}", url);
               try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
                 parser.beginParsing(r);
                 URI resource = URIUtils.createResourceURI(url);
-                long recordNumber = 1;
                 while (!sink.isCancelled()) {
                   com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
                   ParsingContext context = parser.getContext();
@@ -377,10 +382,16 @@ public class CSVConnector implements Connector {
               } catch (TextParsingException e) {
                 IOException ioe = launderTextParsingException(e);
                 sink.error(ioe);
+              } catch (ArrayIndexOutOfBoundsException e) {
+                IOException ioe = launderArrayIndexOutOfBoundsException(e, recordNumber);
+                sink.error(ioe);
               } catch (Exception e) {
                 sink.error(
                     new IOException(
-                        String.format("Error reading from %s: %s", url, e.getMessage()), e));
+                        String.format(
+                            "Error reading from %s at line %d: %s",
+                            url, recordNumber, e.getMessage()),
+                        e));
               }
             },
             FluxSink.OverflowStrategy.ERROR);
@@ -542,5 +553,18 @@ public class CSVConnector implements Connector {
     }
     return new IOException(
         String.format("Error reading from %s at line %d: %s", url, e.getLineIndex(), message), e);
+  }
+
+  @NotNull
+  private IOException launderArrayIndexOutOfBoundsException(
+      ArrayIndexOutOfBoundsException e, long record) {
+    // Extra help for when maxCharsPerColumn is not big enough.
+    return new IOException(
+        String.format(
+            "Error reading from %s at line %d: "
+                + "maximum number of columns per record exceeded (%d). "
+                + "Please increase the value of the connector.csv.maxColumns setting.",
+            url, maxColumns, record),
+        e);
   }
 }
