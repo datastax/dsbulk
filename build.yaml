@@ -4,30 +4,46 @@ schedules:
     schedule: per_commit
     matrix:
       exclude:
-        - cassandra: ['dse-5.0', 'dse-5.1']
+        - cassandra: ['dse-4.8', 'dse-5.0', 'dse-5.1']
+    env_vars: |
+      TEST_GROUP="ccm"
+    notify:
+      slack: dsbulk-dev
   nightly:
     # Run full suite nightly on change for all primary branches if they have changes.
     schedule: nightly
     branches:
       # regex matches primary branch format (1.1, 1.x, 1.1.x, etc).
       include: ["/\\d+(\\.[\\dx]+)+/"]
+    env_vars: |
+      TEST_GROUP="ccm,long"
+    notify:
+      slack: dsbulk-dev
   adhoc:
-    # Adhoc job for non-primary braches that doesn't have a schedule but may be used to run all configs.
+    # Adhoc job for non-primary branches that doesn't have a schedule but may be used to run all configs.
     schedule: adhoc
+    matrix:
+      exclude:
+        - cassandra: ['dse-4.8', 'dse-5.0', 'dse-5.1']
+        java: ['oraclejdk10']
     branches:
       exclude: ["/\\d+(\\.[\\dx]+)+/"]
+    env_vars: |
+      TEST_GROUP="simulacron"
 java:
-  - oraclejdk8
+  - openjdk8
+  - oraclejdk10
 os:
   - ubuntu/trusty64
 cassandra:
+  - dse-4.8
   - dse-5.0
   - dse-5.1
   - dse-6.0
 build:
   - type: maven
     version: 3.2.5
-    goals: verify -Pccm -fae -B
+    goals: verify -P$TEST_GROUP --fail-never -B
     properties: |
       com.datastax.dsbulk.commons.tests.ccm.DSE_VERSION=$CCM_CASSANDRA_VERSION
       com.datastax.dsbulk.commons.tests.ccm.JAVA_HOME=$CCM_JAVA_HOME
@@ -35,11 +51,11 @@ build:
       failIfNoTests=false
       maven.test.failure.ignore=true
       maven.javadoc.skip=true
-      max.simulacron.clusters=1
+      max.simulacron.clusters=2
       max.ccm.clusters=1
   - xunit:
     - "**/target/surefire-reports/TEST-*.xml"
     - "**/target/failsafe-reports/TEST-*.xml"
   - jacoco:
     exec_pattern: "**/target/**.exec"
-    exclusion_pattern: "com/datastax/dsbulk/commons/cql3/Cql*"
+    exclusion_pattern: "com/datastax/dsbulk/commons/cql3/Cql*,com/datastax/dsbulk/engine/schema/generated/Mapping*"
