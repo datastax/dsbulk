@@ -10,27 +10,25 @@ package com.datastax.dsbulk.commons.codecs.collection;
 
 import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.function.Supplier;
 
 public class CollectionToCollectionCodec<
-        E, I, EXTERNAL extends Collection<E>, INTERNAL extends Collection<I>>
+        EXTERNAL extends Collection<Object>, INTERNAL extends Collection<Object>>
     extends ConvertingCodec<EXTERNAL, INTERNAL> {
-  private TypeCodec<?> elementCodec;
-  private Supplier<INTERNAL> collectionCreator;
+  private final ConvertingCodec<Object, Object> elementCodec;
+  private final Supplier<INTERNAL> collectionCreator;
 
   public CollectionToCollectionCodec(
       Class<EXTERNAL> javaType,
       TypeCodec<INTERNAL> targetCodec,
-      TypeCodec<?> elementCodec,
+      ConvertingCodec<Object, Object> elementCodec,
       Supplier<INTERNAL> collectionCreator) {
     super(targetCodec, javaType);
     this.elementCodec = elementCodec;
     this.collectionCreator = collectionCreator;
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public INTERNAL externalToInternal(EXTERNAL external) {
     if (external == null || external.isEmpty()) {
@@ -38,20 +36,18 @@ public class CollectionToCollectionCodec<
     }
 
     INTERNAL result = collectionCreator.get();
-    for (E item : external) {
-      if (!(elementCodec instanceof ConvertingCodec)) {
-        result.add((I) item);
-      } else {
-        result.add((I) ((ConvertingCodec) elementCodec).externalToInternal(item));
-      }
+    for (Object item : external) {
+      result.add(elementCodec.externalToInternal(item));
     }
     return result;
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public EXTERNAL internalToExternal(INTERNAL internal) {
-    // TODO
-    return (EXTERNAL) new ArrayList(internal);
+    if (internal == null) {
+      return null;
+    }
+    throw new UnsupportedOperationException(
+        "This codec does not support converting from the 'internal' collection to the 'external'");
   }
 }

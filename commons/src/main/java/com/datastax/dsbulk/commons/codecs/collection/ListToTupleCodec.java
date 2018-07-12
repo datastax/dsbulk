@@ -12,27 +12,24 @@ import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
 import com.datastax.oss.driver.api.core.data.TupleValue;
 import com.datastax.oss.driver.api.core.type.TupleType;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
-import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
 
-public class CollectionToTupleCodec<E, EXTERNAL extends Collection<E>>
-    extends ConvertingCodec<EXTERNAL, TupleValue> {
-  private List<TypeCodec<?>> elementCodecs;
+public class ListToTupleCodec<E> extends ConvertingCodec<List<E>, TupleValue> {
+  private final List<ConvertingCodec<E, Object>> elementCodecs;
   private final TupleType definition;
 
-  public CollectionToTupleCodec(
-      Class<EXTERNAL> javaType,
+  public ListToTupleCodec(
+      Class<List<E>> javaType,
       TypeCodec<TupleValue> targetCodec,
-      List<TypeCodec<?>> elementCodecs) {
+      List<ConvertingCodec<E, Object>> elementCodecs) {
     super(targetCodec, javaType);
     this.elementCodecs = elementCodecs;
     definition = (TupleType) targetCodec.getCqlType();
   }
 
-  @SuppressWarnings("unchecked")
   @Override
-  public TupleValue externalToInternal(EXTERNAL external) {
+  public TupleValue externalToInternal(List<E> external) {
     if (external == null || external.isEmpty()) {
       return null;
     }
@@ -47,23 +44,26 @@ public class CollectionToTupleCodec<E, EXTERNAL extends Collection<E>>
 
     int idx = 0;
     for (E item : external) {
-      TypeCodec<?> eltCodec = elementCodecs.get(idx);
-      Object o;
-      if (!(eltCodec instanceof ConvertingCodec)) {
-        tuple.set(idx, item, (GenericType<E>) eltCodec.getJavaType());
-      } else {
-        o = ((ConvertingCodec) eltCodec).externalToInternal(item);
-        tuple.set(idx, o, ((ConvertingCodec) eltCodec).getInternalJavaType());
-      }
+      ConvertingCodec<E, Object> eltCodec = elementCodecs.get(idx);
+      Object o = eltCodec.externalToInternal(item);
+      tuple.set(idx, o, eltCodec.getInternalJavaType());
       idx++;
     }
     return tuple;
   }
 
-  @SuppressWarnings("unchecked")
   @Override
-  public EXTERNAL internalToExternal(TupleValue internal) {
-    // TODO
-    return null;
+  public List<E> internalToExternal(TupleValue tuple) {
+    if (tuple == null) {
+      return null;
+    }
+    List<E> result = new ArrayList<>();
+    int size = definition.getComponentTypes().size();
+    for (int i = 0; i < size; i++) {
+      ConvertingCodec<E, Object> eltCodec = elementCodecs.get(i);
+      Object o = tuple.get(i, eltCodec.getInternalJavaType());
+      result.add(eltCodec.internalToExternal(o));
+    }
+    return result;
   }
 }
