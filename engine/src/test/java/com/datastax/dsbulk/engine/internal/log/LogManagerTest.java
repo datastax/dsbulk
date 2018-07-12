@@ -636,11 +636,12 @@ class LogManagerTest {
         .transform(logManager.newResultPositionTracker())
         .blockLast();
     @SuppressWarnings("unchecked")
-    Map<URI, List<Range<Long>>> positions =
-        (Map<URI, List<Range<Long>>>) ReflectionUtils.getInternalState(logManager, "positions");
-    assertThat(positions)
+    List<Map<URI, List<Range<Long>>>> positions =
+        (List<Map<URI, List<Range<Long>>>>)
+            ReflectionUtils.getInternalState(logManager, "allPositions");
+    assertThat(positions.get(0))
         .hasEntrySatisfying(new URI("file1"), l -> assertThat(l).containsExactly(ranges));
-    positions.clear();
+    positions.get(0).clear();
   }
 
   private static WriteResult result(long position) throws URISyntaxException {
