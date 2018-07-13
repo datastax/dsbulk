@@ -43,7 +43,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 @CCMConfig(ssl = true)
-@Tag("ccm")
+@Tag("medium")
 class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
 
   private Path unloadDir;

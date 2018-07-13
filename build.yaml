@@ -6,7 +6,7 @@ schedules:
       exclude:
         - cassandra: ['dse-4.8', 'dse-5.0', 'dse-5.1']
     env_vars: |
-      TEST_GROUP="ccm"
+      TEST_GROUPS="short,medium"
     notify:
       slack: dsbulk-dev
   nightly:
@@ -16,7 +16,7 @@ schedules:
       # regex matches primary branch format (1.1, 1.x, 1.1.x, etc).
       include: ["/\\d+(\\.[\\dx]+)+/"]
     env_vars: |
-      TEST_GROUP="ccm,long"
+      TEST_GROUPS="short,medium,long"
     notify:
       slack: dsbulk-dev
   adhoc:
@@ -29,12 +29,12 @@ schedules:
     branches:
       exclude: ["/\\d+(\\.[\\dx]+)+/"]
     env_vars: |
-      TEST_GROUP="simulacron"
+      TEST_GROUPS="short"
 java:
   - openjdk8
   - oraclejdk10
 os:
-  - ubuntu/trusty64
+  - ubuntu/bionic64/java-driver
 cassandra:
   - dse-4.8
   - dse-5.0
@@ -43,7 +43,7 @@ cassandra:
 build:
   - type: maven
     version: 3.2.5
-    goals: verify -P$TEST_GROUP --fail-never -B
+    goals: verify -P$TEST_GROUPS --fail-never -B
     properties: |
       com.datastax.dsbulk.commons.tests.ccm.DSE_VERSION=$CCM_CASSANDRA_VERSION
       com.datastax.dsbulk.commons.tests.ccm.JAVA_HOME=$CCM_JAVA_HOME

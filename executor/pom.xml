@@ -55,6 +55,10 @@
               <name>junit</name>
               <value>false</value>
             </property>
+            <property>
+              <name>suitename</name>
+              <value>Reactive Streams TCK</value>
+            </property>
           </properties>
           <threadCount>1</threadCount>
         </configuration>

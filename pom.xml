@@ -570,7 +570,6 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
             <systemPropertyVariables>
               <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
             </systemPropertyVariables>
-            <forkCount>${max.simulacron.clusters}</forkCount>
           </configuration>
         </plugin>
 
@@ -775,13 +774,15 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
         <artifactId>maven-failsafe-plugin</artifactId>
         <executions>
           <execution>
+            <id>short-tests</id>
             <goals>
               <goal>integration-test</goal>
               <goal>verify</goal>
             </goals>
             <configuration>
-              <excludedGroups>ccm,long</excludedGroups>
-              <reportNameSuffix>simulacron</reportNameSuffix>
+              <excludedGroups>medium,long</excludedGroups>
+              <reportNameSuffix>short</reportNameSuffix>
+              <forkCount>${max.simulacron.clusters}</forkCount>
             </configuration>
           </execution>
         </executions>
@@ -840,7 +841,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
     </profile>
 
     <profile>
-      <id>ccm</id>
+      <id>medium</id>
       <build>
         <plugins>
           <plugin>
@@ -848,14 +849,14 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
             <executions>
               <!-- add a special execution that only runs CCM tests -->
               <execution>
-                <id>ccm-tests</id>
+                <id>medium-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                   <goal>verify</goal>
                 </goals>
                 <configuration>
-                  <groups>ccm</groups>
-                  <reportNameSuffix>ccm</reportNameSuffix>
+                  <groups>medium</groups>
+                  <reportNameSuffix>medium</reportNameSuffix>
                   <forkCount>${max.ccm.clusters}</forkCount>
                 </configuration>
               </execution>
