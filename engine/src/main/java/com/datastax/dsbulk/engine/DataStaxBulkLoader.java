@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.util.StringUtils;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.log.TooManyErrorsException;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
@@ -316,13 +317,13 @@ public class DataStaxBulkLoader {
         String formatted = value;
         if (type == ConfigValueType.STRING) {
           // if the user did not surround the string with double-quotes, do it for him.
-          formatted = ConfigUtils.ensureQuoted(value);
+          formatted = StringUtils.ensureQuoted(value);
         } else if (type == ConfigValueType.LIST) {
           // if the user did not surround the list elements with square brackets, do it for him.
-          formatted = ConfigUtils.ensureBrackets(value);
+          formatted = StringUtils.ensureBrackets(value);
         } else if (type == ConfigValueType.OBJECT) {
           // if the user did not surround the map entries with curly braces, do it for him.
-          formatted = ConfigUtils.ensureBraces(value);
+          formatted = StringUtils.ensureBraces(value);
         }
         userSettings =
             ConfigFactory.parseString(

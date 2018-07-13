@@ -50,6 +50,8 @@ class StringToListCodecTest {
     assertThat(codec1)
         .convertsFromExternal("[1,2,3]")
         .toInternal(newArrayList(1d, 2d, 3d))
+        .convertsFromExternal("1,2,3")
+        .toInternal(newArrayList(1d, 2d, 3d))
         .convertsFromExternal(" [  1 , 2 , 3 ] ")
         .toInternal(newArrayList(1d, 2d, 3d))
         .convertsFromExternal("[1234.56,78900]")
@@ -70,6 +72,8 @@ class StringToListCodecTest {
         .toInternal(null);
     assertThat(codec2)
         .convertsFromExternal("[\"2016-07-24T20:34:12.999Z\",\"2018-05-25 20:34:12.999+02:00\"]")
+        .toInternal(newArrayList(i1, i2))
+        .convertsFromExternal("\"2016-07-24T20:34:12.999Z\",\"2018-05-25 20:34:12.999+02:00\"")
         .toInternal(newArrayList(i1, i2))
         .convertsFromExternal("['2016-07-24T20:34:12.999Z','2018-05-25 20:34:12.999+02:00']")
         .toInternal(newArrayList(i1, i2))

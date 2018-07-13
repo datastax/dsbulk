@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.dsbulk.commons.internal.util.StringUtils;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToMapCodec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,7 +36,7 @@ public class StringToMapCodec<K, V> extends StringConvertingCodec<Map<K, V>> {
       return null;
     }
     try {
-      JsonNode node = objectMapper.readTree(s);
+      JsonNode node = objectMapper.readTree(StringUtils.ensureBraces(s));
       return jsonCodec.externalToInternal(node);
     } catch (IOException e) {
       throw new InvalidTypeException(String.format("Could not parse '%s' as Json", s), e);
