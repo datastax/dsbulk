@@ -24,7 +24,7 @@ class Murmur3TokenRangeSplitter implements TokenRangeSplitter<Long, Token<Long>>
       TokenRange<Long, Token<Long>> tokenRange, int splitCount) {
 
     BigInteger rangeSize = tokenRange.size();
-    // If the number of splits is lesser than the range size,
+    // If the range size is lesser than the number of splits,
     // use the range size as number of splits and yield (size-of-range) splits of size 1
     int splitPointsCount =
         rangeSize.compareTo(BigInteger.valueOf(splitCount)) < 0
