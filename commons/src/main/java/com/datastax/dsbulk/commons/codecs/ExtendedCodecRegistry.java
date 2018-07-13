@@ -183,7 +183,6 @@ public class ExtendedCodecRegistry {
   private final ZonedDateTime epoch;
   private final ObjectMapper objectMapper;
   private final TimeUUIDGenerator generator;
-  private final @Nullable CustomCodecFactory customCodecFactory;
 
   public ExtendedCodecRegistry(
       CodecRegistry codecRegistry,
@@ -201,8 +200,7 @@ public class ExtendedCodecRegistry {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       TimeUUIDGenerator generator,
-      ObjectMapper objectMapper,
-      @Nullable CustomCodecFactory customCodecFactory) {
+      ObjectMapper objectMapper) {
     this.codecRegistry = codecRegistry;
     this.nullStrings = nullStrings;
     this.booleanInputWords = booleanInputWords;
@@ -219,7 +217,6 @@ public class ExtendedCodecRegistry {
     this.epoch = epoch;
     this.generator = generator;
     this.objectMapper = objectMapper;
-    this.customCodecFactory = customCodecFactory;
 
     // register Java Time API codecs
     //    codecRegistry.register(LocalDateCodec.instance, LocalTimeCodec.instance,
@@ -267,15 +264,10 @@ public class ExtendedCodecRegistry {
         javaType);
   }
 
+  @SuppressWarnings("WeakerAccess")
   @Nullable
-  private ConvertingCodec<?, ?> maybeCreateConvertingCodec(
+  protected ConvertingCodec<?, ?> maybeCreateConvertingCodec(
       @NotNull DataType cqlType, @NotNull GenericType<?> javaType) {
-    ConvertingCodec<?, ?> codec =
-        customCodecFactory != null ? customCodecFactory.codecFor(this, cqlType, javaType) : null;
-    if (codec != null) {
-      return codec;
-    }
-
     if (GenericType.STRING.equals(javaType)) {
       return createStringConvertingCodec(cqlType, true);
     }
