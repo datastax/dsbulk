@@ -148,6 +148,8 @@ public interface CCMCluster extends Closeable {
    */
   void stop(int node);
 
+  boolean isMultiDC();
+
   /**
    * Starts all nodes in the {@code dc}th DC in the cluster (counting from 1, i.e., the first DC is
    * 1 and so on).

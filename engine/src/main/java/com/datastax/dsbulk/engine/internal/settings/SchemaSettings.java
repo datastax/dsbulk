@@ -31,10 +31,10 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
-import com.datastax.driver.core.TokenRange;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
@@ -48,7 +48,6 @@ import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dsbulk.engine.internal.utils.StringUtils;
-import com.datastax.dsbulk.executor.api.statement.TableScanner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -284,7 +283,7 @@ public class SchemaSettings {
         keyspaceName, metadata, modes, numPartitions, protocolVersion, codecRegistry);
   }
 
-  public List<Statement> createReadStatements(Cluster cluster) {
+  public List<? extends Statement> createReadStatements(Cluster cluster, int splitCount) {
     ColumnDefinitions variables = preparedStatement.getVariables();
     if (variables.size() == 0) {
       return Collections.singletonList(preparedStatement.bind());
@@ -301,14 +300,16 @@ public class SchemaSettings {
                   + "only 'start' and 'end' can be used to define a token range",
               unrecognized));
     }
-    Set<TokenRange> ring = cluster.getMetadata().getTokenRanges();
-    return TableScanner.scan(
-        ring,
+    Metadata metadata = cluster.getMetadata();
+    TokenRangeReadStatementGenerator generator =
+        new TokenRangeReadStatementGenerator(table, metadata);
+    return generator.generate(
+        splitCount,
         range ->
             preparedStatement
                 .bind()
-                .setToken("start", range.getStart())
-                .setToken("end", range.getEnd()));
+                .setToken("start", metadata.newToken(range.start().toString()))
+                .setToken("end", metadata.newToken(range.end().toString())));
   }
 
   @NotNull
