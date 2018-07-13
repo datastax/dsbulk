@@ -35,6 +35,9 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.UUID
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARCHAR;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARINT;
 
+import com.datastax.dsbulk.commons.codecs.collection.CollectionToCollectionCodec;
+import com.datastax.dsbulk.commons.codecs.collection.ListToTupleCodec;
+import com.datastax.dsbulk.commons.codecs.collection.ListToUDTCodec;
 import com.datastax.dsbulk.commons.codecs.json.JsonNodeToBigDecimalCodec;
 import com.datastax.dsbulk.commons.codecs.json.JsonNodeToBigIntegerCodec;
 import com.datastax.dsbulk.commons.codecs.json.JsonNodeToBlobCodec;
@@ -62,10 +65,13 @@ import com.datastax.dsbulk.commons.codecs.json.dse.JsonNodeToDateRangeCodec;
 import com.datastax.dsbulk.commons.codecs.json.dse.JsonNodeToLineStringCodec;
 import com.datastax.dsbulk.commons.codecs.json.dse.JsonNodeToPointCodec;
 import com.datastax.dsbulk.commons.codecs.json.dse.JsonNodeToPolygonCodec;
+import com.datastax.dsbulk.commons.codecs.map.MapToMapCodec;
+import com.datastax.dsbulk.commons.codecs.map.MapToUDTCodec;
 import com.datastax.dsbulk.commons.codecs.number.BooleanToNumberCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToBooleanCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToInstantCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToNumberCodec;
+import com.datastax.dsbulk.commons.codecs.number.NumberToStringCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToUUIDCodec;
 import com.datastax.dsbulk.commons.codecs.string.StringToBigDecimalCodec;
 import com.datastax.dsbulk.commons.codecs.string.StringToBigIntegerCodec;
@@ -125,6 +131,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.netty.util.concurrent.FastThreadLocal;
+import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -133,12 +140,16 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -206,6 +217,7 @@ public class ExtendedCodecRegistry {
     this.epoch = epoch;
     this.generator = generator;
     this.objectMapper = objectMapper;
+
     // register Java Time API codecs
     //    codecRegistry.register(LocalDateCodec.instance, LocalTimeCodec.instance,
     // InstantCodec.instance);
@@ -252,41 +264,137 @@ public class ExtendedCodecRegistry {
         javaType);
   }
 
+  @SuppressWarnings("WeakerAccess")
   @Nullable
-  private ConvertingCodec<?, ?> maybeCreateConvertingCodec(
+  protected ConvertingCodec<?, ?> maybeCreateConvertingCodec(
       @NotNull DataType cqlType, @NotNull GenericType<?> javaType) {
     if (GenericType.STRING.equals(javaType)) {
       return createStringConvertingCodec(cqlType, true);
     }
+
     if (GenericType.of(JsonNode.class).equals(javaType)) {
       return createJsonNodeConvertingCodec(cqlType, true);
     }
-    if (javaType.isSubtypeOf(GenericType.of(Number.class))) {
-      if (isNumeric(cqlType)) {
+
+    if (javaType.isSubtypeOf(GenericType.of(List.class))) {
+      GenericType<?> componentType =
+          GenericType.of(((ParameterizedType) javaType.getType()).getActualTypeArguments()[0]);
+      if (cqlType instanceof UserDefinedType) {
         @SuppressWarnings("unchecked")
-        Class<Number> numberType = (Class<Number>) javaType.getRawType();
+        TypeCodec<UdtValue> udtCodec = (TypeCodec<UdtValue>) codecFor(cqlType);
+        ImmutableList.Builder<ConvertingCodec<Object, Object>> eltCodecs =
+            new ImmutableList.Builder<>();
+        for (DataType eltType : ((UserDefinedType) cqlType).getFieldTypes()) {
+          @SuppressWarnings("unchecked")
+          ConvertingCodec<Object, Object> eltCodec = convertingCodecFor(eltType, componentType);
+          eltCodecs.add(eltCodec);
+        }
+        //noinspection unchecked
+        return new ListToUDTCodec(javaType.getRawType(), udtCodec, eltCodecs.build());
+      } else if (cqlType instanceof TupleType) {
+        @SuppressWarnings("unchecked")
+        TypeCodec<TupleValue> tupleCodec = (TypeCodec<TupleValue>) codecFor(cqlType);
+        ImmutableList.Builder<ConvertingCodec<Object, Object>> eltCodecs =
+            new ImmutableList.Builder<>();
+        for (DataType eltType : ((TupleType) cqlType).getComponentTypes()) {
+          @SuppressWarnings("unchecked")
+          ConvertingCodec<Object, Object> eltCodec = convertingCodecFor(eltType, componentType);
+          eltCodecs.add(eltCodec);
+        }
+        //noinspection unchecked
+        return new ListToTupleCodec(javaType.getRawType(), tupleCodec, eltCodecs.build());
+      }
+    }
+
+    if (javaType.isSubtypeOf(GenericType.of(Collection.class))) {
+      GenericType<?> componentType =
+          GenericType.of(((ParameterizedType) javaType.getType()).getActualTypeArguments()[0]);
+      @SuppressWarnings("unchecked")
+      Class<? extends Collection> collType = (Class<? extends Collection>) javaType.getRawType();
+
+      if (isCollection(cqlType)) {
+        TypeCodec<?> typeCodec = codecFor(cqlType);
+        ConvertingCodec<Object, Object> elementCodec = null;
+        Supplier<? extends Collection> collectionCreator;
+        if (cqlType instanceof SetType) {
+          elementCodec = convertingCodecFor(((SetType) cqlType).getElementType(), componentType);
+        } else if (cqlType instanceof ListType) {
+          elementCodec = convertingCodecFor(((ListType) cqlType).getElementType(), componentType);
+        }
+        if (cqlType instanceof SetType) {
+          collectionCreator = HashSet::new;
+        } else {
+          collectionCreator = ArrayList::new;
+        }
+        //noinspection unchecked
+        return new CollectionToCollectionCodec(
+            collType, typeCodec, elementCodec, collectionCreator);
+      }
+    }
+
+    if (javaType.isSubtypeOf(GenericType.of(Map.class))) {
+      GenericType<?> keyType =
+          GenericType.of(((ParameterizedType) javaType.getType()).getActualTypeArguments()[0]);
+      GenericType<?> valueType =
+          GenericType.of(((ParameterizedType) javaType.getType()).getActualTypeArguments()[1]);
+      if (cqlType instanceof MapType) {
+        TypeCodec<?> typeCodec = codecFor(cqlType);
+        ConvertingCodec<?, ?> keyConvertingCodec =
+            convertingCodecFor(((MapType) cqlType).getKeyType(), keyType);
+        ConvertingCodec<?, ?> valueConvertingCodec =
+            convertingCodecFor(((MapType) cqlType).getValueType(), valueType);
+        //noinspection unchecked
+        return new MapToMapCodec(
+            javaType.getRawType(), typeCodec, keyConvertingCodec, valueConvertingCodec);
+      } else if (cqlType instanceof UserDefinedType) {
+        @SuppressWarnings("unchecked")
+        TypeCodec<UdtValue> udtCodec = (TypeCodec<UdtValue>) codecFor(cqlType);
+        ImmutableMap.Builder<CqlIdentifier, ConvertingCodec<?, Object>> fieldCodecs =
+            new ImmutableMap.Builder<>();
+        List<CqlIdentifier> fieldNames = ((UserDefinedType) cqlType).getFieldNames();
+        List<DataType> fieldTypes = ((UserDefinedType) cqlType).getFieldTypes();
+        ConvertingCodec<?, String> keyCodec = convertingCodecFor(DataTypes.TEXT, keyType);
+        assert (fieldNames.size() == fieldTypes.size());
+
+        for (int idx = 0; idx < fieldNames.size(); idx++) {
+          CqlIdentifier fieldName = fieldNames.get(idx);
+          DataType fieldType = fieldTypes.get(idx);
+          @SuppressWarnings("unchecked")
+          ConvertingCodec<?, Object> fieldCodec = convertingCodecFor(fieldType, valueType);
+          fieldCodecs.put(fieldName, fieldCodec);
+        }
+        //noinspection unchecked
+        return new MapToUDTCodec(javaType.getRawType(), udtCodec, keyCodec, fieldCodecs.build());
+      }
+    }
+
+    if (javaType.isSubtypeOf(GenericType.of(Number.class))) {
+      @SuppressWarnings("unchecked")
+      Class<Number> numberType = (Class<Number>) javaType.getRawType();
+      if (isNumeric(cqlType)) {
         @SuppressWarnings("unchecked")
         TypeCodec<Number> typeCodec = (TypeCodec<Number>) codecFor(cqlType);
         return new NumberToNumberCodec<>(numberType, typeCodec);
       }
       if (cqlType == DataTypes.TIMESTAMP) {
-        @SuppressWarnings("unchecked")
-        Class<Number> numberType = (Class<Number>) javaType.getRawType();
         return new NumberToInstantCodec<>(numberType, timeUnit, epoch);
       }
       if (isUUID(cqlType)) {
         @SuppressWarnings("unchecked")
         TypeCodec<UUID> uuidCodec = (TypeCodec<UUID>) codecFor(cqlType);
-        @SuppressWarnings("unchecked")
-        Class<Number> numberType = (Class<Number>) javaType.getRawType();
         NumberToInstantCodec<Number> instantCodec =
             new NumberToInstantCodec<>(numberType, timeUnit, epoch);
         return new NumberToUUIDCodec<>(uuidCodec, instantCodec, generator);
       }
       if (cqlType == DataTypes.BOOLEAN) {
-        @SuppressWarnings("unchecked")
-        Class<Number> numberType = (Class<Number>) javaType.getRawType();
         return new NumberToBooleanCodec<>(numberType, booleanNumbers);
+      }
+      if (cqlType == DataTypes.TEXT) {
+        // TODO: Consider a more general solution where we have an "invert" codec that
+        // we can apply on a regular codec (e.g. StringToXXX) to convert from the
+        // "other" type to String. Such a mechanism wouldn't be restricted to converting
+        // number types to String, but rather any java type that has a corresponding cql type.
+        return new NumberToStringCodec<>(numberType, numberFormat);
       }
     }
 
@@ -328,6 +436,7 @@ public class ExtendedCodecRegistry {
         return new DateToTemporalCodec<>(Date.class, TypeCodecs.TIMESTAMP, timeZone);
       }
     }
+
     if (javaType.isSubtypeOf(dateGenericType) && isUUID(cqlType)) {
       @SuppressWarnings("unchecked")
       TypeCodec<UUID> uuidCodec = (TypeCodec<UUID>) codecFor(cqlType);
@@ -338,6 +447,7 @@ public class ExtendedCodecRegistry {
       assert instantCodec != null;
       return new DateToUUIDCodec<>(uuidCodec, instantCodec, generator);
     }
+
     if (javaType.isSubtypeOf(GenericType.BOOLEAN) && isNumeric(cqlType)) {
       @SuppressWarnings("unchecked")
       TypeCodec<Number> typeCodec = (TypeCodec<Number>) codecFor(cqlType);
@@ -861,6 +971,10 @@ public class ExtendedCodecRegistry {
         || cqlType == DataTypes.DOUBLE
         || cqlType == DataTypes.VARINT
         || cqlType == DataTypes.DECIMAL;
+  }
+
+  private static boolean isCollection(@NotNull DataType cqlType) {
+    return cqlType instanceof SetType || cqlType instanceof ListType;
   }
 
   private static boolean isTemporal(@NotNull DataType cqlType) {
