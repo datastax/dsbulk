@@ -25,14 +25,15 @@ schedules:
     matrix:
       exclude:
         - cassandra: ['dse-4.8', 'dse-5.0', 'dse-5.1']
-        - java: ['oraclejdk10']
+        # - java: ['oraclejdk10']
     branches:
       exclude: ["/\\d+(\\.[\\dx]+)+/"]
     env_vars: |
       TEST_GROUPS="short"
 java:
   - openjdk8
-  - oraclejdk10
+  # Temporarily disable builds against JDK 10, see DAT-318
+  # - oraclejdk10
 os:
   - ubuntu/bionic64/java-driver
 cassandra:
