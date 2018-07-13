@@ -9,7 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.string;
 
 import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.dsbulk.commons.internal.util.StringUtils;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToMapCodec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;

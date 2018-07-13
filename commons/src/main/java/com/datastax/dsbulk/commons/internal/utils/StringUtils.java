@@ -6,13 +6,56 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.engine.internal.utils;
+package com.datastax.dsbulk.commons.internal.utils;
 
 import java.util.Collections;
 
 public class StringUtils {
 
-  public static final String DELIMITER = ".";
+  /**
+   * If the given string is surrounded by double-quotes, return it intact, otherwise trim it and
+   * surround it with double-quotes.
+   *
+   * @param value The string to check.
+   * @return A string surrounded by double-quotes.
+   */
+  public static String ensureQuoted(String value) {
+    value = value.trim();
+    if (value.startsWith("\"") && value.endsWith("\"")) {
+      return value;
+    }
+    return "\"" + value + "\"";
+  }
+
+  /**
+   * If the given string is surrounded by square brackets, return it intact, otherwise trim it and
+   * surround it with square brackets.
+   *
+   * @param value The string to check.
+   * @return A string surrounded by square brackets.
+   */
+  public static String ensureBrackets(String value) {
+    value = value.trim();
+    if (value.startsWith("[") && value.endsWith("]")) {
+      return value;
+    }
+    return "[" + value + "]";
+  }
+
+  /**
+   * If the given string is surrounded by curly braces, return it intact, otherwise trim it and
+   * surround it with curly braces.
+   *
+   * @param value The string to check.
+   * @return A string surrounded by curly braces.
+   */
+  public static String ensureBraces(String value) {
+    value = value.trim();
+    if (value.startsWith("{") && value.endsWith("}")) {
+      return value;
+    }
+    return "{" + value + "}";
+  }
 
   /**
    * Upper-cases the first letter of the given string

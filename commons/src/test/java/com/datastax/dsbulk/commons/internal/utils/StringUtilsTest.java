@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.commons.internal.util;
+package com.datastax.dsbulk.commons.internal.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

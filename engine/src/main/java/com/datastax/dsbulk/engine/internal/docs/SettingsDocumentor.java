@@ -14,9 +14,9 @@ import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.LONG_TO_SHORT_OPTIONS;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils.Group;
-import com.datastax.dsbulk.engine.internal.utils.StringUtils;
 import com.google.common.base.CharMatcher;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;

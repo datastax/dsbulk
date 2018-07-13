@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.engine.internal.utils.StringUtils.DELIMITER;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.assertAccessibleFile;
 
 import com.datastax.driver.core.AuthProvider;
@@ -85,52 +84,44 @@ public class DriverSettings {
   private static final String HOSTS = "hosts";
   private static final String PORT = "port";
   private static final String POOLING_LOCAL_CONNECTIONS =
-      POOLING + DELIMITER + LOCAL + DELIMITER + "connections";
+      POOLING + '.' + LOCAL + '.' + "connections";
   private static final String POOLING_REMOTE_CONNECTIONS =
-      POOLING + DELIMITER + REMOTE + DELIMITER + "connections";
-  private static final String POOLING_LOCAL_REQUESTS =
-      POOLING + DELIMITER + LOCAL + DELIMITER + "requests";
-  private static final String POOLING_REMOTE_REQUESTS =
-      POOLING + DELIMITER + REMOTE + DELIMITER + "requests";
-  private static final String POOLING_HEARTBEAT = POOLING + DELIMITER + "heartbeat";
+      POOLING + '.' + REMOTE + '.' + "connections";
+  private static final String POOLING_LOCAL_REQUESTS = POOLING + '.' + LOCAL + '.' + "requests";
+  private static final String POOLING_REMOTE_REQUESTS = POOLING + '.' + REMOTE + '.' + "requests";
+  private static final String POOLING_HEARTBEAT = POOLING + '.' + "heartbeat";
 
-  private static final String QUERY_CONSISTENCY = QUERY + DELIMITER + "consistency";
-  private static final String QUERY_SERIALCONSISTENCY = QUERY + DELIMITER + "serialConsistency";
-  private static final String QUERY_FETCHSIZE = QUERY + DELIMITER + "fetchSize";
-  private static final String QUERY_IDEMPOTENCE = QUERY + DELIMITER + "idempotence";
+  private static final String QUERY_CONSISTENCY = QUERY + '.' + "consistency";
+  private static final String QUERY_SERIALCONSISTENCY = QUERY + '.' + "serialConsistency";
+  private static final String QUERY_FETCHSIZE = QUERY + '.' + "fetchSize";
+  private static final String QUERY_IDEMPOTENCE = QUERY + '.' + "idempotence";
 
-  private static final String SOCKET_READTIMEOUT = SOCKET + DELIMITER + "readTimeout";
+  private static final String SOCKET_READTIMEOUT = SOCKET + '.' + "readTimeout";
   private static final String TIMESTAMP_GENERATOR = "timestampGenerator";
   private static final String ADDRESS_TRANSLATOR = "addressTranslator";
 
-  private static final String AUTH_PROVIDER = AUTH + DELIMITER + "provider";
-  private static final String AUTH_USERNAME = AUTH + DELIMITER + "username";
-  private static final String AUTH_PASSWORD = AUTH + DELIMITER + "password";
-  private static final String AUTH_PRINCIPAL = AUTH + DELIMITER + "principal";
-  private static final String AUTHORIZATION_ID = AUTH + DELIMITER + "authorizationId";
-  private static final String AUTH_SASL_SERVICE = AUTH + DELIMITER + "saslService";
-  private static final String AUTH_KEYTAB = AUTH + DELIMITER + "keyTab";
+  private static final String AUTH_PROVIDER = AUTH + '.' + "provider";
+  private static final String AUTH_USERNAME = AUTH + '.' + "username";
+  private static final String AUTH_PASSWORD = AUTH + '.' + "password";
+  private static final String AUTH_PRINCIPAL = AUTH + '.' + "principal";
+  private static final String AUTHORIZATION_ID = AUTH + '.' + "authorizationId";
+  private static final String AUTH_SASL_SERVICE = AUTH + '.' + "saslService";
+  private static final String AUTH_KEYTAB = AUTH + '.' + "keyTab";
 
-  private static final String PROTOCOL_COMPRESSION = PROTOCOL + DELIMITER + "compression";
+  private static final String PROTOCOL_COMPRESSION = PROTOCOL + '.' + "compression";
 
-  private static final String SSL_PROVIDER = SSL + DELIMITER + "provider";
+  private static final String SSL_PROVIDER = SSL + '.' + "provider";
   private static final String NONE_SSL_PROVIDER = "None";
-  private static final String SSL_TRUSTSTORE_PATH =
-      SSL + DELIMITER + TRUSTSTORE + DELIMITER + "path";
-  private static final String SSL_TRUSTSTORE_PASSWORD =
-      SSL + DELIMITER + TRUSTSTORE + DELIMITER + "password";
-  private static final String SSL_KEYSTORE_PATH = SSL + DELIMITER + KEYSTORE + DELIMITER + "path";
-  private static final String SSL_KEYSTORE_PASSWORD =
-      SSL + DELIMITER + KEYSTORE + DELIMITER + "password";
-  private static final String SSL_TRUSTSTORE_ALGORITHM =
-      SSL + DELIMITER + TRUSTSTORE + DELIMITER + "algorithm";
-  private static final String SSL_OPENSSL_KEYCERTCHAIN =
-      SSL + DELIMITER + OPENSSL + DELIMITER + "keyCertChain";
-  private static final String SSL_OPENSSL_PRIVATE_KEY =
-      SSL + DELIMITER + OPENSSL + DELIMITER + "privateKey";
+  private static final String SSL_TRUSTSTORE_PATH = SSL + '.' + TRUSTSTORE + '.' + "path";
+  private static final String SSL_TRUSTSTORE_PASSWORD = SSL + '.' + TRUSTSTORE + '.' + "password";
+  private static final String SSL_KEYSTORE_PATH = SSL + '.' + KEYSTORE + '.' + "path";
+  private static final String SSL_KEYSTORE_PASSWORD = SSL + '.' + KEYSTORE + '.' + "password";
+  private static final String SSL_TRUSTSTORE_ALGORITHM = SSL + '.' + TRUSTSTORE + '.' + "algorithm";
+  private static final String SSL_OPENSSL_KEYCERTCHAIN = SSL + '.' + OPENSSL + '.' + "keyCertChain";
+  private static final String SSL_OPENSSL_PRIVATE_KEY = SSL + '.' + OPENSSL + '.' + "privateKey";
 
-  private static final String POLICY_NAME = POLICY + DELIMITER + LBP + DELIMITER + "name";
-  private static final String POLICY_MAX_RETRIES = POLICY + DELIMITER + "maxRetries";
+  private static final String POLICY_NAME = POLICY + '.' + LBP + '.' + "name";
+  private static final String POLICY_MAX_RETRIES = POLICY + '.' + "maxRetries";
 
   private static final String NONE_AUTH_PROVIDER = "None";
   private static final String PLAINTEXT_PROVIDER = "PlainTextAuthProvider";

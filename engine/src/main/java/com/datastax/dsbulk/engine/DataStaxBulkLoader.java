@@ -10,7 +10,7 @@ package com.datastax.dsbulk.engine;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.internal.util.StringUtils;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.log.TooManyErrorsException;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;

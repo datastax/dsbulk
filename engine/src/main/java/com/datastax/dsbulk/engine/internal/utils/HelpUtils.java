@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.PREFERRED_SETTINGS;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.google.common.base.CharMatcher;
