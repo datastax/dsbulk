@@ -558,13 +558,17 @@ public class CSVConnector implements Connector {
   @NotNull
   private IOException launderArrayIndexOutOfBoundsException(
       ArrayIndexOutOfBoundsException e, long record) {
-    // Extra help for when maxCharsPerColumn is not big enough.
+    // Extra help for when maxCharsPerColumn or maxCharsPerColumn is not big enough.
+    // Unfortunately we cannot know the exact cause of the AIOOBE.
     return new IOException(
         String.format(
             "Error reading from %s at line %d: "
-                + "maximum number of columns per record exceeded (%d). "
-                + "Please increase the value of the connector.csv.maxColumns setting.",
-            url, maxColumns, record),
+                + "Array index out of range: %s. "
+                + "Either the maximum number of characters per column (%d) or the "
+                + "maximum number of columns per record (%d) was exceeded. "
+                + "Please increase the value of the connector.csv.maxColumns "
+                + "or the connector.csv.maxCharsPerColumn setting.",
+            url, record, e.getMessage(), maxColumns, maxCharsPerColumn),
         e);
   }
 }
