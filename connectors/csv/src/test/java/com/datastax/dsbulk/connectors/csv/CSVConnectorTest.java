@@ -708,6 +708,31 @@ class CSVConnectorTest {
     connector.close();
   }
 
+  @Test
+  void should_throw_IOE_when_max_columns_exceeded() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", escape = \"\\\"\", comment = \"#\", maxColumns = 1",
+                        url("/sample.csv")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.defer(connector.read()).collectList().block())
+        .satisfies(
+            t ->
+                assertThat(t)
+                    .hasCauseInstanceOf(IOException.class)
+                    .hasMessageContaining("Array index out of range: 1")
+                    .hasMessageContaining(
+                        "Please increase the value of the connector.csv.maxColumns "
+                            + "or the connector.csv.maxCharsPerColumn setting.")
+                    .hasRootCauseInstanceOf(ArrayIndexOutOfBoundsException.class));
+    connector.close();
+  }
+
   private static List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
     String[] fields = new String[] {"Year", "Make", "Model", "Description", "Price"};
