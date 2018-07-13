@@ -14,15 +14,15 @@ import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 
-public class NumberToTextCodec<EXTERNAL extends Number> extends ConvertingCodec<EXTERNAL, String> {
+public class NumberToStringCodec<EXTERNAL extends Number>
+    extends ConvertingCodec<EXTERNAL, String> {
   private final FastThreadLocal<NumberFormat> numberFormat;
 
-  public NumberToTextCodec(Class<EXTERNAL> javaType, FastThreadLocal<NumberFormat> numberFormat) {
+  public NumberToStringCodec(Class<EXTERNAL> javaType, FastThreadLocal<NumberFormat> numberFormat) {
     super(TypeCodecs.TEXT, javaType);
     this.numberFormat = numberFormat;
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public EXTERNAL internalToExternal(String value) {
     if (value == null || value.isEmpty()) {
@@ -32,7 +32,6 @@ public class NumberToTextCodec<EXTERNAL extends Number> extends ConvertingCodec<
         "This codec does not support converting from string to number");
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public String externalToInternal(EXTERNAL value) {
     if (value == null) {

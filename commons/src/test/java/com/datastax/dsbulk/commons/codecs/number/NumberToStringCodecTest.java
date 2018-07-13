@@ -15,9 +15,9 @@ import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import org.junit.jupiter.api.Test;
 
-class NumberToTextCodecTest {
-  private NumberToTextCodec<Long> codec =
-      (NumberToTextCodec<Long>)
+class NumberToStringCodecTest {
+  private NumberToStringCodec<Long> codec =
+      (NumberToStringCodec<Long>)
           newCodecRegistry("nullStrings = [NULL], formatNumbers = true")
               .<Long, String>convertingCodecFor(DataTypes.TEXT, GenericType.LONG);
 

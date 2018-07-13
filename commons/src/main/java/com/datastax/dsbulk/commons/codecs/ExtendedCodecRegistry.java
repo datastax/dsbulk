@@ -71,7 +71,7 @@ import com.datastax.dsbulk.commons.codecs.number.BooleanToNumberCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToBooleanCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToInstantCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToNumberCodec;
-import com.datastax.dsbulk.commons.codecs.number.NumberToTextCodec;
+import com.datastax.dsbulk.commons.codecs.number.NumberToStringCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToUUIDCodec;
 import com.datastax.dsbulk.commons.codecs.string.StringToBigDecimalCodec;
 import com.datastax.dsbulk.commons.codecs.string.StringToBigIntegerCodec;
@@ -183,6 +183,7 @@ public class ExtendedCodecRegistry {
   private final ZonedDateTime epoch;
   private final ObjectMapper objectMapper;
   private final TimeUUIDGenerator generator;
+  private final @Nullable CustomCodecFactory customCodecFactory;
 
   public ExtendedCodecRegistry(
       CodecRegistry codecRegistry,
@@ -200,7 +201,8 @@ public class ExtendedCodecRegistry {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       TimeUUIDGenerator generator,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      @Nullable CustomCodecFactory customCodecFactory) {
     this.codecRegistry = codecRegistry;
     this.nullStrings = nullStrings;
     this.booleanInputWords = booleanInputWords;
@@ -217,6 +219,8 @@ public class ExtendedCodecRegistry {
     this.epoch = epoch;
     this.generator = generator;
     this.objectMapper = objectMapper;
+    this.customCodecFactory = customCodecFactory;
+
     // register Java Time API codecs
     //    codecRegistry.register(LocalDateCodec.instance, LocalTimeCodec.instance,
     // InstantCodec.instance);
@@ -266,6 +270,12 @@ public class ExtendedCodecRegistry {
   @Nullable
   private ConvertingCodec<?, ?> maybeCreateConvertingCodec(
       @NotNull DataType cqlType, @NotNull GenericType<?> javaType) {
+    ConvertingCodec<?, ?> codec =
+        customCodecFactory != null ? customCodecFactory.codecFor(this, cqlType, javaType) : null;
+    if (codec != null) {
+      return codec;
+    }
+
     if (GenericType.STRING.equals(javaType)) {
       return createStringConvertingCodec(cqlType, true);
     }
@@ -392,7 +402,7 @@ public class ExtendedCodecRegistry {
         // we can apply on a regular codec (e.g. StringToXXX) to convert from the
         // "other" type to String. Such a mechanism wouldn't be restricted to converting
         // number types to String, but rather any java type that has a corresponding cql type.
-        return new NumberToTextCodec<>(numberType, numberFormat);
+        return new NumberToStringCodec<>(numberType, numberFormat);
       }
     }
 

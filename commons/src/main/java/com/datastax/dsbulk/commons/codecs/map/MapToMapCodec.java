@@ -10,7 +10,7 @@ package com.datastax.dsbulk.commons.codecs.map;
 
 import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class MapToMapCodec<EK, EV, IK, IV> extends ConvertingCodec<Map<EK, EV>, Map<IK, IV>> {
@@ -27,14 +27,13 @@ public class MapToMapCodec<EK, EV, IK, IV> extends ConvertingCodec<Map<EK, EV>, 
     this.valueCodec = valueCodec;
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public Map<IK, IV> externalToInternal(Map<EK, EV> external) {
     if (external == null || external.isEmpty()) {
       return null;
     }
 
-    Map<IK, IV> result = new HashMap<>();
+    Map<IK, IV> result = new LinkedHashMap<>();
     for (Map.Entry<EK, EV> entry : external.entrySet()) {
       result.put(
           keyCodec.externalToInternal(entry.getKey()),
@@ -43,14 +42,13 @@ public class MapToMapCodec<EK, EV, IK, IV> extends ConvertingCodec<Map<EK, EV>, 
     return result;
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public Map<EK, EV> internalToExternal(Map<IK, IV> internal) {
     if (internal == null || internal.isEmpty()) {
       return null;
     }
 
-    Map<EK, EV> result = new HashMap<>();
+    Map<EK, EV> result = new LinkedHashMap<>();
     for (Map.Entry<IK, IV> entry : internal.entrySet()) {
       result.put(
           keyCodec.internalToExternal(entry.getKey()),

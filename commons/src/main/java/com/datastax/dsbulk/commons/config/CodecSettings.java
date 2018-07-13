@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.commons.config;
 
+import com.datastax.dsbulk.commons.codecs.CustomCodecFactory;
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.commons.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.commons.codecs.util.ExactNumberFormat;
@@ -152,6 +153,12 @@ public class CodecSettings {
   }
 
   public ExtendedCodecRegistry createCodecRegistry(CodecRegistry codecRegistry) {
+    return createCodecRegistry(codecRegistry, null);
+  }
+
+  @SuppressWarnings("WeakerAccess")
+  public ExtendedCodecRegistry createCodecRegistry(
+      CodecRegistry codecRegistry, CustomCodecFactory customCodecFactory) {
     return new ExtendedCodecRegistry(
         codecRegistry,
         nullStrings,
@@ -168,7 +175,8 @@ public class CodecSettings {
         timeUnit,
         epoch,
         generator,
-        objectMapper);
+        objectMapper,
+        customCodecFactory);
   }
 
   private static Locale parseLocale(String s) {
