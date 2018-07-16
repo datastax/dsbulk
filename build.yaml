@@ -4,7 +4,7 @@ schedules:
     schedule: per_commit
     matrix:
       exclude:
-        - cassandra: ['dse-4.8', 'dse-5.0', 'dse-5.1']
+        - cassandra: ['dse-5.0', 'dse-5.1']
     env_vars: |
       TEST_GROUPS="short,medium"
     notify:
@@ -24,7 +24,7 @@ schedules:
     schedule: adhoc
     matrix:
       exclude:
-        - cassandra: ['dse-4.8', 'dse-5.0', 'dse-5.1']
+        - cassandra: ['dse-5.0', 'dse-5.1']
         # - java: ['oraclejdk10']
     branches:
       exclude: ["/\\d+(\\.[\\dx]+)+/"]
@@ -37,7 +37,8 @@ java:
 os:
   - ubuntu/bionic64/java-driver
 cassandra:
-  - dse-4.8
+  # Temporarily disable builds with DSE 4.8, see DAT-312
+  # - dse-4.8
   - dse-5.0
   - dse-5.1
   - dse-6.0
