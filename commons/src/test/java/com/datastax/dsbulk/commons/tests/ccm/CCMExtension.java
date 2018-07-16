@@ -122,6 +122,11 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
             f -> {
               String liveClusterConfig = System.getProperty("liveCluster");
               if (liveClusterConfig != null) {
+                // When using mvn -DliveClusterConfig, we end up with a value
+                // of true rather than empty string.
+                if (liveClusterConfig.equals("true")) {
+                  liveClusterConfig = "";
+                }
                 return new LiveCCMCluster(liveClusterConfig);
               } else {
                 CCMClusterFactory factory =

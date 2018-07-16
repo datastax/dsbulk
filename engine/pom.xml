@@ -31,6 +31,7 @@
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-commons</artifactId>
+      <version>1.2.0-SNAPSHOT-ng</version>
     </dependency>
 
     <dependency>

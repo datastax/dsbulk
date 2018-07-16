@@ -37,26 +37,6 @@ public class DriverCoreEngineTestHooks {
   //        version);
   //  }
 
-  public static TupleType newTupleType(DataType... types) {
-    return newTupleType(DseProtocolVersion.DSE_V2, CODEC_REGISTRY, types);
-  }
-
-  public static TupleType newTupleType(
-      ProtocolVersion protocolVersion, CodecRegistry codecRegistry, DataType... types) {
-    return new DefaultTupleType(
-        Arrays.asList(types),
-        new AttachmentPoint() {
-          @Override
-          public ProtocolVersion protocolVersion() {
-            return protocolVersion;
-          }
-
-          @Override
-          public CodecRegistry codecRegistry() {
-            return codecRegistry;
-          }
-        });
-  }
 
   //  public static UserDefinedType newUserType(String[] fieldNames, String[] fieldTypes) {
   //    return newUserType(

@@ -12,10 +12,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
-import com.datastax.dsbulk.engine.internal.codecs.writetime.WriteTimeCodec;
+import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
+import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.commons.codecs.string.StringToInstantCodec;
+import com.datastax.dsbulk.commons.codecs.writetime.WriteTimeCodec;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
