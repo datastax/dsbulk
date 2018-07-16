@@ -3,6 +3,8 @@
 ### 1.2.0 (in progress)
 
 - [bug] DAT-302: CsvWriter trims leading/trailing spaces in values.
+- [bug] DAT-311: CSV connector fails when the number of columns in a record is greater than 512.
+- [improvement] DAT-252: Improve range split algorithm in multi-dc and/or vnodes environments.
 - [improvement] DAT-317: Support simplified notation for JSON arrays and objects in collection fields.
 
 

@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.commons.tests.assertions;
 
+import com.datastax.dsbulk.commons.partitioner.Token;
+import com.datastax.dsbulk.commons.partitioner.TokenRange;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.google.common.collect.Multimap;
 import com.typesafe.config.Config;
@@ -24,5 +26,10 @@ public class CommonsAssertions extends org.assertj.core.api.Assertions {
 
   public static <K, V> MultimapAssert<K, V> assertThat(Multimap<K, V> map) {
     return new MultimapAssert<>(map);
+  }
+
+  public static <V extends Number, T extends Token<V>> TokenRangeAssert<V, T> assertThat(
+      TokenRange<V, T> actual) {
+    return new TokenRangeAssert<>(actual);
   }
 }

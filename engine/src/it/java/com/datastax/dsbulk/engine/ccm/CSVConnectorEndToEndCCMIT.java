@@ -94,7 +94,7 @@ import reactor.core.publisher.Flux;
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 @CCMConfig(numberOfNodes = 1)
-@Tag("ccm")
+@Tag("medium")
 class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;

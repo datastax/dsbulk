@@ -55,7 +55,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 @CCMConfig(numberOfNodes = 1)
-@Tag("ccm")
+@Tag("medium")
 class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private Path unloadDir;

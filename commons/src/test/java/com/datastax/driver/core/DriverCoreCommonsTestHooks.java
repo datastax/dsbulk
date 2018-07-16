@@ -22,4 +22,12 @@ public class DriverCoreCommonsTestHooks {
   public static ColumnDefinitions newColumnDefinitions(ColumnDefinitions.Definition... cols) {
     return new ColumnDefinitions(cols, CodecRegistry.DEFAULT_INSTANCE);
   }
+
+  public static TokenRange newTokenRange(Token start, Token end) {
+    return new TokenRange(start, end, Token.M3PToken.FACTORY);
+  }
+
+  public static Token newToken(long value) {
+    return Token.M3PToken.FACTORY.fromString(Long.toString(value));
+  }
 }

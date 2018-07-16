@@ -57,7 +57,7 @@ import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
-@Tag("ccm")
+@Tag("medium")
 abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;

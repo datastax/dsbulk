@@ -129,7 +129,6 @@ public class DriverSettings {
   private static final String DSE_GSSAPI_PROVIDER = "DseGSSAPIAuthProvider";
 
   private final LoaderConfig config;
-  private final String executionId;
   private List<String> hosts;
   private int port;
   private int poolingLocalConnections;
@@ -163,9 +162,8 @@ public class DriverSettings {
   private String authSaslService;
   private LoadBalancingPolicy policy;
 
-  DriverSettings(LoaderConfig config, String executionId) {
+  DriverSettings(LoaderConfig config) {
     this.config = config;
-    this.executionId = executionId;
   }
 
   public void init() {
@@ -546,7 +544,7 @@ public class DriverSettings {
               (RemoteEndpointAwareJdkSSLOptions.Builder)
                   RemoteEndpointAwareJdkSSLOptions.builder().withSSLContext(sslContext);
           if (!cipherSuites.isEmpty()) {
-            builder.withCipherSuites(cipherSuites.toArray(new String[cipherSuites.size()]));
+            builder.withCipherSuites(cipherSuites.toArray(new String[0]));
           }
           return builder.build();
         }

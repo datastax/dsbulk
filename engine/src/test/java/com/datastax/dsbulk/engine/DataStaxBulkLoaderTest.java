@@ -66,6 +66,11 @@ class DataStaxBulkLoaderTest {
   }
 
   @BeforeEach
+  void loadDefaultConfig() {
+    DataStaxBulkLoader.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
+  }
+
+  @BeforeEach
   void createTempFolder() throws IOException {
     tempFolder = Files.createTempDirectory("test");
   }

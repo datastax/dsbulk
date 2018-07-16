@@ -416,6 +416,11 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
+  public boolean isMultiDC() {
+    return nodesPerDC.length > 1;
+  }
+
+  @Override
   public void startDC(int dc) {
     for (int node = 1; node <= nodesPerDC[dc - 1]; node++) {
       start(dc, node);

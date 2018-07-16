@@ -45,7 +45,7 @@ public class SettingsManager {
       this.executionId = WorkflowUtils.newExecutionId(workflowType);
     }
     logSettings = new LogSettings(config.getConfig("log"), this.executionId);
-    driverSettings = new DriverSettings(config.getConfig("driver"), this.executionId);
+    driverSettings = new DriverSettings(config.getConfig("driver"));
     connectorSettings = new ConnectorSettings(config.getConfig("connector"), workflowType);
     batchSettings = new BatchSettings(config.getConfig("batch"));
     executorSettings = new ExecutorSettings(config.getConfig("executor"));

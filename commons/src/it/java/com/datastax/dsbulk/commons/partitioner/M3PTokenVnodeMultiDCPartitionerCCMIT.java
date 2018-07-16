@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.executor.api.ccm;
+package com.datastax.dsbulk.commons.partitioner;
 
 import static com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig.UseKeyspaceMode.NONE;
 
@@ -15,11 +15,14 @@ import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import org.junit.jupiter.api.Tag;
 
-@CCMConfig(numberOfNodes = 3, createOptions = "-p RandomPartitioner")
-@Tag("ccm")
-class RPTokenTableScannerCCMIT extends TableScannerCCMITBase {
+@CCMConfig(
+  numberOfNodes = {3, 3},
+  createOptions = "--vnodes"
+)
+@Tag("long")
+class M3PTokenVnodeMultiDCPartitionerCCMIT extends PartitionerCCMITBase {
 
-  RPTokenTableScannerCCMIT(@SessionConfig(useKeyspace = NONE) Session session) {
-    super(session);
+  M3PTokenVnodeMultiDCPartitionerCCMIT(@SessionConfig(useKeyspace = NONE) Session session) {
+    super(session, true);
   }
 }

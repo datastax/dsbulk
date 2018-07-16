@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test;
   config = "authenticator:PasswordAuthenticator",
   jvmArgs = "-Dcassandra.superuser_setup_delay_ms=0"
 )
-@Tag("ccm")
+@Tag("medium")
 class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
 
   private Path unloadDir;

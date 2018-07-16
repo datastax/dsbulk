@@ -67,7 +67,7 @@ class DriverSettingsTest {
           LoaderConfig config =
               new DefaultLoaderConfig(
                   new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch")));
-          DriverSettings driverSettings = new DriverSettings(config, "test");
+          DriverSettings driverSettings = new DriverSettings(config);
           driverSettings.init();
           driverSettings.newCluster();
         });
@@ -79,7 +79,7 @@ class DriverSettingsTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString("port = 9876, hosts = [1.2.3.4, 2.3.4.5, 9.8.7.6]")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -132,7 +132,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString(
                     " auth { provider = PlainTextAuthProvider, username = alice, password = s3cr3t }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -150,7 +150,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString(
                     " auth { provider = DsePlainTextAuthProvider, username = alice, password = s3cr3t, authorizationId = bob }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -169,7 +169,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString(
                     " auth { username = alice, password = s3cr3t, authorizationId = bob }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -196,7 +196,7 @@ class DriverSettingsTest {
                             + "saslService = foo }",
                         escapeUserInput(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -230,7 +230,7 @@ class DriverSettingsTest {
                             + "saslService = foo }",
                         escapeUserInput(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -266,7 +266,7 @@ class DriverSettingsTest {
                             + "saslService = foo }",
                         escapeUserInput(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -293,7 +293,7 @@ class DriverSettingsTest {
                         + "authorizationId = \"bob@DATASTAX.COM\","
                         + "saslService = foo }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -319,7 +319,7 @@ class DriverSettingsTest {
                         + "authorizationId = \"bob@DATASTAX.COM\","
                         + "saslService = foo }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -356,7 +356,7 @@ class DriverSettingsTest {
                             + "}",
                         escapeUserInput(keystore), escapeUserInput(truststore)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -392,7 +392,7 @@ class DriverSettingsTest {
                         escapeUserInput(privateKey),
                         escapeUserInput(truststore)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();
@@ -432,7 +432,7 @@ class DriverSettingsTest {
                         + "  }"
                         + "}")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings driverSettings = new DriverSettings(config, "test");
+    DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
     DseCluster cluster = driverSettings.newCluster();
     assertThat(cluster).isNotNull();

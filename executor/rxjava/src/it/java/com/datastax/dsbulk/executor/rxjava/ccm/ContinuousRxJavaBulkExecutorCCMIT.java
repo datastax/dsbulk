@@ -15,7 +15,7 @@ import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.dsbulk.executor.rxjava.ContinuousRxJavaBulkExecutor;
 import org.junit.jupiter.api.Tag;
 
-@Tag("ccm")
+@Tag("medium")
 @VersionRequirement(min = "5.1")
 class ContinuousRxJavaBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 

@@ -365,6 +365,12 @@ The maximum number of characters that a field can contain. This setting is used 
 
 Default: **4096**.
 
+#### --connector.csv.maxColumns _&lt;number&gt;_
+
+The maximum number of columns that a record can contain. This setting is used to size internal buffers and to avoid out-of-memory problems.
+
+Default: **512**.
+
 #### -maxConcurrentFiles,--connector.csv.maxConcurrentFiles _&lt;string&gt;_
 
 The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
