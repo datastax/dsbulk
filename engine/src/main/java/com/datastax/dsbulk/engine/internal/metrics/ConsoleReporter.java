@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.metrics;
 
-import static com.datastax.dsbulk.engine.internal.utils.StringUtils.leftPad;
+import static com.datastax.dsbulk.commons.internal.utils.StringUtils.leftPad;
 import static java.lang.Math.max;
 import static java.lang.String.format;
 import static org.fusesource.jansi.Ansi.ansi;

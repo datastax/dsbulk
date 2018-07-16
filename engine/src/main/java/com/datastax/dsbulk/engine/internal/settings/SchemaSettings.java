@@ -123,8 +123,8 @@ public class SchemaSettings {
         } catch (Exception e) {
           throw new BulkConfigurationException(
               String.format(
-                  "Expecting %s to be in ISO_ZONED_DATE_TIME format but got '%s'",
-                  prettyPath(QUERY_TIMESTAMP), timestampStr));
+                  "Expecting schema.queryTimestamp to be in ISO_ZONED_DATE_TIME format but got '%s'",
+                  timestampStr));
         }
       }
       this.query = config.hasPath(QUERY) ? config.getString(QUERY) : null;
@@ -141,7 +141,7 @@ public class SchemaSettings {
       // If table is present, keyspace must be, but not necessarily the other way around.
       if (config.hasPath(TABLE) && keyspaceName == null) {
         throw new BulkConfigurationException(
-            prettyPath(KEYSPACE) + " must accompany schema.table in the configuration");
+            "schema.keyspace must accompany schema.table in the configuration");
       }
 
       // If mapping is present, make sure it is parseable as a map.
@@ -149,9 +149,7 @@ public class SchemaSettings {
         mapping = new MappingInspector(config.getString(MAPPING), preferIndexedMapping);
         if (mapping.isInferring() && !(keyspaceTablePresent || query != null)) {
           throw new BulkConfigurationException(
-              String.format(
-                  "%s, or %s and %s must be defined when using inferred mapping",
-                  prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)));
+              "schema.query, or schema.keyspace and schema.table must be defined when using inferred mapping");
         }
       } else {
         mapping = null;
@@ -161,32 +159,24 @@ public class SchemaSettings {
       // present.
       if (!config.hasPath(MAPPING) && !config.hasPath(QUERY) && !keyspaceTablePresent) {
         throw new BulkConfigurationException(
-            String.format(
-                "%s, %s, or %s and %s must be defined",
-                prettyPath(MAPPING), prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)));
+            "schema.mapping, schema.query, or schema.keyspace and schema.table must be defined");
       }
 
       // Either the keyspace and table must be present, or the mapping must be present.
       if (query == null && !keyspaceTablePresent) {
         throw new BulkConfigurationException(
-            String.format(
-                "%s, or %s and %s must be defined",
-                prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)));
+            "schema.query, or schema.keyspace and schema.table must be defined");
       }
 
       // If a query is provided, ttl and timestamp must not be.
       if (query != null && (timestampMicros != -1 || ttlSeconds != -1)) {
         throw new BulkConfigurationException(
-            String.format(
-                "%s must not be defined if %s or %s is defined",
-                prettyPath(QUERY), prettyPath(QUERY_TTL), prettyPath(QUERY_TIMESTAMP)));
+            "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
       }
 
       if (query != null && keyspaceTablePresent) {
         throw new BulkConfigurationException(
-            String.format(
-                "%s must not be defined if %s and %s are defined",
-                prettyPath(QUERY), prettyPath(KEYSPACE), prettyPath(TABLE)));
+            "schema.query must not be defined if schema.keyspace and schema.table are defined");
       }
 
       if (mapping != null) {
@@ -196,20 +186,15 @@ public class SchemaSettings {
         if (query != null) {
           if (explicitVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME)) {
             throw new BulkConfigurationException(
-                String.format(
-                    "%s must not be defined when mapping a field to query-timestamp",
-                    prettyPath(QUERY)));
+                "schema.query must not be defined when mapping a field to query-timestamp");
           }
           if (explicitVariables.containsValue(INTERNAL_TTL_VARNAME)) {
             throw new BulkConfigurationException(
-                String.format(
-                    "%s must not be defined when mapping a field to query-ttl", prettyPath(QUERY)));
+                "schema.query must not be defined when mapping a field to query-ttl");
           }
           if (explicitVariables.keySet().stream().anyMatch(SchemaSettings::isFunction)) {
             throw new BulkConfigurationException(
-                String.format(
-                    "%s must not be defined when mapping a function to a column",
-                    prettyPath(QUERY)));
+                "schema.query must not be defined when mapping a function to a column");
           }
         }
         // store the write time variable name for later if it was present in the mapping
@@ -230,8 +215,7 @@ public class SchemaSettings {
       if (workflowType == COUNT) {
         if (config.hasPath(MAPPING)) {
           throw new BulkConfigurationException(
-              String.format(
-                  "%s must not be defined when counting rows in a table", prettyPath(MAPPING)));
+              "schema.mapping must not be defined when counting rows in a table");
         }
       }
 
@@ -296,8 +280,7 @@ public class SchemaSettings {
     if (!unrecognized.isEmpty()) {
       throw new BulkConfigurationException(
           String.format(
-              "The provided statement (schema.query) contains unrecognized bound variables: %s; "
-                  + "only 'start' and 'end' can be used to define a token range",
+              "The provided statement (schema.query) contains unrecognized bound variables: %s; only 'start' and 'end' can be used to define a token range",
               unrecognized));
     }
     Metadata metadata = cluster.getMetadata();
@@ -558,8 +541,7 @@ public class SchemaSettings {
           columns.stream().map(Metadata::quoteIfNecessary).collect(Collectors.joining(", "));
       throw new BulkConfigurationException(
           String.format(
-              "The provided statement (schema.query) contains extraneous columns in the SELECT clause: "
-                  + "%s; it should contain only partition key columns.",
+              "The provided statement (schema.query) contains extraneous columns in the SELECT clause: %s; it should contain only partition key columns.",
               offendingColumns));
     }
   }
@@ -788,10 +770,6 @@ public class SchemaSettings {
 
   private static boolean isPseudoColumn(String col) {
     return col.equals(INTERNAL_TTL_VARNAME) || col.equals(INTERNAL_TIMESTAMP_VARNAME);
-  }
-
-  private static String prettyPath(String path) {
-    return String.format("schema%s%s", StringUtils.DELIMITER, path);
   }
 
   private static BiMap<String, String> removeMappingFunctions(

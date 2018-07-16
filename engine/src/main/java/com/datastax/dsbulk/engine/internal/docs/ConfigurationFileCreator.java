@@ -11,9 +11,9 @@ package com.datastax.dsbulk.engine.internal.docs;
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils.Group;
-import com.datastax.dsbulk.engine.internal.utils.StringUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;

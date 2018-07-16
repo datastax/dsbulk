@@ -41,6 +41,8 @@ class StringToSetCodecTest {
     assertThat(codec1)
         .convertsFromExternal("[1,2,3]")
         .toInternal(newLinkedHashSet(1d, 2d, 3d))
+        .convertsFromExternal("1,2,3")
+        .toInternal(newLinkedHashSet(1d, 2d, 3d))
         .convertsFromExternal(" [  1 , 2 , 3 ] ")
         .toInternal(newLinkedHashSet(1d, 2d, 3d))
         .convertsFromExternal("[1234.56,78900]")
@@ -61,6 +63,8 @@ class StringToSetCodecTest {
         .toInternal(null);
     assertThat(codec2)
         .convertsFromExternal("[\"foo\",\"bar\"]")
+        .toInternal(newLinkedHashSet("foo", "bar"))
+        .convertsFromExternal("\"foo\",\"bar\"")
         .toInternal(newLinkedHashSet("foo", "bar"))
         .convertsFromExternal("['foo','bar']")
         .toInternal(newLinkedHashSet("foo", "bar"))
@@ -133,7 +137,7 @@ class StringToSetCodecTest {
   void should_not_convert_from_invalid_external() {
     assertThat(codec1)
         .cannotConvertFromExternal("[1,\"not a valid double\"]")
-        .cannotConvertFromExternal("{ \"not a valid array\" : 42 }")
-        .cannotConvertFromExternal("42");
+        .cannotConvertFromExternal("[ \"not a valid array\" : 42 ")
+        .cannotConvertFromExternal("[42");
   }
 }

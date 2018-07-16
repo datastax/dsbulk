@@ -41,6 +41,8 @@ class StringToMapCodecTest {
     assertThat(codec)
         .convertsFromExternal("{1 : [\"foo\", \"bar\"], 2:[\"qix\"]}")
         .toInternal(map(1d, list("foo", "bar"), 2d, list("qix")))
+        .convertsFromExternal("1 : [\"foo\", \"bar\"], 2:[\"qix\"]")
+        .toInternal(map(1d, list("foo", "bar"), 2d, list("qix")))
         .convertsFromExternal("{ '1234.56' : ['foo', 'bar'], '0.12' : ['qix'] }")
         .toInternal(map(1234.56d, list("foo", "bar"), 0.12d, list("qix")))
         .convertsFromExternal("{ '1,234.56' : ['foo'] , '.12' : ['bar']}")

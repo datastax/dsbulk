@@ -168,30 +168,6 @@ public class ConfigUtils {
     return threads;
   }
 
-  public static String ensureQuoted(String value) {
-    value = value.trim();
-    if (value.startsWith("\"") && value.endsWith("\"")) {
-      return value;
-    }
-    return "\"" + value + "\"";
-  }
-
-  public static String ensureBrackets(String value) {
-    value = value.trim();
-    if (value.startsWith("[") && value.endsWith("]")) {
-      return value;
-    }
-    return "[" + value + "]";
-  }
-
-  public static String ensureBraces(String value) {
-    value = value.trim();
-    if (value.startsWith("{") && value.endsWith("}")) {
-      return value;
-    }
-    return "{" + value + "}";
-  }
-
   /**
    * Returns a string representation of the value type at this path.
    *

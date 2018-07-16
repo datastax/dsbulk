@@ -8,8 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.dsbulk.engine.internal.utils.StringUtils.DELIMITER;
-
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
@@ -93,11 +91,11 @@ public class LogSettings {
 
   // Path Constants
   private static final String STMT = "stmt";
-  private static final String MAX_QUERY_STRING_LENGTH = STMT + DELIMITER + "maxQueryStringLength";
-  private static final String MAX_BOUND_VALUE_LENGTH = STMT + DELIMITER + "maxBoundValueLength";
-  private static final String MAX_BOUND_VALUES = STMT + DELIMITER + "maxBoundValues";
-  private static final String MAX_INNER_STATEMENTS = STMT + DELIMITER + "maxInnerStatements";
-  private static final String LEVEL = STMT + DELIMITER + "level";
+  private static final String MAX_QUERY_STRING_LENGTH = STMT + '.' + "maxQueryStringLength";
+  private static final String MAX_BOUND_VALUE_LENGTH = STMT + '.' + "maxBoundValueLength";
+  private static final String MAX_BOUND_VALUES = STMT + '.' + "maxBoundValues";
+  private static final String MAX_INNER_STATEMENTS = STMT + '.' + "maxInnerStatements";
+  private static final String LEVEL = STMT + '.' + "level";
   private static final String MAX_ERRORS = "maxErrors";
   private static final String VERBOSITY = "verbosity";
 
