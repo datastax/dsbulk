@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.commons.codecs.json;
 
-import static com.datastax.dsbulk.commons.config.CodecSettings.JSON_NODE_FACTORY;
+import static com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils.JSON_NODE_FACTORY;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -36,7 +36,7 @@ public class JsonNodeToUnknownTypeCodec<T> extends JsonNodeConvertingCodec<T> {
     String s = getInternalCodec().format(o);
     // most codecs usually format null/empty values using the CQL keyword "NULL",
     // but some others may choose to return a null string.
-    if (s == null || s.equalsIgnoreCase("NULL")) {
+    if (s.equalsIgnoreCase("NULL")) {
       return null;
     }
     return JSON_NODE_FACTORY.textNode(s);

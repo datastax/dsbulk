@@ -6,8 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.commons.config;
-
+package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.commons.codecs.CodecTestUtils.newTupleType;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
@@ -17,6 +16,7 @@ import static org.mockito.Mockito.when;
 
 import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils;
 import com.datastax.dsbulk.commons.codecs.json.JsonNodeToUUIDCodec;
 import com.datastax.dsbulk.commons.codecs.number.BooleanToNumberCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToBooleanCodec;
@@ -45,6 +45,7 @@ import com.datastax.dsbulk.commons.codecs.temporal.DateToUUIDCodec;
 import com.datastax.dsbulk.commons.codecs.temporal.TemporalToTemporalCodec;
 import com.datastax.dsbulk.commons.codecs.temporal.TemporalToUUIDCodec;
 import com.datastax.dsbulk.commons.codecs.util.TimeUUIDGenerator;
+import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -185,16 +186,20 @@ class CodecSettingsTest {
     ExtendedCodecRegistry codecRegistry =
         settings.createCodecRegistry(session.getContext().codecRegistry());
 
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.DATE, GenericType.of(ZonedDateTime.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(DataTypes.DATE, GenericType.of(ZonedDateTime.class)))
         .convertsFromExternal(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
         .toInternal(LocalDate.parse("2017-11-30"))
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.TIME, GenericType.of(ZonedDateTime.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(DataTypes.TIME, GenericType.of(ZonedDateTime.class)))
         .convertsFromExternal(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
         .toInternal(LocalTime.parse("00:00:00"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.TIMESTAMP, GenericType.of(ZonedDateTime.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(
+                DataTypes.TIMESTAMP, GenericType.of(ZonedDateTime.class)))
         .convertsFromExternal(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
         .toInternal(Instant.parse("2017-11-29T23:00:00Z"))
         .isNotNull()
@@ -209,17 +214,21 @@ class CodecSettingsTest {
         .toInternal(LocalTime.parse("23:00:00"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.DATE, GenericType.of(LocalDateTime.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(DataTypes.DATE, GenericType.of(LocalDateTime.class)))
         .convertsFromExternal(LocalDateTime.parse("2017-11-30T00:00:00"))
         .toInternal(LocalDate.parse("2017-11-30"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.TIME, GenericType.of(LocalDateTime.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(DataTypes.TIME, GenericType.of(LocalDateTime.class)))
         .convertsFromExternal(LocalDateTime.parse("2017-11-30T23:00:00"))
         .toInternal(LocalTime.parse("23:00:00"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.TIMESTAMP, GenericType.of(LocalDateTime.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(
+                DataTypes.TIMESTAMP, GenericType.of(LocalDateTime.class)))
         .convertsFromExternal(LocalDateTime.parse("2017-11-30T00:00:00"))
         .toInternal(Instant.parse("2017-11-30T00:00:00Z"))
         .isNotNull()
@@ -234,23 +243,28 @@ class CodecSettingsTest {
         .toInternal(Instant.parse("1970-01-01T23:00:00Z"))
         .isNotNull()
         .isInstanceOf(TemporalToTemporalCodec.class);
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.TIMESTAMP, GenericType.of(java.util.Date.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(
+                DataTypes.TIMESTAMP, GenericType.of(java.util.Date.class)))
         .convertsFromExternal(Date.from(Instant.parse("2017-11-29T23:00:00Z")))
         .toInternal(Instant.parse("2017-11-29T23:00:00Z"))
         .isNotNull()
         .isInstanceOf(DateToTemporalCodec.class);
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.DATE, GenericType.of(java.sql.Date.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(DataTypes.DATE, GenericType.of(java.sql.Date.class)))
         .convertsFromExternal(java.sql.Date.valueOf(LocalDate.parse("2017-11-29")))
         .toInternal(LocalDate.parse("2017-11-29"))
         .isNotNull()
         .isInstanceOf(DateToTemporalCodec.class);
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.TIME, GenericType.of(java.sql.Time.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(DataTypes.TIME, GenericType.of(java.sql.Time.class)))
         .convertsFromExternal(java.sql.Time.valueOf(LocalTime.parse("23:00:00")))
         .toInternal(LocalTime.parse("23:00:00"))
         .isNotNull()
         .isInstanceOf(DateToTemporalCodec.class);
     assertThat(
-        codecRegistry.convertingCodecFor(DataTypes.TIMESTAMP, GenericType.of(java.sql.Timestamp.class)))
+            codecRegistry.convertingCodecFor(
+                DataTypes.TIMESTAMP, GenericType.of(java.sql.Timestamp.class)))
         .convertsFromExternal(Timestamp.from(Instant.parse("2017-11-29T23:00:00Z")))
         .toInternal(Instant.parse("2017-11-29T23:00:00Z"))
         .isNotNull()
@@ -272,17 +286,20 @@ class CodecSettingsTest {
     assertThat(codecRegistry.codecFor(DataTypes.setOf(DataTypes.DOUBLE), GenericType.STRING))
         .isNotNull()
         .isInstanceOf(StringToSetCodec.class);
-    assertThat(codecRegistry.codecFor(DataTypes.mapOf(DataTypes.TIME, DataTypes.TEXT), GenericType.STRING))
+    assertThat(
+            codecRegistry.codecFor(
+                DataTypes.mapOf(DataTypes.TIME, DataTypes.TEXT), GenericType.STRING))
         .isNotNull()
         .isInstanceOf(StringToMapCodec.class);
     TupleType tupleType = newTupleType(DataTypes.INT, DataTypes.DOUBLE);
     assertThat(codecRegistry.codecFor(tupleType, GenericType.STRING))
         .isNotNull()
         .isInstanceOf(StringToTupleCodec.class);
-    UserDefinedType udtType = new UserDefinedTypeBuilder("ks", "udt")
-        .withField("f1", DataTypes.INT)
-        .withField("f2", DataTypes.DOUBLE)
-        .build();
+    UserDefinedType udtType =
+        new UserDefinedTypeBuilder("ks", "udt")
+            .withField("f1", DataTypes.INT)
+            .withField("f2", DataTypes.DOUBLE)
+            .build();
     assertThat(codecRegistry.codecFor(udtType, GenericType.STRING))
         .isNotNull()
         .isInstanceOf(StringToUDTCodec.class);
@@ -310,7 +327,9 @@ class CodecSettingsTest {
         .isInstanceOf(TemporalToUUIDCodec.class)
         .convertsFromExternal(Instant.ofEpochMilli(123456L))
         .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.TIMEUUID, GenericType.of(ZonedDateTime.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(
+                DataTypes.TIMEUUID, GenericType.of(ZonedDateTime.class)))
         .isNotNull()
         .isInstanceOf(TemporalToUUIDCodec.class)
         .convertsFromExternal(Instant.ofEpochMilli(123456L).atZone(UTC))
@@ -320,7 +339,9 @@ class CodecSettingsTest {
         .isInstanceOf(DateToUUIDCodec.class)
         .convertsFromExternal(Date.from(Instant.ofEpochMilli(123456L)))
         .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
-    assertThat(codecRegistry.convertingCodecFor(DataTypes.TIMEUUID, GenericType.of(java.sql.Timestamp.class)))
+    assertThat(
+            codecRegistry.convertingCodecFor(
+                DataTypes.TIMEUUID, GenericType.of(java.sql.Timestamp.class)))
         .isNotNull()
         .isInstanceOf(DateToUUIDCodec.class)
         .convertsFromExternal(Timestamp.from(Instant.ofEpochMilli(123456L)))
@@ -333,7 +354,7 @@ class CodecSettingsTest {
     assertThat(codecRegistry.convertingCodecFor(DataTypes.TIMEUUID, GenericType.of(JsonNode.class)))
         .isNotNull()
         .isInstanceOf(JsonNodeToUUIDCodec.class)
-        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
+        .convertsFromExternal(JsonCodecUtils.JSON_NODE_FACTORY.textNode("123456"))
         .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
   }
 

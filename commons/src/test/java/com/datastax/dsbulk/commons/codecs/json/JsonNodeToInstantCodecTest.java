@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.commons.codecs.json;
 
-import static com.datastax.dsbulk.commons.config.CodecSettings.JSON_NODE_FACTORY;
+import static com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 
 import com.datastax.dsbulk.commons.codecs.CodecTestUtils;

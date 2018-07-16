@@ -13,17 +13,17 @@ import static com.google.common.collect.Lists.newArrayList;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
 
+import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
 import com.datastax.dsbulk.commons.codecs.util.TemporalFormat;
-import com.datastax.dsbulk.commons.config.CodecSettings;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class StringToLocalDateCodecTest {
 
-  private TemporalFormat format1 = CodecSettings.getTemporalFormat("ISO_LOCAL_DATE", null, US);
+  private TemporalFormat format1 = CodecUtils.getTemporalFormat("ISO_LOCAL_DATE", null, US);
 
-  private TemporalFormat format2 = CodecSettings.getTemporalFormat("yyyyMMdd", null, US);
+  private TemporalFormat format2 = CodecUtils.getTemporalFormat("yyyyMMdd", null, US);
 
   private final List<String> nullStrings = newArrayList("NULL");
 

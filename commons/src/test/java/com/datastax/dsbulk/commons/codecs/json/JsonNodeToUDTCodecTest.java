@@ -9,11 +9,10 @@
 package com.datastax.dsbulk.commons.codecs.json;
 
 import static com.datastax.dsbulk.commons.codecs.CodecTestUtils.newCodecRegistry;
-import static com.datastax.dsbulk.commons.config.CodecSettings.JSON_NODE_FACTORY;
+import static com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.commons.config.CodecSettings;
 import com.datastax.oss.driver.api.core.data.UdtValue;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.UserDefinedType;
@@ -32,7 +31,7 @@ import org.junit.jupiter.api.Test;
 
 class JsonNodeToUDTCodecTest {
 
-  private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private final ObjectMapper objectMapper = JsonCodecUtils.getObjectMapper();
 
   private final UserDefinedType udt1 =
       new UserDefinedTypeBuilder("ks", "udt")

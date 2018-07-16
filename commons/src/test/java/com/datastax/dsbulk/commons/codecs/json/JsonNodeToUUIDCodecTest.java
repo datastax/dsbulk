@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.commons.codecs.json;
 
+import static com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.commons.codecs.util.TimeUUIDGenerator.FIXED;
 import static com.datastax.dsbulk.commons.codecs.util.TimeUUIDGenerator.MAX;
 import static com.datastax.dsbulk.commons.codecs.util.TimeUUIDGenerator.MIN;
 import static com.datastax.dsbulk.commons.codecs.util.TimeUUIDGenerator.RANDOM;
-import static com.datastax.dsbulk.commons.config.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.RoundingMode.HALF_EVEN;
@@ -22,7 +22,7 @@ import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.dsbulk.commons.codecs.string.StringToInstantCodec;
-import com.datastax.dsbulk.commons.config.CodecSettings;
+import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -36,13 +36,13 @@ import org.junit.jupiter.api.Test;
 class JsonNodeToUUIDCodecTest {
 
   private final FastThreadLocal<NumberFormat> numberFormat =
-      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+      CodecUtils.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
   private StringToInstantCodec instantCodec =
       new StringToInstantCodec(
-          CodecSettings.getTemporalFormat("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX", UTC, US),
+          CodecUtils.getTemporalFormat("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX", UTC, US),
           numberFormat,
           UTC,
           MILLISECONDS,

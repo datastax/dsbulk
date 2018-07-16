@@ -20,7 +20,7 @@ import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-import com.datastax.dsbulk.commons.config.CodecSettings;
+import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -33,13 +33,13 @@ import org.junit.jupiter.api.Test;
 class StringToUUIDCodecTest {
 
   private final FastThreadLocal<NumberFormat> numberFormat =
-      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+      CodecUtils.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
   private StringToInstantCodec instantCodec =
       new StringToInstantCodec(
-          CodecSettings.getTemporalFormat("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX", UTC, US),
+          CodecUtils.getTemporalFormat("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX", UTC, US),
           numberFormat,
           UTC,
           MILLISECONDS,

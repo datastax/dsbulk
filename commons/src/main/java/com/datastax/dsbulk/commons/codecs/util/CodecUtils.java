@@ -18,10 +18,15 @@ import com.datastax.dse.driver.api.core.type.geometry.Point;
 import com.datastax.dse.driver.api.core.type.geometry.Polygon;
 import com.datastax.dse.driver.api.core.type.search.DateRange;
 import com.datastax.oss.protocol.internal.util.Bytes;
+import com.google.common.annotations.VisibleForTesting;
+import io.netty.util.concurrent.FastThreadLocal;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.ByteBuffer;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.ParsePosition;
@@ -33,18 +38,26 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.chrono.IsoChronology;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.time.temporal.TemporalAccessor;
 import java.time.temporal.TemporalQueries;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 
+@SuppressWarnings("WeakerAccess")
 public class CodecUtils {
+
+  private static final String CQL_TIMESTAMP = "CQL_TIMESTAMP";
 
   /**
    * Parses the given string as a temporal.
@@ -946,6 +959,70 @@ public class CodecUtils {
       return DateRange.parse(s);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid date range literal: " + s, e);
+    }
+  }
+
+  public static FastThreadLocal<NumberFormat> getNumberFormatThreadLocal(
+      String pattern, Locale locale, RoundingMode roundingMode, boolean formatNumbers) {
+    return new FastThreadLocal<NumberFormat>() {
+      @Override
+      protected NumberFormat initialValue() {
+        return getNumberFormat(pattern, locale, roundingMode, formatNumbers);
+      }
+    };
+  }
+
+  public static NumberFormat getNumberFormat(
+      String pattern, Locale locale, RoundingMode roundingMode, boolean formatNumbers) {
+    DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(locale);
+    // manually set the NaN and Infinity symbols; the default ones are not parseable:
+    // 'REPLACEMENT CHARACTER' (U+FFFD) and 'INFINITY' (U+221E)
+    symbols.setNaN("NaN");
+    symbols.setInfinity("Infinity");
+    DecimalFormat format = new DecimalFormat(pattern, symbols);
+    // Always parse floating point numbers as BigDecimals to preserve maximum precision
+    format.setParseBigDecimal(true);
+    // Used only when formatting
+    format.setRoundingMode(roundingMode);
+    if (roundingMode == RoundingMode.UNNECESSARY) {
+      // if user selects unnecessary, print as many fraction digits as necessary
+      format.setMaximumFractionDigits(Integer.MAX_VALUE);
+    }
+    if (!formatNumbers) {
+      return new ToStringNumberFormat(format);
+    } else {
+      return new ExactNumberFormat(format);
+    }
+  }
+
+  @VisibleForTesting
+  public static TemporalFormat getTemporalFormat(String pattern, ZoneId timeZone, Locale locale) {
+    if (pattern.equals(CQL_TIMESTAMP)) {
+      return new CqlTemporalFormat(timeZone);
+    } else {
+      DateTimeFormatterBuilder builder =
+          new DateTimeFormatterBuilder().parseStrict().parseCaseInsensitive();
+      try {
+        // first, assume it is a predefined format
+        Field field = DateTimeFormatter.class.getDeclaredField(pattern);
+        DateTimeFormatter formatter = (DateTimeFormatter) field.get(null);
+        builder = builder.append(formatter);
+      } catch (NoSuchFieldException | IllegalAccessException ignored) {
+        // if that fails, assume it's a pattern
+        builder = builder.appendPattern(pattern);
+      }
+      DateTimeFormatter format =
+          builder
+              .toFormatter(locale)
+              // STRICT fails sometimes, e.g. when extracting the Year field from a YearOfEra field
+              // (i.e., does not convert between "uuuu" and "yyyy")
+              .withResolverStyle(ResolverStyle.SMART)
+              .withChronology(IsoChronology.INSTANCE);
+      if (timeZone == null) {
+        return new SimpleTemporalFormat(format);
+      } else {
+        return new ZonedTemporalFormat(format, timeZone);
+      }
     }
   }
 }

@@ -8,11 +8,10 @@
  */
 package com.datastax.dsbulk.commons.codecs.json;
 
-import static com.datastax.dsbulk.commons.config.CodecSettings.JSON_NODE_FACTORY;
+import static com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.dsbulk.commons.config.CodecSettings;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -22,7 +21,7 @@ import org.junit.jupiter.api.Test;
 class JsonNodeToStringCodecTest {
 
   private List<String> nullStrings = newArrayList("NULL");
-  private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private ObjectMapper objectMapper = JsonCodecUtils.getObjectMapper();
 
   @Test
   void should_convert_from_valid_external() throws IOException {

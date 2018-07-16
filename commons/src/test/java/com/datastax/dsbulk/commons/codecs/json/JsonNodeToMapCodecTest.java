@@ -9,10 +9,9 @@
 package com.datastax.dsbulk.commons.codecs.json;
 
 import static com.datastax.dsbulk.commons.codecs.CodecTestUtils.newCodecRegistry;
-import static com.datastax.dsbulk.commons.config.CodecSettings.JSON_NODE_FACTORY;
+import static com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 
-import com.datastax.dsbulk.commons.config.CodecSettings;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -27,7 +26,7 @@ import org.junit.jupiter.api.Test;
 
 class JsonNodeToMapCodecTest {
 
-  private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private final ObjectMapper objectMapper = JsonCodecUtils.getObjectMapper();
 
   private JsonNodeToMapCodec<Double, List<String>> codec;
 

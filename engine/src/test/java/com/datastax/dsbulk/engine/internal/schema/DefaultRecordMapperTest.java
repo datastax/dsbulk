@@ -26,6 +26,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.commons.codecs.string.StringToIntegerCodec;
@@ -34,7 +35,6 @@ import com.datastax.dsbulk.commons.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.commons.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.commons.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.commons.codecs.util.ZonedTemporalFormat;
-import com.datastax.dsbulk.commons.config.CodecSettings;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
@@ -92,7 +92,7 @@ class DefaultRecordMapperTest {
   private ArgumentCaptor<ByteBuffer> valueCaptor;
   private RecordMetadata recordMetadata;
   private final FastThreadLocal<NumberFormat> formatter =
-      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+      CodecUtils.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   @BeforeEach
   void setUp() {
@@ -116,7 +116,7 @@ class DefaultRecordMapperTest {
     when(boundStatement.isSet(1)).thenReturn(true);
     when(boundStatement.isSet(2)).thenReturn(true);
     when(insertStatement.getVariableDefinitions()).thenReturn(variables);
-    when(insertStatement.getPrimaryKeyIndices()).thenReturn(pkIndices);
+    when(insertStatement.getPartitionKeyIndices()).thenReturn(pkIndices);
     ColumnDefinition c1Def = mock(ColumnDefinition.class);
     ColumnDefinition c2Def = mock(ColumnDefinition.class);
     ColumnDefinition c3Def = mock(ColumnDefinition.class);
@@ -350,7 +350,7 @@ class DefaultRecordMapperTest {
   void should_map_null_to_unset() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
     when(record.getFieldValue(F2)).thenReturn(null);
-    when(insertStatement.getPrimaryKeyIndices()).thenReturn(Arrays.asList(0, 2));
+    when(insertStatement.getPartitionKeyIndices()).thenReturn(Arrays.asList(0, 2));
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
@@ -372,7 +372,7 @@ class DefaultRecordMapperTest {
   void should_map_null_to_null() {
     when(record.fields()).thenReturn(set(F1));
     when(record.getFieldValue(F1)).thenReturn(null);
-    when(insertStatement.getPrimaryKeyIndices()).thenReturn(Arrays.asList(1, 2));
+    when(insertStatement.getPartitionKeyIndices()).thenReturn(Arrays.asList(1, 2));
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,

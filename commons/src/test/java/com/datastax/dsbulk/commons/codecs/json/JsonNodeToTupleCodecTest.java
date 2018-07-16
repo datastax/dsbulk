@@ -10,11 +10,10 @@ package com.datastax.dsbulk.commons.codecs.json;
 
 import static com.datastax.dsbulk.commons.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.commons.codecs.CodecTestUtils.newTupleType;
-import static com.datastax.dsbulk.commons.config.CodecSettings.JSON_NODE_FACTORY;
+import static com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 
-import com.datastax.dsbulk.commons.config.CodecSettings;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.TupleType;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
@@ -28,7 +27,7 @@ import org.junit.jupiter.api.Test;
 
 class JsonNodeToTupleCodecTest {
 
-  private final ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private final ObjectMapper objectMapper = JsonCodecUtils.getObjectMapper();
 
   private TupleType tupleType;
 

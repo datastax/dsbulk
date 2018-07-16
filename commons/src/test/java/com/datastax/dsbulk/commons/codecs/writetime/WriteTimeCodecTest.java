@@ -16,12 +16,13 @@ import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils;
 import com.datastax.dsbulk.commons.codecs.json.JsonNodeToInstantCodec;
 import com.datastax.dsbulk.commons.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.commons.codecs.temporal.DateToTemporalCodec;
 import com.datastax.dsbulk.commons.codecs.temporal.TemporalToTemporalCodec;
+import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
 import com.datastax.dsbulk.commons.codecs.util.TemporalFormat;
-import com.datastax.dsbulk.commons.config.CodecSettings;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.sql.Timestamp;
@@ -40,10 +41,10 @@ class WriteTimeCodecTest {
   private final ZonedDateTime epoch = EPOCH.atZone(UTC);
 
   private final TemporalFormat temporalFormat =
-      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US);
+      CodecUtils.getTemporalFormat("CQL_TIMESTAMP", UTC, US);
 
   private final FastThreadLocal<NumberFormat> numberFormat =
-      CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+      CodecUtils.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
@@ -70,7 +71,8 @@ class WriteTimeCodecTest {
             new WriteTimeCodec<>(
                 new JsonNodeToInstantCodec(
                     temporalFormat, numberFormat, UTC, unit, epoch, nullStrings)))
-        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("2017-11-30T14:46:56+01:00"))
+        .convertsFromExternal(
+            JsonCodecUtils.JSON_NODE_FACTORY.textNode("2017-11-30T14:46:56+01:00"))
         .toInternal(
             MILLISECONDS.toMicros(
                 ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant().toEpochMilli()));
@@ -79,14 +81,14 @@ class WriteTimeCodecTest {
             new WriteTimeCodec<>(
                 new JsonNodeToInstantCodec(
                     temporalFormat, numberFormat, UTC, unit, epoch, nullStrings)))
-        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
+        .convertsFromExternal(JsonCodecUtils.JSON_NODE_FACTORY.textNode("123456"))
         .toInternal(MILLISECONDS.toMicros(123456L));
 
     assertThat(
             new WriteTimeCodec<>(
                 new JsonNodeToInstantCodec(
                     temporalFormat, numberFormat, UTC, unit, epoch, nullStrings)))
-        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.numberNode(123456L))
+        .convertsFromExternal(JsonCodecUtils.JSON_NODE_FACTORY.numberNode(123456L))
         .toInternal(MILLISECONDS.toMicros(123456L));
 
     assertThat(

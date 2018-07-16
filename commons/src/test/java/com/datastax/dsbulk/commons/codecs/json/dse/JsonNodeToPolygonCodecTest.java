@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.commons.codecs.json.dse;
 
-import static com.datastax.dsbulk.commons.config.CodecSettings.JSON_NODE_FACTORY;
+import static com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.dsbulk.commons.config.CodecSettings;
+import com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils;
 import com.datastax.dse.driver.api.core.type.geometry.Polygon;
 import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
 import com.datastax.dse.driver.internal.core.type.geometry.DefaultPolygon;
@@ -31,7 +31,7 @@ class JsonNodeToPolygonCodecTest {
           new DefaultPoint(10, 20),
           new DefaultPoint(20, 40),
           new DefaultPoint(40, 40));
-  private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private ObjectMapper objectMapper = JsonCodecUtils.getObjectMapper();
   private JsonNode geoJsonNode =
       objectMapper.readTree(
           "{\"type\":\"Polygon\",\"coordinates\":[[[30.0,10.0],[10.0,20.0],[20.0,40.0],[40.0,40.0],[30.0,10.0]]]}");

@@ -8,24 +8,24 @@
  */
 package com.datastax.dsbulk.commons.codecs.json;
 
-import static com.datastax.dsbulk.commons.config.CodecSettings.JSON_NODE_FACTORY;
+import static com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.util.Locale.US;
 
+import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
 import com.datastax.dsbulk.commons.codecs.util.SimpleTemporalFormat;
 import com.datastax.dsbulk.commons.codecs.util.TemporalFormat;
-import com.datastax.dsbulk.commons.config.CodecSettings;
 import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToLocalTimeCodecTest {
 
-  private TemporalFormat format1 = CodecSettings.getTemporalFormat("ISO_LOCAL_TIME", null, US);
+  private TemporalFormat format1 = CodecUtils.getTemporalFormat("ISO_LOCAL_TIME", null, US);
 
-  private TemporalFormat format2 = CodecSettings.getTemporalFormat("HHmmss.SSS", null, US);
+  private TemporalFormat format2 = CodecUtils.getTemporalFormat("HHmmss.SSS", null, US);
 
   private final List<String> nullStrings = newArrayList("NULL");
 

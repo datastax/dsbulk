@@ -50,7 +50,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.dsbulk.commons.codecs.string.StringToInstantCodec;
-import com.datastax.dsbulk.commons.config.CodecSettings;
 import com.datastax.dse.driver.api.core.type.geometry.LineString;
 import com.datastax.dse.driver.api.core.type.geometry.Polygon;
 import com.datastax.dse.driver.api.core.type.search.DateRange;
@@ -87,19 +86,19 @@ class CodecUtilsTest {
   private final Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
 
   private final NumberFormat numberFormat1 =
-      CodecSettings.getNumberFormat("#,###.##", US, HALF_EVEN, true);
+      CodecUtils.getNumberFormat("#,###.##", US, HALF_EVEN, true);
 
   private final NumberFormat numberFormat2 =
-      CodecSettings.getNumberFormat("0.###E0", US, UNNECESSARY, true);
+      CodecUtils.getNumberFormat("0.###E0", US, UNNECESSARY, true);
 
   private final NumberFormat numberFormat3 =
-      CodecSettings.getNumberFormat("#.##", US, UNNECESSARY, true);
+      CodecUtils.getNumberFormat("#.##", US, UNNECESSARY, true);
 
   private final NumberFormat numberFormat4 =
-      CodecSettings.getNumberFormat("#,###.##", US, UNNECESSARY, false);
+      CodecUtils.getNumberFormat("#,###.##", US, UNNECESSARY, false);
 
   private final TemporalFormat timestampFormat1 =
-      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US);
+      CodecUtils.getTemporalFormat("CQL_TIMESTAMP", UTC, US);
 
   private final Map<String, Boolean> booleanInputWords =
       ImmutableMap.of("true", true, "false", false);
@@ -958,8 +957,8 @@ class CodecUtilsTest {
   void should_parse_uuid() {
     StringToInstantCodec instantCodec =
         new StringToInstantCodec(
-            CodecSettings.getTemporalFormat("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX", UTC, US),
-            CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
+            CodecUtils.getTemporalFormat("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX", UTC, US),
+            CodecUtils.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
             UTC,
             MILLISECONDS,
             EPOCH.atZone(UTC),

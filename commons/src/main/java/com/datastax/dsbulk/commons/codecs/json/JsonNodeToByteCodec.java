@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.commons.codecs.json;
 
-import static com.datastax.dsbulk.commons.config.CodecSettings.JSON_NODE_FACTORY;
+import static com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils.JSON_NODE_FACTORY;
 import static java.util.stream.Collectors.toList;
 
 import com.datastax.dsbulk.commons.codecs.util.OverflowStrategy;
