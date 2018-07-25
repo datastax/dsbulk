@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
 public @interface SessionConfig {
 
   /** The session configuration; each entry is of the form setting=value. */
-  String[] settings() default {};
+  SessionConfigSetting[] settings() default {};
 
   /** Whether to enable SSL with a default set of credentials, keystores and truststores. */
   boolean ssl() default false;
