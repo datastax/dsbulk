@@ -47,7 +47,6 @@ import com.datastax.dsbulk.engine.internal.schema.QueryInspector;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
-import com.datastax.dsbulk.engine.internal.utils.StringUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
