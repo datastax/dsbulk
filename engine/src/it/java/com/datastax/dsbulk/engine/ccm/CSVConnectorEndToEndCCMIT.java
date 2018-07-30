@@ -1749,6 +1749,86 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(lines).contains("ok1,1").contains("ok2,2");
   }
 
+  /** Test for DAT-326. */
+  @Test
+  void function_mapped_to_primary_key() {
+
+    session.execute("DROP TABLE IF EXISTS dat326a");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS dat326a (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            escapeUserInput(getClass().getResource("/function-pk.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "dat326a",
+            "--schema.mapping",
+            "now()=cc,*=*");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+  }
+
+  /** Test for DAT-326. */
+  @Test
+  void function_mapped_to_primary_key_with_custom_query() {
+
+    session.execute("DROP TABLE IF EXISTS dat326b");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS dat326b (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            escapeUserInput(getClass().getResource("/function-pk.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "INSERT INTO dat326b (pk, cc, v) VALUES (:pk, now(), :v)");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+  }
+
+  /** Test for DAT-326. */
+  @Test
+  void function_mapped_to_primary_key_with_custom_query_and_positional_variables() {
+
+    session.execute("DROP TABLE IF EXISTS dat326c");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS dat326c (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            escapeUserInput(getClass().getResource("/function-pk.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "INSERT INTO dat326c (pk, cc, v) VALUES (?, now(), ?)");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+  }
+
   static void checkNumbersWritten(
       OverflowStrategy overflowStrategy, RoundingMode roundingMode, Session session) {
     Map<String, Double> doubles = new HashMap<>();

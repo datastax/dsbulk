@@ -51,6 +51,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.Multimap;
 import com.typesafe.config.ConfigException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -69,8 +70,12 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SchemaSettings {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaSettings.class);
 
   private static final String NULL_TO_UNSET = "nullToUnset";
   private static final String KEYSPACE = "keyspace";
@@ -322,6 +327,7 @@ public class SchemaSettings {
       } else if (workflowType == COUNT) {
         query = inferCountQuery();
       }
+      LOGGER.debug("Inferred query: {}", query);
       queryInspector = new QueryInspector(query);
       // validate generated query
       if (workflowType == LOAD) {
@@ -509,14 +515,19 @@ public class SchemaSettings {
   }
 
   private void validatePrimaryKeyPresent(BiMap<String, String> fieldsToVariables) {
+    Set<String> variablesInMapping = fieldsToVariables.values();
     List<ColumnMetadata> partitionKey = table.getPrimaryKey();
+    Multimap<String, String> columnsToVariables = queryInspector.getColumnsToVariables();
     for (ColumnMetadata pk : partitionKey) {
-      Collection<String> variables = queryInspector.getColumnsToVariables().get(pk.getName());
-      if (Collections.disjoint(fieldsToVariables.values(), variables)) {
-        throw new BulkConfigurationException(
-            "Missing required primary key column "
-                + Metadata.quoteIfNecessary(pk.getName())
-                + " from schema.mapping or schema.query");
+      Collection<String> variablesInQuery = columnsToVariables.get(pk.getName());
+      if (Collections.disjoint(variablesInMapping, variablesInQuery)) {
+        // DAT-326: do not raise an error if the column was mapped to a function
+        if (variablesInQuery.stream().noneMatch(SchemaSettings::isFunction)) {
+          throw new BulkConfigurationException(
+              "Missing required primary key column "
+                  + Metadata.quoteIfNecessary(pk.getName())
+                  + " from schema.mapping or schema.query");
+        }
       }
     }
   }

@@ -6,6 +6,7 @@
 - [bug] DAT-311: CSV connector fails when the number of columns in a record is greater than 512.
 - [improvement] DAT-252: Improve range split algorithm in multi-dc and/or vnodes environments.
 - [improvement] DAT-317: Support simplified notation for JSON arrays and objects in collection fields.
+- [bug] DAT-326: DSBulk fails when mapping contains a primary key column mapped to a function.
 
 
 ### 1.1.0
