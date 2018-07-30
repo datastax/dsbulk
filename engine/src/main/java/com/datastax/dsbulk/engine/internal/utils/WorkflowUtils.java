@@ -168,8 +168,13 @@ public class WorkflowUtils {
   public static void checkProductCompatibility(Cluster cluster) {
     Set<Host> hosts = cluster.getMetadata().getAllHosts();
     List<Host> nonDseHosts =
-        hosts.stream().filter(host -> host.getDseVersion() == null).collect(Collectors.toList());
-    if (nonDseHosts.size() != 0) {
+        hosts
+            .stream()
+            .filter(
+                host ->
+                    host.getDseVersion() == null && host.getCassandraVersion().getDSEPatch() <= 0)
+            .collect(Collectors.toList());
+    if (!nonDseHosts.isEmpty()) {
       LOGGER.error(
           "Incompatible cluster detected. Load functionality is only compatible with a DSE cluster.");
       LOGGER.error("The following nodes do not appear to be running DSE:");
