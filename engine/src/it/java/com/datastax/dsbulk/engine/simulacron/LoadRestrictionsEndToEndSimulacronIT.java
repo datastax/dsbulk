@@ -15,6 +15,8 @@ import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInpu
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createSimpleParameterizedQuery;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.primeIpByCountryTable;
 import static java.nio.file.Files.createTempDirectory;
 import static org.slf4j.event.Level.ERROR;
 
@@ -26,11 +28,15 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
+import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronConfig;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
+import com.datastax.oss.simulacron.common.cluster.RequestPrime;
+import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
+import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
@@ -46,7 +52,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(StreamInterceptingExtension.class)
 @TestInstance(Lifecycle.PER_CLASS)
 @SimulacronConfig(dse = false)
-class CassLoadEndToEndSimulacronIT {
+class LoadRestrictionsEndToEndSimulacronIT {
 
   private final BoundCluster simulacron;
   private final LogInterceptor logs;
@@ -56,7 +62,7 @@ class CassLoadEndToEndSimulacronIT {
 
   private Path logDir;
 
-  CassLoadEndToEndSimulacronIT(
+  LoadRestrictionsEndToEndSimulacronIT(
       BoundCluster simulacron,
       @LogCapture(value = WorkflowUtils.class, level = ERROR) LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stdErr) {
@@ -71,6 +77,9 @@ class CassLoadEndToEndSimulacronIT {
   @BeforeEach
   void resetPrimes() {
     simulacron.clearPrimes(true);
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
   }
 
   @BeforeEach
@@ -89,7 +98,10 @@ class CassLoadEndToEndSimulacronIT {
   }
 
   @Test
-  void full_load() {
+  void should_deny_load_to_oss_cassandra() {
+    // DAT-322: absence of dse_version + absence of a DSE patch in release_version => OSS C*
+    SimulacronUtils.primeSystemLocal(
+        simulacron, ImmutableMap.of("release_version", "4.0.0", "dse_version", ""));
     String[] args = {
       "load",
       "--log.directory",
@@ -126,5 +138,66 @@ class CassLoadEndToEndSimulacronIT {
         .contains("The following nodes do not appear to be running DSE")
         .contains(hostname)
         .contains(port);
+  }
+
+  @Test
+  void should_allow_load_to_ddac() {
+    // DAT-322: absence of dse_version + presence of a DSE patch in release_version => DDAC
+    // (DataStax Distribution of Apache Cassandra).
+    SimulacronUtils.primeSystemLocal(
+        simulacron, ImmutableMap.of("release_version", "4.0.0.2284", "dse_version", ""));
+    String[] args = {
+      "load",
+      "--log.directory",
+      escapeUserInput(logDir),
+      "-header",
+      "false",
+      "--connector.csv.url",
+      escapeUserInput(CSV_RECORDS_UNIQUE),
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_INDEXED
+    };
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isZero();
+  }
+
+  @Test
+  void should_allow_load_to_dse() {
+    // DAT-322: presence of dse_version + presence of a DSE patch in release_version => DSE
+    SimulacronUtils.primeSystemLocal(
+        simulacron, ImmutableMap.of("release_version", "4.0.0.2284", "dse_version", "5.1.11"));
+    String[] args = {
+      "load",
+      "--log.directory",
+      escapeUserInput(logDir),
+      "-header",
+      "false",
+      "--connector.csv.url",
+      escapeUserInput(CSV_RECORDS_UNIQUE),
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_INDEXED
+    };
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isZero();
   }
 }
