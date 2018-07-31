@@ -13,6 +13,7 @@ import static java.util.Collections.emptyMap;
 
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Metadata;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
@@ -20,6 +21,7 @@ import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
@@ -30,12 +32,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.assertj.core.util.Sets;
 
 public class SimulacronUtils {
 
   private static final String SELECT_KEYSPACES = "SELECT * FROM system_schema.keyspaces";
   private static final String SELECT_TABLES = "SELECT * FROM system_schema.tables";
   private static final String SELECT_COLUMNS = "SELECT * FROM system_schema.columns";
+
+  private static final String SELECT_SYSTEM_LOCAL = "SELECT * FROM system.local WHERE key='local'";
 
   private static final ImmutableMap<String, String> KEYSPACE_COLUMNS =
       ImmutableMap.of(
@@ -56,7 +61,8 @@ public class SimulacronUtils {
           .put("crc_check_chance", "double")
           .put("dclocal_read_repair_chance", "double")
           .put("default_time_to_live", "int")
-          //          .put("extensions", "map<varchar, blob>")
+          // Simulacron does not handle maps of blobs
+          // .put("extensions", "map<varchar, blob>")
           .put("flags", "set<varchar>")
           .put("gc_grace_seconds", "int")
           .put("id", "uuid")
@@ -77,6 +83,68 @@ public class SimulacronUtils {
           .put("kind", "varchar")
           .put("position", "int")
           .put("type", "varchar")
+          .build();
+
+  private static final ImmutableMap<String, String> SYSTEM_LOCAL_COLUMNS =
+      ImmutableMap.<String, String>builder()
+          .put("key", "varchar")
+          .put("bootstrapped", "varchar")
+          .put("broadcast_address", "inet")
+          .put("cluster_name", "varchar")
+          .put("cql_version", "varchar")
+          .put("data_center", "varchar")
+          .put("dse_version", "varchar")
+          .put("gossip_generation", "int")
+          .put("graph", "boolean")
+          .put("host_id", "uuid")
+          .put("jmx_port", "int")
+          .put("listen_address", "inet")
+          .put("native_protocol_version", "varchar")
+          .put("native_transport_address", "inet")
+          .put("native_transport_port", "int")
+          .put("native_transport_port_ssl", "int")
+          .put("partitioner", "varchar")
+          .put("rack", "varchar")
+          .put("release_version", "varchar")
+          .put("rpc_address", "inet")
+          .put("schema_version", "uuid")
+          .put("server_id", "varchar")
+          .put("storage_port", "int")
+          .put("storage_port_ssl", "int")
+          .put("tokens", "set<varchar>")
+          // Simulacron does not handle maps of blobs
+          // .put("truncated_at", "map<uuid, blob>")
+          .put("workload", "varchar")
+          // Simulacron does not handle frozen collections
+          .put("workloads", /*"frozen<set<varchar>>"*/ "set<varchar>")
+          .build();
+
+  private static final ImmutableMap<String, Object> SYSTEM_LOCAL_ROW =
+      ImmutableMap.<String, Object>builder()
+          .put("key", "local")
+          .put("bootstrapped", "COMPLETED")
+          .put("cql_version", "3.4.5")
+          .put("data_center", "dc1")
+          .put("dse_version", "6.0.0")
+          .put("gossip_generation", 1532880775)
+          .put("graph", false)
+          .put("host_id", UUID.randomUUID())
+          .put("jmx_port", "7100")
+          .put("native_protocol_version", ProtocolVersion.DSE_V2.toInt())
+          .put("native_transport_port", 9042)
+          .put("native_transport_port_ssl", 9042)
+          .put("partitioner", "org.apache.cassandra.dht.Murmur3Partitioner")
+          .put("rack", "rack1")
+          .put("release_version", "4.0.0.2284")
+          .put("schema_version", UUID.randomUUID())
+          .put("server_id", "8C-85-90-1A-3E-7A")
+          .put("storage_port", 7000)
+          .put("storage_port_ssl", 7001)
+          .put("tokens", Sets.newLinkedHashSet("-9223372036854775808"))
+          // Simulacron does not handle maps of blobs
+          // .put("truncated_at", new HashMap<>())
+          .put("workload", "Cassandra")
+          .put("workloads", Sets.newLinkedHashSet("Cassandra"))
           .build();
 
   public static class Keyspace {
@@ -371,5 +439,26 @@ public class SimulacronUtils {
     SuccessResult thenReturnAllColumns = new SuccessResult(allColumnsRows, COLUMN_COLUMNS);
     RequestPrime primeAllColumns = new RequestPrime(whenSelectAllColumns, thenReturnAllColumns);
     simulacron.prime(new Prime(primeAllColumns));
+  }
+
+  public static void primeSystemLocal(BoundCluster simulacron, Map<String, Object> overrides) {
+    Query whenSelectSystemLocal = new Query(SELECT_SYSTEM_LOCAL);
+    List<Map<String, Object>> systemLocalResultSet = new ArrayList<>();
+    Map<String, Object> row = new HashMap<>(SYSTEM_LOCAL_ROW);
+    row.putAll(overrides);
+    // The following columns cannot be overridden and must have values that match the simulacron
+    // cluster
+    InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
+    row.put("cluster_name", simulacron.getName());
+    row.put("broadcast_address", node.getAddress());
+    row.put("listen_address", node.getAddress());
+    row.put("native_transport_address", node.getAddress());
+    row.put("rpc_address", node.getAddress());
+    row.put("native_transport_port", node.getPort());
+    systemLocalResultSet.add(row);
+    SuccessResult thenReturnLocalRow =
+        new SuccessResult(systemLocalResultSet, SYSTEM_LOCAL_COLUMNS);
+    RequestPrime primeSystemLocal = new RequestPrime(whenSelectSystemLocal, thenReturnLocalRow);
+    simulacron.prime(new Prime(primeSystemLocal));
   }
 }

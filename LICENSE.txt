@@ -16,10 +16,12 @@ SOFTWARE.
 Subject to the terms and conditions of this Agreement, DataStax grants you a
 non-exclusive, non-transferable, non-sublicensable, limited, royalty-free
 license to use the unmodified Licensed Software, without the right to
-re-distribute to any third party.  The Licensed Software may be used for writing
-data to DataStax Enterprise and DataStax Basic, and for reading data from
-DataStax Enterprise, DataStax Basic, other NoSQL or relational databases, and
-from other sources as may be approved in writing by DataStax.
+re-distribute to any third party.  The Licensed Software may be used for:
+(a) writing data to any DataStax product for which you have an active, paid
+subscription; and (b) reading data from (i) any DataStax product for which you
+have an active, paid subscription; (ii) other NoSQL or relational databases;
+and (iii) other sources as may be approved in writing by DataStax.
+
 
 2. Restrictions
 
