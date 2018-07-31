@@ -77,9 +77,9 @@ class CountEndToEndCCMITBase extends EndToEndCCMITBase {
 
     session.execute("DROP TABLE IF EXISTS count_invalid1");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS count_invalid1 " +
-            "(\"PK1\" int, \"PK2\" int, \"CC\" int, \"V\" int, " +
-            "PRIMARY KEY ((\"PK1\", \"PK2\"), \"CC\"))");
+        "CREATE TABLE IF NOT EXISTS count_invalid1 "
+            + "(\"PK1\" int, \"PK2\" int, \"CC\" int, \"V\" int, "
+            + "PRIMARY KEY ((\"PK1\", \"PK2\"), \"CC\"))");
 
     List<String> args = new ArrayList<>();
     args.add("count");
@@ -104,9 +104,9 @@ class CountEndToEndCCMITBase extends EndToEndCCMITBase {
 
     session.execute("DROP TABLE IF EXISTS count_invalid2");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS count_invalid2 " +
-            "(\"PK\" int, \"CC\" int, \"V\" int, " +
-            "PRIMARY KEY (\"PK\", \"CC\"))");
+        "CREATE TABLE IF NOT EXISTS count_invalid2 "
+            + "(\"PK\" int, \"CC\" int, \"V\" int, "
+            + "PRIMARY KEY (\"PK\", \"CC\"))");
 
     List<String> args = new ArrayList<>();
     args.add("count");

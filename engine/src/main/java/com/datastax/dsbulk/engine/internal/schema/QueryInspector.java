@@ -13,7 +13,6 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.cql3.CqlBaseVisitor;
 import com.datastax.dsbulk.commons.cql3.CqlLexer;
 import com.datastax.dsbulk.commons.cql3.CqlParser;
-import com.datastax.dsbulk.commons.cql3.CqlParser.BatchStatementContext;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.util.LinkedHashMap;

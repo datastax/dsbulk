@@ -1052,8 +1052,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(
-        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number," +
-            "4=country_code,5=country_name,6=extra");
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,"
+            + "4=country_code,5=country_name,6=extra");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
@@ -1076,8 +1076,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(INSERT_INTO_IP_BY_COUNTRY);
     args.add("--schema.mapping");
     args.add(
-        "beginning_ip_address,ending_ip_address,beginning_ip_number,ending_ip_number," +
-            "country_code,country_name,extra");
+        "beginning_ip_address,ending_ip_address,beginning_ip_number,ending_ip_number,"
+            + "country_code,country_name,extra");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
