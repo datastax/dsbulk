@@ -13,9 +13,12 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.cql3.CqlBaseVisitor;
 import com.datastax.dsbulk.commons.cql3.CqlLexer;
 import com.datastax.dsbulk.commons.cql3.CqlParser;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.ListMultimap;
-import com.google.common.collect.MultimapBuilder;
+import com.datastax.dsbulk.commons.cql3.CqlParser.BatchStatementContext;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
@@ -27,12 +30,12 @@ public class QueryInspector extends CqlBaseVisitor<String> {
 
   private final String query;
 
-  private final ListMultimap<String, String> columnsToVariablesBuilder =
-      MultimapBuilder.linkedHashKeys().arrayListValues().build();
+  private final LinkedHashSet<String> selectedColumnsBuilder = new LinkedHashSet<>();
+  private final Map<String, String> boundVariablesBuilder = new LinkedHashMap<>();
 
-  private final ImmutableMultimap<String, String> columnsToVariables;
+  private final ImmutableSet<String> selectedColumns;
+  private final ImmutableMap<String, String> boundVariables;
 
-  private String currentColumn;
   private String keyspaceName;
   private String tableName;
   private String writeTimeVariable;
@@ -66,7 +69,8 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     parser.addErrorListener(listener);
     CqlParser.CqlStatementContext statement = parser.cqlStatement();
     visit(statement);
-    columnsToVariables = ImmutableMultimap.copyOf(columnsToVariablesBuilder);
+    selectedColumns = ImmutableSet.copyOf(selectedColumnsBuilder);
+    boundVariables = ImmutableMap.copyOf(boundVariablesBuilder);
   }
 
   public String getKeyspaceName() {
@@ -81,8 +85,12 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     return writeTimeVariable;
   }
 
-  public ImmutableMultimap<String, String> getColumnsToVariables() {
-    return columnsToVariables;
+  public ImmutableMap<String, String> getBoundVariables() {
+    return boundVariables;
+  }
+
+  public ImmutableSet<String> getSelectedColumns() {
+    return selectedColumns;
   }
 
   // INSERT
@@ -102,10 +110,10 @@ public class QueryInspector extends CqlBaseVisitor<String> {
               ctx.cident().size(), ctx.term().size(), query));
     }
     for (int i = 0; i < ctx.cident().size(); i++) {
-      currentColumn = visitCident(ctx.cident().get(i));
+      String column = visitCident(ctx.cident().get(i));
       String variable = visitTerm(ctx.term().get(i));
       if (variable != null) {
-        columnsToVariablesBuilder.put(currentColumn, variable);
+        boundVariablesBuilder.put(column, variable.equals("?") ? column : variable);
       }
     }
     if (ctx.usingClause() != null) {
@@ -126,10 +134,10 @@ public class QueryInspector extends CqlBaseVisitor<String> {
   public String visitUpdateStatement(CqlParser.UpdateStatementContext ctx) {
     visitColumnFamilyName(ctx.columnFamilyName());
     for (CqlParser.ColumnOperationContext op : ctx.columnOperation()) {
-      currentColumn = visitCident(op.cident());
+      String column = visitCident(op.cident());
       String variable = visitColumnOperationDifferentiator(op.columnOperationDifferentiator());
       if (variable != null) {
-        columnsToVariablesBuilder.put(currentColumn, variable);
+        boundVariablesBuilder.put(column, variable.equals("?") ? column : variable);
       }
     }
     visitWhereClause(ctx.whereClause());
@@ -143,8 +151,10 @@ public class QueryInspector extends CqlBaseVisitor<String> {
   public String visitColumnOperationDifferentiator(
       CqlParser.ColumnOperationDifferentiatorContext ctx) {
     if (ctx.normalColumnOperation() != null) {
+      // normal update operation: column = :variable
       return visitTerm(ctx.normalColumnOperation().term());
     } else if (ctx.shorthandColumnOperation() != null) {
+      // shorthand update operation: column += :variable
       return visitTerm(ctx.shorthandColumnOperation().term());
     } else {
       // unsupported update operation
@@ -171,14 +181,7 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     if (ctx.unaliasedSelector().getChildCount() == 1 && ctx.unaliasedSelector().cident() != null) {
       // selection of a column, possibly aliased
       String column = visitCident(ctx.unaliasedSelector().cident());
-      if (ctx.noncolIdent() == null) {
-        // unaliased selection
-        columnsToVariablesBuilder.put(column, column);
-      } else {
-        // aliased selection
-        String variable = visitNoncolIdent(ctx.noncolIdent());
-        columnsToVariablesBuilder.put(column, variable);
-      }
+      selectedColumnsBuilder.add(column);
     }
     // other selector types: unsupported
     return null;
@@ -208,12 +211,13 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     if (ctx.getChildCount() == 3
         && ctx.getChild(0) instanceof CqlParser.CidentContext
         && ctx.getChild(1) instanceof CqlParser.RelationTypeContext
-        && ctx.getChild(2) instanceof CqlParser.TermContext) {
-      // restriction on a column, as in WHERE col = :value
-      currentColumn = visitCident(ctx.cident());
+        && ctx.getChild(2) instanceof CqlParser.TermContext
+        && ctx.getChild(1).getText().equals("=")) {
+      // restriction on a column with equality operator, as in WHERE col = :value
+      String column = visitCident(ctx.cident());
       String variable = visitTerm(ctx.term().get(0));
       if (variable != null) {
-        columnsToVariablesBuilder.put(currentColumn, variable);
+        boundVariablesBuilder.put(column, variable.equals("?") ? column : variable);
       }
     }
     // other relation types: unsupported
@@ -244,7 +248,7 @@ public class QueryInspector extends CqlBaseVisitor<String> {
   public String visitValue(CqlParser.ValueContext ctx) {
     // value is a positional bind marker
     if (ctx.QMARK() != null) {
-      return currentColumn;
+      return "?";
     }
     // value is a named bound variable
     if (ctx.noncolIdent() != null) {

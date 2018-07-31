@@ -51,11 +51,9 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.Multimap;
 import com.typesafe.config.ConfigException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -355,7 +353,7 @@ public class SchemaSettings {
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
       } else if (workflowType == COUNT) {
-        validatePartitionKeyPresent();
+        validatePartitionKeyPresentInSelectClause();
       }
     }
     assert fieldsToVariables != null;
@@ -515,29 +513,26 @@ public class SchemaSettings {
   }
 
   private void validatePrimaryKeyPresent(BiMap<String, String> fieldsToVariables) {
-    Set<String> variablesInMapping = fieldsToVariables.values();
     List<ColumnMetadata> partitionKey = table.getPrimaryKey();
-    Multimap<String, String> columnsToVariables = queryInspector.getColumnsToVariables();
     for (ColumnMetadata pk : partitionKey) {
-      Collection<String> variablesInQuery = columnsToVariables.get(pk.getName());
-      if (Collections.disjoint(variablesInMapping, variablesInQuery)) {
-        // DAT-326: do not raise an error if the column was mapped to a function
-        if (variablesInQuery.stream().noneMatch(SchemaSettings::isFunction)) {
-          throw new BulkConfigurationException(
-              "Missing required primary key column "
-                  + Metadata.quoteIfNecessary(pk.getName())
-                  + " from schema.mapping or schema.query");
-        }
+      String variable = queryInspector.getBoundVariables().get(pk.getName());
+      // DAT-326: do not raise an error if the column was mapped to a function
+      if (variable == null
+          || (!isFunction(variable) && !fieldsToVariables.values().contains(variable))) {
+        throw new BulkConfigurationException(
+            "Missing required primary key column "
+                + Metadata.quoteIfNecessary(pk.getName())
+                + " from schema.mapping or schema.query");
       }
     }
   }
 
   // Used for the count workflow only.
-  private void validatePartitionKeyPresent() {
+  private void validatePartitionKeyPresentInSelectClause() {
     // the query must contain the entire partition key in the select clause,
     // and nothing else.
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
-    Set<String> columns = new HashSet<>(queryInspector.getColumnsToVariables().values());
+    Set<String> columns = new HashSet<>(queryInspector.getSelectedColumns());
     for (ColumnMetadata pk : partitionKey) {
       if (!columns.remove(pk.getName())) {
         throw new BulkConfigurationException(
@@ -551,7 +546,8 @@ public class SchemaSettings {
           columns.stream().map(Metadata::quoteIfNecessary).collect(Collectors.joining(", "));
       throw new BulkConfigurationException(
           String.format(
-              "The provided statement (schema.query) contains extraneous columns in the SELECT clause: %s; it should contain only partition key columns.",
+              "The provided statement (schema.query) contains extraneous columns in the "
+                  + "SELECT clause: %s; it should contain only partition key columns.",
               offendingColumns));
     }
   }

@@ -139,7 +139,7 @@ class QueryInspectorTest {
   void should_detect_named_variable_insert() {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (:pk, :cc, :v)");
-    assertThat(inspector.getColumnsToVariables())
+    assertThat(inspector.getBoundVariables())
         .containsEntry("pk", "pk")
         .containsEntry("cc", "cc")
         .containsEntry("v", "v");
@@ -150,7 +150,7 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "INSERT INTO ks.foo (\"My PK\", \"My CC\", \"My Value\") VALUES (:\"My PK\", :\"My CC\", :\"My Value\")");
-    assertThat(inspector.getColumnsToVariables())
+    assertThat(inspector.getBoundVariables())
         .containsEntry("My PK", "My PK")
         .containsEntry("My CC", "My CC")
         .containsEntry("My Value", "My Value");
@@ -159,7 +159,7 @@ class QueryInspectorTest {
   @Test
   void should_detect_positional_variable_insert() {
     QueryInspector inspector = new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (?,?,?)");
-    assertThat(inspector.getColumnsToVariables())
+    assertThat(inspector.getBoundVariables())
         .containsEntry("pk", "pk")
         .containsEntry("cc", "cc")
         .containsEntry("v", "v");
@@ -169,7 +169,7 @@ class QueryInspectorTest {
   void should_detect_function_variable_insert() {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (?,?,now())");
-    assertThat(inspector.getColumnsToVariables())
+    assertThat(inspector.getBoundVariables())
         .containsEntry("pk", "pk")
         .containsEntry("cc", "cc")
         .containsEntry("v", "now()");
@@ -179,7 +179,17 @@ class QueryInspectorTest {
   void should_detect_named_variable_update() {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v = v + :v WHERE pk = :pk AND cc = :cc");
-    assertThat(inspector.getColumnsToVariables())
+    assertThat(inspector.getBoundVariables())
+        .containsEntry("pk", "pk")
+        .containsEntry("cc", "cc")
+        .containsEntry("v", "v");
+  }
+
+  @Test
+  void should_detect_named_variable_update_shorthand_notation() {
+    QueryInspector inspector =
+        new QueryInspector("UPDATE ks.foo SET v += :v WHERE pk = :pk AND cc = :cc");
+    assertThat(inspector.getBoundVariables())
         .containsEntry("pk", "pk")
         .containsEntry("cc", "cc")
         .containsEntry("v", "v");
@@ -191,7 +201,7 @@ class QueryInspectorTest {
         new QueryInspector(
             "UPDATE ks.foo SET \"My Value\" = \"My Value\" + :\"My Value\" "
                 + "WHERE \"My PK\" = :\"My PK\" AND \"My CC\" = :\"My CC\"");
-    assertThat(inspector.getColumnsToVariables())
+    assertThat(inspector.getBoundVariables())
         .containsEntry("My PK", "My PK")
         .containsEntry("My CC", "My CC")
         .containsEntry("My Value", "My Value");
@@ -201,7 +211,7 @@ class QueryInspectorTest {
   void should_detect_positional_variable_update() {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v = v + ? WHERE pk = ? AND cc = ?");
-    assertThat(inspector.getColumnsToVariables())
+    assertThat(inspector.getBoundVariables())
         .containsEntry("pk", "pk")
         .containsEntry("cc", "cc")
         .containsEntry("v", "v");
@@ -211,7 +221,7 @@ class QueryInspectorTest {
   void should_detect_function_variable_update() {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v = v + now() WHERE pk = ? AND cc = ?");
-    assertThat(inspector.getColumnsToVariables())
+    assertThat(inspector.getBoundVariables())
         .containsEntry("pk", "pk")
         .containsEntry("cc", "cc")
         .containsEntry("v", "now()");
@@ -220,9 +230,7 @@ class QueryInspectorTest {
   @Test
   void should_detect_named_variable_delete() {
     QueryInspector inspector = new QueryInspector("DELETE FROM ks.foo WHERE pk = :pk AND cc = :cc");
-    assertThat(inspector.getColumnsToVariables())
-        .containsEntry("pk", "pk")
-        .containsEntry("cc", "cc");
+    assertThat(inspector.getBoundVariables()).containsEntry("pk", "pk").containsEntry("cc", "cc");
   }
 
   @Test
@@ -230,7 +238,7 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "DELETE FROM ks.foo WHERE \"My PK\" = :\"My PK\" AND \"My CC\" = :\"My CC\"");
-    assertThat(inspector.getColumnsToVariables())
+    assertThat(inspector.getBoundVariables())
         .containsEntry("My PK", "My PK")
         .containsEntry("My CC", "My CC");
   }
@@ -238,15 +246,13 @@ class QueryInspectorTest {
   @Test
   void should_detect_positional_variable_delete() {
     QueryInspector inspector = new QueryInspector("DELETE FROM ks.foo WHERE pk = ? AND cc = ?");
-    assertThat(inspector.getColumnsToVariables())
-        .containsEntry("pk", "pk")
-        .containsEntry("cc", "cc");
+    assertThat(inspector.getBoundVariables()).containsEntry("pk", "pk").containsEntry("cc", "cc");
   }
 
   @Test
   void should_detect_function_variable_delete() {
     QueryInspector inspector = new QueryInspector("DELETE FROM ks.foo WHERE pk = ? AND cc = now()");
-    assertThat(inspector.getColumnsToVariables())
+    assertThat(inspector.getBoundVariables())
         .containsEntry("pk", "pk")
         .containsEntry("cc", "now()");
   }
@@ -254,20 +260,14 @@ class QueryInspectorTest {
   @Test
   void should_detect_named_variable_select() {
     QueryInspector inspector = new QueryInspector("SELECT pk, cc, v FROM ks.foo");
-    assertThat(inspector.getColumnsToVariables())
-        .containsEntry("pk", "pk")
-        .containsEntry("cc", "cc")
-        .containsEntry("v", "v");
+    assertThat(inspector.getSelectedColumns()).contains("pk", "cc", "v");
   }
 
   @Test
   void should_detect_named_variable_quoted_select() {
     QueryInspector inspector =
         new QueryInspector("SELECT \"My PK\", \"My CC\",\"My Value\" FROM ks.foo");
-    assertThat(inspector.getColumnsToVariables())
-        .containsEntry("My PK", "My PK")
-        .containsEntry("My CC", "My CC")
-        .containsEntry("My Value", "My Value");
+    assertThat(inspector.getSelectedColumns()).contains("My PK", "My CC", "My Value");
   }
 
   @Test
@@ -275,10 +275,7 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "SELECT pk AS \"My PK\", cc AS \"My CC\", v AS \"My Value\" FROM ks.foo");
-    assertThat(inspector.getColumnsToVariables())
-        .containsEntry("pk", "My PK")
-        .containsEntry("cc", "My CC")
-        .containsEntry("v", "My Value");
+    assertThat(inspector.getSelectedColumns()).contains("pk", "cc", "v");
   }
 
   @Test
