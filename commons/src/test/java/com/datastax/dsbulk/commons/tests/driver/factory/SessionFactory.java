@@ -19,7 +19,6 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_TR
 import com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
-import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfigSetting;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionFactoryMethod;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
@@ -32,6 +31,8 @@ import com.datastax.oss.driver.api.core.config.DriverOption;
 import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoaderBuilder;
 import com.google.common.collect.ImmutableMap;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -106,8 +107,11 @@ public abstract class SessionFactory {
       DefaultDriverConfigLoaderBuilder loaderBuilder =
           SessionUtils.configLoaderBuilder()
               .withString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, defaultDc);
-      for (SessionConfigSetting opt : config.settings()) {
-        loaderBuilder.with(opt.name(), opt.value());
+      for (String opt : config.settings()) {
+        Config keyAndVal = ConfigFactory.parseString(opt);
+        keyAndVal
+            .entrySet()
+            .forEach(entry -> loaderBuilder.with(entry.getKey(), entry.getValue().unwrapped()));
       }
       if (config.ssl()) {
         for (Map.Entry<DriverOption, String> entry : SSL_OPTIONS.entrySet()) {
