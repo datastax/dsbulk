@@ -229,7 +229,6 @@ public class QueryInspector extends CqlBaseVisitor<String> {
         && ctx.getChild(1) instanceof CqlParser.RelationTypeContext
         && ctx.getChild(2) instanceof CqlParser.TermContext
         && ctx.getChild(1).getText().equals("=")) {
-      // restriction on a column with equality operator, as in WHERE col = :value
       String column = visitCident(ctx.cident());
       String variable = visitTerm(ctx.term().get(0));
       if (variable != null) {
