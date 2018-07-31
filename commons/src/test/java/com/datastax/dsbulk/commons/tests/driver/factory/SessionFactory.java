@@ -10,6 +10,11 @@ package com.datastax.dsbulk.commons.tests.driver.factory;
 
 import static com.datastax.dsbulk.commons.tests.utils.SessionUtils.createSimpleKeyspace;
 import static com.datastax.dsbulk.commons.tests.utils.SessionUtils.useKeyspace;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_ENGINE_FACTORY_CLASS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_KEYSTORE_PASSWORD;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_KEYSTORE_PATH;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_TRUSTSTORE_PASSWORD;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_TRUSTSTORE_PATH;
 
 import com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
@@ -20,10 +25,18 @@ import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.api.core.DseSessionBuilder;
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.internal.testinfra.session.TestConfigLoader;
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.datastax.oss.driver.api.core.config.DriverOption;
+import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
+import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoaderBuilder;
+import com.google.common.collect.ImmutableMap;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Map;
 import java.util.Objects;
 
 @SuppressWarnings("SimplifiableIfStatement")
@@ -74,39 +87,38 @@ public abstract class SessionFactory {
 
   private static class SessionAnnotationFactory extends SessionFactory {
 
-    private static final String[] SSL_OPTIONS = {
-      "advanced.ssl-engine-factory.class = DefaultSslEngineFactory",
-      "advanced.ssl-engine-factory.truststore-path = "
-          + DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_FILE,
-      "advanced.ssl-engine-factory.truststore-password = "
-          + DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD,
-      "advanced.ssl-engine-factory.keystore-path = "
-          + DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_FILE,
-      "advanced.ssl-engine-factory.keystore-password = "
-          + DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD,
-    };
+    private static final ImmutableMap<DriverOption, String> SSL_OPTIONS =
+        ImmutableMap.<DriverOption, String>builder()
+            .put(SSL_ENGINE_FACTORY_CLASS, "DefaultSslEngineFactory")
+            .put(SSL_TRUSTSTORE_PATH, DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_FILE.toString())
+            .put(SSL_TRUSTSTORE_PASSWORD, DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD)
+            .put(SSL_KEYSTORE_PATH, DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_FILE.toString())
+            .put(SSL_KEYSTORE_PASSWORD, DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD)
+            .build();
 
     private final SessionConfig.UseKeyspaceMode useKeyspaceMode;
     private final String loggedKeyspaceName;
-    private final TestConfigLoader configLoader;
+    private final DriverConfigLoader configLoader;
 
     private SessionAnnotationFactory(SessionConfig config, int numDcs) {
       useKeyspaceMode = config.useKeyspace();
       loggedKeyspaceName = config.loggedKeyspaceName();
       String defaultDc = numDcs == 1 ? "Cassandra" : "dc1";
-      String[] settings =
-          new String[config.settings().length + (config.ssl() ? SSL_OPTIONS.length : 0) + 1];
-      settings[0] = String.format("basic.load-balancing-policy.local-datacenter=\"%s\"", defaultDc);
-      int curIdx = 1;
+      DefaultDriverConfigLoaderBuilder loaderBuilder =
+          SessionUtils.configLoaderBuilder()
+              .withString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, defaultDc);
       for (String opt : config.settings()) {
-        settings[curIdx++] = opt;
+        Config keyAndVal = ConfigFactory.parseString(opt);
+        keyAndVal
+            .entrySet()
+            .forEach(entry -> loaderBuilder.with(entry.getKey(), entry.getValue().unwrapped()));
       }
       if (config.ssl()) {
-        for (String opt : SSL_OPTIONS) {
-          settings[curIdx++] = opt;
+        for (Map.Entry<DriverOption, String> entry : SSL_OPTIONS.entrySet()) {
+          loaderBuilder.with(entry.getKey(), entry.getValue());
         }
       }
-      configLoader = new TestConfigLoader(settings);
+      configLoader = loaderBuilder.build();
     }
 
     @Override
@@ -194,7 +206,7 @@ public abstract class SessionFactory {
       return sessionBuilder;
     }
 
-    protected DseSessionBuilder newBuilderInstance() {
+    DseSessionBuilder newBuilderInstance() {
       return ReflectionUtils.invokeMethod(factoryMethod, null, DseSessionBuilder.class);
     }
 
