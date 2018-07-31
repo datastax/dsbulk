@@ -56,6 +56,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -1852,6 +1853,71 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
+  }
+
+  @Test
+  void unload_with_custom_query_and_function_with_header() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS unload_with_function1");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS unload_with_function1 (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO unload_with_function1 (pk, cc, v) values (0, now(), 1)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "SELECT pk, v, toDate(cc) AS date_created FROM unload_with_function1");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    List<String> lines =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).hasSize(2);
+    assertThat(lines.get(0)).isEqualTo("pk,v,date_created");
+    assertThat(lines.get(1)).matches("0,1,\\d{4}-\\d{2}-\\d{2}");
+  }
+
+  @Test
+  void unload_with_custom_query_and_function_without_header() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS unload_with_function2");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS unload_with_function2 (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO unload_with_function2 (pk, cc, v) values (0, now(), 1)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "false",
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "SELECT pk, v, toDate(cc) FROM unload_with_function2");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    List<String> lines =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).hasSize(1);
+    assertThat(lines.get(0)).matches("0,1,\\d{4}-\\d{2}-\\d{2}");
   }
 
   static void checkNumbersWritten(
