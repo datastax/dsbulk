@@ -172,7 +172,7 @@ class QueryInspectorTest {
     assertThat(inspector.getBoundVariables())
         .containsEntry("pk", "pk")
         .containsEntry("cc", "cc")
-        .containsEntry("v", "now()");
+        .containsEntry("v", "dsbulk_internal_function=now()");
   }
 
   @Test
@@ -224,7 +224,7 @@ class QueryInspectorTest {
     assertThat(inspector.getBoundVariables())
         .containsEntry("pk", "pk")
         .containsEntry("cc", "cc")
-        .containsEntry("v", "now()");
+        .containsEntry("v", "dsbulk_internal_function=now()");
   }
 
   @Test
@@ -254,7 +254,7 @@ class QueryInspectorTest {
     QueryInspector inspector = new QueryInspector("DELETE FROM ks.foo WHERE pk = ? AND cc = now()");
     assertThat(inspector.getBoundVariables())
         .containsEntry("pk", "pk")
-        .containsEntry("cc", "now()");
+        .containsEntry("cc", "dsbulk_internal_function=now()");
   }
 
   @Test

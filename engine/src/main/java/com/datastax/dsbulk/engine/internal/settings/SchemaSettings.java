@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.engine.WorkflowType.COUNT;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_FUNCTION_MARKER;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
@@ -51,6 +52,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -603,7 +605,7 @@ public class SchemaSettings {
       String field = fieldsToVariables.inverse().get(col);
       if (isFunction(field)) {
         // Assume this is a function call that should be placed directly in the query.
-        sb.append(field);
+        sb.append(extractFunctionCall(field));
       } else {
         sb.append(':');
         sb.append(Metadata.quoteIfNecessary(col));
@@ -778,8 +780,13 @@ public class SchemaSettings {
   }
 
   private static boolean isFunction(String field) {
-    // If a field contains a paren, interpret it to be a cql function call.
-    return field.contains("(");
+    // If a field starts with this special marker, interpret it to be a cql function call.
+    // This marker is honored by both QueryInspector and MappingInspector.
+    return field.startsWith(INTERNAL_FUNCTION_MARKER);
+  }
+
+  private static String extractFunctionCall(String functionWithMarker) {
+    return functionWithMarker.substring(INTERNAL_FUNCTION_MARKER.length());
   }
 
   private static boolean isPseudoColumn(String col) {

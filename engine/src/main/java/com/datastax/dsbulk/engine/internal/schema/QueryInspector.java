@@ -250,7 +250,7 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     }
     // term is a function
     if (ctx.function() != null) {
-      return ctx.getText();
+      return MappingInspector.INTERNAL_FUNCTION_MARKER + ctx.getText();
     }
     // other terms: unsupported
     return null;
