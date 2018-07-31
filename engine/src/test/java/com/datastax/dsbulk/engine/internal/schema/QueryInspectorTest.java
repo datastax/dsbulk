@@ -20,7 +20,7 @@ class QueryInspectorTest {
   void should_detect_table_name_simple_insert() {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO foo (pk, cc, v) VALUES (:pk, :cc, :v)");
-    assertThat(inspector.getKeyspaceName()).isNull();
+    assertThat(inspector.getKeyspaceName()).isNotPresent();
     assertThat(inspector.getTableName()).isEqualTo("foo");
   }
 
@@ -28,7 +28,7 @@ class QueryInspectorTest {
   void should_detect_table_name_quoted_insert() {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO \"MyTable\" (pk, cc, v) VALUES (:pk, :cc, :v)");
-    assertThat(inspector.getKeyspaceName()).isNull();
+    assertThat(inspector.getKeyspaceName()).isNotPresent();
     assertThat(inspector.getTableName()).isEqualTo("MyTable");
   }
 
@@ -36,7 +36,7 @@ class QueryInspectorTest {
   void should_detect_keyspace_and_table_name_simple_insert() {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (:pk, :cc, :v)");
-    assertThat(inspector.getKeyspaceName()).isEqualTo("ks");
+    assertThat(inspector.getKeyspaceName()).hasValue("ks");
     assertThat(inspector.getTableName()).isEqualTo("foo");
   }
 
@@ -45,28 +45,28 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "INSERT INTO \"MyKeyspace\".\"MyTable\" (pk, cc, v) VALUES (:pk, :cc, :v)");
-    assertThat(inspector.getKeyspaceName()).isEqualTo("MyKeyspace");
+    assertThat(inspector.getKeyspaceName()).hasValue("MyKeyspace");
     assertThat(inspector.getTableName()).isEqualTo("MyTable");
   }
 
   @Test
   void should_detect_table_name_simple_update() {
     QueryInspector inspector = new QueryInspector("UPDATE foo SET v = ? WHERE pk = ?");
-    assertThat(inspector.getKeyspaceName()).isNull();
+    assertThat(inspector.getKeyspaceName()).isNotPresent();
     assertThat(inspector.getTableName()).isEqualTo("foo");
   }
 
   @Test
   void should_detect_table_name_quoted_update() {
     QueryInspector inspector = new QueryInspector("UPDATE \"MyTable\" SET v = ? WHERE pk = ?");
-    assertThat(inspector.getKeyspaceName()).isNull();
+    assertThat(inspector.getKeyspaceName()).isNotPresent();
     assertThat(inspector.getTableName()).isEqualTo("MyTable");
   }
 
   @Test
   void should_detect_keyspace_and_table_name_simple_update() {
     QueryInspector inspector = new QueryInspector("UPDATE ks.foo SET v = ? WHERE pk = ?");
-    assertThat(inspector.getKeyspaceName()).isEqualTo("ks");
+    assertThat(inspector.getKeyspaceName()).hasValue("ks");
     assertThat(inspector.getTableName()).isEqualTo("foo");
   }
 
@@ -74,56 +74,56 @@ class QueryInspectorTest {
   void should_detect_keyspace_and_table_name_quoted_update() {
     QueryInspector inspector =
         new QueryInspector("UPDATE \"MyKeyspace\".\"MyTable\" SET v = ? WHERE pk = ?");
-    assertThat(inspector.getKeyspaceName()).isEqualTo("MyKeyspace");
+    assertThat(inspector.getKeyspaceName()).hasValue("MyKeyspace");
     assertThat(inspector.getTableName()).isEqualTo("MyTable");
   }
 
   @Test
   void should_detect_table_name_simple_select() {
     QueryInspector inspector = new QueryInspector("SELECT c1 FROM foo");
-    assertThat(inspector.getKeyspaceName()).isNull();
+    assertThat(inspector.getKeyspaceName()).isNotPresent();
     assertThat(inspector.getTableName()).isEqualTo("foo");
   }
 
   @Test
   void should_detect_table_name_quoted_select() {
     QueryInspector inspector = new QueryInspector("SELECT c1 FROM \"MyTable\"");
-    assertThat(inspector.getKeyspaceName()).isNull();
+    assertThat(inspector.getKeyspaceName()).isNotPresent();
     assertThat(inspector.getTableName()).isEqualTo("MyTable");
   }
 
   @Test
   void should_detect_keyspace_and_table_name_simple_select() {
     QueryInspector inspector = new QueryInspector("SELECT c1 FROM ks.foo");
-    assertThat(inspector.getKeyspaceName()).isEqualTo("ks");
+    assertThat(inspector.getKeyspaceName()).hasValue("ks");
     assertThat(inspector.getTableName()).isEqualTo("foo");
   }
 
   @Test
   void should_detect_keyspace_and_table_name_quoted_select() {
     QueryInspector inspector = new QueryInspector("SELECT c1 FROM \"MyKeyspace\".\"MyTable\"");
-    assertThat(inspector.getKeyspaceName()).isEqualTo("MyKeyspace");
+    assertThat(inspector.getKeyspaceName()).hasValue("MyKeyspace");
     assertThat(inspector.getTableName()).isEqualTo("MyTable");
   }
 
   @Test
   void should_detect_table_name_simple_delete() {
     QueryInspector inspector = new QueryInspector("DELETE c1 FROM foo WHERE pk = 1");
-    assertThat(inspector.getKeyspaceName()).isNull();
+    assertThat(inspector.getKeyspaceName()).isNotPresent();
     assertThat(inspector.getTableName()).isEqualTo("foo");
   }
 
   @Test
   void should_detect_table_name_quoted_delete() {
     QueryInspector inspector = new QueryInspector("DELETE c1 FROM \"MyTable\" WHERE pk = 1");
-    assertThat(inspector.getKeyspaceName()).isNull();
+    assertThat(inspector.getKeyspaceName()).isNotPresent();
     assertThat(inspector.getTableName()).isEqualTo("MyTable");
   }
 
   @Test
   void should_detect_keyspace_and_table_name_simple_delete() {
     QueryInspector inspector = new QueryInspector("DELETE c1 FROM ks.foo WHERE pk = 1");
-    assertThat(inspector.getKeyspaceName()).isEqualTo("ks");
+    assertThat(inspector.getKeyspaceName()).hasValue("ks");
     assertThat(inspector.getTableName()).isEqualTo("foo");
   }
 
@@ -131,7 +131,7 @@ class QueryInspectorTest {
   void should_detect_keyspace_and_table_name_quoted_delete() {
     QueryInspector inspector =
         new QueryInspector("DELETE c1 FROM \"MyKeyspace\".\"MyTable\" WHERE pk = 1");
-    assertThat(inspector.getKeyspaceName()).isEqualTo("MyKeyspace");
+    assertThat(inspector.getKeyspaceName()).hasValue("MyKeyspace");
     assertThat(inspector.getTableName()).isEqualTo("MyTable");
   }
 
@@ -283,7 +283,7 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "INSERT INTO ks.foo (pk, cc, v) VALUES (?, ?, ?) USING TTL :ttl AND TIMESTAMP :writetime");
-    assertThat(inspector.getWriteTimeVariable()).isEqualTo("writetime");
+    assertThat(inspector.getWriteTimeVariable()).hasValue("writetime");
   }
 
   @Test
@@ -292,7 +292,7 @@ class QueryInspectorTest {
         new QueryInspector(
             "INSERT INTO ks.foo (pk, cc, v) VALUES (?, ?, ?) "
                 + "USING TTL :ttl AND TIMESTAMP :\"My Writetime\"");
-    assertThat(inspector.getWriteTimeVariable()).isEqualTo("My Writetime");
+    assertThat(inspector.getWriteTimeVariable()).hasValue("My Writetime");
   }
 
   @Test
@@ -300,7 +300,7 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "UPDATE ks.foo USING TTL :ttl AND TIMESTAMP :writetime SET foo = :bar WHERE pk = 1");
-    assertThat(inspector.getWriteTimeVariable()).isEqualTo("writetime");
+    assertThat(inspector.getWriteTimeVariable()).hasValue("writetime");
   }
 
   @Test
@@ -308,21 +308,21 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "UPDATE ks.foo USING TTL :ttl AND TiMeStAmP :\"My Writetime\" SET foo = :bar WHERE pk = 1");
-    assertThat(inspector.getWriteTimeVariable()).isEqualTo("My Writetime");
+    assertThat(inspector.getWriteTimeVariable()).hasValue("My Writetime");
   }
 
   @Test
   void should_detect_writetime_delete() {
     QueryInspector inspector =
         new QueryInspector("DELETE FROM ks.foo USING TIMESTAMP :writetime WHERE pk = 1");
-    assertThat(inspector.getWriteTimeVariable()).isEqualTo("writetime");
+    assertThat(inspector.getWriteTimeVariable()).hasValue("writetime");
   }
 
   @Test
   void should_detect_writetime_quoted_delete() {
     QueryInspector inspector =
         new QueryInspector("DELETE FROM ks.foo USING TiMeStAmP :\"My Writetime\" WHERE pk = 1");
-    assertThat(inspector.getWriteTimeVariable()).isEqualTo("My Writetime");
+    assertThat(inspector.getWriteTimeVariable()).hasValue("My Writetime");
   }
 
   @Test

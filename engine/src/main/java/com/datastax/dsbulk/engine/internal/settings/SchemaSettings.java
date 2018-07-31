@@ -211,7 +211,9 @@ public class SchemaSettings {
         queryInspector = new QueryInspector(query);
         // If a query is provided, check now if it contains a USING TIMESTAMP variable,
         // and get its name.
-        writeTimeVariable = queryInspector.getWriteTimeVariable();
+        if (queryInspector.getWriteTimeVariable().isPresent()) {
+          writeTimeVariable = queryInspector.getWriteTimeVariable().get();
+        }
       }
 
       if (workflowType == COUNT) {
@@ -460,8 +462,8 @@ public class SchemaSettings {
   private void inferKeyspaceAndTableCustom(Session session) {
     assert config.hasPath(QUERY);
     if (keyspace == null) {
-      if (keyspaceName == null) {
-        keyspaceName = Metadata.quoteIfNecessary(queryInspector.getKeyspaceName());
+      if (keyspaceName == null && queryInspector.getKeyspaceName().isPresent()) {
+        keyspaceName = Metadata.quoteIfNecessary(queryInspector.getKeyspaceName().get());
       }
       keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
       if (keyspace == null) {
@@ -514,11 +516,17 @@ public class SchemaSettings {
 
   private void validatePrimaryKeyPresent(BiMap<String, String> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPrimaryKey();
+    Set<String> mappingVariables = fieldsToVariables.values();
+    ImmutableMap<String, String> queryVariables = queryInspector.getBoundVariables();
     for (ColumnMetadata pk : partitionKey) {
-      String variable = queryInspector.getBoundVariables().get(pk.getName());
-      // DAT-326: do not raise an error if the column was mapped to a function
-      if (variable == null
-          || (!isFunction(variable) && !fieldsToVariables.values().contains(variable))) {
+      String queryVariable = queryVariables.get(pk.getName());
+      if (
+      // the query did not contain such column
+      queryVariable == null
+          ||
+          // or the query did contain such column, but the mapping didn't
+          // and that column is not mapped to a function (DAT-326)
+          (!isFunction(queryVariable) && !mappingVariables.contains(queryVariable))) {
         throw new BulkConfigurationException(
             "Missing required primary key column "
                 + Metadata.quoteIfNecessary(pk.getName())

@@ -15,9 +15,7 @@ import com.datastax.dsbulk.commons.cql3.CqlLexer;
 import com.datastax.dsbulk.commons.cql3.CqlParser;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
+import java.util.Optional;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
@@ -29,8 +27,9 @@ public class QueryInspector extends CqlBaseVisitor<String> {
 
   private final String query;
 
-  private final LinkedHashSet<String> selectedColumnsBuilder = new LinkedHashSet<>();
-  private final Map<String, String> boundVariablesBuilder = new LinkedHashMap<>();
+  private final ImmutableSet.Builder<String> selectedColumnsBuilder = new ImmutableSet.Builder<>();
+  private final ImmutableMap.Builder<String, String> boundVariablesBuilder =
+      new ImmutableMap.Builder<>();
 
   private final ImmutableSet<String> selectedColumns;
   private final ImmutableMap<String, String> boundVariables;
@@ -68,26 +67,37 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     parser.addErrorListener(listener);
     CqlParser.CqlStatementContext statement = parser.cqlStatement();
     visit(statement);
-    selectedColumns = ImmutableSet.copyOf(selectedColumnsBuilder);
-    boundVariables = ImmutableMap.copyOf(boundVariablesBuilder);
+    selectedColumns = selectedColumnsBuilder.build();
+    boundVariables = boundVariablesBuilder.build();
   }
 
-  public String getKeyspaceName() {
-    return keyspaceName;
+  /** @return the keyspace name found in the query, or empty if none was found. */
+  public Optional<String> getKeyspaceName() {
+    return Optional.ofNullable(keyspaceName);
   }
 
+  /** @return the table name found in the query; never {@code null}. */
   public String getTableName() {
     return tableName;
   }
 
-  public String getWriteTimeVariable() {
-    return writeTimeVariable;
+  /**
+   * @return the variable name found in the query in a USING TIMESTAMP clause, or empty if none was
+   *     found.
+   */
+  public Optional<String> getWriteTimeVariable() {
+    return Optional.ofNullable(writeTimeVariable);
   }
 
+  /**
+   * @return a map of all bound variables found in the query, keyed by column name. Only used for
+   *     write queries (INSERT, UPDATE, DELETE).
+   */
   public ImmutableMap<String, String> getBoundVariables() {
     return boundVariables;
   }
 
+  /** @return all selected columns found in the query. Only used for read queries (SELECT). */
   public ImmutableSet<String> getSelectedColumns() {
     return selectedColumns;
   }
@@ -207,6 +217,9 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     while (ctx.relation() != null) {
       ctx = ctx.relation();
     }
+    // we only inspect WHERE clauses for UPDATE and DELETE
+    // and only care about primary key equality constraints such as
+    // myCol = :myVar or myCol = ?
     if (ctx.getChildCount() == 3
         && ctx.getChild(0) instanceof CqlParser.CidentContext
         && ctx.getChild(1) instanceof CqlParser.RelationTypeContext
