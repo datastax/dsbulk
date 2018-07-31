@@ -4,7 +4,7 @@ schedules:
     schedule: per_commit
     matrix:
       exclude:
-        - cassandra: ['dse-5.0', 'dse-5.1']
+        - cassandra: ['dse-5.0', 'dse-5.1', 'ddac-5.1']
     env_vars: |
       TEST_GROUPS="short,medium"
     notify:
@@ -24,7 +24,7 @@ schedules:
     schedule: adhoc
     matrix:
       exclude:
-        - cassandra: ['dse-5.0', 'dse-5.1']
+        - cassandra: ['dse-5.0', 'dse-5.1', 'ddac-5.1']
         # - java: ['oraclejdk10']
     branches:
       exclude: ["/\\d+(\\.[\\dx]+)+/"]
@@ -42,6 +42,7 @@ cassandra:
   - dse-5.0
   - dse-5.1
   - dse-6.0
+  - ddac-5.1
 build:
   - type: maven
     version: 3.2.5
