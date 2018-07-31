@@ -15,7 +15,11 @@ import com.datastax.dsbulk.commons.cql3.CqlLexer;
 import com.datastax.dsbulk.commons.cql3.CqlParser;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
@@ -27,9 +31,9 @@ public class QueryInspector extends CqlBaseVisitor<String> {
 
   private final String query;
 
-  private final ImmutableSet.Builder<String> selectedColumnsBuilder = new ImmutableSet.Builder<>();
-  private final ImmutableMap.Builder<String, String> boundVariablesBuilder =
-      new ImmutableMap.Builder<>();
+  // can't use Guava's immutable builders here as some map keys may appear twice in the query
+  private final Set<String> selectedColumnsBuilder = new LinkedHashSet<>();
+  private final Map<String, String> boundVariablesBuilder = new LinkedHashMap<>();
 
   private final ImmutableSet<String> selectedColumns;
   private final ImmutableMap<String, String> boundVariables;
@@ -67,8 +71,8 @@ public class QueryInspector extends CqlBaseVisitor<String> {
     parser.addErrorListener(listener);
     CqlParser.CqlStatementContext statement = parser.cqlStatement();
     visit(statement);
-    selectedColumns = selectedColumnsBuilder.build();
-    boundVariables = boundVariablesBuilder.build();
+    selectedColumns = ImmutableSet.copyOf(selectedColumnsBuilder);
+    boundVariables = ImmutableMap.copyOf(boundVariablesBuilder);
   }
 
   /** @return the keyspace name found in the query, or empty if none was found. */
