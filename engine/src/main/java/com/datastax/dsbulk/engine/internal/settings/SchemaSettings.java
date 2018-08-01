@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.engine.WorkflowType.COUNT;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_FUNCTION_MARKER;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
@@ -51,10 +52,10 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -69,8 +70,12 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SchemaSettings {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaSettings.class);
 
   private static final String NULL_TO_UNSET = "nullToUnset";
   private static final String KEYSPACE = "keyspace";
@@ -208,7 +213,9 @@ public class SchemaSettings {
         queryInspector = new QueryInspector(query);
         // If a query is provided, check now if it contains a USING TIMESTAMP variable,
         // and get its name.
-        writeTimeVariable = queryInspector.getWriteTimeVariable();
+        if (queryInspector.getWriteTimeVariable().isPresent()) {
+          writeTimeVariable = queryInspector.getWriteTimeVariable().get();
+        }
       }
 
       if (workflowType == COUNT) {
@@ -322,6 +329,7 @@ public class SchemaSettings {
       } else if (workflowType == COUNT) {
         query = inferCountQuery();
       }
+      LOGGER.debug("Inferred query: {}", query);
       queryInspector = new QueryInspector(query);
       // validate generated query
       if (workflowType == LOAD) {
@@ -349,7 +357,7 @@ public class SchemaSettings {
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
       } else if (workflowType == COUNT) {
-        validatePartitionKeyPresent();
+        validatePartitionKeyPresentInSelectClause();
       }
     }
     assert fieldsToVariables != null;
@@ -456,8 +464,8 @@ public class SchemaSettings {
   private void inferKeyspaceAndTableCustom(Session session) {
     assert config.hasPath(QUERY);
     if (keyspace == null) {
-      if (keyspaceName == null) {
-        keyspaceName = Metadata.quoteIfNecessary(queryInspector.getKeyspaceName());
+      if (keyspaceName == null && queryInspector.getKeyspaceName().isPresent()) {
+        keyspaceName = Metadata.quoteIfNecessary(queryInspector.getKeyspaceName().get());
       }
       keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
       if (keyspace == null) {
@@ -510,9 +518,17 @@ public class SchemaSettings {
 
   private void validatePrimaryKeyPresent(BiMap<String, String> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPrimaryKey();
+    Set<String> mappingVariables = fieldsToVariables.values();
+    ImmutableMap<String, String> queryVariables = queryInspector.getBoundVariables();
     for (ColumnMetadata pk : partitionKey) {
-      Collection<String> variables = queryInspector.getColumnsToVariables().get(pk.getName());
-      if (Collections.disjoint(fieldsToVariables.values(), variables)) {
+      String queryVariable = queryVariables.get(pk.getName());
+      if (
+      // the query did not contain such column
+      queryVariable == null
+          ||
+          // or the query did contain such column, but the mapping didn't
+          // and that column is not mapped to a function (DAT-326)
+          (!isFunction(queryVariable) && !mappingVariables.contains(queryVariable))) {
         throw new BulkConfigurationException(
             "Missing required primary key column "
                 + Metadata.quoteIfNecessary(pk.getName())
@@ -522,11 +538,11 @@ public class SchemaSettings {
   }
 
   // Used for the count workflow only.
-  private void validatePartitionKeyPresent() {
+  private void validatePartitionKeyPresentInSelectClause() {
     // the query must contain the entire partition key in the select clause,
     // and nothing else.
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
-    Set<String> columns = new HashSet<>(queryInspector.getColumnsToVariables().values());
+    Set<String> columns = new HashSet<>(queryInspector.getSelectedColumns());
     for (ColumnMetadata pk : partitionKey) {
       if (!columns.remove(pk.getName())) {
         throw new BulkConfigurationException(
@@ -540,7 +556,8 @@ public class SchemaSettings {
           columns.stream().map(Metadata::quoteIfNecessary).collect(Collectors.joining(", "));
       throw new BulkConfigurationException(
           String.format(
-              "The provided statement (schema.query) contains extraneous columns in the SELECT clause: %s; it should contain only partition key columns.",
+              "The provided statement (schema.query) contains extraneous columns in the "
+                  + "SELECT clause: %s; it should contain only partition key columns.",
               offendingColumns));
     }
   }
@@ -588,7 +605,7 @@ public class SchemaSettings {
       String field = fieldsToVariables.inverse().get(col);
       if (isFunction(field)) {
         // Assume this is a function call that should be placed directly in the query.
-        sb.append(field);
+        sb.append(extractFunctionCall(field));
       } else {
         sb.append(':');
         sb.append(Metadata.quoteIfNecessary(col));
@@ -763,8 +780,13 @@ public class SchemaSettings {
   }
 
   private static boolean isFunction(String field) {
-    // If a field contains a paren, interpret it to be a cql function call.
-    return field.contains("(");
+    // If a field starts with this special marker, interpret it to be a cql function call.
+    // This marker is honored by both QueryInspector and MappingInspector.
+    return field.startsWith(INTERNAL_FUNCTION_MARKER);
+  }
+
+  private static String extractFunctionCall(String functionWithMarker) {
+    return functionWithMarker.substring(INTERNAL_FUNCTION_MARKER.length());
   }
 
   private static boolean isPseudoColumn(String col) {

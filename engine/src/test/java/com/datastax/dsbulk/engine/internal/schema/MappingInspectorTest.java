@@ -8,6 +8,9 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_FUNCTION_MARKER;
+import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
+import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -111,8 +114,15 @@ class MappingInspectorTest {
   void should_detect_ttl_and_timestamp_vars() {
     MappingInspector inspector = new MappingInspector(" a = __ttl, b = __timestamp  ", false);
     assertThat(inspector.getExplicitVariables().values())
-        .containsExactly(
-            MappingInspector.INTERNAL_TTL_VARNAME, MappingInspector.INTERNAL_TIMESTAMP_VARNAME);
+        .containsExactly(INTERNAL_TTL_VARNAME, INTERNAL_TIMESTAMP_VARNAME);
+  }
+
+  @Test
+  void should_detect_function() {
+    MappingInspector inspector = new MappingInspector(" now() = col1, max(1, 2) = col2  ", false);
+    assertThat(inspector.getExplicitVariables())
+        .containsEntry(INTERNAL_FUNCTION_MARKER + "now()", "col1")
+        .containsEntry(INTERNAL_FUNCTION_MARKER + "max(1,2)", "col2");
   }
 
   @Test

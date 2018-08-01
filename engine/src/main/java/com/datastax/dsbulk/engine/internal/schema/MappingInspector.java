@@ -35,6 +35,9 @@ public class MappingInspector extends MappingBaseVisitor<String> {
   public static final String INTERNAL_TTL_VARNAME = "dsbulk_internal_ttl";
   public static final String INTERNAL_TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
 
+  // A marker for fields that are actually mapped to functions
+  public static final String INTERNAL_FUNCTION_MARKER = "dsbulk_internal_function=";
+
   private static final String EXTERNAL_TTL_VARNAME = "__ttl";
   private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
 
@@ -153,9 +156,14 @@ public class MappingInspector extends MappingBaseVisitor<String> {
 
   @Override
   public String visitField(MappingParser.FieldContext ctx) {
-    String field = ctx.getText();
-    if (ctx.QUOTED_STRING() != null) {
-      field = field.substring(1, field.length() - 1).replace("\"\"", "\"");
+    String field;
+    if (ctx.UNQUOTED_STRING() != null) {
+      field = ctx.UNQUOTED_STRING().getText();
+    } else if (ctx.QUOTED_STRING() != null) {
+      String text = ctx.QUOTED_STRING().getText();
+      field = text.substring(1, text.length() - 1).replace("\"\"", "\"");
+    } else {
+      field = INTERNAL_FUNCTION_MARKER + ctx.function().getText();
     }
     return field;
   }
@@ -198,7 +206,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
     if (!duplicates.isEmpty()) {
       throw new BulkConfigurationException(
           "Invalid schema.mapping: the following variables are mapped to more than one field: "
-              + duplicates.stream().collect(Collectors.joining(", "))
+              + String.join(", ", duplicates)
               + ". "
               + "Please review schema.mapping for duplicates.");
     }

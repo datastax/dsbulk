@@ -56,6 +56,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -966,7 +967,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(
-        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number, 5=country_name");
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,5=country_name");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
@@ -1052,11 +1053,36 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(
-        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,4=country_code, 5=country_name, 6=extra");
+        "0=beginning_ip_address,1=ending_ip_address,2=beginning_ip_number,3=ending_ip_number,"
+            + "4=country_code,5=country_name,6=extra");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateErrorMessageLogged("doesn't match any column found in table", "extra");
+  }
+
+  @Test
+  void extra_mapping_custom_query() {
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(CSV_RECORDS_HEADER));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add(INSERT_INTO_IP_BY_COUNTRY);
+    args.add("--schema.mapping");
+    args.add(
+        "beginning_ip_address,ending_ip_address,beginning_ip_number,ending_ip_number,"
+            + "country_code,country_name,extra");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    validateErrorMessageLogged("doesn't match any bound variable found in query", "extra");
   }
 
   /** Test for DAT-224. */
@@ -1747,6 +1773,151 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     assertThat(lines).contains("ok1,1").contains("ok2,2");
+  }
+
+  /** Test for DAT-326. */
+  @Test
+  void function_mapped_to_primary_key() {
+
+    session.execute("DROP TABLE IF EXISTS dat326a");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS dat326a (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            escapeUserInput(getClass().getResource("/function-pk.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "dat326a",
+            "--schema.mapping",
+            "now()=cc,*=*");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+  }
+
+  /** Test for DAT-326. */
+  @Test
+  void function_mapped_to_primary_key_with_custom_query() {
+
+    session.execute("DROP TABLE IF EXISTS dat326b");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS dat326b (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            escapeUserInput(getClass().getResource("/function-pk.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "INSERT INTO dat326b (pk, cc, v) VALUES (:pk, now(), :v)");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+  }
+
+  /** Test for DAT-326. */
+  @Test
+  void function_mapped_to_primary_key_with_custom_query_and_positional_variables() {
+
+    session.execute("DROP TABLE IF EXISTS dat326c");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS dat326c (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            escapeUserInput(getClass().getResource("/function-pk.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "INSERT INTO dat326c (pk, cc, v) VALUES (?, now(), ?)");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+  }
+
+  @Test
+  void unload_with_custom_query_and_function_with_header() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS unload_with_function1");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS unload_with_function1 (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO unload_with_function1 (pk, cc, v) values (0, now(), 1)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "SELECT pk, v, toDate(cc) AS date_created FROM unload_with_function1");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    List<String> lines =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).hasSize(2);
+    assertThat(lines.get(0)).isEqualTo("pk,v,date_created");
+    assertThat(lines.get(1)).matches("0,1,\\d{4}-\\d{2}-\\d{2}");
+  }
+
+  @Test
+  void unload_with_custom_query_and_function_without_header() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS unload_with_function2");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS unload_with_function2 (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO unload_with_function2 (pk, cc, v) values (0, now(), 1)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "false",
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "SELECT pk, v, toDate(cc) FROM unload_with_function2");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    List<String> lines =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).hasSize(1);
+    assertThat(lines.get(0)).matches("0,1,\\d{4}-\\d{2}-\\d{2}");
   }
 
   static void checkNumbersWritten(
