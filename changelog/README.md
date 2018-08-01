@@ -1,6 +1,6 @@
 ## Changelog
 
-### 1.2.0 (in progress)
+### 1.2.0
 
 - [bug] DAT-302: CsvWriter trims leading/trailing spaces in values.
 - [bug] DAT-311: CSV connector fails when the number of columns in a record is greater than 512.
