@@ -294,11 +294,13 @@ public class SchemaSettings {
         new TokenRangeReadStatementGenerator(table, metadata);
     return generator.generate(
         splitCount,
-        range ->
-            preparedStatement
-                .bind()
-                .setToken("start", metadata.newToken(range.start().toString()))
-                .setToken("end", metadata.newToken(range.end().toString())));
+        range -> {
+          LOGGER.debug("Generating bound statement for token range: {}", range);
+          return preparedStatement
+              .bind()
+              .setToken("start", metadata.newToken(range.start().toString()))
+              .setToken("end", metadata.newToken(range.end().toString()));
+        });
   }
 
   @NotNull
