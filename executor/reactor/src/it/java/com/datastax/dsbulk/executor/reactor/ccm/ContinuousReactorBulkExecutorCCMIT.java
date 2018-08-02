@@ -8,15 +8,21 @@
  */
 package com.datastax.dsbulk.executor.reactor.ccm;
 
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
+
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.SerializedSession;
-import com.datastax.dsbulk.commons.tests.utils.VersionRequirement;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.dsbulk.executor.reactor.ContinuousReactorBulkExecutor;
 import org.junit.jupiter.api.Tag;
 
 @Tag("medium")
-@VersionRequirement(min = "5.1")
+@CCMRequirements(
+  compatibleTypes = DSE,
+  versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1")
+)
 class ContinuousReactorBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 
   ContinuousReactorBulkExecutorCCMIT(ContinuousPagingSession session) {

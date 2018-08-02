@@ -26,12 +26,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public abstract class CCMClusterFactory {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(CCMClusterFactory.class);
 
   @CCMConfig
   private static class Dummy {}
@@ -75,7 +71,6 @@ public abstract class CCMClusterFactory {
   private static class CCMClusterAnnotationFactory extends CCMClusterFactory {
 
     private final int[] numberOfNodes;
-    private final boolean dse;
     private final boolean ssl;
     private final boolean auth;
     private final Map<String, Object> cassandraConfig;
@@ -86,7 +81,6 @@ public abstract class CCMClusterFactory {
 
     private CCMClusterAnnotationFactory(CCMConfig config) {
       this.numberOfNodes = config.numberOfNodes();
-      this.dse = config.dse();
       this.ssl = config.ssl();
       this.auth = config.auth();
       this.cassandraConfig = toConfigMap(config.config());
@@ -106,20 +100,6 @@ public abstract class CCMClusterFactory {
         }
         String key = tokens[0];
         String value = tokens[1];
-        // If we've detected a property with a version requirement, skip it if the version
-        // requirement cannot be met.
-        if (CONFIG_VERSION_REQUIREMENTS.containsKey(key)) {
-          Version requirement = CONFIG_VERSION_REQUIREMENTS.get(key);
-          if (Version.DEFAULT_OSS_VERSION.compareTo(requirement) < 0) {
-            LOGGER.debug(
-                "Skipping inclusion of '{}' in cassandra.yaml since it requires >= C* {} and {} "
-                    + "was detected.",
-                aConf,
-                requirement,
-                Version.DEFAULT_OSS_VERSION);
-            continue;
-          }
-        }
         config.put(key, value);
       }
       return config;
@@ -149,9 +129,6 @@ public abstract class CCMClusterFactory {
     @Override
     public DefaultCCMCluster.Builder createCCMClusterBuilder() {
       DefaultCCMCluster.Builder ccmBuilder = DefaultCCMCluster.builder().withNodes(numberOfNodes);
-      if (dse) {
-        ccmBuilder.withDSE();
-      }
       if (ssl) {
         ccmBuilder.withSSL();
       }
@@ -188,8 +165,7 @@ public abstract class CCMClusterFactory {
         return false;
       }
       CCMClusterAnnotationFactory that = (CCMClusterAnnotationFactory) o;
-      return dse == that.dse
-          && ssl == that.ssl
+      return ssl == that.ssl
           && auth == that.auth
           && Arrays.equals(numberOfNodes, that.numberOfNodes)
           && cassandraConfig.equals(that.cassandraConfig)
@@ -202,7 +178,6 @@ public abstract class CCMClusterFactory {
     @Override
     public int hashCode() {
       int result = Arrays.hashCode(numberOfNodes);
-      result = 31 * result + (dse ? 1 : 0);
       result = 31 * result + (ssl ? 1 : 0);
       result = 31 * result + (auth ? 1 : 0);
       result = 31 * result + cassandraConfig.hashCode();

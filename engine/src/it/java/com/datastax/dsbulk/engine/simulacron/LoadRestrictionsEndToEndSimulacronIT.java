@@ -29,7 +29,6 @@ import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
-import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronConfig;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
@@ -43,15 +42,11 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(SimulacronExtension.class)
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
-@TestInstance(Lifecycle.PER_CLASS)
-@SimulacronConfig(dse = false)
 class LoadRestrictionsEndToEndSimulacronIT {
 
   private final BoundCluster simulacron;

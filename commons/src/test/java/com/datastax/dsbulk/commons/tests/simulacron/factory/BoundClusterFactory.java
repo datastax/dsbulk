@@ -12,7 +12,6 @@ import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronConfig
 import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronFactory;
 import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronFactoryMethod;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
-import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -56,15 +55,15 @@ public abstract class BoundClusterFactory {
 
     private final int[] numberOfNodes;
     private final int numberOfTokens;
-    private final String version;
-    private final boolean dse;
+    private final String cassandraVersion;
+    private final String dseVersion;
     private final Map<String, Object> peerInfo;
 
     private SimulacronClusterAnnotationFactory(SimulacronConfig config) {
       this.numberOfNodes = config.numberOfNodes();
       this.numberOfTokens = config.numberOfTokens();
-      this.version = config.version();
-      this.dse = config.dse();
+      this.cassandraVersion = config.cassandraVersion();
+      this.dseVersion = config.dseVersion();
       this.peerInfo = toConfigMap(config.peerInfo());
     }
 
@@ -87,18 +86,11 @@ public abstract class BoundClusterFactory {
     public ClusterSpec createClusterSpec() {
       ClusterSpec.Builder builder =
           ClusterSpec.builder().withNodes(numberOfNodes).withNumberOfTokens(numberOfTokens);
-      if (dse) {
-        if (version.isEmpty()) {
-          builder.withDSEVersion(Version.DEFAULT_DSE_VERSION.toString());
-        } else {
-          builder.withDSEVersion(version);
-        }
-      } else {
-        if (version.isEmpty()) {
-          builder.withCassandraVersion(Version.DEFAULT_OSS_VERSION.toString());
-        } else {
-          builder.withCassandraVersion(version);
-        }
+      if (!cassandraVersion.isEmpty()) {
+        builder.withCassandraVersion(cassandraVersion);
+      }
+      if (!dseVersion.isEmpty()) {
+        builder.withDSEVersion(dseVersion);
       }
       if (!peerInfo.isEmpty()) {
         builder.withPeerInfo(peerInfo);
@@ -116,9 +108,9 @@ public abstract class BoundClusterFactory {
       }
       SimulacronClusterAnnotationFactory that = (SimulacronClusterAnnotationFactory) o;
       return numberOfTokens == that.numberOfTokens
-          && dse == that.dse
+          && dseVersion.equals(that.dseVersion)
+          && cassandraVersion.equals(that.cassandraVersion)
           && Arrays.equals(numberOfNodes, that.numberOfNodes)
-          && version.equals(that.version)
           && peerInfo.equals(that.peerInfo);
     }
 
@@ -126,8 +118,8 @@ public abstract class BoundClusterFactory {
     public int hashCode() {
       int result = Arrays.hashCode(numberOfNodes);
       result = 31 * result + numberOfTokens;
-      result = 31 * result + version.hashCode();
-      result = 31 * result + (dse ? 1 : 0);
+      result = 31 * result + cassandraVersion.hashCode();
+      result = 31 * result + dseVersion.hashCode();
       result = 31 * result + peerInfo.hashCode();
       return result;
     }

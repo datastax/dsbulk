@@ -28,34 +28,26 @@ public class NetworkUtils {
   /**
    * The default IP prefix to use when assigning Ip addresses to nodes in a remote cluster.
    *
-   * <p>
-   *
-   * <p>By default, the prefix is {@code 127.0.1.}, which means that IP addresses will be allocated
-   * starting with {@code 127.0.1.1}, {@code 127.0.1.2}, etc.
-   *
-   * <p>
+   * <p>By default, the prefix is {@code 127.0.0.}, which means that IP addresses will be allocated
+   * starting with {@code 127.0.0.1}, {@code 127.0.0.2}, etc.
    *
    * <p>The prefix can be changed with the system property {@code
-   * com.datastax.cassandra.tools.utils.DEFAULT_IP_PREFIX}. Please note that this property is
-   * designed to work with local IP addresses for testing purposes only, and has not been tested
-   * with remote hosts.
+   * com.datastax.dsbulk.commons.tests.utils.DEFAULT_IP_PREFIX}.
    */
   public static final String DEFAULT_IP_PREFIX =
-      System.getProperty("com.datastax.dsbulk.commons.tests.utils.DEFAULT_IP_PREFIX", "127.0.1.");
+      System.getProperty("com.datastax.dsbulk.commons.tests.utils.DEFAULT_IP_PREFIX", "127.0.0.");
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NetworkUtils.class);
 
   /**
    * Returns the address of the {@code n}th host in the cluster (counting from 1, e.g. {@code
-   * addressOfNode("127.0.1.", 3)} returns the address of the third node in the cluster, that is,
-   * {@code 127.0.1.3}.
-   *
-   * <p>
+   * addressOfNode("127.0.0.", 3)} returns the address of the third node in the cluster, that is,
+   * {@code 127.0.0.3}.
    *
    * <p>In multi-DC setups, nodes are numbered in ascending order of their datacenter number. E.g.
    * with 2 DCs and 3 nodes in each DC, the first node in DC 2 is number 4.
    *
-   * @param ipPrefix The IP prefix to use (e.g. {@code 127.0.1.}).
+   * @param ipPrefix The IP prefix to use (e.g. {@code 127.0.0.}).
    * @param node the node number (starting from 1).
    * @return the address of the host in the cluster.
    */
@@ -112,8 +104,6 @@ public class NetworkUtils {
 
   /**
    * Returns all contact points for a given IP prefix and given numbers of nodes per DC.
-   *
-   * <p>
    *
    * <p>The returned addresses can be used as contact points for clients wishing to connect to the
    * remote cluster, e.g. when building a {@code Cluster} instance with the DataStax Java driver.

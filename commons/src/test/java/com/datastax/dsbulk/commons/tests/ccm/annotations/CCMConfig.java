@@ -26,9 +26,6 @@ public @interface CCMConfig {
    */
   int[] numberOfNodes() default {1};
 
-  /** Whether to create a DSE cluster or not; defaults to {@code true}. */
-  boolean dse() default true;
-
   /**
    * Configuration items to add to cassandra.yaml configuration file. Each configuration item must
    * be in the form {@code key:value}.

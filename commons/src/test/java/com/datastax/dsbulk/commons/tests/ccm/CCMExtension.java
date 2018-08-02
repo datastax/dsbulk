@@ -8,18 +8,20 @@
  */
 package com.datastax.dsbulk.commons.tests.ccm;
 
-import static com.datastax.dsbulk.commons.tests.utils.Version.DEFAULT_DSE_VERSION;
-import static com.datastax.dsbulk.commons.tests.utils.Version.DEFAULT_OSS_VERSION;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.CCM_TYPE;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.CCM_VERSION;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.RemoteClusterExtension;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.commons.tests.ccm.factory.CCMClusterFactory;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
-import com.datastax.dsbulk.commons.tests.utils.VersionRequirement;
 import java.lang.reflect.Parameter;
 import java.net.InetAddress;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
@@ -33,28 +35,34 @@ import org.slf4j.LoggerFactory;
 public class CCMExtension extends RemoteClusterExtension implements ExecutionCondition {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CCMExtension.class);
+
   private static final String CCM = "CCM";
 
   @Override
   public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
-    Class<?> testClass = context.getRequiredTestClass();
-    CCMConfig config = ReflectionUtils.locateClassAnnotation(testClass, CCMConfig.class);
-    VersionRequirement requirement =
-        ReflectionUtils.locateClassAnnotation(testClass, VersionRequirement.class);
-    if (config != null) {
-      if (config.dse() && PlatformUtils.isWindows()) {
-        return ConditionEvaluationResult.disabled("Test not compatible with windows");
-      }
+    if (CCM_TYPE == DSE && PlatformUtils.isWindows()) {
+      return ConditionEvaluationResult.disabled(
+          "CCM tests are configured to use DSE which is not compatible with Windows");
     }
-    if (requirement != null) {
-      Version min = Version.parse(requirement.min());
-      Version max = Version.parse(requirement.max());
-      Version def = config == null || config.dse() ? DEFAULT_DSE_VERSION : DEFAULT_OSS_VERSION;
-      if (!Version.isWithinRange(min, max, def)) {
+    Class<?> testClass = context.getRequiredTestClass();
+    CCMRequirements requirements =
+        ReflectionUtils.locateClassAnnotation(testClass, CCMRequirements.class);
+    if (requirements != null) {
+      if (!Arrays.asList(requirements.compatibleTypes()).contains(CCM_TYPE)) {
         return ConditionEvaluationResult.disabled(
-            String.format(
-                "Test requires version in range [%s,%s[ but %s is configured.",
-                requirement.min(), requirement.max(), def));
+            String.format("Test is not compatible with CCM cluster type in use: %s.", CCM_TYPE));
+      }
+      for (CCMVersionRequirement requirement : requirements.versionRequirements()) {
+        if (requirement.type() == CCM_TYPE) {
+          Version min = Version.parse(requirement.min());
+          Version max = Version.parse(requirement.max());
+          if (!Version.isWithinRange(min, max, CCM_VERSION)) {
+            return ConditionEvaluationResult.disabled(
+                String.format(
+                    "Test requires version in range [%s,%s[ but %s is configured.",
+                    requirement.min(), requirement.max(), CCM_VERSION));
+          }
+        }
       }
     }
     return ConditionEvaluationResult.enabled("OK");
@@ -102,7 +110,8 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
 
   @Override
   protected String getLocalDCName(ExtensionContext context) {
-    return getOrCreateCCM(context).isMultiDC() ? "dc1" : "Cassandra";
+    CCMCluster ccm = getOrCreateCCM(context);
+    return ccm.getDC(1);
   }
 
   private CCMCluster getOrCreateCCM(ExtensionContext context) {

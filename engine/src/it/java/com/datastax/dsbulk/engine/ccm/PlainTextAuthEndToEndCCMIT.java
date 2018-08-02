@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
@@ -21,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.driver.annotations.ClusterConfig;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import java.io.IOException;
@@ -38,6 +41,7 @@ import org.junit.jupiter.api.Test;
   jvmArgs = "-Dcassandra.superuser_setup_delay_ms=0"
 )
 @Tag("medium")
+@CCMRequirements(compatibleTypes = {DSE, DDAC})
 class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
 
   private Path unloadDir;

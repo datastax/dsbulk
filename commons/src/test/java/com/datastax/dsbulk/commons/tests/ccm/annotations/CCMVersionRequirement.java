@@ -6,14 +6,21 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.commons.tests.utils;
+package com.datastax.dsbulk.commons.tests.ccm.annotations;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type;
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 @Retention(RUNTIME)
-public @interface VersionRequirement {
+@Target(ElementType.ANNOTATION_TYPE)
+public @interface CCMVersionRequirement {
+
+  /** @return the cluster type this requirement refers to (OSS, DDAC or DSE). */
+  Type type();
 
   /** @return The minimum version required to execute this test (inclusive), i.e. "4.8.14" */
   String min() default "";

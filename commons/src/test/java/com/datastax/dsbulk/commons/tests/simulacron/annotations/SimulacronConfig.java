@@ -26,10 +26,19 @@ public @interface SimulacronConfig {
    */
   int[] numberOfNodes() default {1};
 
-  String version() default "";
+  /**
+   * @return The Cassandra version the cluster should report. Setting this to a 4-part version will
+   *     imply a DDAC/DSE cluster.
+   */
+  String cassandraVersion() default "4.0.0.2284";
 
-  boolean dse() default true;
+  /**
+   * @return The DSE version the cluster should report. Setting this to empty will imply a non-DSE
+   *     cluster.
+   */
+  String dseVersion() default "6.0.0";
 
+  /** @return The number of virtual nodes (tokens) assigned for each node of each datacenter. */
   int numberOfTokens() default 1;
 
   /**

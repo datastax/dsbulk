@@ -23,7 +23,36 @@ import java.util.Map;
 @SuppressWarnings("unused")
 public interface CCMCluster extends Closeable {
 
-  /** Different workloads for DSE */
+  /** Different types of CCM clusters. */
+  enum Type {
+
+    /** OSS Cassandra. */
+    OSS("3.11.2", ""),
+
+    /** DataStax Distribution of Apache Cassandra. */
+    DDAC("5.1.11", "--ddac"),
+
+    /** DataStax Enterprise. */
+    DSE("6.0.2", "--dse");
+
+    private final String defaultVersion;
+    private final String ccmCreateOption;
+
+    Type(String defaultVersion, String ccmCreateOption) {
+      this.defaultVersion = defaultVersion;
+      this.ccmCreateOption = ccmCreateOption;
+    }
+
+    public String getDefaultVersion() {
+      return defaultVersion;
+    }
+
+    public String getCreateOption() {
+      return ccmCreateOption;
+    }
+  }
+
+  /** Different workloads for DSE. */
   enum Workload {
     cassandra,
     solr,
@@ -41,6 +70,9 @@ public interface CCMCluster extends Closeable {
    * @return the name of this cluster.
    */
   String getClusterName();
+
+  /** @return the type of this cluster (OSS, DDAC or DSE). */
+  Type getClusterType();
 
   /**
    * Returns the IP prefix used to assign IP addresses to nodes in this cluster.
@@ -148,7 +180,16 @@ public interface CCMCluster extends Closeable {
    */
   void stop(int node);
 
+  /** @return whether or not this CCM cluster has multiple data-centers. */
   boolean isMultiDC();
+
+  /**
+   * Returns the DC name the node belongs to.
+   *
+   * @param node the node to inspect.
+   * @return the DC name.
+   */
+  String getDC(int node);
 
   /**
    * Starts all nodes in the {@code dc}th DC in the cluster (counting from 1, i.e., the first DC is
@@ -245,13 +286,6 @@ public interface CCMCluster extends Closeable {
    * @return The version of this CCM cluster.
    */
   Version getVersion();
-
-  /**
-   * Whether this cluster is a DSE cluster, or an OSS Cassandra cluster.
-   *
-   * @return {@code true} if this CCM cluster is a DSE cluster, {@code false} otherwise
-   */
-  boolean isDSE();
 
   /**
    * Returns the factory directory for this CCM cluster.

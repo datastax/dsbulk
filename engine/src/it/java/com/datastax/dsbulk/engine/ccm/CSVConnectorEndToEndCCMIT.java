@@ -9,6 +9,8 @@
 package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
@@ -50,6 +52,7 @@ import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -96,6 +99,7 @@ import reactor.core.publisher.Flux;
 @ExtendWith(StreamInterceptingExtension.class)
 @CCMConfig(numberOfNodes = 1)
 @Tag("medium")
+@CCMRequirements(compatibleTypes = {DSE, DDAC})
 class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;

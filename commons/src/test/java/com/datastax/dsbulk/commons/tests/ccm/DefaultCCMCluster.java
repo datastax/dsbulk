@@ -8,8 +8,11 @@
  */
 package com.datastax.dsbulk.commons.tests.ccm;
 
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.OSS;
+import static com.datastax.dsbulk.commons.tests.utils.NetworkUtils.DEFAULT_IP_PREFIX;
 import static com.datastax.dsbulk.commons.tests.utils.NetworkUtils.findAvailablePort;
-import static com.datastax.dsbulk.commons.tests.utils.Version.DEFAULT_DSE_VERSION;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
@@ -56,8 +59,10 @@ import org.apache.commons.exec.PumpStreamHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings("unused")
 public class DefaultCCMCluster implements CCMCluster {
+
+  static final Type CCM_TYPE;
+  static final Version CCM_VERSION;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultCCMCluster.class);
   private static final Logger CCM_OUT_LOGGER =
@@ -83,7 +88,11 @@ public class DefaultCCMCluster implements CCMCluster {
   private static final File DEFAULT_SERVER_TRUSTSTORE_FILE = createTempStore("/server.truststore");
   private static final File DEFAULT_SERVER_KEYSTORE_FILE = createTempStore("/server.keystore");
 
+  /** The install arguments to pass to CCM when creating the cluster. */
   private static final Set<String> DEFAULT_CREATE_OPTIONS;
+
+  private static final Pattern DATACENTER_PATTERN =
+      Pattern.compile("^Datacenter: (\\w+)$", Pattern.MULTILINE);
 
   /**
    * The environment variables to use when invoking CCM. Inherits the current processes environment,
@@ -96,6 +105,16 @@ public class DefaultCCMCluster implements CCMCluster {
   private static final String CCM_COMMAND;
 
   static {
+    boolean dse =
+        Boolean.parseBoolean(
+            System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CCM_IS_DSE", "false"));
+    boolean ddac =
+        Boolean.parseBoolean(
+            System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CCM_IS_DDAC", "true"));
+    CCM_TYPE = dse ? DSE : (ddac ? DDAC : OSS);
+    String versionStr = System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CCM_VERSION");
+    CCM_VERSION = Version.parse(versionStr == null ? CCM_TYPE.getDefaultVersion() : versionStr);
+    LOGGER.info("CCM tests configured to use {} version {}", CCM_TYPE, CCM_VERSION);
     String installDirectory =
         System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CCM_DIRECTORY");
     String branch = System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CCM_BRANCH");
@@ -106,9 +125,9 @@ public class DefaultCCMCluster implements CCMCluster {
     } else if (branch != null && !branch.trim().isEmpty()) {
       defaultCreateOptions.add("-v git:" + branch.trim().replaceAll("\"", ""));
     } else {
-      defaultCreateOptions.add("-v " + DEFAULT_DSE_VERSION);
+      defaultCreateOptions.add("-v " + CCM_VERSION);
     }
-    defaultCreateOptions.add("--dse");
+    defaultCreateOptions.add(CCM_TYPE.getCreateOption());
     DEFAULT_CREATE_OPTIONS = Collections.unmodifiableSet(defaultCreateOptions);
 
     // Inherit the current environment.
@@ -138,13 +157,10 @@ public class DefaultCCMCluster implements CCMCluster {
 
   private final String clusterName;
   private final int[] nodesPerDC;
-  private final Version version;
-  private final String ipPrefix;
   private final int storagePort;
   private final int thriftPort;
   private final int binaryPort;
   private final File ccmDir;
-  private final boolean dse;
   private final String jvmArgs;
   private volatile boolean keepLogs = false;
 
@@ -152,29 +168,18 @@ public class DefaultCCMCluster implements CCMCluster {
 
   private DefaultCCMCluster(
       String clusterName,
-      Version version,
       int[] nodesPerDC,
-      String ipPrefix,
-      boolean dse,
       int binaryPort,
       int thriftPort,
       int storagePort,
       String jvmArgs) {
     this.clusterName = clusterName;
     this.nodesPerDC = nodesPerDC;
-    this.version = version;
-    this.ipPrefix = ipPrefix;
     this.storagePort = storagePort;
     this.thriftPort = thriftPort;
     this.binaryPort = binaryPort;
-    this.dse = dse;
     this.jvmArgs = jvmArgs;
     this.ccmDir = Files.createTempDir();
-  }
-
-  /** @return The install arguments to pass to CCM when creating the cluster. */
-  private static Set<String> getDefaultCreateOptions() {
-    return DEFAULT_CREATE_OPTIONS;
   }
 
   /**
@@ -215,24 +220,24 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
+  public Type getClusterType() {
+    return CCM_TYPE;
+  }
+
+  @Override
   public InetSocketAddress addressOfNode(int node) {
-    return new InetSocketAddress(NetworkUtils.addressOfNode(ipPrefix, node), binaryPort);
+    return new InetSocketAddress(NetworkUtils.addressOfNode(DEFAULT_IP_PREFIX, node), binaryPort);
   }
 
   @Override
   public InetSocketAddress addressOfNode(int dc, int node) {
     return new InetSocketAddress(
-        NetworkUtils.addressOfNode(ipPrefix, nodesPerDC, dc, node), binaryPort);
+        NetworkUtils.addressOfNode(DEFAULT_IP_PREFIX, nodesPerDC, dc, node), binaryPort);
   }
 
   @Override
   public Version getVersion() {
-    return version;
-  }
-
-  @Override
-  public boolean isDSE() {
-    return dse;
+    return CCM_VERSION;
   }
 
   @Override
@@ -272,12 +277,12 @@ public class DefaultCCMCluster implements CCMCluster {
 
   @Override
   public String getIpPrefix() {
-    return ipPrefix;
+    return DEFAULT_IP_PREFIX;
   }
 
   @Override
   public List<InetAddress> getInitialContactPoints() {
-    return NetworkUtils.allContactPoints(ipPrefix, nodesPerDC);
+    return NetworkUtils.allContactPoints(DEFAULT_IP_PREFIX, nodesPerDC);
   }
 
   @Override
@@ -385,11 +390,10 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public void start(int node) {
+  public synchronized void start(int node) {
     LOGGER.debug(
         String.format(
-            "Starting: node %s (%s%s:%s) in %s",
-            node, NetworkUtils.DEFAULT_IP_PREFIX, node, binaryPort, this));
+            "Starting: node %s (%s%s:%s) in %s", node, DEFAULT_IP_PREFIX, node, binaryPort, this));
     try {
       execute(
           CCM_COMMAND + " node%d start --wait-other-notice --wait-for-binary-proto" + jvmArgs,
@@ -407,11 +411,10 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public void stop(int node) {
+  public synchronized void stop(int node) {
     LOGGER.debug(
         String.format(
-            "Stopping: node %s (%s%s:%s) in %s",
-            node, NetworkUtils.DEFAULT_IP_PREFIX, node, binaryPort, this));
+            "Stopping: node %s (%s%s:%s) in %s", node, DEFAULT_IP_PREFIX, node, binaryPort, this));
     execute(CCM_COMMAND + " node%d stop", node);
   }
 
@@ -421,68 +424,75 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public void startDC(int dc) {
+  public synchronized void startDC(int dc) {
     for (int node = 1; node <= nodesPerDC[dc - 1]; node++) {
       start(dc, node);
     }
   }
 
   @Override
-  public void stopDC(int dc) {
+  public synchronized void stopDC(int dc) {
     for (int node = 1; node <= nodesPerDC[dc - 1]; node++) {
       stop(dc, node);
     }
   }
 
   @Override
-  public void start(int dc, int node) {
+  public String getDC(int node) {
+    String status = execute(CCM_COMMAND + " node%d status", node);
+    Matcher matcher = DATACENTER_PATTERN.matcher(status);
+    if (matcher.find()) {
+      return matcher.group(1);
+    }
+    throw new IllegalStateException("Could not determine DC name for node " + node);
+  }
+
+  @Override
+  public synchronized void start(int dc, int node) {
     start(NetworkUtils.absoluteNodeNumber(nodesPerDC, dc, node));
   }
 
   @Override
-  public void stop(int dc, int node) {
+  public synchronized void stop(int dc, int node) {
     stop(NetworkUtils.absoluteNodeNumber(nodesPerDC, dc, node));
   }
 
   @Override
-  public void forceStop(int n) {
+  public synchronized void forceStop(int n) {
     LOGGER.debug(
         String.format(
-            "Force stopping: node %s (%s%s:%s) in %s",
-            n, NetworkUtils.DEFAULT_IP_PREFIX, n, binaryPort, this));
+            "Force stopping: node %s (%s%s:%s) in %s", n, DEFAULT_IP_PREFIX, n, binaryPort, this));
     execute(CCM_COMMAND + " node%d stop --not-gently", n);
   }
 
   @Override
-  public void remove(int n) {
+  public synchronized void remove(int n) {
     LOGGER.debug(
         String.format(
-            "Removing: node %s (%s%s:%s) from %s",
-            n, NetworkUtils.DEFAULT_IP_PREFIX, n, binaryPort, this));
+            "Removing: node %s (%s%s:%s) from %s", n, DEFAULT_IP_PREFIX, n, binaryPort, this));
     execute(CCM_COMMAND + " node%d remove", n);
   }
 
   @Override
-  public void add(int n) {
+  public synchronized void add(int n) {
     add(1, n);
   }
 
   @Override
-  public void add(int dc, int n) {
+  public synchronized void add(int dc, int n) {
     LOGGER.debug(
         String.format(
-            "Adding: node %s (%s%s:%s) to %s",
-            n, NetworkUtils.DEFAULT_IP_PREFIX, n, binaryPort, this));
+            "Adding: node %s (%s%s:%s) to %s", n, DEFAULT_IP_PREFIX, n, binaryPort, this));
     String ip = addressOfNode(n).getAddress().getHostAddress();
     String thriftItf = ip + ":" + thriftPort;
     String storageItf = ip + ":" + storagePort;
     String binaryItf = ip + ":" + binaryPort;
     String remoteLogItf = ip + ":" + findAvailablePort();
-    if (version.compareTo(Version.parse("6.0.0")) >= 0) {
+    if (CCM_VERSION.compareTo(Version.parse("6.0.0")) >= 0) {
       execute(
           CCM_COMMAND
               + " add node%d -d dc%s -i %s -l %s --binary-itf %s -j %d -r %s -s -b"
-              + (dse ? " --dse" : ""),
+              + (CCM_TYPE == DSE ? " --dse" : (CCM_TYPE == DDAC ? " --ddac" : "")),
           n,
           dc,
           ip,
@@ -494,7 +504,7 @@ public class DefaultCCMCluster implements CCMCluster {
       execute(
           CCM_COMMAND
               + " add node%d -d dc%s -i %s -t %s -l %s --binary-itf %s -j %d -r %s -s -b"
-              + (dse ? " --dse" : ""),
+              + (CCM_TYPE == DSE ? " --dse" : (CCM_TYPE == DDAC ? " --ddac" : "")),
           n,
           dc,
           ip,
@@ -507,7 +517,7 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public void decommission(int n) {
+  public synchronized void decommission(int n) {
     LOGGER.debug(
         String.format(
             "Decommissioning: node %s (%s:%s) from %s", n, addressOfNode(n), binaryPort, this));
@@ -515,7 +525,7 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public void updateConfig(Map<String, Object> configs) {
+  public synchronized void updateConfig(Map<String, Object> configs) {
     StringBuilder confStr = new StringBuilder();
     for (Map.Entry<String, Object> entry : configs.entrySet()) {
       confStr.append(entry.getKey()).append(":").append(entry.getValue()).append(" ");
@@ -524,7 +534,7 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public void updateDSEConfig(Map<String, Object> configs) {
+  public synchronized void updateDSEConfig(Map<String, Object> configs) {
     StringBuilder confStr = new StringBuilder();
     for (Map.Entry<String, Object> entry : configs.entrySet()) {
       confStr.append(entry.getKey()).append(":").append(entry.getValue()).append(" ");
@@ -533,12 +543,12 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public void updateNodeConfig(int n, String key, Object value) {
+  public synchronized void updateNodeConfig(int n, String key, Object value) {
     updateNodeConfig(n, Collections.singletonMap(key, value));
   }
 
   @Override
-  public void updateNodeConfig(int n, Map<String, Object> configs) {
+  public synchronized void updateNodeConfig(int n, Map<String, Object> configs) {
     StringBuilder confStr = new StringBuilder();
     for (Map.Entry<String, Object> entry : configs.entrySet()) {
       confStr.append(entry.getKey()).append(":").append(entry.getValue()).append(" ");
@@ -547,12 +557,12 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public void updateDSENodeConfig(int n, String key, Object value) {
+  public synchronized void updateDSENodeConfig(int n, String key, Object value) {
     updateDSENodeConfig(n, Collections.singletonMap(key, value));
   }
 
   @Override
-  public void updateDSENodeConfig(int n, Map<String, Object> configs) {
+  public synchronized void updateDSENodeConfig(int n, Map<String, Object> configs) {
     StringBuilder confStr = new StringBuilder();
     for (Map.Entry<String, Object> entry : configs.entrySet()) {
       confStr.append(entry.getKey()).append(":").append(entry.getValue()).append(" ");
@@ -561,12 +571,12 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public void setWorkload(int node, Workload... workload) {
+  public synchronized void setWorkload(int node, Workload... workload) {
     String workloadStr = Joiner.on(",").join(workload);
     execute(CCM_COMMAND + " node%d setworkload %s", node, workloadStr);
   }
 
-  private String execute(String command, Object... args) {
+  private synchronized String execute(String command, Object... args) {
     String fullCommand = String.format(command, args) + " --config-dir=" + ccmDir;
     // 10 minutes timeout
     ExecuteWatchdog watchDog = new ExecuteWatchdog(TimeUnit.MINUTES.toMillis(10));
@@ -662,7 +672,7 @@ public class DefaultCCMCluster implements CCMCluster {
 
   @Override
   public String toString() {
-    return String.format("CCM cluster %s @ %s", clusterName, System.identityHashCode(this));
+    return String.format("CCM cluster %s (%s %s)", clusterName, getClusterType(), getVersion());
   }
 
   private void handleCCMException(CCMException e) {
@@ -711,19 +721,16 @@ public class DefaultCCMCluster implements CCMCluster {
   @SuppressWarnings("UnusedReturnValue")
   public static class Builder {
 
-    static final String RANDOM_PORT = "__RANDOM_PORT__";
+    private static final String RANDOM_PORT = "__RANDOM_PORT__";
 
     private static final Pattern RANDOM_PORT_PATTERN = Pattern.compile(RANDOM_PORT);
-    private final Set<String> createOptions = new LinkedHashSet<>(getDefaultCreateOptions());
+
+    private int[] nodes = {1};
+    private final Set<String> createOptions = new LinkedHashSet<>(DEFAULT_CREATE_OPTIONS);
     private final Set<String> jvmArgs = new LinkedHashSet<>();
     private final Map<String, Object> cassandraConfiguration = new LinkedHashMap<>();
     private final Map<String, Object> dseConfiguration = new LinkedHashMap<>();
     private final Map<Integer, Workload[]> workloads = new HashMap<>();
-    int[] nodes = {1};
-    private String ipPrefix = NetworkUtils.DEFAULT_IP_PREFIX;
-    private boolean start = true;
-    private boolean dse = true;
-    private Version version = DEFAULT_DSE_VERSION;
 
     private Builder() {
       cassandraConfiguration.put("start_rpc", false);
@@ -735,15 +742,6 @@ public class DefaultCCMCluster implements CCMCluster {
     /** Number of hosts for each DC. Defaults to {@code [1]} (1 DC with 1 node). */
     public Builder withNodes(int... nodes) {
       this.nodes = nodes;
-      return this;
-    }
-
-    public Builder withoutNodes() {
-      return withNodes();
-    }
-
-    public Builder withIpPrefix(String ipPrefix) {
-      this.ipPrefix = ipPrefix;
       return this;
     }
 
@@ -768,37 +766,7 @@ public class DefaultCCMCluster implements CCMCluster {
       return this;
     }
 
-    /** Whether to start the cluster immediately (defaults to true if this is never called). */
-    public Builder notStarted() {
-      this.start = false;
-      return this;
-    }
-
-    /** Sets this cluster to be a DSE cluster (defaults to {@code true} if this is never called). */
-    public Builder withDSE() {
-      this.createOptions.add("--dse");
-      this.dse = true;
-      return this;
-    }
-
-    /**
-     * The Cassandra or DSE version to use (defaults to {@link Version#DEFAULT_DSE_VERSION} if this
-     * is never called).
-     */
-    public Builder withVersion(String version) {
-      // remove any version previously set and
-      // install-dir, which is incompatible
-      createOptions.removeIf(
-          option -> option.startsWith("-v ") || option.startsWith("--install-dir"));
-      this.createOptions.add("-v " + version);
-      this.version = Version.parse(version);
-      return this;
-    }
-
-    /**
-     * Free-form options that will be added at the end of the {@code ccm create} command (defaults
-     * to {@link #getDefaultCreateOptions()} if this is never called).
-     */
+    /** Free-form options that will be added at the end of the {@code ccm create} command. */
     public Builder withCreateOptions(String... createOptions) {
       Collections.addAll(this.createOptions, createOptions);
       return this;
@@ -825,21 +793,6 @@ public class DefaultCCMCluster implements CCMCluster {
       return this;
     }
 
-    public Builder withStoragePort(int port) {
-      cassandraConfiguration.put("storage_port", port);
-      return this;
-    }
-
-    public Builder withThriftPort(int port) {
-      cassandraConfiguration.put("rpc_port", port);
-      return this;
-    }
-
-    public Builder withBinaryPort(int port) {
-      cassandraConfiguration.put("native_transport_port", port);
-      return this;
-    }
-
     /**
      * Sets the DSE workload for a given node.
      *
@@ -857,7 +810,7 @@ public class DefaultCCMCluster implements CCMCluster {
       String clusterName = StringUtils.uniqueIdentifier("ccm");
       Map<String, Object> cassandraConfiguration = randomizePorts(this.cassandraConfiguration);
       Map<String, Object> dseConfiguration = randomizePorts(this.dseConfiguration);
-      if (dse && version.compareTo(Version.parse("5.0")) >= 0) {
+      if (CCM_TYPE == DSE && CCM_VERSION.compareTo(Version.parse("5.0")) >= 0) {
         if (!dseConfiguration.containsKey("lease_netty_server_port")) {
           dseConfiguration.put("lease_netty_server_port", findAvailablePort());
         }
@@ -869,25 +822,21 @@ public class DefaultCCMCluster implements CCMCluster {
           dseConfiguration.put("graph.gremlin_server.port", findAvailablePort());
         }
       }
+      if (CCM_TYPE == DSE && CCM_VERSION.compareTo(Version.parse("5.0.0")) < 0
+          || CCM_TYPE == OSS && CCM_VERSION.compareTo(Version.parse("2.2.0")) < 0) {
+        cassandraConfiguration.remove("enable_user_defined_functions");
+      }
       int storagePort = Integer.parseInt(cassandraConfiguration.get("storage_port").toString());
       int thriftPort = Integer.parseInt(cassandraConfiguration.get("rpc_port").toString());
       int binaryPort =
           Integer.parseInt(cassandraConfiguration.get("native_transport_port").toString());
-      if (dse && version.compareTo(Version.parse("6.0.0")) >= 0) {
+      if (CCM_TYPE == DSE && CCM_VERSION.compareTo(Version.parse("6.0.0")) >= 0) {
         cassandraConfiguration.remove("start_rpc");
         cassandraConfiguration.remove("rpc_port");
       }
       DefaultCCMCluster ccm =
           new DefaultCCMCluster(
-              clusterName,
-              version,
-              nodes,
-              ipPrefix,
-              dse,
-              binaryPort,
-              thriftPort,
-              storagePort,
-              joinJvmArgs());
+              clusterName, nodes, binaryPort, thriftPort, storagePort, joinJvmArgs());
       Runtime.getRuntime()
           .addShutdownHook(
               new Thread(
@@ -898,29 +847,19 @@ public class DefaultCCMCluster implements CCMCluster {
       ccm.execute(buildCreateCommand(clusterName));
       updateNodeConf(ccm);
       ccm.updateConfig(cassandraConfiguration);
-      if (!dseConfiguration.isEmpty()) {
-        ccm.updateDSEConfig(dseConfiguration);
-      }
-      for (Map.Entry<Integer, Workload[]> entry : workloads.entrySet()) {
-        ccm.setWorkload(entry.getKey(), entry.getValue());
-      }
-      if (start) {
-        ccm.start();
+      if (CCM_TYPE == DSE) {
+        if (!dseConfiguration.isEmpty()) {
+          ccm.updateDSEConfig(dseConfiguration);
+        }
+        for (Map.Entry<Integer, Workload[]> entry : workloads.entrySet()) {
+          ccm.setWorkload(entry.getKey(), entry.getValue());
+        }
       }
       return ccm;
     }
 
-    public int weight() {
-      // the weight is simply function of the number of nodes
-      int totalNodes = 0;
-      for (int nodesPerDc : this.nodes) {
-        totalNodes += nodesPerDc;
-      }
-      return totalNodes;
-    }
-
     private String joinJvmArgs() {
-      StringBuilder allJvmArgs = new StringBuilder("");
+      StringBuilder allJvmArgs = new StringBuilder();
       for (String jvmArg : jvmArgs) {
         allJvmArgs.append(" --jvm_arg=");
         allJvmArgs.append(randomizePorts(jvmArg));
@@ -931,10 +870,10 @@ public class DefaultCCMCluster implements CCMCluster {
     private String buildCreateCommand(String clusterName) {
       StringBuilder result = new StringBuilder(CCM_COMMAND + " create");
       result.append(" ").append(clusterName);
-      result.append(" -i ").append(NetworkUtils.DEFAULT_IP_PREFIX);
+      result.append(" -i ").append(DEFAULT_IP_PREFIX);
       result.append(" ");
       if (nodes.length > 0) {
-        result.append(" -n ");
+        result.append("-n ");
         for (int i = 0; i < nodes.length; i++) {
           int node = nodes[i];
           if (i > 0) {
@@ -983,7 +922,7 @@ public class DefaultCCMCluster implements CCMCluster {
               if (line.startsWith("jmx_port")) {
                 line = String.format("jmx_port: '%s'", jmxPort);
               } else if (line.startsWith("remote_debug_port")) {
-                String ip = NetworkUtils.addressOfNode(ccm.ipPrefix, n).getHostAddress();
+                String ip = NetworkUtils.addressOfNode(DEFAULT_IP_PREFIX, n).getHostAddress();
                 line = String.format("remote_debug_port: %s:%s", ip, debugPort);
               }
               pw.println(line);
@@ -1041,12 +980,6 @@ public class DefaultCCMCluster implements CCMCluster {
         return false;
       }
       Builder builder = (Builder) o;
-      if (dse != builder.dse) {
-        return false;
-      }
-      if (!ipPrefix.equals(builder.ipPrefix)) {
-        return false;
-      }
       if (!Arrays.equals(nodes, builder.nodes)) {
         return false;
       }
@@ -1062,10 +995,7 @@ public class DefaultCCMCluster implements CCMCluster {
       if (!dseConfiguration.equals(builder.dseConfiguration)) {
         return false;
       }
-      if (!workloads.equals(builder.workloads)) {
-        return false;
-      }
-      return version.equals(builder.version);
+      return workloads.equals(builder.workloads);
     }
 
     @Override
@@ -1073,14 +1003,11 @@ public class DefaultCCMCluster implements CCMCluster {
       // do not include cluster name and start, only
       // properties relevant to the settings of the cluster
       int result = Arrays.hashCode(nodes);
-      result = 31 * result + (dse ? 1 : 0);
-      result = 31 * result + ipPrefix.hashCode();
       result = 31 * result + createOptions.hashCode();
       result = 31 * result + jvmArgs.hashCode();
       result = 31 * result + cassandraConfiguration.hashCode();
       result = 31 * result + dseConfiguration.hashCode();
       result = 31 * result + workloads.hashCode();
-      result = 31 * result + version.hashCode();
       return result;
     }
   }
