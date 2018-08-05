@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,7 +74,7 @@ class LogSettingsTest {
     deleteDirectory(Paths.get("./target/logs"));
   }
 
-  @AfterEach
+  @BeforeEach @AfterEach
   void resetLogbackConfiguration() throws JoranException {
     LogUtils.resetLogbackConfiguration();
   }
@@ -153,7 +152,7 @@ class LogSettingsTest {
       LoggerFactory.getLogger("com.datastax.driver").info("this should not appear");
       Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
       assertThat(logFile).exists();
-      String contents = Files.readAllLines(logFile).stream().collect(Collectors.joining());
+      String contents = String.join("", Files.readAllLines(logFile));
       assertThat(contents)
           .contains("this is a test 1", "this is a test 2", "this is a test 3")
           .doesNotContain("this should not appear");
@@ -177,11 +176,12 @@ class LogSettingsTest {
     dsbulkLogger.info("this should not appear");
     LOGGER.warn("this is a test 2");
     LOGGER.info("this should not appear");
-    LoggerFactory.getLogger("com.datastax.driver").warn("this is a test 3");
-    LoggerFactory.getLogger("com.datastax.driver").info("this should not appear");
+    Logger driverLogger = LoggerFactory.getLogger("com.datastax.driver");
+    driverLogger.warn("this is a test 3");
+    driverLogger.info("this should not appear");
     Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
     assertThat(logFile).exists();
-    String contents = Files.readAllLines(logFile).stream().collect(Collectors.joining());
+    String contents = String.join("", Files.readAllLines(logFile));
     assertThat(contents)
         .contains("this is a test 1", "this is a test 2", "this is a test 3")
         .doesNotContain("this should not appear");
@@ -206,7 +206,7 @@ class LogSettingsTest {
     LoggerFactory.getLogger("com.datastax.driver").debug("this should not appear");
     Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
     assertThat(logFile).exists();
-    String contents = Files.readAllLines(logFile).stream().collect(Collectors.joining());
+    String contents = String.join("", Files.readAllLines(logFile));
     assertThat(contents)
         .contains("this is a test 1", "this is a test 2", "this is a test 3")
         .doesNotContain("this should not appear");
