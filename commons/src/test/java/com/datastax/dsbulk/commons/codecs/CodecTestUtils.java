@@ -69,13 +69,13 @@ public class CodecTestUtils {
         new AttachmentPoint() {
           @Override
           @NotNull
-          public ProtocolVersion protocolVersion() {
+          public ProtocolVersion getProtocolVersion() {
             return protocolVersion;
           }
 
           @Override
           @NotNull
-          public CodecRegistry codecRegistry() {
+          public CodecRegistry getCodecRegistry() {
             return codecRegistry;
           }
         });

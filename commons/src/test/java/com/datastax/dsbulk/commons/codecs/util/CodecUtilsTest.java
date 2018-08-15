@@ -50,9 +50,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.dsbulk.commons.codecs.string.StringToInstantCodec;
+import com.datastax.dse.driver.api.core.data.time.DateRange;
 import com.datastax.dse.driver.api.core.type.geometry.LineString;
 import com.datastax.dse.driver.api.core.type.geometry.Polygon;
-import com.datastax.dse.driver.api.core.type.search.DateRange;
 import com.datastax.dse.driver.internal.core.type.geometry.DefaultLineString;
 import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
 import com.datastax.dse.driver.internal.core.type.geometry.DefaultPolygon;
@@ -77,7 +77,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class CodecUtilsTest {
@@ -1075,7 +1074,6 @@ class CodecUtilsTest {
   }
 
   @Test
-  @Disabled
   void should_parse_date_range() throws ParseException {
     DateRange dateRange = DateRange.parse("[* TO 2014-12-01]");
     assertThat(CodecUtils.parseDateRange(null)).isNull();

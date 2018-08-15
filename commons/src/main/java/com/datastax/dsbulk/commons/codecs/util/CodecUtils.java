@@ -13,10 +13,10 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
+import com.datastax.dse.driver.api.core.data.time.DateRange;
 import com.datastax.dse.driver.api.core.type.geometry.LineString;
 import com.datastax.dse.driver.api.core.type.geometry.Point;
 import com.datastax.dse.driver.api.core.type.geometry.Polygon;
-import com.datastax.dse.driver.api.core.type.search.DateRange;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import com.google.common.annotations.VisibleForTesting;
 import io.netty.util.concurrent.FastThreadLocal;

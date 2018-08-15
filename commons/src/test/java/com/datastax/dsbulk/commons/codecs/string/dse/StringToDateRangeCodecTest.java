@@ -11,7 +11,8 @@ package com.datastax.dsbulk.commons.codecs.string.dse;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.dse.driver.api.core.type.search.DateRange;
+import com.datastax.dse.driver.api.core.data.time.DateRange;
+import java.text.ParseException;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -20,9 +21,15 @@ import org.junit.jupiter.api.Test;
 class StringToDateRangeCodecTest {
 
   private List<String> nullStrings = newArrayList("NULL");
-  private DateRange dateRange = DateRange.parse("[* TO 2014-12-01]");
+  private DateRange dateRange;
 
-  StringToDateRangeCodecTest() {}
+  StringToDateRangeCodecTest() {
+    try {
+      dateRange = DateRange.parse("[* TO 2014-12-01]");
+    } catch (ParseException e) {
+      // swallow; can't happen.
+    }
+  }
 
   @Test
   void should_convert_from_valid_external() {
