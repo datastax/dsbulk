@@ -822,8 +822,8 @@ public class DefaultCCMCluster implements CCMCluster {
           dseConfiguration.put("graph.gremlin_server.port", findAvailablePort());
         }
       }
-      if (CCM_TYPE == DSE && CCM_VERSION.compareTo(Version.parse("5.0.0")) < 0
-          || CCM_TYPE == OSS && CCM_VERSION.compareTo(Version.parse("2.2.0")) < 0) {
+      if (((CCM_TYPE == DSE) && (CCM_VERSION.compareTo(Version.parse("5.0.0")) < 0))
+          || ((CCM_TYPE == OSS) && (CCM_VERSION.compareTo(Version.parse("2.2.0")) < 0))) {
         cassandraConfiguration.remove("enable_user_defined_functions");
       }
       int storagePort = Integer.parseInt(cassandraConfiguration.get("storage_port").toString());
