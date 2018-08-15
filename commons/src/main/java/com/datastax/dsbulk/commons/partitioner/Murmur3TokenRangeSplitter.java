@@ -44,9 +44,9 @@ class Murmur3TokenRangeSplitter implements TokenRangeSplitter<Long, Token<Long>>
                                 rangeSize
                                     .multiply(BigInteger.valueOf(i))
                                     .divide(BigInteger.valueOf(splitPointsCount)))
-                            // only convert to long at the end of the computation to avoid
-                            // long overflows.
-                            .longValueExact()))
+                            // DAT-334: use longValue() instead of longValueExact() to allow
+                            // long overflows
+                            .longValue()))
             .collect(Collectors.toList());
     splitPoints.add(tokenRange.end());
     return IntStream.range(0, splitPoints.size() - 1)
