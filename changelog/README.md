@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.3.0 (in progress)
+
+- [bug] DAT-334: Murmur3TokenRangeSplitter should allow long overflows when splitting ranges.
+
+
 ### 1.2.0
 
 - [bug] DAT-302: CsvWriter trims leading/trailing spaces in values.
