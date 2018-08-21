@@ -74,7 +74,8 @@ class LogSettingsTest {
     deleteDirectory(Paths.get("./target/logs"));
   }
 
-  @BeforeEach @AfterEach
+  @BeforeEach
+  @AfterEach
   void resetLogbackConfiguration() throws JoranException {
     LogUtils.resetLogbackConfiguration();
   }
