@@ -156,6 +156,7 @@ public class LogSettings {
 
   public void logEffectiveSettings(Config global) {
     LOGGER.debug("{} starting.", HelpUtils.getVersionMessage());
+    LOGGER.debug("Available processors: {}.", Runtime.getRuntime().availableProcessors());
     LOGGER.info("Operation directory: {}", executionDirectory);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Effective settings:");
