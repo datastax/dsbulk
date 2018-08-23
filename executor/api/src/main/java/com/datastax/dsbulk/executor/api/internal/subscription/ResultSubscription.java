@@ -68,11 +68,11 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
 
   final Optional<ExecutionListener> listener;
   private final Optional<Semaphore> requestPermits;
-  private final Optional<RateLimiter> rateLimiter;
+  final Optional<RateLimiter> rateLimiter;
   private final boolean failFast;
 
   /** The number of writes in the batch. 1 for other types of statement. */
-  private final int batchSize;
+  final int batchSize;
 
   /** Tracks the number of items requested by the subscriber. */
   private final AtomicLong requested = new AtomicLong(0);
@@ -328,8 +328,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   private void fetchNextPage(Page current) {
     // A local execution context to record metrics for this specific request-response cycle.
     DefaultExecutionContext local = new DefaultExecutionContext();
-    rateLimiter.ifPresent(limiter -> limiter.acquire(batchSize));
-    requestPermits.ifPresent(permits -> permits.acquireUninterruptibly(1));
+    onBeforeRequestStarted();
     local.start();
     onRequestStarted(local);
     current
@@ -374,6 +373,10 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
               }
               drain();
             });
+  }
+
+  void onBeforeRequestStarted() {
+    requestPermits.ifPresent(Semaphore::acquireUninterruptibly);
   }
 
   /*
@@ -428,6 +431,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
 
   private void doOnNext(R result) {
     try {
+      onBeforeResultEmitted(result);
       subscriber.onNext(result);
     } catch (Throwable t) {
       LOG.error(
@@ -436,6 +440,10 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
           t);
       cancel();
     }
+  }
+
+  void onBeforeResultEmitted(R result) {
+    // nothing to do by default
   }
 
   private void stop(Optional<BulkExecutionException> error) {

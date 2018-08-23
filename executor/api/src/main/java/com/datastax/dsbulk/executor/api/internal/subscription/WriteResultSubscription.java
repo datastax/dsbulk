@@ -54,6 +54,12 @@ public class WriteResultSubscription extends ResultSubscription<WriteResult, Res
   }
 
   @Override
+  void onBeforeRequestStarted() {
+    rateLimiter.ifPresent(limiter -> limiter.acquire(batchSize));
+    super.onBeforeRequestStarted();
+  }
+
+  @Override
   void onRequestStarted(ExecutionContext local) {
     listener.ifPresent(l -> l.onWriteRequestStarted(statement, local));
   }

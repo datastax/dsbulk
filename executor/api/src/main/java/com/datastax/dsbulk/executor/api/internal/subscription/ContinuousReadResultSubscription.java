@@ -82,6 +82,11 @@ public class ContinuousReadResultSubscription
   }
 
   @Override
+  void onBeforeResultEmitted(ReadResult result) {
+    rateLimiter.ifPresent(RateLimiter::acquire);
+  }
+
+  @Override
   protected ReadResult toErrorResult(BulkExecutionException error) {
     return new DefaultReadResult(error);
   }
