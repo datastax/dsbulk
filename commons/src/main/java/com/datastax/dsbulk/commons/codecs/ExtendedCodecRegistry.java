@@ -67,7 +67,9 @@ import com.datastax.dsbulk.commons.codecs.json.dse.JsonNodeToPointCodec;
 import com.datastax.dsbulk.commons.codecs.json.dse.JsonNodeToPolygonCodec;
 import com.datastax.dsbulk.commons.codecs.map.MapToMapCodec;
 import com.datastax.dsbulk.commons.codecs.map.MapToUDTCodec;
+import com.datastax.dsbulk.commons.codecs.number.BooleanToBooleanCodec;
 import com.datastax.dsbulk.commons.codecs.number.BooleanToNumberCodec;
+import com.datastax.dsbulk.commons.codecs.number.BooleanToStringCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToBooleanCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToInstantCodec;
 import com.datastax.dsbulk.commons.codecs.number.NumberToNumberCodec;
@@ -395,6 +397,21 @@ public class ExtendedCodecRegistry {
         // "other" type to String. Such a mechanism wouldn't be restricted to converting
         // number types to String, but rather any java type that has a corresponding cql type.
         return new NumberToStringCodec<>(numberType, numberFormat);
+      }
+    }
+
+    if (javaType.equals(GenericType.BOOLEAN)) {
+      if (cqlType == DataTypes.TEXT) {
+        return new BooleanToStringCodec();
+      }
+      if (cqlType == DataTypes.BOOLEAN) {
+        // It sounds silly to have an idempotent codec like this, but if we don't, other
+        // parts of the code that rely on converting codec (MapToUDT, ListToUDT for example)
+        // will have to lookup their field codec via codecFor so that the underlying codec
+        // registry returns the appropriate TypeCodec (for the boolean->boolean case), which is
+        // not a ConvertingCodec, which leads to some ugly conditional logic for using the
+        // two different types of codecs.
+        return new BooleanToBooleanCodec();
       }
     }
 
