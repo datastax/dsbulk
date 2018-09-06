@@ -41,7 +41,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <oss.driver.version>4.0.0-beta2-3ab2cc858-kafka-SNAPSHOT</oss.driver.version>
+    <oss.driver.version>4.0.0-beta2-aaefe1c54-kafka-SNAPSHOT</oss.driver.version>
     <dse.driver.version>2.0.0-alpha1-kafka-ft-SNAPSHOT</dse.driver.version>
     <reactive-streams.version>1.0.2</reactive-streams.version>
     <rx-java.version>2.1.13</rx-java.version>
