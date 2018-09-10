@@ -77,6 +77,7 @@ public abstract class CCMClusterFactory {
     private final int[] numberOfNodes;
     private final boolean dse;
     private final boolean ssl;
+    private final boolean hostnameVerification;
     private final boolean auth;
     private final Map<String, Object> cassandraConfig;
     private final Map<String, Object> dseConfig;
@@ -88,6 +89,7 @@ public abstract class CCMClusterFactory {
       this.numberOfNodes = config.numberOfNodes();
       this.dse = config.dse();
       this.ssl = config.ssl();
+      this.hostnameVerification = config.hostnameVerification();
       this.auth = config.auth();
       this.cassandraConfig = toConfigMap(config.config());
       this.dseConfig = toConfigMap(config.dseConfig());
@@ -152,7 +154,7 @@ public abstract class CCMClusterFactory {
         ccmBuilder.withDSE();
       }
       if (ssl) {
-        ccmBuilder.withSSL();
+        ccmBuilder.withSSL(hostnameVerification);
       }
       if (auth) {
         ccmBuilder.withAuth();

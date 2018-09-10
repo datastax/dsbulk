@@ -86,6 +86,8 @@ public class DefaultCCMCluster implements CCMCluster {
   public static final File DEFAULT_CLIENT_CERT_CHAIN_FILE = createTempStore("/client.crt");
   private static final File DEFAULT_SERVER_TRUSTSTORE_FILE = createTempStore("/server.truststore");
   private static final File DEFAULT_SERVER_KEYSTORE_FILE = createTempStore("/server.keystore");
+  private static final File DEFAULT_SERVER_LOCALHOST_KEYSTORE_FILE =
+      createTempStore("/server_localhost.keystore");
 
   private static final Set<String> DEFAULT_CREATE_OPTIONS;
 
@@ -747,18 +749,21 @@ public class DefaultCCMCluster implements CCMCluster {
     }
 
     /** Enables SSL encryption. */
-    public Builder withSSL() {
+    public Builder withSSL(boolean hostnameVerification) {
       cassandraConfiguration.put("client_encryption_options.enabled", "true");
       cassandraConfiguration.put(
-          "client_encryption_options.keystore", DEFAULT_SERVER_KEYSTORE_FILE.getAbsolutePath());
+          "client_encryption_options.keystore",
+          hostnameVerification
+              ? DEFAULT_SERVER_LOCALHOST_KEYSTORE_FILE.getAbsolutePath()
+              : DEFAULT_SERVER_KEYSTORE_FILE.getAbsolutePath());
       cassandraConfiguration.put(
           "client_encryption_options.keystore_password", DEFAULT_SERVER_KEYSTORE_PASSWORD);
       return this;
     }
 
-    /** Enables client authentication. This also enables encryption ({@link #withSSL()}. */
+    /** Enables client authentication. This also enables encryption ({@link #withSSL(boolean)}. */
     public Builder withAuth() {
-      withSSL();
+      withSSL(false);
       cassandraConfiguration.put("client_encryption_options.require_client_auth", "true");
       cassandraConfiguration.put(
           "client_encryption_options.truststore", DEFAULT_SERVER_TRUSTSTORE_FILE.getAbsolutePath());
