@@ -65,8 +65,12 @@ public class DefaultCCMCluster implements CCMCluster {
   private static final Logger CCM_ERR_LOGGER =
       LoggerFactory.getLogger("com.datastax.dsbulk.commons.tests.ccm.CCM_ERR");
 
-  public static final String DEFAULT_CLIENT_TRUSTSTORE_PASSWORD = "cassandra1sfun";
-  public static final String DEFAULT_CLIENT_KEYSTORE_PASSWORD = "cassandra1sfun";
+  // TODO: A fair bit of the constants and logic in this class should be removed and we
+  // should use the constants and methods in the CcmBridge class in the java-driver-test-infra
+  // module. This also means removing our certs/keystores/truststores and using those from
+  // that module.
+  //  public static final String DEFAULT_CLIENT_TRUSTSTORE_PASSWORD = "cassandra1sfun";
+  //  public static final String DEFAULT_CLIENT_KEYSTORE_PASSWORD = "cassandra1sfun";
   private static final String DEFAULT_SERVER_TRUSTSTORE_PASSWORD = "cassandra1sfun";
   private static final String DEFAULT_SERVER_KEYSTORE_PASSWORD = "cassandra1sfun";
 

@@ -11,12 +11,12 @@ package com.datastax.dsbulk.commons.tests.driver.factory;
 import static com.datastax.dsbulk.commons.tests.utils.SessionUtils.createSimpleKeyspace;
 import static com.datastax.dsbulk.commons.tests.utils.SessionUtils.useKeyspace;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_ENGINE_FACTORY_CLASS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_HOSTNAME_VALIDATION;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_KEYSTORE_PASSWORD;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_KEYSTORE_PATH;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_TRUSTSTORE_PASSWORD;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_TRUSTSTORE_PATH;
 
-import com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionFactoryMethod;
@@ -28,6 +28,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.DriverOption;
+import com.datastax.oss.driver.api.testinfra.ccm.CcmBridge;
 import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoaderBuilder;
 import com.google.common.collect.ImmutableMap;
@@ -90,10 +91,11 @@ public abstract class SessionFactory {
     private static final ImmutableMap<DriverOption, String> SSL_OPTIONS =
         ImmutableMap.<DriverOption, String>builder()
             .put(SSL_ENGINE_FACTORY_CLASS, "DefaultSslEngineFactory")
-            .put(SSL_TRUSTSTORE_PATH, DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_FILE.toString())
-            .put(SSL_TRUSTSTORE_PASSWORD, DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD)
-            .put(SSL_KEYSTORE_PATH, DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_FILE.toString())
-            .put(SSL_KEYSTORE_PASSWORD, DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD)
+            .put(SSL_TRUSTSTORE_PATH, CcmBridge.DEFAULT_CLIENT_TRUSTSTORE_FILE.toString())
+            .put(SSL_TRUSTSTORE_PASSWORD, CcmBridge.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD)
+            .put(SSL_KEYSTORE_PATH, CcmBridge.DEFAULT_CLIENT_KEYSTORE_FILE.toString())
+            .put(SSL_KEYSTORE_PASSWORD, CcmBridge.DEFAULT_CLIENT_KEYSTORE_PASSWORD)
+            .put(SSL_HOSTNAME_VALIDATION, "false")
             .build();
 
     private final SessionConfig.UseKeyspaceMode useKeyspaceMode;
