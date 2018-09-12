@@ -10,6 +10,9 @@ package com.datastax.dsbulk.commons.tests.driver.factory;
 
 import static com.datastax.dsbulk.commons.tests.utils.SessionUtils.createSimpleKeyspace;
 import static com.datastax.dsbulk.commons.tests.utils.SessionUtils.useKeyspace;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.AUTH_PROVIDER_CLASS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.AUTH_PROVIDER_PASSWORD;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.AUTH_PROVIDER_USER_NAME;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_ENGINE_FACTORY_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_HOSTNAME_VALIDATION;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_KEYSTORE_PASSWORD;
@@ -24,6 +27,7 @@ import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.api.core.DseSessionBuilder;
+import com.datastax.dse.driver.api.core.auth.DsePlainTextAuthProvider;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
@@ -102,6 +106,14 @@ public abstract class SessionFactory {
     private final String loggedKeyspaceName;
     private final DriverConfigLoader configLoader;
 
+    private static String[] computeCredentials(String[] credentials) {
+      if (credentials.length != 0 && credentials.length != 2) {
+        throw new IllegalArgumentException(
+            "Credentials should be specified as an array of two elements (username and password)");
+      }
+      return credentials.length == 2 ? credentials : null;
+    }
+
     private SessionAnnotationFactory(SessionConfig config, int numDcs) {
       useKeyspaceMode = config.useKeyspace();
       loggedKeyspaceName = config.loggedKeyspaceName();
@@ -115,6 +127,15 @@ public abstract class SessionFactory {
             .entrySet()
             .forEach(entry -> loaderBuilder.with(entry.getKey(), entry.getValue().unwrapped()));
       }
+
+      String[] credentials = computeCredentials(config.credentials());
+      if (credentials != null) {
+        loaderBuilder
+            .withClass(AUTH_PROVIDER_CLASS, DsePlainTextAuthProvider.class)
+            .withString(AUTH_PROVIDER_USER_NAME, credentials[0])
+            .withString(AUTH_PROVIDER_PASSWORD, credentials[1]);
+      }
+
       if (config.ssl()) {
         for (Map.Entry<DriverOption, String> entry : SSL_OPTIONS.entrySet()) {
           loaderBuilder.with(entry.getKey(), entry.getValue());
