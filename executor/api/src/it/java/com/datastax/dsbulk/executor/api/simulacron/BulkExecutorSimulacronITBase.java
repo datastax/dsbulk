@@ -57,6 +57,7 @@ public abstract class BulkExecutorSimulacronITBase extends BulkExecutorITBase {
     return new SuccessResult(rows, column_types);
   }
 
+  @Override
   protected void verifyWrites(int expected) {
     long size =
         simulacron

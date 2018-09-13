@@ -44,6 +44,7 @@ public abstract class BulkExecutorCCMITBase extends BulkExecutorITBase {
     session.execute("TRUNCATE test_write");
   }
 
+  @Override
   protected void verifyWrites(int expected) {
     verifyReads(
         expected,
