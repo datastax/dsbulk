@@ -377,6 +377,12 @@ The maximum number of files that can be written simultaneously. This setting is 
 
 Default: **"0.25C"**.
 
+#### -newline,--connector.csv.newline _&lt;string&gt;_
+
+The character(s) that represent end of line (EOL).  When set to 'auto' (default), uses the system's EOL and auto-detection of EOL when reading the data. Character could be specified with Java syntax, "\r\n", for example.
+
+Default: **"auto"**.
+
 #### --connector.csv.recursive _&lt;boolean&gt;_
 
 Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.

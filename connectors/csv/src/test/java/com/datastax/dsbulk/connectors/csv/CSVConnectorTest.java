@@ -205,6 +205,55 @@ class CSVConnectorTest {
   }
 
   @Test
+  void should_read_from_stdin_with_special_newline() throws Exception {
+    InputStream stdin = System.in;
+    try {
+      String line = "abc,de\nf,ghk\r\n";
+      InputStream is = new ByteArrayInputStream(line.getBytes("UTF-8"));
+      System.setIn(is);
+      CSVConnector connector = new CSVConnector();
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString("header = false, url = -, newline = \"\\r\\n\"")
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      List<Record> actual = Flux.defer(connector.read()).collectList().block();
+      assertThat(actual).hasSize(1);
+      assertThat(actual.get(0).getSource()).isEqualTo(line);
+      assertThat(actual.get(0).values()).containsExactly("abc", "de\nf", "ghk");
+      connector.close();
+    } finally {
+      System.setIn(stdin);
+    }
+  }
+
+  @Test
+  void should_write_to_stdout_with_special_newline() throws Exception {
+    PrintStream stdout = System.out;
+    try {
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      PrintStream out = new PrintStream(baos);
+      System.setOut(out);
+      CSVConnector connector = new CSVConnector();
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString("header = false, newline = \"\\r\\n\"")
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Flux.<Record>just(new DefaultRecord(null, null, -1, null, "abc", "de\nf", "ghk"))
+          .transform(connector.write())
+          .blockLast();
+      assertThat(new String(baos.toByteArray(), "UTF-8")).isEqualTo("abc,\"de\nf\",ghk\r\n");
+
+      connector.close();
+    } finally {
+      System.setOut(stdout);
+    }
+  }
+
+  @Test
   void should_read_all_resources_in_directory() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =

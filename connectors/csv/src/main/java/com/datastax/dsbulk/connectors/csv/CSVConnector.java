@@ -91,6 +91,7 @@ public class CSVConnector implements Connector {
   private static final String QUOTE = "quote";
   private static final String ESCAPE = "escape";
   private static final String COMMENT = "comment";
+  private static final String NEWLINE = "newline";
   private static final String SKIP_RECORDS = "skipRecords";
   private static final String MAX_RECORDS = "maxRecords";
   private static final String MAX_CONCURRENT_FILES = "maxConcurrentFiles";
@@ -99,6 +100,7 @@ public class CSVConnector implements Connector {
   private static final String FILE_NAME_FORMAT = "fileNameFormat";
   private static final String MAX_CHARS_PER_COLUMN = "maxCharsPerColumn";
   private static final String MAX_COLUMNS = "maxColumns";
+  private static final String AUTO_NEWLINE = "auto";
 
   private boolean read;
   private URL url;
@@ -109,6 +111,7 @@ public class CSVConnector implements Connector {
   private char quote;
   private char escape;
   private char comment;
+  private String newline;
   private long skipRecords;
   private long maxRecords;
   private int maxConcurrentFiles;
@@ -140,6 +143,7 @@ public class CSVConnector implements Connector {
       quote = settings.getChar(QUOTE);
       escape = settings.getChar(ESCAPE);
       comment = settings.getChar(COMMENT);
+      newline = settings.getString(NEWLINE);
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
@@ -165,6 +169,10 @@ public class CSVConnector implements Connector {
     format.setQuote(quote);
     format.setQuoteEscape(escape);
     format.setComment(comment);
+    boolean autoNewline = AUTO_NEWLINE.equalsIgnoreCase(newline);
+    if (!autoNewline) {
+      format.setLineSeparator(newline);
+    }
     if (read) {
       parserSettings = new CsvParserSettings();
       parserSettings.setFormat(format);
@@ -176,8 +184,10 @@ public class CSVConnector implements Connector {
       // has fewer lines than skipRecords;
       // we'll use the skip() operator instead.
       // parserSettings.setNumberOfRowsToSkip(skipRecords);
+      if (autoNewline) {
+        parserSettings.setLineSeparatorDetectionEnabled(true);
+      }
       parserSettings.setHeaderExtractionEnabled(header);
-      parserSettings.setLineSeparatorDetectionEnabled(true);
       parserSettings.setMaxCharsPerColumn(maxCharsPerColumn);
       parserSettings.setMaxColumns(maxColumns);
     } else {
@@ -188,6 +198,9 @@ public class CSVConnector implements Connector {
       writerSettings.setIgnoreTrailingWhitespaces(false);
       writerSettings.setMaxColumns(maxColumns);
       counter = new AtomicInteger(0);
+      if (!autoNewline) {
+        writerSettings.setNormalizeLineEndingsWithinQuotes(false);
+      }
     }
   }
 
