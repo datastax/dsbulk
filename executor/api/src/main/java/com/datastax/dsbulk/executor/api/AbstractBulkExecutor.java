@@ -58,11 +58,11 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
     this.session = session;
     this.failFast = failFast;
     this.requestPermits =
-        maxInFlightRequests < 0
+        maxInFlightRequests <= 0
             ? Optional.empty()
             : Optional.of(new Semaphore(maxInFlightRequests));
     this.rateLimiter =
-        maxRequestsPerSecond < 0
+        maxRequestsPerSecond <= 0
             ? Optional.empty()
             : Optional.of(RateLimiter.create(maxRequestsPerSecond));
     this.listener = Optional.ofNullable(listener);

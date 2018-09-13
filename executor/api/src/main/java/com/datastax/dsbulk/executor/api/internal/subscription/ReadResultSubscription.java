@@ -65,6 +65,11 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
     listener.ifPresent(l -> l.onReadRequestFailed(statement, t, local));
   }
 
+  @Override
+  void onBeforeResultEmitted(ReadResult result) {
+    rateLimiter.ifPresent(RateLimiter::acquire);
+  }
+
   private class ReadResultIterator extends AbstractIterator<ReadResult> {
 
     private final ResultSet rs;
