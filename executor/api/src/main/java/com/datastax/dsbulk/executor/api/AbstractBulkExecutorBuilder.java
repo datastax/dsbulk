@@ -64,12 +64,12 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
   }
 
   /**
-   * Sets the maximum number of "in-flight" requests. In other words, sets the maximum amount of
+   * Sets the maximum number of "in-flight" requests. In other words, sets the maximum number of
    * concurrent uncompleted futures waiting for a response from the server. If that limit is
    * reached, the executor will block until the number of in-flight requests drops below the
    * threshold. <em>This feature should not be used in a fully non-blocking application</em>.
    *
-   * <p>This acts as a safeguard against workflows that generate more requests that they can handle.
+   * <p>This acts as a safeguard against workflows that generate more requests than they can handle.
    * The default is {@link
    * com.datastax.dsbulk.executor.api.AbstractBulkExecutor#DEFAULT_MAX_IN_FLIGHT_REQUESTS}. Setting
    * this option to any negative value will disable it.
@@ -89,7 +89,7 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
    * feature should not be used in a fully non-blocking application</em>.
    *
    * <p>This acts as a safeguard against workflows that could overwhelm the cluster with more
-   * requests that it can handle. The default is {@link
+   * requests than it can handle. The default is {@link
    * com.datastax.dsbulk.executor.api.AbstractBulkExecutor#DEFAULT_MAX_REQUESTS_PER_SECOND}. Setting
    * this option to any negative value will disable it.
    *
