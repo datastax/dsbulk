@@ -377,6 +377,12 @@ The maximum number of files that can be written simultaneously. This setting is 
 
 Default: **"0.25C"**.
 
+#### -newline,--connector.csv.newline _&lt;string&gt;_
+
+The character(s) that represent a line ending. When set to the special value `auto` (default), the system's line separator, as determined by `System.lineSeparator()`, will be used when writing, and auto-detection of line endings will be enabled when reading. Only one or two characters can be specified; beware that most typical line separator characters need to be escaped, e.g. one should specify `\r\n` for the typical line ending on Windows systems (carriage return followed by a new line).
+
+Default: **"auto"**.
+
 #### --connector.csv.recursive _&lt;boolean&gt;_
 
 Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.
