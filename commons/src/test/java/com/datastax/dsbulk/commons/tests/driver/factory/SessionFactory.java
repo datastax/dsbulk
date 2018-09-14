@@ -20,7 +20,6 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_KE
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_TRUSTSTORE_PASSWORD;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_TRUSTSTORE_PATH;
 
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionFactoryMethod;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
@@ -64,10 +63,10 @@ public abstract class SessionFactory {
   }
 
   public static SessionFactory createInstanceForAnnotatedElement(
-      AnnotatedElement element, Class<?> testClass) {
+      AnnotatedElement element, Class<?> testClass, String dcName) {
     SessionFactoryMethod factoryRef = element.getAnnotation(SessionFactoryMethod.class);
     SessionConfig config = element.getAnnotation(SessionConfig.class);
-    CCMConfig ccmConfig = ReflectionUtils.locateClassAnnotation(testClass, CCMConfig.class);
+
     if (factoryRef != null) {
       if (config != null) {
         throw new IllegalStateException(
@@ -80,8 +79,7 @@ public abstract class SessionFactory {
     if (config == null) {
       config = DEFAULT_SESSION_CONFIG;
     }
-    return new SessionAnnotationFactory(
-        config, ccmConfig != null ? ccmConfig.numberOfNodes().length : 1);
+    return new SessionAnnotationFactory(config, dcName);
   }
 
   public abstract DseSessionBuilder createSessionBuilder();
@@ -114,13 +112,12 @@ public abstract class SessionFactory {
       return credentials.length == 2 ? credentials : null;
     }
 
-    private SessionAnnotationFactory(SessionConfig config, int numDcs) {
+    private SessionAnnotationFactory(SessionConfig config, String dcName) {
       useKeyspaceMode = config.useKeyspace();
       loggedKeyspaceName = config.loggedKeyspaceName();
-      String defaultDc = numDcs == 1 ? "Cassandra" : "dc1";
       DefaultDriverConfigLoaderBuilder loaderBuilder =
           SessionUtils.configLoaderBuilder()
-              .withString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, defaultDc);
+              .withString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, dcName);
       for (String opt : config.settings()) {
         Config keyAndVal = ConfigFactory.parseString(opt);
         keyAndVal

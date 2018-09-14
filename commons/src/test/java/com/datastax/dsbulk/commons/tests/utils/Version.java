@@ -20,23 +20,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public class Version implements Comparable<Version> {
 
-  public static final Version DEFAULT_OSS_VERSION;
-
-  public static final Version DEFAULT_DSE_VERSION;
-
   private static final Pattern PATTERN = Pattern.compile("(\\d+)\\.(\\d+)(\\.(\\d+))?(\\.(\\d+))?");
-
-  static {
-
-    // These need other static fields to be initialized first
-
-    DEFAULT_OSS_VERSION =
-        parse(
-            System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CASSANDRA_VERSION", "3.10"));
-
-    DEFAULT_DSE_VERSION =
-        parse(System.getProperty("com.datastax.dsbulk.commons.tests.ccm.DSE_VERSION", "6.0.0"));
-  }
 
   public static Version parse(String versionStr) {
     if (versionStr == null || versionStr.isEmpty()) {

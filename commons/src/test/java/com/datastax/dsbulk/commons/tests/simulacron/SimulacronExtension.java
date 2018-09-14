@@ -11,12 +11,12 @@ package com.datastax.dsbulk.commons.tests.simulacron;
 import com.datastax.dsbulk.commons.tests.RemoteClusterExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.factory.BoundClusterFactory;
 import com.datastax.dsbulk.commons.tests.utils.NetworkUtils;
-import com.datastax.oss.simulacron.server.AddressResolver;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.datastax.oss.simulacron.server.BoundNode;
+import com.datastax.oss.simulacron.server.Inet4Resolver;
 import com.datastax.oss.simulacron.server.Server;
 import java.lang.reflect.Parameter;
-import java.net.InetSocketAddress;
+import java.net.InetAddress;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -36,7 +36,7 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
   private static final String SIMULACRON = "SIMULACRON";
   private static final Server SERVER =
       Server.builder()
-          .withAddressResolver(new AddressResolver.Inet4Resolver(NetworkUtils.findAvailablePort()))
+          .withAddressResolver(new Inet4Resolver(NetworkUtils.findAvailablePort()))
           .build();
 
   @Override
@@ -88,13 +88,18 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
   }
 
   @Override
-  protected List<InetSocketAddress> getContactPoints(ExtensionContext context) {
+  protected List<InetAddress> getContactPoints(ExtensionContext context) {
     return getOrCreateBoundCluster(context)
         .dc(0)
         .getNodes()
         .stream()
-        .map(BoundNode::inetSocketAddress)
+        .map(BoundNode::inet)
         .collect(Collectors.toList());
+  }
+
+  @Override
+  protected String getLocalDCName(ExtensionContext context) {
+    return getOrCreateBoundCluster(context).dc(0).getName();
   }
 
   private BoundCluster getOrCreateBoundCluster(ExtensionContext context) {

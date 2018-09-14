@@ -8,17 +8,18 @@
  */
 package com.datastax.dsbulk.commons.tests.ccm;
 
-import static com.datastax.dsbulk.commons.tests.utils.Version.DEFAULT_DSE_VERSION;
-import static com.datastax.dsbulk.commons.tests.utils.Version.DEFAULT_OSS_VERSION;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.CCM_TYPE;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.CCM_VERSION;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.RemoteClusterExtension;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.commons.tests.ccm.factory.CCMClusterFactory;
 import com.datastax.dsbulk.commons.tests.utils.NetworkUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
-import com.datastax.dsbulk.commons.tests.utils.VersionRequirement;
 import com.google.common.base.Splitter;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -27,6 +28,7 @@ import java.lang.reflect.Parameter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,28 +44,34 @@ import org.slf4j.LoggerFactory;
 public class CCMExtension extends RemoteClusterExtension implements ExecutionCondition {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CCMExtension.class);
+
   private static final String CCM = "CCM";
 
   @Override
   public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
-    Class<?> testClass = context.getRequiredTestClass();
-    CCMConfig config = ReflectionUtils.locateClassAnnotation(testClass, CCMConfig.class);
-    VersionRequirement requirement =
-        ReflectionUtils.locateClassAnnotation(testClass, VersionRequirement.class);
-    if (config != null) {
-      if (config.dse() && PlatformUtils.isWindows()) {
-        return ConditionEvaluationResult.disabled("Test not compatible with windows");
-      }
+    if (CCM_TYPE == DSE && PlatformUtils.isWindows()) {
+      return ConditionEvaluationResult.disabled(
+          "CCM tests are configured to use DSE which is not compatible with Windows");
     }
-    if (requirement != null) {
-      Version min = Version.parse(requirement.min());
-      Version max = Version.parse(requirement.max());
-      Version def = config == null || config.dse() ? DEFAULT_DSE_VERSION : DEFAULT_OSS_VERSION;
-      if (!Version.isWithinRange(min, max, def)) {
+    Class<?> testClass = context.getRequiredTestClass();
+    CCMRequirements requirements =
+        ReflectionUtils.locateClassAnnotation(testClass, CCMRequirements.class);
+    if (requirements != null) {
+      if (!Arrays.asList(requirements.compatibleTypes()).contains(CCM_TYPE)) {
         return ConditionEvaluationResult.disabled(
-            String.format(
-                "Test requires version in range [%s,%s[ but %s is configured.",
-                requirement.min(), requirement.max(), def));
+            String.format("Test is not compatible with CCM cluster type in use: %s.", CCM_TYPE));
+      }
+      for (CCMVersionRequirement requirement : requirements.versionRequirements()) {
+        if (requirement.type() == CCM_TYPE) {
+          Version min = Version.parse(requirement.min());
+          Version max = Version.parse(requirement.max());
+          if (!Version.isWithinRange(min, max, CCM_VERSION)) {
+            return ConditionEvaluationResult.disabled(
+                String.format(
+                    "Test requires version in range [%s,%s[ but %s is configured.",
+                    requirement.min(), requirement.max(), CCM_VERSION));
+          }
+        }
       }
     }
     return ConditionEvaluationResult.enabled("OK");
@@ -105,13 +113,14 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
   }
 
   @Override
-  protected List<InetSocketAddress> getContactPoints(ExtensionContext context) {
-    int binaryPort = getBinaryPort(context);
-    return getOrCreateCCM(context)
-        .getInitialContactPoints()
-        .stream()
-        .map(addr -> new InetSocketAddress(addr, binaryPort))
-        .collect(Collectors.toList());
+  protected List<InetAddress> getContactPoints(ExtensionContext context) {
+    return getOrCreateCCM(context).getInitialContactPoints();
+  }
+
+  @Override
+  public String getLocalDCName(ExtensionContext context) {
+    CCMCluster ccm = getOrCreateCCM(context);
+    return ccm.getDC(1);
   }
 
   private CCMCluster getOrCreateCCM(ExtensionContext context) {
@@ -131,7 +140,9 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
               } else {
                 CCMClusterFactory factory =
                     CCMClusterFactory.createInstanceForClass(context.getRequiredTestClass());
-                return factory.createCCMClusterBuilder().build();
+                DefaultCCMCluster ccm = factory.createCCMClusterBuilder().build();
+                ccm.start();
+                return ccm;
               }
             },
             CCMCluster.class);
@@ -150,13 +161,14 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
     private final int[] nodesPerDC;
     private final String ipPrefix;
     private final Version version;
+    private final Type clusterType;
 
     LiveCCMCluster(String config) {
       this.config =
           ConfigFactory.parseString(config)
               .withFallback(
                   ConfigFactory.parseString(
-                      "port=9042, contactPoints=[127.0.0.1], clusterName=preexisting, nodesPerDc=[1], dse=true"));
+                      "port=9042, contactPoints=[127.0.0.1], clusterName=preexisting, nodesPerDc=[1], type=DSE"));
 
       //
       contactPoints =
@@ -188,12 +200,13 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
       ipPrefix = String.format("%s.%s.%s.", parts.get(0), parts.get(1), parts.get(2));
 
       //
+      clusterType = this.config.getEnum(Type.class, "type");
+
+      //
       if (this.config.hasPath("version")) {
         version = Version.parse(this.config.getString("version"));
-      } else if (isDSE()) {
-        version = Version.DEFAULT_DSE_VERSION;
       } else {
-        version = Version.DEFAULT_OSS_VERSION;
+        version = Version.parse(clusterType.getDefaultVersion());
       }
     }
 
@@ -254,6 +267,16 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
     }
 
     @Override
+    public boolean isMultiDC() {
+      return nodesPerDC.length > 1;
+    }
+
+    @Override
+    public String getDC(int node) {
+      return clusterType == DSE ? "Cassandra" : "datacenter1";
+    }
+
+    @Override
     public void startDC(int dc) {
       // no-op
     }
@@ -299,11 +322,6 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
     }
 
     @Override
-    public boolean isDSE() {
-      return config.getBoolean("dse");
-    }
-
-    @Override
     public File getCcmDir() {
       return null;
     }
@@ -331,6 +349,11 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
     @Override
     public int getThriftPort() {
       return 9160;
+    }
+
+    @Override
+    public Type getClusterType() {
+      return clusterType;
     }
 
     @Override
