@@ -379,7 +379,7 @@ Default: **"0.25C"**.
 
 #### -newline,--connector.csv.newline _&lt;string&gt;_
 
-The character(s) that represent end of line (EOL).  When set to 'auto' (default), uses the system's EOL and auto-detection of EOL when reading the data. Character could be specified with Java syntax, "\r\n", for example.
+The character(s) that represent a line ending. When set to the special value auto (default), the system's line separator, as determined by System.lineSeparator(), will be used when writing, and auto-detection of line endings will be enabled when reading. Only one or two characters can be specified; beware that most typical line separator characters need to be escaped, e.g. one should specify \r\n for the typical line ending on Windows systems (carriage return followed by a new line).
 
 Default: **"auto"**.
 

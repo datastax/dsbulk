@@ -143,7 +143,6 @@ public class CSVConnector implements Connector {
       quote = settings.getChar(QUOTE);
       escape = settings.getChar(ESCAPE);
       comment = settings.getChar(COMMENT);
-      newline = settings.getString(NEWLINE);
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
@@ -152,6 +151,13 @@ public class CSVConnector implements Connector {
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
       maxCharsPerColumn = settings.getInt(MAX_CHARS_PER_COLUMN);
       maxColumns = settings.getInt(MAX_COLUMNS);
+      newline = settings.getString(NEWLINE);
+      if (!AUTO_NEWLINE.equalsIgnoreCase(newline) && (newline.isEmpty() || newline.length() > 2)) {
+        throw new BulkConfigurationException(
+            String.format(
+                "connector.csv.%s: Expecting '%s' or a string containing 1 or 2 chars, got: '%s'",
+                NEWLINE, AUTO_NEWLINE, newline));
+      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
     }
@@ -170,7 +176,9 @@ public class CSVConnector implements Connector {
     format.setQuoteEscape(escape);
     format.setComment(comment);
     boolean autoNewline = AUTO_NEWLINE.equalsIgnoreCase(newline);
-    if (!autoNewline) {
+    if (autoNewline) {
+      format.setLineSeparator(System.lineSeparator());
+    } else {
       format.setLineSeparator(newline);
     }
     if (read) {
@@ -190,6 +198,7 @@ public class CSVConnector implements Connector {
       parserSettings.setHeaderExtractionEnabled(header);
       parserSettings.setMaxCharsPerColumn(maxCharsPerColumn);
       parserSettings.setMaxColumns(maxColumns);
+      parserSettings.setNormalizeLineEndingsWithinQuotes(false);
     } else {
       writerSettings = new CsvWriterSettings();
       writerSettings.setFormat(format);
@@ -197,10 +206,8 @@ public class CSVConnector implements Connector {
       writerSettings.setIgnoreLeadingWhitespaces(false);
       writerSettings.setIgnoreTrailingWhitespaces(false);
       writerSettings.setMaxColumns(maxColumns);
+      writerSettings.setNormalizeLineEndingsWithinQuotes(false);
       counter = new AtomicInteger(0);
-      if (!autoNewline) {
-        writerSettings.setNormalizeLineEndingsWithinQuotes(false);
-      }
     }
   }
 

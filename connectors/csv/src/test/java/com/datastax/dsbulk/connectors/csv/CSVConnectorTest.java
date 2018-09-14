@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.HttpTestServer;
@@ -631,6 +632,22 @@ class CSVConnectorTest {
     } finally {
       deleteDirectory(out);
     }
+  }
+
+  @Test()
+  void should_error_when_newline_is_wrong() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    // empty string test
+    LoaderConfig settings1 =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("newline = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
+    // long string test
+    LoaderConfig settings2 =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("newline = \"abc\"")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThrows(BulkConfigurationException.class, () -> connector.configure(settings2, false));
   }
 
   @Test
