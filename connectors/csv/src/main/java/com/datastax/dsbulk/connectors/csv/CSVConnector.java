@@ -91,6 +91,7 @@ public class CSVConnector implements Connector {
   private static final String QUOTE = "quote";
   private static final String ESCAPE = "escape";
   private static final String COMMENT = "comment";
+  private static final String NEWLINE = "newline";
   private static final String SKIP_RECORDS = "skipRecords";
   private static final String MAX_RECORDS = "maxRecords";
   private static final String MAX_CONCURRENT_FILES = "maxConcurrentFiles";
@@ -99,6 +100,7 @@ public class CSVConnector implements Connector {
   private static final String FILE_NAME_FORMAT = "fileNameFormat";
   private static final String MAX_CHARS_PER_COLUMN = "maxCharsPerColumn";
   private static final String MAX_COLUMNS = "maxColumns";
+  private static final String AUTO_NEWLINE = "auto";
 
   private boolean read;
   private URL url;
@@ -109,6 +111,7 @@ public class CSVConnector implements Connector {
   private char quote;
   private char escape;
   private char comment;
+  private String newline;
   private long skipRecords;
   private long maxRecords;
   private int maxConcurrentFiles;
@@ -148,6 +151,13 @@ public class CSVConnector implements Connector {
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
       maxCharsPerColumn = settings.getInt(MAX_CHARS_PER_COLUMN);
       maxColumns = settings.getInt(MAX_COLUMNS);
+      newline = settings.getString(NEWLINE);
+      if (!AUTO_NEWLINE.equalsIgnoreCase(newline) && (newline.isEmpty() || newline.length() > 2)) {
+        throw new BulkConfigurationException(
+            String.format(
+                "connector.csv.%s: Expecting '%s' or a string containing 1 or 2 chars, got: '%s'",
+                NEWLINE, AUTO_NEWLINE, newline));
+      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
     }
@@ -165,6 +175,12 @@ public class CSVConnector implements Connector {
     format.setQuote(quote);
     format.setQuoteEscape(escape);
     format.setComment(comment);
+    boolean autoNewline = AUTO_NEWLINE.equalsIgnoreCase(newline);
+    if (autoNewline) {
+      format.setLineSeparator(System.lineSeparator());
+    } else {
+      format.setLineSeparator(newline);
+    }
     if (read) {
       parserSettings = new CsvParserSettings();
       parserSettings.setFormat(format);
@@ -176,10 +192,13 @@ public class CSVConnector implements Connector {
       // has fewer lines than skipRecords;
       // we'll use the skip() operator instead.
       // parserSettings.setNumberOfRowsToSkip(skipRecords);
+      if (autoNewline) {
+        parserSettings.setLineSeparatorDetectionEnabled(true);
+      }
       parserSettings.setHeaderExtractionEnabled(header);
-      parserSettings.setLineSeparatorDetectionEnabled(true);
       parserSettings.setMaxCharsPerColumn(maxCharsPerColumn);
       parserSettings.setMaxColumns(maxColumns);
+      parserSettings.setNormalizeLineEndingsWithinQuotes(false);
     } else {
       writerSettings = new CsvWriterSettings();
       writerSettings.setFormat(format);
@@ -187,6 +206,7 @@ public class CSVConnector implements Connector {
       writerSettings.setIgnoreLeadingWhitespaces(false);
       writerSettings.setIgnoreTrailingWhitespaces(false);
       writerSettings.setMaxColumns(maxColumns);
+      writerSettings.setNormalizeLineEndingsWithinQuotes(false);
       counter = new AtomicInteger(0);
     }
   }
