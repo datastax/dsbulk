@@ -40,6 +40,7 @@ import com.typesafe.config.ConfigFactory;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 
@@ -115,9 +116,12 @@ public abstract class SessionFactory {
     private SessionAnnotationFactory(SessionConfig config, String dcName) {
       useKeyspaceMode = config.useKeyspace();
       loggedKeyspaceName = config.loggedKeyspaceName();
+      // init-query-timeout is 500ms by default, which sometimes triggers in CI builds.
       DefaultDriverConfigLoaderBuilder loaderBuilder =
           SessionUtils.configLoaderBuilder()
-              .withString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, dcName);
+              .withString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, dcName)
+              .withDuration(
+                  DefaultDriverOption.CONNECTION_INIT_QUERY_TIMEOUT, Duration.ofSeconds(3));
       for (String opt : config.settings()) {
         Config keyAndVal = ConfigFactory.parseString(opt);
         keyAndVal
