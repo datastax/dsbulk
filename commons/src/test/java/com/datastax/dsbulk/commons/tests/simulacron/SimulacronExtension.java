@@ -11,9 +11,9 @@ package com.datastax.dsbulk.commons.tests.simulacron;
 import com.datastax.dsbulk.commons.tests.RemoteClusterExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.factory.BoundClusterFactory;
 import com.datastax.dsbulk.commons.tests.utils.NetworkUtils;
-import com.datastax.oss.simulacron.server.AddressResolver;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.datastax.oss.simulacron.server.BoundNode;
+import com.datastax.oss.simulacron.server.Inet4Resolver;
 import com.datastax.oss.simulacron.server.Server;
 import java.lang.reflect.Parameter;
 import java.net.InetAddress;
@@ -36,7 +36,7 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
   private static final String SIMULACRON = "SIMULACRON";
   private static final Server SERVER =
       Server.builder()
-          .withAddressResolver(new AddressResolver.Inet4Resolver(NetworkUtils.findAvailablePort()))
+          .withAddressResolver(new Inet4Resolver(NetworkUtils.findAvailablePort()))
           .build();
 
   @Override
