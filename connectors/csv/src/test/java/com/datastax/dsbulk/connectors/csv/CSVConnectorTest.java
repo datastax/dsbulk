@@ -11,6 +11,8 @@ package com.datastax.dsbulk.connectors.csv;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -160,7 +162,7 @@ class CSVConnectorTest {
     InputStream stdin = System.in;
     try {
       String line = "fóô,bàr,qïx\n";
-      InputStream is = new ByteArrayInputStream(line.getBytes("ISO-8859-1"));
+      InputStream is = new ByteArrayInputStream(line.getBytes(ISO_8859_1));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
@@ -196,7 +198,7 @@ class CSVConnectorTest {
       Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
           .transform(connector.write())
           .blockLast();
-      assertThat(new String(baos.toByteArray(), "ISO-8859-1"))
+      assertThat(new String(baos.toByteArray(), ISO_8859_1))
           .isEqualTo("fóô,bàr,qïx" + System.lineSeparator());
 
       connector.close();
@@ -210,7 +212,7 @@ class CSVConnectorTest {
     InputStream stdin = System.in;
     try {
       String line = "abc,de\nf,ghk\r\n";
-      InputStream is = new ByteArrayInputStream(line.getBytes("UTF-8"));
+      InputStream is = new ByteArrayInputStream(line.getBytes(UTF_8));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
@@ -246,7 +248,7 @@ class CSVConnectorTest {
       Flux.<Record>just(new DefaultRecord(null, null, -1, null, "abc", "de\nf", "ghk"))
           .transform(connector.write())
           .blockLast();
-      assertThat(new String(baos.toByteArray(), "UTF-8")).isEqualTo("abc,\"de\nf\",ghk\r\n");
+      assertThat(new String(baos.toByteArray(), UTF_8)).isEqualTo("abc,\"de\nf\",ghk\r\n");
 
       connector.close();
     } finally {
@@ -500,7 +502,7 @@ class CSVConnectorTest {
     InputStream stdin = System.in;
     try {
       String lines = "header1,header2\n" + "value1,value2,value3";
-      InputStream is = new ByteArrayInputStream(lines.getBytes("UTF-8"));
+      InputStream is = new ByteArrayInputStream(lines.getBytes(UTF_8));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
@@ -635,7 +637,7 @@ class CSVConnectorTest {
   }
 
   @Test()
-  void should_error_when_newline_is_wrong() throws Exception {
+  void should_error_when_newline_is_wrong() {
     CSVConnector connector = new CSVConnector();
     // empty string test
     LoaderConfig settings1 =
@@ -791,10 +793,9 @@ class CSVConnectorTest {
             t ->
                 assertThat(t)
                     .hasCauseInstanceOf(IOException.class)
-                    .hasMessageContaining("Array index out of range: 1")
+                    .hasMessageContaining("ArrayIndexOutOfBoundsException - 1")
                     .hasMessageContaining(
-                        "Please increase the value of the connector.csv.maxColumns "
-                            + "or the connector.csv.maxCharsPerColumn setting.")
+                        "Please increase the value of the connector.csv.maxColumns setting")
                     .hasRootCauseInstanceOf(ArrayIndexOutOfBoundsException.class));
     connector.close();
   }

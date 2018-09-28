@@ -402,10 +402,10 @@ public class CSVConnector implements Connector {
               } catch (TextParsingException e) {
                 IOException ioe = launderTextParsingException(e);
                 sink.error(ioe);
-              } catch (ArrayIndexOutOfBoundsException e) {
-                IOException ioe = launderArrayIndexOutOfBoundsException(e, recordNumber);
-                sink.error(ioe);
               } catch (Exception e) {
+                if (e.getCause() instanceof TextParsingException) {
+                  e = launderTextParsingException(((TextParsingException) e.getCause()));
+                }
                 sink.error(
                     new IOException(
                         String.format(
@@ -564,31 +564,22 @@ public class CSVConnector implements Connector {
     if (i != -1) {
       message = message.substring(0, i);
     }
-    // Extra help for when maxCharsPerColumn is not big enough.
-    if (e.getCause() instanceof ArrayIndexOutOfBoundsException
-        && message.matches(
-            "Length of parsed input \\(\\d+\\) exceeds the maximum number "
-                + "of characters defined in your parser settings.*")) {
-      message += "Please increase the value of the connector.csv.maxCharsPerColumn setting.";
+    if (e.getCause() instanceof ArrayIndexOutOfBoundsException) {
+      // Extra help for when maxCharsPerColumn is not big enough.
+      if (message.matches(
+          "Length of parsed input \\(\\d+\\) exceeds the maximum number "
+              + "of characters defined in your parser settings.*")) {
+        message += "Please increase the value of the connector.csv.maxCharsPerColumn setting.";
+      } else {
+        // Extra help for when maxColumns is not big enough.
+        message +=
+            String.format(
+                ". The  maximum number of columns per record (%d) was exceeded. "
+                    + "Please increase the value of the connector.csv.maxColumns setting.",
+                maxColumns);
+      }
     }
     return new IOException(
         String.format("Error reading from %s at line %d: %s", url, e.getLineIndex(), message), e);
-  }
-
-  @NotNull
-  private IOException launderArrayIndexOutOfBoundsException(
-      ArrayIndexOutOfBoundsException e, long record) {
-    // Extra help for when maxCharsPerColumn or maxCharsPerColumn is not big enough.
-    // Unfortunately we cannot know the exact cause of the AIOOBE.
-    return new IOException(
-        String.format(
-            "Error reading from %s at line %d: "
-                + "Array index out of range: %s. "
-                + "Either the maximum number of characters per column (%d) or the "
-                + "maximum number of columns per record (%d) was exceeded. "
-                + "Please increase the value of the connector.csv.maxColumns "
-                + "or the connector.csv.maxCharsPerColumn setting.",
-            url, record, e.getMessage(), maxColumns, maxCharsPerColumn),
-        e);
   }
 }
