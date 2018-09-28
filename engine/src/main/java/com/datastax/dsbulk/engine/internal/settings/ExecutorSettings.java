@@ -16,7 +16,6 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.ReactiveBulkExecutor;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
@@ -79,17 +78,17 @@ public class ExecutorSettings {
   }
 
   public ReactorBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
-    return newBulkExecutor(session, executionListener, WorkflowType.LOAD);
+    return newBulkExecutor(session, executionListener, false);
   }
 
   public ReactorBulkReader newReadExecutor(
       Session session, MetricsCollectingExecutionListener executionListener) {
-    return newBulkExecutor(session, executionListener, WorkflowType.UNLOAD);
+    return newBulkExecutor(session, executionListener, true);
   }
 
   private ReactorBulkExecutor newBulkExecutor(
-      Session session, ExecutionListener executionListener, WorkflowType workflowType) {
-    if (workflowType == WorkflowType.UNLOAD) {
+      Session session, ExecutionListener executionListener, boolean read) {
+    if (read) {
       if (continuousPagingEnabled) {
         if (continuousPagingAvailable(session)) {
           ContinuousReactorBulkExecutorBuilder builder =
@@ -109,6 +108,8 @@ public class ExecutorSettings {
                   + "Check your remote DSE cluster configuration, and ensure that "
                   + "the configured consistency level is either ONE or LOCAL_ONE.");
         }
+      } else {
+        LOGGER.debug("Continuous paging was disabled by configuration.");
       }
     }
     DefaultReactorBulkExecutorBuilder builder = DefaultReactorBulkExecutor.builder(session);
