@@ -1357,7 +1357,7 @@ Which kind(s) of statistics to compute. Only applicaple for the count workflow, 
 * `global`: count the total number of rows in the table.
 * `ranges`: count the total number of rows per token range in the table.
 * `hosts`: count the total number of rows per hosts in the table.
-* `partitions`: count the total number of rows in the N biggest partitions in the table. When using this mode, you can chose how many partitions to tarck with the `schema.biggestPartitions` setting.
+* `partitions`: count the total number of rows in the N biggest partitions in the table. When using this mode, you can chose how many partitions to track with the `schema.biggestPartitions` setting.
 The default value is `[global]`.
 
 Default: **["global"]**.
