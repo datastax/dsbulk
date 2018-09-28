@@ -37,9 +37,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 @CCMConfig(
-  config = "authenticator:PasswordAuthenticator",
-  jvmArgs = "-Dcassandra.superuser_setup_delay_ms=0"
-)
+    config = "authenticator:PasswordAuthenticator",
+    jvmArgs = "-Dcassandra.superuser_setup_delay_ms=0")
 @Tag("medium")
 @CCMRequirements(compatibleTypes = {DSE, DDAC})
 class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {

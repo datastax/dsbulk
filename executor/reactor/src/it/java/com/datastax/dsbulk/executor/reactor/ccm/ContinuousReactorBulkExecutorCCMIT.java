@@ -20,9 +20,8 @@ import org.junit.jupiter.api.Tag;
 
 @Tag("medium")
 @CCMRequirements(
-  compatibleTypes = DSE,
-  versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1")
-)
+    compatibleTypes = DSE,
+    versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1"))
 class ContinuousReactorBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 
   ContinuousReactorBulkExecutorCCMIT(ContinuousPagingSession session) {

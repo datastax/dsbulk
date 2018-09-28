@@ -16,9 +16,8 @@ import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import org.junit.jupiter.api.Tag;
 
 @CCMConfig(
-  numberOfNodes = {3, 3},
-  createOptions = "--vnodes"
-)
+    numberOfNodes = {3, 3},
+    createOptions = "--vnodes")
 @Tag("long")
 class M3PTokenVnodeMultiDCPartitionerCCMIT extends PartitionerCCMITBase {
 

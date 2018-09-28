@@ -16,9 +16,8 @@ import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import org.junit.jupiter.api.Tag;
 
 @CCMConfig(
-  numberOfNodes = 3,
-  createOptions = {"-p RandomPartitioner", "--vnodes"}
-)
+    numberOfNodes = 3,
+    createOptions = {"-p RandomPartitioner", "--vnodes"})
 @Tag("long")
 class RPTokenVnodePartitionerCCMIT extends PartitionerCCMITBase {
 

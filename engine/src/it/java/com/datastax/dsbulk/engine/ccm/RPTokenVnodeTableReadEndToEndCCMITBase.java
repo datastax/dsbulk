@@ -21,9 +21,8 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 
 @CCMConfig(
-  numberOfNodes = 3,
-  createOptions = {"-p RandomPartitioner", "--vnodes"}
-)
+    numberOfNodes = 3,
+    createOptions = {"-p RandomPartitioner", "--vnodes"})
 class RPTokenVnodeTableReadEndToEndCCMITBase extends TableReadEndToEndCCMITBase {
 
   RPTokenVnodeTableReadEndToEndCCMITBase(
