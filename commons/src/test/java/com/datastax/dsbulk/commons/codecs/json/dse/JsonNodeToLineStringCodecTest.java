@@ -13,9 +13,9 @@ import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.ass
 import static com.google.common.collect.Lists.newArrayList;
 
 import com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils;
-import com.datastax.dse.driver.api.core.type.geometry.LineString;
-import com.datastax.dse.driver.internal.core.type.geometry.DefaultLineString;
-import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
+import com.datastax.dse.driver.api.core.data.geometry.LineString;
+import com.datastax.dse.driver.internal.core.data.geometry.DefaultLineString;
+import com.datastax.dse.driver.internal.core.data.geometry.DefaultPoint;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;

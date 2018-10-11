@@ -109,9 +109,6 @@ import com.datastax.dsbulk.commons.codecs.temporal.TemporalToUUIDCodec;
 import com.datastax.dsbulk.commons.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.commons.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.commons.codecs.util.TimeUUIDGenerator;
-import com.datastax.dse.driver.api.core.codec.geometry.LineStringCodec;
-import com.datastax.dse.driver.api.core.codec.geometry.PointCodec;
-import com.datastax.dse.driver.api.core.codec.geometry.PolygonCodec;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.data.TupleValue;
 import com.datastax.oss.driver.api.core.data.UdtValue;
@@ -166,6 +163,10 @@ import org.slf4j.LoggerFactory;
 public class ExtendedCodecRegistry {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExtendedCodecRegistry.class);
+  private static final String LINE_STRING_CLASS_NAME =
+      "org.apache.cassandra.db.marshal.LineStringType";
+  private static final String POINT_CLASS_NAME = "org.apache.cassandra.db.marshal.PointType";
+  private static final String POLYGON_CLASS_NAME = "org.apache.cassandra.db.marshal.PolygonType";
   private static final String DATE_RANGE_CLASS_NAME =
       "org.apache.cassandra.db.marshal.DateRangeType";
 
@@ -663,11 +664,11 @@ public class ExtendedCodecRegistry {
         {
           CustomType customType = (CustomType) cqlType;
           switch (customType.getClassName()) {
-            case PointCodec.CLASS_NAME:
+            case POINT_CLASS_NAME:
               return new StringToPointCodec(nullStrings);
-            case LineStringCodec.CLASS_NAME:
+            case LINE_STRING_CLASS_NAME:
               return new StringToLineStringCodec(nullStrings);
-            case PolygonCodec.CLASS_NAME:
+            case POLYGON_CLASS_NAME:
               return new StringToPolygonCodec(nullStrings);
             case DATE_RANGE_CLASS_NAME:
               return new StringToDateRangeCodec(nullStrings);
@@ -922,11 +923,11 @@ public class ExtendedCodecRegistry {
         {
           CustomType customType = (CustomType) cqlType;
           switch (customType.getClassName()) {
-            case PointCodec.CLASS_NAME:
+            case POINT_CLASS_NAME:
               return new JsonNodeToPointCodec(objectMapper, nullStrings);
-            case LineStringCodec.CLASS_NAME:
+            case LINE_STRING_CLASS_NAME:
               return new JsonNodeToLineStringCodec(objectMapper, nullStrings);
-            case PolygonCodec.CLASS_NAME:
+            case POLYGON_CLASS_NAME:
               return new JsonNodeToPolygonCodec(objectMapper, nullStrings);
             case DATE_RANGE_CLASS_NAME:
               return new JsonNodeToDateRangeCodec(nullStrings);

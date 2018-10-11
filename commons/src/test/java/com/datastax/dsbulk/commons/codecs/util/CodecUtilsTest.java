@@ -50,12 +50,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.dsbulk.commons.codecs.string.StringToInstantCodec;
+import com.datastax.dse.driver.api.core.data.geometry.LineString;
+import com.datastax.dse.driver.api.core.data.geometry.Polygon;
 import com.datastax.dse.driver.api.core.data.time.DateRange;
-import com.datastax.dse.driver.api.core.type.geometry.LineString;
-import com.datastax.dse.driver.api.core.type.geometry.Polygon;
-import com.datastax.dse.driver.internal.core.type.geometry.DefaultLineString;
-import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
-import com.datastax.dse.driver.internal.core.type.geometry.DefaultPolygon;
+import com.datastax.dse.driver.internal.core.data.geometry.DefaultLineString;
+import com.datastax.dse.driver.internal.core.data.geometry.DefaultPoint;
+import com.datastax.dse.driver.internal.core.data.geometry.DefaultPolygon;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import com.google.common.collect.ImmutableMap;

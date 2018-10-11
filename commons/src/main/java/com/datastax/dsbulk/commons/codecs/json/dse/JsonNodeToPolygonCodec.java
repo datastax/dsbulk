@@ -10,8 +10,8 @@ package com.datastax.dsbulk.commons.codecs.json.dse;
 
 import com.datastax.dsbulk.commons.codecs.json.JsonNodeConvertingCodec;
 import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
+import com.datastax.dse.driver.api.core.data.geometry.Polygon;
 import com.datastax.dse.driver.api.core.type.codec.DseTypeCodecs;
-import com.datastax.dse.driver.api.core.type.geometry.Polygon;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

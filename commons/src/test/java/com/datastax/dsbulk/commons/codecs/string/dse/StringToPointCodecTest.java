@@ -11,8 +11,8 @@ package com.datastax.dsbulk.commons.codecs.string.dse;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.datastax.dse.driver.api.core.type.geometry.Point;
-import com.datastax.dse.driver.internal.core.type.geometry.DefaultPoint;
+import com.datastax.dse.driver.api.core.data.geometry.Point;
+import com.datastax.dse.driver.internal.core.data.geometry.DefaultPoint;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

@@ -13,10 +13,10 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
+import com.datastax.dse.driver.api.core.data.geometry.LineString;
+import com.datastax.dse.driver.api.core.data.geometry.Point;
+import com.datastax.dse.driver.api.core.data.geometry.Polygon;
 import com.datastax.dse.driver.api.core.data.time.DateRange;
-import com.datastax.dse.driver.api.core.type.geometry.LineString;
-import com.datastax.dse.driver.api.core.type.geometry.Point;
-import com.datastax.dse.driver.api.core.type.geometry.Polygon;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import com.google.common.annotations.VisibleForTesting;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -1006,10 +1006,10 @@ public class CodecUtils {
         // first, assume it is a predefined format
         Field field = DateTimeFormatter.class.getDeclaredField(pattern);
         DateTimeFormatter formatter = (DateTimeFormatter) field.get(null);
-        builder = builder.append(formatter);
+        builder.append(formatter);
       } catch (NoSuchFieldException | IllegalAccessException ignored) {
         // if that fails, assume it's a pattern
-        builder = builder.appendPattern(pattern);
+        builder.appendPattern(pattern);
       }
       DateTimeFormatter format =
           builder

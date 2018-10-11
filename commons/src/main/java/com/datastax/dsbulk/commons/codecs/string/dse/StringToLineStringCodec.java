@@ -10,8 +10,8 @@ package com.datastax.dsbulk.commons.codecs.string.dse;
 
 import com.datastax.dsbulk.commons.codecs.string.StringConvertingCodec;
 import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
+import com.datastax.dse.driver.api.core.data.geometry.LineString;
 import com.datastax.dse.driver.api.core.type.codec.DseTypeCodecs;
-import com.datastax.dse.driver.api.core.type.geometry.LineString;
 import java.util.List;
 
 public class StringToLineStringCodec extends StringConvertingCodec<LineString> {
