@@ -41,8 +41,8 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <oss.driver.version>4.0.0-beta2-69a6a19b9-kafka-SNAPSHOT</oss.driver.version>
-    <dse.driver.version>2.0.0-alpha1-kafka-ft-SNAPSHOT</dse.driver.version>
+    <oss.driver.version>4.0.0-beta2</oss.driver.version>
+    <dse.driver.version>2.0.0-alpha1</dse.driver.version>
     <reactive-streams.version>1.0.2</reactive-streams.version>
     <rx-java.version>2.1.13</rx-java.version>
     <reactor.version>Bismuth-SR9</reactor.version>
