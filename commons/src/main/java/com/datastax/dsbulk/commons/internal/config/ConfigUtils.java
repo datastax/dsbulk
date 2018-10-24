@@ -99,7 +99,7 @@ public class ConfigUtils {
    *
    * <p>This method first tries to interpret the input as a valid URL, possibly expanding the
    * special {@code "-"} (single dash) URL into DSBulk's internal {@link
-   * LoaderURLStreamHandlerFactory#STD standard input/output} URL.
+   * com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory#STD standard input/output} URL.
    *
    * <p>If that fails, this method then attempts to interpret the input as a path object. See {@link
    * #resolvePath(String)}.
