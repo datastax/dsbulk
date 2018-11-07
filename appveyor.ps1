@@ -19,7 +19,7 @@ $maven_base = "$($dep_dir)\maven"
 $maven_path = "$($maven_base)\apache-maven-3.2.5"
 If (!(Test-Path $maven_path)) {
   Write-Host "Installing Maven"
-  $maven_url = "https://www.dropbox.com/s/fh9kffmexprsmha/apache-maven-3.2.5-bin.zip?dl=1"
+  $maven_url = "https://www.dropbox.com/s/fh9kffmexprsmha/apache-maven-3.2.5-bin.zip?raw=1"
   $maven_zip = "C:\Users\appveyor\apache-maven-3.2.5-bin.zip"
   (new-object System.Net.WebClient).DownloadFile($maven_url, $maven_zip)
   [System.IO.Compression.ZipFile]::ExtractToDirectory($maven_zip, $maven_base)
