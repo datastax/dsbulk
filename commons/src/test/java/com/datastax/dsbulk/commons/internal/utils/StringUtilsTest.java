@@ -39,4 +39,14 @@ class StringUtilsTest {
     assertThat(StringUtils.ensureQuoted("foo")).isEqualTo("\"foo\"");
     assertThat(StringUtils.ensureQuoted("\"foo\"")).isEqualTo("\"foo\"");
   }
+
+  @Test
+  void should_quote_jmx_if_necessary() {
+    assertThat(StringUtils.quoteJMXIfNecessary("")).isEqualTo("");
+    assertThat(StringUtils.quoteJMXIfNecessary("foo")).isEqualTo("foo");
+    assertThat(StringUtils.quoteJMXIfNecessary("foo?")).isEqualTo("\"foo\\?\"");
+    assertThat(StringUtils.quoteJMXIfNecessary("foo*")).isEqualTo("\"foo\\*\"");
+    assertThat(StringUtils.quoteJMXIfNecessary("foo\\")).isEqualTo("\"foo\\\\\"");
+    assertThat(StringUtils.quoteJMXIfNecessary("foo\n")).isEqualTo("\"foo\\n\"");
+  }
 }

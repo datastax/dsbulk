@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.metrics;
 
+import static com.datastax.dsbulk.commons.internal.utils.StringUtils.quoteJMXIfNecessary;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.Verbosity.normal;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.Verbosity.quiet;
@@ -57,6 +58,7 @@ public class MetricsManager implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricsManager.class);
   private static final Marker METRICS_MARKER = new BasicMarkerFactory().getMarker("METRICS");
+  private static final String DSBULK_JMX_DOMAIN = "com.datastax.dsbulk";
 
   private final MetricRegistry registry;
   private final MetricsCollectingExecutionListener listener;
@@ -252,22 +254,30 @@ public class MetricsManager implements AutoCloseable {
         JmxReporter.forRegistry(registry)
             .convertDurationsTo(durationUnit)
             .convertRatesTo(rateUnit)
+            .inDomain(DSBULK_JMX_DOMAIN)
             .createsObjectNamesWith(
-                (type, domain, name) -> {
+                (metricsType, jmxDomain, metricName) -> {
                   try {
                     StringBuilder sb =
-                        new StringBuilder("com.datastax.dsbulk:0=").append(executionId).append(',');
-                    StringTokenizer tokenizer = new StringTokenizer(name, "/");
+                        new StringBuilder(jmxDomain)
+                            .append(":executionId=")
+                            .append(quoteJMXIfNecessary(executionId))
+                            .append(',');
+                    StringTokenizer tokenizer = new StringTokenizer(metricName, "/");
                     int i = 1;
                     while (tokenizer.hasMoreTokens()) {
                       String token = tokenizer.nextToken();
                       if (tokenizer.hasMoreTokens()) {
-                        sb.append(i++).append('=').append(token).append(',');
+                        sb.append("level").append(i++);
                       } else {
-                        sb.append("name=").append(token);
+                        sb.append("name");
+                      }
+                      sb.append('=').append(quoteJMXIfNecessary(token));
+                      if (tokenizer.hasMoreTokens()) {
+                        sb.append(',');
                       }
                     }
-                    return new ObjectName(sb.toString());
+                    return ObjectName.getInstance(sb.toString());
                   } catch (MalformedObjectNameException e) {
                     throw new RuntimeException(e);
                   }
