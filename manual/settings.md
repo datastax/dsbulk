@@ -139,13 +139,13 @@ Default: **-1**.
 
 #### -k,--schema.keyspace _&lt;string&gt;_
 
-Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Required option if `schema.query` is not specified; otherwise, optional.
+Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Either `keyspace` or `graph` is required if `query` is not specified or is not qualified with a keyspace name.
 
 Default: **&lt;unspecified&gt;**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
-Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Required option if `schema.query` is not specified; otherwise, optional.
+Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
 
 Default: **&lt;unspecified&gt;**.
 
@@ -520,13 +520,13 @@ Schema-specific settings.
 
 #### -k,--schema.keyspace _&lt;string&gt;_
 
-Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Required option if `schema.query` is not specified; otherwise, optional.
+Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Either `keyspace` or `graph` is required if `query` is not specified or is not qualified with a keyspace name.
 
 Default: **&lt;unspecified&gt;**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
-Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Required option if `schema.query` is not specified; otherwise, optional.
+Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
 
 Default: **&lt;unspecified&gt;**.
 
@@ -566,6 +566,24 @@ This setting is ignored when counting.
 
 Default: **false**.
 
+#### -e,--schema.edge _&lt;string&gt;_
+
+Edge label used for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). The edge label must correspond to an existing table created with the `WITH EDGE LABEL` option; also, when `edge` is specified, then `from` and `to` must be specified as well. Edge labels should not be quoted and are case-sensitive. `MyEdge` will match a label named `MyEdge` but not `myedge`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
+
+Default: **&lt;unspecified&gt;**.
+
+#### -from,--schema.from _&lt;string&gt;_
+
+The name of the edge's incoming vertex label, for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). This option is mandatory when `edge` is specified; ignored otherwise. Vertex labels should not be quoted and are case-sensitive. `MyVertex` will match a label named `MyVertex` but not `myvertex`.
+
+Default: **&lt;unspecified&gt;**.
+
+#### -g,--schema.graph _&lt;string&gt;_
+
+Graph name used for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). Graph names should not be quoted and are case-sensitive. `MyGraph` will match a graph named `MyGraph` but not `mygraph`. Either `keyspace` or `graph` is required if `query` is not specified or is not qualified with a keyspace name.
+
+Default: **&lt;unspecified&gt;**.
+
 #### --schema.nullToUnset _&lt;boolean&gt;_
 
 Specify whether to map `null` input values to "unset" in the database, i.e., don't modify a potentially pre-existing value of this field for this row. Valid for load scenarios, otherwise ignore. Note that setting to false creates tombstones to represent `null`.
@@ -578,7 +596,7 @@ Default: **true**.
 
 #### -query,--schema.query _&lt;string&gt;_
 
-The query to use. If not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns. If `schema.keyspace` is provided, the query need not include the keyspace to qualify the table reference.
+The query to use. If not specified, then a keyspace must be provided (either with `schema.keyspace` or `schema.graph`) and a table must be provided (either with `schema.table`, `schema.vertex` or `schema.edge`), and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns. If `schema.keyspace` or `schema.graph` is provided, the query need not include the keyspace to qualify the table reference.
 
 For loading, the statement can be any `INSERT`, `UPDATE` or `DELETE` statement. `INSERT` statements are preferred for most load operations, and bound variables should correspond to mapped fields; for example, `INSERT INTO table1 (c1, c2, c3) VALUES (:fieldA, :fieldB, :fieldC)`. `UPDATE` statements are required if the target table is a counter table, and the columns are updated with incremental operations (`SET col1 = col1 + :fieldA` where `fieldA` is a field in the input data). A `DELETE` statement will remove existing data during the load operation.
 
@@ -587,6 +605,8 @@ For unloading, the statement can be any regular `SELECT` statement; it can optio
 For counting, the statement must be a `SELECT` statement that contains only the table's partition key. The statement can optionally contain a token range restriction clause of the form: `token(...) > :start and token(...) <= :end`.
 
 Statements can use both positional and named bound variables. Positional variables will be named after their corresponding column in the destination table. Named bound variables usually have names matching those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those of fields specified in the mapping.
+
+When loading and unloading graph data, the query must be provided in plain CQL; Gremlin queries are not supported.
 
 Note: The query is parsed to discover which bound variables are present, and to map the variables correctly to fields.
 
@@ -607,6 +627,18 @@ Default: **&lt;unspecified&gt;**.
 The Time-To-Live (TTL) of inserted/updated cells during load (seconds); a value of -1 means there is no TTL. Not applicable to unloading nor counting. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useTTL.html), and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useExpire.html).
 
 Default: **-1**.
+
+#### -to,--schema.to _&lt;string&gt;_
+
+The name of the edge's outgoing vertex label, for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). This option is mandatory when `edge` is specified; ignored otherwise. Vertex labels should not be quoted and are case-sensitive. `MyVertex` will match a label named `MyVertex` but not `myvertex`.
+
+Default: **&lt;unspecified&gt;**.
+
+#### -v,--schema.vertex _&lt;string&gt;_
+
+Vertex label used for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). The vertex label must correspond to an existing table created with the `WITH VERTEX LABEL` option. Vertex labels should not be quoted and are case-sensitive. `MyVertex` will match a label named `MyVertex` but not `myvertex`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
+
+Default: **&lt;unspecified&gt;**.
 
 <a name="batch"></a>
 ## Batch Settings

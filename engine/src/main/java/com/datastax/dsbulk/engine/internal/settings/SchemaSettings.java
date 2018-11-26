@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.driver.core.DriverCoreHooks.resultSetVariables;
+import static com.datastax.driver.core.Metadata.quoteIfNecessary;
 import static com.datastax.dsbulk.engine.WorkflowType.COUNT;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
@@ -17,6 +18,7 @@ import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERN
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
+import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkGraphCompatibility;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
@@ -24,9 +26,9 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.EdgeMetadata;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.ParseUtils;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
@@ -64,10 +66,12 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -79,13 +83,19 @@ public class SchemaSettings {
 
   private static final String NULL_TO_UNSET = "nullToUnset";
   private static final String KEYSPACE = "keyspace";
+  private static final String GRAPH = "graph";
   private static final String TABLE = "table";
+  private static final String VERTEX = "vertex";
+  private static final String EDGE = "edge";
+  private static final String FROM = "from";
+  private static final String TO = "to";
   private static final String MAPPING = "mapping";
   private static final String ALLOW_EXTRA_FIELDS = "allowExtraFields";
   private static final String ALLOW_MISSING_FIELDS = "allowMissingFields";
   private static final String QUERY = "query";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
+  private static final String NATIVE = "Native";
 
   private final LoaderConfig config;
 
@@ -94,12 +104,12 @@ public class SchemaSettings {
   private boolean allowMissingFields;
   private MappingInspector mapping;
   private BiMap<String, String> explicitVariables;
-  private String tableName;
-  private String keyspaceName;
   private int ttlSeconds;
   private long timestampMicros;
   private TableMetadata table;
   private KeyspaceMetadata keyspace;
+  private String keyspaceName;
+  private String tableName;
   private String query;
   private QueryInspector queryInspector;
   private PreparedStatement preparedStatement;
@@ -110,13 +120,74 @@ public class SchemaSettings {
     this.config = config;
   }
 
-  public void init(WorkflowType workflowType, boolean expectIndexedMapping) {
+  public void init(WorkflowType workflowType, Cluster cluster, boolean expectIndexedMapping) {
     try {
-      this.preferIndexedMapping = expectIndexedMapping;
-      nullToUnset = config.getBoolean(NULL_TO_UNSET);
+
+      preferIndexedMapping = expectIndexedMapping;
+
+      // Sanity Checks
+
+      if (config.hasPath(KEYSPACE) && config.hasPath(GRAPH)) {
+        throw new BulkConfigurationException(
+            "schema.keyspace and schema.graph are mutually exclusive");
+      }
+      if (config.hasPath(TABLE) && config.hasPath(VERTEX)) {
+        throw new BulkConfigurationException(
+            "schema.table and schema.vertex are mutually exclusive");
+      }
+      if (config.hasPath(TABLE) && config.hasPath(EDGE)) {
+        throw new BulkConfigurationException("schema.table and schema.edge are mutually exclusive");
+      }
+      if (config.hasPath(VERTEX) && config.hasPath(EDGE)) {
+        throw new BulkConfigurationException(
+            "schema.vertex and schema.edge are mutually exclusive");
+      }
+      if (config.hasPath(EDGE)) {
+        if (!config.hasPath(FROM)) {
+          throw new BulkConfigurationException(
+              "schema.from is required when schema.edge is specified");
+        }
+        if (!config.hasPath(TO)) {
+          throw new BulkConfigurationException(
+              "schema.to is required when schema.edge is specified");
+        }
+      }
+      if (config.hasPath(QUERY)
+          && (config.hasPath(TABLE) || config.hasPath(VERTEX) || config.hasPath(EDGE))) {
+        throw new BulkConfigurationException(
+            "schema.query must not be defined if schema.table, schema.vertex or schema.edge are defined");
+      }
+      if ((!config.hasPath(KEYSPACE) && !config.hasPath(GRAPH))
+          && (config.hasPath(TABLE) || config.hasPath(VERTEX) || config.hasPath(EDGE))) {
+        throw new BulkConfigurationException(
+            "schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
+      }
+
+      // Keyspace
+
+      if (config.hasPath(KEYSPACE)) {
+        keyspace = locateKeyspace(cluster.getMetadata(), config.getString(KEYSPACE));
+      } else if (config.hasPath(GRAPH)) {
+        keyspace = locateKeyspace(cluster.getMetadata(), config.getString(GRAPH));
+      }
+
+      // Table
+
+      if (keyspace != null) {
+        if (config.hasPath(TABLE)) {
+          table = locateTable(keyspace, config.getString(TABLE));
+        } else if (config.hasPath(VERTEX)) {
+          table = locateVertexTable(keyspace, config.getString(VERTEX));
+        } else if (config.hasPath(EDGE)) {
+          table =
+              locateEdgeTable(
+                  keyspace, config.getString(EDGE), config.getString(FROM), config.getString(TO));
+        }
+      }
+
+      // Timestamp and TTL
+
       ttlSeconds = config.getInt(QUERY_TTL);
-      allowExtraFields = config.getBoolean(ALLOW_EXTRA_FIELDS);
-      allowMissingFields = config.getBoolean(ALLOW_MISSING_FIELDS);
       String timestampStr = config.getString(QUERY_TIMESTAMP);
       if (timestampStr.isEmpty()) {
         this.timestampMicros = -1L;
@@ -131,60 +202,75 @@ public class SchemaSettings {
                   timestampStr));
         }
       }
-      this.query = config.hasPath(QUERY) ? config.getString(QUERY) : null;
 
-      boolean keyspaceTablePresent = false;
-      if (config.hasPath(KEYSPACE)) {
-        keyspaceName = Metadata.quoteIfNecessary(config.getString(KEYSPACE));
-      }
-      if (keyspaceName != null && config.hasPath(TABLE)) {
-        keyspaceTablePresent = true;
-        tableName = Metadata.quoteIfNecessary(config.getString(TABLE));
-      }
+      // Custom Query
 
-      // If table is present, keyspace must be, but not necessarily the other way around.
-      if (config.hasPath(TABLE) && keyspaceName == null) {
-        throw new BulkConfigurationException(
-            "schema.keyspace must accompany schema.table in the configuration");
-      }
+      if (config.hasPath(QUERY)) {
 
-      // If mapping is present, make sure it is parseable as a map.
-      if (config.hasPath(MAPPING)) {
-        mapping = new MappingInspector(config.getString(MAPPING), preferIndexedMapping);
-        if (mapping.isInferring() && !(keyspaceTablePresent || query != null)) {
+        query = config.getString(QUERY);
+        queryInspector = new QueryInspector(query);
+
+        if (queryInspector.getKeyspaceName().isPresent()) {
+          if (keyspace != null) {
+            throw new BulkConfigurationException(
+                "schema.keyspace must not be provided when schema.query contains a keyspace-qualified statement");
+          }
+          String keyspaceName = quoteIfNecessary(queryInspector.getKeyspaceName().get());
+          keyspace = cluster.getMetadata().getKeyspace(keyspaceName);
+          if (keyspace == null) {
+            throw new BulkConfigurationException(
+                String.format("schema.query references a non-existent keyspace: %s", keyspaceName));
+          }
+        } else if (keyspace == null) {
           throw new BulkConfigurationException(
-              "schema.query, or schema.keyspace and schema.table must be defined when using inferred mapping");
+              "schema.keyspace must be provided when schema.query does not contain a keyspace-qualified statement");
         }
-      } else {
-        mapping = null;
-      }
+        String tableName = quoteIfNecessary(queryInspector.getTableName());
+        table = keyspace.getTable(tableName);
+        if (table == null) {
+          throw new BulkConfigurationException(
+              String.format("schema.query references a non-existent table: %s", tableName));
+        }
 
-      // Either the keyspace and table must be present, or the mapping, or the query must be
-      // present.
-      if (!config.hasPath(MAPPING) && !config.hasPath(QUERY) && !keyspaceTablePresent) {
+        // If a query is provided, ttl and timestamp must not be.
+        if (query != null && (timestampMicros != -1 || ttlSeconds != -1)) {
+          throw new BulkConfigurationException(
+              "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
+        }
+
+        // If a query is provided, check now if it contains a USING TIMESTAMP variable,
+        // and get its name.
+        if (queryInspector.getWriteTimeVariable().isPresent()) {
+          writeTimeVariable = queryInspector.getWriteTimeVariable().get();
+        }
+
+      } else if (keyspace == null || table == null) {
+
+        // Either the keyspace and table must be present, or the query must be present.
         throw new BulkConfigurationException(
-            "schema.mapping, schema.query, or schema.keyspace and schema.table must be defined");
+            "When schema.query is not defined, "
+                + "then either schema.keyspace or schema.graph must be defined, "
+                + "and either schema.table, schema.vertex or schema.edge must be defined");
       }
 
-      // Either the keyspace and table must be present, or the mapping must be present.
-      if (query == null && !keyspaceTablePresent) {
-        throw new BulkConfigurationException(
-            "schema.query, or schema.keyspace and schema.table must be defined");
-      }
+      assert keyspace != null;
+      assert table != null;
 
-      // If a query is provided, ttl and timestamp must not be.
-      if (query != null && (timestampMicros != -1 || ttlSeconds != -1)) {
-        throw new BulkConfigurationException(
-            "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
-      }
+      keyspaceName = quoteIfNecessary(keyspace.getName());
+      tableName = quoteIfNecessary(table.getName());
 
-      if (query != null && keyspaceTablePresent) {
-        throw new BulkConfigurationException(
-            "schema.query must not be defined if schema.keyspace and schema.table are defined");
-      }
+      // Mapping
 
-      if (mapping != null) {
+      if (config.hasPath(MAPPING)) {
+
+        if (workflowType == COUNT) {
+          throw new BulkConfigurationException(
+              "schema.mapping must not be defined when counting rows in a table");
+        }
+
+        mapping = new MappingInspector(config.getString(MAPPING), preferIndexedMapping);
         explicitVariables = mapping.getExplicitVariables();
+
         // Error out if the explicit variables map timestamp or ttl and
         // there is an explicit query.
         if (query != null) {
@@ -201,34 +287,58 @@ public class SchemaSettings {
                 "schema.query must not be defined when mapping a function to a column");
           }
         }
+
         // store the write time variable name for later if it was present in the mapping
         if (explicitVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME)) {
           writeTimeVariable = INTERNAL_TIMESTAMP_VARNAME;
         }
-      } else {
-        explicitVariables = null;
       }
 
-      if (query != null) {
-        queryInspector = new QueryInspector(query);
-        // If a query is provided, check now if it contains a USING TIMESTAMP variable,
-        // and get its name.
-        if (queryInspector.getWriteTimeVariable().isPresent()) {
-          writeTimeVariable = queryInspector.getWriteTimeVariable().get();
+      // Misc
+
+      nullToUnset = config.getBoolean(NULL_TO_UNSET);
+      allowExtraFields = config.getBoolean(ALLOW_EXTRA_FIELDS);
+      allowMissingFields = config.getBoolean(ALLOW_MISSING_FIELDS);
+
+      // Final checks related to graph operations
+
+      if (hasGraphOptions(config)) {
+
+        checkGraphCompatibility(cluster);
+
+        if (!isGraph(keyspace)) {
+          throw new IllegalStateException(
+              "Graph operations requested but provided keyspace is not a graph: " + keyspaceName);
         }
-      }
+        if (!isSupportedGraph(keyspace)) {
+          throw new IllegalStateException(
+              String.format(
+                  "Graph operations requested but provided graph %s was created with an unsupported graph engine: %s",
+                  keyspaceName, keyspace.getGraphEngine()));
+        }
 
-      if (workflowType == COUNT) {
-        if (config.hasPath(MAPPING)) {
-          throw new BulkConfigurationException(
-              "schema.mapping must not be defined when counting rows in a table");
+      } else if (isGraph(keyspace)) {
+
+        if (isSupportedGraph(keyspace)) {
+          if (config.hasPath(KEYSPACE) || config.hasPath(TABLE)) {
+            LOGGER.warn(
+                "Provided keyspace is a graph; "
+                    + "instead of schema.keyspace and schema.table, please use graph-specific options "
+                    + "such as schema.graph, schema.vertex, schema.edge, schema.from and schema.to.");
+          }
+        } else {
+          if (workflowType == LOAD) {
+            LOGGER.warn(
+                "Provided keyspace is a graph created with a legacy graph engine: "
+                    + keyspace.getGraphEngine()
+                    + "; attempting to load data into such a keyspace is not supported and "
+                    + "may put the graph in an inconsistent state.");
+          }
         }
       }
 
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
-    } catch (IllegalArgumentException e) {
-      throw new BulkConfigurationException(e);
     }
   }
 
@@ -310,7 +420,6 @@ public class SchemaSettings {
     if (!config.hasPath(QUERY)) {
       // in the absence of user-provided queries, create the mapping *before* query generation and
       // preparation
-      inferKeyspaceAndTable(session);
       fieldsToVariables =
           createFieldsToVariablesMap(
               () ->
@@ -340,8 +449,9 @@ public class SchemaSettings {
       // remove function mappings as we won't need them anymore from now on
       fieldsToVariables = removeMappingFunctions(fieldsToVariables);
     }
-    if (keyspaceName != null) {
-      // keyspace is already properly quoted
+    assert query != null;
+    assert queryInspector != null;
+    if (!queryInspector.getKeyspaceName().isPresent()) {
       session.execute("USE " + keyspaceName);
     }
     preparedStatement = session.prepare(query);
@@ -354,7 +464,6 @@ public class SchemaSettings {
                   StreamSupport.stream(variables.spliterator(), false)
                       .map(ColumnDefinitions.Definition::getName)
                       .collect(Collectors.toList()));
-      inferKeyspaceAndTableCustom(session);
       // validate user-provided query
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
@@ -363,11 +472,6 @@ public class SchemaSettings {
       }
     }
     assert fieldsToVariables != null;
-    assert keyspace != null;
-    assert table != null;
-    assert keyspaceName != null;
-    assert tableName != null;
-    assert query != null;
     return new DefaultMapping(
         ImmutableBiMap.copyOf(fieldsToVariables), codecRegistry, writeTimeVariable);
   }
@@ -430,61 +534,107 @@ public class SchemaSettings {
     return fieldsToVariables;
   }
 
-  /** Version used with generated queries. */
-  private void inferKeyspaceAndTable(Session session) {
-    assert !config.hasPath(QUERY);
-    assert keyspaceName != null && tableName != null;
-    Metadata metadata = session.getCluster().getMetadata();
-    keyspace = metadata.getKeyspace(keyspaceName);
+  private KeyspaceMetadata locateKeyspace(Metadata metadata, String keyspaceName) {
+    KeyspaceMetadata keyspace = metadata.getKeyspace(quoteIfNecessary(keyspaceName));
     if (keyspace == null) {
-      String lowerCaseKeyspaceName = ParseUtils.unDoubleQuote(keyspaceName).toLowerCase();
+      String lowerCaseKeyspaceName = keyspaceName.toLowerCase();
       if (metadata.getKeyspace(lowerCaseKeyspaceName) != null) {
-        throw new IllegalArgumentException(
+        throw new BulkConfigurationException(
             String.format(
                 "Keyspace %s does not exist, however a keyspace %s was found. Did you mean to use -k %s?",
-                keyspaceName, lowerCaseKeyspaceName, lowerCaseKeyspaceName));
+                quoteIfNecessary(keyspaceName), lowerCaseKeyspaceName, lowerCaseKeyspaceName));
       } else {
-        throw new IllegalArgumentException(
-            String.format("Keyspace %s does not exist", keyspaceName));
+        throw new BulkConfigurationException(
+            String.format("Keyspace %s does not exist", quoteIfNecessary(keyspaceName)));
       }
     }
-    table = keyspace.getTable(tableName);
-    if (table == null) {
-      String lowerCaseTableName = ParseUtils.unDoubleQuote(tableName).toLowerCase();
-      if (keyspace.getTable(lowerCaseTableName) != null) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
-                tableName, lowerCaseTableName, lowerCaseTableName));
-      } else {
-        throw new IllegalArgumentException(String.format("Table %s does not exist", tableName));
-      }
-    }
+    return keyspace;
   }
 
-  /** Version used with user-supplied queries. */
-  private void inferKeyspaceAndTableCustom(Session session) {
-    assert config.hasPath(QUERY);
-    if (keyspace == null) {
-      if (keyspaceName == null && queryInspector.getKeyspaceName().isPresent()) {
-        keyspaceName = Metadata.quoteIfNecessary(queryInspector.getKeyspaceName().get());
-      }
-      keyspace = session.getCluster().getMetadata().getKeyspace(keyspaceName);
-      if (keyspace == null) {
-        throw new BulkConfigurationException(
-            "Could not infer the target keyspace form the provided statement (schema.query).");
-      }
-    }
+  @NotNull
+  private TableMetadata locateTable(KeyspaceMetadata keyspace, String tableName) {
+    TableMetadata table = keyspace.getTable(quoteIfNecessary(tableName));
     if (table == null) {
-      if (tableName == null) {
-        tableName = Metadata.quoteIfNecessary(queryInspector.getTableName());
-      }
-      table = keyspace.getTable(tableName);
-      if (table == null) {
+      String lowerCaseTableName = tableName.toLowerCase();
+      if (keyspace.getTable(lowerCaseTableName) != null) {
         throw new BulkConfigurationException(
-            "Could not infer the target table form the provided statement (schema.query).");
+            String.format(
+                "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
+                quoteIfNecessary(tableName), lowerCaseTableName, lowerCaseTableName));
+      } else {
+        throw new BulkConfigurationException(
+            String.format("Table %s does not exist", quoteIfNecessary(tableName)));
       }
     }
+    return table;
+  }
+
+  @NotNull
+  private TableMetadata locateVertexTable(KeyspaceMetadata keyspace, String vertexLabel) {
+    Optional<TableMetadata> vertex =
+        allVertexTables(keyspace)
+            .filter(table -> table.getVertexMetadata().getLabelName().equals(vertexLabel))
+            .findFirst();
+    if (!vertex.isPresent()) {
+      String lowerCaseVertexLabel = vertexLabel.toLowerCase();
+      if (allVertexTables(keyspace)
+          .anyMatch(
+              table -> table.getVertexMetadata().getLabelName().equals(lowerCaseVertexLabel))) {
+        throw new BulkConfigurationException(
+            String.format(
+                "Vertex label %s does not exist, however a vertex label %s was found. Did you mean to use -v %s?",
+                quoteIfNecessary(vertexLabel), lowerCaseVertexLabel, lowerCaseVertexLabel));
+      } else {
+        throw new BulkConfigurationException(
+            String.format("Vertex label %s does not exist", quoteIfNecessary(vertexLabel)));
+      }
+    }
+    return vertex.get();
+  }
+
+  @NotNull
+  private TableMetadata locateEdgeTable(
+      KeyspaceMetadata keyspace, String edgeLabel, String fromVertex, String toVertex) {
+    Optional<TableMetadata> edge =
+        allEdgeTables(keyspace)
+            .filter(table -> table.getEdgeMetadata().getLabelName().equals(edgeLabel))
+            .filter(table -> table.getEdgeMetadata().getFromLabel().equals(fromVertex))
+            .filter(table -> table.getEdgeMetadata().getToLabel().equals(toVertex))
+            .findFirst();
+    if (!edge.isPresent()) {
+      Optional<EdgeMetadata> match =
+          allEdgeTables(keyspace)
+              .map(TableMetadata::getEdgeMetadata)
+              .filter(e -> e.getLabelName().equalsIgnoreCase(edgeLabel))
+              .filter(e -> e.getFromLabel().equalsIgnoreCase(fromVertex))
+              .filter(e -> e.getToLabel().equalsIgnoreCase(toVertex))
+              .findFirst();
+      if (match.isPresent()) {
+        EdgeMetadata edgeMetadata = match.get();
+        throw new BulkConfigurationException(
+            String.format(
+                "Edge label %s from %s to %s does not exist, "
+                    + "however an edge label %s from %s to %s was found. "
+                    + "Did you mean to use -e %s -from %s -to %s?",
+                quoteIfNecessary(edgeLabel),
+                quoteIfNecessary(fromVertex),
+                quoteIfNecessary(toVertex),
+                quoteIfNecessary(edgeMetadata.getLabelName()),
+                quoteIfNecessary(edgeMetadata.getFromLabel()),
+                quoteIfNecessary(edgeMetadata.getToLabel()),
+                quoteIfNecessary(edgeMetadata.getLabelName()),
+                quoteIfNecessary(edgeMetadata.getFromLabel()),
+                quoteIfNecessary(edgeMetadata.getToLabel())));
+      } else {
+        throw new BulkConfigurationException(
+            String.format(
+                "Edge label %s from %s to %s does not exist",
+                quoteIfNecessary(edgeLabel),
+                quoteIfNecessary(fromVertex),
+                quoteIfNecessary(toVertex)));
+      }
+    }
+    return edge.get();
   }
 
   private void validateMappedRecords(BiMap<String, String> fieldsToVariables) {
@@ -502,16 +652,16 @@ public class SchemaSettings {
     fieldsToVariables.forEach(
         (key, value) -> {
           if (!isPseudoColumn(value) && !colNames.contains(value)) {
-            if (table != null) {
+            if (!config.hasPath(QUERY)) {
               throw new BulkConfigurationException(
                   String.format(
-                      "Schema mapping %s doesn't match any column found in table %s",
-                      value, table.getName()));
+                      "Schema mapping entry '%s' doesn't match any column found in table %s",
+                      value, tableName));
             } else {
               assert query != null;
               throw new BulkConfigurationException(
                   String.format(
-                      "Schema mapping %s doesn't match any bound variable found in query: '%s'",
+                      "Schema mapping entry '%s' doesn't match any bound variable found in query: '%s'",
                       value, query));
             }
           }
@@ -533,7 +683,7 @@ public class SchemaSettings {
           (!isFunction(queryVariable) && !mappingVariables.contains(queryVariable))) {
         throw new BulkConfigurationException(
             "Missing required primary key column "
-                + Metadata.quoteIfNecessary(pk.getName())
+                + quoteIfNecessary(pk.getName())
                 + " from schema.mapping or schema.query");
       }
     }
@@ -549,7 +699,7 @@ public class SchemaSettings {
       if (!columns.remove(pk.getName())) {
         throw new BulkConfigurationException(
             "Missing required partition key column "
-                + Metadata.quoteIfNecessary(pk.getName())
+                + quoteIfNecessary(pk.getName())
                 + " from schema.query");
       }
     }
@@ -610,7 +760,7 @@ public class SchemaSettings {
         sb.append(extractFunctionCall(field));
       } else {
         sb.append(':');
-        sb.append(Metadata.quoteIfNecessary(col));
+        sb.append(quoteIfNecessary(col));
       }
     }
     sb.append(')');
@@ -643,7 +793,7 @@ public class SchemaSettings {
         sb.append(',');
       }
       isFirst = false;
-      String quoted = Metadata.quoteIfNecessary(col);
+      String quoted = quoteIfNecessary(col);
       sb.append(quoted).append('=').append(quoted).append("+:").append(quoted);
     }
     sb.append(" WHERE ");
@@ -655,7 +805,7 @@ public class SchemaSettings {
         sb.append(" AND ");
       }
       isFirst = false;
-      sb.append(Metadata.quoteIfNecessary(col)).append("=:").append(Metadata.quoteIfNecessary(col));
+      sb.append(quoteIfNecessary(col)).append("=:").append(quoteIfNecessary(col));
     }
     return sb.toString();
   }
@@ -712,7 +862,7 @@ public class SchemaSettings {
     Iterator<ColumnMetadata> it = partitionKey.iterator();
     while (it.hasNext()) {
       ColumnMetadata col = it.next();
-      sb.append(Metadata.quoteIfNecessary(col.getName()));
+      sb.append(quoteIfNecessary(col.getName()));
       if (it.hasNext()) {
         sb.append(',');
       }
@@ -744,7 +894,7 @@ public class SchemaSettings {
         sb.append(',');
       }
       isFirst = false;
-      sb.append(Metadata.quoteIfNecessary(col));
+      sb.append(quoteIfNecessary(col));
     }
   }
 
@@ -753,7 +903,7 @@ public class SchemaSettings {
     Iterator<ColumnMetadata> pks = partitionKey.iterator();
     while (pks.hasNext()) {
       ColumnMetadata pk = pks.next();
-      sb.append(Metadata.quoteIfNecessary(pk.getName()));
+      sb.append(quoteIfNecessary(pk.getName()));
       if (pks.hasNext()) {
         sb.append(',');
       }
@@ -804,5 +954,37 @@ public class SchemaSettings {
       }
     }
     return builder.build();
+  }
+
+  @NotNull
+  private static Stream<TableMetadata> allVertexTables(KeyspaceMetadata keyspace) {
+    return keyspace
+        .getTables()
+        .stream()
+        .filter(tableMetadata -> tableMetadata.getVertexMetadata() != null);
+  }
+
+  @NotNull
+  private static Stream<TableMetadata> allEdgeTables(KeyspaceMetadata keyspace) {
+    return keyspace
+        .getTables()
+        .stream()
+        .filter(tableMetadata -> tableMetadata.getEdgeMetadata() != null);
+  }
+
+  private static boolean hasGraphOptions(LoaderConfig config) {
+    return config.hasPath(GRAPH)
+        || config.hasPath(VERTEX)
+        || config.hasPath(EDGE)
+        || config.hasPath(FROM)
+        || config.hasPath(TO);
+  }
+
+  private static boolean isGraph(KeyspaceMetadata keyspace) {
+    return keyspace.getGraphEngine() != null && !keyspace.getGraphEngine().isEmpty();
+  }
+
+  private static boolean isSupportedGraph(KeyspaceMetadata keyspace) {
+    return NATIVE.equals(keyspace.getGraphEngine());
   }
 }

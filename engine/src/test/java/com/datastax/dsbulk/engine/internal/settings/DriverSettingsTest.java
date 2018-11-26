@@ -16,6 +16,7 @@ import static com.datastax.driver.core.ProtocolOptions.Compression.NONE;
 import static com.datastax.dsbulk.commons.tests.utils.ReflectionUtils.getInternalState;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
@@ -48,8 +49,10 @@ import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
 import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigFactory;
 import io.netty.handler.ssl.SslContext;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -468,6 +471,670 @@ class DriverSettingsTest {
     assertThat(getInternalState(dcAwareRoundRobinPolicy, "localDc")).isEqualTo("myLocalDcName");
     assertThat(getInternalState(dcAwareRoundRobinPolicy, "dontHopForLocalCL")).isEqualTo(false);
     assertThat(getInternalState(dcAwareRoundRobinPolicy, "usedHostsPerRemoteDc")).isEqualTo(2);
+  }
+
+  @Test
+  void should_error_on_empty_hosts() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("hosts = []")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "driver.hosts is mandatory. Please set driver.hosts and try again. "
+                + "See settings.md or help for more information");
+  }
+
+  @Test
+  void should_error_bad_parse_driver_option() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("socket.readTimeout=\"I am not a duration\"")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("Invalid value at 'socket.readTimeout'");
+  }
+
+  @Test
+  void should_error_invalid_auth_provider() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("auth.provider = InvalidAuthProvider")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("InvalidAuthProvider is not a valid auth provider");
+  }
+
+  @Test
+  void should_error_invalid_auth_combinations_missing_username() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("auth.provider=PlainTextAuthProvider, auth.username = \"\"")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("must be provided with both auth.username and auth.password");
+  }
+
+  @Test
+  void should_error_invalid_auth_combinations_missing_password() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "auth.provider=DsePlainTextAuthProvider, auth.password = \"\"")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("must be provided with both auth.username and auth.password");
+  }
+
+  @Test
+  void should_error_unknown_lbp() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("policy.lbp.name = Unknown")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("Invalid value at 'policy.lbp.name'");
+  }
+
+  @Test
+  void should_error_lbp_bad_child_policy() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("policy.lbp.name = dse, policy.lbp.dse.childPolicy = junk")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("Invalid value at 'dse.childPolicy'");
+  }
+
+  @Test
+  void should_error_lbp_chaining_loop_self() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("policy.lbp.name = dse, policy.lbp.dse.childPolicy = dse")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("Load balancing policy chaining loop detected: dse,dse");
+  }
+
+  @Test
+  void should_error_lbp_chaining_loop() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "policy.lbp.name = dse, "
+                        + "policy.lbp.dse.childPolicy = whiteList, "
+                        + "policy.lbp.whiteList.childPolicy = tokenAware, "
+                        + "policy.lbp.tokenAware.childPolicy = whiteList")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Load balancing policy chaining loop detected: dse,whiteList,tokenAware,whiteList");
+  }
+
+  @Test
+  void should_error_nonexistent_keytab() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "auth.provider = DseGSSAPIAuthProvider, auth.keyTab = noexist.keytab")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageMatching(".*Keytab file .*noexist.keytab does not exist.*");
+  }
+
+  @Test
+  void should_error_keytab_is_a_dir() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("auth.provider = DseGSSAPIAuthProvider, auth.keyTab = \".\"")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageMatching(".*Keytab file .* is not a file.*");
+  }
+
+  @Test
+  void should_error_keytab_has_no_keys() throws Exception {
+    Path keytabPath = Files.createTempFile("my", ".keytab");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "auth.provider = DseGSSAPIAuthProvider, auth.keyTab = "
+                          + escapeUserInput(keytabPath))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      assertThatThrownBy(settings::init)
+          .isInstanceOf(BulkConfigurationException.class)
+          .hasMessageMatching(".*Could not find any principals in.*");
+    } finally {
+      Files.delete(keytabPath);
+    }
+  }
+
+  @Test
+  void should_error_DseGSSAPIAuthProvider_and_no_sasl_protocol() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "auth.provider = DseGSSAPIAuthProvider, auth.saslService = \"\"")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "DseGSSAPIAuthProvider must be provided with auth.saslService. "
+                + "auth.principal, auth.keyTab, and auth.authorizationId are optional.");
+  }
+
+  @Test
+  void should_error_keystore_without_password() throws IOException {
+    Path keystore = Files.createTempFile("my", "keystore");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.provider = JDK, ssl.keystore.path = " + escapeUserInput(keystore))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      assertThatThrownBy(settings::init)
+          .isInstanceOf(BulkConfigurationException.class)
+          .hasMessageContaining(
+              "ssl.keystore.path, ssl.keystore.password and ssl.truststore.algorithm must be provided together");
+    } finally {
+      Files.delete(keystore);
+    }
+  }
+
+  @Test
+  void should_error_password_without_keystore() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("ssl.provider = JDK, ssl.keystore.password = mypass")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "ssl.keystore.path, ssl.keystore.password and ssl.truststore.algorithm must be provided together");
+  }
+
+  @Test
+  void should_error_openssl_keycertchain_without_key() throws IOException {
+    Path chain = Files.createTempFile("my", ".chain");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.provider = OpenSSL, ssl.openssl.keyCertChain = "
+                          + escapeUserInput(chain))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      assertThatThrownBy(settings::init)
+          .isInstanceOf(BulkConfigurationException.class)
+          .hasMessageContaining(
+              "ssl.openssl.keyCertChain and ssl.openssl.privateKey must be provided together");
+    } finally {
+      Files.delete(chain);
+    }
+  }
+
+  @Test
+  void should_error_key_without_openssl_keycertchain() throws IOException {
+    Path key = Files.createTempFile("my", ".key");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.provider = OpenSSL, ssl.openssl.privateKey = " + escapeUserInput(key))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      assertThatThrownBy(settings::init)
+          .isInstanceOf(BulkConfigurationException.class)
+          .hasMessageContaining(
+              "ssl.openssl.keyCertChain and ssl.openssl.privateKey must be provided together");
+    } finally {
+      Files.delete(key);
+    }
+  }
+
+  @Test
+  void should_error_truststore_without_password() throws IOException {
+    Path truststore = Files.createTempFile("my", "truststore");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.provider = JDK, ssl.truststore.path = " + escapeUserInput(truststore))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      assertThatThrownBy(settings::init)
+          .isInstanceOf(BulkConfigurationException.class)
+          .hasMessageContaining(
+              "ssl.truststore.path, ssl.truststore.password and ssl.truststore.algorithm must be provided");
+    } finally {
+      Files.delete(truststore);
+    }
+  }
+
+  @Test
+  void should_error_password_without_truststore() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("ssl.provider = JDK, ssl.truststore.password = mypass")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "ssl.truststore.path, ssl.truststore.password and ssl.truststore.algorithm must be provided together");
+  }
+
+  @Test
+  void should_error_nonexistent_truststore() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "ssl.provider = JDK,"
+                        + "ssl.truststore.path = noexist.truststore,"
+                        + "ssl.truststore.password = mypass")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageMatching(".*SSL truststore file .*noexist.truststore does not exist.*");
+  }
+
+  @Test
+  void should_error_truststore_is_a_dir() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "ssl.provider = JDK,"
+                        + "ssl.truststore.path = \".\","
+                        + "ssl.truststore.password = mypass")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageMatching(".*SSL truststore file .* is not a file.*");
+  }
+
+  @Test
+  void should_accept_existing_truststore() throws IOException {
+    Path truststore = Files.createTempFile("my", ".truststore");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.truststore.password = mypass, ssl.truststore.path = "
+                          + escapeUserInput(truststore))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      settings.init();
+    } finally {
+      Files.delete(truststore);
+    }
+  }
+
+  @Test
+  void should_error_nonexistent_keystore() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "ssl.provider = JDK, "
+                        + "ssl.keystore.path = noexist.keystore, "
+                        + "ssl.keystore.password = mypass")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageMatching(".*SSL keystore file .*noexist.keystore does not exist.*");
+  }
+
+  @Test
+  void should_error_keystore_is_a_dir() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "ssl.provider = JDK, "
+                        + "ssl.keystore.path = \".\", "
+                        + "ssl.keystore.password = mypass")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageMatching(".*SSL keystore file .* is not a file.*");
+  }
+
+  @Test
+  void should_accept_existing_keystore() throws IOException {
+    Path keystore = Files.createTempFile("my", ".keystore");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.keystore.password = mypass, ssl.keystore.path = "
+                          + escapeUserInput(keystore))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      settings.init();
+    } finally {
+      Files.delete(keystore);
+    }
+  }
+
+  @Test
+  void should_error_nonexistent_openssl_keycertchain() throws IOException {
+    Path key = Files.createTempFile("my", ".key");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.provider = OpenSSL, "
+                          + "ssl.openssl.keyCertChain = noexist.chain, "
+                          + "ssl.openssl.privateKey = "
+                          + escapeUserInput(key))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      assertThatThrownBy(settings::init)
+          .isInstanceOf(BulkConfigurationException.class)
+          .hasMessageMatching(
+              ".*OpenSSL key certificate chain file .*noexist.chain does not exist.*");
+    } finally {
+      Files.delete(key);
+    }
+  }
+
+  @Test
+  void should_error_openssl_keycertchain_is_a_dir() throws IOException {
+    Path key = Files.createTempFile("my", ".key");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.provider = OpenSSL, "
+                          + "ssl.openssl.keyCertChain = \".\", "
+                          + "ssl.openssl.privateKey = "
+                          + escapeUserInput(key))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      assertThatThrownBy(settings::init)
+          .isInstanceOf(BulkConfigurationException.class)
+          .hasMessageMatching(".*OpenSSL key certificate chain file .* is not a file.*");
+    } finally {
+      Files.delete(key);
+    }
+  }
+
+  @Test
+  void should_accept_existing_openssl_keycertchain_and_key() throws IOException {
+    Path key = Files.createTempFile("my", ".key");
+    Path chain = Files.createTempFile("my", ".chain");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.provider = OpenSSL,"
+                          + "ssl.openssl.keyCertChain = "
+                          + escapeUserInput(chain)
+                          + ", ssl.openssl.privateKey = "
+                          + escapeUserInput(key))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      settings.init();
+    } finally {
+      Files.delete(key);
+      Files.delete(chain);
+    }
+  }
+
+  @Test
+  void should_error_nonexistent_openssl_key() throws IOException {
+    Path chain = Files.createTempFile("my", ".chain");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.provider = OpenSSL,"
+                          + "ssl.openssl.privateKey = noexist.key,"
+                          + "ssl.openssl.keyCertChain = "
+                          + escapeUserInput(chain))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      assertThatThrownBy(settings::init)
+          .isInstanceOf(BulkConfigurationException.class)
+          .hasMessageMatching(".*OpenSSL private key file .*noexist.key does not exist.*");
+    } finally {
+      Files.delete(chain);
+    }
+  }
+
+  @Test
+  void should_error_openssl_key_is_a_dir() throws IOException {
+    Path chain = Files.createTempFile("my", ".chain");
+    try {
+      LoaderConfig config =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "ssl.provider = OpenSSL,"
+                          + "ssl.openssl.privateKey = \".\","
+                          + "ssl.openssl.keyCertChain = "
+                          + escapeUserInput(chain))
+                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+      DriverSettings settings = new DriverSettings(config);
+      assertThatThrownBy(settings::init)
+          .isInstanceOf(BulkConfigurationException.class)
+          .hasMessageMatching(".*OpenSSL private key file .* is not a file.*");
+    } finally {
+      Files.delete(chain);
+    }
+  }
+
+  @Test
+  void should_throw_exception_when_port_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("port = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("driver.port: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_local_connections_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("pooling.local.connections = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("driver.pooling.local.connections: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_remote_connections_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("pooling.remote.connections = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("driver.pooling.remote.connections: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_local_requests_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("pooling.local.requests = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("driver.pooling.local.requests: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_remote_requests_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("pooling.remote.requests = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("driver.pooling.remote.requests: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_fetch_size_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("query.fetchSize = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("driver.query.fetchSize: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_max_retries_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("policy.maxRetries = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("driver.policy.maxRetries: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_idempotence_not_a_boolean() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("query.idempotence = NotABoolean")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("driver.query.idempotence: Expecting BOOLEAN, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_timestamp_generator_invalid() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("timestampGenerator = Unknown")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("driver.timestampGenerator: Expecting FQCN or short class name, got 'Unknown'");
+  }
+
+  @Test
+  void should_throw_exception_when_address_translator_invalid() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("addressTranslator = Unknown")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("driver.addressTranslator: Expecting FQCN or short class name, got 'Unknown'");
+  }
+
+  @Test
+  void should_throw_exception_when_compression_invalid() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("protocol.compression = Unknown")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value at 'protocol.compression': Expecting one of NONE, SNAPPY, LZ4, got 'Unknown'");
+  }
+
+  @Test
+  void should_throw_exception_when_consistency_invalid() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("query.consistency = Unknown")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value at 'query.consistency': Expecting one of ANY, ONE, TWO, THREE, QUORUM, ALL, LOCAL_QUORUM, EACH_QUORUM, SERIAL, LOCAL_SERIAL, LOCAL_ONE, got 'Unknown'");
+  }
+
+  @Test
+  void should_throw_exception_when_serial_consistency_invalid() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("query.serialConsistency = Unknown")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value at 'query.serialConsistency': Expecting one of ANY, ONE, TWO, THREE, QUORUM, ALL, LOCAL_QUORUM, EACH_QUORUM, SERIAL, LOCAL_SERIAL, LOCAL_ONE, got 'Unknown'");
+  }
+
+  @Test
+  void should_throw_exception_when_read_timeout_invalid() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("socket.readTimeout = NotADuration")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value at 'socket.readTimeout': No number in duration value 'NotADuration'");
+  }
+
+  @Test
+  void should_throw_exception_when_heartbeat_invalid() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("pooling.heartbeat = NotADuration")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value at 'pooling.heartbeat': No number in duration value 'NotADuration'");
   }
 
   private static Host makeHostWithAddress(String host, int port) {

@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.HttpTestServer;
@@ -70,7 +71,7 @@ class JsonConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}",
                         url("/multi_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -88,7 +89,7 @@ class JsonConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}, "
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}, "
                             + "mode = SINGLE_DOCUMENT",
                         url("/single_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
@@ -143,7 +144,7 @@ class JsonConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}",
                         url("/multi_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -157,7 +158,7 @@ class JsonConnectorTest {
   void should_read_from_stdin_with_special_encoding() throws Exception {
     InputStream stdin = System.in;
     try {
-      String line = "{ \"fóô\" : \"bàr\", \"qïx\" : null }\n";
+      String line = "{ \"fóô\": \"bàr\", \"qïx\": null }\n";
       InputStream is = new ByteArrayInputStream(line.getBytes("ISO-8859-1"));
       System.setIn(is);
       JsonConnector connector = new JsonConnector();
@@ -716,7 +717,7 @@ class JsonConnectorTest {
                           "url = \"http://localhost:%d/file.json\", "
                               + "mode = SINGLE_DOCUMENT, "
                               + "parserFeatures = {ALLOW_COMMENTS:true}, "
-                              + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                              + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}",
                           server.getPort()))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
@@ -743,6 +744,85 @@ class JsonConnectorTest {
         .isInstanceOf(UncheckedIOException.class)
         .hasMessageContaining(
             "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.json");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_recursive_not_boolean() {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("recursive = NotABoolean")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.json.recursive: Expecting BOOLEAN, got STRING");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_prettyPrint_not_boolean() {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("prettyPrint = NotABoolean")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.json.prettyPrint: Expecting BOOLEAN, got STRING");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_skipRecords_not_number() {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("skipRecords = NotANumber")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.json.skipRecords: Expecting NUMBER, got STRING");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_maxRecords_not_number() {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxRecords = NotANumber")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.json.maxRecords: Expecting NUMBER, got STRING");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_maxConcurrentFiles_not_number() {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxConcurrentFiles = NotANumber")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "connector.json.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_encoding_not_valid() {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("encoding = NotAnEncoding")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.json.encoding: Expecting valid charset name, got 'NotAnEncoding'");
     connector.close();
   }
 

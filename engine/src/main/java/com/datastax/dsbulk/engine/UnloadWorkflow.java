@@ -92,8 +92,6 @@ public class UnloadWorkflow implements Workflow {
     logSettings.init();
     logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
     codecSettings.init();
-    schemaSettings.init(
-        WorkflowType.UNLOAD, !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     monitoringSettings.init();
     executorSettings.init();
     driverSettings.init();
@@ -101,6 +99,8 @@ public class UnloadWorkflow implements Workflow {
         Schedulers.newParallel(
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     cluster = driverSettings.newCluster();
+    schemaSettings.init(
+        WorkflowType.UNLOAD, cluster, !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     DseSession session = cluster.connect();
     logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
     logManager.init();

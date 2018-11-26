@@ -23,6 +23,7 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
@@ -276,5 +277,66 @@ class LogSettingsTest {
               .isInstanceOf(IOException.class)
               .hasMessageContaining(forbidden + " IS FORBIDDEN");
         });
+  }
+
+  @Test
+  void should_throw_exception_when_maxQueryStringLength_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("stmt.maxQueryStringLength = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("log.stmt.maxQueryStringLength: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_maxBoundValueLength_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("stmt.maxBoundValueLength = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("log.stmt.maxBoundValueLength: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_maxBoundValues_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("stmt.maxBoundValues = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("log.stmt.maxBoundValues: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_maxInnerStatements_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("stmt.maxInnerStatements = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("log.stmt.maxInnerStatements: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_level_invalid() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("stmt.level = NotALevel")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value at 'stmt.level': Expecting one of ABRIDGED, NORMAL, EXTENDED, got 'NotALevel'");
   }
 }
