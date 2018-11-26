@@ -147,9 +147,11 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("|");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(34, unloadDir);
+    validateOutputFiles(35, unloadDir);
   }
 }
