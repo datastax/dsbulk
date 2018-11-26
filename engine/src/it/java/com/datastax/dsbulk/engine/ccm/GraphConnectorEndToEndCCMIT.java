@@ -8,29 +8,6 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
-import com.datastax.driver.core.Session;
-import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
-import com.datastax.dsbulk.commons.tests.logging.LogCapture;
-import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
-import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
-import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
-import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
-import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
-import com.datastax.dsbulk.engine.DataStaxBulkLoader;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
@@ -54,7 +31,29 @@ import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.trun
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
 
-//tests for DAT-355
+import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+// tests for DAT-355
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 @CCMConfig(numberOfNodes = 1)
@@ -126,7 +125,6 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
 
-
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(34, SELECT_ALL_FROM_CUSTOMERS);
@@ -171,7 +169,6 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("|");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
-
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -237,8 +234,6 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("|");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
-
-
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
