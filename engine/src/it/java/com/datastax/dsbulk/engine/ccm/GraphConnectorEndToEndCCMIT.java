@@ -242,7 +242,7 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateResultSetSize(13, SELECT_ALL_CUSTOMER_ORDERS);
+    validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -264,6 +264,6 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(14, unloadDir);
+    validateOutputFiles(15, unloadDir);
   }
 }

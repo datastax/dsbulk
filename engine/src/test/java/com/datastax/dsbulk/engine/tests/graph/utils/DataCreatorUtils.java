@@ -48,7 +48,7 @@ public class DataCreatorUtils {
     session.execute(
         "CREATE TABLE IF NOT EXISTS \"" + FRAUD_KEYSPACE + "\".\"" + CUSTOMER_ORDER_TABLE + "\" ("
             + "\"out_customerid\" uuid,"
-            + "\"in_orderid\" timestamp,"
+            + "\"in_orderid\" uuid,"
             + "PRIMARY KEY(\"out_customerid\", \"in_orderid\"))"
             + "WITH CLUSTERING ORDER BY (\"in_orderid\" ASC)");
   }
