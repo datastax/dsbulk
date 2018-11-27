@@ -34,6 +34,7 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.driver.core.VertexMetadata;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
@@ -537,12 +538,18 @@ public class SchemaSettings {
   private KeyspaceMetadata locateKeyspace(Metadata metadata, String keyspaceName) {
     KeyspaceMetadata keyspace = metadata.getKeyspace(quoteIfNecessary(keyspaceName));
     if (keyspace == null) {
-      String lowerCaseKeyspaceName = keyspaceName.toLowerCase();
-      if (metadata.getKeyspace(lowerCaseKeyspaceName) != null) {
+      Optional<KeyspaceMetadata> match =
+          metadata
+              .getKeyspaces()
+              .stream()
+              .filter(k -> k.getName().equalsIgnoreCase(keyspaceName))
+              .findFirst();
+      if (match.isPresent()) {
+        String similarName = quoteIfNecessary(match.get().getName());
         throw new BulkConfigurationException(
             String.format(
                 "Keyspace %s does not exist, however a keyspace %s was found. Did you mean to use -k %s?",
-                quoteIfNecessary(keyspaceName), lowerCaseKeyspaceName, lowerCaseKeyspaceName));
+                quoteIfNecessary(keyspaceName), similarName, similarName));
       } else {
         throw new BulkConfigurationException(
             String.format("Keyspace %s does not exist", quoteIfNecessary(keyspaceName)));
@@ -555,12 +562,18 @@ public class SchemaSettings {
   private TableMetadata locateTable(KeyspaceMetadata keyspace, String tableName) {
     TableMetadata table = keyspace.getTable(quoteIfNecessary(tableName));
     if (table == null) {
-      String lowerCaseTableName = tableName.toLowerCase();
-      if (keyspace.getTable(lowerCaseTableName) != null) {
+      Optional<TableMetadata> match =
+          keyspace
+              .getTables()
+              .stream()
+              .filter(t -> t.getName().equalsIgnoreCase(tableName))
+              .findFirst();
+      if (match.isPresent()) {
+        String similarName = quoteIfNecessary(match.get().getName());
         throw new BulkConfigurationException(
             String.format(
                 "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
-                quoteIfNecessary(tableName), lowerCaseTableName, lowerCaseTableName));
+                quoteIfNecessary(tableName), similarName, similarName));
       } else {
         throw new BulkConfigurationException(
             String.format("Table %s does not exist", quoteIfNecessary(tableName)));
@@ -576,14 +589,18 @@ public class SchemaSettings {
             .filter(table -> table.getVertexMetadata().getLabelName().equals(vertexLabel))
             .findFirst();
     if (!vertex.isPresent()) {
-      String lowerCaseVertexLabel = vertexLabel.toLowerCase();
-      if (allVertexTables(keyspace)
-          .anyMatch(
-              table -> table.getVertexMetadata().getLabelName().equals(lowerCaseVertexLabel))) {
+      Optional<VertexMetadata> match =
+          allVertexTables(keyspace)
+              .filter(
+                  table -> table.getVertexMetadata().getLabelName().equalsIgnoreCase(vertexLabel))
+              .map(TableMetadata::getVertexMetadata)
+              .findFirst();
+      if (match.isPresent()) {
+        String similarName = quoteIfNecessary(match.get().getLabelName());
         throw new BulkConfigurationException(
             String.format(
                 "Vertex label %s does not exist, however a vertex label %s was found. Did you mean to use -v %s?",
-                quoteIfNecessary(vertexLabel), lowerCaseVertexLabel, lowerCaseVertexLabel));
+                quoteIfNecessary(vertexLabel), similarName, similarName));
       } else {
         throw new BulkConfigurationException(
             String.format("Vertex label %s does not exist", quoteIfNecessary(vertexLabel)));
@@ -611,6 +628,9 @@ public class SchemaSettings {
               .findFirst();
       if (match.isPresent()) {
         EdgeMetadata edgeMetadata = match.get();
+        String similarLabel = quoteIfNecessary(edgeMetadata.getLabelName());
+        String similarFrom = quoteIfNecessary(edgeMetadata.getFromLabel());
+        String similarTo = quoteIfNecessary(edgeMetadata.getToLabel());
         throw new BulkConfigurationException(
             String.format(
                 "Edge label %s from %s to %s does not exist, "
@@ -619,12 +639,12 @@ public class SchemaSettings {
                 quoteIfNecessary(edgeLabel),
                 quoteIfNecessary(fromVertex),
                 quoteIfNecessary(toVertex),
-                quoteIfNecessary(edgeMetadata.getLabelName()),
-                quoteIfNecessary(edgeMetadata.getFromLabel()),
-                quoteIfNecessary(edgeMetadata.getToLabel()),
-                quoteIfNecessary(edgeMetadata.getLabelName()),
-                quoteIfNecessary(edgeMetadata.getFromLabel()),
-                quoteIfNecessary(edgeMetadata.getToLabel())));
+                similarLabel,
+                similarFrom,
+                similarTo,
+                similarLabel,
+                similarFrom,
+                similarTo));
       } else {
         throw new BulkConfigurationException(
             String.format(
