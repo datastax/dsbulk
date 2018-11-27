@@ -11,7 +11,7 @@ package com.datastax.dsbulk.engine.internal.settings;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode.PARTITION_KEY;
 import static com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode.REPLICA_SET;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -102,16 +102,51 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_exception_when_buffer_size_less_than_max_batch_size() {
-    assertThrows(
-        BulkConfigurationException.class,
-        () -> {
-          LoaderConfig config =
-              new DefaultLoaderConfig(
-                  ConfigFactory.parseString("maxBatchSize = 10, " + "bufferSize = 5")
-                      .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
-          BatchSettings settings = new BatchSettings(config);
-          settings.init();
-        },
-        "batch.bufferSize (5) must be greater than or equal to buffer.maxBatchSize (10). See settings.md for more information.");
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxBatchSize = 10, bufferSize = 5")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
+    BatchSettings settings = new BatchSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "batch.bufferSize (5) must be greater than or equal to buffer.maxBatchSize (10). See settings.md for more information.");
+  }
+
+  @Test
+  void should_throw_exception_when_max_batch_size_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxBatchSize = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
+    BatchSettings settings = new BatchSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("batch.maxBatchSize: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_buffer_size_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("bufferSize = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
+    BatchSettings settings = new BatchSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("batch.bufferSize: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_batch_mode_invalid() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("mode = NotAMode")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
+    BatchSettings settings = new BatchSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value at 'mode': Expecting one of DISABLED, PARTITION_KEY, REPLICA_SET, got 'NotAMode'");
   }
 }
