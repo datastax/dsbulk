@@ -226,6 +226,7 @@ public class SchemaSettings {
           throw new BulkConfigurationException(
               "schema.keyspace must be provided when schema.query does not contain a keyspace-qualified statement");
         }
+
         String tableName = quoteIfNecessary(queryInspector.getTableName());
         table = keyspace.getTable(tableName);
         if (table == null) {
@@ -234,7 +235,7 @@ public class SchemaSettings {
         }
 
         // If a query is provided, ttl and timestamp must not be.
-        if (query != null && (timestampMicros != -1 || ttlSeconds != -1)) {
+        if (timestampMicros != -1 || ttlSeconds != -1) {
           throw new BulkConfigurationException(
               "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
         }
