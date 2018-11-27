@@ -285,8 +285,6 @@ class JsonEndToEndSimulacronIT {
       port,
       "--driver.pooling.local.connections",
       "1",
-      "--schema.keyspace",
-      "ks1",
       "--schema.query",
       "INSERT INTO ks1.table1 (key,value) VALUES (:key,:value)",
       "--connector.json.parserFeatures",

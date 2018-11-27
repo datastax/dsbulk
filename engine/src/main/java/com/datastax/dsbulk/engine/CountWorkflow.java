@@ -84,7 +84,6 @@ public class CountWorkflow implements Workflow {
     logSettings.init();
     logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
     codecSettings.init();
-    schemaSettings.init(WorkflowType.COUNT, false);
     monitoringSettings.init();
     executorSettings.init();
     driverSettings.init();
@@ -93,6 +92,7 @@ public class CountWorkflow implements Workflow {
         Schedulers.newParallel(
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     cluster = driverSettings.newCluster();
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
     DseSession session = cluster.connect();
     logManager = logSettings.newLogManager(WorkflowType.COUNT, cluster);
     logManager.init();

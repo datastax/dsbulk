@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +21,7 @@ import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
@@ -38,7 +40,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class ExecutorSettingsTest {
 
   private Session session;
-
   private ContinuousPagingSession dseSession;
   private QueryOptions queryOptions;
 
@@ -118,5 +119,29 @@ class ExecutorSettingsTest {
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
+  }
+
+  @Test
+  void should_throw_exception_when_maxPerSecond_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxPerSecond=NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("executor.maxPerSecond: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_maxInFlight_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxInFlight=NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("executor.maxInFlight: Expecting NUMBER, got STRING");
   }
 }

@@ -35,4 +35,15 @@ class EngineSettingsTest {
     settings.init();
     assertThat(settings.isDryRun()).isTrue();
   }
+
+  @Test
+  void should_report_execution_id() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("executionId = MyExecutionId")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.engine")));
+    EngineSettings settings = new EngineSettings(config);
+    settings.init();
+    assertThat(settings.getCustomExecutionIdTemplate()).isEqualTo("MyExecutionId");
+  }
 }

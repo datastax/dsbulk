@@ -800,6 +800,146 @@ class CSVConnectorTest {
     connector.close();
   }
 
+  @Test
+  void should_error_on_empty_url() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(ConfigFactory.parseString("url = \"\""))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    assertThatThrownBy(() -> connector.configure(settings, true))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "url is mandatory when using the csv connector. Please set connector.csv.url and "
+                + "try again. See settings.md or help for more information.");
+  }
+
+  @Test
+  void should_throw_exception_when_recursive_not_boolean() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("recursive = NotABoolean")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.csv.recursive: Expecting BOOLEAN, got STRING");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_header_not_boolean() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("header = NotABoolean")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.csv.header: Expecting BOOLEAN, got STRING");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_skipRecords_not_number() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("skipRecords = NotANumber")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.csv.skipRecords: Expecting NUMBER, got STRING");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_maxRecords_not_number() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxRecords = NotANumber")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.csv.maxRecords: Expecting NUMBER, got STRING");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_maxConcurrentFiles_not_number() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxConcurrentFiles = NotANumber")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "connector.csv.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_encoding_not_valid() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("encoding = NotAnEncoding")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.csv.encoding: Expecting valid charset name, got 'NotAnEncoding'");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_delimiter_not_valid() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("delimiter = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.csv.delimiter: Expecting single char, got ''");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_quote_not_valid() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("quote = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.csv.quote: Expecting single char, got ''");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_escape_not_valid() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("escape = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.csv.escape: Expecting single char, got ''");
+    connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_comment_not_valid() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("comment = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("connector.csv.comment: Expecting single char, got ''");
+    connector.close();
+  }
+
   private static List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
     String[] fields = new String[] {"Year", "Make", "Model", "Description", "Price"};

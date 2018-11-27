@@ -4,6 +4,7 @@
 
 - [bug] DAT-334: Murmur3TokenRangeSplitter should allow long overflows when splitting ranges.
 - [improvement] DAT-336: Extend DSBulk's rate limiting capability to reads.
+- [new feature] DAT-354: Add Basic NGDG support to DSBulk Engine.
 
 
 ### 1.2.0

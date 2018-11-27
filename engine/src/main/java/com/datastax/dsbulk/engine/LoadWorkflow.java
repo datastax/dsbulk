@@ -100,10 +100,10 @@ public class LoadWorkflow implements Workflow {
     driverSettings.init();
     executorSettings.init();
     engineSettings.init();
-    schemaSettings.init(
-        WorkflowType.LOAD, !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     cluster = driverSettings.newCluster();
     checkProductCompatibility(cluster);
+    schemaSettings.init(
+        WorkflowType.LOAD, cluster, !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     DseSession session = cluster.connect();
     batchingEnabled = batchSettings.isBatchingEnabled();
     batchBufferSize = batchSettings.getBufferSize();

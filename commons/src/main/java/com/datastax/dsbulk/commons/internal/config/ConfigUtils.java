@@ -35,7 +35,7 @@ public class ConfigUtils {
       Pattern.compile("(.+)\\s*C", Pattern.CASE_INSENSITIVE);
 
   private static final Pattern WRONG_TYPE_PATTERN =
-      Pattern.compile("has type (\\w+) rather than (\\w+)", Pattern.CASE_INSENSITIVE);
+      Pattern.compile(" has type (\\w+) rather than (\\w+)", Pattern.CASE_INSENSITIVE);
 
   private static final Pattern ENUM_PATTERN =
       Pattern.compile(
@@ -54,7 +54,7 @@ public class ConfigUtils {
       String errorMsg = path + "." + em.substring(startingIndex);
       Matcher matcher = WRONG_TYPE_PATTERN.matcher(errorMsg);
       if (matcher.find()) {
-        errorMsg = matcher.replaceAll(": Expecting $1, got $2");
+        errorMsg = matcher.replaceAll(": Expecting $2, got $1");
       }
       return new BulkConfigurationException(errorMsg, e);
     } else {
