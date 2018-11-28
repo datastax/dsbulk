@@ -100,7 +100,6 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @BeforeEach
   void truncateTable() {
     truncateCustomersTable(session);
-//    truncateOrderTable(session);
     truncateCustomerOrderTable(session);
   }
 

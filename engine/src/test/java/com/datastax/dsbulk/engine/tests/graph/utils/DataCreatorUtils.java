@@ -58,7 +58,8 @@ public class DataCreatorUtils {
             + "\"in_orderid\" uuid,"
             + "PRIMARY KEY(\"out_customerid\", \"in_orderid\"))"
             + "WITH CLUSTERING ORDER BY (\"in_orderid\" ASC) "
-            + "AND EDGE LABEL \"knows\" FROM \"" + CUSTOMER_TABLE + "\"((out_customerid)) "
+            + "AND EDGE LABEL \"" + CUSTOMER_ORDER_EDGE_NAME
+            + "\" FROM \"" + CUSTOMER_TABLE + "\"((out_customerid)) "
             + "TO \"" + ORDER_TABLE + "\"((in_orderid))");
   }
 
