@@ -16,8 +16,10 @@
     </encoder>
   </appender>
 
-  <root level="${log.root.level:-OFF}">
+  <root level="${log.root.level:-ERROR}">
     <appender-ref ref="STDOUT"/>
   </root>
+
+  <logger name="com.datastax.dsbulk.commons.tests.ccm" level="ERROR"/>
 
 </configuration>
