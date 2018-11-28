@@ -596,7 +596,7 @@ Default: **true**.
 
 #### -query,--schema.query _&lt;string&gt;_
 
-The query to use. If not specified, then a keyspace must be provided (either with `schema.keyspace` or `schema.graph`) and a table must be provided (either with `schema.table`, `schema.vertex` or `schema.edge`), and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns. If `schema.keyspace` or `schema.graph` is provided, the query need not include the keyspace to qualify the table reference.
+The query to use. If not specified, then a keyspace must be provided (either with `keyspace` or `graph`) and a table must be provided (either with `table`, `vertex` or `edge`), and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns. If `keyspace` or `graph` is provided, the query need not include the keyspace to qualify the table reference.
 
 For loading, the statement can be any `INSERT`, `UPDATE` or `DELETE` statement. `INSERT` statements are preferred for most load operations, and bound variables should correspond to mapped fields; for example, `INSERT INTO table1 (c1, c2, c3) VALUES (:fieldA, :fieldB, :fieldC)`. `UPDATE` statements are required if the target table is a counter table, and the columns are updated with incremental operations (`SET col1 = col1 + :fieldA` where `fieldA` is a field in the input data). A `DELETE` statement will remove existing data during the load operation.
 
@@ -610,7 +610,7 @@ When loading and unloading graph data, the query must be provided in plain CQL; 
 
 Note: The query is parsed to discover which bound variables are present, and to map the variables correctly to fields.
 
-See *schema.mapping* setting for more information.
+See *mapping* setting for more information.
 
 Default: **&lt;unspecified&gt;**.
 
@@ -1389,7 +1389,7 @@ Which kind(s) of statistics to compute. Only applicaple for the count workflow, 
 * `global`: count the total number of rows in the table.
 * `ranges`: count the total number of rows per token range in the table.
 * `hosts`: count the total number of rows per hosts in the table.
-* `partitions`: count the total number of rows in the N biggest partitions in the table. When using this mode, you can chose how many partitions to track with the `schema.biggestPartitions` setting.
+* `partitions`: count the total number of rows in the N biggest partitions in the table. When using this mode, you can chose how many partitions to track with the `numPartitions` setting.
 The default value is `[global]`.
 
 Default: **["global"]**.
