@@ -32,7 +32,12 @@ public @interface CCMConfig {
    *
    * @return Configuration items to add to cassandra.yaml configuration file.
    */
-  String[] config() default {};
+  String[] config() default {
+    "write_request_timeout_in_ms:60000",
+    "read_request_timeout_in_ms:60000",
+    "range_request_timeout_in_ms:60000",
+    "request_timeout_in_ms:60000"
+  };
 
   /**
    * Configuration items to add to dse.yaml configuration file. Each configuration item must be in
