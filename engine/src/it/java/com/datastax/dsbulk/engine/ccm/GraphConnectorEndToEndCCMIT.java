@@ -231,5 +231,28 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(15, unloadDir);
+
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("-g");
+    args.add(FRAUD_KEYSPACE);
+    args.add("-e");
+    args.add(CUSTOMER_ORDER_EDGE_NAME);
+    args.add("-from");
+    args.add(CUSTOMER_TABLE);
+    args.add("-to");
+    args.add(ORDER_TABLE);
+    args.add("-url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("-m");
+    args.add(CUSTOMER_ORDER_MAPPINGS);
+    args.add("--connector.csv.delimiter");
+    args.add("|");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
   }
 }
