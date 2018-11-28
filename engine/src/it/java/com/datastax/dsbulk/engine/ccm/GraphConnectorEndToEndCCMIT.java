@@ -9,10 +9,15 @@
 package com.datastax.dsbulk.engine.ccm;
 
 import com.datastax.driver.core.Session;
+import com.datastax.driver.dse.DseSession;
+import com.datastax.driver.dse.graph.GraphResultSet;
+import com.datastax.driver.dse.graph.GraphStatement;
+import com.datastax.driver.dse.graph.SimpleGraphStatement;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMWorkload;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -39,7 +44,7 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_MAPPINGS;
-import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_ORDER_EDGE_NAME;
+import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_ORDER_EDGE_LABEL;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_ORDER_MAPPINGS;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_ORDER_RECORDS;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_ORDER_TABLE;
@@ -59,7 +64,7 @@ import static java.nio.file.Files.createTempDirectory;
 // tests for DAT-355
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
-@CCMConfig(numberOfNodes = 1)
+@CCMConfig(numberOfNodes = 1, workloads = {@CCMWorkload({CCMCluster.Workload.graph})})
 @Tag("medium")
 @CCMRequirements(compatibleTypes = DSE, versionRequirements = {@CCMVersionRequirement(type = DSE, min = "6.8.0")})
 class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
@@ -132,6 +137,10 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(34, SELECT_ALL_FROM_CUSTOMERS);
+    GraphStatement statement =
+        new SimpleGraphStatement("g.V().hasLabel('" + CUSTOMER_TABLE + "')");
+    GraphResultSet results = ((DseSession) session).executeGraph(statement);
+    assertThat(results.all().size()).isEqualTo(34);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -173,6 +182,10 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(34, SELECT_ALL_FROM_CUSTOMERS);
+    statement =
+        new SimpleGraphStatement("g.V().hasLabel('" + CUSTOMER_TABLE + "')");
+    results = ((DseSession) session).executeGraph(statement);
+    assertThat(results.all().size()).isEqualTo(34);
     deleteDirectory(logDir);
   }
 
@@ -184,7 +197,7 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-g");
     args.add(FRAUD_KEYSPACE);
     args.add("-e");
-    args.add(CUSTOMER_ORDER_EDGE_NAME);
+    args.add(CUSTOMER_ORDER_EDGE_LABEL);
     args.add("-from");
     args.add(CUSTOMER_TABLE);
     args.add("-to");
@@ -201,6 +214,10 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
+    GraphStatement statement =
+        new SimpleGraphStatement("g.E().hasLabel('" + CUSTOMER_ORDER_EDGE_LABEL + "')");
+    GraphResultSet results = ((DseSession) session).executeGraph(statement);
+    assertThat(results.all().size()).isEqualTo(14);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -208,7 +225,7 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-g");
     args.add(FRAUD_KEYSPACE);
     args.add("-e");
-    args.add(CUSTOMER_ORDER_EDGE_NAME);
+    args.add(CUSTOMER_ORDER_EDGE_LABEL);
     args.add("-from");
     args.add(CUSTOMER_TABLE);
     args.add("-to");
@@ -233,7 +250,7 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-g");
     args.add(FRAUD_KEYSPACE);
     args.add("-e");
-    args.add(CUSTOMER_ORDER_EDGE_NAME);
+    args.add(CUSTOMER_ORDER_EDGE_LABEL);
     args.add("-from");
     args.add(CUSTOMER_TABLE);
     args.add("-to");
@@ -250,5 +267,9 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
+    statement =
+        new SimpleGraphStatement("g.E().hasLabel('" + CUSTOMER_ORDER_EDGE_LABEL + "')");
+    results = ((DseSession) session).executeGraph(statement);
+    assertThat(results.all().size()).isEqualTo(14);
   }
 }

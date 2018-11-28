@@ -1,14 +1,16 @@
 package com.datastax.dsbulk.engine.tests.graph.utils;
 
 import com.datastax.driver.core.Session;
+import com.datastax.driver.dse.DseSession;
+import com.google.common.collect.ImmutableMap;
 
 import java.net.URL;
 
 public class DataCreatorUtils {
   public static final String FRAUD_KEYSPACE = "fraud";
   public static final String CUSTOMER_TABLE = "customer";
-  public static final String CUSTOMER_ORDER_EDGE_NAME = "places";
-  public static final String CUSTOMER_ORDER_TABLE = "customer__" + CUSTOMER_ORDER_EDGE_NAME + "__order";
+  public static final String CUSTOMER_ORDER_EDGE_LABEL = "places";
+  public static final String CUSTOMER_ORDER_TABLE = "customer__" + CUSTOMER_ORDER_EDGE_LABEL + "__order";
   public static final String ORDER_TABLE = "order";
   public static final String CUSTOMER_MAPPINGS =
       "customerid = customerid, "
@@ -58,7 +60,7 @@ public class DataCreatorUtils {
             + "\"in_orderid\" uuid,"
             + "PRIMARY KEY(\"out_customerid\", \"in_orderid\"))"
             + "WITH CLUSTERING ORDER BY (\"in_orderid\" ASC) "
-            + "AND EDGE LABEL \"" + CUSTOMER_ORDER_EDGE_NAME
+            + "AND EDGE LABEL \"" + CUSTOMER_ORDER_EDGE_LABEL
             + "\" FROM \"" + CUSTOMER_TABLE + "\"((out_customerid)) "
             + "TO \"" + ORDER_TABLE + "\"((in_orderid))");
   }
@@ -81,10 +83,16 @@ public class DataCreatorUtils {
   }
 
   public static void createGraphKeyspace(Session session) {
-    session.execute(
-        "CREATE KEYSPACE IF NOT EXISTS \""
-            + FRAUD_KEYSPACE
-            + "\" "
-            + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 1 } AND graph_engine = 'Native'");
+
+    String replicationConfig = "{'class': 'SimpleStrategy', 'replication_factor' : " + 1 + "}";
+    String schema = "system.graph(name).ifNotExists().withReplication(replicationConfig).using(Native).create()";
+
+    ((DseSession) session)
+        .executeGraph(
+            schema,
+            ImmutableMap.<String, Object>of(
+                "name", FRAUD_KEYSPACE, "replicationConfig", replicationConfig));
+
+    ((DseSession) session).getCluster().getConfiguration().getGraphOptions().setGraphName(FRAUD_KEYSPACE);
   }
 }
