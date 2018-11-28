@@ -8,36 +8,6 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
-import com.datastax.driver.core.Session;
-import com.datastax.driver.dse.DseSession;
-import com.datastax.driver.dse.graph.GraphResultSet;
-import com.datastax.driver.dse.graph.GraphStatement;
-import com.datastax.driver.dse.graph.SimpleGraphStatement;
-import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMWorkload;
-import com.datastax.dsbulk.commons.tests.logging.LogCapture;
-import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
-import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
-import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
-import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
-import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
-import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
-import com.datastax.dsbulk.engine.DataStaxBulkLoader;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
@@ -61,12 +31,45 @@ import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.crea
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
 
+import com.datastax.driver.core.Session;
+import com.datastax.driver.dse.DseSession;
+import com.datastax.driver.dse.graph.GraphResultSet;
+import com.datastax.driver.dse.graph.GraphStatement;
+import com.datastax.driver.dse.graph.SimpleGraphStatement;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMWorkload;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
 // tests for DAT-355
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
-@CCMConfig(numberOfNodes = 1, workloads = {@CCMWorkload({CCMCluster.Workload.graph})})
+@CCMConfig(
+    numberOfNodes = 1,
+    workloads = {@CCMWorkload({CCMCluster.Workload.graph})})
 @Tag("medium")
-@CCMRequirements(compatibleTypes = DSE, versionRequirements = {@CCMVersionRequirement(type = DSE, min = "6.8.0")})
+@CCMRequirements(
+    compatibleTypes = DSE,
+    versionRequirements = {@CCMVersionRequirement(type = DSE, min = "6.8.0")})
 class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;
@@ -137,8 +140,7 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(34, SELECT_ALL_FROM_CUSTOMERS);
-    GraphStatement statement =
-        new SimpleGraphStatement("g.V().hasLabel('" + CUSTOMER_TABLE + "')");
+    GraphStatement statement = new SimpleGraphStatement("g.V().hasLabel('" + CUSTOMER_TABLE + "')");
     GraphResultSet results = ((DseSession) session).executeGraph(statement);
     assertThat(results.all().size()).isEqualTo(34);
     deleteDirectory(logDir);
@@ -182,8 +184,7 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(34, SELECT_ALL_FROM_CUSTOMERS);
-    statement =
-        new SimpleGraphStatement("g.V().hasLabel('" + CUSTOMER_TABLE + "')");
+    statement = new SimpleGraphStatement("g.V().hasLabel('" + CUSTOMER_TABLE + "')");
     results = ((DseSession) session).executeGraph(statement);
     assertThat(results.all().size()).isEqualTo(34);
     deleteDirectory(logDir);
@@ -267,8 +268,7 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
-    statement =
-        new SimpleGraphStatement("g.E().hasLabel('" + CUSTOMER_ORDER_EDGE_LABEL + "')");
+    statement = new SimpleGraphStatement("g.E().hasLabel('" + CUSTOMER_ORDER_EDGE_LABEL + "')");
     results = ((DseSession) session).executeGraph(statement);
     assertThat(results.all().size()).isEqualTo(14);
   }
