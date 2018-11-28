@@ -1,12 +1,15 @@
 package com.datastax.dsbulk.engine.tests.graph.utils;
 
 import com.datastax.driver.core.Session;
+
 import java.net.URL;
 
 public class DataCreatorUtils {
   public static final String FRAUD_KEYSPACE = "fraud";
   public static final String CUSTOMER_TABLE = "customer";
-  public static final String CUSTOMER_ORDER_TABLE = "customer__places__order";
+  public static final String CUSTOMER_ORDER_EDGE_NAME = "places";
+  public static final String CUSTOMER_ORDER_TABLE = "customer__" + CUSTOMER_ORDER_EDGE_NAME + "__order";
+  public static final String ORDER_TABLE = "order";
   public static final String CUSTOMER_MAPPINGS =
       "customerid = customerid, "
           + "firstname = firstname, "
@@ -41,7 +44,7 @@ public class DataCreatorUtils {
             + "\"firstname\" text,"
             + "\"lastname\" text,"
             + "\"phone\" text,"
-            + "PRIMARY KEY(\"customerid\"))");
+            + "PRIMARY KEY(\"customerid\")) WITH VERTEX LABEL \"" + CUSTOMER_TABLE + "\"");
   }
 
   public static void createCustomerOrderTable(Session session) {
@@ -54,7 +57,31 @@ public class DataCreatorUtils {
             + "\"out_customerid\" uuid,"
             + "\"in_orderid\" uuid,"
             + "PRIMARY KEY(\"out_customerid\", \"in_orderid\"))"
-            + "WITH CLUSTERING ORDER BY (\"in_orderid\" ASC)");
+            + "WITH CLUSTERING ORDER BY (\"in_orderid\" ASC) "
+            + "AND EDGE LABEL \"knows\" FROM \"" + CUSTOMER_TABLE + "\"((out_customerid)) "
+            + "TO \"" + ORDER_TABLE + "\"((in_orderid))");
+  }
+
+
+  public static void createOrderTable(Session session) {
+    session.execute("CREATE TABLE IF NOT EXISTS \""
+        + FRAUD_KEYSPACE
+        + "\".\""
+        + ORDER_TABLE
+        + "\" (" +
+        "    \"orderid\" uuid PRIMARY KEY," +
+        "    \"amount\" decimal," +
+        "    \"createdtime\" timestamp," +
+        "    \"creditcardhashed\" text," +
+        "    \"deviceid\" uuid," +
+        "    \"ipaddress\" text," +
+        "    \"outcome\" text" +
+        ") WITH VERTEX LABEL \"" + ORDER_TABLE + "\"");
+  }
+
+
+  public static void truncateOrderTable(Session session) {
+    session.execute("TRUNCATE " + FRAUD_KEYSPACE + "." + ORDER_TABLE);
   }
 
   public static void truncateCustomersTable(Session session) {
@@ -70,6 +97,6 @@ public class DataCreatorUtils {
         "CREATE KEYSPACE IF NOT EXISTS \""
             + FRAUD_KEYSPACE
             + "\" "
-            + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 1 }");
+            + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 1 } AND graph_engine = 'Native'");
   }
 }

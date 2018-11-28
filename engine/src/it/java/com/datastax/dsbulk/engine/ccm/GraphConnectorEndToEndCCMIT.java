@@ -15,19 +15,23 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_MAPPINGS;
+import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_ORDER_EDGE_NAME;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_ORDER_MAPPINGS;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_ORDER_RECORDS;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_ORDER_TABLE;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_RECORDS;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.CUSTOMER_TABLE;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.FRAUD_KEYSPACE;
+import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.ORDER_TABLE;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.SELECT_ALL_CUSTOMER_ORDERS;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.SELECT_ALL_FROM_CUSTOMERS;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.createCustomerOrderTable;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.createCustomersTable;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.createGraphKeyspace;
+import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.createOrderTable;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.truncateCustomerOrderTable;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.truncateCustomersTable;
+import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.truncateOrderTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
 
@@ -35,6 +39,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -42,10 +47,12 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,7 +65,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(StreamInterceptingExtension.class)
 @CCMConfig(numberOfNodes = 1)
 @Tag("medium")
-@CCMRequirements(compatibleTypes = {DSE, DDAC})
+@CCMRequirements(compatibleTypes = DSE, versionRequirements = {@CCMVersionRequirement(type = DSE, min = "6.8.0")})
 class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;
@@ -80,6 +87,7 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void createTables() {
     createGraphKeyspace(session);
     createCustomersTable(session);
+    createOrderTable(session);
     createCustomerOrderTable(session);
   }
 
@@ -92,6 +100,7 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @BeforeEach
   void truncateTable() {
     truncateCustomersTable(session);
+//    truncateOrderTable(session);
     truncateCustomerOrderTable(session);
   }
 
@@ -108,58 +117,13 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void full_load_unload() throws Exception {
-
-    List<String> args = new ArrayList<>();
-    args.add("load");
-    args.add("-k");
-    args.add(FRAUD_KEYSPACE);
-    args.add("-t");
-    args.add(CUSTOMER_TABLE);
-    args.add("-url");
-    args.add(escapeUserInput(CUSTOMER_RECORDS));
-    args.add("-m");
-    args.add(CUSTOMER_MAPPINGS);
-    args.add("--connector.csv.delimiter");
-    args.add("|");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
-
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
-    validateResultSetSize(34, SELECT_ALL_FROM_CUSTOMERS);
-    deleteDirectory(logDir);
-
-    args = new ArrayList<>();
-    args.add("unload");
-    args.add("-k");
-    args.add(FRAUD_KEYSPACE);
-    args.add("-t");
-    args.add(CUSTOMER_TABLE);
-    args.add("-url");
-    args.add(escapeUserInput(unloadDir));
-    args.add("-m");
-    args.add(CUSTOMER_MAPPINGS);
-    args.add("--connector.csv.delimiter");
-    args.add("|");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
-    args.add("--connector.csv.maxConcurrentFiles");
-    args.add("1");
-
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isZero();
-    validateOutputFiles(35, unloadDir);
-  }
-
-  @Test
   void full_load_unload_and_load_again() throws Exception {
 
     List<String> args = new ArrayList<>();
     args.add("load");
-    args.add("-k");
+    args.add("-g");
     args.add(FRAUD_KEYSPACE);
-    args.add("-t");
+    args.add("-v");
     args.add(CUSTOMER_TABLE);
     args.add("-url");
     args.add(escapeUserInput(CUSTOMER_RECORDS));
@@ -177,9 +141,9 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     args = new ArrayList<>();
     args.add("unload");
-    args.add("-k");
+    args.add("-g");
     args.add(FRAUD_KEYSPACE);
-    args.add("-t");
+    args.add("-v");
     args.add(CUSTOMER_TABLE);
     args.add("-url");
     args.add(escapeUserInput(unloadDir));
@@ -198,9 +162,9 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     args = new ArrayList<>();
     args.add("load");
-    args.add("-k");
+    args.add("-g");
     args.add(FRAUD_KEYSPACE);
-    args.add("-t");
+    args.add("-v");
     args.add(CUSTOMER_TABLE);
     args.add("-url");
     args.add(escapeUserInput(CUSTOMER_RECORDS));
@@ -222,10 +186,14 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     List<String> args = new ArrayList<>();
     args.add("load");
-    args.add("-k");
+    args.add("-g");
     args.add(FRAUD_KEYSPACE);
-    args.add("-t");
-    args.add(CUSTOMER_ORDER_TABLE);
+    args.add("-e");
+    args.add(CUSTOMER_ORDER_EDGE_NAME);
+    args.add("-from");
+    args.add(CUSTOMER_TABLE);
+    args.add("-to");
+    args.add(ORDER_TABLE);
     args.add("-url");
     args.add(escapeUserInput(CUSTOMER_ORDER_RECORDS));
     args.add("-m");
@@ -242,10 +210,14 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     args = new ArrayList<>();
     args.add("unload");
-    args.add("-k");
+    args.add("-g");
     args.add(FRAUD_KEYSPACE);
-    args.add("-t");
-    args.add(CUSTOMER_ORDER_TABLE);
+    args.add("-e");
+    args.add(CUSTOMER_ORDER_EDGE_NAME);
+    args.add("-from");
+    args.add(CUSTOMER_TABLE);
+    args.add("-to");
+    args.add(ORDER_TABLE);
     args.add("-url");
     args.add(escapeUserInput(unloadDir));
     args.add("-m");
