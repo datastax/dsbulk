@@ -8,8 +8,32 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
+import com.datastax.dsbulk.engine.DataStaxBulkLoader;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
@@ -29,36 +53,8 @@ import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.crea
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.createCustomersTable;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.createGraphKeyspace;
 import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.createOrderTable;
-import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.truncateCustomerOrderTable;
-import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.truncateCustomersTable;
-import static com.datastax.dsbulk.engine.tests.graph.utils.DataCreatorUtils.truncateOrderTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
-
-import com.datastax.driver.core.Session;
-import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
-import com.datastax.dsbulk.commons.tests.logging.LogCapture;
-import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
-import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
-import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
-import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
-import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
-import com.datastax.dsbulk.engine.DataStaxBulkLoader;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 // tests for DAT-355
 @ExtendWith(LogInterceptingExtension.class)
@@ -99,8 +95,8 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @BeforeEach
   void truncateTable() {
-    truncateCustomersTable(session);
-    truncateCustomerOrderTable(session);
+    session.execute(CQLUtils.truncateKeyspaceTable(FRAUD_KEYSPACE, CUSTOMER_TABLE));
+    session.execute(CQLUtils.truncateKeyspaceTable(FRAUD_KEYSPACE, CUSTOMER_ORDER_TABLE));
   }
 
   @AfterEach

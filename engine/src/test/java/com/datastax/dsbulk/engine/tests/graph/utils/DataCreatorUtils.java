@@ -80,19 +80,6 @@ public class DataCreatorUtils {
         ") WITH VERTEX LABEL \"" + ORDER_TABLE + "\"");
   }
 
-
-  public static void truncateOrderTable(Session session) {
-    session.execute("TRUNCATE " + FRAUD_KEYSPACE + "." + ORDER_TABLE);
-  }
-
-  public static void truncateCustomersTable(Session session) {
-    session.execute("TRUNCATE " + FRAUD_KEYSPACE + "." + CUSTOMER_TABLE);
-  }
-
-  public static void truncateCustomerOrderTable(Session session) {
-    session.execute("TRUNCATE " + FRAUD_KEYSPACE + "." + CUSTOMER_ORDER_TABLE);
-  }
-
   public static void createGraphKeyspace(Session session) {
     session.execute(
         "CREATE KEYSPACE IF NOT EXISTS \""
