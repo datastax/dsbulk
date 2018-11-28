@@ -166,7 +166,7 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-v");
     args.add(CUSTOMER_TABLE);
     args.add("-url");
-    args.add(escapeUserInput(CUSTOMER_RECORDS));
+    args.add(escapeUserInput(unloadDir));
     args.add("-m");
     args.add(CUSTOMER_MAPPINGS);
     args.add("--connector.csv.delimiter");
