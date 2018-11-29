@@ -49,9 +49,11 @@ public @interface ClusterConfig {
    * in {@link com.datastax.driver.core.PoolingOptions} and {@code value} is the value to set.
    *
    * <p>If the property setter method takes more than one argument, then {@code value} can contain
-   * several values separated by commas, e.g. {@code setConnectionsPerHost:LOCAL,2,8}.
+   * several values separated by commas, e.g. {@code connectionsPerHost:LOCAL,2,8}.
    */
-  String[] poolingOptions() default {};
+  String[] poolingOptions() default {
+    "connectionsPerHost:LOCAL,1,1", "connectionsPerHost:REMOTE,1,1"
+  };
 
   /**
    * SocketOptions options to set.
@@ -60,9 +62,9 @@ public @interface ClusterConfig {
    * in {@link com.datastax.driver.core.SocketOptions} and {@code value} is the value to set.
    *
    * <p>If the property setter method takes more than one argument, then {@code value} can contain
-   * several values separated by commas, e.g. {@code coreConnectionsPerHost:LOCAL,8}.
+   * several values separated by commas, e.g. {@code connectionsPerHost:LOCAL,2,8}.
    */
-  String[] socketOptions() default {};
+  String[] socketOptions() default {"readTimeoutMillis:60000", "connectTimeoutMillis:60000"};
 
   /**
    * QueryOptions options to set.
@@ -71,7 +73,7 @@ public @interface ClusterConfig {
    * in {@link com.datastax.driver.core.QueryOptions} and {@code value} is the value to set.
    *
    * <p>If the property setter method takes more than one argument, then {@code value} can contain
-   * several values separated by commas, e.g. {@code coreConnectionsPerHost:LOCAL,8}.
+   * several values separated by commas, e.g. {@code connectionsPerHost:LOCAL,2,8}.
    */
   String[] queryOptions() default {};
 
@@ -82,7 +84,7 @@ public @interface ClusterConfig {
    * in {@link com.datastax.driver.dse.graph.GraphOptions} and {@code value} is the value to set.
    *
    * <p>If the property setter method takes more than one argument, then {@code value} can contain
-   * several values separated by commas, e.g. {@code coreConnectionsPerHost:LOCAL,8}.
+   * several values separated by commas, e.g. {@code connectionsPerHost:LOCAL,2,8}.
    */
   String[] graphOptions() default {};
 
