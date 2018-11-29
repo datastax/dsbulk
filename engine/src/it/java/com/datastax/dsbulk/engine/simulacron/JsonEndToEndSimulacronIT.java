@@ -78,6 +78,7 @@ import com.datastax.oss.simulacron.server.BoundCluster;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -794,6 +795,11 @@ class JsonEndToEndSimulacronIT {
   @Test
   void unload_write_error() {
 
+    Path file1 = unloadDir.resolve("output-000001.json");
+    Path file2 = unloadDir.resolve("output-000002.json");
+    Path file3 = unloadDir.resolve("output-000003.json");
+    Path file4 = unloadDir.resolve("output-000004.json");
+
     MockConnector.setDelegate(
         new JsonConnector() {
 
@@ -802,17 +808,22 @@ class JsonEndToEndSimulacronIT {
             settings =
                 new DefaultLoaderConfig(
                     ConfigFactory.parseMap(
-                            ImmutableMap.of("url", escapeUserInput(unloadDir), "header", "false"))
+                            ImmutableMap.of(
+                                "url", escapeUserInput(unloadDir), "maxConcurrentFiles", "4"))
                         .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.json")));
             super.configure(settings, read);
           }
 
           @Override
           public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-            // Prior to DAT-151 and DAT-191 this case would hang
+            // will cause the write workers to fail because the files already exist
             try {
-              Files.createFile(unloadDir.resolve("output-000001.json"));
-            } catch (IOException ignored) {
+              Files.createFile(file1);
+              Files.createFile(file2);
+              Files.createFile(file3);
+              Files.createFile(file4);
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
             }
             return super.write();
           }
@@ -852,11 +863,11 @@ class JsonEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(stdErr.getStreamAsString())
-        .contains("Error opening file:")
-        .contains("output-000001.json");
+        .contains("failed")
+        .containsPattern("output-00000[1-4].json");
     assertThat(logs.getAllMessagesAsString())
-        .contains("Error opening file:")
-        .contains("output-000001.json");
+        .contains("failed")
+        .containsPattern("output-00000[1-4].json");
   }
 
   @Test

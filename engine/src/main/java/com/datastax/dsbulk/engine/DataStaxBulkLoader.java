@@ -8,15 +8,18 @@
  */
 package com.datastax.dsbulk.engine;
 
+import static com.datastax.dsbulk.commons.internal.utils.ThrowableUtils.getSanitizedErrorMessage;
+import static com.datastax.dsbulk.engine.internal.settings.LogSettings.ERROR_FILTER;
+
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
+import com.datastax.dsbulk.commons.internal.utils.ThrowableUtils;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.log.TooManyErrorsException;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.datastax.dsbulk.engine.internal.utils.OptionUtils;
 import com.google.common.base.Joiner;
-import com.google.common.base.Throwables;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
@@ -169,22 +172,18 @@ public class DataStaxBulkLoader {
       } catch (TooManyErrorsException e) {
         LOGGER.error(workflow + " aborted: " + e.getMessage(), e);
         status = STATUS_ABORTED_TOO_MANY_ERRORS;
-      } catch (Throwable t) {
-        // Reactor framework often wraps InterruptedException, so unwrap it now.
-        Throwable root = Throwables.getRootCause(t);
-        if (t instanceof InterruptedException || root instanceof InterruptedException) {
+      } catch (Throwable error) {
+        // Reactor framework often wraps InterruptedException.
+        if (ThrowableUtils.isInterrupted(error)) {
           status = STATUS_INTERRUPTED;
         } else {
-          String message = t.getMessage();
-          if (message == null) {
-            message = t.toString();
-          }
-          if (t instanceof Exception) {
+          String errorMessage = getSanitizedErrorMessage(error, ERROR_FILTER, 2);
+          if (error instanceof Exception) {
             status = STATUS_ABORTED_FATAL_ERROR;
-            LOGGER.error(workflow + " failed: " + message, t);
+            LOGGER.error(workflow + " failed: " + errorMessage, error);
           } else {
             status = STATUS_CRASHED;
-            LOGGER.error(workflow + " failed unexpectedly: " + message, t);
+            LOGGER.error(workflow + " failed unexpectedly: " + errorMessage, error);
           }
         }
       } finally {

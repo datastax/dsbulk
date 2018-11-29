@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -69,6 +70,19 @@ public class LogSettings {
           "com.google",
           "io.netty",
           "java.util.concurrent");
+
+  /**
+   * A filter to exclude some errors from the sanitized message printed to the console. See {@link
+   * com.datastax.dsbulk.commons.internal.utils.ThrowableUtils}. Used in {@link
+   * com.datastax.dsbulk.engine.DataStaxBulkLoader} but declared here since this class deals with
+   * error handling.
+   */
+  public static final Predicate<Throwable> ERROR_FILTER =
+      t ->
+          // filter out reactor exceptions as they are usually not relevant to users and
+          // other more meaningful errors are generally present.
+          !t.getClass().getName().startsWith("reactor.")
+              && !t.getMessage().startsWith("#block terminated");
 
   /**
    * The layout pattern to use for the main log file.

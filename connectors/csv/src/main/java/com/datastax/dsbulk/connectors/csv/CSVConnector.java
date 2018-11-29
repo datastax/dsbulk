@@ -132,7 +132,7 @@ public class CSVConnector implements Connector {
     try {
       if (!settings.hasPath(URL)) {
         throw new BulkConfigurationException(
-            "url is mandatory when using the csv connector. Please set connector.csv.url "
+            "An URL is mandatory when using the csv connector. Please set connector.csv.url "
                 + "and try again. See settings.md or help for more information.");
       }
       this.read = read;
@@ -155,7 +155,7 @@ public class CSVConnector implements Connector {
       if (!AUTO_NEWLINE.equalsIgnoreCase(newline) && (newline.isEmpty() || newline.length() > 2)) {
         throw new BulkConfigurationException(
             String.format(
-                "connector.csv.%s: Expecting '%s' or a string containing 1 or 2 chars, got: '%s'",
+                "Invalid value for connector.csv.%s: Expecting '%s' or a string containing 1 or 2 chars, got: '%s'",
                 NEWLINE, AUTO_NEWLINE, newline));
       }
     } catch (ConfigException e) {
@@ -281,7 +281,9 @@ public class CSVConnector implements Connector {
             .parallel(maxConcurrentFiles)
             .runOn(scheduler)
             .groups()
-            .flatMap(records -> records.transform(writeRecords(writers.get(records.key()))));
+            .flatMap(
+                records -> records.transform(writeRecords(writers.get(records.key()))),
+                maxConcurrentFiles);
       };
     } else {
       return upstream -> {
@@ -330,7 +332,7 @@ public class CSVConnector implements Connector {
         }
         if (IOUtils.isDirectoryNonEmpty(root)) {
           throw new IllegalArgumentException(
-              "connector.csv.url target directory: " + root + " must be empty.");
+              "Invalid value for connector.csv.url: target directory " + root + " must be empty.");
         }
         this.root = root;
       }
@@ -408,10 +410,7 @@ public class CSVConnector implements Connector {
                 }
                 sink.error(
                     new IOException(
-                        String.format(
-                            "Error reading from %s at line %d: %s",
-                            url, recordNumber, e.getMessage()),
-                        e));
+                        String.format("Error reading from %s at line %d", url, recordNumber), e));
               }
             },
             FluxSink.OverflowStrategy.ERROR);
@@ -435,7 +434,7 @@ public class CSVConnector implements Connector {
                 Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
                 return Flux.fromStream(files);
               } catch (IOException e) {
-                throw new UncheckedIOException(e);
+                throw new UncheckedIOException("Error scanning directory " + root, e);
               }
             })
         .filter(Files::isReadable)
@@ -461,6 +460,10 @@ public class CSVConnector implements Connector {
                     try {
                       writer.write(signal.get());
                     } catch (Exception e) {
+                      // Note that we may be are inside a parallel flux;
+                      // sending more than one onError signal to downstream will result
+                      // in all onError signals but the first to be dropped.
+                      // The framework is expected to deal with that.
                       signal = Signal.error(e);
                     }
                   }
@@ -487,13 +490,15 @@ public class CSVConnector implements Connector {
         }
         LOGGER.trace("Writing record {} to {}", record, url);
         writer.writeRow(record.values());
+      } catch (UncheckedIOException e) {
+        throw e;
       } catch (RuntimeException e) {
         if ((e.getCause() instanceof ClosedChannelException)) {
           // OK, happens when the channel was closed due to interruption
-          LOGGER.warn(String.format("Error writing to %s: %s", url, e.getMessage()), e);
+          LOGGER.warn(String.format("Error writing to %s", url), e);
         } else {
           throw new UncheckedIOException(
-              new IOException(String.format("Error writing to %s: %s", url, e.getMessage()), e));
+              new IOException(String.format("Error writing to %s", url), e));
         }
       }
     }
@@ -512,10 +517,9 @@ public class CSVConnector implements Connector {
         writer = new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
       } catch (ClosedChannelException e) {
         // OK, happens when the channel was closed due to interruption
-        LOGGER.warn(String.format("Could not open %s: %s", url, e.getMessage()), e);
+        LOGGER.warn(String.format("Could not open %s", url), e);
       } catch (IOException e) {
-        throw new UncheckedIOException(
-            String.format("Error opening %s: %s", url, e.getMessage()), e);
+        throw new UncheckedIOException(String.format("Error opening %s", url), e);
       }
       LOGGER.debug("Writing {}", url);
     }
@@ -529,10 +533,10 @@ public class CSVConnector implements Connector {
         } catch (Exception e) {
           if ((e.getCause() instanceof ClosedChannelException)) {
             // OK, happens when the channel was closed due to interruption
-            LOGGER.warn(String.format("Could not close %s: %s", url, e.getMessage()), e);
+            LOGGER.warn(String.format("Could not close %s", url), e);
           } else {
             throw new UncheckedIOException(
-                new IOException(String.format("Error closing %s: %s", url, e.getMessage()), e));
+                new IOException(String.format("Error closing %s", url), e));
           }
         }
       }
@@ -546,9 +550,7 @@ public class CSVConnector implements Connector {
         return root.resolve(next).toUri().toURL();
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(
-            String.format(
-                "Could not create file URL with format %s: %s", fileNameFormat, e.getMessage()),
-            e);
+            String.format("Could not create file URL with format %s", fileNameFormat), e);
       }
     }
     // assume we are writing to a single URL and ignore fileNameFormat

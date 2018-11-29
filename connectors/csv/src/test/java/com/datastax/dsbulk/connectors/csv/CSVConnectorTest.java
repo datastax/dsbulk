@@ -15,6 +15,7 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.util.Throwables.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -56,6 +57,7 @@ class CSVConnectorTest {
 
   static {
     URLUtils.setURLFactoryIfNeeded();
+    Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
   }
 
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
@@ -745,8 +747,13 @@ class CSVConnectorTest {
     assertThatThrownBy(
             () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
         .isInstanceOf(UncheckedIOException.class)
-        .hasMessageContaining(
-            "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.csv");
+        .hasCauseInstanceOf(IOException.class)
+        .hasRootCauseInstanceOf(IllegalArgumentException.class)
+        .satisfies(
+            t ->
+                assertThat(getRootCause(t))
+                    .hasMessageContaining(
+                        "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.csv"));
     connector.close();
   }
 
@@ -809,7 +816,7 @@ class CSVConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "url is mandatory when using the csv connector. Please set connector.csv.url and "
+            "An URL is mandatory when using the csv connector. Please set connector.csv.url and "
                 + "try again. See settings.md or help for more information.");
   }
 

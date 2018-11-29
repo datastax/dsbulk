@@ -277,12 +277,11 @@ class DataStaxBulkLoaderTest {
     try {
       unloadDir = createTempDirectory("test");
       Files.createFile(unloadDir.resolve("output-000001.csv"));
-
       new DataStaxBulkLoader(
-              new String[] {"unload", "--connector.csv.url=" + escapeUserInput(unloadDir)})
+              new String[] {"unload", "--connector.csv.url", escapeUserInput(unloadDir)})
           .run();
       String err = logs.getAllMessagesAsString();
-      assertThat(err).contains("connector.csv.url target directory").contains("must be empty");
+      assertThat(err).contains("connector.csv.url: target directory").contains("must be empty");
     } finally {
       if (unloadDir != null) {
         deleteDirectory(unloadDir);
@@ -296,16 +295,13 @@ class DataStaxBulkLoaderTest {
     try {
       unloadDir = createTempDirectory("test");
       Files.createFile(unloadDir.resolve("output-000001.json"));
-
       new DataStaxBulkLoader(
               new String[] {
-                "unload",
-                "--connector.name=json",
-                "--connector.json.url=" + escapeUserInput(unloadDir)
+                "unload", "-c", "json", "--connector.json.url", escapeUserInput(unloadDir)
               })
           .run();
       String err = logs.getAllMessagesAsString();
-      assertThat(err).contains("connector.json.url target directory").contains("must be empty");
+      assertThat(err).contains("connector.json.url: target directory").contains("must be empty");
     } finally {
       if (unloadDir != null) {
         deleteDirectory(unloadDir);
