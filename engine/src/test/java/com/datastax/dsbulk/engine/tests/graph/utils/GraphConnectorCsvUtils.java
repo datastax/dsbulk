@@ -5,7 +5,7 @@ import com.datastax.driver.dse.DseSession;
 import com.google.common.collect.ImmutableMap;
 import java.net.URL;
 
-public class DataCreatorUtils {
+public class GraphConnectorCsvUtils {
   public static final String FRAUD_KEYSPACE = "fraud";
   public static final String CUSTOMER_TABLE = "customer";
   public static final String CUSTOMER_ORDER_EDGE_LABEL = "places";
@@ -25,7 +25,7 @@ public class DataCreatorUtils {
   public static final URL CUSTOMER_RECORDS = ClassLoader.getSystemResource("graph/customers.csv");
 
   public static final URL CUSTOMER_ORDER_RECORDS =
-      ClassLoader.getSystemResource("graph/customerOrders.csv");
+      ClassLoader.getSystemResource("graph/customer-orders.csv");
 
   public static final String SELECT_ALL_FROM_CUSTOMERS =
       "SELECT * from " + FRAUD_KEYSPACE + "." + CUSTOMER_TABLE;
