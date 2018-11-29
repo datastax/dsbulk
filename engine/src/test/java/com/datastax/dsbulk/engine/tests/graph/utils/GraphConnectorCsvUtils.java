@@ -34,61 +34,25 @@ public class GraphConnectorCsvUtils {
       "SELECT * from " + FRAUD_KEYSPACE + "." + CUSTOMER_ORDER_TABLE;
 
   public static void createCustomersTable(Session session) {
-    session.execute(
-        "CREATE TABLE IF NOT EXISTS \""
-            + FRAUD_KEYSPACE
-            + "\".\""
-            + CUSTOMER_TABLE
-            + "\" ("
-            + "\"customerid\" uuid,"
-            + "\"createdtime\" timestamp,"
-            + "\"email\" text,"
-            + "\"firstname\" text,"
-            + "\"lastname\" text,"
-            + "\"phone\" text,"
-            + "PRIMARY KEY(\"customerid\")) WITH VERTEX LABEL \""
-            + CUSTOMER_TABLE
-            + "\"");
+    ((DseSession)session).executeGraph(
+        "g.api().schema().vertexLabel(\"customer\")" +
+            ".ifNotExists().partitionBy(\"customerid\", Uuid)" +
+            ".property(\"firstname\", Text)" +
+            ".property(\"lastname\", Text)" +
+            ".property(\"email\", Text)" +
+            ".property(\"phone\", Text)" +
+            ".property(\"createdtime\", Timestamp)" +
+            ".create();"
+    );
   }
 
   public static void createCustomerOrderTable(Session session) {
-    session.execute(
-        "CREATE TABLE IF NOT EXISTS \""
-            + FRAUD_KEYSPACE
-            + "\".\""
-            + CUSTOMER_ORDER_TABLE
-            + "\" ("
-            + "\"out_customerid\" uuid,"
-            + "\"in_orderid\" uuid,"
-            + "PRIMARY KEY(\"out_customerid\", \"in_orderid\"))"
-            + "WITH CLUSTERING ORDER BY (\"in_orderid\" ASC) "
-            + "AND EDGE LABEL \""
-            + CUSTOMER_ORDER_EDGE_LABEL
-            + "\" FROM \""
-            + CUSTOMER_TABLE
-            + "\"((out_customerid)) "
-            + "TO \""
-            + ORDER_TABLE
-            + "\"((in_orderid))");
+    ((DseSession)session).executeGraph("g.api().schema().edgeLabel(\"places\").from(\"customer\").to(\"order\").create()");
   }
 
   public static void createOrderTable(Session session) {
-    session.execute(
-        "CREATE TABLE IF NOT EXISTS \""
-            + FRAUD_KEYSPACE
-            + "\".\""
-            + ORDER_TABLE
-            + "\" ("
-            + "    \"orderid\" uuid PRIMARY KEY,"
-            + "    \"amount\" decimal,"
-            + "    \"createdtime\" timestamp,"
-            + "    \"creditcardhashed\" text,"
-            + "    \"deviceid\" uuid,"
-            + "    \"ipaddress\" text,"
-            + "    \"outcome\" text"
-            + ") WITH VERTEX LABEL \""
-            + ORDER_TABLE
-            + "\"");
+    ((DseSession)session).executeGraph(
+        "g.api().schema().vertexLabel(\"order\").ifNotExists().partitionBy(\"orderid\", Uuid).property(\"createdtime\", Timestamp).property(\"outcome\", Text).property(\"creditcardhashed\", Text).property(\"ipaddress\", Text).property(\"amount\", Decimal).property(\"deviceid\", Uuid).create()");
   }
 
   public static void createGraphKeyspace(Session session) {
@@ -100,7 +64,7 @@ public class GraphConnectorCsvUtils {
     ((DseSession) session)
         .executeGraph(
             schema,
-            ImmutableMap.<String, Object>of(
+            ImmutableMap.of(
                 "name", FRAUD_KEYSPACE, "replicationConfig", replicationConfig));
 
     ((DseSession) session)
