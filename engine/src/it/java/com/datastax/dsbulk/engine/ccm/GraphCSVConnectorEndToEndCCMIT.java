@@ -70,14 +70,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @CCMRequirements(
     compatibleTypes = DSE,
     versionRequirements = {@CCMVersionRequirement(type = DSE, min = "6.8.0")})
-class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
+class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;
   private final StreamInterceptor stderr;
   private Path logDir;
   private Path unloadDir;
 
-  GraphConnectorEndToEndCCMIT(
+  GraphCSVConnectorEndToEndCCMIT(
       CCMCluster ccm,
       Session session,
       @LogCapture LogInterceptor logs,
@@ -102,9 +102,9 @@ class GraphConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @BeforeEach
-  void truncateTable() {
-    session.execute(CQLUtils.truncateKeyspaceTable(FRAUD_KEYSPACE, CUSTOMER_TABLE));
-    session.execute(CQLUtils.truncateKeyspaceTable(FRAUD_KEYSPACE, CUSTOMER_ORDER_TABLE));
+  void truncateTables() {
+    session.execute(CQLUtils.truncateTable(FRAUD_KEYSPACE, CUSTOMER_TABLE));
+    session.execute(CQLUtils.truncateTable(FRAUD_KEYSPACE, CUSTOMER_ORDER_TABLE));
   }
 
   @AfterEach
