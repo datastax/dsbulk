@@ -125,45 +125,44 @@ public class ThrowableUtils {
   private static String sanitizedErrorMessage(Throwable t) {
     StringBuilder sb = new StringBuilder();
     if (t instanceof FileNotFoundException) {
-      sb.append("File not found: ").append(t.getMessage());
+      sb.append("File not found: ").append(t.getMessage()).append('.');
     } else if (t instanceof MalformedURLException) {
-      sb.append("Malformed URL: ").append(t.getMessage());
+      sb.append("Malformed URL: ").append(t.getMessage()).append('.');
     } else if (t instanceof UnknownHostException) {
-      sb.append("Unknown host: ").append(t.getMessage());
+      sb.append("Unknown host: ").append(t.getMessage()).append('.');
     } else if (t instanceof UnsupportedEncodingException) {
-      sb.append("Unsupported encoding: ").append(t.getMessage());
+      sb.append("Unsupported encoding: ").append(t.getMessage()).append('.');
     } else if (t instanceof AccessDeniedException) {
-      sb.append("Access denied: ").append(t.getMessage());
+      sb.append("Access denied: ").append(t.getMessage()).append('.');
     } else if (t instanceof DirectoryNotEmptyException) {
-      sb.append("Directory is not empty: ").append(t.getMessage());
+      sb.append("Directory is not empty: ").append(t.getMessage()).append('.');
     } else if (t instanceof FileAlreadyExistsException) {
-      sb.append("File already exists: ").append(t.getMessage());
+      sb.append("File already exists: ").append(t.getMessage()).append('.');
     } else if (t instanceof NoSuchFileException) {
-      sb.append("No such file: ").append(t.getMessage());
+      sb.append("No such file: ").append(t.getMessage()).append('.');
     } else if (t instanceof NotDirectoryException) {
-      sb.append("File is not a directory: ").append(t.getMessage());
+      sb.append("File is not a directory: ").append(t.getMessage()).append('.');
     } else if (t instanceof ClosedChannelException) {
-      sb.append("Channel is closed");
+      sb.append("Channel is closed.");
     } else if (t instanceof NonReadableChannelException) {
-      sb.append("Channel is not readable");
+      sb.append("Channel is not readable.");
     } else if (t instanceof NonWritableChannelException) {
-      sb.append("Channel is not writable");
+      sb.append("Channel is not writable.");
     } else {
       if (t.getMessage() == null || t.getMessage().isEmpty() || t.getMessage().equals("null")) {
-        sb.append(t.getClass().getSimpleName()).append(" (no message)");
+        sb.append(t.getClass().getSimpleName()).append(" (no message).");
       } else {
         String msg = t.getMessage();
         sb.append(msg.substring(0, 1).toUpperCase());
         if (msg.length() > 1) {
           sb.append(msg.substring(1));
         }
+        if (!msg.endsWith(".")) {
+          sb.append('.');
+        }
       }
     }
-    String message = sb.toString();
-    if (!message.endsWith(".")) {
-      message += '.';
-    }
-    return message;
+    return sb.toString();
   }
 
   private static void newLineAndIndent(PrintWriter pw, int spaces) {

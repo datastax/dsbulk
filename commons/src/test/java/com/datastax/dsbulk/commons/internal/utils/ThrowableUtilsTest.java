@@ -83,13 +83,6 @@ class ThrowableUtilsTest {
                     + "     Caused by: Cause."));
   }
 
-  @Test
-  void should_create_sanitized_error_message_with_empty_message() {
-    RuntimeException root = new RuntimeException();
-    assertThat(ThrowableUtils.getSanitizedErrorMessage(root))
-        .isEqualTo("RuntimeException (no message).");
-  }
-
   @ParameterizedTest(name = "Message for {0} should contain \"{1}\"")
   @ArgumentsSource(Exceptions.class)
   void should_create_sanitized_error_message_for_special_errors(Throwable error, String expected) {
@@ -101,18 +94,22 @@ class ThrowableUtilsTest {
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
       List<Arguments> args = new ArrayList<>();
-      args.add(Arguments.of(new FileNotFoundException("boo"), "File not found: boo"));
-      args.add(Arguments.of(new MalformedURLException("boo"), "Malformed URL: boo"));
-      args.add(Arguments.of(new UnknownHostException("boo"), "Unknown host: boo"));
-      args.add(Arguments.of(new UnsupportedEncodingException("boo"), "Unsupported encoding: boo"));
-      args.add(Arguments.of(new AccessDeniedException("boo"), "Access denied: boo"));
-      args.add(Arguments.of(new DirectoryNotEmptyException("boo"), "Directory is not empty: boo"));
-      args.add(Arguments.of(new FileAlreadyExistsException("boo"), "File already exists: boo"));
-      args.add(Arguments.of(new NoSuchFileException("boo"), "No such file: boo"));
-      args.add(Arguments.of(new NotDirectoryException("boo"), "File is not a directory: boo"));
-      args.add(Arguments.of(new ClosedChannelException(), "Channel is closed"));
-      args.add(Arguments.of(new NonReadableChannelException(), "Channel is not readable"));
-      args.add(Arguments.of(new NonWritableChannelException(), "Channel is not writable"));
+      args.add(Arguments.of(new RuntimeException(), "RuntimeException (no message)."));
+      args.add(Arguments.of(new RuntimeException(""), "RuntimeException (no message)."));
+      args.add(
+          Arguments.of(new NullPointerException("null"), "NullPointerException (no message)."));
+      args.add(Arguments.of(new FileNotFoundException("boo"), "File not found: boo."));
+      args.add(Arguments.of(new MalformedURLException("boo"), "Malformed URL: boo."));
+      args.add(Arguments.of(new UnknownHostException("boo"), "Unknown host: boo."));
+      args.add(Arguments.of(new UnsupportedEncodingException("boo"), "Unsupported encoding: boo."));
+      args.add(Arguments.of(new AccessDeniedException("boo"), "Access denied: boo."));
+      args.add(Arguments.of(new DirectoryNotEmptyException("boo"), "Directory is not empty: boo."));
+      args.add(Arguments.of(new FileAlreadyExistsException("boo"), "File already exists: boo."));
+      args.add(Arguments.of(new NoSuchFileException("boo"), "No such file: boo."));
+      args.add(Arguments.of(new NotDirectoryException("boo"), "File is not a directory: boo."));
+      args.add(Arguments.of(new ClosedChannelException(), "Channel is closed."));
+      args.add(Arguments.of(new NonReadableChannelException(), "Channel is not readable."));
+      args.add(Arguments.of(new NonWritableChannelException(), "Channel is not writable."));
       return args.stream();
     }
   }
