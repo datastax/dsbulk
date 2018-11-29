@@ -12,16 +12,13 @@ import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.ass
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.GraphUtils.createGraphKeyspace;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
-import static com.datastax.dsbulk.engine.tests.graph.utils.GraphUtils.createGraphKeyspace;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
 
-import com.datastax.driver.core.Session;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.driver.dse.graph.GraphResultSet;
-import com.datastax.driver.dse.graph.GraphStatement;
-import com.datastax.driver.dse.graph.SimpleGraphStatement;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
@@ -58,41 +55,45 @@ import org.junit.jupiter.api.extension.ExtendWith;
     compatibleTypes = DSE,
     versionRequirements = {@CCMVersionRequirement(type = DSE, min = "6.8.0")})
 class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
-  private final LogInterceptor logs;
-  private final StreamInterceptor stderr;
-  private Path logDir;
-  private Path unloadDir;
 
-  private static final String FRAUD_GRAPH = "fraud";
-  private static final String CUSTOMER_VERTEX = "customer";
-  private static final String CUSTOMER_ORDER_EDGE_LABEL = "places";
-  private static final String CUSTOMER_ORDER_TABLE =
-      "customer__" + CUSTOMER_ORDER_EDGE_LABEL + "__order";
-  private static final String ORDER_VERTEX = "order";
-  private static final String CUSTOMER_MAPPINGS =
-      "customerid = customerid, "
-          + "firstname = firstname, "
-          + "lastname = lastname, "
-          + "createdtime = createdtime, "
-          + "email = email, "
-          + "phone = phone";
+  private static final String FRAUD_GRAPH = "Fraud";
+
+  private static final String CUSTOMER_VERTEX_LABEL = "Customer";
+
+  private static final String ORDER_VERTEX_LABEL = "Order";
+
+  private static final String PLACES_EDGE_LABEL = "Places";
+
+  private static final String CUSTOMER_TABLE = "Customers";
+
+  private static final String CUSTOMER_PLACES_ORDER_TABLE =
+      CUSTOMER_VERTEX_LABEL + "__" + PLACES_EDGE_LABEL + "__" + ORDER_VERTEX_LABEL;
+
   private static final String CUSTOMER_ORDER_MAPPINGS =
-      "customerid = out_customerid, orderid = in_orderid";
+      "Customerid = out_Customerid, Orderid = in_Orderid";
 
   private static final URL CUSTOMER_RECORDS = ClassLoader.getSystemResource("graph/customers.csv");
 
   private static final URL CUSTOMER_ORDER_RECORDS =
       ClassLoader.getSystemResource("graph/customer-orders.csv");
 
-  private static final String SELECT_ALL_FROM_CUSTOMERS =
-      "SELECT * from " + FRAUD_GRAPH + "." + CUSTOMER_VERTEX;
+  private static final String SELECT_ALL_CUSTOMERS =
+      "SELECT * FROM \"" + FRAUD_GRAPH + "\".\"" + CUSTOMER_TABLE + "\"";
 
   private static final String SELECT_ALL_CUSTOMER_ORDERS =
-      "SELECT * from " + FRAUD_GRAPH + "." + CUSTOMER_ORDER_TABLE;
+      "SELECT * FROM \"" + FRAUD_GRAPH + "\".\"" + CUSTOMER_PLACES_ORDER_TABLE + "\"";
+
+  private final LogInterceptor logs;
+
+  private final StreamInterceptor stderr;
+
+  private Path logDir;
+
+  private Path unloadDir;
 
   GraphCSVConnectorEndToEndCCMIT(
       CCMCluster ccm,
-      Session session,
+      DseSession session,
       @LogCapture LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
@@ -102,10 +103,10 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @BeforeAll
   void createTables() {
-    createGraphKeyspace(session, FRAUD_GRAPH);
-    createCustomersTable(session);
-    createOrderTable(session);
-    createCustomerOrderTable(session);
+    createGraphKeyspace((DseSession) session, FRAUD_GRAPH);
+    createCustomerVertex();
+    createOrderVertex();
+    createCustomerPlacesOrderEdge();
   }
 
   @BeforeEach
@@ -116,8 +117,8 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @BeforeEach
   void truncateTables() {
-    session.execute(CQLUtils.truncateTable(FRAUD_GRAPH, CUSTOMER_VERTEX));
-    session.execute(CQLUtils.truncateTable(FRAUD_GRAPH, CUSTOMER_ORDER_TABLE));
+    session.execute(CQLUtils.truncateTable(FRAUD_GRAPH, CUSTOMER_TABLE));
+    session.execute(CQLUtils.truncateTable(FRAUD_GRAPH, CUSTOMER_PLACES_ORDER_TABLE));
   }
 
   @AfterEach
@@ -133,18 +134,16 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void full_load_unload_and_load_again() throws Exception {
+  void full_load_unload_and_load_again_vertices() throws Exception {
 
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("-g");
     args.add(FRAUD_GRAPH);
     args.add("-v");
-    args.add(CUSTOMER_VERTEX);
+    args.add(CUSTOMER_VERTEX_LABEL);
     args.add("-url");
     args.add(escapeUserInput(CUSTOMER_RECORDS));
-    args.add("-m");
-    args.add(CUSTOMER_MAPPINGS);
     args.add("--connector.csv.delimiter");
     args.add("|");
     args.add("--log.directory");
@@ -152,11 +151,10 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateResultSetSize(34, SELECT_ALL_FROM_CUSTOMERS);
-    GraphStatement statement =
-        new SimpleGraphStatement("g.V().hasLabel('" + CUSTOMER_VERTEX + "')");
-    GraphResultSet results = ((DseSession) session).executeGraph(statement);
-    assertThat(results.all().size()).isEqualTo(34);
+    validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
+    GraphResultSet results =
+        ((DseSession) session).executeGraph("g.V().hasLabel('" + CUSTOMER_VERTEX_LABEL + "')");
+    assertThat(results).hasSize(34);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -164,11 +162,9 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-g");
     args.add(FRAUD_GRAPH);
     args.add("-v");
-    args.add(CUSTOMER_VERTEX);
+    args.add(CUSTOMER_VERTEX_LABEL);
     args.add("-url");
     args.add(escapeUserInput(unloadDir));
-    args.add("-m");
-    args.add(CUSTOMER_MAPPINGS);
     args.add("--connector.csv.delimiter");
     args.add("|");
     args.add("--log.directory");
@@ -185,11 +181,9 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-g");
     args.add(FRAUD_GRAPH);
     args.add("-v");
-    args.add(CUSTOMER_VERTEX);
+    args.add(CUSTOMER_VERTEX_LABEL);
     args.add("-url");
     args.add(escapeUserInput(unloadDir));
-    args.add("-m");
-    args.add(CUSTOMER_MAPPINGS);
     args.add("--connector.csv.delimiter");
     args.add("|");
     args.add("--log.directory");
@@ -197,26 +191,25 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateResultSetSize(34, SELECT_ALL_FROM_CUSTOMERS);
-    statement = new SimpleGraphStatement("g.V().hasLabel('" + CUSTOMER_VERTEX + "')");
-    results = ((DseSession) session).executeGraph(statement);
-    assertThat(results.all().size()).isEqualTo(34);
-    deleteDirectory(logDir);
+    validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
+    results =
+        ((DseSession) session).executeGraph("g.V().hasLabel('" + CUSTOMER_VERTEX_LABEL + "')");
+    assertThat(results).hasSize(34);
   }
 
   @Test
-  void full_load_unload_edges() throws Exception {
+  void full_load_unload_and_load_again_edges() throws Exception {
 
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("-g");
     args.add(FRAUD_GRAPH);
     args.add("-e");
-    args.add(CUSTOMER_ORDER_EDGE_LABEL);
+    args.add(PLACES_EDGE_LABEL);
     args.add("-from");
-    args.add(CUSTOMER_VERTEX);
+    args.add(CUSTOMER_VERTEX_LABEL);
     args.add("-to");
-    args.add(ORDER_VERTEX);
+    args.add(ORDER_VERTEX_LABEL);
     args.add("-url");
     args.add(escapeUserInput(CUSTOMER_ORDER_RECORDS));
     args.add("-m");
@@ -229,10 +222,9 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
-    GraphStatement statement =
-        new SimpleGraphStatement("g.E().hasLabel('" + CUSTOMER_ORDER_EDGE_LABEL + "')");
-    GraphResultSet results = ((DseSession) session).executeGraph(statement);
-    assertThat(results.all().size()).isEqualTo(14);
+    GraphResultSet results =
+        ((DseSession) session).executeGraph("g.E().hasLabel('" + PLACES_EDGE_LABEL + "')");
+    assertThat(results).hasSize(14);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -240,11 +232,11 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-g");
     args.add(FRAUD_GRAPH);
     args.add("-e");
-    args.add(CUSTOMER_ORDER_EDGE_LABEL);
+    args.add(PLACES_EDGE_LABEL);
     args.add("-from");
-    args.add(CUSTOMER_VERTEX);
+    args.add(CUSTOMER_VERTEX_LABEL);
     args.add("-to");
-    args.add(ORDER_VERTEX);
+    args.add(ORDER_VERTEX_LABEL);
     args.add("-url");
     args.add(escapeUserInput(unloadDir));
     args.add("-m");
@@ -265,11 +257,11 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-g");
     args.add(FRAUD_GRAPH);
     args.add("-e");
-    args.add(CUSTOMER_ORDER_EDGE_LABEL);
+    args.add(PLACES_EDGE_LABEL);
     args.add("-from");
-    args.add(CUSTOMER_VERTEX);
+    args.add(CUSTOMER_VERTEX_LABEL);
     args.add("-to");
-    args.add(ORDER_VERTEX);
+    args.add(ORDER_VERTEX_LABEL);
     args.add("-url");
     args.add(escapeUserInput(unloadDir));
     args.add("-m");
@@ -282,43 +274,51 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
-    statement = new SimpleGraphStatement("g.E().hasLabel('" + CUSTOMER_ORDER_EDGE_LABEL + "')");
-    results = ((DseSession) session).executeGraph(statement);
-    assertThat(results.all().size()).isEqualTo(14);
+    results = ((DseSession) session).executeGraph("g.E().hasLabel('" + PLACES_EDGE_LABEL + "')");
+    assertThat(results).hasSize(14);
   }
 
-  private static void createCustomersTable(Session session) {
+  private void createCustomerVertex() {
+    // Exercise the creation of a vertex table with plain CQL with a table name different from the
+    // label name.
+    session.execute(
+        "CREATE TABLE \""
+            + FRAUD_GRAPH
+            + "\".\"Customers\" (" // table name is different from label name
+            + "\"Customerid\" uuid PRIMARY KEY, "
+            + "\"Createdtime\" timestamp, "
+            + "\"Email\" text, "
+            + "\"Firstname\" text, "
+            + "\"Lastname\" text, "
+            + "\"Phone\" text"
+            + ") WITH VERTEX LABEL \"Customer\"");
+  }
+
+  private void createOrderVertex() {
     ((DseSession) session)
         .executeGraph(
             "g.api().schema().vertexLabel(\""
-                + CUSTOMER_VERTEX
-                + "\")"
-                + ".ifNotExists().partitionBy(\"customerid\", Uuid)"
-                + ".property(\"firstname\", Text)"
-                + ".property(\"lastname\", Text)"
-                + ".property(\"email\", Text)"
-                + ".property(\"phone\", Text)"
-                + ".property(\"createdtime\", Timestamp)"
-                + ".create();");
+                + ORDER_VERTEX_LABEL
+                + "\").ifNotExists()"
+                + ".partitionBy(\"Orderid\", Uuid)"
+                + ".property(\"Createdtime\", Timestamp)"
+                + ".property(\"Outcome\", Text)"
+                + ".property(\"Creditcardhashed\", Text)"
+                + ".property(\"Ipaddress\", Text)"
+                + ".property(\"Amount\", Decimal)"
+                + ".property(\"Deviceid\", Uuid)"
+                + ".create()");
   }
 
-  private static void createCustomerOrderTable(Session session) {
+  private void createCustomerPlacesOrderEdge() {
     ((DseSession) session)
         .executeGraph(
             "g.api().schema().edgeLabel(\""
-                + CUSTOMER_ORDER_EDGE_LABEL
+                + PLACES_EDGE_LABEL
                 + "\").from(\""
-                + CUSTOMER_VERTEX
+                + CUSTOMER_VERTEX_LABEL
                 + "\").to(\""
-                + ORDER_VERTEX
+                + ORDER_VERTEX_LABEL
                 + "\").create()");
-  }
-
-  private static void createOrderTable(Session session) {
-    ((DseSession) session)
-        .executeGraph(
-            "g.api().schema().vertexLabel(\""
-                + ORDER_VERTEX
-                + "\").ifNotExists().partitionBy(\"orderid\", Uuid).property(\"createdtime\", Timestamp).property(\"outcome\", Text).property(\"creditcardhashed\", Text).property(\"ipaddress\", Text).property(\"amount\", Decimal).property(\"deviceid\", Uuid).create()");
   }
 }

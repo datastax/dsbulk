@@ -1,4 +1,4 @@
-customerid|firstname|lastname|email|phone|createdtime
+Customerid|Firstname|Lastname|Email|Phone|Createdtime
 10000000-0000-0000-0000-000000000001|Aaron|Atkins|atkinsman@yahoo.com|100-000-0001|2017-04-01T00:00:00.00Z
 10000000-0000-0000-0000-000000000002|Ben|Bailey|ben.bailey22@gmail.com|100-000-0002|2017-04-01T00:00:00.00Z
 10000000-0000-0000-0000-000000000003|Charles|Chardonnay|chardonnay.family@aol.com|100-000-0003|2017-04-01T00:00:00.00Z
