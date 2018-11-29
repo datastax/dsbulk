@@ -961,7 +961,7 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("driver.port: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for driver.port: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -973,7 +973,8 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("driver.pooling.local.connections: Expecting NUMBER, got STRING");
+        .hasMessage(
+            "Invalid value for driver.pooling.local.connections: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -985,7 +986,8 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("driver.pooling.remote.connections: Expecting NUMBER, got STRING");
+        .hasMessage(
+            "Invalid value for driver.pooling.remote.connections: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -997,7 +999,8 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("driver.pooling.local.requests: Expecting NUMBER, got STRING");
+        .hasMessage(
+            "Invalid value for driver.pooling.local.requests: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -1009,7 +1012,8 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("driver.pooling.remote.requests: Expecting NUMBER, got STRING");
+        .hasMessage(
+            "Invalid value for driver.pooling.remote.requests: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -1021,7 +1025,7 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("driver.query.fetchSize: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for driver.query.fetchSize: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -1033,7 +1037,7 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("driver.policy.maxRetries: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for driver.policy.maxRetries: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -1045,7 +1049,7 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("driver.query.idempotence: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for driver.query.idempotence: Expecting BOOLEAN, got STRING");
   }
 
   @Test
@@ -1057,7 +1061,8 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("driver.timestampGenerator: Expecting FQCN or short class name, got 'Unknown'");
+        .hasMessage(
+            "Invalid value for driver.timestampGenerator: Expecting FQCN or short class name, got 'Unknown'");
   }
 
   @Test
@@ -1069,7 +1074,8 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("driver.addressTranslator: Expecting FQCN or short class name, got 'Unknown'");
+        .hasMessage(
+            "Invalid value for driver.addressTranslator: Expecting FQCN or short class name, got 'Unknown'");
   }
 
   @Test

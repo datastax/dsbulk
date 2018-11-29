@@ -171,7 +171,7 @@ public class DriverSettings {
       hosts = config.getStringList(HOSTS);
       if (hosts.isEmpty()) {
         throw new BulkConfigurationException(
-            "driver.hosts is mandatory. Please set driver.hosts "
+            "Setting driver.hosts is mandatory. Please set driver.hosts "
                 + "and try again. See settings.md or help for more information.");
       }
       port = config.getInt(PORT);
@@ -291,7 +291,8 @@ public class DriverSettings {
       if (sslProvider.equals(SSLProvider.JDK.name())) {
         if (config.hasPath(SSL_KEYSTORE_PATH) != config.hasPath(SSL_KEYSTORE_PASSWORD)) {
           throw new BulkConfigurationException(
-              SSL_KEYSTORE_PATH
+              "Settings "
+                  + SSL_KEYSTORE_PATH
                   + ", "
                   + SSL_KEYSTORE_PASSWORD
                   + " and "
@@ -308,7 +309,8 @@ public class DriverSettings {
       } else if (sslProvider.equals(SSLProvider.OpenSSL.name())) {
         if (config.hasPath(SSL_OPENSSL_KEYCERTCHAIN) != config.hasPath(SSL_OPENSSL_PRIVATE_KEY)) {
           throw new BulkConfigurationException(
-              SSL_OPENSSL_KEYCERTCHAIN
+              "Settings "
+                  + SSL_OPENSSL_KEYCERTCHAIN
                   + " and "
                   + SSL_OPENSSL_PRIVATE_KEY
                   + " must be provided together or not at all when using the openssl Provider");
@@ -323,7 +325,8 @@ public class DriverSettings {
       if (!sslProvider.equals(SSLProvider.None.name())) {
         if (config.hasPath(SSL_TRUSTSTORE_PATH) != config.hasPath(SSL_TRUSTSTORE_PASSWORD)) {
           throw new BulkConfigurationException(
-              SSL_TRUSTSTORE_PATH
+              "Settings "
+                  + SSL_TRUSTSTORE_PATH
                   + ", "
                   + SSL_TRUSTSTORE_PASSWORD
                   + " and "

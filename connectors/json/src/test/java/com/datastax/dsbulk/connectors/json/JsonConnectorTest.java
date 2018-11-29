@@ -780,7 +780,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.json.recursive: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for connector.json.recursive: Expecting BOOLEAN, got STRING");
     connector.close();
   }
 
@@ -793,7 +793,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.json.prettyPrint: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for connector.json.prettyPrint: Expecting BOOLEAN, got STRING");
     connector.close();
   }
 
@@ -806,7 +806,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.json.skipRecords: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for connector.json.skipRecords: Expecting NUMBER, got STRING");
     connector.close();
   }
 
@@ -819,7 +819,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.json.maxRecords: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for connector.json.maxRecords: Expecting NUMBER, got STRING");
     connector.close();
   }
 
@@ -833,7 +833,7 @@ class JsonConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "connector.json.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
+            "Invalid value for connector.json.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
     connector.close();
   }
 
@@ -846,7 +846,8 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.json.encoding: Expecting valid charset name, got 'NotAnEncoding'");
+        .hasMessage(
+            "Invalid value for connector.json.encoding: Expecting valid charset name, got 'NotAnEncoding'");
     connector.close();
   }
 

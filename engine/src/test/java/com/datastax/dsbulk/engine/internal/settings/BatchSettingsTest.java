@@ -110,7 +110,7 @@ class BatchSettingsTest {
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "batch.bufferSize (5) must be greater than or equal to buffer.maxBatchSize (10). See settings.md for more information.");
+            "Value for batch.bufferSize (5) must be greater than or equal to buffer.maxBatchSize (10). See settings.md for more information.");
   }
 
   @Test
@@ -122,7 +122,7 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("batch.maxBatchSize: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for batch.maxBatchSize: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -134,7 +134,7 @@ class BatchSettingsTest {
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("batch.bufferSize: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for batch.bufferSize: Expecting NUMBER, got STRING");
   }
 
   @Test

@@ -130,7 +130,7 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("executor.maxPerSecond: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for executor.maxPerSecond: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -142,6 +142,6 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("executor.maxInFlight: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for executor.maxInFlight: Expecting NUMBER, got STRING");
   }
 }

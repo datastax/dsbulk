@@ -829,7 +829,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.recursive: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for connector.csv.recursive: Expecting BOOLEAN, got STRING");
     connector.close();
   }
 
@@ -842,7 +842,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.header: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for connector.csv.header: Expecting BOOLEAN, got STRING");
     connector.close();
   }
 
@@ -855,7 +855,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.skipRecords: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for connector.csv.skipRecords: Expecting NUMBER, got STRING");
     connector.close();
   }
 
@@ -868,7 +868,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.maxRecords: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for connector.csv.maxRecords: Expecting NUMBER, got STRING");
     connector.close();
   }
 
@@ -882,7 +882,7 @@ class CSVConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "connector.csv.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
+            "Invalid value for connector.csv.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
     connector.close();
   }
 
@@ -895,7 +895,8 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.encoding: Expecting valid charset name, got 'NotAnEncoding'");
+        .hasMessage(
+            "Invalid value for connector.csv.encoding: Expecting valid charset name, got 'NotAnEncoding'");
     connector.close();
   }
 
@@ -907,7 +908,7 @@ class CSVConnectorTest {
             ConfigFactory.parseString("delimiter = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.delimiter: Expecting single char, got ''");
+        .hasMessage("Invalid value for connector.csv.delimiter: Expecting single char, got ''");
     connector.close();
   }
 
@@ -919,7 +920,7 @@ class CSVConnectorTest {
             ConfigFactory.parseString("quote = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.quote: Expecting single char, got ''");
+        .hasMessage("Invalid value for connector.csv.quote: Expecting single char, got ''");
     connector.close();
   }
 
@@ -931,7 +932,7 @@ class CSVConnectorTest {
             ConfigFactory.parseString("escape = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.escape: Expecting single char, got ''");
+        .hasMessage("Invalid value for connector.csv.escape: Expecting single char, got ''");
     connector.close();
   }
 
@@ -943,7 +944,7 @@ class CSVConnectorTest {
             ConfigFactory.parseString("comment = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.comment: Expecting single char, got ''");
+        .hasMessage("Invalid value for connector.csv.comment: Expecting single char, got ''");
     connector.close();
   }
 

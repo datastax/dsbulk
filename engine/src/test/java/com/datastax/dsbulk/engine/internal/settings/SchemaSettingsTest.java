@@ -1330,7 +1330,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("schema.nullToUnset: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for schema.nullToUnset: Expecting BOOLEAN, got STRING");
   }
 
   @Test
