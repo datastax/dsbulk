@@ -31,6 +31,8 @@ import java.util.function.Predicate;
 
 public class ThrowableUtils {
 
+  private static final Predicate<Throwable> INCLUDE_ALL = t -> true;
+
   /**
    * Returns {@code true} when the given throwable, its cause, or any of its suppressed errors is an
    * {@link InterruptedException} or any of its common variants. Returns {@code false} otherwise.
@@ -74,7 +76,7 @@ public class ThrowableUtils {
    * @return The sanitized message.
    */
   public static String getSanitizedErrorMessage(Throwable error) {
-    return getSanitizedErrorMessage(error, t -> true, 2);
+    return getSanitizedErrorMessage(error, INCLUDE_ALL, 2);
   }
 
   /**
