@@ -37,6 +37,9 @@ public abstract class CQLUtils {
   }
 
   public static String truncateTable(String keyspace, String table) {
-    return "TRUNCATE " + Metadata.quoteIfNecessary(keyspace) + "." + Metadata.quoteIfNecessary(table);
+    return "TRUNCATE "
+        + Metadata.quoteIfNecessary(keyspace)
+        + "."
+        + Metadata.quoteIfNecessary(table);
   }
 }
