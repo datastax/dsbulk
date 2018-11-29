@@ -6,6 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
+
 package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
@@ -17,6 +18,7 @@ import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInpu
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
 
+import com.datastax.driver.core.Session;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.driver.dse.graph.GraphResultSet;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
@@ -37,6 +39,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +47,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-// tests for DAT-355
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 @CCMConfig(
@@ -54,24 +56,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @CCMRequirements(
     compatibleTypes = DSE,
     versionRequirements = {@CCMVersionRequirement(type = DSE, min = "6.8.0")})
-class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
+public class GraphConnectorEndToEndJSONCCMIT extends EndToEndCCMITBase {
 
-  private static final URL CUSTOMER_RECORDS = ClassLoader.getSystemResource("graph/customers.csv");
-
-  private static final URL CUSTOMER_ORDER_RECORDS =
-      ClassLoader.getSystemResource("graph/customer-orders.csv");
-
+  public static final URL CUSTOMER_RECORDS = ClassLoader.getSystemResource("graph/customers.json");
+  public static final URL CUSTOMER_ORDER_RECORDS =
+      ClassLoader.getSystemResource("graph/customer-orders.json");
   private final LogInterceptor logs;
-
   private final StreamInterceptor stderr;
-
   private Path logDir;
-
   private Path unloadDir;
 
-  GraphCSVConnectorEndToEndCCMIT(
+  GraphConnectorEndToEndJSONCCMIT(
       CCMCluster ccm,
-      DseSession session,
+      Session session,
       @LogCapture LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
@@ -114,6 +111,7 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void full_load_unload_and_load_again_vertices() throws Exception {
 
+    // Load customer JSON file.
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("-g");
@@ -122,8 +120,8 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(CUSTOMER_VERTEX_LABEL);
     args.add("-url");
     args.add(escapeUserInput(CUSTOMER_RECORDS));
-    args.add("--connector.csv.delimiter");
-    args.add("|");
+    args.add("--connector.name");
+    args.add("json");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
 
@@ -132,9 +130,10 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
     GraphResultSet results =
         ((DseSession) session).executeGraph("g.V().hasLabel('" + CUSTOMER_VERTEX_LABEL + "')");
-    assertThat(results).hasSize(34);
+    Assertions.assertThat(results).hasSize(34);
     deleteDirectory(logDir);
 
+    // Unload customer JSON file
     args = new ArrayList<>();
     args.add("unload");
     args.add("-g");
@@ -143,19 +142,20 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(CUSTOMER_VERTEX_LABEL);
     args.add("-url");
     args.add(escapeUserInput(unloadDir));
-    args.add("--connector.csv.delimiter");
-    args.add("|");
+    args.add("--connector.name");
+    args.add("json");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
-    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(35, unloadDir);
+    validateOutputFiles(34, unloadDir);
     // Remove data for reload validation
     session.execute(CQLUtils.truncateTable(FRAUD_GRAPH, CUSTOMER_TABLE));
 
+    // Reload customer data
     args = new ArrayList<>();
     args.add("load");
     args.add("-g");
@@ -163,9 +163,9 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-v");
     args.add(CUSTOMER_VERTEX_LABEL);
     args.add("-url");
-    args.add(escapeUserInput(unloadDir));
-    args.add("--connector.csv.delimiter");
-    args.add("|");
+    args.add(escapeUserInput(CUSTOMER_RECORDS));
+    args.add("--connector.name");
+    args.add("json");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
 
@@ -174,12 +174,13 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
     results =
         ((DseSession) session).executeGraph("g.V().hasLabel('" + CUSTOMER_VERTEX_LABEL + "')");
-    assertThat(results).hasSize(34);
+    Assertions.assertThat(results).hasSize(34);
   }
 
   @Test
   void full_load_unload_and_load_again_edges() throws Exception {
 
+    // Load Customer Order data
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("-g");
@@ -194,8 +195,8 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(escapeUserInput(CUSTOMER_ORDER_RECORDS));
     args.add("-m");
     args.add(CUSTOMER_ORDER_MAPPINGS);
-    args.add("--connector.csv.delimiter");
-    args.add("|");
+    args.add("--connector.name");
+    args.add("json");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
 
@@ -207,6 +208,7 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(results).hasSize(14);
     deleteDirectory(logDir);
 
+    // Unload customer order data
     args = new ArrayList<>();
     args.add("unload");
     args.add("-g");
@@ -217,23 +219,24 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(CUSTOMER_VERTEX_LABEL);
     args.add("-to");
     args.add(ORDER_VERTEX_LABEL);
+    args.add("--connector.name");
+    args.add("json");
     args.add("-url");
     args.add(escapeUserInput(unloadDir));
     args.add("-m");
     args.add(CUSTOMER_ORDER_MAPPINGS);
-    args.add("--connector.csv.delimiter");
-    args.add("|");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
-    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(15, unloadDir);
+    validateOutputFiles(14, unloadDir);
     // Remove data for reload validation
     session.execute(CQLUtils.truncateTable(FRAUD_GRAPH, CUSTOMER_PLACES_ORDER_TABLE));
 
+    // Reload Customer Order data
     args = new ArrayList<>();
     args.add("load");
     args.add("-g");
@@ -246,10 +249,10 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(ORDER_VERTEX_LABEL);
     args.add("-url");
     args.add(escapeUserInput(unloadDir));
+    args.add("--connector.name");
+    args.add("json");
     args.add("-m");
     args.add(CUSTOMER_ORDER_MAPPINGS);
-    args.add("--connector.csv.delimiter");
-    args.add("|");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
 

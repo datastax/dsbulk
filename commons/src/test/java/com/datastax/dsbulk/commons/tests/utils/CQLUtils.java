@@ -15,9 +15,19 @@ public abstract class CQLUtils {
   private static final String CREATE_KEYSPACE_SIMPLE_FORMAT =
       "CREATE KEYSPACE IF NOT EXISTS %s WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : %d }";
 
+  private static final String CREATE_KEYSPACE_SIMPLE_GRAPH_FORMAT =
+      "CREATE KEYSPACE IF NOT EXISTS %s WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : %d } AND graph_engine = 'Native'";
+
   public static String createKeyspaceSimpleStrategy(String keyspace, int replicationFactor) {
     return String.format(
         CREATE_KEYSPACE_SIMPLE_FORMAT, Metadata.quoteIfNecessary(keyspace), replicationFactor);
+  }
+
+  public static String createGraphKeyspaceSimpleStrategy(String keyspace, int replicationFactor) {
+    return String.format(
+        CREATE_KEYSPACE_SIMPLE_GRAPH_FORMAT,
+        Metadata.quoteIfNecessary(keyspace),
+        replicationFactor);
   }
 
   public static String createKeyspaceNetworkTopologyStrategy(
