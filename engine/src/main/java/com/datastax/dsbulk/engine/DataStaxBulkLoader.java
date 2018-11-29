@@ -9,7 +9,7 @@
 package com.datastax.dsbulk.engine;
 
 import static com.datastax.dsbulk.commons.internal.utils.ThrowableUtils.getSanitizedErrorMessage;
-import static com.datastax.dsbulk.engine.internal.settings.LogSettings.ERROR_FILTER;
+import static com.datastax.dsbulk.engine.internal.settings.LogSettings.NO_REACTOR_ERRORS;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
@@ -177,7 +177,7 @@ public class DataStaxBulkLoader {
         if (ThrowableUtils.isInterrupted(error)) {
           status = STATUS_INTERRUPTED;
         } else {
-          String errorMessage = getSanitizedErrorMessage(error, ERROR_FILTER, 2);
+          String errorMessage = getSanitizedErrorMessage(error, NO_REACTOR_ERRORS, 2);
           if (error instanceof Exception) {
             status = STATUS_ABORTED_FATAL_ERROR;
             LOGGER.error(workflow + " failed: " + errorMessage, error);

@@ -77,7 +77,7 @@ public class LogSettings {
    * com.datastax.dsbulk.engine.DataStaxBulkLoader} but declared here since this class deals with
    * error handling.
    */
-  public static final Predicate<Throwable> ERROR_FILTER =
+  public static final Predicate<Throwable> NO_REACTOR_ERRORS =
       t ->
           // filter out reactor exceptions as they are usually not relevant to users and
           // other more meaningful errors are generally present.
