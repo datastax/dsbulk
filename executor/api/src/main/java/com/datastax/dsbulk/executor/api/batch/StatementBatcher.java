@@ -70,14 +70,20 @@ public class StatementBatcher {
     REPLICA_SET
   }
 
+
   public static final int DEFAULT_MAX_BATCH_SIZE = 100;
+  public static final int DEFAULT_MAX_BATCH_STATEMENTS = 32;
+  public static final long DEFAULT_MAX_SIZE_BYTES = -1;
 
   protected final Cluster cluster;
   protected final BatchMode batchMode;
   protected final BatchStatement.Type batchType;
   protected final ProtocolVersion protocolVersion;
   protected final CodecRegistry codecRegistry;
+  @Deprecated
   protected final int maxBatchSize;
+  protected final int maxBatchStatements;
+  protected final long maxSizeInBytes;
 
   /**
    * Creates a new {@link StatementBatcher} that produces {@link
@@ -94,6 +100,8 @@ public class StatementBatcher {
     protocolVersion = ProtocolVersion.NEWEST_SUPPORTED;
     codecRegistry = CodecRegistry.DEFAULT_INSTANCE;
     maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
+    maxBatchStatements = DEFAULT_MAX_BATCH_STATEMENTS;
+    maxSizeInBytes = DEFAULT_MAX_SIZE_BYTES;
   }
 
   /**
@@ -105,6 +113,7 @@ public class StatementBatcher {
    *
    * @param maxBatchSize The maximum batch size; must be &gt; 1.
    */
+  //todo how to support new constructor with the same signature bot for maxBatchStatements?
   public StatementBatcher(int maxBatchSize) {
     this.cluster = null;
     this.batchMode = BatchMode.PARTITION_KEY;
@@ -112,6 +121,38 @@ public class StatementBatcher {
     protocolVersion = ProtocolVersion.NEWEST_SUPPORTED;
     codecRegistry = CodecRegistry.DEFAULT_INSTANCE;
     this.maxBatchSize = maxBatchSize;
+    maxBatchStatements = maxBatchSize;
+    maxSizeInBytes = DEFAULT_MAX_SIZE_BYTES;
+  }
+
+  public StatementBatcher(long maxSizeInBytes) {
+    this.cluster = null;
+    this.batchMode = BatchMode.PARTITION_KEY;
+    this.batchType = BatchStatement.Type.UNLOGGED;
+    protocolVersion = ProtocolVersion.NEWEST_SUPPORTED;
+    codecRegistry = CodecRegistry.DEFAULT_INSTANCE;
+    maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
+    maxBatchStatements = DEFAULT_MAX_BATCH_STATEMENTS;
+    this.maxSizeInBytes = maxSizeInBytes;
+  }
+
+
+  /**
+   * @param maxBatchStatements - the maximum number of statements in one batch. If set
+   *                           to <= 0 it means that there is no limit of statements in one batch
+   * @param maxSizeInBytes - the maximum number of bytes in one batch. If set to <= 0
+   *                       it means that there is no size limit in one batch.
+   */
+
+  public StatementBatcher(int maxBatchStatements, long maxSizeInBytes) {
+    this.cluster = null;
+    this.batchMode = BatchMode.PARTITION_KEY;
+    this.batchType = BatchStatement.Type.UNLOGGED;
+    protocolVersion = ProtocolVersion.NEWEST_SUPPORTED;
+    codecRegistry = CodecRegistry.DEFAULT_INSTANCE;
+    maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
+    this.maxBatchStatements = maxBatchStatements;
+    this.maxSizeInBytes = maxSizeInBytes;
   }
 
   /**
@@ -138,7 +179,7 @@ public class StatementBatcher {
    * @param batchMode The batch mode to use; cannot be {@code null}.
    */
   public StatementBatcher(Cluster cluster, BatchMode batchMode) {
-    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, DEFAULT_MAX_BATCH_SIZE);
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, DEFAULT_MAX_BATCH_STATEMENTS);
   }
 
   /**
@@ -162,7 +203,10 @@ public class StatementBatcher {
       throw new IllegalArgumentException("Maximum batch size must be greater than 1");
     }
     this.maxBatchSize = maxBatchSize;
+    maxBatchStatements = DEFAULT_MAX_BATCH_STATEMENTS;
+    maxSizeInBytes = DEFAULT_MAX_SIZE_BYTES;
   }
+  //todo new constructor that supports both new params, and validate that they are properly set
 
   /**
    * Batches together the given statements into groups of statements having the same grouping key.
