@@ -21,13 +21,15 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamType;
+import com.datastax.dsbulk.engine.internal.settings.RowType;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.fusesource.jansi.Ansi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 @ExtendWith(StreamInterceptingExtension.class)
 class ConsoleReporterTest {
@@ -45,9 +47,10 @@ class ConsoleReporterTest {
     Ansi.setEnabled(ansiEnabled);
   }
 
-  @Test
+  @ParameterizedTest
+  @EnumSource(RowType.class)
   void should_report_on_console_without_expected_total_and_without_batches(
-      @StreamCapture(StreamType.STDERR) StreamInterceptor stderr) {
+      RowType rowType, @StreamCapture(StreamType.STDERR) StreamInterceptor stderr) {
     MetricRegistry registry = new MetricRegistry();
     Timer writes = registry.timer("writes");
     Counter failed = registry.counter("failed");
@@ -65,13 +68,18 @@ class ConsoleReporterTest {
             SECONDS,
             MILLISECONDS,
             -1,
-            new ScheduledThreadPoolExecutor(1));
+            new ScheduledThreadPoolExecutor(1),
+            rowType);
     reporter.report();
     assertThat(stderr.getStreamAsString())
-        .isEqualTo(
-            "total | failed | rows/s | mb/s | kb/row | p50ms | p99ms | p999ms"
+        .matches(
+            "total \\| failed \\| "
+                + rowType.plural()
+                + "/s \\| mb/s \\| kb/"
+                + rowType.singular()
+                + " \\| p50ms \\| p99ms \\| p999ms"
                 + System.lineSeparator()
-                + "    0 |      0 |      0 | 0.00 |   0.00 |  0.00 |  0.00 |   0.00"
+                + "\\s+0 \\|\\s+0 \\|\\s+0 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00"
                 + System.lineSeparator());
     stderr.clear();
     writes.update(10, MILLISECONDS);
@@ -86,15 +94,20 @@ class ConsoleReporterTest {
     reporter.report();
     assertThat(stderr.getStreamAsString())
         .matches(
-            "total \\| failed \\| rows/s \\| mb/s \\| kb/row \\| p50ms \\| p99ms \\| p999ms"
+            "total \\| failed \\| "
+                + rowType.plural()
+                + "/s \\| mb/s \\| kb/"
+                + rowType.singular()
+                + " \\| p50ms \\| p99ms \\| p999ms"
                 + System.lineSeparator()
-                + "    3 \\|      1 \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+"
+                + "\\s+3 \\|\\s+1 \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+"
                 + System.lineSeparator());
   }
 
-  @Test
+  @ParameterizedTest
+  @EnumSource(RowType.class)
   void should_report_on_console_with_expected_total_and_with_batches(
-      @StreamCapture(StreamType.STDERR) StreamInterceptor stderr) {
+      RowType rowType, @StreamCapture(StreamType.STDERR) StreamInterceptor stderr) {
     MetricRegistry registry = new MetricRegistry();
     Timer writes = registry.timer("writes");
     Counter failed = registry.counter("failed");
@@ -112,13 +125,18 @@ class ConsoleReporterTest {
             SECONDS,
             MILLISECONDS,
             1000,
-            new ScheduledThreadPoolExecutor(1));
+            new ScheduledThreadPoolExecutor(1),
+            rowType);
     reporter.report();
     assertThat(stderr.getStreamAsString())
-        .isEqualTo(
-            "total | failed | achieved | rows/s | mb/s | kb/row | p50ms | p99ms | p999ms | batches"
+        .matches(
+            "total \\| failed \\| achieved \\| "
+                + rowType.plural()
+                + "/s \\| mb/s \\| kb/"
+                + rowType.singular()
+                + " \\| p50ms \\| p99ms \\| p999ms \\| batches"
                 + System.lineSeparator()
-                + "    0 |      0 |       0% |      0 | 0.00 |   0.00 |  0.00 |  0.00 |   0.00 |    0.00"
+                + "\\s+0 \\|\\s+0 \\|\\s+0% \\|\\s+0 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00"
                 + System.lineSeparator());
     stderr.clear();
     writes.update(10, MILLISECONDS);
@@ -133,9 +151,13 @@ class ConsoleReporterTest {
     reporter.report();
     assertThat(stderr.getStreamAsString())
         .matches(
-            "total \\| failed \\| achieved \\| rows/s \\| mb/s \\| kb/row \\| p50ms \\| p99ms \\| p999ms \\| batches"
+            "total \\| failed \\| achieved \\| "
+                + rowType.plural()
+                + "/s \\| mb/s \\| kb/"
+                + rowType.singular()
+                + " \\| p50ms \\| p99ms \\| p999ms \\| batches"
                 + System.lineSeparator()
-                + "    3 \\|      1 \\|       0% \\|\\s+[\\d,]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|   15\\.00"
+                + "\\s+3 \\|\\s+1 \\|\\s+0% \\|\\s+[\\d,]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|   15\\.00"
                 + System.lineSeparator());
   }
 }
