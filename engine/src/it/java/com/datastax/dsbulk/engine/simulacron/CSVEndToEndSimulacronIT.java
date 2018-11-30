@@ -78,7 +78,9 @@ import com.datastax.oss.simulacron.server.BoundCluster;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -91,8 +93,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @ExtendWith(SimulacronExtension.class)
 @ExtendWith(LogInterceptingExtension.class)
@@ -877,6 +877,11 @@ class CSVEndToEndSimulacronIT {
   @Test
   void unload_write_error() {
 
+    Path file1 = unloadDir.resolve("output-000001.csv");
+    Path file2 = unloadDir.resolve("output-000002.csv");
+    Path file3 = unloadDir.resolve("output-000003.csv");
+    Path file4 = unloadDir.resolve("output-000004.csv");
+
     MockConnector.setDelegate(
         new CSVConnector() {
 
@@ -885,18 +890,29 @@ class CSVEndToEndSimulacronIT {
             settings =
                 new DefaultLoaderConfig(
                     ConfigFactory.parseMap(
-                            ImmutableMap.of("url", escapeUserInput(unloadDir), "header", "false"))
+                            ImmutableMap.of(
+                                "url",
+                                escapeUserInput(unloadDir),
+                                "header",
+                                "false",
+                                "maxConcurrentFiles",
+                                "4"))
                         .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.csv")));
             super.configure(settings, read);
           }
 
           @Override
           public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-            return upstream ->
-                Flux.from(upstream)
-                    .transform(super.write())
-                    // simulate fatal write error
-                    .concatWith(Mono.error(new IOException("booo")));
+            // will cause the write workers to fail because the files already exist
+            try {
+              Files.createFile(file1);
+              Files.createFile(file2);
+              Files.createFile(file3);
+              Files.createFile(file4);
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+            return super.write();
           }
         });
 
@@ -928,8 +944,12 @@ class CSVEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    assertThat(stdErr.getStreamAsString()).contains("failed: java.io.IOException: booo");
-    assertThat(logs.getAllMessagesAsString()).contains("failed: java.io.IOException: booo");
+    assertThat(stdErr.getStreamAsString())
+        .contains("failed")
+        .containsPattern("output-00000[1-4].csv");
+    assertThat(logs.getAllMessagesAsString())
+        .contains("failed")
+        .containsPattern("output-00000[1-4].csv");
   }
 
   @Test

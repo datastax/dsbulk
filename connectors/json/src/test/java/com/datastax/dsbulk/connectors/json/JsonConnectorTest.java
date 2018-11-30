@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.util.Throwables.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -34,6 +35,7 @@ import com.typesafe.config.ConfigFactory;
 import io.undertow.util.Headers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
@@ -54,6 +56,7 @@ class JsonConnectorTest {
 
   static {
     URLUtils.setURLFactoryIfNeeded();
+    Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
   }
 
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
@@ -608,6 +611,19 @@ class JsonConnectorTest {
   }
 
   @Test
+  void should_error_on_empty_url() {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(ConfigFactory.parseString("url = \"\""))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    assertThatThrownBy(() -> connector.configure(settings, true))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "An URL is mandatory when using the json connector. Please set connector.json.url and "
+                + "try again. See settings.md or help for more information.");
+  }
+
+  @Test
   void should_error_when_directory_is_not_empty() throws Exception {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
@@ -695,8 +711,11 @@ class JsonConnectorTest {
     connector.init();
     assertThatThrownBy(() -> Flux.defer(connector.read()).collectList().block())
         .hasRootCauseExactlyInstanceOf(JsonParseException.class)
-        .hasMessageContaining(
-            "Expecting START_OBJECT, got START_ARRAY. Did you forget to set connector.json.mode to SINGLE_DOCUMENT?");
+        .satisfies(
+            t ->
+                assertThat(getRootCause(t))
+                    .hasMessageContaining(
+                        "Expecting START_OBJECT, got START_ARRAY. Did you forget to set connector.json.mode to SINGLE_DOCUMENT?"));
     connector.close();
   }
 
@@ -742,8 +761,13 @@ class JsonConnectorTest {
     assertThatThrownBy(
             () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
         .isInstanceOf(UncheckedIOException.class)
-        .hasMessageContaining(
-            "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.json");
+        .hasCauseInstanceOf(IOException.class)
+        .hasRootCauseInstanceOf(IllegalArgumentException.class)
+        .satisfies(
+            t ->
+                assertThat(getRootCause(t))
+                    .hasMessageContaining(
+                        "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.json"));
     connector.close();
   }
 
@@ -756,7 +780,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.json.recursive: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for connector.json.recursive: Expecting BOOLEAN, got STRING");
     connector.close();
   }
 
@@ -769,7 +793,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.json.prettyPrint: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for connector.json.prettyPrint: Expecting BOOLEAN, got STRING");
     connector.close();
   }
 
@@ -782,7 +806,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.json.skipRecords: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for connector.json.skipRecords: Expecting NUMBER, got STRING");
     connector.close();
   }
 
@@ -795,7 +819,7 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.json.maxRecords: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for connector.json.maxRecords: Expecting NUMBER, got STRING");
     connector.close();
   }
 
@@ -809,7 +833,7 @@ class JsonConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "connector.json.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
+            "Invalid value for connector.json.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
     connector.close();
   }
 
@@ -822,7 +846,8 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.json.encoding: Expecting valid charset name, got 'NotAnEncoding'");
+        .hasMessage(
+            "Invalid value for connector.json.encoding: Expecting valid charset name, got 'NotAnEncoding'");
     connector.close();
   }
 

@@ -288,7 +288,8 @@ class LogSettingsTest {
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("log.stmt.maxQueryStringLength: Expecting NUMBER, got STRING");
+        .hasMessage(
+            "Invalid value for log.stmt.maxQueryStringLength: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -300,7 +301,7 @@ class LogSettingsTest {
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("log.stmt.maxBoundValueLength: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for log.stmt.maxBoundValueLength: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -312,7 +313,7 @@ class LogSettingsTest {
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("log.stmt.maxBoundValues: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for log.stmt.maxBoundValues: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -324,7 +325,7 @@ class LogSettingsTest {
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("log.stmt.maxInnerStatements: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for log.stmt.maxInnerStatements: Expecting NUMBER, got STRING");
   }
 
   @Test

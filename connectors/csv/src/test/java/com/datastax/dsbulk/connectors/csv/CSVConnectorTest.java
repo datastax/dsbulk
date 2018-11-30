@@ -15,6 +15,7 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.util.Throwables.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -56,6 +57,7 @@ class CSVConnectorTest {
 
   static {
     URLUtils.setURLFactoryIfNeeded();
+    Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
   }
 
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
@@ -745,8 +747,13 @@ class CSVConnectorTest {
     assertThatThrownBy(
             () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
         .isInstanceOf(UncheckedIOException.class)
-        .hasMessageContaining(
-            "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.csv");
+        .hasCauseInstanceOf(IOException.class)
+        .hasRootCauseInstanceOf(IllegalArgumentException.class)
+        .satisfies(
+            t ->
+                assertThat(getRootCause(t))
+                    .hasMessageContaining(
+                        "HTTP/HTTPS protocols cannot be used for output: http://localhost:1234/file.csv"));
     connector.close();
   }
 
@@ -809,7 +816,7 @@ class CSVConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "url is mandatory when using the csv connector. Please set connector.csv.url and "
+            "An URL is mandatory when using the csv connector. Please set connector.csv.url and "
                 + "try again. See settings.md or help for more information.");
   }
 
@@ -822,7 +829,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.recursive: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for connector.csv.recursive: Expecting BOOLEAN, got STRING");
     connector.close();
   }
 
@@ -835,7 +842,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.header: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for connector.csv.header: Expecting BOOLEAN, got STRING");
     connector.close();
   }
 
@@ -848,7 +855,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.skipRecords: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for connector.csv.skipRecords: Expecting NUMBER, got STRING");
     connector.close();
   }
 
@@ -861,7 +868,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.maxRecords: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for connector.csv.maxRecords: Expecting NUMBER, got STRING");
     connector.close();
   }
 
@@ -875,7 +882,7 @@ class CSVConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "connector.csv.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
+            "Invalid value for connector.csv.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
     connector.close();
   }
 
@@ -888,7 +895,8 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.encoding: Expecting valid charset name, got 'NotAnEncoding'");
+        .hasMessage(
+            "Invalid value for connector.csv.encoding: Expecting valid charset name, got 'NotAnEncoding'");
     connector.close();
   }
 
@@ -900,7 +908,7 @@ class CSVConnectorTest {
             ConfigFactory.parseString("delimiter = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.delimiter: Expecting single char, got ''");
+        .hasMessage("Invalid value for connector.csv.delimiter: Expecting single char, got ''");
     connector.close();
   }
 
@@ -912,7 +920,7 @@ class CSVConnectorTest {
             ConfigFactory.parseString("quote = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.quote: Expecting single char, got ''");
+        .hasMessage("Invalid value for connector.csv.quote: Expecting single char, got ''");
     connector.close();
   }
 
@@ -924,7 +932,7 @@ class CSVConnectorTest {
             ConfigFactory.parseString("escape = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.escape: Expecting single char, got ''");
+        .hasMessage("Invalid value for connector.csv.escape: Expecting single char, got ''");
     connector.close();
   }
 
@@ -936,7 +944,7 @@ class CSVConnectorTest {
             ConfigFactory.parseString("comment = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("connector.csv.comment: Expecting single char, got ''");
+        .hasMessage("Invalid value for connector.csv.comment: Expecting single char, got ''");
     connector.close();
   }
 

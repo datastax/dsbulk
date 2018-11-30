@@ -51,7 +51,7 @@ public class ConfigUtils {
       // "connector.csv.recursive: Expecting X, got Y."
       String em = e.getMessage();
       int startingIndex = e.origin().description().length() + 2;
-      String errorMsg = path + "." + em.substring(startingIndex);
+      String errorMsg = "Invalid value for " + path + "." + em.substring(startingIndex);
       Matcher matcher = WRONG_TYPE_PATTERN.matcher(errorMsg);
       if (matcher.find()) {
         errorMsg = matcher.replaceAll(": Expecting $2, got $1");

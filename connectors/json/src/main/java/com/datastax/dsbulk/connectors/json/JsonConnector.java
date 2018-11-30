@@ -141,7 +141,7 @@ public class JsonConnector implements Connector {
     try {
       if (!settings.hasPath(URL)) {
         throw new BulkConfigurationException(
-            "url is mandatory when using the json connector. Please set connector.json.url "
+            "An URL is mandatory when using the json connector. Please set connector.json.url "
                 + "and try again. See settings.md or help for more information.");
       }
       this.read = read;
@@ -270,7 +270,9 @@ public class JsonConnector implements Connector {
             .parallel(maxConcurrentFiles)
             .runOn(scheduler)
             .groups()
-            .flatMap(records -> records.transform(writeRecords(writers.get(records.key()))));
+            .flatMap(
+                records -> records.transform(writeRecords(writers.get(records.key()))),
+                maxConcurrentFiles);
       };
     } else {
       return upstream -> {
@@ -319,7 +321,7 @@ public class JsonConnector implements Connector {
         }
         if (IOUtils.isDirectoryNonEmpty(root)) {
           throw new IllegalArgumentException(
-              "connector.json.url target directory: " + root + " must be empty.");
+              "Invalid value for connector.json.url: target directory " + root + " must be empty.");
         }
         this.root = root;
       }
@@ -373,9 +375,7 @@ public class JsonConnector implements Connector {
                 LOGGER.debug("Done reading {}", url);
                 sink.complete();
               } catch (Exception e) {
-                sink.error(
-                    new IOException(
-                        String.format("Error reading from %s: %s", url, e.getMessage()), e));
+                sink.error(new IOException(String.format("Error reading from %s", url), e));
               }
             },
             FluxSink.OverflowStrategy.ERROR);
@@ -399,7 +399,7 @@ public class JsonConnector implements Connector {
                 Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
                 return Flux.fromStream(files);
               } catch (IOException e) {
-                throw new UncheckedIOException(e);
+                throw new UncheckedIOException("Error scanning directory " + root, e);
               }
             })
         .filter(Files::isReadable)
@@ -425,6 +425,10 @@ public class JsonConnector implements Connector {
                     try {
                       writer.write(signal.get());
                     } catch (Exception e) {
+                      // Note that we may be are inside a parallel flux;
+                      // sending more than one onError signal to downstream will result
+                      // in all onError signals but the first to be dropped.
+                      // The framework is expected to deal with that.
                       signal = Signal.error(e);
                     }
                   }
@@ -453,12 +457,13 @@ public class JsonConnector implements Connector {
         }
         writer.writeObject(record);
         currentLine++;
+      } catch (UncheckedIOException e) {
+        throw e;
       } catch (ClosedChannelException e) {
         // OK, happens when the channel was closed due to interruption
-        LOGGER.warn(String.format("Error writing to %s: %s", url, e.getMessage()), e);
+        LOGGER.warn(String.format("Error writing to %s", url), e);
       } catch (IOException e) {
-        throw new UncheckedIOException(
-            String.format("Error writing to %s: %s", url, e.getMessage()), e);
+        throw new UncheckedIOException(String.format("Error writing to %s", url), e);
       }
     }
 
@@ -481,13 +486,11 @@ public class JsonConnector implements Connector {
         LOGGER.debug("Writing " + url);
       } catch (ClosedChannelException e) {
         // OK, happens when the channel was closed due to interruption
-        LOGGER.warn(String.format("Could not open %s: %s", url, e.getMessage()), e);
+        LOGGER.warn(String.format("Could not open %s", url), e);
       } catch (IOException e) {
-        throw new UncheckedIOException(
-            String.format("Error opening %s: %s", url, e.getMessage()), e);
+        throw new UncheckedIOException(String.format("Error opening %s", url), e);
       } catch (Exception e) {
-        throw new UncheckedIOException(
-            new IOException(String.format("Error opening %s: %s", url, e.getMessage()), e));
+        throw new UncheckedIOException(new IOException(String.format("Error opening %s", url), e));
       }
     }
 
@@ -505,10 +508,9 @@ public class JsonConnector implements Connector {
           writer = null;
         } catch (ClosedChannelException e) {
           // OK, happens when the channel was closed due to interruption
-          LOGGER.warn(String.format("Could not close %s: %s", url, e.getMessage()), e);
+          LOGGER.warn(String.format("Could not close %s", url), e);
         } catch (IOException e) {
-          throw new UncheckedIOException(
-              String.format("Error closing %s: %s", url, e.getMessage()), e);
+          throw new UncheckedIOException(String.format("Error closing %s", url), e);
         }
       }
     }
@@ -528,9 +530,7 @@ public class JsonConnector implements Connector {
         return root.resolve(next).toUri().toURL();
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(
-            String.format(
-                "Could not create file URL with format %s: %s", fileNameFormat, e.getMessage()),
-            e);
+            String.format("Could not create file URL with format %s", fileNameFormat), e);
       }
     }
     // assume we are writing to a single URL and ignore fileNameFormat

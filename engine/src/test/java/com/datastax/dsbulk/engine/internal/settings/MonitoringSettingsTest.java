@@ -108,7 +108,7 @@ class MonitoringSettingsTest {
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("monitoring.expectedWrites: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for monitoring.expectedWrites: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -120,7 +120,7 @@ class MonitoringSettingsTest {
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("monitoring.expectedReads: Expecting NUMBER, got STRING");
+        .hasMessage("Invalid value for monitoring.expectedReads: Expecting NUMBER, got STRING");
   }
 
   @Test
@@ -132,7 +132,7 @@ class MonitoringSettingsTest {
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("monitoring.jmx: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for monitoring.jmx: Expecting BOOLEAN, got STRING");
   }
 
   @Test

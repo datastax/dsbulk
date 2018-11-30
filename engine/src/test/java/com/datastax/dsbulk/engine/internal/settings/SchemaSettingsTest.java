@@ -1113,7 +1113,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("schema.keyspace and schema.graph are mutually exclusive");
+        .hasMessage("Settings schema.keyspace and schema.graph are mutually exclusive");
   }
 
   @Test
@@ -1122,7 +1122,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("schema.table and schema.vertex are mutually exclusive");
+        .hasMessage("Settings schema.table and schema.vertex are mutually exclusive");
   }
 
   @Test
@@ -1131,7 +1131,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("schema.table and schema.edge are mutually exclusive");
+        .hasMessage("Settings schema.table and schema.edge are mutually exclusive");
   }
 
   @Test
@@ -1140,7 +1140,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("schema.vertex and schema.edge are mutually exclusive");
+        .hasMessage("Settings schema.vertex and schema.edge are mutually exclusive");
   }
 
   @Test
@@ -1149,7 +1149,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("schema.from is required when schema.edge is specified");
+        .hasMessage("Setting schema.from is required when schema.edge is specified");
   }
 
   @Test
@@ -1158,7 +1158,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("schema.to is required when schema.edge is specified");
+        .hasMessage("Setting schema.to is required when schema.edge is specified");
   }
 
   @Test
@@ -1330,7 +1330,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("schema.nullToUnset: Expecting BOOLEAN, got STRING");
+        .hasMessage("Invalid value for schema.nullToUnset: Expecting BOOLEAN, got STRING");
   }
 
   @Test
@@ -1496,7 +1496,7 @@ class SchemaSettingsTest {
                     session, codecRegistry, EnumSet.of(global), 10))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "The provided statement (schema.query) contains extraneous columns in the SELECT clause: c3; it should contain only partition key columns.");
+            "Value for schema.query contains extraneous columns in the SELECT clause: c3; it should contain only partition key columns.");
   }
 
   @Test

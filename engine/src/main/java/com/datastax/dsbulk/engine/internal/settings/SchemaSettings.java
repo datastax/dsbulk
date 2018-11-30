@@ -130,38 +130,39 @@ public class SchemaSettings {
 
       if (config.hasPath(KEYSPACE) && config.hasPath(GRAPH)) {
         throw new BulkConfigurationException(
-            "schema.keyspace and schema.graph are mutually exclusive");
+            "Settings schema.keyspace and schema.graph are mutually exclusive");
       }
       if (config.hasPath(TABLE) && config.hasPath(VERTEX)) {
         throw new BulkConfigurationException(
-            "schema.table and schema.vertex are mutually exclusive");
+            "Settings schema.table and schema.vertex are mutually exclusive");
       }
       if (config.hasPath(TABLE) && config.hasPath(EDGE)) {
-        throw new BulkConfigurationException("schema.table and schema.edge are mutually exclusive");
+        throw new BulkConfigurationException(
+            "Settings schema.table and schema.edge are mutually exclusive");
       }
       if (config.hasPath(VERTEX) && config.hasPath(EDGE)) {
         throw new BulkConfigurationException(
-            "schema.vertex and schema.edge are mutually exclusive");
+            "Settings schema.vertex and schema.edge are mutually exclusive");
       }
       if (config.hasPath(EDGE)) {
         if (!config.hasPath(FROM)) {
           throw new BulkConfigurationException(
-              "schema.from is required when schema.edge is specified");
+              "Setting schema.from is required when schema.edge is specified");
         }
         if (!config.hasPath(TO)) {
           throw new BulkConfigurationException(
-              "schema.to is required when schema.edge is specified");
+              "Setting schema.to is required when schema.edge is specified");
         }
       }
       if (config.hasPath(QUERY)
           && (config.hasPath(TABLE) || config.hasPath(VERTEX) || config.hasPath(EDGE))) {
         throw new BulkConfigurationException(
-            "schema.query must not be defined if schema.table, schema.vertex or schema.edge are defined");
+            "Setting schema.query must not be defined if schema.table, schema.vertex or schema.edge are defined");
       }
       if ((!config.hasPath(KEYSPACE) && !config.hasPath(GRAPH))
           && (config.hasPath(TABLE) || config.hasPath(VERTEX) || config.hasPath(EDGE))) {
         throw new BulkConfigurationException(
-            "schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
+            "Settings schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
       }
 
       // Keyspace
@@ -214,30 +215,32 @@ public class SchemaSettings {
         if (queryInspector.getKeyspaceName().isPresent()) {
           if (keyspace != null) {
             throw new BulkConfigurationException(
-                "schema.keyspace must not be provided when schema.query contains a keyspace-qualified statement");
+                "Setting schema.keyspace must not be provided when schema.query contains a keyspace-qualified statement");
           }
           String keyspaceName = quoteIfNecessary(queryInspector.getKeyspaceName().get());
           keyspace = cluster.getMetadata().getKeyspace(keyspaceName);
           if (keyspace == null) {
             throw new BulkConfigurationException(
-                String.format("schema.query references a non-existent keyspace: %s", keyspaceName));
+                String.format(
+                    "Value for schema.query references a non-existent keyspace: %s", keyspaceName));
           }
         } else if (keyspace == null) {
           throw new BulkConfigurationException(
-              "schema.keyspace must be provided when schema.query does not contain a keyspace-qualified statement");
+              "Setting schema.keyspace must be provided when schema.query does not contain a keyspace-qualified statement");
         }
 
         String tableName = quoteIfNecessary(queryInspector.getTableName());
         table = keyspace.getTable(tableName);
         if (table == null) {
           throw new BulkConfigurationException(
-              String.format("schema.query references a non-existent table: %s", tableName));
+              String.format(
+                  "Value for schema.query references a non-existent table: %s", tableName));
         }
 
         // If a query is provided, ttl and timestamp must not be.
         if (timestampMicros != -1 || ttlSeconds != -1) {
           throw new BulkConfigurationException(
-              "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
+              "Setting schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
         }
 
         // If a query is provided, check now if it contains a USING TIMESTAMP variable,
@@ -267,7 +270,7 @@ public class SchemaSettings {
 
         if (workflowType == COUNT) {
           throw new BulkConfigurationException(
-              "schema.mapping must not be defined when counting rows in a table");
+              "Setting schema.mapping must not be defined when counting rows in a table");
         }
 
         mapping = new MappingInspector(config.getString(MAPPING), preferIndexedMapping);
@@ -278,15 +281,15 @@ public class SchemaSettings {
         if (query != null) {
           if (explicitVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME)) {
             throw new BulkConfigurationException(
-                "schema.query must not be defined when mapping a field to query-timestamp");
+                "Setting schema.query must not be defined when mapping a field to query-timestamp");
           }
           if (explicitVariables.containsValue(INTERNAL_TTL_VARNAME)) {
             throw new BulkConfigurationException(
-                "schema.query must not be defined when mapping a field to query-ttl");
+                "Setting schema.query must not be defined when mapping a field to query-ttl");
           }
           if (explicitVariables.keySet().stream().anyMatch(SchemaSettings::isFunction)) {
             throw new BulkConfigurationException(
-                "schema.query must not be defined when mapping a function to a column");
+                "Setting schema.query must not be defined when mapping a function to a column");
           }
         }
 
@@ -729,7 +732,7 @@ public class SchemaSettings {
           columns.stream().map(Metadata::quoteIfNecessary).collect(Collectors.joining(", "));
       throw new BulkConfigurationException(
           String.format(
-              "The provided statement (schema.query) contains extraneous columns in the "
+              "Value for schema.query contains extraneous columns in the "
                   + "SELECT clause: %s; it should contain only partition key columns.",
               offendingColumns));
     }
