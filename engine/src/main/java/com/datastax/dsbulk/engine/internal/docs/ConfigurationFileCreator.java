@@ -86,7 +86,7 @@ public class ConfigurationFileCreator {
         pw.println(indentedRowOfHashes);
 
         for (String settingName : groupEntry.getValue().getSettings()) {
-          ConfigValue value = config.getValue(settingName);
+          ConfigValue value = ConfigUtils.getNullSafeValue(config, settingName);
 
           pw.println();
           value

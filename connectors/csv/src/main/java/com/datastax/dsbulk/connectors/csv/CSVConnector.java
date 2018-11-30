@@ -107,6 +107,8 @@ public class CSVConnector implements Connector {
       "ignoreLeadingWhitespacesInQuotes";
   private static final String IGNORE_TRAILING_WHITESPACES_IN_QUOTES =
       "ignoreTrailingWhitespacesInQuotes";
+  private static final String NULL_VALUE = "nullValue";
+  private static final String EMPTY_VALUE = "emptyValue";
 
   private boolean read;
   private URL url;
@@ -130,6 +132,8 @@ public class CSVConnector implements Connector {
   private boolean ignoreTrailingWhitespaces;
   private boolean ignoreTrailingWhitespacesInQuotes;
   private boolean ignoreLeadingWhitespacesInQuotes;
+  private String nullValue;
+  private String emptyValue;
   private int resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
@@ -140,7 +144,7 @@ public class CSVConnector implements Connector {
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
-      if (!settings.hasPath(URL)) {
+      if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {
         throw new BulkConfigurationException(
             "An URL is mandatory when using the csv connector. Please set connector.csv.url "
                 + "and try again. See settings.md or help for more information.");
@@ -166,6 +170,8 @@ public class CSVConnector implements Connector {
       ignoreTrailingWhitespaces = settings.getBoolean(IGNORE_TRAILING_WHITESPACES);
       ignoreTrailingWhitespacesInQuotes = settings.getBoolean(IGNORE_LEADING_WHITESPACES_IN_QUOTES);
       ignoreLeadingWhitespacesInQuotes = settings.getBoolean(IGNORE_TRAILING_WHITESPACES_IN_QUOTES);
+      nullValue = settings.getIsNull(NULL_VALUE) ? null : settings.getString(NULL_VALUE);
+      emptyValue = settings.getIsNull(EMPTY_VALUE) ? null : settings.getString(EMPTY_VALUE);
       if (!AUTO_NEWLINE.equalsIgnoreCase(newline) && (newline.isEmpty() || newline.length() > 2)) {
         throw new BulkConfigurationException(
             String.format(
@@ -198,10 +204,8 @@ public class CSVConnector implements Connector {
     if (read) {
       parserSettings = new CsvParserSettings();
       parserSettings.setFormat(format);
-      // use the empty string as the empty value and the null value, let the engine deal
-      // with conversions to null, if required.
-      parserSettings.setEmptyValue("");
-      parserSettings.setNullValue("");
+      parserSettings.setNullValue(nullValue);
+      parserSettings.setEmptyValue(emptyValue);
       // do not use this feature as the parser throws an error if the file
       // has fewer lines than skipRecords;
       // we'll use the skip() operator instead.
@@ -220,6 +224,7 @@ public class CSVConnector implements Connector {
     } else {
       writerSettings = new CsvWriterSettings();
       writerSettings.setFormat(format);
+      writerSettings.setNullValue(nullValue);
       writerSettings.setQuoteEscapingEnabled(true);
       writerSettings.setIgnoreLeadingWhitespaces(ignoreLeadingWhitespaces);
       writerSettings.setIgnoreTrailingWhitespaces(ignoreTrailingWhitespaces);

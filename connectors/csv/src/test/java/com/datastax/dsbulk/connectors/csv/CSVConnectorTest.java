@@ -139,22 +139,22 @@ class CSVConnectorTest {
             "1999",
             "Chevy",
             "Venture \"Extended Edition, Very Large\"",
-            "",
+            null,
             "5000.00",
             "1999",
             "Chevy",
             "Venture \"Extended Edition, Very Large\"",
-            "",
+            null,
             "5000.00");
     assertThat(actual.get(4).values())
         .containsExactly(
-            "",
-            "",
+            null,
+            null,
             "Venture \"Extended Edition\"",
             "",
             "4900.00",
-            "",
-            "",
+            null,
+            null,
             "Venture \"Extended Edition\"",
             "",
             "4900.00");
@@ -764,6 +764,125 @@ class CSVConnectorTest {
     connector.close();
   }
 
+  @Test
+  void should_honor_nullValue_when_reading() throws Exception {
+    Path file = Files.createTempFile("test", ".csv");
+    Files.write(file, Collections.singleton(","));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", nullValue = null, header = false", escapeUserInput(file)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).getFieldValue("0")).isNull();
+    connector.close();
+  }
+
+  @Test
+  void should_honor_nullValue_when_reading2() throws Exception {
+    Path file = Files.createTempFile("test", ".csv");
+    Files.write(file, Collections.singleton(","));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", nullValue = NULL, header = false", escapeUserInput(file)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).getFieldValue("0")).isEqualTo("NULL");
+    connector.close();
+  }
+
+  @Test
+  void should_honor_nullValue_when_writing() throws Exception {
+    Path out = Files.createTempDirectory("test");
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", nullValue = null, header = true", escapeUserInput(out)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    Flux.<Record>just(
+            new DefaultRecord(null, null, -1, null, new String[] {"field1"}, new Object[] {null}))
+        .transform(connector.write())
+        .blockFirst();
+    connector.close();
+    List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
+    assertThat(actual)
+        .hasSize(1)
+        .containsExactly("field1"); // only the header line should have been printed
+  }
+
+  @Test
+  void should_honor_nullValue_when_writing2() throws Exception {
+    Path out = Files.createTempDirectory("test");
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", nullValue = NULL, header = false", escapeUserInput(out)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    Flux.<Record>just(new DefaultRecord(null, null, -1, null, new Object[] {null}))
+        .transform(connector.write())
+        .blockFirst();
+    connector.close();
+    List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
+    assertThat(actual).hasSize(1).containsExactly("NULL");
+  }
+
+  @Test
+  void should_honor_emptyValue_when_reading() throws Exception {
+    Path file = Files.createTempFile("test", ".csv");
+    Files.write(file, Collections.singleton("\"\""));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", emptyValue = \"\", header = false", escapeUserInput(file)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).getFieldValue("0")).isEqualTo("");
+    connector.close();
+  }
+
+  @Test
+  void should_honor_emptyValue_when_reading2() throws Exception {
+    Path file = Files.createTempFile("test", ".csv");
+    Files.write(file, Collections.singleton("\"\""));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", emptyValue = EMPTY, header = false", escapeUserInput(file)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).getFieldValue("0")).isEqualTo("EMPTY");
+    connector.close();
+  }
+
   @Test()
   void should_error_when_directory_is_not_empty() throws Exception {
     CSVConnector connector = new CSVConnector();
@@ -957,7 +1076,7 @@ class CSVConnectorTest {
   void should_error_on_empty_url() {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(ConfigFactory.parseString("url = \"\""))
+        new DefaultLoaderConfig(ConfigFactory.parseString("url = null"))
             .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)

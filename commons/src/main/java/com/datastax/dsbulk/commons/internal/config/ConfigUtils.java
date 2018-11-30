@@ -15,6 +15,7 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigException.Missing;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
@@ -28,6 +29,8 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
+import org.jetbrains.annotations.NotNull;
 
 public class ConfigUtils {
 
@@ -174,19 +177,11 @@ public class ConfigUtils {
    * @param config the config.
    * @param path path expression.
    * @return the type string
-   * @throws ConfigException.Missing if value is absent or null.
+   * @throws ConfigException.Missing if value is absent.
    */
   public static String getTypeString(Config config, String path) {
-    ConfigValue value = config.getValue(path);
-    Optional<String> typeHint =
-        value
-            .origin()
-            .comments()
-            .stream()
-            .filter(line -> line.contains(TYPE_ANNOTATION))
-            .map(line -> line.replace("@type", ""))
-            .map(String::trim)
-            .findFirst();
+    ConfigValue value = getNullSafeValue(config, path);
+    Optional<String> typeHint = getTypeHint(value);
     if (typeHint.isPresent()) {
       return typeHint.get();
     }
@@ -208,6 +203,73 @@ public class ConfigUtils {
     } else {
       return getTypeString(type);
     }
+  }
+
+  /**
+   * Alternative to {@link ConfigValue#valueType()} that honors any type hints found in the
+   * configuration, if any.
+   *
+   * @param config the config.
+   * @param path path expression.
+   * @return the {@link ConfigValueType value type}.
+   * @throws ConfigException.Missing if value is absent.
+   */
+  public static ConfigValueType getValueType(Config config, String path) {
+    ConfigValue value = getNullSafeValue(config, path);
+    Optional<String> typeHint = getTypeHint(value);
+    if (typeHint.isPresent()) {
+      String hint = typeHint.get();
+      if (hint.equals("string")) {
+        return ConfigValueType.STRING;
+      }
+      if (hint.equals("number")) {
+        return ConfigValueType.NUMBER;
+      }
+      if (hint.equals("boolean")) {
+        return ConfigValueType.BOOLEAN;
+      }
+      if (hint.startsWith("list")) {
+        return ConfigValueType.LIST;
+      }
+      if (hint.startsWith("map")) {
+        return ConfigValueType.OBJECT;
+      }
+    }
+    return value.valueType();
+  }
+
+  /**
+   * Retrieves the type hint for the given value, if any.
+   *
+   * @param value the {@link ConfigValue value} to inspect.
+   * @return The type hint, if any, or empty otherwise.
+   */
+  public static Optional<String> getTypeHint(ConfigValue value) {
+    return value
+        .origin()
+        .comments()
+        .stream()
+        .filter(line -> line.contains(TYPE_ANNOTATION))
+        .map(line -> line.replace("@type", ""))
+        .map(String::trim)
+        .findFirst();
+  }
+
+  /**
+   * Returns the comments associated with the given value, excluding type hints.
+   *
+   * @param value the {@link ConfigValue value} to inspect.
+   * @return The comments associated with the given value
+   */
+  @NotNull
+  public static String getComments(ConfigValue value) {
+    return value
+        .origin()
+        .comments()
+        .stream()
+        .filter(line -> !line.contains(TYPE_ANNOTATION))
+        .map(String::trim)
+        .collect(Collectors.joining("\n"));
   }
 
   /**
@@ -245,5 +307,34 @@ public class ConfigUtils {
   public static boolean isLeaf(ConfigValue value) {
     return !(value instanceof ConfigObject)
         || value.origin().comments().stream().anyMatch(line -> line.contains(LEAF_ANNOTATION));
+  }
+
+  /**
+   * An alternative to {@link Config#getValue(String)} that handles null values gracefully instead
+   * of throwing.
+   *
+   * <p>Note that the path must still exist; if the path does not exist (i.e., the value is
+   * completely absent from the config object), this method still throws {@link Missing}.
+   *
+   * @param config The config object to get the value from.
+   * @param path The path at which the value is to be found.
+   * @return The {@link ConfigValue value}.
+   * @throws Missing If the path is not present in the config object.
+   */
+  public static ConfigValue getNullSafeValue(Config config, String path) {
+    int dot = path.indexOf('.');
+    if (dot == -1) {
+      ConfigValue value = config.root().get(path);
+      if (value == null) {
+        throw new Missing(path);
+      }
+      return value;
+    } else {
+      try {
+        return getNullSafeValue(config.getConfig(path.substring(0, dot)), path.substring(dot + 1));
+      } catch (Missing e) {
+        throw new Missing(path);
+      }
+    }
   }
 }

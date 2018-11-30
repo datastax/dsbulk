@@ -8,10 +8,19 @@
  */
 package com.datastax.dsbulk.commons.internal.config;
 
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getComments;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getNullSafeValue;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getTypeHint;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getTypeString;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getValueType;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolvePath;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveThreads;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveURL;
+import static com.typesafe.config.ConfigValueType.BOOLEAN;
+import static com.typesafe.config.ConfigValueType.LIST;
+import static com.typesafe.config.ConfigValueType.NULL;
+import static com.typesafe.config.ConfigValueType.NUMBER;
+import static com.typesafe.config.ConfigValueType.STRING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
@@ -120,7 +129,71 @@ class ConfigUtilsTest {
     assertThat(getTypeString(config, "stringListField")).isEqualTo("list<string>");
     assertThat(getTypeString(config, "numberListField")).isEqualTo("list<number>");
     assertThat(getTypeString(config, "booleanField")).isEqualTo("boolean");
-    assertThatThrownBy(() -> getTypeString(config, "noexist"))
-        .isInstanceOf(ConfigException.Missing.class);
+    assertThatThrownBy(() -> getTypeString(config, "this.path.does.not.exist"))
+        .isInstanceOf(ConfigException.Missing.class)
+        .hasMessage("No configuration setting found for key 'this.path.does.not.exist'");
+  }
+
+  @Test
+  void should_get_null_safe_value() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                "intField = 7, "
+                    + "stringField = mystring, "
+                    + "stringListField = [\"v1\", \"v2\"], "
+                    + "numberListField = [9, 7], "
+                    + "nullField = [9, 7], "
+                    + "booleanField = false,"
+                    + "nullField = null"));
+    assertThat(getNullSafeValue(config, "intField").valueType()).isEqualTo(NUMBER);
+    assertThat(getNullSafeValue(config, "stringField").valueType()).isEqualTo(STRING);
+    assertThat(getNullSafeValue(config, "stringListField").valueType()).isEqualTo(LIST);
+    assertThat(getNullSafeValue(config, "numberListField").valueType()).isEqualTo(LIST);
+    assertThat(getNullSafeValue(config, "booleanField").valueType()).isEqualTo(BOOLEAN);
+    assertThat(getNullSafeValue(config, "nullField").valueType()).isEqualTo(NULL);
+    assertThatThrownBy(() -> getNullSafeValue(config, "this.path.does.not.exist"))
+        .isInstanceOf(ConfigException.Missing.class)
+        .hasMessage("No configuration setting found for key 'this.path.does.not.exist'");
+  }
+
+  @Test
+  void should_get_config_value_type() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                "intField = 7\n"
+                    + "stringField = mystring\n"
+                    + "stringListField = [\"v1\", \"v2\"]\n"
+                    + "numberListField = [9, 7]\n"
+                    + "nullField = [9, 7]\n"
+                    + "booleanField = false\n"
+                    + "# @type string\n"
+                    + "nullField = null"));
+    assertThat(getValueType(config, "intField")).isEqualTo(NUMBER);
+    assertThat(getValueType(config, "stringField")).isEqualTo(STRING);
+    assertThat(getValueType(config, "stringListField")).isEqualTo(LIST);
+    assertThat(getValueType(config, "numberListField")).isEqualTo(LIST);
+    assertThat(getValueType(config, "booleanField")).isEqualTo(BOOLEAN);
+    assertThat(getValueType(config, "nullField")).isEqualTo(STRING);
+    assertThatThrownBy(() -> getValueType(config, "this.path.does.not.exist"))
+        .isInstanceOf(ConfigException.Missing.class)
+        .hasMessage("No configuration setting found for key 'this.path.does.not.exist'");
+  }
+
+  @Test
+  void should_get_type_hint_for_value() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("# This is a comment.\n# @type string\nmyField = foo"));
+    assertThat(getTypeHint(config.getValue("myField"))).contains("string");
+  }
+
+  @Test
+  void should_get_comments_for_value() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("# This is a comment.\n# @type string\nmyField = foo"));
+    assertThat(getComments(config.getValue("myField"))).isEqualTo("This is a comment.");
   }
 }

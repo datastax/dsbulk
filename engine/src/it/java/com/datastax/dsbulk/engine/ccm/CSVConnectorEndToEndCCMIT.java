@@ -400,7 +400,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
       Map<Instant, String> map = row.getMap("c_map", Instant.class, String.class);
       TupleValue tuple = row.getTupleValue("c_tuple");
       UDTValue udt = row.getUDTValue("c_udt");
-      assertThat(row.getString("c_text")).isEqualTo("");
+      assertThat(row.getString("c_text")).isNull();
       assertThat(row.getInt("c_int")).isEqualTo(42);
       assertThat(list).containsOnly(i1, i2);
       assertThat(set).containsOnly("foo", "");
