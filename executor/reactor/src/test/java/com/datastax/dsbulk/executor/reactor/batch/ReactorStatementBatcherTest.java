@@ -19,6 +19,7 @@ import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcherTest;
 import io.reactivex.Flowable;
 import java.util.HashSet;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
@@ -124,6 +125,26 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   void should_honor_max_batch_size_reactive() throws Exception {
     assignRoutingTokens();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(2);
+    Flowable<Statement> statements =
+        Flowable.fromPublisher(
+            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch12, batch56, batch34);
+    statements =
+        Flowable.fromPublisher(
+            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch12, batch56, batch34);
+  }
+
+  @Disabled("waiting for JAVA-2046")
+  @Test
+  void should_honor_max_size_in_bytes_reactive() throws Exception {
+    assignRoutingTokens();
+    //    assignSizeOfStatements();
+    ReactorStatementBatcher batcher = new ReactorStatementBatcher(2L);
     Flowable<Statement> statements =
         Flowable.fromPublisher(
             batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));

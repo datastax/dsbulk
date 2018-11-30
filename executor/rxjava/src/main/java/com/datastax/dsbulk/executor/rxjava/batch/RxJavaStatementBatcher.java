@@ -134,6 +134,7 @@ public class RxJavaStatementBatcher extends StatementBatcher {
    *     batched together, or a {@link Flowable} of the original statement, if only one was
    *     provided.
    */
+  // todo modify the same way?
   public Flowable<Statement> batchAll(Publisher<? extends Statement> statements) {
     return Flowable.fromPublisher(statements)
         .window(maxBatchSize)

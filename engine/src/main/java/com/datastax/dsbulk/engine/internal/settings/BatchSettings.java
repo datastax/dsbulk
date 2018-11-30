@@ -44,12 +44,16 @@ public class BatchSettings {
 
   private static final String MODE = "mode";
   private static final String MAX_BATCH_SIZE = "maxBatchSize";
+  private static final String MAX_SIZE_IN_BYTES = "maxSizeInBytes";
+  private static final String MAX_BATCH_STATEMENTS = "maxBatchStatements";
   private static final String BUFFER_SIZE = "bufferSize";
 
   private final LoaderConfig config;
 
   private BatchMode mode;
   private int maxBatchSize;
+  private int maxSizeInBytes;
+  private int maxBatchStatements;
   private int bufferSize;
 
   BatchSettings(LoaderConfig config) {
@@ -60,14 +64,24 @@ public class BatchSettings {
     try {
       mode = config.getEnum(BatchMode.class, MODE);
       maxBatchSize = config.getInt(MAX_BATCH_SIZE);
+      maxSizeInBytes = config.getInt(MAX_SIZE_IN_BYTES);
+      maxBatchStatements = config.getInt(MAX_BATCH_STATEMENTS);
       int bufferConfig = config.getInt(BUFFER_SIZE);
       bufferSize = bufferConfig > -1 ? bufferConfig : maxBatchSize;
+      // todo remove maxBatchSize entirely?
       if (bufferSize < maxBatchSize) {
         throw new BulkConfigurationException(
             String.format(
                 "Value for batch.bufferSize (%d) must be greater than or equal to "
                     + "buffer.maxBatchSize (%d). See settings.md for more information.",
                 bufferSize, maxBatchSize));
+      }
+      if (maxSizeInBytes < 0 && maxBatchStatements < 0) {
+        throw new BulkConfigurationException(
+            String.format(
+                "Value for batch.maxSizeInBytes (%d) OR buffer.maxBatchStatements (%d) must be positive. "
+                    + "See settings.md for more information.",
+                maxSizeInBytes, maxBatchStatements));
       }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
@@ -84,6 +98,10 @@ public class BatchSettings {
 
   public ReactorStatementBatcher newStatementBatcher(Cluster cluster) {
     return new ReactorStatementBatcher(
-        cluster, mode.asStatementBatcherMode(), BatchStatement.Type.UNLOGGED, maxBatchSize);
+        cluster,
+        mode.asStatementBatcherMode(),
+        BatchStatement.Type.UNLOGGED,
+        maxBatchStatements,
+        maxSizeInBytes);
   }
 }
