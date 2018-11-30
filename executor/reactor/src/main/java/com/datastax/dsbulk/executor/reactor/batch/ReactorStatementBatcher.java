@@ -173,7 +173,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * <p>Note that when a group contains one single statement, this method will not create a batch
    * statement containing that single statement; instead, it will return that same statement.
    *
-   * <p>When the number of given statements is greater than the maximum batch size, this method will
+   * <p>When the number of given statements is greater than the max batch statements OR max size in bytes, this method will
    * split them into different batches.
    *
    * <p>Use this method with caution; if the given statements do not share the same {@link
