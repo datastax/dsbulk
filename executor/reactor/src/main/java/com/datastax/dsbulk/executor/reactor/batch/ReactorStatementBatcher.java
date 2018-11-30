@@ -141,20 +141,21 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * @return A {@link Flux} of batched statements.
    */
   public Flux<? extends Statement> batchAll(Publisher<? extends Statement> statements) {
-    Flux<? extends Statement> connectableFlux = Flux.from(statements);
 
-    return connectableFlux.bufferWhile(new AdaptiveSizingBatchPredicate()).flatMap(stmts ->
-        Flux.fromIterable(stmts)
-            .cast(Statement.class)
-            .reduce(
-                (s1, s2) -> {
-                  if (s1 instanceof BatchStatement) {
-                    ((BatchStatement) s1).add(s2);
-                    return s1;
-                  } else {
-                    return new BatchStatement(batchType).add(s1).add(s2);
-                  }
-                }));
+    return Flux.from(statements)
+        .cast(Statement.class)
+        .windowUntil(new AdaptiveSizingBatchPredicate(), false)
+        .flatMap(stmts ->
+            Flux.from(stmts)
+                .reduce(
+                    (s1, s2) -> {
+                      if (s1 instanceof BatchStatement) {
+                        ((BatchStatement) s1).add(s2);
+                        return s1;
+                      } else {
+                        return new BatchStatement(batchType).add(s1).add(s2);
+                      }
+                    }));
   }
 
   private class AdaptiveSizingBatchPredicate implements Predicate<Statement> {
@@ -167,15 +168,15 @@ public class ReactorStatementBatcher extends StatementBatcher {
 
     @Override
     public boolean test(Statement statement) {
-      boolean statementsOverflowBuffer = ++statementsCounter > getMaxBatchStatements();
-      boolean bytesOverflowBuffer = (bytesInCurrentBatch += calculateSize(statement)) > getMaxSizeInBytes();
+      boolean statementsOverflowBuffer = ++statementsCounter >= getMaxBatchStatements();
+      boolean bytesOverflowBuffer = (bytesInCurrentBatch += calculateSize(statement)) >= getMaxSizeInBytes();
 
       boolean shouldFlush = statementsOverflowBuffer || bytesOverflowBuffer;
       if (shouldFlush) {
         statementsCounter = 0;
         bytesInCurrentBatch = 0;
       }
-      return !shouldFlush;
+      return shouldFlush;
     }
   }
 
