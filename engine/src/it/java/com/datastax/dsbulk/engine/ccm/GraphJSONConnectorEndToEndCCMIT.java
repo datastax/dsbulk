@@ -13,7 +13,6 @@ import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.ass
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.GraphUtils.*;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
@@ -56,7 +55,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @CCMRequirements(
     compatibleTypes = DSE,
     versionRequirements = {@CCMVersionRequirement(type = DSE, min = "6.8.0")})
-public class GraphConnectorEndToEndJSONCCMIT extends EndToEndCCMITBase {
+public class GraphJSONConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
 
   public static final URL CUSTOMER_RECORDS = ClassLoader.getSystemResource("graph/customers.json");
   public static final URL CUSTOMER_ORDER_RECORDS =
@@ -66,7 +65,7 @@ public class GraphConnectorEndToEndJSONCCMIT extends EndToEndCCMITBase {
   private Path logDir;
   private Path unloadDir;
 
-  GraphConnectorEndToEndJSONCCMIT(
+  GraphJSONConnectorEndToEndCCMIT(
       CCMCluster ccm,
       Session session,
       @LogCapture LogInterceptor logs,
@@ -78,10 +77,10 @@ public class GraphConnectorEndToEndJSONCCMIT extends EndToEndCCMITBase {
 
   @BeforeAll
   void createTables() {
-    createGraphKeyspace((DseSession) session, FRAUD_GRAPH);
-    createCustomerVertex(session);
-    createOrderVertex(session);
-    createCustomerPlacesOrderEdge(session);
+    createFraudGraph();
+    createCustomerVertex();
+    createOrderVertex();
+    createCustomerPlacesOrderEdge();
   }
 
   @BeforeEach
@@ -153,7 +152,7 @@ public class GraphConnectorEndToEndJSONCCMIT extends EndToEndCCMITBase {
     assertThat(status).isZero();
     validateOutputFiles(34, unloadDir);
     // Remove data for reload validation
-    session.execute(CQLUtils.truncateTable(FRAUD_GRAPH, CUSTOMER_TABLE));
+    truncateTables();
 
     // Reload customer data
     args = new ArrayList<>();
@@ -234,7 +233,7 @@ public class GraphConnectorEndToEndJSONCCMIT extends EndToEndCCMITBase {
     assertThat(status).isZero();
     validateOutputFiles(14, unloadDir);
     // Remove data for reload validation
-    session.execute(CQLUtils.truncateTable(FRAUD_GRAPH, CUSTOMER_PLACES_ORDER_TABLE));
+    truncateTables();
 
     // Reload Customer Order data
     args = new ArrayList<>();

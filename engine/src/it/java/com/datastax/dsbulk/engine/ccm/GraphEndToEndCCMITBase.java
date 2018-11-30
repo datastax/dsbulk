@@ -6,13 +6,24 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.commons.tests.utils;
+package com.datastax.dsbulk.engine.ccm;
 
 import com.datastax.driver.core.Session;
 import com.datastax.driver.dse.DseSession;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.google.common.collect.ImmutableMap;
 
-public class GraphUtils {
+abstract class GraphEndToEndCCMITBase extends EndToEndCCMITBase {
+
+  protected GraphEndToEndCCMITBase(CCMCluster ccm, Session session) {
+    super(ccm, session);
+  }
+
+  public static final String REPLICATION_CONFIG_MAP =
+      "{'class': 'SimpleStrategy', 'replication_factor' :1}";
+
+  public static final String CREATE_GRAPH_GREMLIN_QUERY =
+      "system.graph(name).ifNotExists().withReplication(replicationConfig).using(Native).create()";
 
   public static final String FRAUD_GRAPH = "Fraud";
 
@@ -36,20 +47,7 @@ public class GraphUtils {
   public static final String SELECT_ALL_CUSTOMER_ORDERS =
       "SELECT * FROM \"" + FRAUD_GRAPH + "\".\"" + CUSTOMER_PLACES_ORDER_TABLE + "\"";
 
-  public static final String REPLICATION_CONFIG_MAP =
-      "{'class': 'SimpleStrategy', 'replication_factor' :1}";
-
-  public static final String CREATE_GRAPH_GREMLIN_QUERY =
-      "system.graph(name).ifNotExists().withReplication(replicationConfig).using(Native).create()";
-
-  public static void createGraphKeyspace(DseSession session, String name) {
-    session.executeGraph(
-        CREATE_GRAPH_GREMLIN_QUERY,
-        ImmutableMap.of("name", name, "replicationConfig", REPLICATION_CONFIG_MAP));
-    session.getCluster().getConfiguration().getGraphOptions().setGraphName(name);
-  }
-
-  public static void createCustomerVertex(Session session) {
+  public void createCustomerVertex() {
     // Exercise the creation of a vertex table with plain CQL with a table name different from the
     // label name.
     session.execute(
@@ -65,7 +63,7 @@ public class GraphUtils {
             + ") WITH VERTEX LABEL \"Customer\"");
   }
 
-  public static void createOrderVertex(Session session) {
+  void createOrderVertex() {
     ((DseSession) session)
         .executeGraph(
             "g.api().schema().vertexLabel(\""
@@ -81,7 +79,7 @@ public class GraphUtils {
                 + ".create()");
   }
 
-  public static void createCustomerPlacesOrderEdge(Session session) {
+  void createCustomerPlacesOrderEdge() {
     ((DseSession) session)
         .executeGraph(
             "g.api().schema().edgeLabel(\""
@@ -91,5 +89,17 @@ public class GraphUtils {
                 + "\").to(\""
                 + ORDER_VERTEX_LABEL
                 + "\").create()");
+  }
+
+  void createFraudGraph() {
+    createGraphKeyspace(FRAUD_GRAPH);
+  }
+
+  void createGraphKeyspace(String name) {
+    ((DseSession) session)
+        .executeGraph(
+            CREATE_GRAPH_GREMLIN_QUERY,
+            ImmutableMap.of("name", name, "replicationConfig", REPLICATION_CONFIG_MAP));
+    ((DseSession) session).getCluster().getConfiguration().getGraphOptions().setGraphName(name);
   }
 }

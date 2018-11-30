@@ -12,7 +12,6 @@ import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.ass
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.GraphUtils.*;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
@@ -54,7 +53,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @CCMRequirements(
     compatibleTypes = DSE,
     versionRequirements = {@CCMVersionRequirement(type = DSE, min = "6.8.0")})
-class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
+class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
 
   private static final URL CUSTOMER_RECORDS = ClassLoader.getSystemResource("graph/customers.csv");
 
@@ -81,10 +80,10 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @BeforeAll
   void createTables() {
-    createGraphKeyspace((DseSession) session, FRAUD_GRAPH);
-    createCustomerVertex(session);
-    createOrderVertex(session);
-    createCustomerPlacesOrderEdge(session);
+    createFraudGraph();
+    createCustomerVertex();
+    createOrderVertex();
+    createCustomerPlacesOrderEdge();
   }
 
   @BeforeEach
@@ -154,7 +153,7 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(status).isZero();
     validateOutputFiles(35, unloadDir);
     // Remove data for reload validation
-    session.execute(CQLUtils.truncateTable(FRAUD_GRAPH, CUSTOMER_TABLE));
+    truncateTables();
 
     args = new ArrayList<>();
     args.add("load");
@@ -232,7 +231,7 @@ class GraphCSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(status).isZero();
     validateOutputFiles(15, unloadDir);
     // Remove data for reload validation
-    session.execute(CQLUtils.truncateTable(FRAUD_GRAPH, CUSTOMER_PLACES_ORDER_TABLE));
+    truncateTables();
 
     args = new ArrayList<>();
     args.add("load");

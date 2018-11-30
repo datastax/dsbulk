@@ -23,13 +23,6 @@ public abstract class CQLUtils {
         CREATE_KEYSPACE_SIMPLE_FORMAT, Metadata.quoteIfNecessary(keyspace), replicationFactor);
   }
 
-  public static String createGraphKeyspaceSimpleStrategy(String keyspace, int replicationFactor) {
-    return String.format(
-        CREATE_KEYSPACE_SIMPLE_GRAPH_FORMAT,
-        Metadata.quoteIfNecessary(keyspace),
-        replicationFactor);
-  }
-
   public static String createKeyspaceNetworkTopologyStrategy(
       String keyspace, int... replicationFactors) {
     StringBuilder sb =
