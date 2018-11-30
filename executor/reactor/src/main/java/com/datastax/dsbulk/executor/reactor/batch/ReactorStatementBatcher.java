@@ -30,7 +30,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
    * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
    * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It also uses the
-   * default maximum batch statementsCounter (100).
+   * default maximum batch size (100).
    */
   public ReactorStatementBatcher() {
   }
@@ -41,9 +41,9 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
    * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
    * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It uses the given
-   * maximum batch statementsCounter.
+   * maximum batch size.
    *
-   * @param maxBatchSize The maximum batch statementsCounter; must be &gt; 1.
+   * @param maxBatchSize The maximum batch size; must be &gt; 1.
    */
   public ReactorStatementBatcher(int maxBatchSize) {
     super(maxBatchSize);
@@ -59,7 +59,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
    * mode and uses the given {@link Cluster} as its source for the {@link ProtocolVersion protocol
    * version} and the {@link CodecRegistry} instance to use. It also uses the default maximum batch
-   * statementsCounter (100).
+   * size (100).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    */
@@ -73,7 +73,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * specified {@link com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode batch mode}
    * and uses the given {@link Cluster} as its source for the {@link ProtocolVersion protocol
    * version} and the {@link CodecRegistry} instance to use. It also uses the default maximum batch
-   * statementsCounter (100).
+   * size (100).
    *
    * @param cluster   The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
@@ -90,7 +90,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * @param cluster      The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode    The batch mode to use; cannot be {@code null}.
    * @param batchType    The batch type to use; cannot be {@code null}.
-   * @param maxBatchSize The maximum batch statementsCounter; must be &gt; 1.
+   * @param maxBatchSize The maximum batch size; must be &gt; 1.
    */
   public ReactorStatementBatcher(
       Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBatchSize) {
@@ -105,7 +105,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * statement batcher.
    *
    * <p>When the number of statements for the same grouping key is greater than the maximum batch
-   * statementsCounter, statements will be split in different batches.
+   * size, statements will be split in different batches.
    *
    * <p>When {@link com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
    * PARTITION_KEY} is used, the grouping key is the statement's {@link
@@ -130,7 +130,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * <p>Note that when a group contains one single statement, this method will not create a batch
    * statement containing that single statement; instead, it will return that same statement.
    *
-   * <p>When the number of given statements is greater than the maximum batch statementsCounter, this method will
+   * <p>When the number of given statements is greater than the maximum batch size, this method will
    * split them into different batches.
    *
    * <p>Use this method with caution; if the given statements do not share the same {@link
