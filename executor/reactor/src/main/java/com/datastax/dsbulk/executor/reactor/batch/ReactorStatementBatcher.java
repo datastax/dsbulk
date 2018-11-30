@@ -16,7 +16,6 @@ import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 /** A subclass of {@link StatementBatcher} that adds reactive-style capabilities to it. */
 public class ReactorStatementBatcher extends StatementBatcher {
@@ -110,18 +109,17 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * Statement#getRoutingToken() routing token}, whichever is available.
    *
    * @param statements the statements to batch together.
-   * @return A publisher of batched statements.
+   * @return A {@link Flux} of batched statements.
    */
   public Flux<Statement> batchByGroupingKey(Publisher<? extends Statement> statements) {
     return Flux.from(statements).groupBy(this::groupingKey).flatMap(this::batchAll);
   }
 
   /**
-   * Batches together all the given statements into one single {@link BatchStatement}. The returned
-   * {@link Publisher} is a {@link Mono} and hence guaranteed to only emit one single item.
+   * Batches together all the given statements into groups of statements.
    *
-   * <p>Note that when given one single statement, this method will not create a batch statement
-   * containing that single statement; instead, it will return that same statement.
+   * <p>Note that when a group contains one single statement, this method will not create a batch
+   * statement containing that single statement; instead, it will return that same statement.
    *
    * <p>When the number of given statements is greater than the maximum batch size, this method will
    * split them into different batches.
@@ -131,8 +129,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * lead to write throughput degradation.
    *
    * @param statements the statements to batch together.
-   * @return A {@link Flux} of {@link BatchStatement}s containing all the given statements batched
-   *     together, or a {@link Flux} of the original statement, if only one was provided.
+   * @return A {@link Flux} of batched statements.
    */
   public Flux<? extends Statement> batchAll(Publisher<? extends Statement> statements) {
     return Flux.from(statements)
