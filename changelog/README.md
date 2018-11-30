@@ -6,6 +6,7 @@
 - [improvement] DAT-336: Extend DSBulk's rate limiting capability to reads.
 - [new feature] DAT-354: Add Basic NGDG support to DSBulk Engine.
 - [improvement] DAT-362: Improve readability of error messages printed to the console.
+- [bug] DAT-339: CSV connector trims trailing whitespace when reading data.
 
 
 ### 1.2.0

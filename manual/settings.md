@@ -359,6 +359,30 @@ The glob pattern to use when searching for files to read. The syntax to use is t
 
 Default: **"\*\*/\*.csv"**.
 
+#### --connector.csv.ignoreLeadingWhitespaces _&lt;boolean&gt;_
+
+Defines whether or not leading whitespaces from values being read/written should be skipped. This setting is honored when reading and writing. Default value is false.
+
+Default: **false**.
+
+#### --connector.csv.ignoreLeadingWhitespacesInQuotes _&lt;boolean&gt;_
+
+Defines whether or not trailing whitespaces from quoted values should be skipped. This setting is only honored when reading; it is ignored when writing. Default value is false.
+
+Default: **false**.
+
+#### --connector.csv.ignoreTrailingWhitespaces _&lt;boolean&gt;_
+
+Defines whether or not trailing whitespaces from values being read/written should be skipped. This setting is honored when reading and writing. Default value is false.
+
+Default: **false**.
+
+#### --connector.csv.ignoreTrailingWhitespacesInQuotes _&lt;boolean&gt;_
+
+Defines whether or not leading whitespaces from quoted values should be skipped. This setting is only honored when reading; it is ignored when writing. Default value is false.
+
+Default: **false**.
+
 #### --connector.csv.maxCharsPerColumn _&lt;number&gt;_
 
 The maximum number of characters that a field can contain. This setting is used to size internal buffers and to avoid out-of-memory problems. If set to -1, internal buffers will be resized dynamically. While convenient, this can lead to memory problems. It could also hurt throughput, if some large fields require constant resizing; if this is the case, set this value to a fixed positive number that is big enough to contain all field values.

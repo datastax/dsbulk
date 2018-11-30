@@ -101,6 +101,12 @@ public class CSVConnector implements Connector {
   private static final String MAX_CHARS_PER_COLUMN = "maxCharsPerColumn";
   private static final String MAX_COLUMNS = "maxColumns";
   private static final String AUTO_NEWLINE = "auto";
+  private static final String IGNORE_LEADING_WHITESPACES = "ignoreLeadingWhitespaces";
+  private static final String IGNORE_TRAILING_WHITESPACES = "ignoreTrailingWhitespaces";
+  private static final String IGNORE_LEADING_WHITESPACES_IN_QUOTES =
+      "ignoreLeadingWhitespacesInQuotes";
+  private static final String IGNORE_TRAILING_WHITESPACES_IN_QUOTES =
+      "ignoreTrailingWhitespacesInQuotes";
 
   private boolean read;
   private URL url;
@@ -120,6 +126,10 @@ public class CSVConnector implements Connector {
   private String fileNameFormat;
   private int maxCharsPerColumn;
   private int maxColumns;
+  private boolean ignoreLeadingWhitespaces;
+  private boolean ignoreTrailingWhitespaces;
+  private boolean ignoreTrailingWhitespacesInQuotes;
+  private boolean ignoreLeadingWhitespacesInQuotes;
   private int resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
@@ -152,6 +162,10 @@ public class CSVConnector implements Connector {
       maxCharsPerColumn = settings.getInt(MAX_CHARS_PER_COLUMN);
       maxColumns = settings.getInt(MAX_COLUMNS);
       newline = settings.getString(NEWLINE);
+      ignoreLeadingWhitespaces = settings.getBoolean(IGNORE_LEADING_WHITESPACES);
+      ignoreTrailingWhitespaces = settings.getBoolean(IGNORE_TRAILING_WHITESPACES);
+      ignoreTrailingWhitespacesInQuotes = settings.getBoolean(IGNORE_LEADING_WHITESPACES_IN_QUOTES);
+      ignoreLeadingWhitespacesInQuotes = settings.getBoolean(IGNORE_TRAILING_WHITESPACES_IN_QUOTES);
       if (!AUTO_NEWLINE.equalsIgnoreCase(newline) && (newline.isEmpty() || newline.length() > 2)) {
         throw new BulkConfigurationException(
             String.format(
@@ -199,12 +213,16 @@ public class CSVConnector implements Connector {
       parserSettings.setMaxCharsPerColumn(maxCharsPerColumn);
       parserSettings.setMaxColumns(maxColumns);
       parserSettings.setNormalizeLineEndingsWithinQuotes(false);
+      parserSettings.setIgnoreLeadingWhitespaces(ignoreLeadingWhitespaces);
+      parserSettings.setIgnoreTrailingWhitespaces(ignoreTrailingWhitespaces);
+      parserSettings.setIgnoreLeadingWhitespacesInQuotes(ignoreTrailingWhitespacesInQuotes);
+      parserSettings.setIgnoreTrailingWhitespacesInQuotes(ignoreLeadingWhitespacesInQuotes);
     } else {
       writerSettings = new CsvWriterSettings();
       writerSettings.setFormat(format);
       writerSettings.setQuoteEscapingEnabled(true);
-      writerSettings.setIgnoreLeadingWhitespaces(false);
-      writerSettings.setIgnoreTrailingWhitespaces(false);
+      writerSettings.setIgnoreLeadingWhitespaces(ignoreLeadingWhitespaces);
+      writerSettings.setIgnoreTrailingWhitespaces(ignoreTrailingWhitespaces);
       writerSettings.setMaxColumns(maxColumns);
       writerSettings.setNormalizeLineEndingsWithinQuotes(false);
       counter = new AtomicInteger(0);
@@ -269,11 +287,11 @@ public class CSVConnector implements Connector {
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
     assert !read;
+    writers = new CopyOnWriteArrayList<>();
     if (root != null && maxConcurrentFiles > 1) {
       return upstream -> {
         ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
         scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
-        writers = new CopyOnWriteArrayList<>();
         for (int i = 0; i < maxConcurrentFiles; i++) {
           writers.add(new CSVWriter());
         }
@@ -288,7 +306,8 @@ public class CSVConnector implements Connector {
     } else {
       return upstream -> {
         CSVWriter writer = new CSVWriter();
-        return Flux.from(upstream).transform(writeRecords(writer)).doOnTerminate(writer::close);
+        writers.add(writer);
+        return Flux.from(upstream).transform(writeRecords(writer));
       };
     }
   }
