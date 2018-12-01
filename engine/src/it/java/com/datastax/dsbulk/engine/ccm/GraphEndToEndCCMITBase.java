@@ -91,13 +91,9 @@ abstract class GraphEndToEndCCMITBase extends EndToEndCCMITBase {
   }
 
   void createFraudGraph() {
-    createGraphKeyspace(FRAUD_GRAPH);
-  }
-
-  private void createGraphKeyspace(String name) {
     dseSession.executeGraph(
         CREATE_GRAPH_GREMLIN_QUERY,
-        ImmutableMap.of("name", name, "replicationConfig", REPLICATION_CONFIG_MAP));
-    dseSession.getCluster().getConfiguration().getGraphOptions().setGraphName(name);
+        ImmutableMap.of("name", FRAUD_GRAPH, "replicationConfig", REPLICATION_CONFIG_MAP));
+    dseSession.getCluster().getConfiguration().getGraphOptions().setGraphName(FRAUD_GRAPH);
   }
 }
