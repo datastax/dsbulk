@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Workload.graph;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
@@ -34,8 +35,8 @@ import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
+import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,13 +47,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 // tests for DAT-355
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
-@CCMConfig(
-    numberOfNodes = 1,
-    workloads = {@CCMWorkload({CCMCluster.Workload.graph})})
-@Tag("medium")
+@CCMConfig(numberOfNodes = 1, workloads = @CCMWorkload(graph))
 @CCMRequirements(
     compatibleTypes = DSE,
-    versionRequirements = {@CCMVersionRequirement(type = DSE, min = "6.8.0")})
+    versionRequirements = @CCMVersionRequirement(type = DSE, min = "6.8.0"))
+@Tag("medium")
 class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
 
   private static final URL CUSTOMER_RECORDS = ClassLoader.getSystemResource("graph/customers.csv");
@@ -113,41 +112,43 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
   @Test
   void full_load_unload_and_load_again_vertices() throws Exception {
 
-    List<String> args = new ArrayList<>();
-    args.add("load");
-    args.add("-g");
-    args.add(FRAUD_GRAPH);
-    args.add("-v");
-    args.add(CUSTOMER_VERTEX_LABEL);
-    args.add("-url");
-    args.add(escapeUserInput(CUSTOMER_RECORDS));
-    args.add("--connector.csv.delimiter");
-    args.add("|");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "-g",
+            FRAUD_GRAPH,
+            "-v",
+            CUSTOMER_VERTEX_LABEL,
+            "-url",
+            escapeUserInput(CUSTOMER_RECORDS),
+            "--connector.csv.delimiter",
+            "|",
+            "--log.directory",
+            escapeUserInput(logDir));
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
     GraphResultSet results =
-        ((DseSession) session).executeGraph("g.V().hasLabel('" + CUSTOMER_VERTEX_LABEL + "')");
+        dseSession.executeGraph("g.V().hasLabel('" + CUSTOMER_VERTEX_LABEL + "')");
     assertThat(results).hasSize(34);
     deleteDirectory(logDir);
 
-    args = new ArrayList<>();
-    args.add("unload");
-    args.add("-g");
-    args.add(FRAUD_GRAPH);
-    args.add("-v");
-    args.add(CUSTOMER_VERTEX_LABEL);
-    args.add("-url");
-    args.add(escapeUserInput(unloadDir));
-    args.add("--connector.csv.delimiter");
-    args.add("|");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
-    args.add("--connector.csv.maxConcurrentFiles");
-    args.add("1");
+    args =
+        Lists.newArrayList(
+            "unload",
+            "-g",
+            FRAUD_GRAPH,
+            "-v",
+            CUSTOMER_VERTEX_LABEL,
+            "-url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.delimiter",
+            "|",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -155,77 +156,78 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
     // Remove data for reload validation
     truncateTables();
 
-    args = new ArrayList<>();
-    args.add("load");
-    args.add("-g");
-    args.add(FRAUD_GRAPH);
-    args.add("-v");
-    args.add(CUSTOMER_VERTEX_LABEL);
-    args.add("-url");
-    args.add(escapeUserInput(unloadDir));
-    args.add("--connector.csv.delimiter");
-    args.add("|");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args =
+        Lists.newArrayList(
+            "load",
+            "-g",
+            FRAUD_GRAPH,
+            "-v",
+            CUSTOMER_VERTEX_LABEL,
+            "-url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.delimiter",
+            "|",
+            "--log.directory",
+            escapeUserInput(logDir));
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
-    results =
-        ((DseSession) session).executeGraph("g.V().hasLabel('" + CUSTOMER_VERTEX_LABEL + "')");
+    results = dseSession.executeGraph("g.V().hasLabel('" + CUSTOMER_VERTEX_LABEL + "')");
     assertThat(results).hasSize(34);
   }
 
   @Test
   void full_load_unload_and_load_again_edges() throws Exception {
 
-    List<String> args = new ArrayList<>();
-    args.add("load");
-    args.add("-g");
-    args.add(FRAUD_GRAPH);
-    args.add("-e");
-    args.add(PLACES_EDGE_LABEL);
-    args.add("-from");
-    args.add(CUSTOMER_VERTEX_LABEL);
-    args.add("-to");
-    args.add(ORDER_VERTEX_LABEL);
-    args.add("-url");
-    args.add(escapeUserInput(CUSTOMER_ORDER_RECORDS));
-    args.add("-m");
-    args.add(CUSTOMER_ORDER_MAPPINGS);
-    args.add("--connector.csv.delimiter");
-    args.add("|");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "-g",
+            FRAUD_GRAPH,
+            "-e",
+            PLACES_EDGE_LABEL,
+            "-from",
+            CUSTOMER_VERTEX_LABEL,
+            "-to",
+            ORDER_VERTEX_LABEL,
+            "-url",
+            escapeUserInput(CUSTOMER_ORDER_RECORDS),
+            "-m",
+            CUSTOMER_ORDER_MAPPINGS,
+            "--connector.csv.delimiter",
+            "|",
+            "--log.directory",
+            escapeUserInput(logDir));
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
-    GraphResultSet results =
-        ((DseSession) session).executeGraph("g.E().hasLabel('" + PLACES_EDGE_LABEL + "')");
+    GraphResultSet results = dseSession.executeGraph("g.E().hasLabel('" + PLACES_EDGE_LABEL + "')");
     assertThat(results).hasSize(14);
     deleteDirectory(logDir);
 
-    args = new ArrayList<>();
-    args.add("unload");
-    args.add("-g");
-    args.add(FRAUD_GRAPH);
-    args.add("-e");
-    args.add(PLACES_EDGE_LABEL);
-    args.add("-from");
-    args.add(CUSTOMER_VERTEX_LABEL);
-    args.add("-to");
-    args.add(ORDER_VERTEX_LABEL);
-    args.add("-url");
-    args.add(escapeUserInput(unloadDir));
-    args.add("-m");
-    args.add(CUSTOMER_ORDER_MAPPINGS);
-    args.add("--connector.csv.delimiter");
-    args.add("|");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
-    args.add("--connector.csv.maxConcurrentFiles");
-    args.add("1");
+    args =
+        Lists.newArrayList(
+            "unload",
+            "-g",
+            FRAUD_GRAPH,
+            "-e",
+            PLACES_EDGE_LABEL,
+            "-from",
+            CUSTOMER_VERTEX_LABEL,
+            "-to",
+            ORDER_VERTEX_LABEL,
+            "-url",
+            escapeUserInput(unloadDir),
+            "-m",
+            CUSTOMER_ORDER_MAPPINGS,
+            "--connector.csv.delimiter",
+            "|",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -233,29 +235,30 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
     // Remove data for reload validation
     truncateTables();
 
-    args = new ArrayList<>();
-    args.add("load");
-    args.add("-g");
-    args.add(FRAUD_GRAPH);
-    args.add("-e");
-    args.add(PLACES_EDGE_LABEL);
-    args.add("-from");
-    args.add(CUSTOMER_VERTEX_LABEL);
-    args.add("-to");
-    args.add(ORDER_VERTEX_LABEL);
-    args.add("-url");
-    args.add(escapeUserInput(unloadDir));
-    args.add("-m");
-    args.add(CUSTOMER_ORDER_MAPPINGS);
-    args.add("--connector.csv.delimiter");
-    args.add("|");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args =
+        Lists.newArrayList(
+            "load",
+            "-g",
+            FRAUD_GRAPH,
+            "-e",
+            PLACES_EDGE_LABEL,
+            "-from",
+            CUSTOMER_VERTEX_LABEL,
+            "-to",
+            ORDER_VERTEX_LABEL,
+            "-url",
+            escapeUserInput(unloadDir),
+            "-m",
+            CUSTOMER_ORDER_MAPPINGS,
+            "--connector.csv.delimiter",
+            "|",
+            "--log.directory",
+            escapeUserInput(logDir));
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
-    results = ((DseSession) session).executeGraph("g.E().hasLabel('" + PLACES_EDGE_LABEL + "')");
+    results = dseSession.executeGraph("g.E().hasLabel('" + PLACES_EDGE_LABEL + "')");
     assertThat(results).hasSize(14);
   }
 }
