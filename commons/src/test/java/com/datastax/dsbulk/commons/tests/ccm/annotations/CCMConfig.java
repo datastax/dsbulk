@@ -45,7 +45,7 @@ public @interface CCMConfig {
    *
    * @return Configuration items to add to dse.yaml configuration file.
    */
-  String[] dseConfig() default {};
+  String[] dseConfig() default {"cql_slow_log_options.enabled:false"};
 
   /**
    * JVM args to use when starting hosts. System properties should be provided one by one, in the
