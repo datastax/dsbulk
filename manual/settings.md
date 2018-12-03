@@ -657,19 +657,25 @@ The buffer size to use for flushing batching statements. Do not set higher than 
 
 Default: **-1**.
 
+#### --batch.maxBatchSize _&lt;number&gt;_
+
+Deprecated - use maxBatchStatements instead The maximum batch size that depends on the size of the data inserted and the batch mode in use. Larger data requires a smaller value. For batch mode, `PARTITION_KEY` requires larger batch sizes, whereas `REPLICA_SET` requires smaller batch sizes, such as below 10.
+
+Default: **32**.
+
 #### --batch.maxBatchStatements _&lt;number&gt;_
 
 maximum number of statements in a batch that depends on the size of the data inserted and the batch mode in use. Larger data requires a smaller value. For batch mode, `PARTITION_KEY` requires larger batch sizes, whereas `REPLICA_SET` requires smaller batch sizes, such as below 10.
-if < 0 then is ignored resulting in batch without a statements limit
+if <= 0 then is ignored resulting in batch without a statements limit
 
-Default: **32**.
+Default: **-1**.
 
 #### --batch.maxSizeInBytes _&lt;number&gt;_
 
 maximum number of bytes that ona batch can have.
-if < 0 then is ignored resulting in batch without a bytes limit
+if <= 0 then is ignored resulting in batch without a bytes limit
 
-Default: **-1**.
+Default: **50000**.
 
 #### --batch.mode _&lt;string&gt;_
 

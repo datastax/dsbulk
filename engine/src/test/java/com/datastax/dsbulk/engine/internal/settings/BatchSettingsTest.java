@@ -129,8 +129,8 @@ class BatchSettingsTest {
   void should_create_batcher_when_max_batch_statements_mode_provided() {
     LoaderConfig config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxBatchStatements = 10")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
+            ConfigFactory.parseString(
+                "maxBatchStatements = 10, mode = PARTITION_KEY, bufferSize = -1"));
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     // buffer size should implicitly be updated when max batch size is changed and it isn't

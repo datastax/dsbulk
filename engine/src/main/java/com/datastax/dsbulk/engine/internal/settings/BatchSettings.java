@@ -18,6 +18,7 @@ import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigException;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,10 +68,12 @@ public class BatchSettings {
   public void init() {
     try {
       mode = config.getEnum(BatchMode.class, MODE);
-      Optional<Integer> maxBatchSizeOpt = loadOptionalConfig(MAX_BATCH_SIZE, config::getInt);
+      Optional<Integer> maxBatchSizeOpt =
+          loadOptionalConfig(MAX_BATCH_SIZE, config::getInt, v -> v > 0);
       Optional<Integer> maxBatchStatementsOpt =
-          loadOptionalConfig(MAX_BATCH_STATEMENTS, config::getInt);
-      Optional<Long> maxSizeInBytesOpt = loadOptionalConfig(MAX_SIZE_IN_BYTES, config::getLong);
+          loadOptionalConfig(MAX_BATCH_STATEMENTS, config::getInt, v -> v > 0);
+      Optional<Long> maxSizeInBytesOpt =
+          loadOptionalConfig(MAX_SIZE_IN_BYTES, config::getLong, v -> v > 0L);
       if (maxBatchSizeOpt.isPresent() && !maxBatchStatementsOpt.isPresent()) {
         maxBatchStatements = maxBatchSizeOpt.get();
         LOGGER.warn(
@@ -87,7 +90,7 @@ public class BatchSettings {
                 MAX_BATCH_SIZE, MAX_BATCH_STATEMENTS, MAX_BATCH_STATEMENTS, MAX_BATCH_SIZE));
       }
 
-      if (maxSizeInBytesOpt.orElse(-1L) <= 0 && maxBatchStatements <= 0) {
+      if (!maxSizeInBytesOpt.isPresent() && maxBatchStatements <= 0) {
         throw new BulkConfigurationException(
             String.format(
                 "Value for batch.maxSizeInBytes (%d) OR buffer.maxBatchStatements (%d) must be positive. "
@@ -111,9 +114,10 @@ public class BatchSettings {
     }
   }
 
-  private <T> Optional<T> loadOptionalConfig(String name, Function<String, T> supplier) {
+  private <T> Optional<T> loadOptionalConfig(
+      String name, Function<String, T> supplier, Predicate<T> ignoreFilter) {
     try {
-      return Optional.of(supplier.apply(name));
+      return Optional.of(supplier.apply(name)).filter(ignoreFilter);
     } catch (ConfigException.Missing ex) {
       LOGGER.trace("cannot load config: ", ex);
       return Optional.empty();
