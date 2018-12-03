@@ -24,6 +24,8 @@ import org.slf4j.LoggerFactory;
 
 public class BatchSettings {
   private static final Logger LOGGER = LoggerFactory.getLogger(BatchSettings.class);
+  public static final Predicate<Integer> GREATER_THAN_ZERO_INT = v -> v > 0;
+  public static final Predicate<Long> GREATER_THAN_ZERO_LONG = v -> v > 0L;
 
   private enum BatchMode {
     DISABLED {
@@ -69,11 +71,11 @@ public class BatchSettings {
     try {
       mode = config.getEnum(BatchMode.class, MODE);
       Optional<Integer> maxBatchSizeOpt =
-          loadOptionalConfig(MAX_BATCH_SIZE, config::getInt, v -> v > 0);
+          loadOptionalConfig(MAX_BATCH_SIZE, config::getInt, GREATER_THAN_ZERO_INT);
       Optional<Integer> maxBatchStatementsOpt =
-          loadOptionalConfig(MAX_BATCH_STATEMENTS, config::getInt, v -> v > 0);
+          loadOptionalConfig(MAX_BATCH_STATEMENTS, config::getInt, GREATER_THAN_ZERO_INT);
       Optional<Long> maxSizeInBytesOpt =
-          loadOptionalConfig(MAX_SIZE_IN_BYTES, config::getLong, v -> v > 0L);
+          loadOptionalConfig(MAX_SIZE_IN_BYTES, config::getLong, GREATER_THAN_ZERO_LONG);
       if (maxBatchSizeOpt.isPresent() && !maxBatchStatementsOpt.isPresent()) {
         maxBatchStatements = maxBatchSizeOpt.get();
         LOGGER.warn(
