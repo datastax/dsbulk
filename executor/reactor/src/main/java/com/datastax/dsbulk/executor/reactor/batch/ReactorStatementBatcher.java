@@ -173,8 +173,8 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * <p>Note that when a group contains one single statement, this method will not create a batch
    * statement containing that single statement; instead, it will return that same statement.
    *
-   * <p>When the number of given statements is greater than the max batch statements OR max size in bytes, this method will
-   * split them into different batches.
+   * <p>When the number of given statements is greater than the max batch statements OR max size in
+   * bytes, this method will split them into different batches.
    *
    * <p>Use this method with caution; if the given statements do not share the same {@link
    * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key}, the resulting batch could
@@ -203,10 +203,6 @@ public class ReactorStatementBatcher extends StatementBatcher {
   }
 
   private class AdaptiveSizingBatchPredicate implements Predicate<Statement> {
-
-    // todo do we need groupingKey here?
-    private Object groupingKey;
-
     private int statementsCounter = 0;
     private long bytesInCurrentBatch = 0;
 

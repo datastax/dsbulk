@@ -6,6 +6,7 @@
 - [improvement] DAT-336: Extend DSBulk's rate limiting capability to reads.
 - [new feature] DAT-354: Add Basic NGDG support to DSBulk Engine.
 - [improvement] DAT-362: Improve readability of error messages printed to the console.
+- [improvement] DAT-352: Calculate batch size dynamically - Adaptive Batch Sizing
 
 
 ### 1.2.0
