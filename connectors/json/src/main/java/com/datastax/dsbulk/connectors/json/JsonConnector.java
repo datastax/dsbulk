@@ -258,11 +258,11 @@ public class JsonConnector implements Connector {
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
     assert !read;
+    writers = new CopyOnWriteArrayList<>();
     if (root != null && maxConcurrentFiles > 1) {
       return upstream -> {
         ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
         scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
-        writers = new CopyOnWriteArrayList<>();
         for (int i = 0; i < maxConcurrentFiles; i++) {
           writers.add(new JsonWriter());
         }
@@ -277,7 +277,8 @@ public class JsonConnector implements Connector {
     } else {
       return upstream -> {
         JsonWriter writer = new JsonWriter();
-        return Flux.from(upstream).transform(writeRecords(writer)).doOnTerminate(writer::close);
+        writers.add(writer);
+        return Flux.from(upstream).transform(writeRecords(writer));
       };
     }
   }

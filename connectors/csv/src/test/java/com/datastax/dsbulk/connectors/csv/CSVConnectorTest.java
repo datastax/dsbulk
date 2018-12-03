@@ -46,6 +46,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -200,10 +201,9 @@ class CSVConnectorTest {
       Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
           .transform(connector.write())
           .blockLast();
+      connector.close();
       assertThat(new String(baos.toByteArray(), ISO_8859_1))
           .isEqualTo("fóô,bàr,qïx" + System.lineSeparator());
-
-      connector.close();
     } finally {
       System.setOut(stdout);
     }
@@ -250,9 +250,8 @@ class CSVConnectorTest {
       Flux.<Record>just(new DefaultRecord(null, null, -1, null, "abc", "de\nf", "ghk"))
           .transform(connector.write())
           .blockLast();
-      assertThat(new String(baos.toByteArray(), UTF_8)).isEqualTo("abc,\"de\nf\",ghk\r\n");
-
       connector.close();
+      assertThat(new String(baos.toByteArray(), UTF_8)).isEqualTo("abc,\"de\nf\",ghk\r\n");
     } finally {
       System.setOut(stdout);
     }
@@ -615,6 +614,153 @@ class CSVConnectorTest {
     assertThat(records.get(0).getSource().toString().trim())
         .isEqualTo(
             "\"212.63.180.20\",\"212.63.180.23\",\"3560944660\",\"3560944663\",\"MZ\",\"Mozambique\"");
+    connector.close();
+  }
+
+  @Test
+  void should_honor_ignoreLeadingWhitespaces_and_ignoreTrailingWhitespaces_when_reading()
+      throws Exception {
+    Path file = Files.createTempFile("test", ".csv");
+    Files.write(file, Collections.singleton(" foo "));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", "
+                            + "ignoreLeadingWhitespaces = false, "
+                            + "ignoreTrailingWhitespaces = false, "
+                            + "header = false",
+                        escapeUserInput(file)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).getFieldValue("0")).isEqualTo(" foo ");
+    connector.close();
+  }
+
+  @Test
+  void should_honor_ignoreLeadingWhitespaces_and_ignoreTrailingWhitespaces_when_reading2()
+      throws Exception {
+    Path file = Files.createTempFile("test", ".csv");
+    Files.write(file, Collections.singleton(" foo "));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", "
+                            + "ignoreLeadingWhitespaces = true, "
+                            + "ignoreTrailingWhitespaces = true, "
+                            + "header = false",
+                        escapeUserInput(file)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).getFieldValue("0")).isEqualTo("foo");
+    connector.close();
+  }
+
+  @Test
+  void should_honor_ignoreLeadingWhitespaces_and_ignoreTrailingWhitespaces_when_writing()
+      throws Exception {
+    Path out = Files.createTempDirectory("test");
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", "
+                            + "ignoreLeadingWhitespaces = false, "
+                            + "ignoreTrailingWhitespaces = false, "
+                            + "maxConcurrentFiles = 1, "
+                            + "header = false",
+                        escapeUserInput(out)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    Flux.<Record>just(new DefaultRecord(null, null, -1, null, " foo "))
+        .transform(connector.write())
+        .blockFirst();
+    connector.close();
+    List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
+    assertThat(actual).hasSize(1).containsExactly(" foo ");
+  }
+
+  @Test
+  void should_honor_ignoreLeadingWhitespaces_and_ignoreTrailingWhitespaces_when_writing2()
+      throws Exception {
+    Path out = Files.createTempDirectory("test");
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", "
+                            + "ignoreLeadingWhitespaces = true, "
+                            + "ignoreTrailingWhitespaces = true, "
+                            + "header = false",
+                        escapeUserInput(out)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    Flux.<Record>just(new DefaultRecord(null, null, -1, null, " foo "))
+        .transform(connector.write())
+        .blockFirst();
+    connector.close();
+    List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
+    assertThat(actual).hasSize(1).containsExactly("foo");
+  }
+
+  @Test
+  void should_honor_ignoreLeadingWhitespacesInQuotes_and_ignoreTrailingWhitespacesInQuotes()
+      throws Exception {
+    Path file = Files.createTempFile("test", ".csv");
+    Files.write(file, Collections.singleton("\" foo \""));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", "
+                            + "ignoreLeadingWhitespacesInQuotes = false, "
+                            + "ignoreTrailingWhitespacesInQuotes = false, "
+                            + "header = false",
+                        escapeUserInput(file)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).getFieldValue("0")).isEqualTo(" foo ");
+    connector.close();
+  }
+
+  @Test
+  void should_honor_ignoreLeadingWhitespacesInQuotes_and_ignoreTrailingWhitespacesInQuotes2()
+      throws Exception {
+    Path file = Files.createTempFile("test", ".csv");
+    Files.write(file, Collections.singleton("\" foo \""));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s\", "
+                            + "ignoreLeadingWhitespacesInQuotes = true, "
+                            + "ignoreTrailingWhitespacesInQuotes = true, "
+                            + "header = false",
+                        escapeUserInput(file)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).getFieldValue("0")).isEqualTo("foo");
     connector.close();
   }
 

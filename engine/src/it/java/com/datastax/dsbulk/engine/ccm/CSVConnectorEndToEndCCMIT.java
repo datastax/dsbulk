@@ -798,6 +798,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "load",
             "--log.directory",
             escapeUserInput(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
             "--connector.csv.url",
             ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
             "--driver.pooling.local.connections",
@@ -824,6 +828,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "load",
             "--log.directory",
             escapeUserInput(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
             "--connector.csv.url",
             ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
             "--driver.pooling.local.connections",
@@ -850,6 +858,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "load",
             "--log.directory",
             escapeUserInput(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
             "--connector.csv.url",
             ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
             "--driver.pooling.local.connections",
@@ -876,6 +888,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "load",
             "--log.directory",
             escapeUserInput(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
             "--connector.csv.url",
             ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
             "--driver.pooling.local.connections",
@@ -1577,6 +1593,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.ignoreLeadingWhitespaces");
+    args.add("true");
+    args.add("--connector.csv.ignoreTrailingWhitespaces");
+    args.add("true");
     args.add("--connector.csv.url");
     args.add(ClassLoader.getSystemResource("temporal.csv").toExternalForm());
     args.add("--connector.csv.header");
