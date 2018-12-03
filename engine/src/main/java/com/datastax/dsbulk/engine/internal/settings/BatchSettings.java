@@ -107,7 +107,7 @@ public class BatchSettings {
         throw new BulkConfigurationException(
             String.format(
                 "Value for batch.bufferSize (%d) must be greater than or equal to "
-                    + "buffer.maxBatchStatements(%d). See settings.md for more information.",
+                    + "buffer.maxBatchStatements OR buffer.maxBatchSize (%d). See settings.md for more information.",
                 bufferSize, maxBatchStatements));
       }
     } catch (ConfigException e) {
@@ -119,7 +119,7 @@ public class BatchSettings {
     try {
       return Optional.of(supplier.apply(name));
     } catch (ConfigException.Missing ex) {
-      LOGGER.warn("cannot load config: ", ex);
+      LOGGER.trace("cannot load config: ", ex);
       return Optional.empty();
     }
   }
@@ -130,6 +130,14 @@ public class BatchSettings {
 
   public int getBufferSize() {
     return bufferSize;
+  }
+
+  public long getMaxSizeInBytes() {
+    return maxSizeInBytes;
+  }
+
+  public int getMaxBatchStatements() {
+    return maxBatchStatements;
   }
 
   public ReactorStatementBatcher newStatementBatcher(Cluster cluster) {
