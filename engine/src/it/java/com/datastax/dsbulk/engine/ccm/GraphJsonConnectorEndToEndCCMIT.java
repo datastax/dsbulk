@@ -6,6 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
+
 package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
@@ -32,11 +33,11 @@ import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.List;
-import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +45,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-// tests for DAT-355
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 @CCMConfig(numberOfNodes = 1, workloads = @CCMWorkload(graph))
@@ -52,12 +52,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
     compatibleTypes = DSE,
     versionRequirements = @CCMVersionRequirement(type = DSE, min = "6.8.0"))
 @Tag("medium")
-class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
+class GraphJsonConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
 
-  private static final URL CUSTOMER_RECORDS = ClassLoader.getSystemResource("graph/customers.csv");
+  private static final URL CUSTOMER_RECORDS = ClassLoader.getSystemResource("graph/customers.json");
 
   private static final URL CUSTOMER_ORDER_RECORDS =
-      ClassLoader.getSystemResource("graph/customer-orders.csv");
+      ClassLoader.getSystemResource("graph/customer-orders.json");
 
   private final LogInterceptor logs;
 
@@ -67,7 +67,7 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
 
   private Path unloadDir;
 
-  GraphCSVConnectorEndToEndCCMIT(
+  GraphJsonConnectorEndToEndCCMIT(
       CCMCluster ccm,
       DseSession session,
       @LogCapture LogInterceptor logs,
@@ -112,6 +112,7 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
   @Test
   void full_load_unload_and_load_again_vertices() throws Exception {
 
+    // Load customer JSON file.
     List<String> args =
         Lists.newArrayList(
             "load",
@@ -121,8 +122,8 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             CUSTOMER_VERTEX_LABEL,
             "-url",
             escapeUserInput(CUSTOMER_RECORDS),
-            "--connector.csv.delimiter",
-            "|",
+            "--connector.name",
+            "json",
             "--log.directory",
             escapeUserInput(logDir));
 
@@ -134,6 +135,7 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
     assertThat(results).hasSize(34);
     deleteDirectory(logDir);
 
+    // Unload customer JSON file
     args =
         Lists.newArrayList(
             "unload",
@@ -143,19 +145,20 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             CUSTOMER_VERTEX_LABEL,
             "-url",
             escapeUserInput(unloadDir),
-            "--connector.csv.delimiter",
-            "|",
+            "--connector.name",
+            "json",
             "--log.directory",
             escapeUserInput(logDir),
-            "--connector.csv.maxConcurrentFiles",
+            "--connector.json.maxConcurrentFiles",
             "1");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(35, unloadDir);
+    validateOutputFiles(34, unloadDir);
     // Remove data for reload validation
     truncateTables();
 
+    // Reload customer data
     args =
         Lists.newArrayList(
             "load",
@@ -164,9 +167,9 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "-v",
             CUSTOMER_VERTEX_LABEL,
             "-url",
-            escapeUserInput(unloadDir),
-            "--connector.csv.delimiter",
-            "|",
+            escapeUserInput(CUSTOMER_RECORDS),
+            "--connector.name",
+            "json",
             "--log.directory",
             escapeUserInput(logDir));
 
@@ -180,6 +183,7 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
   @Test
   void full_load_unload_and_load_again_edges() throws Exception {
 
+    // Load Customer Order data
     List<String> args =
         Lists.newArrayList(
             "load",
@@ -195,8 +199,8 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             escapeUserInput(CUSTOMER_ORDER_RECORDS),
             "-m",
             CUSTOMER_ORDER_MAPPINGS,
-            "--connector.csv.delimiter",
-            "|",
+            "--connector.name",
+            "json",
             "--log.directory",
             escapeUserInput(logDir));
 
@@ -207,6 +211,7 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
     assertThat(results).hasSize(14);
     deleteDirectory(logDir);
 
+    // Unload customer order data
     args =
         Lists.newArrayList(
             "unload",
@@ -218,23 +223,24 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             CUSTOMER_VERTEX_LABEL,
             "-to",
             ORDER_VERTEX_LABEL,
+            "--connector.name",
+            "json",
             "-url",
             escapeUserInput(unloadDir),
             "-m",
             CUSTOMER_ORDER_MAPPINGS,
-            "--connector.csv.delimiter",
-            "|",
             "--log.directory",
             escapeUserInput(logDir),
-            "--connector.csv.maxConcurrentFiles",
+            "--connector.json.maxConcurrentFiles",
             "1");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(15, unloadDir);
+    validateOutputFiles(14, unloadDir);
     // Remove data for reload validation
     truncateTables();
 
+    // Reload Customer Order data
     args =
         Lists.newArrayList(
             "load",
@@ -248,10 +254,10 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             ORDER_VERTEX_LABEL,
             "-url",
             escapeUserInput(unloadDir),
+            "--connector.name",
+            "json",
             "-m",
             CUSTOMER_ORDER_MAPPINGS,
-            "--connector.csv.delimiter",
-            "|",
             "--log.directory",
             escapeUserInput(logDir));
 
