@@ -222,15 +222,15 @@ public class StatementBatcher {
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    * @param batchType The batch type to use; cannot be {@code null}.
-   * @param maxSizeInBytes The maximum size in bytes of a batch.
    * @param maxBatchStatements - the maximum number of statements in one batch
+   * @param maxSizeInBytes The maximum size in bytes of a batch.
    */
   public StatementBatcher(
       Cluster cluster,
       BatchMode batchMode,
       BatchStatement.Type batchType,
       int maxBatchStatements,
-      int maxSizeInBytes) {
+      long maxSizeInBytes) {
     this.cluster = Objects.requireNonNull(cluster);
     this.batchMode = Objects.requireNonNull(batchMode);
     this.batchType = Objects.requireNonNull(batchType);

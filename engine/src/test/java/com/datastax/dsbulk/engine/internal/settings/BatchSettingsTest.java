@@ -46,14 +46,47 @@ class BatchSettingsTest {
   }
 
   @Test
-  void should_create_batcher_when_mode_is_default() {
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch"));
+  void should_create_batcher_when_mode_is_default_for_deprecated_maxBatchSize_and_treat_it_as_maxBatchStatements() {
+    LoaderConfig config = new DefaultLoaderConfig(
+        ConfigFactory
+            .parseString("maxBatchSize = 32, bufferSize = 32, mode = PARTITION_KEY")
+
+    );
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(32);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchSize")).isEqualTo(32);
+    assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(32);
+  }
+
+  @Test
+  void should_create_batcher_when_mode_is_default_for_new_maxBatchStatements() {
+    LoaderConfig config = new DefaultLoaderConfig(
+        ConfigFactory
+            .parseString("maxBatchStatements = 32, bufferSize = 32, mode = PARTITION_KEY")
+
+    );
+    BatchSettings settings = new BatchSettings(config);
+    settings.init();
+    assertThat(settings.getBufferSize()).isEqualTo(32);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
+    assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(32);
+  }
+
+  @Test
+  void should_throw_when_both_maxBatchStatements_and_maxBatchSize_is_specified() {
+    LoaderConfig config = new DefaultLoaderConfig(
+        ConfigFactory
+            .parseString("maxBatchStatements = 32, maxBatchSize = 32, bufferSize = 32, mode = PARTITION_KEY")
+
+    );
+    BatchSettings settings = new BatchSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "You cannot specify both maxBatchSize AND maxBatchStatements consider using maxBatchStatements, because maxBatchSize is deprecated");
   }
 
   @Test
@@ -97,7 +130,7 @@ class BatchSettingsTest {
     assertThat(settings.getBufferSize()).isEqualTo(10);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchSize")).isEqualTo(10);
+    assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(10);
   }
 
   @Test

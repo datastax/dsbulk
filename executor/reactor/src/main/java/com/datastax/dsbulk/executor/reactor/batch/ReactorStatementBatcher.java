@@ -136,7 +136,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
       BatchMode batchMode,
       BatchStatement.Type batchType,
       int maxBatchStatements,
-      int maxSizeInBytes) {
+      long maxSizeInBytes) {
     super(cluster, batchMode, batchType, maxBatchStatements, maxSizeInBytes);
   }
 

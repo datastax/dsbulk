@@ -13,11 +13,19 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.connectors.json.JsonConnector;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class BatchSettings {
+  private static final Logger LOGGER = LoggerFactory.getLogger(BatchSettings.class);
 
   private enum BatchMode {
     DISABLED {
@@ -51,8 +59,7 @@ public class BatchSettings {
   private final LoaderConfig config;
 
   private BatchMode mode;
-  private int maxBatchSize;
-  private int maxSizeInBytes;
+  private long maxSizeInBytes;
   private int maxBatchStatements;
   private int bufferSize;
 
@@ -63,28 +70,57 @@ public class BatchSettings {
   public void init() {
     try {
       mode = config.getEnum(BatchMode.class, MODE);
-      maxBatchSize = config.getInt(MAX_BATCH_SIZE);
-      maxSizeInBytes = config.getInt(MAX_SIZE_IN_BYTES);
-      maxBatchStatements = config.getInt(MAX_BATCH_STATEMENTS);
-      int bufferConfig = config.getInt(BUFFER_SIZE);
-      bufferSize = bufferConfig > -1 ? bufferConfig : maxBatchSize;
-      // todo remove maxBatchSize entirely?
-      if (bufferSize < maxBatchSize) {
-        throw new BulkConfigurationException(
-            String.format(
-                "Value for batch.bufferSize (%d) must be greater than or equal to "
-                    + "buffer.maxBatchSize (%d). See settings.md for more information.",
-                bufferSize, maxBatchSize));
+      Optional<Integer> maxBatchSizeOpt = loadOptionalConfig(MAX_BATCH_SIZE, config::getInt);
+      Optional<Integer> maxBatchStatementsOpt = loadOptionalConfig(MAX_BATCH_STATEMENTS, config::getInt);
+      Optional<Long> maxSizeInBytesOpt = loadOptionalConfig(MAX_SIZE_IN_BYTES, config::getLong);
+      if (maxBatchSizeOpt.isPresent() && !maxBatchStatementsOpt.isPresent()) {
+        maxBatchStatements = maxBatchSizeOpt.get();
+        LOGGER.warn("the {} parameter is deprecated, use {} instead", MAX_BATCH_SIZE, MAX_BATCH_STATEMENTS);
+      } else if (!maxBatchSizeOpt.isPresent() && maxBatchStatementsOpt.isPresent()) {
+        maxBatchStatements = maxBatchStatementsOpt.get();
       }
-      if (maxSizeInBytes < 0 && maxBatchStatements < 0) {
+
+      if (maxBatchSizeOpt.isPresent() && maxBatchStatementsOpt.isPresent()) {
+        throw new BulkConfigurationException(
+            String.format("You cannot specify both %s AND %s "
+                    + "consider using %s, because %s is deprecated",
+                MAX_BATCH_SIZE,
+                MAX_BATCH_STATEMENTS,
+                MAX_BATCH_STATEMENTS,
+                MAX_BATCH_SIZE
+            ));
+      }
+
+      if (maxSizeInBytesOpt.orElse(-1L) <= 0 && maxBatchStatements <= 0) {
         throw new BulkConfigurationException(
             String.format(
                 "Value for batch.maxSizeInBytes (%d) OR buffer.maxBatchStatements (%d) must be positive. "
                     + "See settings.md for more information.",
                 maxSizeInBytes, maxBatchStatements));
       }
+      maxSizeInBytes = maxSizeInBytesOpt.orElse(StatementBatcher.DEFAULT_MAX_SIZE_BYTES);
+
+      int bufferConfig = config.getInt(BUFFER_SIZE);
+      bufferSize = bufferConfig > -1 ? bufferConfig : maxBatchStatements;
+
+      if (bufferSize < maxBatchStatements) {
+        throw new BulkConfigurationException(
+            String.format(
+                "Value for batch.bufferSize (%d) must be greater than or equal to "
+                    + "buffer.maxBatchStatements(%d). See settings.md for more information.",
+                bufferSize, maxBatchStatements));
+      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
+    }
+  }
+
+  private<T> Optional<T> loadOptionalConfig(String name, Function<String, T> supplier) {
+    try {
+      return Optional.of(supplier.apply(name));
+    } catch (ConfigException.Missing ex) {
+      LOGGER.warn("cannot load config: ", ex);
+      return Optional.empty();
     }
   }
 
