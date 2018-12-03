@@ -447,6 +447,7 @@ public class SchemaSettings {
       // validate generated query
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
+        validateClusteringKeyPresent(fieldsToVariables);
       }
       // remove function mappings as we won't need them anymore from now on
       fieldsToVariables = removeMappingFunctions(fieldsToVariables);
@@ -469,6 +470,7 @@ public class SchemaSettings {
       // validate user-provided query
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
+        validateClusteringKeyPresent(fieldsToVariables);
       } else if (workflowType == COUNT) {
         validatePartitionKeyPresentInSelectClause();
       }
@@ -705,6 +707,27 @@ public class SchemaSettings {
         throw new BulkConfigurationException(
             "Missing required primary key column "
                 + quoteIfNecessary(pk.getName())
+                + " from schema.mapping or schema.query");
+      }
+    }
+  }
+
+  private void validateClusteringKeyPresent(BiMap<String, String> fieldsToVariables) {
+    List<ColumnMetadata> clusteringColumns = table.getClusteringColumns();
+    Set<String> mappingVariables = fieldsToVariables.values();
+    ImmutableMap<String, String> queryVariables = queryInspector.getBoundVariables();
+    for (ColumnMetadata cc : clusteringColumns) {
+      String queryVariable = queryVariables.get(cc.getName());
+      if (
+      // the query did not contain such column
+      queryVariable == null
+          ||
+          // or the query did contain such column, but the mapping didn't
+          // and that column is not mapped to a function (DAT-326)
+          (!isFunction(queryVariable) && !mappingVariables.contains(queryVariable))) {
+        throw new BulkConfigurationException(
+            "Missing required clustering key column "
+                + quoteIfNecessary(cc.getName())
                 + " from schema.mapping or schema.query");
       }
     }
