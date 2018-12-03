@@ -13,16 +13,13 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.connectors.json.JsonConnector;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BatchSettings {
   private static final Logger LOGGER = LoggerFactory.getLogger(BatchSettings.class);
@@ -71,24 +68,23 @@ public class BatchSettings {
     try {
       mode = config.getEnum(BatchMode.class, MODE);
       Optional<Integer> maxBatchSizeOpt = loadOptionalConfig(MAX_BATCH_SIZE, config::getInt);
-      Optional<Integer> maxBatchStatementsOpt = loadOptionalConfig(MAX_BATCH_STATEMENTS, config::getInt);
+      Optional<Integer> maxBatchStatementsOpt =
+          loadOptionalConfig(MAX_BATCH_STATEMENTS, config::getInt);
       Optional<Long> maxSizeInBytesOpt = loadOptionalConfig(MAX_SIZE_IN_BYTES, config::getLong);
       if (maxBatchSizeOpt.isPresent() && !maxBatchStatementsOpt.isPresent()) {
         maxBatchStatements = maxBatchSizeOpt.get();
-        LOGGER.warn("the {} parameter is deprecated, use {} instead", MAX_BATCH_SIZE, MAX_BATCH_STATEMENTS);
+        LOGGER.warn(
+            "the {} parameter is deprecated, use {} instead", MAX_BATCH_SIZE, MAX_BATCH_STATEMENTS);
       } else if (!maxBatchSizeOpt.isPresent() && maxBatchStatementsOpt.isPresent()) {
         maxBatchStatements = maxBatchStatementsOpt.get();
       }
 
       if (maxBatchSizeOpt.isPresent() && maxBatchStatementsOpt.isPresent()) {
         throw new BulkConfigurationException(
-            String.format("You cannot specify both %s AND %s "
+            String.format(
+                "You cannot specify both %s AND %s "
                     + "consider using %s, because %s is deprecated",
-                MAX_BATCH_SIZE,
-                MAX_BATCH_STATEMENTS,
-                MAX_BATCH_STATEMENTS,
-                MAX_BATCH_SIZE
-            ));
+                MAX_BATCH_SIZE, MAX_BATCH_STATEMENTS, MAX_BATCH_STATEMENTS, MAX_BATCH_SIZE));
       }
 
       if (maxSizeInBytesOpt.orElse(-1L) <= 0 && maxBatchStatements <= 0) {
@@ -115,7 +111,7 @@ public class BatchSettings {
     }
   }
 
-  private<T> Optional<T> loadOptionalConfig(String name, Function<String, T> supplier) {
+  private <T> Optional<T> loadOptionalConfig(String name, Function<String, T> supplier) {
     try {
       return Optional.of(supplier.apply(name));
     } catch (ConfigException.Missing ex) {

@@ -39,11 +39,10 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It uses the given
    * maximum batch size.
    *
-   * @param maxBatchSize The maximum batch size; must be &gt; 1.
+   * @param maxBatchStatements The maximum number of statements in a batch
    */
-  @Deprecated
-  public ReactorStatementBatcher(int maxBatchSize) {
-    super(maxBatchSize);
+  public ReactorStatementBatcher(int maxBatchStatements) {
+    super(maxBatchStatements);
   }
 
   /**
@@ -112,12 +111,11 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    * @param batchType The batch type to use; cannot be {@code null}.
-   * @param maxBatchSize The maximum batch size; must be &gt; 1.
+   * @param maxBatchStatements The maximum number of elements in a batch
    */
-  @Deprecated
   public ReactorStatementBatcher(
-      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBatchSize) {
-    super(cluster, batchMode, batchType, maxBatchSize);
+      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBatchStatements) {
+    super(cluster, batchMode, batchType, maxBatchStatements);
   }
 
   /**

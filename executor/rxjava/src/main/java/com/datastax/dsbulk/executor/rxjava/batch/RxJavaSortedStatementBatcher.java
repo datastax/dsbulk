@@ -38,32 +38,32 @@ public class RxJavaSortedStatementBatcher extends RxJavaStatementBatcher
     implements FlowableTransformer<Statement, Statement> {
 
   public RxJavaSortedStatementBatcher() {
-    this(StatementBatcher.DEFAULT_MAX_BATCH_SIZE);
+    this(StatementBatcher.DEFAULT_MAX_BATCH_STATEMENTS);
   }
 
-  public RxJavaSortedStatementBatcher(int maxBatchSize) {
-    super(maxBatchSize);
+  public RxJavaSortedStatementBatcher(int maxBatchStatements) {
+    super(maxBatchStatements);
   }
 
   public RxJavaSortedStatementBatcher(Cluster cluster) {
-    this(cluster, StatementBatcher.DEFAULT_MAX_BATCH_SIZE);
+    this(cluster, StatementBatcher.DEFAULT_MAX_BATCH_STATEMENTS);
   }
 
-  public RxJavaSortedStatementBatcher(Cluster cluster, int maxBatchSize) {
-    this(cluster, StatementBatcher.BatchMode.PARTITION_KEY, maxBatchSize);
+  public RxJavaSortedStatementBatcher(Cluster cluster, int maxBatchStatements) {
+    this(cluster, StatementBatcher.BatchMode.PARTITION_KEY, maxBatchStatements);
   }
 
   public RxJavaSortedStatementBatcher(
-      Cluster cluster, StatementBatcher.BatchMode batchMode, int maxBatchSize) {
-    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchSize);
+      Cluster cluster, StatementBatcher.BatchMode batchMode, int maxBatchStatements) {
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchStatements);
   }
 
   public RxJavaSortedStatementBatcher(
       Cluster cluster,
       StatementBatcher.BatchMode batchMode,
       BatchStatement.Type batchType,
-      int maxBatchSize) {
-    super(cluster, batchMode, batchType, maxBatchSize);
+      int maxBatchStatements) {
+    super(cluster, batchMode, batchType, maxBatchStatements);
   }
 
   @Override
@@ -82,7 +82,7 @@ public class RxJavaSortedStatementBatcher extends RxJavaStatementBatcher
 
     @Override
     public boolean test(Statement statement) {
-      boolean bufferFull = ++size > maxBatchSize;
+      boolean bufferFull = ++size > maxBatchStatements;
       Object groupingKey = groupingKey(statement);
       boolean groupingKeyChanged =
           this.groupingKey != null && !this.groupingKey.equals(groupingKey);
