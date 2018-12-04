@@ -52,15 +52,23 @@ public class ReactorUnsortedStatementBatcher extends ReactorStatementBatcher
         cluster,
         StatementBatcher.BatchMode.PARTITION_KEY,
         StatementBatcher.DEFAULT_MAX_BATCH_STATEMENTS,
-        bufferSize);
+        bufferSize,
+        StatementBatcher.DEFAULT_MAX_SIZE_BYTES);
   }
 
   public ReactorUnsortedStatementBatcher(
       Cluster cluster,
       StatementBatcher.BatchMode batchMode,
       int maxBatchStatements,
-      int bufferSize) {
-    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchStatements, bufferSize);
+      int bufferSize,
+      long maxSizeInBytes) {
+    this(
+        cluster,
+        batchMode,
+        BatchStatement.Type.UNLOGGED,
+        maxBatchStatements,
+        bufferSize,
+        maxSizeInBytes);
   }
 
   public ReactorUnsortedStatementBatcher(
@@ -68,8 +76,9 @@ public class ReactorUnsortedStatementBatcher extends ReactorStatementBatcher
       StatementBatcher.BatchMode batchMode,
       BatchStatement.Type batchType,
       int maxBatchStatements,
-      int bufferSize) {
-    super(cluster, batchMode, batchType, maxBatchStatements);
+      int bufferSize,
+      long maxSizeInBytes) {
+    super(cluster, batchMode, batchType, maxBatchStatements, maxSizeInBytes);
     this.bufferSize = bufferSize;
   }
 

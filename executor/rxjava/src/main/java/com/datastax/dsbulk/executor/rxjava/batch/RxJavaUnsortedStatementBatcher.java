@@ -30,7 +30,9 @@ import io.reactivex.FlowableTransformer;
 public class RxJavaUnsortedStatementBatcher extends RxJavaStatementBatcher
     implements FlowableTransformer<Statement, Statement> {
 
-  /** The default size for the internal buffer. */
+  /**
+   * The default size for the internal buffer.
+   */
   public static final int DEFAULT_BUFFER_SIZE = 512;
 
   private final int bufferSize;
@@ -52,15 +54,17 @@ public class RxJavaUnsortedStatementBatcher extends RxJavaStatementBatcher
         cluster,
         StatementBatcher.BatchMode.PARTITION_KEY,
         StatementBatcher.DEFAULT_MAX_BATCH_STATEMENTS,
-        bufferSize);
+        bufferSize,
+        StatementBatcher.DEFAULT_MAX_SIZE_BYTES);
   }
 
   public RxJavaUnsortedStatementBatcher(
       Cluster cluster,
       StatementBatcher.BatchMode batchMode,
       int maxBatchStatements,
-      int bufferSize) {
-    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchStatements, bufferSize);
+      int bufferSize,
+      long maxSizeInBytes) {
+    this(cluster, batchMode, BatchStatement.Type.UNLOGGED, maxBatchStatements, bufferSize, maxSizeInBytes);
   }
 
   public RxJavaUnsortedStatementBatcher(
@@ -68,8 +72,9 @@ public class RxJavaUnsortedStatementBatcher extends RxJavaStatementBatcher
       StatementBatcher.BatchMode batchMode,
       BatchStatement.Type batchType,
       int maxBatchStatements,
-      int bufferSize) {
-    super(cluster, batchMode, batchType, maxBatchStatements);
+      int bufferSize,
+      long maxSizeInBytes) {
+    super(cluster, batchMode, batchType, maxBatchStatements, maxSizeInBytes);
     this.bufferSize = bufferSize;
   }
 
