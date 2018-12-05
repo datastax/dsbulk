@@ -8,7 +8,6 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.RegularStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.StatementWrapper;
-
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -50,12 +49,7 @@ public class StatementUtils {
 
     } else if (stmt instanceof StatementWrapper) {
       StatementWrapper sw = (StatementWrapper) stmt;
-      dataSize += getDataSize(
-          DriverCoreHooks.wrappedStatement(sw),
-          version,
-          registry
-      );
-
+      dataSize += getDataSize(DriverCoreHooks.wrappedStatement(sw), version, registry);
     }
     return dataSize;
   }
