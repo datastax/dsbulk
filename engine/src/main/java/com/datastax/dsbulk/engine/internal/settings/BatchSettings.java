@@ -115,14 +115,6 @@ public class BatchSettings {
     return bufferSize;
   }
 
-  public long getMaxSizeInBytes() {
-    return maxSizeInBytes;
-  }
-
-  public int getMaxBatchStatements() {
-    return maxBatchStatements;
-  }
-
   public ReactorStatementBatcher newStatementBatcher(Cluster cluster) {
     return new ReactorStatementBatcher(
         cluster,

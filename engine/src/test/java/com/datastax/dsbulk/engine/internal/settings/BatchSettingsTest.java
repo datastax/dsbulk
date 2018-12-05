@@ -257,7 +257,7 @@ class BatchSettingsTest {
                 "mode: PARTITION_KEY, maxSizeInBytes = 1, bufferSize = 1, maxBatchStatements = -1"));
     BatchSettings settings = new BatchSettings(config);
     settings.init();
-    assertThat(settings.getMaxSizeInBytes()).isEqualTo(1L);
+    assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(1L);
@@ -271,8 +271,8 @@ class BatchSettingsTest {
                 "mode: PARTITION_KEY, maxSizeInBytes = 1, bufferSize = 10, maxBatchSize = 10"));
     BatchSettings settings = new BatchSettings(config);
     settings.init();
-    assertThat(settings.getMaxSizeInBytes()).isEqualTo(1L);
-    assertThat(settings.getMaxBatchStatements()).isEqualTo(10);
+    assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
+    assertThat(ReflectionUtils.getInternalState(settings, "maxBatchStatements")).isEqualTo(10);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(1L);
@@ -287,8 +287,8 @@ class BatchSettingsTest {
                 "mode: PARTITION_KEY, maxSizeInBytes = 1, bufferSize = 10, maxBatchStatements = 10"));
     BatchSettings settings = new BatchSettings(config);
     settings.init();
-    assertThat(settings.getMaxSizeInBytes()).isEqualTo(1L);
-    assertThat(settings.getMaxBatchStatements()).isEqualTo(10);
+    assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
+    assertThat(ReflectionUtils.getInternalState(settings, "maxBatchStatements")).isEqualTo(10);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(1L);
