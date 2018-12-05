@@ -102,7 +102,7 @@ public class BatchSettings {
       maxSizeInBytes = maxSizeInBytesOpt.orElse(StatementBatcher.DEFAULT_MAX_SIZE_BYTES);
 
       int bufferConfig = config.getInt(BUFFER_SIZE);
-      bufferSize = bufferConfig > -1 ? bufferConfig : maxBatchStatements;
+      bufferSize = bufferConfig > 0 ? bufferConfig : maxBatchStatements;
 
       if (bufferSize < maxBatchStatements) {
         throw new BulkConfigurationException(
