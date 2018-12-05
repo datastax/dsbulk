@@ -190,10 +190,8 @@ public class SchemaSettings {
       // Timestamp and TTL
 
       ttlSeconds = config.getInt(QUERY_TTL);
-      String timestampStr = config.getString(QUERY_TIMESTAMP);
-      if (timestampStr.isEmpty()) {
-        this.timestampMicros = -1L;
-      } else {
+      if (config.hasPath(QUERY_TIMESTAMP)) {
+        String timestampStr = config.getString(QUERY_TIMESTAMP);
         try {
           Instant instant = ZonedDateTime.parse(timestampStr).toInstant();
           this.timestampMicros = instantToNumber(instant, MICROSECONDS, EPOCH);
@@ -203,6 +201,8 @@ public class SchemaSettings {
                   "Expecting schema.queryTimestamp to be in ISO_ZONED_DATE_TIME format but got '%s'",
                   timestampStr));
         }
+      } else {
+        this.timestampMicros = -1L;
       }
 
       // Custom Query

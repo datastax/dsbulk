@@ -17,7 +17,6 @@ import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigOrigin;
 import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.ConfigValue;
-import com.typesafe.config.ConfigValueType;
 import java.time.Duration;
 import java.time.Period;
 import java.time.temporal.TemporalAmount;
@@ -86,10 +85,7 @@ public class DefaultLoaderConfig implements LoaderConfig {
 
   @Override
   public boolean hasPath(String path) {
-    // Since defaults may be empty string (representing null), such paths don't count.
-    return (delegate.hasPath(path)
-        && (delegate.getValue(path).valueType() != ConfigValueType.STRING
-            || !delegate.getString(path).isEmpty()));
+    return delegate.hasPath(path);
   }
 
   @Override

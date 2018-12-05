@@ -16,7 +16,6 @@ import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
@@ -59,7 +58,7 @@ public class OptionUtils {
       String fullKey = keyPrefix.isEmpty() ? key : keyPrefix + '.' + key;
 
       if (ConfigUtils.isLeaf(value)) {
-        Option option = createOption(fullKey, entry.getValue(), longToShortOptions);
+        Option option = createOption(fullKey, value, longToShortOptions);
         options.addOption(option);
       } else {
         createOptions((ConfigObject) value, fullKey, options, longToShortOptions);
@@ -80,18 +79,12 @@ public class OptionUtils {
         .hasArg()
         .longOpt(longName)
         .argName(ConfigUtils.getTypeString(DataStaxBulkLoader.DEFAULT, longName))
-        .desc(getSanitizedDescription(longName, value));
+        .desc(getSanitizedDescription(value));
     return option.build();
   }
 
-  private static String getSanitizedDescription(String longName, ConfigValue value) {
-    String desc =
-        DataStaxBulkLoader.DEFAULT
-            .getValue(longName)
-            .origin()
-            .comments()
-            .stream()
-            .collect(Collectors.joining("\n"));
+  private static String getSanitizedDescription(ConfigValue value) {
+    String desc = ConfigUtils.getComments(value);
 
     // The description is a little dirty.
     // * Replace consecutive spaces with a single space.
@@ -99,12 +92,10 @@ public class OptionUtils {
     //   we do have a legit case of ** when describing file patterns (e.g. **/*.csv).
     //   Those sorts of instances are preceded by ", so don't replace those.
     // * Replace ` with '
+    // TODO replace this logic with a proper markdown parser
 
     desc = desc.replaceAll(" +", " ").replaceAll("([^\"])\\*\\*", "$1").replaceAll("`", "'").trim();
     String defaultValue = value.render(ConfigRenderOptions.concise());
-    if (defaultValue.equals("\"\"")) {
-      defaultValue = "<unspecified>";
-    }
     desc += "\nDefault: " + defaultValue;
     return desc;
   }

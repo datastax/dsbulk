@@ -141,13 +141,13 @@ Default: **-1**.
 
 Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Either `keyspace` or `graph` is required if `query` is not specified or is not qualified with a keyspace name.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
 Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -m,--schema.mapping _&lt;string&gt;_
 
@@ -167,7 +167,7 @@ Any identifier, field or column, that is not strictly alphanumeric (i.e. not mat
 
 The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -dryRun,--engine.dryRun _&lt;boolean&gt;_
 
@@ -196,7 +196,7 @@ The username to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -p,--driver.auth.password _&lt;string&gt;_
 
@@ -205,7 +205,7 @@ The password to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -cl,--driver.query.consistency _&lt;string&gt;_
 
@@ -335,6 +335,12 @@ The character that represents a line comment when found in the beginning of a li
 
 Default: **"\u0000"**.
 
+#### --connector.csv.emptyValue _&lt;string&gt;_
+
+Sets the String representation of an empty value. When reading, if the parser does not read any character from the input, and the input is within quotes, this value will be used instead. This setting is ignored when writing. The default is `""` (empty string).
+
+Default: **&lt;unspecified&gt;**.
+
 #### -encoding,--connector.csv.encoding _&lt;string&gt;_
 
 The file encoding to use for all read or written files.
@@ -406,6 +412,12 @@ Default: **"0.25C"**.
 The character(s) that represent a line ending. When set to the special value `auto` (default), the system's line separator, as determined by `System.lineSeparator()`, will be used when writing, and auto-detection of line endings will be enabled when reading. Only one or two characters can be specified; beware that most typical line separator characters need to be escaped, e.g. one should specify `\r\n` for the typical line ending on Windows systems (carriage return followed by a new line).
 
 Default: **"auto"**.
+
+#### --connector.csv.nullValue _&lt;string&gt;_
+
+Sets the String representation of a null value. When reading, if the parser does not read any character from the input, this value will be used instead. When writing, if the writer has a null object to write to the output, this value will be used instead. The default value is `null`, which means that, when reading, the parser will emit a `null`, and when writing, the writer won't write any character at all to the output.
+
+Default: **null**.
 
 #### --connector.csv.recursive _&lt;boolean&gt;_
 
@@ -546,13 +558,13 @@ Schema-specific settings.
 
 Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Either `keyspace` or `graph` is required if `query` is not specified or is not qualified with a keyspace name.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -t,--schema.table _&lt;string&gt;_
 
 Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -m,--schema.mapping _&lt;string&gt;_
 
@@ -572,7 +584,7 @@ Any identifier, field or column, that is not strictly alphanumeric (i.e. not mat
 
 The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --schema.allowExtraFields _&lt;boolean&gt;_
 
@@ -594,19 +606,19 @@ Default: **false**.
 
 Edge label used for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). The edge label must correspond to an existing table created with the `WITH EDGE LABEL` option; also, when `edge` is specified, then `from` and `to` must be specified as well. Edge labels should not be quoted and are case-sensitive. `MyEdge` will match a label named `MyEdge` but not `myedge`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -from,--schema.from _&lt;string&gt;_
 
 The name of the edge's incoming vertex label, for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). This option is mandatory when `edge` is specified; ignored otherwise. Vertex labels should not be quoted and are case-sensitive. `MyVertex` will match a label named `MyVertex` but not `myvertex`.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -g,--schema.graph _&lt;string&gt;_
 
 Graph name used for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). Graph names should not be quoted and are case-sensitive. `MyGraph` will match a graph named `MyGraph` but not `mygraph`. Either `keyspace` or `graph` is required if `query` is not specified or is not qualified with a keyspace name.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --schema.nullToUnset _&lt;boolean&gt;_
 
@@ -636,7 +648,7 @@ Note: The query is parsed to discover which bound variables are present, and to 
 
 See *mapping* setting for more information.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --schema.queryTimestamp _&lt;string&gt;_
 
@@ -644,7 +656,7 @@ The timestamp of inserted/updated cells during load; otherwise, the current time
 
 Query timestamps for DSE have microsecond resolution; any sub-microsecond information specified is lost. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__timestamp-value).
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --schema.queryTtl _&lt;number&gt;_
 
@@ -656,13 +668,13 @@ Default: **-1**.
 
 The name of the edge's outgoing vertex label, for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). This option is mandatory when `edge` is specified; ignored otherwise. Vertex labels should not be quoted and are case-sensitive. `MyVertex` will match a label named `MyVertex` but not `myvertex`.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -v,--schema.vertex _&lt;string&gt;_
 
 Vertex label used for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). The vertex label must correspond to an existing table created with the `WITH VERTEX LABEL` option. Vertex labels should not be quoted and are case-sensitive. `MyVertex` will match a label named `MyVertex` but not `myvertex`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 <a name="batch"></a>
 ## Batch Settings
@@ -921,7 +933,7 @@ The username to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### -p,--driver.auth.password _&lt;string&gt;_
 
@@ -930,7 +942,7 @@ The password to use. Providers that accept this setting:
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.auth.provider _&lt;string&gt;_
 
@@ -951,7 +963,7 @@ An authorization ID allows the currently authenticated user to act as a differen
  - `DsePlainTextAuthProvider`
  - `DseGSSAPIAuthProvider`
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.auth.keyTab _&lt;string&gt;_
 
@@ -959,7 +971,7 @@ The path of the Kerberos keytab file to use for authentication. If left unspecif
 
  - `DseGSSAPIAuthProvider`
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.auth.principal _&lt;string&gt;_
 
@@ -967,7 +979,7 @@ The Kerberos principal to use. For example, `user@datastax.com`. If left unspeci
 
  - `DseGSSAPIAuthProvider`
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.auth.saslService _&lt;string&gt;_
 
@@ -988,7 +1000,7 @@ The name of the load balancing policy. Supported policies include: `dse`, `dcAwa
 
 Note: It is critical for a token-aware policy to be used in the chain in order to benefit from batching by partition key.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel _&lt;boolean&gt;_
 
@@ -1000,7 +1012,7 @@ Default: **false**.
 
 The datacenter name (commonly dc1, dc2, etc.) local to the machine on which dsbulk is running, so that requests are sent to nodes in the local datacenter whenever possible.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc _&lt;number&gt;_
 
@@ -1168,25 +1180,25 @@ Default: **"SunX509"**.
 
 The keystore password.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.ssl.keystore.path _&lt;string&gt;_
 
 The path of the keystore file. This setting is optional. If left unspecified, no client authentication will be used.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.ssl.openssl.keyCertChain _&lt;string&gt;_
 
 The path of the certificate chain file. This setting is optional. If left unspecified, no client authentication will be used.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.ssl.openssl.privateKey _&lt;string&gt;_
 
 The path of the private key file.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.ssl.provider _&lt;string&gt;_
 
@@ -1208,13 +1220,13 @@ Default: **"SunX509"**.
 
 The truststore password.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 #### --driver.ssl.truststore.path _&lt;string&gt;_
 
 The path of the truststore file. This setting is optional. If left unspecified, server certificates will not be validated.
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 <a name="engine"></a>
 ## Engine Settings
@@ -1240,7 +1252,7 @@ When this identifier is user-supplied, it is important to guarantee its uniquene
 - `%2$t` : the current time (with microsecond precision if available, and millisecond precision otherwise);
 - `%3$s` : the JVM process PID (this parameter might not be available on some operating systems; if its value cannot be determined, a random integer will be inserted instead).
 
-Default: **&lt;unspecified&gt;**.
+Default: **null**.
 
 <a name="executor"></a>
 ## Executor Settings

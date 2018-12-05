@@ -8,6 +8,7 @@
 - [improvement] DAT-362: Improve readability of error messages printed to the console.
 - [improvement] DAT-352: Calculate batch size dynamically - Adaptive Batch Sizing
 - [bug] DAT-339: CSV connector trims trailing whitespace when reading data.
+- [improvement] DAT-344: Expose settings to control how to interpret empty fields in CSV files.
 
 
 ### 1.2.0
