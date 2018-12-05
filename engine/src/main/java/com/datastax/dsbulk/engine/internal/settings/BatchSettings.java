@@ -16,16 +16,11 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigException;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BatchSettings {
   private static final Logger LOGGER = LoggerFactory.getLogger(BatchSettings.class);
-  private static final Predicate<Integer> GREATER_THAN_ZERO_INT = v -> v > 0;
-  private static final Predicate<Long> GREATER_THAN_ZERO_LONG = v -> v > 0L;
 
   private enum BatchMode {
     DISABLED {
@@ -70,36 +65,32 @@ public class BatchSettings {
   public void init() {
     try {
       mode = config.getEnum(BatchMode.class, MODE);
-      Optional<Integer> maxBatchSizeOpt =
-          loadOptionalConfig(MAX_BATCH_SIZE, config::getInt, GREATER_THAN_ZERO_INT);
-      Optional<Integer> maxBatchStatementsOpt =
-          loadOptionalConfig(MAX_BATCH_STATEMENTS, config::getInt, GREATER_THAN_ZERO_INT);
-      Optional<Long> maxSizeInBytesOpt =
-          loadOptionalConfig(MAX_SIZE_IN_BYTES, config::getLong, GREATER_THAN_ZERO_LONG);
-      if (maxBatchSizeOpt.isPresent() && !maxBatchStatementsOpt.isPresent()) {
-        maxBatchStatements = maxBatchSizeOpt.get();
-        LOGGER.warn(
-            "the {} parameter is deprecated, use {} instead", MAX_BATCH_SIZE, MAX_BATCH_STATEMENTS);
-      } else if (!maxBatchSizeOpt.isPresent() && maxBatchStatementsOpt.isPresent()) {
-        maxBatchStatements = maxBatchStatementsOpt.get();
+      maxSizeInBytes = config.getLong(MAX_SIZE_IN_BYTES);
+
+      if (config.hasPath(MAX_BATCH_SIZE)) {
+
+        if (config.hasPath(MAX_BATCH_STATEMENTS)) {
+          throw new BulkConfigurationException(
+              "Settings batch.maxBatchStatements and batch.maxBatchSize "
+                  + "cannot be both defined; "
+                  + "consider using batch.maxBatchStatements exclusively, "
+                  + "because batch.maxBatchSize is deprecated.");
+        } else {
+          LOGGER.warn(
+              "Setting batch.maxBatchSize is deprecated, "
+                  + "please use batch.maxBatchStatements instead.");
+          maxBatchStatements = config.getInt(MAX_BATCH_SIZE);
+        }
+
+      } else {
+        maxBatchStatements = config.getInt(MAX_BATCH_STATEMENTS);
       }
 
-      if (maxBatchSizeOpt.isPresent() && maxBatchStatementsOpt.isPresent()) {
+      if (maxSizeInBytes <= 0 && maxBatchStatements <= 0) {
         throw new BulkConfigurationException(
-            String.format(
-                "You cannot specify both %s AND %s "
-                    + "consider using %s, because %s is deprecated",
-                MAX_BATCH_SIZE, MAX_BATCH_STATEMENTS, MAX_BATCH_STATEMENTS, MAX_BATCH_SIZE));
+            "At least one of batch.maxSizeInBytes or batch.maxBatchStatements must be positive. "
+                + "See settings.md for more information.");
       }
-
-      if (!maxSizeInBytesOpt.isPresent() && maxBatchStatements <= 0) {
-        throw new BulkConfigurationException(
-            String.format(
-                "Value for batch.maxSizeInBytes (%d) OR buffer.maxBatchStatements (%d) must be positive. "
-                    + "See settings.md for more information.",
-                maxSizeInBytes, maxBatchStatements));
-      }
-      maxSizeInBytes = maxSizeInBytesOpt.orElse(-1L);
 
       int bufferConfig = config.getInt(BUFFER_SIZE);
       bufferSize = bufferConfig > 0 ? bufferConfig : maxBatchStatements;
@@ -113,16 +104,6 @@ public class BatchSettings {
       }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
-    }
-  }
-
-  private <T> Optional<T> loadOptionalConfig(
-      String name, Function<String, T> supplier, Predicate<T> ignoreFilter) {
-    try {
-      return Optional.of(supplier.apply(name)).filter(ignoreFilter);
-    } catch (ConfigException.Missing ex) {
-      LOGGER.trace("cannot load config: ", ex);
-      return Optional.empty();
     }
   }
 
