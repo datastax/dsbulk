@@ -265,7 +265,7 @@ public class DefaultRecordMapper implements RecordMapper {
     int[] indicies = new int[metadata.getClusteringColumns().size()];
     for (ColumnMetadata clusterColumnName : metadata.getClusteringColumns()) {
       indicies[i] =
-          query.getBoundVariables().values().asList().indexOf(clusterColumnName.getName());
+          query.getBoundVariables().keySet().asList().indexOf(clusterColumnName.getName());
       i++;
     }
     return indicies;
