@@ -78,6 +78,7 @@ class DefaultRecordMapperTest {
   private final TypeCodec codec3 = TypeCodec.varchar();
 
   private final int[] pkIndices = {0, 1, 2};
+  private final int[] ccIndices = {};
 
   private final List<String> nullStrings = newArrayList("");
 
@@ -177,6 +178,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -218,6 +220,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -256,6 +259,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -292,6 +296,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -333,6 +338,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -356,6 +362,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             new int[] {0, 2},
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -379,6 +386,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             new int[] {1, 2},
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -401,6 +409,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -427,6 +436,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -452,6 +462,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -475,6 +486,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
@@ -500,6 +512,7 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             pkIndices,
+            ccIndices,
             V4,
             mapping,
             recordMetadata,
