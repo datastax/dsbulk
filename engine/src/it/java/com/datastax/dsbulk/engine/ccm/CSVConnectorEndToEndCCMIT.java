@@ -180,7 +180,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateOutputFiles(24, unloadDir);
   }
 
-  /** Simple test case which attempts to load and unload data using ccm. */
+  /** Test to validate that missing primary keys will fail to load* */
   @Test
   void full_load_missing_primary() throws Exception {
 
@@ -200,10 +200,12 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     args.add("--schema.allowMissingFields");
     args.add("true");
-
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(1);
-    validateResultSetSize(23, SELECT_FROM_IP_BY_COUNTRY);
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    validateBadOps(2, logPath);
+    validateExceptionsLog(2, "Source  :", "mapping-errors.log", logPath);
+    validateResultSetSize(22, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
   }
 
