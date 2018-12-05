@@ -7,8 +7,6 @@ schedules:
         - cassandra: ['dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', '3.11']
     env_vars: |
       TEST_GROUPS="short,medium"
-    notify:
-      slack: dsbulk-dev
   nightly:
     # Run full suite nightly on change for all primary branches if they have changes.
     schedule: nightly
