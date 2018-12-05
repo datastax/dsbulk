@@ -24,8 +24,8 @@ import org.slf4j.LoggerFactory;
 
 public class BatchSettings {
   private static final Logger LOGGER = LoggerFactory.getLogger(BatchSettings.class);
-  public static final Predicate<Integer> GREATER_THAN_ZERO_INT = v -> v > 0;
-  public static final Predicate<Long> GREATER_THAN_ZERO_LONG = v -> v > 0L;
+  private static final Predicate<Integer> GREATER_THAN_ZERO_INT = v -> v > 0;
+  private static final Predicate<Long> GREATER_THAN_ZERO_LONG = v -> v > 0L;
 
   private enum BatchMode {
     DISABLED {
