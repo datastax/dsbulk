@@ -17,17 +17,11 @@ import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkNumb
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkTemporalsWritten;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.*;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_MISSING;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_SPACES;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
@@ -136,6 +130,32 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
+  }
+
+  @Test
+  void full_load_missing_cluster() throws Exception {
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(JSON_RECORDS_UNIQUE_MISSING));
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
+    args.add("--schema.allowMissingFields");
+    args.add("true");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(1);
+    validateResultSetSize(22, SELECT_FROM_IP_BY_COUNTRY);
+    deleteDirectory(logDir);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */

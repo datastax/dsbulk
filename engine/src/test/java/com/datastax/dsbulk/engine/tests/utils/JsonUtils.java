@@ -15,6 +15,8 @@ public class JsonUtils {
   public static final URL JSON_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.json");
   public static final URL JSON_RECORDS_UNIQUE =
       ClassLoader.getSystemResource("ip-by-country-unique.json");
+  public static final URL JSON_RECORDS_UNIQUE_MISSING =
+      ClassLoader.getSystemResource("ip-by-country-unique-missing.json");
   public static final URL JSON_RECORDS_CRLF =
       ClassLoader.getSystemResource("ip-by-country-crlf.json");
   public static final URL JSON_RECORDS_PARTIAL_BAD =

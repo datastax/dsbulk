@@ -15,6 +15,8 @@ public class CsvUtils {
   public static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
   public static final URL CSV_RECORDS_UNIQUE =
       ClassLoader.getSystemResource("ip-by-country-unique.csv");
+  public static final URL CSV_RECORDS_UNIQUE_MISSING =
+      ClassLoader.getSystemResource("ip-by-country-unique-missing.csv");
   public static final URL CSV_RECORDS_HEADER =
       ClassLoader.getSystemResource("ip-by-country-unique-header.csv");
   public static final URL CSV_RECORDS_CRLF =
