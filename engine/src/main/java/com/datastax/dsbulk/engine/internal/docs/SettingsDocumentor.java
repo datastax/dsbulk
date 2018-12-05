@@ -73,7 +73,8 @@ public class SettingsDocumentor {
         out.printf("<a name=\"%s\"></a>%n", groupName);
         out.printf("%s %s Settings%n%n", titleFormat(groupName), prettifyName(groupName));
         if (!groupName.equals("Common")) {
-          out.printf("%s%n%n", getSanitizedDescription(DEFAULT.getValue(groupName)));
+          out.printf(
+              "%s%n%n", getSanitizedDescription(ConfigUtils.getNullSafeValue(DEFAULT, groupName)));
         } else {
           // Emit the help for the "-f" option in the Common section.
           out.printf(
@@ -81,7 +82,7 @@ public class SettingsDocumentor {
               StringUtils.htmlEscape("string"), CONFIG_FILE_OPTION.getDescription());
         }
         for (String settingName : groupEntry.getValue().getSettings()) {
-          ConfigValue settingValue = DEFAULT.getValue(settingName);
+          ConfigValue settingValue = ConfigUtils.getNullSafeValue(DEFAULT, settingName);
           String shortOpt =
               LONG_TO_SHORT_OPTIONS.containsKey(settingName)
                   ? "-" + LONG_TO_SHORT_OPTIONS.get(settingName) + ","

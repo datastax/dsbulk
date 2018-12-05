@@ -234,7 +234,7 @@ public class SettingsUtils {
     }
 
     for (String connectorName : connectorChildren) {
-      ConfigValue child = DEFAULT.getValue("connector." + connectorName);
+      ConfigValue child = ConfigUtils.getNullSafeValue(DEFAULT, "connector." + connectorName);
       if (child.valueType() == ConfigValueType.OBJECT) {
         Config connectorConfig = ((ConfigObject) child).toConfig();
         action.accept(connectorConfig, connectorName);
