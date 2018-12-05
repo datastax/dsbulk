@@ -132,6 +132,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateOutputFiles(24, unloadDir);
   }
 
+  /** Test to validate that missing clustering keys will fail to load* */
   @Test
   void full_load_missing_cluster() throws Exception {
 
@@ -154,6 +155,9 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(1);
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    validateBadOps(2, logPath);
+    validateExceptionsLog(2, "Source  :", "mapping-errors.log", logPath);
     validateResultSetSize(22, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
   }
