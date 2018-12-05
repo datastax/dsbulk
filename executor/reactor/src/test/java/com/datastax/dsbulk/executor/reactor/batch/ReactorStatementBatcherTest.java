@@ -139,23 +139,22 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
         .contains(batch12, batch56, batch34);
   }
 
-  @Disabled("waiting for JAVA-2046")
   @Test
   void should_honor_max_size_in_bytes_reactive() throws Exception {
-    assignRoutingTokens();
-    //    assignSizeOfStatements();
-    ReactorStatementBatcher batcher = new ReactorStatementBatcher(2L);
+    assignRoutingTokensWitSize();
+    ReactorStatementBatcher batcher = new ReactorStatementBatcher(8L);
     Flowable<Statement> statements =
         Flowable.fromPublisher(
-            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+            batcher.batchByGroupingKey(Flowable.just(stmt1WithSize, stmt2WithSize, stmt3WithSize, stmt4WithSize, stmt5WithSize, stmt6WithSize)));
     assertThat(statements.toList().blockingGet())
         .usingFieldByFieldElementComparator()
-        .contains(batch12, batch56, batch34);
+        .contains(batch12WithSize, batch56WithSize, batch34WithSize);
     statements =
         Flowable.fromPublisher(
-            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+            batcher.batchAll(Flowable.just(stmt1WithSize, stmt2WithSize, stmt3WithSize, stmt4WithSize, stmt5WithSize, stmt6WithSize)));
     assertThat(statements.toList().blockingGet())
         .usingFieldByFieldElementComparator()
-        .contains(batch12, batch56, batch34);
+        .contains(batch12WithSize, batch56WithSize, batch34WithSize);
   }
+
 }

@@ -72,7 +72,7 @@ class StatementUtilsTest {
     SimpleStatement statementWithNamedValue =
         new SimpleStatement(
             statement.getQueryString(),
-            ImmutableMap.<String, Object>of("key", "local")); // key not taken into account
+            ImmutableMap.of("key", "local")); // key not taken into account
 
     assertThat(getDataSize(statementWithNamedValue))
         .isEqualTo(

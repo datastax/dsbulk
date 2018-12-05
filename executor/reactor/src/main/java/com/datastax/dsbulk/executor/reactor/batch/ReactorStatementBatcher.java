@@ -13,6 +13,7 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
+import com.datastax.dsbulk.commons.internal.utils.StatementUtils;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import java.util.function.Predicate;
 import org.reactivestreams.Publisher;
@@ -219,8 +220,8 @@ public class ReactorStatementBatcher extends StatementBatcher {
     }
   }
 
-  private int calculateSize(Statement statement) {
-    return statement.requestSizeInBytes(protocolVersion, codecRegistry);
+  private long calculateSize(Statement statement) {
+    return StatementUtils.getDataSize(statement, protocolVersion, codecRegistry);
   }
 
   private int getMaxBatchStatements() {

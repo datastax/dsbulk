@@ -25,10 +25,12 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.Token;
 import com.datastax.driver.core.utils.Bytes;
 import com.google.common.collect.Sets;
+
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -55,6 +57,19 @@ public class StatementBatcherTest {
   protected BatchStatement batch1256 =
       new BatchStatement(UNLOGGED).add(stmt1).add(stmt2).add(stmt5).add(stmt6);
   protected BatchStatement batch34 = new BatchStatement(UNLOGGED).add(stmt3).add(stmt4);
+
+  protected SimpleStatement stmt1WithSize = new SimpleStatement("stmt1", "abcd").setKeyspace("ks");
+  protected SimpleStatement stmt2WithSize = new SimpleStatement("stmt2", "efgh").setKeyspace("ks");
+  protected SimpleStatement stmt3WithSize = new SimpleStatement("stmt3", "ijkl").setKeyspace("ks");
+  protected SimpleStatement stmt4WithSize = new SimpleStatement("stmt4", "jklm").setKeyspace("ks");
+  protected SimpleStatement stmt5WithSize = new SimpleStatement("stmt5", "klmn").setKeyspace("ks");
+  protected SimpleStatement stmt6WithSize = new SimpleStatement("stmt6", "lmno").setKeyspace("ks");
+
+  protected BatchStatement batch34WithSize = new BatchStatement(UNLOGGED).add(stmt3WithSize).add(stmt4WithSize);
+  protected BatchStatement batch56WithSize = new BatchStatement(UNLOGGED).add(stmt5WithSize).add(stmt6WithSize);
+  protected BatchStatement batch12WithSize = new BatchStatement(UNLOGGED).add(stmt1WithSize).add(stmt2WithSize);
+  protected BatchStatement batch1256WithSize =
+      new BatchStatement(UNLOGGED).add(stmt1WithSize).add(stmt2WithSize).add(stmt5WithSize).add(stmt6WithSize);
 
   protected Cluster cluster;
 
@@ -205,4 +220,14 @@ public class StatementBatcherTest {
     stmt5.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
     stmt6.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
   }
+
+  protected void assignRoutingTokensWitSize() {
+    stmt1WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
+    stmt2WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
+    stmt3WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token2);
+    stmt4WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token2);
+    stmt5WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
+    stmt6WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
+  }
+
 }
