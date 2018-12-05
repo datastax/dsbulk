@@ -70,6 +70,9 @@ public class StatementBatcherTest {
   protected BatchStatement batch12WithSize = new BatchStatement(UNLOGGED).add(stmt1WithSize).add(stmt2WithSize);
   protected BatchStatement batch1256WithSize =
       new BatchStatement(UNLOGGED).add(stmt1WithSize).add(stmt2WithSize).add(stmt5WithSize).add(stmt6WithSize);
+  protected BatchStatement batch123456WithSize =
+      new BatchStatement(UNLOGGED).add(stmt1WithSize)
+          .add(stmt2WithSize).add(stmt3WithSize).add(stmt4WithSize).add(stmt5WithSize).add(stmt6WithSize);
 
   protected Cluster cluster;
 
