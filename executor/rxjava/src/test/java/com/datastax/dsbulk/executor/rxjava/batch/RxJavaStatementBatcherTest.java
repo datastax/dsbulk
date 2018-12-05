@@ -127,20 +127,210 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_honor_max_batch_size_reactive() throws Exception {
-    assignRoutingTokens();
-    RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(2);
+  void should_honor_max_size_in_bytes_reactive() throws Exception {
+    assignRoutingTokensWitSize();
+    RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(8L);
     Flowable<Statement> statements =
         Flowable.fromPublisher(
-            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+            batcher.batchByGroupingKey(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
     assertThat(statements.toList().blockingGet())
         .usingFieldByFieldElementComparator()
-        .contains(batch12, batch56, batch34);
+        .contains(batch12WithSize, batch56WithSize, batch34WithSize);
     statements =
         Flowable.fromPublisher(
-            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+            batcher.batchAll(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
     assertThat(statements.toList().blockingGet())
         .usingFieldByFieldElementComparator()
-        .contains(batch12, batch56, batch34);
+        .contains(batch12WithSize, batch56WithSize, batch34WithSize);
+  }
+
+  @Test
+  void should_buffer_until_last_element_if_max_size_in_bytes_high() throws Exception {
+    assignRoutingTokensWitSize();
+    RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(1000);
+    Flowable<Statement> statements =
+        Flowable.fromPublisher(
+            batcher.batchByGroupingKey(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch1256WithSize, batch34WithSize);
+    statements =
+        Flowable.fromPublisher(
+            batcher.batchAll(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch123456WithSize);
+  }
+
+  @Test
+  void should_buffer_by_max_size_in_bytes_if_satisfy_before_max_batch_statements_reactive()
+      throws Exception {
+    assignRoutingTokensWitSize();
+    RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(10, 8L);
+    Flowable<Statement> statements =
+        Flowable.fromPublisher(
+            batcher.batchByGroupingKey(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch12WithSize, batch56WithSize, batch34WithSize);
+    statements =
+        Flowable.fromPublisher(
+            batcher.batchAll(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch12WithSize, batch56WithSize, batch34WithSize);
+  }
+
+  @Test
+  void should_buffer_by_max_max_batch_statements_if_satisfy_max_size_in_bytes_reactive()
+      throws Exception {
+    assignRoutingTokensWitSize();
+    RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(1, 8L);
+    Flowable<Statement> statements =
+        Flowable.fromPublisher(
+            batcher.batchByGroupingKey(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    statements =
+        Flowable.fromPublisher(
+            batcher.batchAll(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+  }
+
+  @Test
+  void should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_high()
+      throws Exception {
+    assignRoutingTokensWitSize();
+    RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(100, 1000);
+    Flowable<Statement> statements =
+        Flowable.fromPublisher(
+            batcher.batchByGroupingKey(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch1256WithSize, batch34WithSize);
+    statements =
+        Flowable.fromPublisher(
+            batcher.batchAll(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch123456WithSize);
+  }
+
+  @Test
+  void should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_negative()
+      throws Exception {
+    assignRoutingTokensWitSize();
+    RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(-1, -1);
+    Flowable<Statement> statements =
+        Flowable.fromPublisher(
+            batcher.batchByGroupingKey(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch1256WithSize, batch34WithSize);
+    statements =
+        Flowable.fromPublisher(
+            batcher.batchAll(
+                Flowable.just(
+                    stmt1WithSize,
+                    stmt2WithSize,
+                    stmt3WithSize,
+                    stmt4WithSize,
+                    stmt5WithSize,
+                    stmt6WithSize)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch123456WithSize);
   }
 }

@@ -25,12 +25,10 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.Token;
 import com.datastax.driver.core.utils.Bytes;
 import com.google.common.collect.Sets;
-
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -65,14 +63,26 @@ public class StatementBatcherTest {
   protected SimpleStatement stmt5WithSize = new SimpleStatement("stmt5", "klmn").setKeyspace("ks");
   protected SimpleStatement stmt6WithSize = new SimpleStatement("stmt6", "lmno").setKeyspace("ks");
 
-  protected BatchStatement batch34WithSize = new BatchStatement(UNLOGGED).add(stmt3WithSize).add(stmt4WithSize);
-  protected BatchStatement batch56WithSize = new BatchStatement(UNLOGGED).add(stmt5WithSize).add(stmt6WithSize);
-  protected BatchStatement batch12WithSize = new BatchStatement(UNLOGGED).add(stmt1WithSize).add(stmt2WithSize);
+  protected BatchStatement batch34WithSize =
+      new BatchStatement(UNLOGGED).add(stmt3WithSize).add(stmt4WithSize);
+  protected BatchStatement batch56WithSize =
+      new BatchStatement(UNLOGGED).add(stmt5WithSize).add(stmt6WithSize);
+  protected BatchStatement batch12WithSize =
+      new BatchStatement(UNLOGGED).add(stmt1WithSize).add(stmt2WithSize);
   protected BatchStatement batch1256WithSize =
-      new BatchStatement(UNLOGGED).add(stmt1WithSize).add(stmt2WithSize).add(stmt5WithSize).add(stmt6WithSize);
+      new BatchStatement(UNLOGGED)
+          .add(stmt1WithSize)
+          .add(stmt2WithSize)
+          .add(stmt5WithSize)
+          .add(stmt6WithSize);
   protected BatchStatement batch123456WithSize =
-      new BatchStatement(UNLOGGED).add(stmt1WithSize)
-          .add(stmt2WithSize).add(stmt3WithSize).add(stmt4WithSize).add(stmt5WithSize).add(stmt6WithSize);
+      new BatchStatement(UNLOGGED)
+          .add(stmt1WithSize)
+          .add(stmt2WithSize)
+          .add(stmt3WithSize)
+          .add(stmt4WithSize)
+          .add(stmt5WithSize)
+          .add(stmt6WithSize);
 
   protected Cluster cluster;
 
@@ -232,5 +242,4 @@ public class StatementBatcherTest {
     stmt5WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
     stmt6WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
   }
-
 }

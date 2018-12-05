@@ -183,7 +183,6 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * @return A {@link Flux} of batched statements.
    */
   public Flux<? extends Statement> batchAll(Publisher<? extends Statement> statements) {
-
     return Flux.from(statements)
         .cast(Statement.class)
         .windowUntil(new AdaptiveSizingBatchPredicate(), false)
