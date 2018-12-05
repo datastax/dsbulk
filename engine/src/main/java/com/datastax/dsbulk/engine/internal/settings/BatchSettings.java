@@ -99,7 +99,7 @@ public class BatchSettings {
                     + "See settings.md for more information.",
                 maxSizeInBytes, maxBatchStatements));
       }
-      maxSizeInBytes = maxSizeInBytesOpt.orElse(StatementBatcher.DEFAULT_MAX_SIZE_BYTES);
+      maxSizeInBytes = maxSizeInBytesOpt.orElse(-1L);
 
       int bufferConfig = config.getInt(BUFFER_SIZE);
       bufferSize = bufferConfig > 0 ? bufferConfig : maxBatchStatements;

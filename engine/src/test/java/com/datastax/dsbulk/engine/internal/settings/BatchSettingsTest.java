@@ -294,4 +294,20 @@ class BatchSettingsTest {
     assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(1L);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(10);
   }
+
+  @Test
+  void should_load_config_and_set_max_size_in_bytes_to_default_when_not_supplied() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                "mode: PARTITION_KEY, bufferSize = 10, maxBatchStatements = 10"));
+    BatchSettings settings = new BatchSettings(config);
+    settings.init();
+    assertThat(settings.getMaxSizeInBytes()).isEqualTo(-1L);
+    assertThat(settings.getMaxBatchStatements()).isEqualTo(10);
+    ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
+    assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
+    assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(-1L);
+    assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(10);
+  }
 }
