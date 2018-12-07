@@ -12,6 +12,7 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -207,7 +208,7 @@ class DataStaxBulkLoaderTest {
   void should_respect_custom_config_file() throws Exception {
     {
       Path f = Files.createTempFile(tempFolder, "myapp", ".conf");
-      Files.write(f, "dsbulk.connector.name=junk".getBytes("UTF-8"));
+      Files.write(f, "dsbulk.connector.name=junk".getBytes(UTF_8));
       new DataStaxBulkLoader(new String[] {"load", "-f", f.toString()}).run();
       String err = logs.getAllMessagesAsString();
       assertThat(err)
@@ -222,7 +223,7 @@ class DataStaxBulkLoaderTest {
           ("dsbulk.connector.csv.url=/path/to/my/file\n"
                   + "dsbulk.schema.query=INSERT\n"
                   + "dsbulk.driver.socket.readTimeout=wonky")
-              .getBytes("UTF-8"));
+              .getBytes(UTF_8));
       new DataStaxBulkLoader(new String[] {"load", "-f", f.toString()}).run();
       String err = logs.getAllMessagesAsString();
       assertThat(err)
@@ -234,7 +235,7 @@ class DataStaxBulkLoaderTest {
     {
       Path f = Files.createTempFile(Paths.get(System.getProperty("user.home")), "myapp", ".conf");
       f.toFile().deleteOnExit();
-      Files.write(f, "dsbulk.connector.name=foo".getBytes("UTF-8"));
+      Files.write(f, "dsbulk.connector.name=foo".getBytes(UTF_8));
       new DataStaxBulkLoader(new String[] {"load", "-f", "~/" + f.getFileName().toString()}).run();
       String err = logs.getAllMessagesAsString();
       assertThat(err)
@@ -263,7 +264,7 @@ class DataStaxBulkLoaderTest {
   @Test
   void should_accept_connector_name_in_args_over_config_file() throws Exception {
     Path f = Files.createTempFile(tempFolder, "myapp", ".conf");
-    Files.write(f, "dsbulk.connector.name=junk".getBytes("UTF-8"));
+    Files.write(f, "dsbulk.connector.name=junk".getBytes(UTF_8));
     new DataStaxBulkLoader(new String[] {"load", "-c", "fromargs", "-f", f.toString()}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
@@ -991,8 +992,14 @@ class DataStaxBulkLoaderTest {
   }
 
   private void assertGlobalHelp(boolean jsonOnly) {
-    CharSequence out = new AnsiString(stdOut.getStreamAsString()).getPlain();
+    String out =
+        new AnsiString(stdOut.getStreamAsString()).getPlain().toString().replaceAll("[\\s]+", " ");
     assertThat(out).contains(HelpUtils.getVersionMessage());
+
+    for (WorkflowType workflowType : WorkflowType.values()) {
+      assertThat(out).contains(workflowType.getTitle());
+      assertThat(out).contains(workflowType.getDescription());
+    }
 
     // The following assures us that we're looking at global help, not section help.
     assertThat(out).contains("GETTING MORE HELP");

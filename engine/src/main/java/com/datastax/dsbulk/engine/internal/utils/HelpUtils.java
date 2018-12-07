@@ -23,7 +23,6 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -75,7 +74,7 @@ public class HelpUtils {
           "This section has the following subsections you may be interested in:\n    "
               + String.join("\n    ", subSections);
     }
-    emitHelp(options, footer);
+    emitHelp(options, footer, sectionName);
   }
 
   public static void emitGlobalHelp(String connectorName) {
@@ -99,13 +98,15 @@ public class HelpUtils {
         "GETTING MORE HELP\n\nThere are many more settings/options that may be used to "
             + "customize behavior. Run the `help` command with one of the following section "
             + "names for more details:\n    "
-            + String.join("\n    ", getGroupNames());
-    emitHelp(options, footer);
+            + String.join("\n    ", getGroupNames())
+            + "\n\nYou can also find more help at "
+            + "https://docs.datastax.com/en/dsbulk/doc/index.html.";
+    emitHelp(options, footer, null);
   }
 
-  private static void emitHelp(Options options, String footer) {
+  private static void emitHelp(Options options, String footer, String sectionName) {
     AnsiConsole.systemInstall();
-    HelpEmitter helpEmitter = new HelpEmitter(options);
+    HelpEmitter helpEmitter = new HelpEmitter(options, sectionName);
     helpEmitter.emit(footer);
   }
 
@@ -161,52 +162,72 @@ public class HelpUtils {
 
   private static class HelpEmitter {
 
-    private static final Ansi HEADER =
-        Ansi.ansi()
-            .a("Usage: ")
-            .fgRed()
-            .format(
-                "dsbulk (%s) [options]",
-                Arrays.stream(WorkflowType.values())
-                    .map(e -> e.name().toLowerCase())
-                    .collect(Collectors.joining("|")))
-            .newline()
-            .a("       dsbulk help [section]")
-            .reset()
-            .newline()
-            .a("Options:");
-
     private static final int INDENT = 4;
 
     private final Set<Option> options = new TreeSet<>(new PriorityComparator(PREFERRED_SETTINGS));
+    private final String sectionName;
 
-    HelpEmitter(Options options) {
+    HelpEmitter(Options options, String sectionName) {
+      this.sectionName = sectionName;
       this.options.addAll(options.getOptions());
     }
 
     void emit(String footer) {
       System.out.println(getVersionMessage());
-      System.out.println(HEADER);
-      for (Option option : options) {
+
+      if (sectionName == null) {
+        Ansi header =
+            Ansi.ansi()
+                .a("Usage: ")
+                .fgRed()
+                .a("dsbulk <command> [options]")
+                .newline()
+                .a("       dsbulk help [section]")
+                .reset()
+                .newline();
+        System.out.println(header);
+
+        Ansi commands = Ansi.ansi().a("Available commands:").reset().newline().newline();
+        for (WorkflowType workflowType : WorkflowType.values()) {
+          commands = commands.fgCyan().a(workflowType.getTitle()).reset().a(":").newline();
+          commands = renderWrappedText(commands, workflowType.getDescription());
+          commands = commands.newline();
+        }
+        System.out.println(commands);
+
+        Ansi options = Ansi.ansi().a("Common options:").reset().newline();
+        System.out.println(options);
+
+      } else {
+        Ansi header =
+            Ansi.ansi()
+                .a("Help for section: ")
+                .fgRed()
+                .a(sectionName)
+                .reset()
+                .a(" (run `dsbulk help` to get the global help).")
+                .newline();
+        System.out.println(header);
+        Ansi options = Ansi.ansi().a("Options in this section:").reset().newline();
+        System.out.println(options);
+      }
+
+      for (Option option : this.options) {
         String shortOpt = option.getOpt();
         String longOpt = option.getLongOpt();
         Ansi message = Ansi.ansi();
         if (shortOpt != null) {
-          message.fgCyan().a("-");
-          message.a(shortOpt);
+          message = message.fgCyan().a("-").a(shortOpt);
           if (longOpt != null) {
-            message.reset().a(", ");
+            message = message.reset().a(", ");
           }
         }
         if (longOpt != null) {
-          message.fgGreen().a("--");
-          message.a(longOpt).reset();
+          message = message.fgGreen().a("--").a(longOpt).reset();
         }
-        message.fgYellow().a(" <");
-        message.a(option.getArgName());
-        message.a(">").reset().newline();
+        message = message.fgYellow().a(" <").a(option.getArgName()).a(">").reset().newline();
         message = renderWrappedText(message, option.getDescription());
-        message.newline();
+        message = message.newline();
         System.out.print(message.toString());
       }
       if (footer != null) {
@@ -214,23 +235,23 @@ public class HelpUtils {
       }
     }
 
-    private int findWrapPos(String description, int lineLength) {
+    private int findWrapPos(String description) {
       // NB: Adapted from commons-cli HelpFormatter.findWrapPos
 
       // The line ends before the max wrap pos or a new line char found
       int pos = description.indexOf('\n');
-      if (pos != -1 && pos <= lineLength) {
+      if (pos != -1 && pos <= LINE_LENGTH) {
         return pos + 1;
       }
 
       // The remainder of the description (starting at startPos) fits on
       // one line.
-      if (lineLength >= description.length()) {
+      if (LINE_LENGTH >= description.length()) {
         return -1;
       }
 
       // Look for the last whitespace character before startPos + LINE_LENGTH
-      for (pos = lineLength; pos >= 0; --pos) {
+      for (pos = LINE_LENGTH; pos >= 0; --pos) {
         char c = description.charAt(pos);
         if (c == ' ' || c == '\n' || c == '\r') {
           break;
@@ -243,7 +264,7 @@ public class HelpUtils {
       }
 
       // If we didn't find one, simply chop at LINE_LENGTH
-      return lineLength;
+      return LINE_LENGTH;
     }
 
     private Ansi renderWrappedText(Ansi message, String text) {
@@ -262,18 +283,18 @@ public class HelpUtils {
 
       while (true) {
         text = padding + text.substring(pos).trim();
-        pos = findWrapPos(text, LINE_LENGTH);
+        pos = findWrapPos(text);
 
         if (pos == -1) {
-          message.a(text).newline();
-          return message;
+          return message.a(text).newline();
         }
 
         if (text.length() > LINE_LENGTH && pos == indent - 1) {
           pos = LINE_LENGTH;
         }
 
-        message.a(CharMatcher.whitespace().trimTrailingFrom(text.substring(0, pos))).newline();
+        message =
+            message.a(CharMatcher.whitespace().trimTrailingFrom(text.substring(0, pos))).newline();
       }
     }
 
@@ -292,7 +313,7 @@ public class HelpUtils {
 
           text = text.trim();
         }
-        pos = findWrapPos(text, LINE_LENGTH);
+        pos = findWrapPos(text);
 
         if (pos == -1) {
           System.out.println(text);
