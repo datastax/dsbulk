@@ -7,6 +7,7 @@
 - [new feature] DAT-354: Add Basic NGDG support to DSBulk Engine.
 - [improvement] DAT-362: Improve readability of error messages printed to the console.
 - [bug] DAT-339: CSV connector trims trailing whitespace when reading data.
+- [improvement] DAT-344: Expose settings to control how to interpret empty fields in CSV files.
 - [improvement] DAT-305: DSBulk help should show description of available commands.
 
 

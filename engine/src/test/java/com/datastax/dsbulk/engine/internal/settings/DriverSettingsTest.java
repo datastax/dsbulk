@@ -638,7 +638,7 @@ class DriverSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    "auth.provider = DseGSSAPIAuthProvider, auth.saslService = \"\"")
+                    "auth.provider = DseGSSAPIAuthProvider, auth.saslService = null")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(settings::init)

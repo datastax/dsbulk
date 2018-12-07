@@ -139,7 +139,7 @@ public class JsonConnector implements Connector {
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
-      if (!settings.hasPath(URL)) {
+      if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {
         throw new BulkConfigurationException(
             "An URL is mandatory when using the json connector. Please set connector.json.url "
                 + "and try again. See settings.md or help for more information.");

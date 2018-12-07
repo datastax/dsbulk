@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.CONFIG_FIL
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
 import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.PREFERRED_SETTINGS;
 
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
@@ -152,7 +153,9 @@ public class HelpUtils {
     for (String setting : settings) {
       options.addOption(
           OptionUtils.createOption(
-              setting, DataStaxBulkLoader.DEFAULT.getValue(setting), longToShortOptions));
+              setting,
+              ConfigUtils.getNullSafeValue(DataStaxBulkLoader.DEFAULT, setting),
+              longToShortOptions));
     }
     return options;
   }

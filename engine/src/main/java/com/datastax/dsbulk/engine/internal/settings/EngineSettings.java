@@ -28,7 +28,7 @@ public class EngineSettings {
   public void init() {
     try {
       dryRun = config.getBoolean(DRY_RUN);
-      executionId = config.getString(EXECUTION_ID);
+      executionId = config.hasPath(EXECUTION_ID) ? config.getString(EXECUTION_ID) : null;
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
     }

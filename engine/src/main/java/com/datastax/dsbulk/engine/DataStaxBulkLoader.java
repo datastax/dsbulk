@@ -309,7 +309,7 @@ public class DataStaxBulkLoader {
       }
       String path = option.getLongOpt();
       String value = option.getValue();
-      ConfigValueType type = DEFAULT.getValue(path).valueType();
+      ConfigValueType type = ConfigUtils.getValueType(DEFAULT, path);
       try {
         // all user input is expected to be already valid HOCON;
         // however we accept a relaxed syntax for strings, lists and maps.
