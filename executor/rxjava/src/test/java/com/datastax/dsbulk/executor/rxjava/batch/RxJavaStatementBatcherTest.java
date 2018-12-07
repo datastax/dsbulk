@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 class RxJavaStatementBatcherTest extends StatementBatcherTest {
 
   @Test
-  void should_batch_by_routing_key_reactive() throws Exception {
+  void should_batch_by_routing_key_reactive() {
     assignRoutingKeys();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher();
     Flowable<Statement> statements =
@@ -36,7 +36,7 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_routing_token_reactive() throws Exception {
+  void should_batch_by_routing_token_reactive() {
     assignRoutingTokens();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher();
     Flowable<Statement> statements =
@@ -48,7 +48,7 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_replica_set_and_routing_key_reactive() throws Exception {
+  void should_batch_by_replica_set_and_routing_key_reactive() {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -65,7 +65,7 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_replica_set_and_routing_token_reactive() throws Exception {
+  void should_batch_by_replica_set_and_routing_token_reactive() {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -82,7 +82,7 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_routing_key_when_replica_set_info_not_available_reactive() throws Exception {
+  void should_batch_by_routing_key_when_replica_set_info_not_available_reactive() {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -99,8 +99,7 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_routing_token_when_replica_set_info_not_available_reactive()
-      throws Exception {
+  void should_batch_by_routing_token_when_replica_set_info_not_available_reactive() {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -117,7 +116,7 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_all_reactive() throws Exception {
+  void should_batch_all_reactive() {
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher();
     Flowable<Statement> statements =
         Flowable.fromPublisher(
@@ -127,7 +126,25 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_honor_max_size_in_bytes_reactive() throws Exception {
+  void should_honor_max_batch_statements_reactive() {
+    assignRoutingTokens();
+    RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(2);
+    Flowable<Statement> statements =
+        Flowable.fromPublisher(
+            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch12, batch56, batch34);
+    statements =
+        Flowable.fromPublisher(
+            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
+    assertThat(statements.toList().blockingGet())
+        .usingFieldByFieldElementComparator()
+        .contains(batch12, batch56, batch34);
+  }
+
+  @Test
+  void should_honor_max_size_in_bytes_reactive() {
     assignRoutingTokensWitSize();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(8L);
     Flowable<Statement> statements =
@@ -159,7 +176,7 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_buffer_until_last_element_if_max_size_in_bytes_high() throws Exception {
+  void should_buffer_until_last_element_if_max_size_in_bytes_high_reactive() {
     assignRoutingTokensWitSize();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(1000);
     Flowable<Statement> statements =
@@ -191,8 +208,7 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_buffer_by_max_size_in_bytes_if_satisfy_before_max_batch_statements_reactive()
-      throws Exception {
+  void should_buffer_by_max_size_in_bytes_if_satisfied_before_max_batch_statements_reactive() {
     assignRoutingTokensWitSize();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(10, 8L);
     Flowable<Statement> statements =
@@ -224,8 +240,7 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_buffer_by_max_max_batch_statements_if_satisfy_max_size_in_bytes_reactive()
-      throws Exception {
+  void should_buffer_by_max_batch_statements_if_satisfied_before_max_size_in_bytes_reactive() {
     assignRoutingTokensWitSize();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(1, 8L);
     Flowable<Statement> statements =
@@ -269,8 +284,8 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_high()
-      throws Exception {
+  void
+      should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_high_reactive() {
     assignRoutingTokensWitSize();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(100, 1000);
     Flowable<Statement> statements =
@@ -302,8 +317,8 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_negative()
-      throws Exception {
+  void
+      should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_negative_reactive() {
     assignRoutingTokensWitSize();
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(-1, -1);
     Flowable<Statement> statements =

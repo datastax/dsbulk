@@ -25,7 +25,7 @@ import reactor.core.publisher.Flux;
 class ReactorStatementBatcherTest extends StatementBatcherTest {
 
   @Test
-  void should_batch_by_routing_key_reactive() throws Exception {
+  void should_batch_by_routing_key_reactive() {
     assignRoutingKeys();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher();
     Flux<Statement> statements =
@@ -36,7 +36,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_routing_token_reactive() throws Exception {
+  void should_batch_by_routing_token_reactive() {
     assignRoutingTokens();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher();
     Flux<Statement> statements =
@@ -47,7 +47,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_replica_set_and_routing_key_reactive() throws Exception {
+  void should_batch_by_replica_set_and_routing_key_reactive() {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -63,7 +63,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_replica_set_and_routing_token_reactive() throws Exception {
+  void should_batch_by_replica_set_and_routing_token_reactive() {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -79,7 +79,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_routing_key_when_replica_set_info_not_available_reactive() throws Exception {
+  void should_batch_by_routing_key_when_replica_set_info_not_available_reactive() {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -95,8 +95,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_routing_token_when_replica_set_info_not_available_reactive()
-      throws Exception {
+  void should_batch_by_routing_token_when_replica_set_info_not_available_reactive() {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -112,7 +111,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_batch_all_reactive() throws Exception {
+  void should_batch_all_reactive() {
     ReactorStatementBatcher batcher = new ReactorStatementBatcher();
     Flux<Statement> statements =
         Flux.from(batcher.batchAll(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
@@ -121,7 +120,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_honor_max_batch_size_reactive() throws Exception {
+  void should_honor_max_batch_statements_reactive() {
     assignRoutingTokens();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(2);
     Flowable<Statement> statements =
@@ -139,7 +138,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_honor_max_size_in_bytes_reactive() throws Exception {
+  void should_honor_max_size_in_bytes_reactive() {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(8L);
     Flowable<Statement> statements =
@@ -171,7 +170,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_buffer_until_last_element_if_max_size_in_bytes_high() throws Exception {
+  void should_buffer_until_last_element_if_max_size_in_bytes_high_reactive() {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(1000);
     Flowable<Statement> statements =
@@ -203,8 +202,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_buffer_by_max_size_in_bytes_if_satisfy_before_max_batch_statements_reactive()
-      throws Exception {
+  void should_buffer_by_max_size_in_bytes_if_satisfied_before_max_batch_statements_reactive() {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(10, 8L);
     Flowable<Statement> statements =
@@ -236,8 +234,7 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_buffer_by_max_max_batch_statements_if_satisfy_max_size_in_bytes_reactive()
-      throws Exception {
+  void should_buffer_by_max_batch_statements_if_satisfied_before_max_size_in_bytes_reactive() {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(1, 8L);
     Flowable<Statement> statements =
@@ -281,8 +278,8 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_high()
-      throws Exception {
+  void
+      should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_high_reactive() {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(100, 1000);
     Flowable<Statement> statements =
@@ -314,8 +311,8 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
   }
 
   @Test
-  void should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_negative()
-      throws Exception {
+  void
+      should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_negative_reactive() {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(-1, -1);
     Flowable<Statement> statements =

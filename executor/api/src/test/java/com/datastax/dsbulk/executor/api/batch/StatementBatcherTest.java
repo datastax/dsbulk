@@ -95,7 +95,7 @@ public class StatementBatcherTest {
   protected Set<Host> replicaSet2 = Sets.newHashSet(host2, host3, host4);
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
     cluster = Mockito.mock(Cluster.class);
     Configuration configuration = Mockito.mock(Configuration.class);
     ProtocolOptions protocolOptions = Mockito.mock(ProtocolOptions.class);
@@ -106,7 +106,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_routing_key() throws Exception {
+  void should_batch_by_routing_key() {
     assignRoutingKeys();
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements =
@@ -115,7 +115,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_routing_token() throws Exception {
+  void should_batch_by_routing_token() {
     assignRoutingTokens();
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements =
@@ -124,7 +124,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_replica_set_and_routing_key() throws Exception {
+  void should_batch_by_replica_set_and_routing_key() {
     assignRoutingKeys();
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(cluster.getMetadata()).thenReturn(metadata);
@@ -138,7 +138,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_replica_set_and_routing_token() throws Exception {
+  void should_batch_by_replica_set_and_routing_token() {
     assignRoutingTokens();
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(cluster.getMetadata()).thenReturn(metadata);
@@ -152,7 +152,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_routing_key_when_replica_set_info_not_available() throws Exception {
+  void should_batch_by_routing_key_when_replica_set_info_not_available() {
     assignRoutingKeys();
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(cluster.getMetadata()).thenReturn(metadata);
@@ -166,7 +166,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  void should_batch_by_routing_token_when_replica_set_info_not_available() throws Exception {
+  void should_batch_by_routing_token_when_replica_set_info_not_available() {
     assignRoutingTokens();
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(cluster.getMetadata()).thenReturn(metadata);
@@ -180,7 +180,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  void should_batch_all() throws Exception {
+  void should_batch_all() {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements).hasSize(1);
@@ -190,14 +190,14 @@ public class StatementBatcherTest {
   }
 
   @Test
-  void should_not_batch_one_statement_when_batching_by_routing_key() throws Exception {
+  void should_not_batch_one_statement_when_batching_by_routing_key() {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements = batcher.batchByGroupingKey(stmt1);
     assertThat(statements).containsOnly(stmt1);
   }
 
   @Test
-  void should_not_batch_one_statement_when_batching_all() throws Exception {
+  void should_not_batch_one_statement_when_batching_all() {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement> statements = batcher.batchAll(stmt1);
     assertThat(statements).hasSize(1);
@@ -206,7 +206,7 @@ public class StatementBatcherTest {
   }
 
   @Test
-  void should_honor_max_batch_size() throws Exception {
+  void should_honor_max_statements_in_batch() {
     assignRoutingTokens();
     StatementBatcher batcher = new StatementBatcher(2);
     List<Statement> statements =
@@ -214,6 +214,180 @@ public class StatementBatcherTest {
     assertThat(statements).usingFieldByFieldElementComparator().contains(batch12, batch56, batch34);
     statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements).usingFieldByFieldElementComparator().contains(batch12, batch56, batch34);
+  }
+
+  @Test
+  void should_honor_max_size_in_bytes() {
+    assignRoutingTokensWitSize();
+    StatementBatcher batcher = new StatementBatcher(8L);
+    List<Statement> statements =
+        batcher.batchByGroupingKey(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements)
+        .usingFieldByFieldElementComparator()
+        .contains(batch12WithSize, batch56WithSize, batch34WithSize);
+    statements =
+        batcher.batchAll(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements)
+        .usingFieldByFieldElementComparator()
+        .contains(batch12WithSize, batch56WithSize, batch34WithSize);
+  }
+
+  @Test
+  void should_buffer_until_last_element_if_max_size_in_bytes_high() {
+    assignRoutingTokensWitSize();
+    StatementBatcher batcher = new StatementBatcher(1000);
+    List<Statement> statements =
+        batcher.batchByGroupingKey(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements)
+        .usingFieldByFieldElementComparator()
+        .contains(batch1256WithSize, batch34WithSize);
+    statements =
+        batcher.batchAll(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch123456WithSize);
+  }
+
+  @Test
+  void should_buffer_by_max_size_in_bytes_if_satisfied_before_max_batch_statements() {
+    assignRoutingTokensWitSize();
+    StatementBatcher batcher = new StatementBatcher(10, 8L);
+    List<Statement> statements =
+        batcher.batchByGroupingKey(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements)
+        .usingFieldByFieldElementComparator()
+        .contains(batch12WithSize, batch56WithSize, batch34WithSize);
+    statements =
+        batcher.batchAll(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements)
+        .usingFieldByFieldElementComparator()
+        .contains(batch12WithSize, batch56WithSize, batch34WithSize);
+  }
+
+  @Test
+  void should_buffer_by_max_batch_statements_if_satisfied_before_max_size_in_bytes() {
+    assignRoutingTokensWitSize();
+    StatementBatcher batcher = new StatementBatcher(1, 8L);
+    List<Statement> statements =
+        batcher.batchByGroupingKey(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements)
+        .usingFieldByFieldElementComparator()
+        .contains(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    statements =
+        batcher.batchAll(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements)
+        .usingFieldByFieldElementComparator()
+        .contains(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+  }
+
+  @Test
+  void should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_high() {
+    assignRoutingTokensWitSize();
+    StatementBatcher batcher = new StatementBatcher(100, 1000);
+    List<Statement> statements =
+        batcher.batchByGroupingKey(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements)
+        .usingFieldByFieldElementComparator()
+        .contains(batch1256WithSize, batch34WithSize);
+    statements =
+        batcher.batchAll(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch123456WithSize);
+  }
+
+  @Test
+  void should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_negative() {
+    assignRoutingTokensWitSize();
+    StatementBatcher batcher = new StatementBatcher(-1, -1);
+    List<Statement> statements =
+        batcher.batchByGroupingKey(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements)
+        .usingFieldByFieldElementComparator()
+        .contains(batch1256WithSize, batch34WithSize);
+    statements =
+        batcher.batchAll(
+            stmt1WithSize,
+            stmt2WithSize,
+            stmt3WithSize,
+            stmt4WithSize,
+            stmt5WithSize,
+            stmt6WithSize);
+    assertThat(statements).usingFieldByFieldElementComparator().contains(batch123456WithSize);
   }
 
   protected void assignRoutingKeys() {

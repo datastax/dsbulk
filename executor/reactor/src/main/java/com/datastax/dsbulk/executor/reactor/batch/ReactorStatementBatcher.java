@@ -13,9 +13,8 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
-import com.datastax.dsbulk.commons.internal.utils.StatementUtils;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
-import java.util.function.Predicate;
+import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
@@ -28,7 +27,8 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
    * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
    * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It also uses the
-   * default maximum batch size (100).
+   * default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the
+   * default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    */
   public ReactorStatementBatcher() {}
 
@@ -37,10 +37,12 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
    * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
-   * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It uses the given
-   * maximum batch size.
+   * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance and the default
+   * {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited). It uses the given
+   * maximum number of statements.
    *
-   * @param maxBatchStatements The maximum number of statements in a batch
+   * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
+   *     negative value, the number of statements is considered unlimited.
    */
   public ReactorStatementBatcher(int maxBatchStatements) {
     super(maxBatchStatements);
@@ -51,10 +53,12 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
    * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
-   * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It uses the given
-   * maximum size in bytes.
+   * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance and the default
+   * {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100). It uses the
+   * given maximum data size in bytes.
    *
-   * @param maxSizeInBytes The maximum size in bytes of a batch.
+   * @param maxSizeInBytes The maximum number of bytes of data in one batch. If set to zero or any
+   *     negative value, the data size is considered unlimited.
    */
   public ReactorStatementBatcher(long maxSizeInBytes) {
     super(maxSizeInBytes);
@@ -66,10 +70,12 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
    * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
    * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It uses the given
-   * max batch statements and maximum size in bytes
+   * maximum number of statements and the maximum data size in bytes.
    *
-   * @param maxSizeInBytes The maximum size in bytes of a batch.
-   * @param maxBatchStatements - the maximum number of statements in one batch
+   * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
+   *     negative value, the number of statements is considered unlimited.
+   * @param maxSizeInBytes The maximum number of bytes of data in one batch. If set to zero or any
+   *     negative value, the data size is considered unlimited.
    */
   public ReactorStatementBatcher(int maxBatchStatements, long maxSizeInBytes) {
     super(maxBatchStatements, maxSizeInBytes);
@@ -80,12 +86,13 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
    * mode and uses the given {@link Cluster} as its source for the {@link ProtocolVersion protocol
-   * version} and the {@link CodecRegistry} instance to use. It also uses the default maximum batch
-   * size (100).
+   * version} and the {@link CodecRegistry} instance to use. It also uses the default {@linkplain
+   * #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the default {@linkplain
+   * #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    */
-  public ReactorStatementBatcher(Cluster cluster) {
+  public ReactorStatementBatcher(@NotNull Cluster cluster) {
     super(cluster);
   }
 
@@ -94,13 +101,14 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in the
    * specified {@link com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode batch mode}
    * and uses the given {@link Cluster} as its source for the {@link ProtocolVersion protocol
-   * version} and the {@link CodecRegistry} instance to use. It also uses the default maximum batch
-   * size (100).
+   * version} and the {@link CodecRegistry} instance to use. It also uses the default {@linkplain
+   * #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the default {@linkplain
+   * #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    */
-  public ReactorStatementBatcher(Cluster cluster, BatchMode batchMode) {
+  public ReactorStatementBatcher(@NotNull Cluster cluster, @NotNull BatchMode batchMode) {
     super(cluster, batchMode);
   }
 
@@ -108,14 +116,20 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * Creates a new {@link StatementBatcher} that produces batches of the given {@code batchType},
    * operates in the specified {@code batchMode} and uses the given {@link Cluster} as its source
    * for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
+   * It uses the given maximum number of statements and the default {@linkplain
+   * #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    * @param batchType The batch type to use; cannot be {@code null}.
-   * @param maxBatchStatements The maximum number of elements in a batch
+   * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
+   *     negative value, the number of statements is considered unlimited.
    */
   public ReactorStatementBatcher(
-      Cluster cluster, BatchMode batchMode, BatchStatement.Type batchType, int maxBatchStatements) {
+      @NotNull Cluster cluster,
+      @NotNull BatchMode batchMode,
+      @NotNull BatchStatement.Type batchType,
+      int maxBatchStatements) {
     super(cluster, batchMode, batchType, maxBatchStatements);
   }
 
@@ -123,17 +137,20 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * Creates a new {@link StatementBatcher} that produces batches of the given {@code batchType},
    * operates in the specified {@code batchMode} and uses the given {@link Cluster} as its source
    * for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
+   * It uses the given maximum number of statements and the maximum data size in bytes.
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    * @param batchType The batch type to use; cannot be {@code null}.
-   * @param maxSizeInBytes The maximum size in bytes of a batch.
-   * @param maxBatchStatements - the maximum number of statements in one batch
+   * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
+   *     negative value, the number of statements is considered unlimited.
+   * @param maxSizeInBytes The maximum number of bytes of data in one batch. If set to zero or any
+   *     negative value, the data size is considered unlimited.
    */
   public ReactorStatementBatcher(
-      Cluster cluster,
-      BatchMode batchMode,
-      BatchStatement.Type batchType,
+      @NotNull Cluster cluster,
+      @NotNull BatchMode batchMode,
+      @NotNull BatchStatement.Type batchType,
       int maxBatchStatements,
       long maxSizeInBytes) {
     super(cluster, batchMode, batchType, maxBatchStatements, maxSizeInBytes);
@@ -141,13 +158,18 @@ public class ReactorStatementBatcher extends StatementBatcher {
 
   /**
    * Batches together the given statements into groups of statements having the same grouping key.
+   * Each group size is capped by the maximum number of statements and the maximum data size.
    *
    * <p>The grouping key to use is determined by the {@link
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode batch mode} in use by this
    * statement batcher.
    *
-   * <p>When the number of statements for the same grouping key is greater than the maximum batch
-   * size, statements will be split in different batches.
+   * <p>Note that when a resulting group contains only one statement, this method will not create a
+   * batch statement containing that single statement; instead, it will return that same statement.
+   *
+   * <p>When the number of statements for the same grouping key is greater than the maximum number
+   * of statements, or when their total data size is greater than the maximum data size, statements
+   * will be split into smaller batches.
    *
    * <p>When {@link com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
    * PARTITION_KEY} is used, the grouping key is the statement's {@link
@@ -162,18 +184,21 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * @param statements the statements to batch together.
    * @return A {@link Flux} of batched statements.
    */
-  public Flux<Statement> batchByGroupingKey(Publisher<? extends Statement> statements) {
+  @NotNull
+  public Flux<Statement> batchByGroupingKey(@NotNull Publisher<? extends Statement> statements) {
     return Flux.from(statements).groupBy(this::groupingKey).flatMap(this::batchAll);
   }
 
   /**
-   * Batches together all the given statements into groups of statements.
+   * Batches together all the given statements into groups of statements. Each group size is capped
+   * by the maximum number of statements and the maximum data size.
    *
-   * <p>Note that when a group contains one single statement, this method will not create a batch
-   * statement containing that single statement; instead, it will return that same statement.
+   * <p>Note that when a resulting group contains only one statement, this method will not create a
+   * batch statement containing that single statement; instead, it will return that same statement.
    *
-   * <p>When the number of given statements is greater than the max batch statements OR max size in
-   * bytes, this method will split them into different batches.
+   * <p>When the number of statements for the same grouping key is greater than the maximum number
+   * of statements, or when their total data size is greater than the maximum data size, statements
+   * will be split into smaller batches.
    *
    * <p>Use this method with caution; if the given statements do not share the same {@link
    * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key}, the resulting batch could
@@ -182,10 +207,11 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * @param statements the statements to batch together.
    * @return A {@link Flux} of batched statements.
    */
-  public Flux<? extends Statement> batchAll(Publisher<? extends Statement> statements) {
+  @NotNull
+  public Flux<? extends Statement> batchAll(@NotNull Publisher<? extends Statement> statements) {
     return Flux.from(statements)
         .cast(Statement.class)
-        .windowUntil(new AdaptiveSizingBatchPredicate(), false)
+        .windowUntil(new ReactorAdaptiveSizingBatchPredicate(), false)
         .flatMap(
             stmts ->
                 Flux.from(stmts)
@@ -200,40 +226,5 @@ public class ReactorStatementBatcher extends StatementBatcher {
                         }));
   }
 
-  private class AdaptiveSizingBatchPredicate implements Predicate<Statement> {
-    private int statementsCounter = 0;
-    private long bytesInCurrentBatch = 0;
-
-    @Override
-    public boolean test(Statement statement) {
-      boolean statementsOverflowBuffer = ++statementsCounter >= getMaxBatchStatements();
-      boolean bytesOverflowBuffer =
-          (bytesInCurrentBatch += calculateSize(statement)) >= getMaxSizeInBytes();
-
-      boolean shouldFlush = statementsOverflowBuffer || bytesOverflowBuffer;
-      if (shouldFlush) {
-        statementsCounter = 0;
-        bytesInCurrentBatch = 0;
-      }
-      return shouldFlush;
-    }
-  }
-
-  private long calculateSize(Statement statement) {
-    return StatementUtils.getDataSize(statement, protocolVersion, codecRegistry);
-  }
-
-  private int getMaxBatchStatements() {
-    if (maxBatchStatements <= 0) {
-      return Integer.MAX_VALUE;
-    }
-    return maxBatchStatements;
-  }
-
-  private long getMaxSizeInBytes() {
-    if (maxSizeInBytes <= 0) {
-      return Long.MAX_VALUE;
-    }
-    return maxSizeInBytes;
-  }
+  private class ReactorAdaptiveSizingBatchPredicate extends AdaptiveSizingBatchPredicate {}
 }
