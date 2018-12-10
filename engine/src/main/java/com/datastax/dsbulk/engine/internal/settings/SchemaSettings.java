@@ -353,13 +353,12 @@ public class SchemaSettings {
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, LOAD);
     return new DefaultRecordMapper(
         preparedStatement,
+        partitionKeyVariables(),
         mapping,
         recordMetadata,
         nullToUnset,
         allowExtraFields,
-        allowMissingFields,
-        queryInspector,
-        table);
+        allowMissingFields);
   }
 
   public ReadResultMapper createReadResultMapper(
@@ -896,6 +895,17 @@ public class SchemaSettings {
     appendTokenFunction(sb, partitionKey);
     sb.append(" <= :end");
     return sb.toString();
+  }
+
+  private Set<String> partitionKeyVariables() {
+    Map<String, String> boundVariables = queryInspector.getBoundVariables();
+    List<ColumnMetadata> partitionKey = table.getPartitionKey();
+    Set<String> variables = new HashSet<>(partitionKey.size());
+    for (ColumnMetadata column : partitionKey) {
+      String variable = boundVariables.get(column.getName());
+      variables.add(variable);
+    }
+    return variables;
   }
 
   private static void appendColumnNames(
