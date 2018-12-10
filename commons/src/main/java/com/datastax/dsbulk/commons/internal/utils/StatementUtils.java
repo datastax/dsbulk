@@ -42,7 +42,7 @@ public class StatementUtils {
    * @param stmt The statement to inspect; cannot be {@code null}.
    * @param version The protocol version to use; cannot be {@code null}.
    * @param registry The codec registry to use; cannot be {@code null}.
-   * @return The data size contained in the statement.
+   * @return The approximate size of inserted data contained in the statement.
    */
   public static long getDataSize(
       @NotNull Statement stmt, @NotNull ProtocolVersion version, @NotNull CodecRegistry registry) {
