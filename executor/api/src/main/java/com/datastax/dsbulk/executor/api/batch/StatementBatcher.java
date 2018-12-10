@@ -35,11 +35,15 @@ import org.jetbrains.annotations.NotNull;
  * A helper class to facilitate grouping statements together in batches sharing the same {@linkplain
  * BatchMode#PARTITION_KEY partition key} or {@linkplain BatchMode#REPLICA_SET replica set}.
  *
+ * <p>This component can also optionally cap the created batches by either a maximum number of child
+ * statements, a maximum size in bytes of actual data to be inserted, or both. Note however that the
+ * heuristic used to compute the inserted data size is not 100% accurate.
+ *
  * <p>Important: for this utility to work properly, statements must have their {@linkplain
  * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or their {@linkplain
- * Statement#getRoutingToken() routing token} set. Furthermore, in {@link BatchMode#REPLICA_SET
- * replica set} it is also required that they have their {@link Statement#getKeyspace() keyspace}
- * set.
+ * Statement#getRoutingToken() routing token} set. Furthermore, when grouping by {@link
+ * BatchMode#REPLICA_SET replica set}, it is also required that they have their {@link
+ * Statement#getKeyspace() routing keyspace} set.
  *
  * @see <a href="http://docs.datastax.com/en/cql/3.1/cql/cql_using/useBatch.html">Using and misusing
  *     batches</a>
@@ -67,7 +71,7 @@ public class StatementBatcher {
      * (i.e. RF &gt; 3).
      *
      * <p>Note that this mode can only work if the statements to batch have their {@linkplain
-     * Statement#getKeyspace() keypsace} set. If this condition is not met, the batcher will
+     * Statement#getKeyspace() routing keyspace} set. If this condition is not met, the batcher will
      * silently fall back to {@code PARTITION_KEY} mode.
      */
     REPLICA_SET
@@ -76,11 +80,7 @@ public class StatementBatcher {
   /** The default maximum number of statements that a batch can contain. */
   public static final int DEFAULT_MAX_BATCH_STATEMENTS = 100;
 
-  /**
-   * The default maximum data size in bytes that a batch can contain. Note that the heuristic to
-   * compute the statement's data size is not 100% accurate. The default is -1, which means that the
-   * created batches are not limited in size.
-   */
+  /** The default maximum data size in bytes that a batch can contain (unlimited). */
   public static final long DEFAULT_MAX_SIZE_BYTES = -1;
 
   protected final Cluster cluster;
@@ -334,8 +334,9 @@ public class StatementBatcher {
   }
 
   /**
-   * Batches together all the given statements into one or more {@link BatchStatement}s. Each group
-   * size is capped by the maximum number of statements and the maximum data size.
+   * Batches together all the given statements into one or more {@link BatchStatement}s,
+   * <em>regardless of their grouping key</em>. Each group size is capped by the maximum number of
+   * statements and the maximum data size.
    *
    * <p>Note that when a resulting group contains only one statement, this method will not create a
    * batch statement containing that single statement; instead, it will return that same statement.
@@ -358,8 +359,9 @@ public class StatementBatcher {
   }
 
   /**
-   * Batches together all the given statements into one or more {@link BatchStatement}s. Each group
-   * size is capped by the maximum number of statements and the maximum data size.
+   * Batches together all the given statements into one or more {@link BatchStatement}s,
+   * <em>regardless of their grouping key</em>. Each group size is capped by the maximum number of
+   * statements and the maximum data size.
    *
    * <p>Note that when a resulting group contains only one statement, this method will not create a
    * batch statement containing that single statement; instead, it will return that same statement.

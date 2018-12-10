@@ -22,24 +22,25 @@ import reactor.core.publisher.Flux;
 public class ReactorStatementBatcher extends StatementBatcher {
 
   /**
-   * Creates a new {@link ReactorStatementBatcher} that produces {@link
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
-   * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
-   * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
-   * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It also uses the
-   * default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the
-   * default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
+   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in
+   * {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
+   * partition key} mode and uses the {@linkplain ProtocolVersion#NEWEST_SUPPORTED latest stable}
+   * protocol version and the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance.
+   * It also uses the default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of
+   * statements} (100) and the default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in
+   * bytes} (unlimited).
    */
   public ReactorStatementBatcher() {}
 
   /**
-   * Creates a new {@link ReactorStatementBatcher} that produces {@link
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
-   * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
-   * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
-   * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance and the default
-   * {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited). It uses the given
-   * maximum number of statements.
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
+   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in
+   * {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
+   * partition key} mode and uses the {@linkplain ProtocolVersion#NEWEST_SUPPORTED latest stable}
+   * protocol version and the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance
+   * and the default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited). It
+   * uses the given maximum number of statements.
    *
    * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
    *     negative value, the number of statements is considered unlimited.
@@ -49,13 +50,13 @@ public class ReactorStatementBatcher extends StatementBatcher {
   }
 
   /**
-   * Creates a new {@link ReactorStatementBatcher} that produces {@link
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
-   * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
-   * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
-   * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance and the default
-   * {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100). It uses the
-   * given maximum data size in bytes.
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
+   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in
+   * {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
+   * partition key} mode and uses the {@linkplain ProtocolVersion#NEWEST_SUPPORTED latest stable}
+   * protocol version and the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance
+   * and the default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100).
+   * It uses the given maximum data size in bytes.
    *
    * @param maxSizeInBytes The maximum number of bytes of data in one batch. If set to zero or any
    *     negative value, the data size is considered unlimited.
@@ -65,12 +66,12 @@ public class ReactorStatementBatcher extends StatementBatcher {
   }
 
   /**
-   * Creates a new {@link ReactorStatementBatcher} that produces {@link
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
-   * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
-   * mode and uses the {@link ProtocolVersion#NEWEST_SUPPORTED latest stable} protocol version and
-   * the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance. It uses the given
-   * maximum number of statements and the maximum data size in bytes.
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
+   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in
+   * {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
+   * partition key} mode and uses the {@linkplain ProtocolVersion#NEWEST_SUPPORTED latest stable}
+   * protocol version and the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance.
+   * It uses the given maximum number of statements and the maximum data size in bytes.
    *
    * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
    *     negative value, the number of statements is considered unlimited.
@@ -82,13 +83,13 @@ public class ReactorStatementBatcher extends StatementBatcher {
   }
 
   /**
-   * Creates a new {@link ReactorStatementBatcher} that produces {@link
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in {@link
-   * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY partition key}
-   * mode and uses the given {@link Cluster} as its source for the {@link ProtocolVersion protocol
-   * version} and the {@link CodecRegistry} instance to use. It also uses the default {@linkplain
-   * #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the default {@linkplain
-   * #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
+   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in
+   * {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
+   * partition key} mode and uses the given {@link Cluster} as its source for the {@linkplain
+   * ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use. It also uses
+   * the default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and
+   * the default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    */
@@ -97,13 +98,13 @@ public class ReactorStatementBatcher extends StatementBatcher {
   }
 
   /**
-   * Creates a new {@link ReactorStatementBatcher} that produces {@link
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
    * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in the
-   * specified {@link com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode batch mode}
-   * and uses the given {@link Cluster} as its source for the {@link ProtocolVersion protocol
-   * version} and the {@link CodecRegistry} instance to use. It also uses the default {@linkplain
-   * #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the default {@linkplain
-   * #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
+   * specified {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode batch
+   * mode} and uses the given {@link Cluster} as its source for the {@linkplain ProtocolVersion
+   * protocol version} and the {@link CodecRegistry} instance to use. It also uses the default
+   * {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the default
+   * {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
@@ -113,10 +114,10 @@ public class ReactorStatementBatcher extends StatementBatcher {
   }
 
   /**
-   * Creates a new {@link StatementBatcher} that produces batches of the given {@code batchType},
-   * operates in the specified {@code batchMode} and uses the given {@link Cluster} as its source
-   * for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
-   * It uses the given maximum number of statements and the default {@linkplain
+   * Creates a new {@link ReactorStatementBatcher} that produces batches of the given {@code
+   * batchType}, operates in the specified {@code batchMode} and uses the given {@link Cluster} as
+   * its source for the {@linkplain ProtocolVersion protocol version} and the {@link CodecRegistry}
+   * instance to use. It uses the given maximum number of statements and the default {@linkplain
    * #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
@@ -134,10 +135,11 @@ public class ReactorStatementBatcher extends StatementBatcher {
   }
 
   /**
-   * Creates a new {@link StatementBatcher} that produces batches of the given {@code batchType},
-   * operates in the specified {@code batchMode} and uses the given {@link Cluster} as its source
-   * for the {@link ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use.
-   * It uses the given maximum number of statements and the maximum data size in bytes.
+   * Creates a new {@link ReactorStatementBatcher} that produces batches of the given {@code
+   * batchType}, operates in the specified {@code batchMode} and uses the given {@link Cluster} as
+   * its source for the {@linkplain ProtocolVersion protocol version} and the {@link CodecRegistry}
+   * instance to use. It uses the given maximum number of statements and the maximum data size in
+   * bytes.
    *
    * @param cluster The {@link Cluster} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
@@ -160,7 +162,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * Batches together the given statements into groups of statements having the same grouping key.
    * Each group size is capped by the maximum number of statements and the maximum data size.
    *
-   * <p>The grouping key to use is determined by the {@link
+   * <p>The grouping key to use is determined by the {@linkplain
    * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode batch mode} in use by this
    * statement batcher.
    *
@@ -172,13 +174,13 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * will be split into smaller batches.
    *
    * <p>When {@link com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
-   * PARTITION_KEY} is used, the grouping key is the statement's {@link
-   * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or {@link
+   * PARTITION_KEY} is used, the grouping key is the statement's {@linkplain
+   * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or {@linkplain
    * Statement#getRoutingToken() routing token}, whichever is available.
    *
    * <p>When {@link com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#REPLICA_SET
-   * REPLICA_SET} is used, the grouping key is the replica set owning the statement's {@link
-   * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or {@link
+   * REPLICA_SET} is used, the grouping key is the replica set owning the statement's {@linkplain
+   * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or {@linkplain
    * Statement#getRoutingToken() routing token}, whichever is available.
    *
    * @param statements the statements to batch together.
@@ -190,8 +192,9 @@ public class ReactorStatementBatcher extends StatementBatcher {
   }
 
   /**
-   * Batches together all the given statements into groups of statements. Each group size is capped
-   * by the maximum number of statements and the maximum data size.
+   * Batches together all the given statements into groups of statements, <em>regardless of their
+   * grouping key</em>. Each group size is capped by the maximum number of statements and the
+   * maximum data size.
    *
    * <p>Note that when a resulting group contains only one statement, this method will not create a
    * batch statement containing that single statement; instead, it will return that same statement.
@@ -200,7 +203,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    * of statements, or when their total data size is greater than the maximum data size, statements
    * will be split into smaller batches.
    *
-   * <p>Use this method with caution; if the given statements do not share the same {@link
+   * <p>Use this method with caution; if the given statements do not share the same {@linkplain
    * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key}, the resulting batch could
    * lead to write throughput degradation.
    *
