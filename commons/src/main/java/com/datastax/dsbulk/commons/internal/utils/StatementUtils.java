@@ -11,9 +11,12 @@ package com.datastax.dsbulk.commons.internal.utils;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.CodecRegistry;
+import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DriverCoreHooks;
+import com.datastax.driver.core.GettableData;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.RegularStatement;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.StatementWrapper;
 import java.nio.ByteBuffer;
@@ -23,20 +26,17 @@ import org.jetbrains.annotations.NotNull;
 public class StatementUtils {
 
   /**
-   * Evaluates the data size contained in the given statement.
+   * Evaluates the data size contained in the given statement. The data size is the total number of
+   * bytes required to encode all the bound variables contained in the statement.
    *
-   * <p>This only applies to mutations (INSERT, UPDATE, DELETE statements), and is specially useful
-   * for BATCH statements, where this method can be used to guess if a given batch risks to exceed
-   * the thresholds defined server-side in the in the <a
+   * <p>This method can be used to guess if a given batch statement risks to exceed the thresholds
+   * defined server-side in the in the <a
    * href="https://docs.datastax.com/en/dse/6.0/dse-dev/datastax_enterprise/config/configCassandra_yaml.html#configCassandra_yaml__advProps">cassandra.yaml
    * configuration file</a> for the options {@code batch_size_warn_threshold_in_kb} and {@code
-   * batch_size_fail_threshold_in_kb}.
-   *
-   * <p>The actual algorithm used by Apache Cassandra can be found in {@code
-   * org.apache.cassandra.db.IMutation.dataSize()} but cannot be easily reproduced client-side.
-   * Instead, this method tries to guess the actual amount, in bytes, that the mutations triggered
-   * by the statement will generate, but unfortunately the heuristic used here is not 100% accurate
-   * and sometimes underestimates or overestimates the actual data size.
+   * batch_size_fail_threshold_in_kb}. But please note that the actual algorithm used by Apache
+   * Cassandra, which can be found in {@code org.apache.cassandra.db.IMutation.dataSize()}, cannot
+   * be easily reproduced client-side. Instead, this method follows a more straight-forward
+   * algorithm that may sometimes underestimate or overestimate the size computed server-side.
    *
    * @param stmt The statement to inspect; cannot be {@code null}.
    * @param version The protocol version to use; cannot be {@code null}.
@@ -47,12 +47,7 @@ public class StatementUtils {
       @NotNull Statement stmt, @NotNull ProtocolVersion version, @NotNull CodecRegistry registry) {
     long dataSize = 0;
     if (stmt instanceof BoundStatement) {
-      BoundStatement bs = (BoundStatement) stmt;
-      int numVariables = bs.preparedStatement().getVariables().size();
-      for (int i = 0; i < numVariables; i++) {
-        ByteBuffer bb = bs.getBytesUnsafe(i);
-        dataSize += bb == null ? 0 : bb.remaining();
-      }
+      return getDataSize((BoundStatement) stmt);
     } else if (stmt instanceof RegularStatement) {
       RegularStatement rs = (RegularStatement) stmt;
       if (rs.hasValues()) {
@@ -74,14 +69,45 @@ public class StatementUtils {
       }
     } else if (stmt instanceof BatchStatement) {
       BatchStatement bs = (BatchStatement) stmt;
-
       for (Statement st : bs.getStatements()) {
         dataSize += getDataSize(st, version, registry);
       }
-
     } else if (stmt instanceof StatementWrapper) {
       StatementWrapper sw = (StatementWrapper) stmt;
-      dataSize += getDataSize(DriverCoreHooks.wrappedStatement(sw), version, registry);
+      Statement statement = DriverCoreHooks.wrappedStatement(sw);
+      dataSize += getDataSize(statement, version, registry);
+    }
+    return dataSize;
+  }
+
+  /**
+   * Evaluates the data size contained in the given {@linkplain GettableData data container}. The
+   * data size is the total number of bytes required to encode all the data contained in the
+   * container.
+   *
+   * @param container The data container to inspect; cannot be {@code null}.
+   * @return The total size in bytes of all the encoded data contained in the container.
+   */
+  public static long getDataSize(@NotNull GettableData container) {
+    long dataSize = 0;
+    if (container instanceof BoundStatement) {
+      dataSize +=
+          getDataSize(container, ((BoundStatement) container).preparedStatement().getVariables());
+    } else if (container instanceof Row) {
+      dataSize += getDataSize(container, ((Row) container).getColumnDefinitions());
+    }
+    return dataSize;
+  }
+
+  private static long getDataSize(GettableData container, ColumnDefinitions metadata) {
+    long dataSize = 0L;
+    if (metadata.size() > 0) {
+      for (int i = 0; i < metadata.size(); i++) {
+        ByteBuffer bb = container.getBytesUnsafe(i);
+        if (bb != null) {
+          dataSize += bb.remaining();
+        }
+      }
     }
     return dataSize;
   }
