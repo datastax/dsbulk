@@ -26,6 +26,7 @@ import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
+import org.jetbrains.annotations.NotNull;
 
 public class MappingInspector extends MappingBaseVisitor<String> {
 
@@ -126,7 +127,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
 
   @Override
   public String visitIndexedEntry(MappingParser.IndexedEntryContext ctx) {
-    String variable = visitVariable(ctx.variable());
+    String variable = visitVariableWithFunction(ctx.variableWithFunction());
     if (preferIndexedMapping) {
       explicitVariables.put(Integer.toString(currentIndex++), variable);
     } else {
@@ -138,7 +139,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
   @Override
   public String visitRegularMappedEntry(MappingParser.RegularMappedEntryContext ctx) {
     String field = visitField(ctx.field());
-    String variable = visitVariable(ctx.variable());
+    String variable = visitVariableWithFunction(ctx.variableWithFunction());
     explicitVariables.put(field, variable);
     return null;
   }
@@ -147,8 +148,8 @@ public class MappingInspector extends MappingBaseVisitor<String> {
   public String visitInferredMappedEntry(MappingParser.InferredMappedEntryContext ctx) {
     checkInferring();
     inferring = true;
-    for (MappingParser.VariableContext variableContext : ctx.variable()) {
-      String variable = visitVariable(variableContext);
+    for (MappingParser.VariableWithFunctionContext variableContext : ctx.variableWithFunction()) {
+      String variable = visitVariableWithFunction(variableContext);
       excludedVariables.add(variable);
     }
     return null;
@@ -163,15 +164,19 @@ public class MappingInspector extends MappingBaseVisitor<String> {
       String text = ctx.QUOTED_STRING().getText();
       field = text.substring(1, text.length() - 1).replace("\"\"", "\"");
     } else {
-      field = INTERNAL_FUNCTION_MARKER + ctx.function().getText();
+      field = createFunctionField(ctx.function().getText());
     }
     return field;
   }
 
   @Override
-  public String visitVariable(MappingParser.VariableContext ctx) {
+  public String visitVariableWithFunction(MappingParser.VariableWithFunctionContext ctx) {
     String variable = ctx.getText();
-    if (ctx.QUOTED_STRING() != null) {
+    if (ctx.variable() == null && ctx.function() != null) {
+      return createFunctionField(ctx.function().getText());
+    }
+
+    if (ctx.variable() != null && ctx.variable().QUOTED_STRING() != null) {
       variable = variable.substring(1, variable.length() - 1).replace("\"\"", "\"");
     } else {
       // Rename the user-specified __ttl and __timestamp vars to the (legal) bound variable
@@ -190,6 +195,11 @@ public class MappingInspector extends MappingBaseVisitor<String> {
       throw new BulkConfigurationException(
           "Invalid schema.mapping: inferred mapping entry (* = *) can be supplied at most once.");
     }
+  }
+
+  @NotNull
+  private String createFunctionField(String functionName) {
+    return INTERNAL_FUNCTION_MARKER + functionName;
   }
 
   private void checkDuplicates() {

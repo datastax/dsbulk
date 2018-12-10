@@ -40,6 +40,7 @@ import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
+import static org.slf4j.event.Level.ERROR;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
@@ -110,7 +111,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   CSVConnectorEndToEndCCMIT(
       CCMCluster ccm,
       Session session,
-      @LogCapture LogInterceptor logs,
+      @LogCapture(level = ERROR) LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
     this.logs = logs;
@@ -816,6 +817,26 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     assertTtlAndTimestamp();
+
+    args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "table_ttl_timestamp",
+            "--schema.mapping",
+            "*:*,created_at=writetime(created_at),time_to_live=ttl(time_to_live)");
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
   }
 
   @Test

@@ -955,12 +955,14 @@ public class SchemaSettings {
     return keys.stream().allMatch(s -> s.matches("\\d+"));
   }
 
+  //todo adapt usage of it
   private static boolean isFunction(String field) {
     // If a field starts with this special marker, interpret it to be a cql function call.
     // This marker is honored by both QueryInspector and MappingInspector.
     return field.startsWith(INTERNAL_FUNCTION_MARKER);
   }
 
+  //todo adapt usage of it
   private static String extractFunctionCall(String functionWithMarker) {
     return functionWithMarker.substring(INTERNAL_FUNCTION_MARKER.length());
   }
