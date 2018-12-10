@@ -10,14 +10,12 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -26,9 +24,9 @@ import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Set;
 import java.util.function.BiFunction;
 
@@ -38,46 +36,39 @@ public class DefaultRecordMapper implements RecordMapper {
   private static final String CQL_TYPE = "cqlType";
 
   private final PreparedStatement insertStatement;
-  private final int[] pkIndices;
-  private final int[] ccIndices;
+  private final ImmutableSet<String> partitionKeyVariables;
   private final ProtocolVersion protocolVersion;
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
+  private final boolean nullToUnset;
   private final boolean allowExtraFields;
   private final boolean allowMissingFields;
-
-  /** Whether to map null input to "unset" */
-  private final boolean nullToUnset;
-
   private final BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory;
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
+      Set<String> partitionKeyVariables,
       Mapping mapping,
       RecordMetadata recordMetadata,
       boolean nullToUnset,
       boolean allowExtraFields,
-      boolean allowMissingFields,
-      QueryInspector queryInspector,
-      TableMetadata table) {
+      boolean allowMissingFields) {
     this(
         insertStatement,
-        DriverCoreHooks.partitionKeyIndices(insertStatement.getPreparedId()),
-        findCCIndices(queryInspector, table),
+        partitionKeyVariables,
         DriverCoreHooks.protocolVersion(insertStatement.getPreparedId()),
         mapping,
         recordMetadata,
         nullToUnset,
         allowExtraFields,
         allowMissingFields,
-        (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
+        BulkBoundStatement::new);
   }
 
   @VisibleForTesting
   DefaultRecordMapper(
       PreparedStatement insertStatement,
-      int[] pkIndices,
-      int[] ccIndices,
+      Set<String> partitionKeyVariables,
       ProtocolVersion protocolVersion,
       Mapping mapping,
       RecordMetadata recordMetadata,
@@ -86,8 +77,7 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
-    this.pkIndices = pkIndices;
-    this.ccIndices = ccIndices;
+    this.partitionKeyVariables = ImmutableSet.copyOf(partitionKeyVariables);
     this.protocolVersion = protocolVersion;
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
@@ -128,7 +118,6 @@ public class DefaultRecordMapper implements RecordMapper {
         }
       }
       ensurePrimaryKeySet(bs);
-      ensureClusteringKeySet(bs);
       record.clear();
       return bs;
     } catch (Exception e) {
@@ -163,18 +152,11 @@ public class DefaultRecordMapper implements RecordMapper {
     String name = Metadata.quoteIfNecessary(variable);
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
     ByteBuffer bb = codec.serialize(raw, protocolVersion);
-    // Account for nullToUnset.
     if (isNull(bb, cqlType)) {
-      if (isPrimaryKey(variable)) {
+      if (partitionKeyVariables.contains(variable)) {
         throw new InvalidMappingException(
             "Primary key column "
-                + Metadata.quoteIfNecessary(variable)
-                + " cannot be mapped to null. "
-                + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
-      } else if (isClusteringKey(variable)) {
-        throw new InvalidMappingException(
-            "Clustering key column "
-                + Metadata.quoteIfNecessary(variable)
+                + name
                 + " cannot be mapped to null. "
                 + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
       }
@@ -204,14 +186,6 @@ public class DefaultRecordMapper implements RecordMapper {
     }
   }
 
-  private boolean isPrimaryKey(String variable) {
-    return Arrays.binarySearch(pkIndices, insertStatement.getVariables().getIndexOf(variable)) >= 0;
-  }
-
-  private boolean isClusteringKey(String variable) {
-    return Arrays.binarySearch(ccIndices, insertStatement.getVariables().getIndexOf(variable)) >= 0;
-  }
-
   private void ensureAllFieldsPresent(Set<String> recordFields) {
     ColumnDefinitions variables = insertStatement.getVariables();
     for (int i = 0; i < variables.size(); i++) {
@@ -231,43 +205,14 @@ public class DefaultRecordMapper implements RecordMapper {
   }
 
   private void ensurePrimaryKeySet(BoundStatement bs) {
-    if (pkIndices != null) {
-      for (int pkIndex : pkIndices) {
-        if (!bs.isSet(pkIndex)) {
-          String variable = insertStatement.getVariables().getName(pkIndex);
-          throw new InvalidMappingException(
-              "Primary key column "
-                  + Metadata.quoteIfNecessary(variable)
-                  + " cannot be left unmapped. "
-                  + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
-        }
+    for (String variable : partitionKeyVariables) {
+      if (!bs.isSet(variable)) {
+        throw new InvalidMappingException(
+            "Primary key column "
+                + Metadata.quoteIfNecessary(variable)
+                + " cannot be left unmapped. "
+                + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
       }
     }
-  }
-
-  private void ensureClusteringKeySet(BoundStatement bs) {
-    if (ccIndices.length > 0) {
-      for (int ccIndex : ccIndices) {
-        if (!bs.isSet(ccIndex)) {
-          String variable = insertStatement.getVariables().getName(ccIndex);
-          throw new InvalidMappingException(
-              "Clustering key column "
-                  + Metadata.quoteIfNecessary(variable)
-                  + " cannot be left unmapped. "
-                  + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
-        }
-      }
-    }
-  }
-
-  private static int[] findCCIndices(QueryInspector query, TableMetadata metadata) {
-    int i = 0;
-    int[] indicies = new int[metadata.getClusteringColumns().size()];
-    for (ColumnMetadata clusterColumnName : metadata.getClusteringColumns()) {
-      indicies[i] =
-          query.getBoundVariables().keySet().asList().indexOf(clusterColumnName.getName());
-      i++;
-    }
-    return indicies;
   }
 }
