@@ -10,6 +10,15 @@ package com.datastax.driver.core;
 
 public class DriverCoreCommonsTestHooks {
 
+  public static PreparedId newPreparedId(
+      ColumnDefinitions cd, int[] pkIndices, ProtocolVersion version) {
+    return new PreparedId(
+        new PreparedId.PreparedMetadata(null, null),
+        new PreparedId.PreparedMetadata(null, cd),
+        pkIndices,
+        version);
+  }
+
   public static ColumnDefinitions.Definition newDefinition(String name, DataType type) {
     return newDefinition("ks", "t", name, type);
   }

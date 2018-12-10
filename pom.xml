@@ -44,6 +44,7 @@
     <driver.version>1.8.0-SNAPSHOT</driver.version>
     <reactive-streams.version>1.0.2</reactive-streams.version>
     <rx-java.version>2.2.2</rx-java.version>
+    <rx-java-extensions.version>0.20.5</rx-java-extensions.version>
     <reactor.version>Bismuth-SR11</reactor.version>
     <config.version>1.3.3</config.version>
     <guava.version>26.0-jre</guava.version>
@@ -168,6 +169,12 @@
         <groupId>io.reactivex.rxjava2</groupId>
         <artifactId>rxjava</artifactId>
         <version>${rx-java.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.github.akarnokd</groupId>
+        <artifactId>rxjava2-extensions</artifactId>
+        <version>${rx-java-extensions.version}</version>
       </dependency>
 
       <dependency>

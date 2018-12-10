@@ -14,15 +14,6 @@ import java.util.Arrays;
 @SuppressWarnings("SameParameterValue")
 public class DriverCoreEngineTestHooks {
 
-  public static PreparedId newPreparedId(
-      ColumnDefinitions cd, int[] pkIndices, ProtocolVersion version) {
-    return new PreparedId(
-        new PreparedId.PreparedMetadata(null, null),
-        new PreparedId.PreparedMetadata(null, cd),
-        pkIndices,
-        version);
-  }
-
   public static TupleType newTupleType(DataType... types) {
     return newTupleType(ProtocolVersion.NEWEST_SUPPORTED, CodecRegistry.DEFAULT_INSTANCE, types);
   }
