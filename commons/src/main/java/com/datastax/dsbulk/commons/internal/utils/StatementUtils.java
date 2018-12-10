@@ -27,8 +27,10 @@ public class StatementUtils {
    *
    * <p>This only applies to mutations (INSERT, UPDATE, DELETE statements), and is specially useful
    * for BATCH statements, where this method can be used to guess if a given batch risks to exceed
-   * the thresholds defined server-side in the in cassandra.yaml configuration file for the options
-   * {@code batch_size_warn_threshold_in_kb} and {@code batch_size_fail_threshold_in_kb}.
+   * the thresholds defined server-side in the in the <a
+   * href="https://docs.datastax.com/en/dse/6.0/dse-dev/datastax_enterprise/config/configCassandra_yaml.html#configCassandra_yaml__advProps">cassandra.yaml
+   * configuration file</a> for the options {@code batch_size_warn_threshold_in_kb} and {@code
+   * batch_size_fail_threshold_in_kb}.
    *
    * <p>The actual algorithm used by Apache Cassandra can be found in {@code
    * org.apache.cassandra.db.IMutation.dataSize()} but cannot be easily reproduced client-side.
@@ -36,9 +38,6 @@ public class StatementUtils {
    * by the statement will generate, but unfortunately the heuristic used here is not 100% accurate
    * and sometimes underestimates or overestimates the actual data size.
    *
-   * @see <a
-   *     href=https://docs.datastax.com/en/dse/6.0/dse-dev/datastax_enterprise/config/configCassandra_yaml.html#configCassandra_yaml__advProps">cassandra.yaml
-   *     configuration file</a>
    * @param stmt The statement to inspect; cannot be {@code null}.
    * @param version The protocol version to use; cannot be {@code null}.
    * @param registry The codec registry to use; cannot be {@code null}.
