@@ -70,6 +70,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -675,6 +676,10 @@ public class SchemaSettings {
     List<String> colNames = columns.get();
     fieldsToVariables.forEach(
         (key, value) -> {
+          if (isFunction(value)) {
+            return;
+          }
+
           if (!isPseudoColumn(value) && !colNames.contains(value)) {
             if (!config.hasPath(QUERY)) {
               throw new BulkConfigurationException(
@@ -762,7 +767,7 @@ public class SchemaSettings {
   private String inferInsertQuery(BiMap<String, String> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
-    appendColumnNames(fieldsToVariables, sb);
+    appendColumnNamesFilterOurFunctions(fieldsToVariables, sb);
     sb.append(") VALUES (");
     Set<String> cols = maybeSortCols(fieldsToVariables);
     Iterator<String> it = cols.iterator();
@@ -871,7 +876,7 @@ public class SchemaSettings {
   private String inferReadQuery(BiMap<String, String> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
     StringBuilder sb = new StringBuilder("SELECT ");
-    appendColumnNames(fieldsToVariables, sb);
+    appendColumnNamesAndFunctions(fieldsToVariables, sb);
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
     appendTokenFunction(sb, partitionKey);
     sb.append(" > :start AND ");
@@ -899,7 +904,20 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private static void appendColumnNames(BiMap<String, String> fieldsToVariables, StringBuilder sb) {
+  private static void appendColumnNamesAndFunctions(
+      BiMap<String, String> fieldsToVariables, StringBuilder sb) {
+    appendColumnNames(fieldsToVariables, sb, (b, v) -> b.append(extractFunctionCall(v)));
+  }
+
+  private static void appendColumnNamesFilterOurFunctions(
+      BiMap<String, String> fieldsToVariables, StringBuilder sb) {
+    appendColumnNames(fieldsToVariables, sb, (ignore, ignore2) -> {});
+  }
+
+  private static void appendColumnNames(
+      BiMap<String, String> fieldsToVariables,
+      StringBuilder sb,
+      BiConsumer<StringBuilder, String> functionHandler) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
     Set<String> cols = maybeSortCols(fieldsToVariables);
@@ -917,8 +935,13 @@ public class SchemaSettings {
       if (!isFirst) {
         sb.append(',');
       }
+
       isFirst = false;
-      sb.append(quoteIfNecessary(col));
+      if (isFunction(col)) {
+        functionHandler.accept(sb, col);
+      } else {
+        sb.append(quoteIfNecessary(col));
+      }
     }
   }
 
@@ -955,14 +978,14 @@ public class SchemaSettings {
     return keys.stream().allMatch(s -> s.matches("\\d+"));
   }
 
-  //todo adapt usage of it
+  // todo adapt usage of it
   private static boolean isFunction(String field) {
     // If a field starts with this special marker, interpret it to be a cql function call.
     // This marker is honored by both QueryInspector and MappingInspector.
     return field.startsWith(INTERNAL_FUNCTION_MARKER);
   }
 
-  //todo adapt usage of it
+  // todo adapt usage of it
   private static String extractFunctionCall(String functionWithMarker) {
     return functionWithMarker.substring(INTERNAL_FUNCTION_MARKER.length());
   }
@@ -971,11 +994,14 @@ public class SchemaSettings {
     return col.equals(INTERNAL_TTL_VARNAME) || col.equals(INTERNAL_TIMESTAMP_VARNAME);
   }
 
+  // here
   private static BiMap<String, String> removeMappingFunctions(
       BiMap<String, String> fieldsToVariables) {
     ImmutableBiMap.Builder<String, String> builder = ImmutableBiMap.builder();
     for (Map.Entry<String, String> entry : fieldsToVariables.entrySet()) {
-      if (!isFunction(entry.getKey())) {
+      if (isFunction(entry.getValue())) {
+        builder.put(entry.getKey(), extractFunctionCall(entry.getValue()));
+      } else if (!isFunction(entry.getKey())) {
         builder.put(entry);
       }
     }

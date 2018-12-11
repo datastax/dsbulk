@@ -834,7 +834,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.table",
             "table_ttl_timestamp",
             "--schema.mapping",
-            "*:*,created_at=writetime(created_at),time_to_live=ttl(time_to_live)");
+            "*:*,created_at=writetime(value),time_to_live=ttl(value)");
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
   }

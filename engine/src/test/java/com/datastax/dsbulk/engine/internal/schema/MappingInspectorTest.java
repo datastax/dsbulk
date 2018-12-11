@@ -127,8 +127,10 @@ class MappingInspectorTest {
   }
 
   @Test
-  void should_detect_function_at_right_side_of_expression() {
-    MappingInspector inspector = new MappingInspector(" col1 = now(), col2 = max(1, 2), ttl_a = ttl(a), wt_a = writetime(a)", false);
+  void should_detect_function_at_right_side_of_the_expression() {
+    MappingInspector inspector =
+        new MappingInspector(
+            " col1 = now(), col2 = max(1, 2), ttl_a = ttl(a), wt_a = writetime(a)", false);
     assertThat(inspector.getExplicitVariables())
         .containsEntry("col1", INTERNAL_FUNCTION_MARKER + "now()")
         .containsEntry("col2", INTERNAL_FUNCTION_MARKER + "max(1,2)")
