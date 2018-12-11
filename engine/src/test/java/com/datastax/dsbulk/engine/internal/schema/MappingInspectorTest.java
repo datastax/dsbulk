@@ -117,7 +117,6 @@ class MappingInspectorTest {
         .containsExactly(INTERNAL_TTL_VARNAME, INTERNAL_TIMESTAMP_VARNAME);
   }
 
-  // test
   @Test
   void should_detect_function() {
     MappingInspector inspector = new MappingInspector(" now() = col1, max(1, 2) = col2  ", false);
