@@ -36,7 +36,7 @@ public class DefaultRecordMapper implements RecordMapper {
   private static final String CQL_TYPE = "cqlType";
 
   private final PreparedStatement insertStatement;
-  private final ImmutableSet<String> partitionKeyVariables;
+  private final ImmutableSet<String> primaryKeyVariables;
   private final ProtocolVersion protocolVersion;
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
@@ -47,7 +47,7 @@ public class DefaultRecordMapper implements RecordMapper {
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
-      Set<String> partitionKeyVariables,
+      Set<String> primaryKeyVariables,
       Mapping mapping,
       RecordMetadata recordMetadata,
       boolean nullToUnset,
@@ -55,7 +55,7 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields) {
     this(
         insertStatement,
-        partitionKeyVariables,
+        primaryKeyVariables,
         DriverCoreHooks.protocolVersion(insertStatement.getPreparedId()),
         mapping,
         recordMetadata,
@@ -68,7 +68,7 @@ public class DefaultRecordMapper implements RecordMapper {
   @VisibleForTesting
   DefaultRecordMapper(
       PreparedStatement insertStatement,
-      Set<String> partitionKeyVariables,
+      Set<String> primaryKeyVariables,
       ProtocolVersion protocolVersion,
       Mapping mapping,
       RecordMetadata recordMetadata,
@@ -77,7 +77,7 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
-    this.partitionKeyVariables = ImmutableSet.copyOf(partitionKeyVariables);
+    this.primaryKeyVariables = ImmutableSet.copyOf(primaryKeyVariables);
     this.protocolVersion = protocolVersion;
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
@@ -153,7 +153,7 @@ public class DefaultRecordMapper implements RecordMapper {
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
     ByteBuffer bb = codec.serialize(raw, protocolVersion);
     if (isNull(bb, cqlType)) {
-      if (partitionKeyVariables.contains(variable)) {
+      if (primaryKeyVariables.contains(variable)) {
         throw new InvalidMappingException(
             "Primary key column "
                 + name
@@ -205,7 +205,7 @@ public class DefaultRecordMapper implements RecordMapper {
   }
 
   private void ensurePrimaryKeySet(BoundStatement bs) {
-    for (String variable : partitionKeyVariables) {
+    for (String variable : primaryKeyVariables) {
       if (!bs.isSet(variable)) {
         throw new InvalidMappingException(
             "Primary key column "

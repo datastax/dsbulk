@@ -350,7 +350,7 @@ public class SchemaSettings {
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, LOAD);
     return new DefaultRecordMapper(
         preparedStatement,
-        partitionKeyVariables(),
+        primaryKeyVariables(),
         mapping,
         recordMetadata,
         nullToUnset,
@@ -897,11 +897,11 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private Set<String> partitionKeyVariables() {
+  private Set<String> primaryKeyVariables() {
     Map<String, String> boundVariables = queryInspector.getBoundVariables();
-    List<ColumnMetadata> partitionKey = table.getPartitionKey();
-    Set<String> variables = new HashSet<>(partitionKey.size());
-    for (ColumnMetadata column : partitionKey) {
+    List<ColumnMetadata> primaryKeyColumns = table.getPrimaryKey();
+    Set<String> variables = new HashSet<>(primaryKeyColumns.size());
+    for (ColumnMetadata column : primaryKeyColumns) {
       String variable = boundVariables.get(column.getName());
       variables.add(variable);
     }

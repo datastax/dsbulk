@@ -11,7 +11,6 @@ package com.datastax.dsbulk.engine.tests.utils;
 import java.net.URL;
 
 public class JsonUtils {
-
   public static final URL JSON_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.json");
   public static final URL JSON_RECORDS_UNIQUE =
       ClassLoader.getSystemResource("ip-by-country-unique.json");
@@ -29,4 +28,6 @@ public class JsonUtils {
       ClassLoader.getSystemResource("with-spaces.json");
   public static final URL JSON_RECORDS_WITH_COMMENTS =
       ClassLoader.getSystemResource("comments.json");
+  public static final URL JSON_NUMBERS_MISSING =
+      ClassLoader.getSystemResource("numbers-missing.json");
 }

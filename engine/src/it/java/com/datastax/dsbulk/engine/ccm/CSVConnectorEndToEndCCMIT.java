@@ -179,35 +179,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateOutputFiles(24, unloadDir);
   }
 
-  /** Test to validate that missing primary keys will fail to load* */
-  @Test
-  void full_load_missing_primary() throws Exception {
-
-    List<String> args = new ArrayList<>();
-    args.add("load");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
-    args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_UNIQUE_MISSING));
-    args.add("--connector.csv.header");
-    args.add("false");
-    args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
-    args.add("--schema.table");
-    args.add("ip_by_country");
-    args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
-    args.add("--schema.allowMissingFields");
-    args.add("true");
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(1);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(2, logPath);
-    validateExceptionsLog(2, "Source  :", "mapping-errors.log", logPath);
-    validateResultSetSize(22, SELECT_FROM_IP_BY_COUNTRY);
-    deleteDirectory(logDir);
-  }
-
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */
   @Test
   void full_load_unload_lz4() throws Exception {
