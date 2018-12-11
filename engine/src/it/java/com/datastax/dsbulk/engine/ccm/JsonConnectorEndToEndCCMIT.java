@@ -18,10 +18,10 @@ import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkTemp
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.*;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_NUMBERS_MISSING;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
-import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_MISSING;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_SPACES;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
@@ -132,33 +132,39 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateOutputFiles(24, unloadDir);
   }
 
-  /** Test to validate that missing clustering keys will fail to load* */
+  /** Test to validate that missing partition keys will fail to load * */
   @Test
-  void full_load_missing_cluster() throws Exception {
+  void full_load_missing_partition_keys() throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS numbers");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS numbers (key varchar, vdouble double, vdecimal decimal, PRIMARY KEY(key, vdouble))");
 
     List<String> args = new ArrayList<>();
     args.add("load");
-    args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
     args.add("--connector.name");
     args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
     args.add("--connector.json.url");
-    args.add(escapeUserInput(JSON_RECORDS_UNIQUE_MISSING));
+    args.add(escapeUserInput(JSON_NUMBERS_MISSING));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
-    args.add("ip_by_country");
+    args.add("numbers");
+    args.add("--connector.json.mode");
+    args.add("SINGLE_DOCUMENT");
     args.add("--schema.mapping");
-    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
+    args.add("*=*");
     args.add("--schema.allowMissingFields");
     args.add("true");
-
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(1);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(2, logPath);
-    validateExceptionsLog(2, "Source  :", "mapping-errors.log", logPath);
-    validateResultSetSize(22, SELECT_FROM_IP_BY_COUNTRY);
+    validateExceptionsLog(
+        1, "Partition key column vdouble cannot be left unmapped", "mapping-errors.log", logPath);
+    validateResultSetSize(1, SELECT_FROM_IP_BY_COUNTRY);
     deleteDirectory(logDir);
   }
 

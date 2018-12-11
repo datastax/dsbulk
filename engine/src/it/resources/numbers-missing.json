@@ -1,0 +1,11 @@
+[
+  {
+    "key": "scientific_notation",
+    "vdecimal": "1.0E+7"
+  },
+  {
+    "key": "regular_notation",
+    "vdouble": 10000000,
+    "vdecimal": 10000000
+  }
+]
