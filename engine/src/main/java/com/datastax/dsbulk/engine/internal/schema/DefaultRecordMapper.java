@@ -206,10 +206,11 @@ public class DefaultRecordMapper implements RecordMapper {
 
   private void ensurePrimaryKeySet(BoundStatement bs) {
     for (String variable : primaryKeyVariables) {
-      if (!bs.isSet(variable)) {
+      String name = Metadata.quoteIfNecessary(variable);
+      if (!bs.isSet(name)) {
         throw new InvalidMappingException(
             "Primary key column "
-                + Metadata.quoteIfNecessary(variable)
+                + name
                 + " cannot be left unmapped. "
                 + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
       }

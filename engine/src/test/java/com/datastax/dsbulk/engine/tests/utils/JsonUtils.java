@@ -27,6 +27,6 @@ public class JsonUtils {
       ClassLoader.getSystemResource("with-spaces.json");
   public static final URL JSON_RECORDS_WITH_COMMENTS =
       ClassLoader.getSystemResource("comments.json");
-  public static final URL JSON_NUMBERS_MISSING =
-      ClassLoader.getSystemResource("numbers-missing.json");
+  public static final URL JSON_MISSING = ClassLoader.getSystemResource("missing.json");
+  public static final URL JSON_MISSING_CASE = ClassLoader.getSystemResource("missing-case.json");
 }
