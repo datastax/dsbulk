@@ -169,25 +169,23 @@ public class WorkflowUtils {
   }
 
   public static void checkProductCompatibility(Cluster cluster) {
-    //    Set<Host> hosts = cluster.getMetadata().getAllHosts();
-    //    List<Host> nonDseHosts =
-    //        hosts
-    //            .stream()
-    //            .filter(
-    //                host ->
-    //                    host.getDseVersion() == null && host.getCassandraVersion().getDSEPatch()
-    // <= 0)
-    //            .collect(Collectors.toList());
-    //    if (!nonDseHosts.isEmpty()) {
-    //      LOGGER.error(
-    //          "Incompatible cluster detected. Load functionality is only compatible with a DSE
-    // cluster.");
-    //      LOGGER.error("The following nodes do not appear to be running DSE:");
-    //      for (Host host : nonDseHosts) {
-    //        LOGGER.error(host.toString());
-    //      }
-    //      throw new IllegalStateException("Unable to load data to non DSE cluster");
-    //    }
+    Set<Host> hosts = cluster.getMetadata().getAllHosts();
+    List<Host> nonDseHosts =
+        hosts
+            .stream()
+            .filter(
+                host ->
+                    host.getDseVersion() == null && host.getCassandraVersion().getDSEPatch() <= 0)
+            .collect(Collectors.toList());
+    if (!nonDseHosts.isEmpty()) {
+      LOGGER.error(
+          "Incompatible cluster detected. Load functionality is only compatible with a DSE cluster.");
+      LOGGER.error("The following nodes do not appear to be running DSE:");
+      for (Host host : nonDseHosts) {
+        LOGGER.error(host.toString());
+      }
+      throw new IllegalStateException("Unable to load data to non DSE cluster");
+    }
   }
 
   public static void checkGraphCompatibility(Cluster cluster) {
