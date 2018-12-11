@@ -111,7 +111,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   CSVConnectorEndToEndCCMIT(
       CCMCluster ccm,
       Session session,
-      @LogCapture(level = ERROR) LogInterceptor logs,
+      @LogCapture LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
     this.logs = logs;
