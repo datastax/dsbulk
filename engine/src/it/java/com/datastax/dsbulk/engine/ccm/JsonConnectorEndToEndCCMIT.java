@@ -17,7 +17,14 @@ import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkNumb
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkTemporalsWritten;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.*;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_NUMBERS_MISSING;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
