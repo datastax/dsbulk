@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.connectors.api.internal;
 
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
+import com.datastax.dsbulk.connectors.api.Field;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.net.URI;
@@ -60,7 +61,7 @@ public class DefaultErrorRecord implements ErrorRecord {
 
   @NotNull
   @Override
-  public Set<String> fields() {
+  public Set<Field> fields() {
     return ImmutableSet.of();
   }
 
@@ -71,7 +72,7 @@ public class DefaultErrorRecord implements ErrorRecord {
   }
 
   @Override
-  public Object getFieldValue(String field) {
+  public Object getFieldValue(Field field) {
     return null;
   }
 

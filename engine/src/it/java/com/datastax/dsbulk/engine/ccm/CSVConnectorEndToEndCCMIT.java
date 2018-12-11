@@ -16,6 +16,7 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.numberToInstant;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS;
@@ -999,10 +1000,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     Optional<String> line =
-        readAllLinesInDirectoryAsStream(unloadDir).filter(s -> s.contains("123456789")).findFirst();
+        readAllLinesInDirectoryAsStream(unloadDir).filter(s -> s.contains("foo")).findFirst();
     assertThat(line)
         .isPresent()
-        .hasValueSatisfying(l -> assertThat(l).containsPattern("1,foo,123456789,\\d+"));
+        .hasValueSatisfying(
+            l ->
+                assertThat(l)
+                    .contains("1,foo,")
+                    .contains(numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
+                    .containsPattern(",\\d+"));
     deleteDirectory(logDir);
     session.execute("TRUNCATE unload_and_load_timestamp_ttl");
 
@@ -1015,8 +1021,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             escapeUserInput(unloadDir),
             "--connector.csv.header",
             "true",
-            "--codec.unit",
-            "MICROSECONDS",
             "--schema.keyspace",
             session.getLoggedKeyspace(),
             "--schema.table",
@@ -1030,6 +1034,152 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         session.execute(
             "SELECT key, value, writetime(value) AS timestamp, ttl(value) AS ttl "
                 + "FROM unload_and_load_timestamp_ttl WHERE key = 1");
+    Row row = rs.one();
+    assertThat(row.getLong("timestamp")).isEqualTo(123456789L);
+    assertThat(row.getInt("ttl")).isLessThanOrEqualTo(123456789);
+  }
+
+  @Test
+  void unload_and_load_timestamp_ttl_case_sensitive_custom_query() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
+    session.execute(
+        "CREATE TABLE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" (key int PRIMARY KEY, \"My Value\" text)");
+    session.execute(
+        "INSERT INTO \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" (key, \"My Value\") VALUES (1, 'foo') "
+            + "USING TIMESTAMP 123456789 AND TTL 123456789");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            escapeUserInput(
+                "SELECT key, \"My Value\", "
+                    + "writetime(\"My Value\"), "
+                    + "ttl(\"My Value\") "
+                    + "FROM \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\""));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    Optional<String> line =
+        readAllLinesInDirectoryAsStream(unloadDir).filter(s -> s.contains("foo")).findFirst();
+    assertThat(line)
+        .isPresent()
+        .hasValueSatisfying(
+            l ->
+                assertThat(l)
+                    .contains("1,foo,")
+                    .contains(numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
+                    .containsPattern(",\\d+"));
+    deleteDirectory(logDir);
+    session.execute("TRUNCATE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
+
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            escapeUserInput(
+                "INSERT INTO \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" (key, \"My Value\") "
+                    + "VALUES (:key, :\"My Value\") "
+                    + "USING TIMESTAMP :\"writetime(My Value)\" "
+                    + "AND TTL :\"ttl(My Value)\""));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    ResultSet rs =
+        session.execute(
+            "SELECT key, \"My Value\", "
+                + "writetime(\"My Value\") AS timestamp, "
+                + "ttl(\"My Value\") AS ttl "
+                + "FROM \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" WHERE key = 1");
+    Row row = rs.one();
+    assertThat(row.getLong("timestamp")).isEqualTo(123456789L);
+    assertThat(row.getInt("ttl")).isLessThanOrEqualTo(123456789);
+  }
+
+  @Test
+  void unload_and_load_timestamp_ttl_case_sensitive_mapping() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
+    session.execute(
+        "CREATE TABLE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" (key int PRIMARY KEY, \"My Value\" text)");
+    session.execute(
+        "INSERT INTO \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" (key, \"My Value\") VALUES (1, 'foo') "
+            + "USING TIMESTAMP 123456789 AND TTL 123456789");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "UNLOAD_AND_LOAD_TIMESTAMP_TTL",
+            "--schema.mapping",
+            escapeUserInput(
+                "key, \"My Value\", " + "writetime(\"My Value\"), " + "ttl(\"My Value\")"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    Optional<String> line =
+        readAllLinesInDirectoryAsStream(unloadDir).filter(s -> s.contains("foo")).findFirst();
+    assertThat(line)
+        .isPresent()
+        .hasValueSatisfying(
+            l ->
+                assertThat(l)
+                    .contains("1,foo,")
+                    .contains(numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
+                    .containsPattern(",\\d+"));
+    deleteDirectory(logDir);
+    session.execute("TRUNCATE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
+
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "UNLOAD_AND_LOAD_TIMESTAMP_TTL",
+            "--schema.mapping",
+            escapeUserInput(
+                "* = * , \"writetime(My Value)\" = __timestamp, \"ttl(My Value)\" = __ttl"));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    ResultSet rs =
+        session.execute(
+            "SELECT key, \"My Value\", "
+                + "writetime(\"My Value\") AS timestamp, "
+                + "ttl(\"My Value\") AS ttl "
+                + "FROM \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" WHERE key = 1");
     Row row = rs.one();
     assertThat(row.getLong("timestamp")).isEqualTo(123456789L);
     assertThat(row.getInt("ttl")).isLessThanOrEqualTo(123456789);
@@ -1399,7 +1549,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () -> Flux.just(new DefaultRecord("1,1", () -> null, 0, () -> null, "1", "1"));
+            return () ->
+                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1"));
           }
         });
 
@@ -1452,7 +1603,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () -> Flux.just(new DefaultRecord("1,1", () -> null, 0, () -> null, "1", "1"));
+            return () ->
+                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1"));
           }
         });
 
@@ -1510,7 +1662,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () -> Flux.just(new DefaultRecord("1,1", () -> null, 0, () -> null, "1", "1"));
+            return () ->
+                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1"));
           }
         });
 
@@ -1570,7 +1723,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
           @Override
           public Supplier<? extends Publisher<Record>> read() {
             return () ->
-                Flux.just(new DefaultRecord("1,1", () -> null, 0, () -> null, "1", "1", ""));
+                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1", ""));
           }
         });
 
@@ -1636,7 +1789,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
           @Override
           public Supplier<? extends Publisher<Record>> read() {
             return () ->
-                Flux.just(new DefaultRecord("1,1", () -> null, 0, () -> null, "1", "2", "3", "4"));
+                Flux.just(
+                    DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "2", "3", "4"));
           }
         });
 

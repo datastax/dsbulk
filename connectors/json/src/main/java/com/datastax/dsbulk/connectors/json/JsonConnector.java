@@ -17,8 +17,10 @@ import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
+import com.datastax.dsbulk.connectors.api.MappedField;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
+import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
@@ -58,11 +60,13 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -367,8 +371,16 @@ public class JsonConnector implements Connector {
                   Record record;
                   JsonNode node = it.next();
                   Map<String, JsonNode> values = objectMapper.convertValue(node, jsonNodeMapType);
+                  Map<MappedField, JsonNode> fields =
+                      values
+                          .entrySet()
+                          .stream()
+                          .collect(
+                              Collectors.toMap(
+                                  e -> new DefaultMappedField(e.getKey()), Entry::getValue));
                   record =
-                      new DefaultRecord(node, () -> resource, finalRecordNumber, location, values);
+                      DefaultRecord.mapped(
+                          node, () -> resource, finalRecordNumber, location, fields);
                   LOGGER.trace("Emitting record {}", record);
                   controller.awaitRequested(1);
                   sink.next(record);

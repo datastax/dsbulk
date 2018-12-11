@@ -14,7 +14,6 @@ import static com.datastax.dsbulk.engine.WorkflowType.COUNT;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
-import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_FUNCTION_MARKER;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
@@ -42,11 +41,18 @@ import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.engine.internal.schema.CQLFragment;
+import com.datastax.dsbulk.engine.internal.schema.CQLIdentifier;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.DefaultRecordMapper;
+import com.datastax.dsbulk.engine.internal.schema.FunctionCall;
+import com.datastax.dsbulk.engine.internal.schema.IndexedMappingField;
+import com.datastax.dsbulk.engine.internal.schema.MappedMappingField;
+import com.datastax.dsbulk.engine.internal.schema.MappingField;
 import com.datastax.dsbulk.engine.internal.schema.MappingInspector;
+import com.datastax.dsbulk.engine.internal.schema.MappingToken;
 import com.datastax.dsbulk.engine.internal.schema.QueryInspector;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
@@ -56,20 +62,20 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.typesafe.config.ConfigException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -104,7 +110,6 @@ public class SchemaSettings {
   private boolean allowExtraFields;
   private boolean allowMissingFields;
   private MappingInspector mapping;
-  private BiMap<String, String> explicitVariables;
   private int ttlSeconds;
   private long timestampMicros;
   private TableMetadata table;
@@ -114,7 +119,7 @@ public class SchemaSettings {
   private String query;
   private QueryInspector queryInspector;
   private PreparedStatement preparedStatement;
-  private String writeTimeVariable;
+  private ImmutableSet<CQLFragment> writeTimeVariables;
   private boolean preferIndexedMapping;
 
   SchemaSettings(LoaderConfig config) {
@@ -217,8 +222,8 @@ public class SchemaSettings {
             throw new BulkConfigurationException(
                 "Setting schema.keyspace must not be provided when schema.query contains a keyspace-qualified statement");
           }
-          String keyspaceName = quoteIfNecessary(queryInspector.getKeyspaceName().get());
-          keyspace = cluster.getMetadata().getKeyspace(keyspaceName);
+          CQLIdentifier keyspaceName = queryInspector.getKeyspaceName().get();
+          keyspace = cluster.getMetadata().getKeyspace(keyspaceName.asCql());
           if (keyspace == null) {
             throw new BulkConfigurationException(
                 String.format(
@@ -229,8 +234,8 @@ public class SchemaSettings {
               "Setting schema.keyspace must be provided when schema.query does not contain a keyspace-qualified statement");
         }
 
-        String tableName = quoteIfNecessary(queryInspector.getTableName());
-        table = keyspace.getTable(tableName);
+        CQLIdentifier tableName = queryInspector.getTableName();
+        table = keyspace.getTable(tableName.asCql());
         if (table == null) {
           throw new BulkConfigurationException(
               String.format(
@@ -244,18 +249,21 @@ public class SchemaSettings {
         }
 
         // If a query is provided, check now if it contains a USING TIMESTAMP variable,
-        // and get its name.
-        if (queryInspector.getWriteTimeVariable().isPresent()) {
-          writeTimeVariable = queryInspector.getWriteTimeVariable().get();
+        // or selectors containing a writetime() function call, and get their names.
+        writeTimeVariables = queryInspector.getWriteTimeVariables();
+
+      } else {
+
+        writeTimeVariables = ImmutableSet.of();
+
+        if (keyspace == null || table == null) {
+
+          // Either the keyspace and table must be present, or the query must be present.
+          throw new BulkConfigurationException(
+              "When schema.query is not defined, "
+                  + "then either schema.keyspace or schema.graph must be defined, "
+                  + "and either schema.table, schema.vertex or schema.edge must be defined");
         }
-
-      } else if (keyspace == null || table == null) {
-
-        // Either the keyspace and table must be present, or the query must be present.
-        throw new BulkConfigurationException(
-            "When schema.query is not defined, "
-                + "then either schema.keyspace or schema.graph must be defined, "
-                + "and either schema.table, schema.vertex or schema.edge must be defined");
       }
 
       assert keyspace != null;
@@ -274,29 +282,50 @@ public class SchemaSettings {
         }
 
         mapping = new MappingInspector(config.getString(MAPPING), preferIndexedMapping);
-        explicitVariables = mapping.getExplicitVariables();
+
+        if (preferIndexedMapping && !mapping.isIndexed()) {
+          throw new BulkConfigurationException(
+              "Schema mapping contains named fields, but connector only supports indexed fields, "
+                  + "please enable support for named fields in the connector, or alternatively, "
+                  + "provide an indexed mapping of the form: '0=col1,1=col2,...'");
+        }
 
         // Error out if the explicit variables map timestamp or ttl and
         // there is an explicit query.
         if (query != null) {
-          if (explicitVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME)) {
+          if (mapping.getExplicitVariables().containsValue(INTERNAL_TIMESTAMP_VARNAME)) {
             throw new BulkConfigurationException(
                 "Setting schema.query must not be defined when mapping a field to query-timestamp");
           }
-          if (explicitVariables.containsValue(INTERNAL_TTL_VARNAME)) {
+          if (mapping.getExplicitVariables().containsValue(INTERNAL_TTL_VARNAME)) {
             throw new BulkConfigurationException(
                 "Setting schema.query must not be defined when mapping a field to query-ttl");
           }
-          if (explicitVariables.keySet().stream().anyMatch(SchemaSettings::isFunction)) {
+          if (mapping
+              .getExplicitVariables()
+              .keySet()
+              .stream()
+              .anyMatch(FunctionCall.class::isInstance)) {
+            throw new BulkConfigurationException(
+                "Setting schema.query must not be defined when mapping a function to a column");
+          }
+          if (mapping
+              .getExplicitVariables()
+              .values()
+              .stream()
+              .anyMatch(FunctionCall.class::isInstance)) {
             throw new BulkConfigurationException(
                 "Setting schema.query must not be defined when mapping a function to a column");
           }
         }
 
-        // store the write time variable name for later if it was present in the mapping
-        if (explicitVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME)) {
-          writeTimeVariable = INTERNAL_TIMESTAMP_VARNAME;
-        }
+        // merge the write time variable name if it was present in the mapping with
+        // the ones found in the query.
+        writeTimeVariables =
+            ImmutableSet.<CQLFragment>builder()
+                .addAll(writeTimeVariables)
+                .addAll(mapping.getWriteTimeVariables())
+                .build();
       }
 
       // Misc
@@ -422,7 +451,7 @@ public class SchemaSettings {
   @NotNull
   private DefaultMapping prepareStatementAndCreateMapping(
       Session session, ExtendedCodecRegistry codecRegistry, WorkflowType workflowType) {
-    BiMap<String, String> fieldsToVariables = null;
+    BiMap<MappingField, CQLFragment> fieldsToVariables = null;
     if (!config.hasPath(QUERY)) {
       // in the absence of user-provided queries, create the mapping *before* query generation and
       // preparation
@@ -433,6 +462,7 @@ public class SchemaSettings {
                       .getColumns()
                       .stream()
                       .map(ColumnMetadata::getName)
+                      .map(CQLIdentifier::fromInternal)
                       .collect(Collectors.toList()));
       // query generation
       if (workflowType == LOAD) {
@@ -468,6 +498,7 @@ public class SchemaSettings {
               () ->
                   StreamSupport.stream(variables.spliterator(), false)
                       .map(ColumnDefinitions.Definition::getName)
+                      .map(CQLIdentifier::fromInternal)
                       .collect(Collectors.toList()));
       // validate user-provided query
       if (workflowType == LOAD) {
@@ -478,7 +509,7 @@ public class SchemaSettings {
     }
     assert fieldsToVariables != null;
     return new DefaultMapping(
-        ImmutableBiMap.copyOf(fieldsToVariables), codecRegistry, writeTimeVariable);
+        ImmutableBiMap.copyOf(fieldsToVariables), codecRegistry, writeTimeVariables);
   }
 
   private boolean isCounterTable() {
@@ -500,9 +531,9 @@ public class SchemaSettings {
     }
   }
 
-  private BiMap<String, String> createFieldsToVariablesMap(Supplier<List<String>> columns)
-      throws BulkConfigurationException {
-    BiMap<String, String> fieldsToVariables;
+  private BiMap<MappingField, CQLFragment> createFieldsToVariablesMap(
+      Supplier<List<CQLFragment>> columns) throws BulkConfigurationException {
+    BiMap<MappingField, CQLFragment> fieldsToVariables;
     // create indexed mappings only for unload, and only if the connector really requires it, to
     // match the order in which the query declares variables.
     if (mapping == null) {
@@ -514,12 +545,13 @@ public class SchemaSettings {
         fieldsToVariables = HashBiMap.create();
       }
 
+      ImmutableBiMap<MappingField, CQLFragment> explicitVariables = mapping.getExplicitVariables();
       if (!explicitVariables.isEmpty()) {
-        ImmutableBiMap.Builder<String, String> builder = ImmutableBiMap.builder();
-        for (Map.Entry<String, String> entry : explicitVariables.entrySet()) {
+        ImmutableBiMap.Builder<MappingField, CQLFragment> builder = ImmutableBiMap.builder();
+        for (Map.Entry<MappingField, CQLFragment> entry : explicitVariables.entrySet()) {
           builder.put(entry.getKey(), entry.getValue());
         }
-        for (Map.Entry<String, String> entry : fieldsToVariables.entrySet()) {
+        for (Map.Entry<MappingField, CQLFragment> entry : fieldsToVariables.entrySet()) {
           if (!explicitVariables.containsKey(entry.getKey())
               && !explicitVariables.containsValue(entry.getValue())) {
             builder.put(entry.getKey(), entry.getValue());
@@ -534,7 +566,6 @@ public class SchemaSettings {
         "Mapping was absent and could not be inferred, please provide an explicit mapping");
 
     validateAllFieldsPresent(fieldsToVariables, columns);
-    validateMappedRecords(fieldsToVariables);
 
     return fieldsToVariables;
   }
@@ -661,53 +692,47 @@ public class SchemaSettings {
     return edge.get();
   }
 
-  private void validateMappedRecords(BiMap<String, String> fieldsToVariables) {
-    if (preferIndexedMapping && !isIndexed(fieldsToVariables.keySet())) {
-      throw new BulkConfigurationException(
-          "Schema mapping contains named fields, but connector only supports indexed fields, "
-              + "please enable support for named fields in the connector, or alternatively, "
-              + "provide an indexed mapping of the form: '0=col1,1=col2,...'");
-    }
-  }
-
   private void validateAllFieldsPresent(
-      BiMap<String, String> fieldsToVariables, Supplier<List<String>> columns) {
-    List<String> colNames = columns.get();
+      BiMap<MappingField, CQLFragment> fieldsToVariables, Supplier<List<CQLFragment>> columns) {
+    List<CQLFragment> colNames = columns.get();
     fieldsToVariables.forEach(
         (key, value) -> {
-          if (!isPseudoColumn(value) && !isFunction(value) && !colNames.contains(value)) {
+          if (value instanceof CQLIdentifier
+              && !isPseudoColumn(value)
+              && !colNames.contains(value)) {
             if (!config.hasPath(QUERY)) {
               throw new BulkConfigurationException(
                   String.format(
                       "Schema mapping entry '%s' doesn't match any column found in table %s",
-                      value, tableName));
+                      value.asInternal(), tableName));
             } else {
               assert query != null;
               throw new BulkConfigurationException(
                   String.format(
                       "Schema mapping entry '%s' doesn't match any bound variable found in query: '%s'",
-                      value, query));
+                      value.asInternal(), query));
             }
           }
         });
   }
 
-  private void validatePrimaryKeyPresent(BiMap<String, String> fieldsToVariables) {
+  private void validatePrimaryKeyPresent(BiMap<MappingField, CQLFragment> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPrimaryKey();
-    Set<String> mappingVariables = fieldsToVariables.values();
-    ImmutableMap<String, String> queryVariables = queryInspector.getBoundVariables();
+    Set<CQLFragment> mappingVariables = fieldsToVariables.values();
+    ImmutableMap<CQLIdentifier, CQLFragment> queryVariables = queryInspector.getBoundVariables();
     for (ColumnMetadata pk : partitionKey) {
-      String queryVariable = queryVariables.get(pk.getName());
+      CQLIdentifier pkVariable = CQLIdentifier.fromInternal(pk.getName());
+      MappingToken queryVariable = queryVariables.get(pkVariable);
       if (
       // the query did not contain such column
       queryVariable == null
           ||
           // or the query did contain such column, but the mapping didn't
           // and that column is not mapped to a function (DAT-326)
-          (!isFunction(queryVariable) && !mappingVariables.contains(queryVariable))) {
+          (!(queryVariable instanceof FunctionCall) && !mappingVariables.contains(queryVariable))) {
         throw new BulkConfigurationException(
             "Missing required primary key column "
-                + quoteIfNecessary(pk.getName())
+                + pkVariable.asCql()
                 + " from schema.mapping or schema.query");
       }
     }
@@ -718,9 +743,10 @@ public class SchemaSettings {
     // the query must contain the entire partition key in the select clause,
     // and nothing else.
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
-    Set<String> columns = new HashSet<>(queryInspector.getSelectedColumns());
+    Set<CQLIdentifier> columns = new HashSet<>(queryInspector.getResultSetVariables().keySet());
     for (ColumnMetadata pk : partitionKey) {
-      if (!columns.remove(pk.getName())) {
+      CQLIdentifier pkVariable = CQLIdentifier.fromInternal(pk.getName());
+      if (!columns.remove(pkVariable)) {
         throw new BulkConfigurationException(
             "Missing required partition key column "
                 + quoteIfNecessary(pk.getName())
@@ -729,7 +755,7 @@ public class SchemaSettings {
     }
     if (!columns.isEmpty()) {
       String offendingColumns =
-          columns.stream().map(Metadata::quoteIfNecessary).collect(Collectors.joining(", "));
+          columns.stream().map(Object::toString).collect(Collectors.joining(", "));
       throw new BulkConfigurationException(
           String.format(
               "Value for schema.query contains extraneous columns in the "
@@ -738,20 +764,20 @@ public class SchemaSettings {
     }
   }
 
-  private ImmutableBiMap<String, String> inferFieldsToVariablesMap(Supplier<List<String>> columns) {
+  private ImmutableBiMap<MappingField, CQLFragment> inferFieldsToVariablesMap(
+      Supplier<List<CQLFragment>> columns) {
 
     // use a builder to preserve iteration order
-    ImmutableBiMap.Builder<String, String> fieldsToVariables = new ImmutableBiMap.Builder<>();
+    ImmutableBiMap.Builder<MappingField, CQLFragment> fieldsToVariables =
+        new ImmutableBiMap.Builder<>();
 
     int i = 0;
-    for (String colName : columns.get()) {
+    for (CQLFragment colName : columns.get()) {
       if (mapping == null || !mapping.getExcludedVariables().contains(colName)) {
-        // don't quote column names here, it will be done later on if required
-        // for unload only, use the query's variable order
         if (preferIndexedMapping) {
-          fieldsToVariables.put(Integer.toString(i), colName);
+          fieldsToVariables.put(new IndexedMappingField(i), colName);
         } else {
-          fieldsToVariables.put(colName, colName);
+          fieldsToVariables.put(new MappedMappingField(colName.asInternal()), colName);
         }
       }
       i++;
@@ -759,16 +785,16 @@ public class SchemaSettings {
     return fieldsToVariables.build();
   }
 
-  private String inferInsertQuery(BiMap<String, String> fieldsToVariables) {
+  private String inferInsertQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
     appendColumnNames(fieldsToVariables, sb, false);
     sb.append(") VALUES (");
-    Set<String> cols = maybeSortCols(fieldsToVariables);
-    Iterator<String> it = cols.iterator();
+    Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
+    Iterator<CQLFragment> it = cols.iterator();
     boolean isFirst = true;
     while (it.hasNext()) {
-      String col = it.next();
+      CQLFragment col = it.next();
       if (isPseudoColumn(col)) {
         // This isn't a real column name.
         continue;
@@ -777,12 +803,13 @@ public class SchemaSettings {
         sb.append(',');
       }
       isFirst = false;
-      String field = fieldsToVariables.inverse().get(col);
-      if (isFunction(field)) {
-        sb.append(extractFunctionCall(field));
+      MappingToken field = fieldsToVariables.inverse().get(col);
+      if (field instanceof FunctionCall) {
+        // append the function call as is
+        sb.append(((FunctionCall) field).asCql());
       } else {
         sb.append(':');
-        sb.append(quoteIfNecessary(col));
+        sb.append(col.asCql());
       }
     }
     sb.append(')');
@@ -790,24 +817,30 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private String inferUpdateCounterQuery(BiMap<String, String> fieldsToVariables) {
+  private String inferUpdateCounterQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("UPDATE ");
     sb.append(keyspaceName).append('.').append(tableName);
     // Note: TTL and timestamp are not allowed in counter queries;
     // a test is made inside the following method
     addTimestampAndTTL(fieldsToVariables, sb);
     sb.append(" SET ");
-    Set<String> cols = maybeSortCols(fieldsToVariables);
-    Iterator<String> it = cols.iterator();
+    Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
+    Iterator<CQLFragment> it = cols.iterator();
     boolean isFirst = true;
-    List<String> pks =
-        table.getPrimaryKey().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
+    List<CQLFragment> pks =
+        table
+            .getPrimaryKey()
+            .stream()
+            .map(ColumnMetadata::getName)
+            .map(CQLIdentifier::fromInternal)
+            .collect(Collectors.toList());
     while (it.hasNext()) {
-      String col = it.next();
+      CQLFragment col = it.next();
       if (pks.contains(col)) {
         continue;
       }
-      if (isFunction(fieldsToVariables.inverse().get(col))) {
+      MappingToken field = fieldsToVariables.inverse().get(col);
+      if (field instanceof FunctionCall) {
         throw new BulkConfigurationException(
             "Function calls are not allowed when updating a counter table.");
       }
@@ -815,24 +848,24 @@ public class SchemaSettings {
         sb.append(',');
       }
       isFirst = false;
-      String quoted = quoteIfNecessary(col);
-      sb.append(quoted).append('=').append(quoted).append("+:").append(quoted);
+      sb.append(col.asCql()).append('=').append(col.asCql()).append("+:").append(col.asCql());
     }
     sb.append(" WHERE ");
     it = pks.iterator();
     isFirst = true;
     while (it.hasNext()) {
-      String col = it.next();
+      CQLFragment col = it.next();
       if (!isFirst) {
         sb.append(" AND ");
       }
       isFirst = false;
-      sb.append(quoteIfNecessary(col)).append("=:").append(quoteIfNecessary(col));
+      sb.append(col.asCql()).append("=:").append(col.asCql());
     }
     return sb.toString();
   }
 
-  private void addTimestampAndTTL(BiMap<String, String> fieldsToVariables, StringBuilder sb) {
+  private void addTimestampAndTTL(
+      BiMap<MappingField, CQLFragment> fieldsToVariables, StringBuilder sb) {
     boolean hasTtl = ttlSeconds != -1 || fieldsToVariables.containsValue(INTERNAL_TTL_VARNAME);
     boolean hasTimestamp =
         timestampMicros != -1 || fieldsToVariables.containsValue(INTERNAL_TIMESTAMP_VARNAME);
@@ -866,7 +899,7 @@ public class SchemaSettings {
     }
   }
 
-  private String inferReadQuery(BiMap<String, String> fieldsToVariables) {
+  private String inferReadQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
     StringBuilder sb = new StringBuilder("SELECT ");
     appendColumnNames(fieldsToVariables, sb, true);
@@ -897,30 +930,32 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private Set<String> primaryKeyVariables() {
-    Map<String, String> boundVariables = queryInspector.getBoundVariables();
+  private Set<CQLIdentifier> primaryKeyVariables() {
+    Map<CQLIdentifier, CQLFragment> boundVariables = queryInspector.getBoundVariables();
     List<ColumnMetadata> primaryKeyColumns = table.getPrimaryKey();
-    Set<String> variables = new HashSet<>(primaryKeyColumns.size());
+    Set<CQLIdentifier> variables = new HashSet<>(primaryKeyColumns.size());
     for (ColumnMetadata column : primaryKeyColumns) {
-      String variable = boundVariables.get(column.getName());
-      if (!variable.startsWith(INTERNAL_FUNCTION_MARKER)) {
-        variables.add(variable);
+      CQLFragment variable = boundVariables.get(CQLIdentifier.fromInternal(column.getName()));
+      if (variable instanceof CQLIdentifier) {
+        variables.add((CQLIdentifier) variable);
       }
     }
     return variables;
   }
 
-  private static void appendColumnNames(
-      BiMap<String, String> fieldsToVariables, StringBuilder sb, boolean allowFunctions) {
+  private void appendColumnNames(
+      BiMap<MappingField, CQLFragment> fieldsToVariables,
+      StringBuilder sb,
+      boolean allowFunctions) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
-    Set<String> cols = maybeSortCols(fieldsToVariables);
-    Iterator<String> it = cols.iterator();
+    Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
+    Iterator<CQLFragment> it = cols.iterator();
     boolean isFirst = true;
     while (it.hasNext()) {
       // this assumes that the variable name found in the mapping
       // corresponds to a CQL column having the exact same name.
-      String col = it.next();
+      CQLFragment col = it.next();
       if (isPseudoColumn(col)) {
         // This is not a real column. Skip it.
         continue;
@@ -929,17 +964,12 @@ public class SchemaSettings {
         sb.append(',');
       }
       isFirst = false;
-      if (isFunction(col)) {
-        if (!allowFunctions) {
-          throw new IllegalArgumentException(
-              "Misplaced function call detected on the right side of a mapping entry; "
-                  + "please review your schema.mapping setting");
-        } else {
-          sb.append(extractFunctionCall(col));
-        }
-      } else {
-        sb.append(quoteIfNecessary(col));
+      if (col instanceof FunctionCall && !allowFunctions) {
+        throw new IllegalArgumentException(
+            "Misplaced function call detected on the right side of a mapping entry; "
+                + "please review your schema.mapping setting");
       }
+      sb.append(col.asCql());
     }
   }
 
@@ -957,13 +987,13 @@ public class SchemaSettings {
   }
 
   @NotNull
-  private static Set<String> maybeSortCols(BiMap<String, String> fieldsToVariables) {
-    Set<String> cols;
-    if (isIndexed(fieldsToVariables.keySet())) {
+  private Set<CQLFragment> maybeSortCols(BiMap<MappingField, CQLFragment> fieldsToVariables) {
+    Set<CQLFragment> cols;
+    if (mapping != null && mapping.isIndexed()) {
       // order columns by index
-      BiMap<String, String> variablesToFields = fieldsToVariables.inverse();
-      cols =
-          new TreeSet<>(Comparator.comparingInt(o -> Integer.parseInt(variablesToFields.get(o))));
+      LinkedHashMap<MappingField, CQLFragment> sorted =
+          MappingInspector.sortFieldsByIndex(fieldsToVariables);
+      cols = new LinkedHashSet<>(sorted.values());
       cols.addAll(fieldsToVariables.values());
     } else {
       // preserve original order of variables in the mapping
@@ -972,31 +1002,17 @@ public class SchemaSettings {
     return cols;
   }
 
-  private static boolean isIndexed(Set<String> keys) {
-    return keys.stream().allMatch(s -> s.matches("\\d+"));
+  private static boolean isPseudoColumn(MappingToken col) {
+    return col == INTERNAL_TTL_VARNAME || col == INTERNAL_TIMESTAMP_VARNAME;
   }
 
-  private static boolean isFunction(String field) {
-    // If a field starts with this special marker, interpret it to be a cql function call.
-    // This marker is honored by both QueryInspector and MappingInspector.
-    return field.startsWith(INTERNAL_FUNCTION_MARKER);
-  }
-
-  private static String extractFunctionCall(String functionWithMarker) {
-    return functionWithMarker.substring(INTERNAL_FUNCTION_MARKER.length());
-  }
-
-  private static boolean isPseudoColumn(String col) {
-    return col.equals(INTERNAL_TTL_VARNAME) || col.equals(INTERNAL_TIMESTAMP_VARNAME);
-  }
-
-  private static BiMap<String, String> processMappingFunctions(
-      BiMap<String, String> fieldsToVariables, WorkflowType workflowType) {
-    ImmutableBiMap.Builder<String, String> builder = ImmutableBiMap.builder();
-    for (Map.Entry<String, String> entry : fieldsToVariables.entrySet()) {
-      if (isFunction(entry.getValue())) {
+  private static BiMap<MappingField, CQLFragment> processMappingFunctions(
+      BiMap<MappingField, CQLFragment> fieldsToVariables, WorkflowType workflowType) {
+    ImmutableBiMap.Builder<MappingField, CQLFragment> builder = ImmutableBiMap.builder();
+    for (Map.Entry<MappingField, CQLFragment> entry : fieldsToVariables.entrySet()) {
+      if (entry.getValue() instanceof FunctionCall) {
         handleFunctionForUnload(builder, entry);
-      } else if (isFunction(entry.getKey())) {
+      } else if (entry.getKey() instanceof FunctionCall) {
         handleFunctionForLoad(workflowType);
       } else {
         builder.put(entry);
@@ -1006,12 +1022,13 @@ public class SchemaSettings {
   }
 
   private static void handleFunctionForUnload(
-      ImmutableBiMap.Builder<String, String> builder, Map.Entry<String, String> entry) {
+      ImmutableBiMap.Builder<MappingField, CQLFragment> builder,
+      Map.Entry<MappingField, CQLFragment> entry) {
     // functions as variables are are only allowed when unloading, but this has already
     // been validated when generating the query, so we don't need to re-validate here;
     // function calls when unloading should be included in the final mapping so that their
     // results can be retrieved by ReadResultMapper.
-    builder.put(entry.getKey(), extractFunctionCall(entry.getValue()));
+    builder.put(entry.getKey(), entry.getValue());
   }
 
   private static void handleFunctionForLoad(WorkflowType workflowType) {

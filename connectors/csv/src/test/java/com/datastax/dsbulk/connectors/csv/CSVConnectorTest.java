@@ -28,7 +28,10 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
+import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
+import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -46,6 +49,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -198,7 +202,7 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      Flux.<Record>just(new DefaultRecord(null, null, -1, null, "fóô", "bàr", "qïx"))
+      Flux.<Record>just(DefaultRecord.indexed(null, null, -1, null, "fóô", "bàr", "qïx"))
           .transform(connector.write())
           .blockLast();
       connector.close();
@@ -247,7 +251,7 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      Flux.<Record>just(new DefaultRecord(null, null, -1, null, "abc", "de\nf", "ghk"))
+      Flux.<Record>just(DefaultRecord.indexed(null, null, -1, null, "abc", "de\nf", "ghk"))
           .transform(connector.write())
           .blockLast();
       connector.close();
@@ -502,7 +506,7 @@ class CSVConnectorTest {
   void should_return_unmappable_record_when_line_malformed() throws Exception {
     InputStream stdin = System.in;
     try {
-      String lines = "header1,header2\n" + "value1,value2,value3";
+      String lines = "header1,header2\nvalue1,value2,value3";
       InputStream is = new ByteArrayInputStream(lines.getBytes(UTF_8));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
@@ -637,7 +641,7 @@ class CSVConnectorTest {
     connector.init();
     List<Record> records = Flux.defer(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue("0")).isEqualTo(" foo ");
+    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(" foo ");
     connector.close();
   }
 
@@ -661,7 +665,7 @@ class CSVConnectorTest {
     connector.init();
     List<Record> records = Flux.defer(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue("0")).isEqualTo("foo");
+    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("foo");
     connector.close();
   }
 
@@ -683,7 +687,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(new DefaultRecord(null, null, -1, null, " foo "))
+    Flux.<Record>just(DefaultRecord.indexed(null, null, -1, null, " foo "))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -708,7 +712,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(new DefaultRecord(null, null, -1, null, " foo "))
+    Flux.<Record>just(DefaultRecord.indexed(null, null, -1, null, " foo "))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -736,7 +740,7 @@ class CSVConnectorTest {
     connector.init();
     List<Record> records = Flux.defer(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue("0")).isEqualTo(" foo ");
+    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(" foo ");
     connector.close();
   }
 
@@ -760,7 +764,7 @@ class CSVConnectorTest {
     connector.init();
     List<Record> records = Flux.defer(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue("0")).isEqualTo("foo");
+    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("foo");
     connector.close();
   }
 
@@ -779,7 +783,7 @@ class CSVConnectorTest {
     connector.init();
     List<Record> records = Flux.defer(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue("0")).isNull();
+    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isNull();
     connector.close();
   }
 
@@ -798,7 +802,7 @@ class CSVConnectorTest {
     connector.init();
     List<Record> records = Flux.defer(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue("0")).isEqualTo("NULL");
+    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("NULL");
     connector.close();
   }
 
@@ -815,7 +819,13 @@ class CSVConnectorTest {
     connector.configure(settings, false);
     connector.init();
     Flux.<Record>just(
-            new DefaultRecord(null, null, -1, null, new String[] {"field1"}, new Object[] {null}))
+            DefaultRecord.mapped(
+                null,
+                null,
+                -1,
+                null,
+                new Field[] {new DefaultMappedField("field1")},
+                new Object[] {null}))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -837,7 +847,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(new DefaultRecord(null, null, -1, null, new Object[] {null}))
+    Flux.<Record>just(DefaultRecord.indexed(null, null, -1, null, new Object[] {null}))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -860,7 +870,7 @@ class CSVConnectorTest {
     connector.init();
     List<Record> records = Flux.defer(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue("0")).isEqualTo("");
+    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("");
     connector.close();
   }
 
@@ -879,7 +889,7 @@ class CSVConnectorTest {
     connector.init();
     List<Record> records = Flux.defer(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue("0")).isEqualTo("EMPTY");
+    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("EMPTY");
     connector.close();
   }
 
@@ -1215,12 +1225,15 @@ class CSVConnectorTest {
 
   private static List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
-    String[] fields = new String[] {"Year", "Make", "Model", "Description", "Price"};
+    Field[] fields =
+        Arrays.stream(new String[] {"Year", "Make", "Model", "Description", "Price"})
+            .map(DefaultMappedField::new)
+            .toArray(Field[]::new);
     records.add(
-        new DefaultRecord(
+        DefaultRecord.mapped(
             null, null, -1, null, fields, "1997", "Ford", "E350", "  ac, abs, moon  ", "3000.00"));
     records.add(
-        new DefaultRecord(
+        DefaultRecord.mapped(
             null,
             null,
             -1,
@@ -1232,7 +1245,7 @@ class CSVConnectorTest {
             null,
             "4900.00"));
     records.add(
-        new DefaultRecord(
+        DefaultRecord.mapped(
             null,
             null,
             -1,
@@ -1244,7 +1257,7 @@ class CSVConnectorTest {
             "MUST SELL!\nair, moon roof, loaded",
             "4799.00"));
     records.add(
-        new DefaultRecord(
+        DefaultRecord.mapped(
             null,
             null,
             -1,
@@ -1256,7 +1269,7 @@ class CSVConnectorTest {
             null,
             "5000.00"));
     records.add(
-        new DefaultRecord(
+        DefaultRecord.mapped(
             null,
             null,
             -1,

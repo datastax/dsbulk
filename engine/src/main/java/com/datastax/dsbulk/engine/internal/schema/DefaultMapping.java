@@ -13,12 +13,14 @@ import static com.datastax.driver.core.DataType.timestamp;
 
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.writetime.WriteTimeCodec;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import java.time.Instant;
 import java.util.Set;
@@ -26,51 +28,62 @@ import org.jetbrains.annotations.NotNull;
 
 public class DefaultMapping implements Mapping {
 
-  private final ImmutableBiMap<String, String> fieldsToVariables;
+  private final ImmutableBiMap<Field, CQLFragment> fieldsToVariables;
   private final ExtendedCodecRegistry codecRegistry;
-  private final Cache<String, TypeCodec<?>> variablesToCodecs;
-  private final String writeTimeVariable;
+  private final Cache<MappingToken, TypeCodec<?>> variablesToCodecs;
+  private final ImmutableSet<String> writeTimeVariables;
 
   public DefaultMapping(
-      ImmutableBiMap<String, String> fieldsToVariables,
+      ImmutableBiMap<Field, CQLFragment> fieldsToVariables,
       ExtendedCodecRegistry codecRegistry,
-      String writeTimeVariable) {
+      ImmutableSet<CQLFragment> writeTimeVariables) {
     this.fieldsToVariables = fieldsToVariables;
     this.codecRegistry = codecRegistry;
-    this.writeTimeVariable = writeTimeVariable;
+    this.writeTimeVariables =
+        writeTimeVariables
+            .stream()
+            .map(CQLFragment::asVariable)
+            .collect(ImmutableSet.toImmutableSet());
     variablesToCodecs = Caffeine.newBuilder().build();
   }
 
   @Override
-  public String fieldToVariable(String field) {
+  public CQLFragment fieldToVariable(@NotNull Field field) {
     return fieldsToVariables.get(field);
   }
 
   @Override
-  public String variableToField(@NotNull String variable) {
+  public Field variableToField(@NotNull CQLFragment variable) {
     return fieldsToVariables.inverse().get(variable);
   }
 
   @Override
-  public Set<String> fields() {
+  public Set<Field> fields() {
     return fieldsToVariables.keySet();
   }
 
   @Override
-  public Set<String> variables() {
+  public Set<CQLFragment> variables() {
     return fieldsToVariables.values();
   }
 
+  @NotNull
   @Override
   public <T> TypeCodec<T> codec(
-      @NotNull String variable, DataType cqlType, TypeToken<? extends T> javaType) {
+      @NotNull CQLFragment variable,
+      @NotNull DataType cqlType,
+      @NotNull TypeToken<? extends T> javaType) {
     @SuppressWarnings("unchecked")
     TypeCodec<T> codec =
         (TypeCodec<T>)
             variablesToCodecs.get(
                 variable,
                 n -> {
-                  if (variable.equals(writeTimeVariable)) {
+                  // comparing by CQL "variable" form makes it possible for
+                  // a resultset variable like "writetime(My Value)" to match
+                  // a function call writetime("My Value"), since both have the
+                  // same stringified variable form.
+                  if (writeTimeVariables.contains(variable.asVariable())) {
                     if (cqlType.getName() != BIGINT) {
                       throw new IllegalArgumentException(
                           "Cannot create a WriteTimeCodec for " + cqlType);

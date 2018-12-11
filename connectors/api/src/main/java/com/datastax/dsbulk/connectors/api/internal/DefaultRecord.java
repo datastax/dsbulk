@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.connectors.api.internal;
 
+import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Streams;
@@ -21,14 +22,73 @@ import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import org.jetbrains.annotations.NotNull;
 
-public class DefaultRecord extends LinkedHashMap<String, Object> implements Record {
+public class DefaultRecord extends LinkedHashMap<Field, Object> implements Record {
+
+  /**
+   * Creates an indexed record with the given values.
+   *
+   * @param source the record source (its original form).
+   * @param resource the record resource (where it comes from: file, database, etc).
+   * @param position the record position inside the resource (line number, etc.).
+   * @param location the record location, usually its resource combined with its position.
+   * @param values the record values.
+   * @return an indexed record.
+   */
+  public static DefaultRecord indexed(
+      Object source,
+      Supplier<URI> resource,
+      long position,
+      Supplier<URI> location,
+      Object... values) {
+    return new DefaultRecord(source, resource, position, location, values);
+  }
+
+  /**
+   * Creates a mapped record with the given keys and values.
+   *
+   * @param source the record source (its original form).
+   * @param resource the record resource (where it comes from: file, database, etc).
+   * @param position the record position inside the resource (line number, etc.).
+   * @param location the record location, usually its resource combined with its position.
+   * @param keys the record keys.
+   * @param values the record values.
+   * @return a mapped record.
+   */
+  public static DefaultRecord mapped(
+      Object source,
+      Supplier<URI> resource,
+      long position,
+      Supplier<URI> location,
+      Field[] keys,
+      Object... values) {
+    return new DefaultRecord(source, resource, position, location, keys, values);
+  }
+
+  /**
+   * Creates a mapped record with the given map of keys and values.
+   *
+   * @param source the record source (its original form).
+   * @param resource the record resource (where it comes from: file, database, etc).
+   * @param position the record position inside the resource (line number, etc.).
+   * @param location the record location, usually its resource combined with its position.
+   * @param values the record keys and values.
+   * @return a mapped record.
+   */
+  public static DefaultRecord mapped(
+      Object source,
+      Supplier<URI> resource,
+      long position,
+      Supplier<URI> location,
+      Map<? extends Field, ?> values) {
+    return new DefaultRecord(source, resource, position, location, values);
+  }
 
   private final Object source;
   private final Supplier<URI> resource;
   private final long position;
   private final Supplier<URI> location;
 
-  public DefaultRecord(
+  private DefaultRecord(
       Object source,
       Supplier<URI> resource,
       long position,
@@ -39,17 +99,17 @@ public class DefaultRecord extends LinkedHashMap<String, Object> implements Reco
     this.position = position;
     this.location = location;
     Streams.forEachPair(
-        IntStream.range(0, values.length).boxed().map(Object::toString),
+        IntStream.range(0, values.length).boxed().map(DefaultIndexedField::new),
         Arrays.stream(values),
         this::put);
   }
 
-  public DefaultRecord(
+  private DefaultRecord(
       Object source,
       Supplier<URI> resource,
       long position,
       Supplier<URI> location,
-      String[] keys,
+      Field[] keys,
       Object... values) {
     this.resource = resource;
     this.position = position;
@@ -63,12 +123,12 @@ public class DefaultRecord extends LinkedHashMap<String, Object> implements Reco
     Streams.forEachPair(Arrays.stream(keys), Arrays.stream(values), this::put);
   }
 
-  public DefaultRecord(
+  private DefaultRecord(
       Object source,
       Supplier<URI> resource,
       long position,
       Supplier<URI> location,
-      Map<String, ?> values) {
+      Map<? extends Field, ?> values) {
     this.resource = resource;
     this.position = position;
     this.source = source;
@@ -98,7 +158,7 @@ public class DefaultRecord extends LinkedHashMap<String, Object> implements Reco
 
   @NotNull
   @Override
-  public Set<String> fields() {
+  public Set<Field> fields() {
     return keySet();
   }
 
@@ -109,17 +169,17 @@ public class DefaultRecord extends LinkedHashMap<String, Object> implements Reco
   }
 
   @Override
-  public Object getFieldValue(String field) {
+  public Object getFieldValue(Field field) {
     return get(field);
   }
 
   /**
    * Sets the value associated with the given field.
    *
-   * @param field the field name.
+   * @param field the field to set.
    * @param value The value to set.
    */
-  public void setFieldValue(String field, Object value) {
+  public void setFieldValue(Field field, Object value) {
     put(field, value);
   }
 

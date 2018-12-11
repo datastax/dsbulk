@@ -11,6 +11,7 @@ package com.datastax.dsbulk.connectors.json;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.util.Throwables.getRootCause;
@@ -25,7 +26,9 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
+import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +48,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -162,7 +166,7 @@ class JsonConnectorTest {
     InputStream stdin = System.in;
     try {
       String line = "{ \"fóô\": \"bàr\", \"qïx\": null }\n";
-      InputStream is = new ByteArrayInputStream(line.getBytes("ISO-8859-1"));
+      InputStream is = new ByteArrayInputStream(line.getBytes(ISO_8859_1));
       System.setIn(is);
       JsonConnector connector = new JsonConnector();
       LoaderConfig settings =
@@ -174,8 +178,10 @@ class JsonConnectorTest {
       List<Record> actual = Flux.defer(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(objectMapper.readTree(line));
-      assertThat(actual.get(0).getFieldValue("fóô")).isEqualTo(factory.textNode("bàr"));
-      assertThat(actual.get(0).getFieldValue("qïx")).isEqualTo(factory.nullNode());
+      assertThat(actual.get(0).getFieldValue(new DefaultMappedField("fóô")))
+          .isEqualTo(factory.textNode("bàr"));
+      assertThat(actual.get(0).getFieldValue(new DefaultMappedField("qïx")))
+          .isEqualTo(factory.nullNode());
       connector.close();
     } finally {
       System.setIn(stdin);
@@ -197,7 +203,7 @@ class JsonConnectorTest {
       connector.configure(settings, false);
       connector.init();
       Flux.<Record>just(
-              new DefaultRecord(
+              DefaultRecord.indexed(
                   null,
                   null,
                   -1,
@@ -208,7 +214,7 @@ class JsonConnectorTest {
           .transform(connector.write())
           .blockLast();
       connector.close();
-      assertThat(new String(baos.toByteArray(), "ISO-8859-1"))
+      assertThat(new String(baos.toByteArray(), ISO_8859_1))
           .isEqualTo("{\"0\":\"fóô\",\"1\":\"bàr\",\"2\":\"qïx\"}" + System.lineSeparator());
     } finally {
       System.setOut(stdout);
@@ -892,62 +898,65 @@ class JsonConnectorTest {
 
   private List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
-    String[] values = new String[] {"Year", "Make", "Model", "Description", "Price"};
+    Field[] fields =
+        Arrays.stream(new String[] {"Year", "Make", "Model", "Description", "Price"})
+            .map(DefaultMappedField::new)
+            .toArray(Field[]::new);
     records.add(
-        new DefaultRecord(
+        DefaultRecord.mapped(
             null,
             null,
             -1,
             null,
-            values,
+            fields,
             factory.numberNode(1997),
             factory.textNode("Ford"),
             factory.textNode("E350"),
             factory.textNode("ac, abs, moon"),
             factory.numberNode(3000.00d)));
     records.add(
-        new DefaultRecord(
+        DefaultRecord.mapped(
             null,
             null,
             -1,
             null,
-            values,
+            fields,
             factory.numberNode(1999),
             factory.textNode("Chevy"),
             factory.textNode("Venture \"Extended Edition\""),
             null,
             factory.numberNode(4900.00d)));
     records.add(
-        new DefaultRecord(
+        DefaultRecord.mapped(
             null,
             null,
             -1,
             null,
-            values,
+            fields,
             factory.numberNode(1996),
             factory.textNode("Jeep"),
             factory.textNode("Grand Cherokee"),
             factory.textNode("MUST SELL!\nair, moon roof, loaded"),
             factory.numberNode(4799.00d)));
     records.add(
-        new DefaultRecord(
+        DefaultRecord.mapped(
             null,
             null,
             -1,
             null,
-            values,
+            fields,
             factory.numberNode(1999),
             factory.textNode("Chevy"),
             factory.textNode("Venture \"Extended Edition, Very Large\""),
             null,
             factory.numberNode(5000.00d)));
     records.add(
-        new DefaultRecord(
+        DefaultRecord.mapped(
             null,
             null,
             -1,
             null,
-            values,
+            fields,
             null,
             null,
             factory.textNode("Venture \"Extended Edition\""),

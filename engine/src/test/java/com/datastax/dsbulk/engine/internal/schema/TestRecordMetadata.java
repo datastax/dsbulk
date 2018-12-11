@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.driver.core.DataType;
+import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
@@ -16,14 +17,14 @@ import org.jetbrains.annotations.NotNull;
 
 public class TestRecordMetadata implements RecordMetadata {
 
-  private final ImmutableMap<Object, TypeToken<?>> fieldsToTypes;
+  private final ImmutableMap<Field, TypeToken<?>> fieldsToTypes;
 
-  TestRecordMetadata(ImmutableMap<Object, TypeToken<?>> fieldsToTypes) {
+  TestRecordMetadata(ImmutableMap<Field, TypeToken<?>> fieldsToTypes) {
     this.fieldsToTypes = fieldsToTypes;
   }
 
   @Override
-  public TypeToken<?> getFieldType(@NotNull String field, @NotNull DataType cqlType) {
+  public TypeToken<?> getFieldType(@NotNull Field field, @NotNull DataType cqlType) {
     return fieldsToTypes.get(field);
   }
 }
