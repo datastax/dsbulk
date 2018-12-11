@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.driver.core.DataType.bigint;
+import static com.datastax.driver.core.Metadata.quoteIfNecessary;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -30,7 +31,6 @@ import static org.mockito.Mockito.when;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
@@ -53,7 +53,6 @@ import java.nio.ByteBuffer;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.assertj.core.util.Sets;
@@ -82,7 +81,6 @@ class DefaultRecordMapperTest {
 
   private Mapping mapping;
   private Record record;
-  private Set<String> partitionKeyVariables = new HashSet<>(3);
   private PreparedStatement insertStatement;
   private BoundStatement boundStatement;
   private ColumnDefinitions variables;
@@ -96,9 +94,6 @@ class DefaultRecordMapperTest {
   void setUp() {
     variableCaptor = ArgumentCaptor.forClass(String.class);
     valueCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
-    partitionKeyVariables.add("col1");
-    partitionKeyVariables.add("col2");
-    partitionKeyVariables.add("My Fancy Column Name");
     recordMetadata =
         new TestRecordMetadata(
             ImmutableMap.of(
@@ -116,12 +111,10 @@ class DefaultRecordMapperTest {
     variables = mock(ColumnDefinitions.class);
 
     when(boundStatement.preparedStatement()).thenReturn(insertStatement);
-    when(boundStatement.isSet(0)).thenReturn(true);
-    when(boundStatement.isSet(1)).thenReturn(true);
-    when(boundStatement.isSet(2)).thenReturn(true);
-    when(boundStatement.isSet(C1)).thenReturn(true);
-    when(boundStatement.isSet(C2)).thenReturn(true);
-    when(boundStatement.isSet(C3)).thenReturn(true);
+    when(boundStatement.isSet(quoteIfNecessary(C1))).thenReturn(true);
+    when(boundStatement.isSet(quoteIfNecessary(C2))).thenReturn(true);
+    when(boundStatement.isSet(quoteIfNecessary(C3))).thenReturn(true);
+
     when(insertStatement.getVariables()).thenReturn(variables);
 
     when(variables.getType(C1)).thenReturn(DataType.cint());
@@ -181,7 +174,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -222,7 +215,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -260,7 +253,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -296,7 +289,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -337,7 +330,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -357,13 +350,10 @@ class DefaultRecordMapperTest {
   void should_map_null_to_unset() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
     when(record.getFieldValue(F2)).thenReturn(null);
-    Set<String> partitionKeyVariables = new HashSet<>(2);
-    partitionKeyVariables.add("col1");
-    partitionKeyVariables.add("My Fancy Column Name");
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C3),
             V4,
             mapping,
             recordMetadata,
@@ -383,12 +373,10 @@ class DefaultRecordMapperTest {
   void should_map_null_to_null() {
     when(record.fields()).thenReturn(set(F1));
     when(record.getFieldValue(F1)).thenReturn(null);
-    Set<String> partitionKeyVariables = new HashSet<>(2);
-    partitionKeyVariables.add("col2");
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -410,7 +398,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -436,7 +424,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -458,11 +446,10 @@ class DefaultRecordMapperTest {
     when(variables.getIndexOf(C1)).thenReturn(3);
     when(variables.getName(3)).thenReturn(C1);
     when(boundStatement.isSet(C1)).thenReturn(false);
-    when(boundStatement.isSet(0)).thenReturn(false);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -485,7 +472,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -510,7 +497,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            partitionKeyVariables,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -531,7 +518,7 @@ class DefaultRecordMapperTest {
 
   private void assertParameter(int index, String expectedVariable, ByteBuffer expectedValue) {
     assertThat(variableCaptor.getAllValues().get(index))
-        .isEqualTo(Metadata.quoteIfNecessary(expectedVariable));
+        .isEqualTo(quoteIfNecessary(expectedVariable));
     assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
   }
 
