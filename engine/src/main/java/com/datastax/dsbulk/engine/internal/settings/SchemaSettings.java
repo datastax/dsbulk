@@ -98,6 +98,7 @@ public class SchemaSettings {
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
   private static final String NATIVE = "Native";
+  private static final BiConsumer<StringBuilder, String> NO_OP = (ignore, ignore2) -> {};
 
   private final LoaderConfig config;
 
@@ -911,7 +912,7 @@ public class SchemaSettings {
 
   private static void appendColumnNamesFilterOurFunctions(
       BiMap<String, String> fieldsToVariables, StringBuilder sb) {
-    appendColumnNames(fieldsToVariables, sb, (ignore, ignore2) -> {});
+    appendColumnNames(fieldsToVariables, sb, NO_OP);
   }
 
   private static void appendColumnNames(
@@ -978,14 +979,12 @@ public class SchemaSettings {
     return keys.stream().allMatch(s -> s.matches("\\d+"));
   }
 
-  // todo adapt usage of it
   private static boolean isFunction(String field) {
     // If a field starts with this special marker, interpret it to be a cql function call.
     // This marker is honored by both QueryInspector and MappingInspector.
     return field.startsWith(INTERNAL_FUNCTION_MARKER);
   }
 
-  // todo adapt usage of it
   private static String extractFunctionCall(String functionWithMarker) {
     return functionWithMarker.substring(INTERNAL_FUNCTION_MARKER.length());
   }
@@ -994,7 +993,6 @@ public class SchemaSettings {
     return col.equals(INTERNAL_TTL_VARNAME) || col.equals(INTERNAL_TIMESTAMP_VARNAME);
   }
 
-  // here
   private static BiMap<String, String> removeMappingFunctions(
       BiMap<String, String> fieldsToVariables) {
     ImmutableBiMap.Builder<String, String> builder = ImmutableBiMap.builder();

@@ -40,7 +40,6 @@ import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
-import static org.slf4j.event.Level.ERROR;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
