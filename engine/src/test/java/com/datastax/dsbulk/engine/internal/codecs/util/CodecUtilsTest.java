@@ -14,7 +14,6 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.formatN
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.numberToInstant;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.parseNumber;
-import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.parseTemporal;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.toBigDecimal;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.toBigIntegerExact;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.toByteValueExact;
@@ -62,6 +61,7 @@ import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -100,63 +100,24 @@ class CodecUtilsTest {
       CodecSettings.getNumberFormat("#,###.##", US, UNNECESSARY, false);
 
   private final TemporalFormat timestampFormat1 =
-      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US);
+      CodecSettings.getTemporalFormat(
+          "CQL_TIMESTAMP",
+          UTC,
+          US,
+          MILLISECONDS,
+          EPOCH.atZone(UTC),
+          new FastThreadLocal<NumberFormat>() {
+            @Override
+            protected NumberFormat initialValue() {
+              return numberFormat1;
+            }
+          });
 
   private final Map<String, Boolean> booleanInputWords =
       ImmutableMap.of("true", true, "false", false);
 
   private final List<BigDecimal> booleanNumbers =
       Lists.newArrayList(BigDecimal.ONE, BigDecimal.ZERO);
-
-  @SuppressWarnings("ConstantConditions")
-  @Test
-  void should_parse_temporal_complex() {
-    assertThat(parseTemporal(null, timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)).isNull();
-    assertThat(parseTemporal("", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)).isNull();
-    assertThat(
-            Instant.from(
-                parseTemporal(
-                    "2017-11-23T14:24:59.999+02:00",
-                    timestampFormat1,
-                    numberFormat1,
-                    MILLISECONDS,
-                    EPOCH)))
-        .isEqualTo(Instant.parse("2017-11-23T12:24:59.999Z"));
-    assertThat(
-            Instant.from(
-                parseTemporal(
-                    "2017-11-23T14:24:59+02:00",
-                    timestampFormat1,
-                    numberFormat1,
-                    MILLISECONDS,
-                    EPOCH)))
-        .isEqualTo(Instant.parse("2017-11-23T12:24:59Z"));
-    assertThat(
-            Instant.from(
-                parseTemporal(
-                    "2017-11-23T14:24+02:00",
-                    timestampFormat1,
-                    numberFormat1,
-                    MILLISECONDS,
-                    EPOCH)))
-        .isEqualTo(Instant.parse("2017-11-23T12:24:00Z"));
-    assertThat(
-            Instant.from(
-                parseTemporal(
-                    "2017-11-23+02:00", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)))
-        .isEqualTo(Instant.parse("2017-11-22T22:00:00Z"));
-    assertThat(
-            Instant.from(
-                parseTemporal("2017-11-23", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)))
-        .isEqualTo(Instant.parse("2017-11-23T00:00:00Z"));
-    assertThat(
-            Instant.from(parseTemporal("0", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)))
-        .isEqualTo(EPOCH);
-    assertThat(
-            Instant.from(
-                parseTemporal("123", timestampFormat1, numberFormat1, MILLISECONDS, EPOCH)))
-        .isEqualTo(ofEpochMilli(123));
-  }
 
   @Test
   void should_parse_number_complex() {
@@ -398,7 +359,6 @@ class CodecUtilsTest {
         .isInstanceOf(DateTimeException.class);
   }
 
-  @SuppressWarnings("ConstantConditions")
   @Test
   void test_toZonedDateTime() {
     // from LocalDate
@@ -460,7 +420,6 @@ class CodecUtilsTest {
         .isInstanceOf(DateTimeException.class);
   }
 
-  @SuppressWarnings("ConstantConditions")
   @Test
   void test_toInstant() {
     // from LocalDate
@@ -518,7 +477,6 @@ class CodecUtilsTest {
         .isInstanceOf(DateTimeException.class);
   }
 
-  @SuppressWarnings("ConstantConditions")
   @Test
   void test_toLocalDateTime() {
     // from LocalDate
@@ -576,7 +534,6 @@ class CodecUtilsTest {
         .isInstanceOf(DateTimeException.class);
   }
 
-  @SuppressWarnings("ConstantConditions")
   @Test
   void test_toLocalDate() {
     // from LocalTime (not supported)
@@ -614,7 +571,6 @@ class CodecUtilsTest {
         .isInstanceOf(DateTimeException.class);
   }
 
-  @SuppressWarnings("ConstantConditions")
   @Test
   void test_toLocalTime() {
     // from LocalDate (not supported)
@@ -986,15 +942,23 @@ class CodecUtilsTest {
         .isEqualTo(i1.getEpochSecond() / 60 - millennium.getEpochSecond() / 60);
   }
 
-  @SuppressWarnings("ConstantConditions")
   @Test
   void should_parse_uuid() {
     StringToInstantCodec instantCodec =
         new StringToInstantCodec(
-            CodecSettings.getTemporalFormat("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX", UTC, US),
-            CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
+            CodecSettings.getTemporalFormat(
+                "yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]XXX",
+                UTC,
+                US,
+                MILLISECONDS,
+                EPOCH.atZone(UTC),
+                new FastThreadLocal<NumberFormat>() {
+                  @Override
+                  protected NumberFormat initialValue() {
+                    return numberFormat1;
+                  }
+                }),
             UTC,
-            MILLISECONDS,
             EPOCH.atZone(UTC),
             newArrayList("NULL"));
     assertThat(CodecUtils.parseUUID(null, instantCodec, MIN)).isNull();
@@ -1006,7 +970,6 @@ class CodecUtilsTest {
         .isEqualTo(
             UUIDs.startOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
-    assertThat(CodecUtils.parseUUID("123456", instantCodec, MIN)).isEqualTo(UUIDs.startOf(123456L));
     // time UUIDs with MAX strategy
     // the driver's endOf method takes milliseconds and sets all the sub-millisecond digits to their
     // max, that's why we add .000999999
@@ -1014,24 +977,18 @@ class CodecUtilsTest {
         .isEqualTo(
             UUIDs.endOf(
                 ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli()));
-    assertThat(CodecUtils.parseUUID("123456", instantCodec, MAX).timestamp())
-        .isEqualTo(UUIDs.endOf(123456L).timestamp() - 9999);
     // time UUIDs with FIXED strategy
     assertThat(CodecUtils.parseUUID("2017-12-05T12:44:36+01:00", instantCodec, FIXED).timestamp())
         .isEqualTo(
             UUIDs.startOf(
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
-    assertThat(CodecUtils.parseUUID("123456", instantCodec, FIXED).timestamp())
-        .isEqualTo(UUIDs.startOf(123456L).timestamp());
     // time UUIDs with RANDOM strategy
     assertThat(CodecUtils.parseUUID("2017-12-05T12:44:36+01:00", instantCodec, RANDOM).timestamp())
         .isEqualTo(
             UUIDs.startOf(
                     ZonedDateTime.parse("2017-12-05T12:44:36+01:00").toInstant().toEpochMilli())
                 .timestamp());
-    assertThat(CodecUtils.parseUUID("123456", instantCodec, RANDOM).timestamp())
-        .isEqualTo(UUIDs.startOf(123456L).timestamp());
     // invalid UUIDs
     assertThrows(
         IllegalArgumentException.class,

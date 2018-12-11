@@ -765,7 +765,13 @@ Default: **"ISO_LOCAL_DATE"**.
 
 #### --codec.epoch _&lt;string&gt;_
 
-This setting applies only to CQL `timestamp` columns, and `USING TIMESTAMP` clauses in queries. If the input is a string containing only digits that cannot be parsed using the `codec.timestamp` format, the specified epoch determines the relative point in time used with the parsed value. The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
+This setting is used in the following situations:
+
+- When the target column is of CQL `timestamp` type, or when loading to a `USING TIMESTAMP` clause, or when unloading from a `writetime()` function call, and if `codec.timestamp` is set to `UNITS_SINCE_EPOCH`, then the epoch specified here determines the relative point in time to use to convert numeric data to and from temporals. For example, if the input is 123 and the epoch specified here is `2000-01-01T00:00:00Z`, then the input will be interpreted as N `codec.unit`s since January 1st 2000.
+- When loading, and the target CQL type is numeric, but the input is alphanumeric and represents a temporal literal, the time unit specified here will be used to convert the parsed temporal into a numeric value. For example, if the input is `2018-12-10T19:32:45Z` and the epoch specified here is `2000-01-01T00:00:00Z`, then the parsed timestamp will be converted to N `codec.unit`s since January 1st 2000.
+- When parsing temporal literals, if the input does not contain a date part, then the date part of the instant specified here will be used instead. For example, if the input is `19:32:45` and the epoch specified here is `2000-01-01T00:00:00Z`, then the input will be interpreted `2000-01-01T19:32:45Z`.
+
+The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
 
 Default: **"1970-01-01T00:00:00Z"**.
 
@@ -862,6 +868,7 @@ The temporal pattern to use for `String` to CQL `timestamp` conversion. Valid ch
 - A date-time pattern such as `yyyy-MM-dd HH:mm:ss`.
 - A pre-defined formatter such as `ISO_ZONED_DATE_TIME` or `ISO_INSTANT`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
 - The special formatter `CQL_TIMESTAMP`, which is a special parser that accepts all valid CQL literal formats for the `timestamp` type.
+- The special formatter `UNITS_SINCE_EPOCH`, which is a special parser that reads and writes timestamps as numbers representing time units since a given epoch; the unit and the epoch to use can be specified with `codec.unit` and `codec.timestamp`.
 
 For more information on patterns and pre-defined formatters, see [Patterns for Formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 
@@ -873,7 +880,12 @@ Default: **"CQL_TIMESTAMP"**.
 
 #### --codec.unit _&lt;string&gt;_
 
-This setting applies only to CQL `timestamp` columns, and `USING TIMESTAMP` clauses in queries. If the input is a string containing only digits that cannot be parsed using the `codec.timestamp` format, the specified time unit is applied to the parsed value. All `TimeUnit` enum constants are valid choices.
+This setting is used in the following situations:
+
+- When the target column is of CQL `timestamp` type, or when loading data through a `USING TIMESTAMP` clause, or when unloading data from a `writetime()` function call, and if `codec.timestamp` is set to `UNITS_SINCE_EPOCH`, then the time unit specified here is used to convert numeric data to and from temporals. For example, if the input is 123 and the time unit specified here is SECONDS, then the input will be interpreted as 123 seconds since `codec.epoch`.
+- When loading, and the target CQL type is numeric, but the input is alphanumeric and represents a temporal literal, the time unit specified here will be used to convert the parsed temporal into a numeric value. For example, if the input is `2018-12-10T19:32:45Z` and the time unit specified here is SECONDS, then the parsed temporal will be converted into seconds since `codec.epoch`.
+
+All `TimeUnit` enum constants are valid choices.
 
 Default: **"MILLISECONDS"**.
 

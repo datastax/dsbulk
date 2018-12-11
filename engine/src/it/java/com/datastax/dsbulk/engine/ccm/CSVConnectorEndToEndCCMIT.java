@@ -844,7 +844,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "1");
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(4, unloadDir);
+    validateOutputFiles(3, unloadDir);
   }
 
   @Test
@@ -939,7 +939,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private void assertTtlAndTimestamp() {
     assertThat(session.execute("SELECT COUNT(*) FROM table_ttl_timestamp").one().getLong(0))
-        .isEqualTo(3L);
+        .isEqualTo(2L);
 
     Row row;
 
@@ -957,16 +957,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             .execute(
                 "SELECT TTL(value), WRITETIME(value), loaded_at FROM table_ttl_timestamp WHERE key = 2")
             .one();
-    assertThat(row.getInt(0)).isNotZero().isLessThanOrEqualTo(200);
-    assertThat(row.getLong(1)).isEqualTo(123456000L);
-    assertThat(row.getUUID(2)).isNotNull();
-
-    row =
-        session
-            .execute(
-                "SELECT TTL(value), WRITETIME(value), loaded_at FROM table_ttl_timestamp WHERE key = 3")
-            .one();
-    assertThat(row.getInt(0)).isNotZero().isLessThanOrEqualTo(300);
+    assertThat(row.getInt(0)).isNotZero().isLessThanOrEqualTo(1000);
     assertThat(row.getLong(1))
         .isEqualTo(
             instantToNumber(
@@ -1902,7 +1893,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     session.execute("DROP TABLE IF EXISTS temporals");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS temporals (key int PRIMARY KEY, vdate date, vtime time, vtimestamp timestamp, vseconds timestamp)");
+        "CREATE TABLE IF NOT EXISTS temporals (key int PRIMARY KEY, vdate date, vtime time, vtimestamp timestamp)");
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -1967,11 +1958,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.query");
-    args.add("SELECT key, vdate, vtime, vtimestamp, vseconds FROM temporals");
+    args.add("SELECT key, vdate, vtime, vtimestamp FROM temporals");
 
     int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
-    checkTemporalsRead(unloadDir);
+    checkTemporalsRead(unloadDir, false);
     deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
@@ -2002,7 +1993,120 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("temporals");
     args.add("--schema.mapping");
-    args.add("key, vdate, vtime, vtimestamp, vseconds");
+    args.add("key, vdate, vtime, vtimestamp");
+
+    loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+    checkTemporalsWritten(session);
+  }
+
+  /** Test for DAT-364 (numeric timestamps). */
+  @Test
+  void temporal_roundtrip_numeric() throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS temporals");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS temporals (key int PRIMARY KEY, vdate date, vtime time, vtimestamp timestamp)");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.ignoreLeadingWhitespaces");
+    args.add("true");
+    args.add("--connector.csv.ignoreTrailingWhitespaces");
+    args.add("true");
+    args.add("--connector.csv.url");
+    args.add(ClassLoader.getSystemResource("temporal-numeric.csv").toExternalForm());
+    args.add("--connector.csv.header");
+    args.add("true");
+    args.add("--codec.locale");
+    args.add("fr_FR");
+    args.add("--codec.timeZone");
+    args.add("Europe/Paris");
+    args.add("--codec.date");
+    args.add("cccc, d MMMM uuuu");
+    args.add("--codec.time");
+    args.add("HHmmssSSS");
+    args.add("--codec.timestamp");
+    args.add("UNITS_SINCE_EPOCH");
+    args.add("--codec.unit");
+    args.add("SECONDS");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("temporals");
+    args.add("--schema.mapping");
+    args.add("*=*");
+
+    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+    checkTemporalsWritten(session);
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.delimiter");
+    args.add(";");
+    args.add("--codec.locale");
+    args.add("fr_FR");
+    args.add("--codec.timeZone");
+    args.add("Europe/Paris");
+    args.add("--codec.date");
+    args.add("cccc, d MMMM uuuu");
+    args.add("--codec.time");
+    args.add("HHmmssSSS");
+    args.add("--codec.timestamp");
+    args.add("UNITS_SINCE_EPOCH");
+    args.add("--codec.unit");
+    args.add("SECONDS");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("SELECT key, vdate, vtime, vtimestamp FROM temporals");
+
+    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+    checkTemporalsRead(unloadDir, true);
+    deleteDirectory(logDir);
+
+    // check we can load from the unloaded dataset
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.csv.url");
+    args.add(escapeUserInput(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.delimiter");
+    args.add(";");
+    args.add("--codec.locale");
+    args.add("fr_FR");
+    args.add("--codec.timeZone");
+    args.add("Europe/Paris");
+    args.add("--codec.date");
+    args.add("cccc, d MMMM uuuu");
+    args.add("--codec.time");
+    args.add("HHmmssSSS");
+    args.add("--codec.timestamp");
+    args.add("UNITS_SINCE_EPOCH");
+    args.add("--codec.unit");
+    args.add("SECONDS");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("temporals");
+    args.add("--schema.mapping");
+    args.add("key, vdate, vtime, vtimestamp");
 
     loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
@@ -2533,20 +2637,22 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     LocalDate date = row.get("vdate", LocalDateCodec.instance);
     LocalTime time = row.get("vtime", LocalTimeCodec.instance);
     Instant timestamp = row.get("vtimestamp", InstantCodec.instance);
-    Instant seconds = row.get("vseconds", InstantCodec.instance);
     assertThat(date).isEqualTo(LocalDate.of(2018, 3, 9));
     assertThat(time).isEqualTo(LocalTime.of(17, 12, 32, 584_000_000));
-    assertThat(timestamp).isEqualTo(Instant.parse("2018-03-09T16:12:32.584Z"));
-    assertThat(seconds).isEqualTo(Instant.parse("2018-03-09T16:12:32Z"));
+    assertThat(timestamp).isEqualTo(Instant.parse("2018-03-09T16:12:32Z"));
   }
 
-  private static void checkTemporalsRead(Path unloadDir) throws IOException {
+  private static void checkTemporalsRead(Path unloadDir, boolean numeric) throws IOException {
     String line = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
     List<String> cols = Splitter.on(';').splitToList(line);
+    assertThat(cols).hasSize(4);
     assertThat(cols.get(1)).isEqualTo("vendredi, 9 mars 2018");
     assertThat(cols.get(2)).isEqualTo("171232584");
-    assertThat(cols.get(3)).isEqualTo("2018-03-09T17:12:32.584+01:00[Europe/Paris]");
-    assertThat(cols.get(4)).isEqualTo("2018-03-09T17:12:32+01:00[Europe/Paris]");
+    if (numeric) {
+      assertThat(cols.get(3)).isEqualTo("1520611952");
+    } else {
+      assertThat(cols.get(3)).isEqualTo("2018-03-09T17:12:32+01:00[Europe/Paris]");
+    }
   }
 
   private void validateErrorMessageLogged(String... msg) {

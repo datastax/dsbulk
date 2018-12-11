@@ -15,6 +15,7 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.ExactNumberFormat;
+import com.datastax.dsbulk.engine.internal.codecs.util.NumericTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.codecs.util.SimpleTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
@@ -58,6 +59,7 @@ public class CodecSettings {
       JsonNodeFactory.withExactBigDecimals(true);
 
   private static final String CQL_TIMESTAMP = "CQL_TIMESTAMP";
+  private static final String UNITS_SINCE_EPOCH = "UNITS_SINCE_EPOCH";
   private static final String LOCALE = "locale";
   private static final String NULL_STRINGS = "nullStrings";
   private static final String BOOLEAN_STRINGS = "booleanStrings";
@@ -123,9 +125,13 @@ public class CodecSettings {
                 "Expecting codec.%s to be in ISO_ZONED_DATE_TIME format but got '%s'",
                 NUMERIC_TIMESTAMP_EPOCH, epochStr));
       }
-      localDateFormat = getTemporalFormat(config.getString(DATE), null, locale);
-      localTimeFormat = getTemporalFormat(config.getString(TIME), null, locale);
-      timestampFormat = getTemporalFormat(config.getString(TIMESTAMP), timeZone, locale);
+      localDateFormat =
+          getTemporalFormat(config.getString(DATE), null, locale, timeUnit, epoch, numberFormat);
+      localTimeFormat =
+          getTemporalFormat(config.getString(TIME), null, locale, timeUnit, epoch, numberFormat);
+      timestampFormat =
+          getTemporalFormat(
+              config.getString(TIMESTAMP), timeZone, locale, timeUnit, epoch, numberFormat);
 
       // boolean
       booleanNumbers =
@@ -225,9 +231,17 @@ public class CodecSettings {
   }
 
   @VisibleForTesting
-  public static TemporalFormat getTemporalFormat(String pattern, ZoneId timeZone, Locale locale) {
+  public static TemporalFormat getTemporalFormat(
+      String pattern,
+      ZoneId timeZone,
+      Locale locale,
+      TimeUnit timeUnit,
+      ZonedDateTime epoch,
+      FastThreadLocal<NumberFormat> numberFormat) {
     if (pattern.equals(CQL_TIMESTAMP)) {
       return new CqlTemporalFormat(timeZone);
+    } else if (pattern.equals(UNITS_SINCE_EPOCH)) {
+      return new NumericTemporalFormat(numberFormat, timeZone, timeUnit, epoch);
     } else {
       DateTimeFormatterBuilder builder =
           new DateTimeFormatterBuilder().parseStrict().parseCaseInsensitive();

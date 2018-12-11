@@ -11,7 +11,11 @@ package com.datastax.dsbulk.engine.internal.codecs.json;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
+import static java.math.RoundingMode.HALF_EVEN;
+import static java.time.Instant.EPOCH;
+import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
@@ -21,9 +25,23 @@ import org.junit.jupiter.api.Test;
 
 class JsonNodeToLocalDateCodecTest {
 
-  private TemporalFormat format1 = CodecSettings.getTemporalFormat("ISO_LOCAL_DATE", null, US);
+  private TemporalFormat format1 =
+      CodecSettings.getTemporalFormat(
+          "ISO_LOCAL_DATE",
+          null,
+          US,
+          MILLISECONDS,
+          EPOCH.atZone(UTC),
+          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true));
 
-  private TemporalFormat format2 = CodecSettings.getTemporalFormat("yyyyMMdd", null, US);
+  private TemporalFormat format2 =
+      CodecSettings.getTemporalFormat(
+          "yyyyMMdd",
+          null,
+          US,
+          MILLISECONDS,
+          EPOCH.atZone(UTC),
+          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true));
 
   private final List<String> nullStrings = newArrayList("NULL");
 

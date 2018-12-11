@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.engine.internal.codecs.util;
 
 import java.time.DateTimeException;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 
 /**
@@ -23,9 +22,9 @@ public interface TemporalFormat {
    *
    * @param text the string to parse, may be {@code null}.
    * @return a {@link TemporalAccessor} or {@code null} if the string was {@code null} or empty.
-   * @throws DateTimeParseException if the string cannot be parsed.
+   * @throws DateTimeException if the string cannot be parsed.
    */
-  TemporalAccessor parse(String text) throws DateTimeParseException;
+  TemporalAccessor parse(String text) throws DateTimeException;
 
   /**
    * Formats the given temporal.

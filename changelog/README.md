@@ -14,6 +14,7 @@
 - [bug] DAT-368: Avoid overflows in CodecUtils.numberToInstant.
 - [improvement] DAT-361: Display metrics in vertices or edges per second in graph mode.
 - [improvement] DAT-367: Detect writetime variable when unloading.
+- [new feature] DAY-364: Ability to unload timestamps as units since an epoch.
 
 
 ### 1.2.0

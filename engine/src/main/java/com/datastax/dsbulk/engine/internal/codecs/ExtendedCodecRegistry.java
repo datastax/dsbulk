@@ -439,8 +439,7 @@ public class ExtendedCodecRegistry {
       case TIME:
         return new StringToLocalTimeCodec(localTimeFormat, timeZone, nullStrings);
       case TIMESTAMP:
-        return new StringToInstantCodec(
-            timestampFormat, numberFormat, timeZone, timeUnit, epoch, nullStrings);
+        return new StringToInstantCodec(timestampFormat, timeZone, epoch, nullStrings);
       case INET:
         return new StringToInetAddressCodec(nullStrings);
       case UUID:
@@ -660,8 +659,7 @@ public class ExtendedCodecRegistry {
       case TIME:
         return new JsonNodeToLocalTimeCodec(localTimeFormat, nullStrings);
       case TIMESTAMP:
-        return new JsonNodeToInstantCodec(
-            timestampFormat, numberFormat, timeZone, timeUnit, epoch, nullStrings);
+        return new JsonNodeToInstantCodec(timestampFormat, timeZone, epoch, nullStrings);
       case INET:
         return new JsonNodeToInetAddressCodec(nullStrings);
       case UUID:

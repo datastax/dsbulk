@@ -39,11 +39,11 @@ class WriteTimeCodecTest {
 
   private final ZonedDateTime epoch = EPOCH.atZone(UTC);
 
-  private final TemporalFormat temporalFormat =
-      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US);
-
   private final FastThreadLocal<NumberFormat> numberFormat =
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
+
+  private final TemporalFormat temporalFormat =
+      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US, unit, epoch, numberFormat);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
@@ -51,9 +51,7 @@ class WriteTimeCodecTest {
   void should_convert_to_timestamp_micros() {
 
     assertThat(
-            new WriteTimeCodec<>(
-                new StringToInstantCodec(
-                    temporalFormat, numberFormat, UTC, unit, epoch, nullStrings)))
+            new WriteTimeCodec<>(new StringToInstantCodec(temporalFormat, UTC, epoch, nullStrings)))
         .convertsFromExternal("2017-11-30T14:46:56+01:00")
         .toInternal(
             MILLISECONDS.toMicros(
@@ -61,33 +59,11 @@ class WriteTimeCodecTest {
 
     assertThat(
             new WriteTimeCodec<>(
-                new StringToInstantCodec(
-                    temporalFormat, numberFormat, UTC, unit, epoch, nullStrings)))
-        .convertsFromExternal("123456")
-        .toInternal(MILLISECONDS.toMicros(123456L));
-
-    assertThat(
-            new WriteTimeCodec<>(
-                new JsonNodeToInstantCodec(
-                    temporalFormat, numberFormat, UTC, unit, epoch, nullStrings)))
+                new JsonNodeToInstantCodec(temporalFormat, UTC, epoch, nullStrings)))
         .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("2017-11-30T14:46:56+01:00"))
         .toInternal(
             MILLISECONDS.toMicros(
                 ZonedDateTime.parse("2017-11-30T14:46:56+01:00").toInstant().toEpochMilli()));
-
-    assertThat(
-            new WriteTimeCodec<>(
-                new JsonNodeToInstantCodec(
-                    temporalFormat, numberFormat, UTC, unit, epoch, nullStrings)))
-        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
-        .toInternal(MILLISECONDS.toMicros(123456L));
-
-    assertThat(
-            new WriteTimeCodec<>(
-                new JsonNodeToInstantCodec(
-                    temporalFormat, numberFormat, UTC, unit, epoch, nullStrings)))
-        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.numberNode(123456L))
-        .toInternal(MILLISECONDS.toMicros(123456L));
 
     assertThat(
             new WriteTimeCodec<>(
