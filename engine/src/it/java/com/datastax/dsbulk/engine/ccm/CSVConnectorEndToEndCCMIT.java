@@ -83,6 +83,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -943,6 +944,69 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             instantToNumber(
                 ZonedDateTime.parse("2017-11-29T14:32:15+02:00").toInstant(), MICROSECONDS, EPOCH));
     assertThat(row.getUUID(2)).isNotNull();
+  }
+
+  @Test
+  void unload_and_load_timestamp_ttl() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS unload_and_load_timestamp_ttl");
+    session.execute("CREATE TABLE unload_and_load_timestamp_ttl (key int PRIMARY KEY, value text)");
+    session.execute(
+        "INSERT INTO unload_and_load_timestamp_ttl (key, value) VALUES (1, 'foo') "
+            + "USING TIMESTAMP 123456789 AND TTL 123456789");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "SELECT key, value, writetime(value) AS timestamp, ttl(value) AS ttl "
+                + "FROM unload_and_load_timestamp_ttl");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    Optional<String> line =
+        readAllLinesInDirectoryAsStream(unloadDir).filter(s -> s.contains("123456789")).findFirst();
+    assertThat(line)
+        .isPresent()
+        .hasValueSatisfying(l -> assertThat(l).containsPattern("1,foo,123456789,\\d+"));
+    deleteDirectory(logDir);
+    session.execute("TRUNCATE unload_and_load_timestamp_ttl");
+
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--codec.unit",
+            "MICROSECONDS",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "unload_and_load_timestamp_ttl",
+            "--schema.mapping",
+            "* = * , timestamp = __timestamp, ttl = __ttl");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    ResultSet rs =
+        session.execute(
+            "SELECT key, value, writetime(value) AS timestamp, ttl(value) AS ttl "
+                + "FROM unload_and_load_timestamp_ttl WHERE key = 1");
+    Row row = rs.one();
+    assertThat(row.getLong("timestamp")).isEqualTo(123456789L);
+    assertThat(row.getInt("ttl")).isLessThanOrEqualTo(123456789);
   }
 
   @Test
