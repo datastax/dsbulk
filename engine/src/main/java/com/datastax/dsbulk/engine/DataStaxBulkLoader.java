@@ -81,6 +81,7 @@ public class DataStaxBulkLoader {
 
   public int run() {
 
+    Workflow workflow = null;
     try {
       // The first arg can be a subcommand or option...or no arg. We want to treat these
       // cases as follows:
@@ -109,7 +110,7 @@ public class DataStaxBulkLoader {
 
       // create workflow thread and cleanup shutdown hook
       WorkflowType workflowType = WorkflowType.valueOf(args[0].toUpperCase());
-      Workflow workflow = workflowType.newWorkflow(config);
+      workflow = workflowType.newWorkflow(config);
       WorkflowThread workflowThread = new WorkflowThread(workflow);
       Runtime.getRuntime().addShutdownHook(new CleanupThread(workflow, workflowThread));
 
@@ -141,8 +142,7 @@ public class DataStaxBulkLoader {
       return STATUS_OK;
 
     } catch (Throwable t) {
-      LOGGER.error(t.getMessage(), t);
-      return STATUS_CRASHED;
+      return handleUnexpectedError(workflow, t);
     }
   }
 
@@ -173,19 +173,7 @@ public class DataStaxBulkLoader {
         LOGGER.error(workflow + " aborted: " + e.getMessage(), e);
         status = STATUS_ABORTED_TOO_MANY_ERRORS;
       } catch (Throwable error) {
-        // Reactor framework often wraps InterruptedException.
-        if (ThrowableUtils.isInterrupted(error)) {
-          status = STATUS_INTERRUPTED;
-        } else {
-          String errorMessage = getSanitizedErrorMessage(error, NO_REACTOR_ERRORS, 2);
-          if (error instanceof Exception) {
-            status = STATUS_ABORTED_FATAL_ERROR;
-            LOGGER.error(workflow + " failed: " + errorMessage, error);
-          } else {
-            status = STATUS_CRASHED;
-            LOGGER.error(workflow + " failed unexpectedly: " + errorMessage, error);
-          }
-        }
+        status = handleUnexpectedError(workflow, error);
       } finally {
         try {
           // make sure System.err is flushed before the closing sequence is printed to System.out
@@ -332,7 +320,7 @@ public class DataStaxBulkLoader {
       } catch (Exception e) {
         LOGGER.error(e.getMessage(), e);
         throw new IllegalArgumentException(
-            String.format("%s: Expecting %s, got '%s'", path, type, value), e);
+            String.format("Invalid value for %s: Expecting %s, got '%s'", path, type, value), e);
       }
     }
     return userSettings;
@@ -405,6 +393,23 @@ public class DataStaxBulkLoader {
       connectorName = connectorNameFromArgs;
     }
     return connectorName;
+  }
+
+  private static int handleUnexpectedError(Workflow workflow, Throwable error) {
+    // Reactor framework often wraps InterruptedException.
+    if (ThrowableUtils.isInterrupted(error)) {
+      return STATUS_INTERRUPTED;
+    } else {
+      String errorMessage = getSanitizedErrorMessage(error, NO_REACTOR_ERRORS, 2);
+      String operationName = workflow == null ? "Operation" : workflow.toString();
+      if (error instanceof Exception) {
+        LOGGER.error(operationName + " failed: " + errorMessage, error);
+        return STATUS_ABORTED_FATAL_ERROR;
+      } else {
+        LOGGER.error(operationName + " failed unexpectedly: " + errorMessage, error);
+        return STATUS_CRASHED;
+      }
+    }
   }
 
   // Simple exception indicating that the user wants to know the
