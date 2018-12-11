@@ -41,6 +41,9 @@ import static java.time.Instant.ofEpochSecond;
 import static java.time.ZoneOffset.UTC;
 import static java.time.ZoneOffset.ofHours;
 import static java.util.Locale.US;
+import static java.util.concurrent.TimeUnit.DAYS;
+import static java.util.concurrent.TimeUnit.HOURS;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -931,6 +934,32 @@ class CodecUtilsTest {
         .isEqualTo(EPOCH);
     assertThat(numberToInstant(123000000456L, NANOSECONDS, ofEpochSecond(-123, -456)))
         .isEqualTo(EPOCH);
+
+    assertThatThrownBy(() -> numberToInstant(1.234d, MILLISECONDS, EPOCH))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessage("Cannot convert 1.234 from Double to Long");
+
+    // tests for numeric overflows (DAT-368)
+
+    assertThat(numberToInstant(1544542516852384L, NANOSECONDS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(1544542L, 516852384L));
+    assertThat(numberToInstant(1544542516852384L, MICROSECONDS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(1544542516L, 852384000L));
+    assertThat(numberToInstant(1544542516852384L, MILLISECONDS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(1544542516852L, 384000000L));
+    assertThat(numberToInstant(1544542516852384L, SECONDS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(1544542516852384L, 0L));
+
+    assertThat(numberToInstant(999999999999L, MINUTES, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(999999999999L * 60, 0L));
+    assertThat(numberToInstant(999999999999L, HOURS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(999999999999L * 60 * 60, 0L));
+    assertThat(numberToInstant(999999999L, DAYS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(999999999L * 60 * 60 * 24, 0L));
+
+    assertThatThrownBy(() -> numberToInstant(999999999999L, DAYS, EPOCH))
+        .isInstanceOf(DateTimeException.class)
+        .hasMessage("Instant exceeds minimum or maximum instant");
   }
 
   @Test
