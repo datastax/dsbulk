@@ -20,12 +20,14 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.T
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_MISSING;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
-import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_NUMBERS_MISSING;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_MISSING;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_MISSING_CASE;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
@@ -139,13 +141,13 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateOutputFiles(24, unloadDir);
   }
 
-  /** Test to validate that missing partition keys will fail to load * */
+  /** Test to validate that missing primary keys will fail to load * */
   @Test
-  void full_load_missing_partition_keys() throws Exception {
+  void full_load_missing_primary_keys() throws Exception {
 
-    session.execute("DROP TABLE IF EXISTS numbers");
+    session.execute("DROP TABLE IF EXISTS missing");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS numbers (key varchar, vdouble double, vdecimal decimal, PRIMARY KEY(key, vdouble))");
+        "CREATE TABLE IF NOT EXISTS missing (pk varchar, cc varchar, v varchar, PRIMARY KEY(pk, cc))");
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -154,24 +156,67 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
     args.add("--connector.json.url");
-    args.add(escapeUserInput(JSON_NUMBERS_MISSING));
+    args.add(escapeUserInput(JSON_MISSING));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
-    args.add("numbers");
+    args.add("missing");
     args.add("--connector.json.mode");
     args.add("SINGLE_DOCUMENT");
-    args.add("--schema.mapping");
-    args.add("*=*");
     args.add("--schema.allowMissingFields");
     args.add("true");
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(1);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(2, logPath);
+    validateBadOps(4, logPath);
     validateExceptionsLog(
-        1, "Partition key column vdouble cannot be left unmapped", "mapping-errors.log", logPath);
-    validateResultSetSize(1, SELECT_FROM_IP_BY_COUNTRY);
+        1, "Primary key column pk cannot be mapped to null", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column cc cannot be mapped to null", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column pk cannot be left unmapped", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column cc cannot be left unmapped", "mapping-errors.log", logPath);
+    validateResultSetSize(0, SELECT_FROM_MISSING);
+    deleteDirectory(logDir);
+  }
+  /** Test to validate that missing primary keys will fail to load with case sensitivity* */
+  @Test
+  void full_load_missing_primary_keys_case_sensitive() throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS missing");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS missing (pk varchar, cc varchar, v varchar, PRIMARY KEY(pk, cc))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(JSON_MISSING_CASE));
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("missing");
+    args.add("--connector.json.mode");
+    args.add("SINGLE_DOCUMENT");
+    args.add("--schema.allowMissingFields");
+    args.add("true");
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(1);
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    validateBadOps(4, logPath);
+    validateExceptionsLog(
+        1, "Primary key column pk cannot be mapped to null", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column cc cannot be mapped to null", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column pk cannot be left unmapped", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column cc cannot be left unmapped", "mapping-errors.log", logPath);
+    validateResultSetSize(0, SELECT_FROM_MISSING);
     deleteDirectory(logDir);
   }
 
