@@ -38,6 +38,12 @@
     </dependency>
 
     <dependency>
+      <groupId>com.github.akarnokd</groupId>
+      <artifactId>rxjava2-extensions</artifactId>
+    </dependency>
+
+
+    <dependency>
       <groupId>org.reactivestreams</groupId>
       <artifactId>reactive-streams</artifactId>
     </dependency>
@@ -129,6 +135,12 @@
       <groupId>com.univocity</groupId>
       <artifactId>univocity-parsers</artifactId>
       <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jetbrains</groupId>
+      <artifactId>annotations</artifactId>
+      <scope>provided</scope>
     </dependency>
 
   </dependencies>

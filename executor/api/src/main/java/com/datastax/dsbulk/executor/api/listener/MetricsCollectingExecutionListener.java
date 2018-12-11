@@ -15,18 +15,13 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.GettableData;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Row;
-import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.dsbulk.commons.internal.utils.StatementUtils;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.histogram.HdrHistogramReservoir;
-import java.nio.ByteBuffer;
 
 /** A {@link ExecutionListener} that records useful metrics about the ongoing bulk operations. */
 public class MetricsCollectingExecutionListener implements ExecutionListener {
@@ -281,7 +276,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
 
   @Override
   public void onWriteRequestStarted(Statement statement, ExecutionContext context) {
-    long size = size(statement);
+    long size = StatementUtils.getDataSize(statement, protocolVersion, codecRegistry);
     bytesSentMeter.mark(size);
     inFlightRequestsCounter.inc();
   }
@@ -322,7 +317,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     stop(context, totalReadsWritesTimer, 1);
     successfulReadsCounter.inc(1);
     successfulReadsWritesCounter.inc(1);
-    long size = size(row);
+    long size = StatementUtils.getDataSize(row);
     bytesReceivedMeter.mark(size);
   }
 
@@ -360,50 +355,5 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     } else {
       return 1;
     }
-  }
-
-  private long size(Statement statement) {
-    long size = 0L;
-    if (statement instanceof BoundStatement) {
-      BoundStatement bs = (BoundStatement) statement;
-      ColumnDefinitions metadata = bs.preparedStatement().getVariables();
-      size += size(bs, metadata);
-    } else if (statement instanceof BatchStatement) {
-      BatchStatement batch = (BatchStatement) statement;
-      for (Statement child : batch.getStatements()) {
-        size += size(child);
-      }
-    } else if (statement instanceof SimpleStatement) {
-      SimpleStatement stmt = (SimpleStatement) statement;
-      try {
-        ByteBuffer[] bbs = stmt.getValues(protocolVersion, codecRegistry);
-        if (bbs != null) {
-          for (ByteBuffer bb : bbs) {
-            if (bb != null) {
-              size += bb.remaining();
-            }
-          }
-        }
-      } catch (InvalidTypeException ignored) {
-      }
-    }
-    return size;
-  }
-
-  private long size(Row row) {
-    return size(row, row.getColumnDefinitions());
-  }
-
-  private long size(GettableData data, ColumnDefinitions metadata) {
-    long size = 0L;
-    if (metadata.size() > 0) {
-      for (int i = 0; i < metadata.size(); i++) {
-        ByteBuffer bb = data.getBytesUnsafe(i);
-        if (bb != null) {
-          size += bb.remaining();
-        }
-      }
-    }
-    return size;
   }
 }

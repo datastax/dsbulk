@@ -21,7 +21,9 @@ import com.datastax.driver.core.Native;
 import com.datastax.driver.core.VersionNumber;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
+import com.google.common.collect.Iterables;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -85,7 +87,9 @@ public class WorkflowUtils {
       return Native.processId();
     } else {
       try {
-        String pidJmx = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
+        String pidJmx =
+            Iterables.get(
+                Splitter.on('@').split(ManagementFactory.getRuntimeMXBean().getName()), 0);
         return Integer.parseInt(pidJmx);
       } catch (Exception ignored) {
         return new java.util.Random(System.currentTimeMillis()).nextInt();

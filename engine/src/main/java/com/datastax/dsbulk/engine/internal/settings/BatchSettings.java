@@ -16,8 +16,11 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.typesafe.config.ConfigException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BatchSettings {
+  private static final Logger LOGGER = LoggerFactory.getLogger(BatchSettings.class);
 
   private enum BatchMode {
     DISABLED {
@@ -44,12 +47,15 @@ public class BatchSettings {
 
   private static final String MODE = "mode";
   private static final String MAX_BATCH_SIZE = "maxBatchSize";
+  private static final String MAX_SIZE_IN_BYTES = "maxSizeInBytes";
+  private static final String MAX_BATCH_STATEMENTS = "maxBatchStatements";
   private static final String BUFFER_SIZE = "bufferSize";
 
   private final LoaderConfig config;
 
   private BatchMode mode;
-  private int maxBatchSize;
+  private long maxSizeInBytes;
+  private int maxBatchStatements;
   private int bufferSize;
 
   BatchSettings(LoaderConfig config) {
@@ -59,15 +65,42 @@ public class BatchSettings {
   public void init() {
     try {
       mode = config.getEnum(BatchMode.class, MODE);
-      maxBatchSize = config.getInt(MAX_BATCH_SIZE);
+      maxSizeInBytes = config.getLong(MAX_SIZE_IN_BYTES);
+
+      if (config.hasPath(MAX_BATCH_SIZE)) {
+
+        if (config.hasPath(MAX_BATCH_STATEMENTS)) {
+          throw new BulkConfigurationException(
+              "Settings batch.maxBatchStatements and batch.maxBatchSize "
+                  + "cannot be both defined; "
+                  + "consider using batch.maxBatchStatements exclusively, "
+                  + "because batch.maxBatchSize is deprecated.");
+        } else {
+          LOGGER.warn(
+              "Setting batch.maxBatchSize is deprecated, "
+                  + "please use batch.maxBatchStatements instead.");
+          maxBatchStatements = config.getInt(MAX_BATCH_SIZE);
+        }
+
+      } else {
+        maxBatchStatements = config.getInt(MAX_BATCH_STATEMENTS);
+      }
+
+      if (maxSizeInBytes <= 0 && maxBatchStatements <= 0) {
+        throw new BulkConfigurationException(
+            "At least one of batch.maxSizeInBytes or batch.maxBatchStatements must be positive. "
+                + "See settings.md for more information.");
+      }
+
       int bufferConfig = config.getInt(BUFFER_SIZE);
-      bufferSize = bufferConfig > -1 ? bufferConfig : maxBatchSize;
-      if (bufferSize < maxBatchSize) {
+      bufferSize = bufferConfig > 0 ? bufferConfig : maxBatchStatements;
+
+      if (bufferSize < maxBatchStatements) {
         throw new BulkConfigurationException(
             String.format(
                 "Value for batch.bufferSize (%d) must be greater than or equal to "
-                    + "buffer.maxBatchSize (%d). See settings.md for more information.",
-                bufferSize, maxBatchSize));
+                    + "buffer.maxBatchStatements OR buffer.maxBatchSize (%d). See settings.md for more information.",
+                bufferSize, maxBatchStatements));
       }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
@@ -84,6 +117,10 @@ public class BatchSettings {
 
   public ReactorStatementBatcher newStatementBatcher(Cluster cluster) {
     return new ReactorStatementBatcher(
-        cluster, mode.asStatementBatcherMode(), BatchStatement.Type.UNLOGGED, maxBatchSize);
+        cluster,
+        mode.asStatementBatcherMode(),
+        BatchStatement.Type.UNLOGGED,
+        maxBatchStatements,
+        maxSizeInBytes);
   }
 }
