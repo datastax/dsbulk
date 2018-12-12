@@ -372,7 +372,7 @@ public class SchemaSettings {
       ExtendedCodecRegistry codecRegistry,
       EnumSet<StatsSettings.StatisticsMode> modes,
       int numPartitions) {
-    prepareStatementAndCreateMapping(session, null, COUNT);
+    prepareStatementAndCreateMapping(session, null, COUNT, modes);
     Cluster cluster = session.getCluster();
     ProtocolVersion protocolVersion =
         cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
@@ -419,6 +419,16 @@ public class SchemaSettings {
   @NotNull
   private DefaultMapping prepareStatementAndCreateMapping(
       Session session, ExtendedCodecRegistry codecRegistry, WorkflowType workflowType) {
+    return prepareStatementAndCreateMapping(
+        session, codecRegistry, workflowType, EnumSet.noneOf(StatsSettings.StatisticsMode.class));
+  }
+
+  @NotNull
+  private DefaultMapping prepareStatementAndCreateMapping(
+      Session session,
+      ExtendedCodecRegistry codecRegistry,
+      WorkflowType workflowType,
+      EnumSet<StatsSettings.StatisticsMode> modes) {
     BiMap<String, String> fieldsToVariables = null;
     if (!config.hasPath(QUERY)) {
       // in the absence of user-provided queries, create the mapping *before* query generation and
@@ -471,7 +481,7 @@ public class SchemaSettings {
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
       } else if (workflowType == COUNT) {
-        validatePartitionKeyPresentInSelectClause();
+        if (modes.contains(partitions)) validatePartitionKeyPresentInSelectClause();
       }
     }
     assert fieldsToVariables != null;

@@ -15,6 +15,7 @@ import static com.datastax.dsbulk.commons.tests.utils.CQLUtils.createKeyspaceSim
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static java.nio.file.Files.createTempDirectory;
 
 import com.datastax.driver.core.Host;
@@ -31,11 +32,13 @@ import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
+import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.google.common.reflect.TypeToken;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -188,6 +191,39 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     assertThat(status).isZero();
 
     assertCount(keyspace, table);
+  }
+
+  @ParameterizedTest(name = "[{index}] count keyspace {0} table {1} (custom query)")
+  @CsvSource({
+    "RF_1,SINGLE_PK",
+    "RF_1,composite_pk",
+    "rf_2,SINGLE_PK",
+    "rf_3,composite_pk",
+    "rf_3,SINGLE_PK",
+    "rf_3,composite_pk",
+  })
+  void full_count_custom_query_missing(String keyspace, String table) throws Exception {
+    String missingKey;
+    List<String> args = new ArrayList<>();
+    args.add("count");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("-stats");
+    args.add("global,ranges,hosts,partitions");
+    args.add("--schema.query");
+    if (table.equals("SINGLE_PK")) {
+      args.add(String.format("\"SELECT * FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
+      missingKey = "pk";
+    } else {
+      args.add(String.format("\"SELECT pk1 FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
+      missingKey = "pk2";
+    }
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(3);
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    String errorMsg = "Missing required partition key column " + missingKey + " from schema.query";
+    validateExceptionsLog(2, errorMsg, "operation.log", logPath);
   }
 
   private void assertUnload() {
