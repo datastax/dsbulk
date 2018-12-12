@@ -230,18 +230,24 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       // First compute the partition key and the token for this row.
       Token token = null;
       PartitionKey pk = null;
-      if (countRanges || countHosts || countPartitions) {
+      if (countPartitions) {
+        // When counting partitions, the result set is expected to contain
+        // the row's partition key, in proper order
         int size = row.getColumnDefinitions().size();
         ByteBuffer[] bbs = new ByteBuffer[size];
         for (int i = 0; i < size; i++) {
           bbs[i] = row.getBytesUnsafe(i);
         }
         if (countRanges || countHosts) {
+          // compute the token client-side from the partition keys
           token = metadata.newToken(bbs);
         }
-        if (countPartitions) {
-          pk = new PartitionKey(row.getColumnDefinitions(), bbs);
-        }
+        pk = new PartitionKey(row.getColumnDefinitions(), bbs);
+      } else if (countRanges || countHosts) {
+        // When counting hosts or ranges, without counting partitions,
+        // the result set is expected to contain one single column containing
+        // the partition key's token
+        token = row.getToken(0);
       }
       // Then increment required counters.
       // Note: we need to always increment the global counter because it's used to compute

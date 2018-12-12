@@ -139,7 +139,7 @@ class QueryInspectorTest {
   void should_detect_named_variable_insert() {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (:pk, :cc, :v)");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
         .containsEntry(CQLIdentifier.fromInternal("v"), CQLIdentifier.fromInternal("v"));
@@ -150,7 +150,7 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "INSERT INTO ks.foo (\"My PK\", \"My CC\", \"My Value\") VALUES (:\"My PK\", :\"My CC\", :\"My Value\")");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("My PK"), CQLIdentifier.fromInternal("My PK"))
         .containsEntry(CQLIdentifier.fromInternal("My CC"), CQLIdentifier.fromInternal("My CC"))
         .containsEntry(
@@ -160,7 +160,7 @@ class QueryInspectorTest {
   @Test
   void should_detect_positional_variable_insert() {
     QueryInspector inspector = new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (?,?,?)");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
         .containsEntry(CQLIdentifier.fromInternal("v"), CQLIdentifier.fromInternal("v"));
@@ -170,7 +170,7 @@ class QueryInspectorTest {
   void should_detect_function_variable_insert() {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (?,?,now())");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
         .containsEntry(
@@ -181,7 +181,7 @@ class QueryInspectorTest {
   void should_detect_named_variable_update() {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v = v + :v WHERE pk = :pk AND cc = :cc");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
         .containsEntry(CQLIdentifier.fromInternal("v"), CQLIdentifier.fromInternal("v"));
@@ -191,7 +191,7 @@ class QueryInspectorTest {
   void should_detect_named_variable_update_shorthand_notation() {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v += :v WHERE pk = :pk AND cc = :cc");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
         .containsEntry(CQLIdentifier.fromInternal("v"), CQLIdentifier.fromInternal("v"));
@@ -203,7 +203,7 @@ class QueryInspectorTest {
         new QueryInspector(
             "UPDATE ks.foo SET \"My Value\" = \"My Value\" + :\"My Value\" "
                 + "WHERE \"My PK\" = :\"My PK\" AND \"My CC\" = :\"My CC\"");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("My PK"), CQLIdentifier.fromInternal("My PK"))
         .containsEntry(CQLIdentifier.fromInternal("My CC"), CQLIdentifier.fromInternal("My CC"))
         .containsEntry(
@@ -214,7 +214,7 @@ class QueryInspectorTest {
   void should_detect_positional_variable_update() {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v = v + ? WHERE pk = ? AND cc = ?");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
         .containsEntry(CQLIdentifier.fromInternal("v"), CQLIdentifier.fromInternal("v"));
@@ -224,7 +224,7 @@ class QueryInspectorTest {
   void should_detect_function_variable_update() {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v = v + now() WHERE pk = ? AND cc = ?");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
         .containsEntry(
@@ -234,7 +234,7 @@ class QueryInspectorTest {
   @Test
   void should_detect_named_variable_delete() {
     QueryInspector inspector = new QueryInspector("DELETE FROM ks.foo WHERE pk = :pk AND cc = :cc");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"));
   }
@@ -244,7 +244,7 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "DELETE FROM ks.foo WHERE \"My PK\" = :\"My PK\" AND \"My CC\" = :\"My CC\"");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("My PK"), CQLIdentifier.fromInternal("My PK"))
         .containsEntry(CQLIdentifier.fromInternal("My CC"), CQLIdentifier.fromInternal("My CC"));
   }
@@ -252,7 +252,7 @@ class QueryInspectorTest {
   @Test
   void should_detect_positional_variable_delete() {
     QueryInspector inspector = new QueryInspector("DELETE FROM ks.foo WHERE pk = ? AND cc = ?");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"));
   }
@@ -260,7 +260,7 @@ class QueryInspectorTest {
   @Test
   void should_detect_function_variable_delete() {
     QueryInspector inspector = new QueryInspector("DELETE FROM ks.foo WHERE pk = ? AND cc = now()");
-    assertThat(inspector.getBoundVariables())
+    assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(
             CQLIdentifier.fromInternal("cc"), new FunctionCall(CQLIdentifier.fromInternal("now")));
@@ -418,6 +418,43 @@ class QueryInspectorTest {
     assertThat(inspector.getWriteTimeVariables())
         .hasSize(2)
         .containsExactly(CQLIdentifier.fromInternal("t1"), CQLIdentifier.fromInternal("t2"));
+  }
+
+  @Test
+  void should_detect_ttl_select() {
+    QueryInspector inspector =
+        new QueryInspector("SELECT TTL(col1) as t1, ttl(\"My Col 2\") FROM ks.foo");
+    CQLIdentifier name = CQLIdentifier.fromInternal("ttl");
+    FunctionCall ttl1 = new FunctionCall(name, CQLIdentifier.fromInternal("col1"));
+    FunctionCall ttl2 = new FunctionCall(name, CQLIdentifier.fromInternal("My Col 2"));
+    assertThat(inspector.getResultSetVariables())
+        .hasSize(2)
+        .containsKeys(ttl1, ttl2)
+        .containsValues(CQLIdentifier.fromInternal("t1"), ttl2);
+  }
+
+  @Test
+  void should_detect_function_select() {
+    QueryInspector inspector =
+        new QueryInspector(
+            "SELECT myFunction(col1) as f1, \"MyFunction\"(\"My Col 2\") FROM ks.foo");
+    CQLIdentifier name1 = CQLIdentifier.fromInternal("myfunction");
+    CQLIdentifier name2 = CQLIdentifier.fromInternal("MyFunction");
+    FunctionCall f1 = new FunctionCall(name1, CQLIdentifier.fromInternal("col1"));
+    FunctionCall f2 = new FunctionCall(name2, CQLIdentifier.fromInternal("My Col 2"));
+    assertThat(inspector.getResultSetVariables())
+        .hasSize(2)
+        .containsKeys(f1, f2)
+        .containsValues(CQLIdentifier.fromInternal("f1"), f2);
+  }
+
+  @Test
+  void should_report_result_set_size() {
+    assertThat(new QueryInspector("SELECT col1 FROM ks.foo").getResultSetSize()).isOne();
+    assertThat(new QueryInspector("SELECT token(pk) FROM ks.foo").getResultSetSize()).isOne();
+    assertThat(
+            new QueryInspector("SELECT col1, max(1,true,null,1.34) FROM ks.foo").getResultSetSize())
+        .isEqualTo(2);
   }
 
   @Test

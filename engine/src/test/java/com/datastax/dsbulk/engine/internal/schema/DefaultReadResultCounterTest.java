@@ -151,6 +151,16 @@ class DefaultReadResultCounterTest {
     when(row8.getBytesUnsafe(0)).thenReturn(bb8);
     when(row9.getBytesUnsafe(0)).thenReturn(bb9);
     when(row10.getBytesUnsafe(0)).thenReturn(bb10);
+    when(row1.getToken(0)).thenReturn(token1a);
+    when(row2.getToken(0)).thenReturn(token2a);
+    when(row3.getToken(0)).thenReturn(token3);
+    when(row4.getToken(0)).thenReturn(token1a);
+    when(row5.getToken(0)).thenReturn(token2a);
+    when(row6.getToken(0)).thenReturn(token3);
+    when(row7.getToken(0)).thenReturn(token1a);
+    when(row8.getToken(0)).thenReturn(token2a);
+    when(row9.getToken(0)).thenReturn(token3);
+    when(row10.getToken(0)).thenReturn(token1a);
     when(metadata.newToken(bb1)).thenReturn(token1a);
     when(metadata.newToken(bb2)).thenReturn(token2a);
     when(metadata.newToken(bb3)).thenReturn(token3); // token happens to be a boundary token
