@@ -70,7 +70,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -98,7 +97,6 @@ public class SchemaSettings {
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
   private static final String NATIVE = "Native";
-  private static final BiConsumer<StringBuilder, String> NO_OP = (ignore, ignore2) -> {};
 
   private final LoaderConfig config;
 
@@ -453,7 +451,7 @@ public class SchemaSettings {
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
       }
-      fieldsToVariables = processMappingFunctions(fieldsToVariables, workflowType == LOAD);
+      fieldsToVariables = processMappingFunctions(fieldsToVariables, workflowType);
     }
     assert query != null;
     assert queryInspector != null;
@@ -920,7 +918,8 @@ public class SchemaSettings {
       if (isFunction(col)) {
         if (!allowFunctions) {
           throw new IllegalArgumentException(
-              "Misplaced function call detected in mapping; please review your schema.mapping setting");
+              "Misplaced function call detected on the right side of a mapping entry; "
+                  + "please review your schema.mapping setting");
         } else {
           sb.append(extractFunctionCall(col));
         }
@@ -978,17 +977,23 @@ public class SchemaSettings {
   }
 
   private static BiMap<String, String> processMappingFunctions(
-      BiMap<String, String> fieldsToVariables, boolean allowFieldFunctions) {
+      BiMap<String, String> fieldsToVariables, WorkflowType workflowType) {
     ImmutableBiMap.Builder<String, String> builder = ImmutableBiMap.builder();
     for (Map.Entry<String, String> entry : fieldsToVariables.entrySet()) {
       if (isFunction(entry.getValue())) {
-        // functions as variables are always allowed
+        // functions as variables are are only allowed when unloading, but this has already
+        // been validated when generating the query, so we don't need to re-validate here;
+        // function calls when unloading should be included in the final mapping so that their
+        // results can be retrieved by ReadResultMapper.
         builder.put(entry.getKey(), extractFunctionCall(entry.getValue()));
       } else if (isFunction(entry.getKey())) {
-        // functions as fields are only allowed when loading
-        if (!allowFieldFunctions) {
+        // functions as fields are only allowed when loading, and this needs to be validated now;
+        // and we need to remove such function calls from the final mapping since RecordMapper
+        // doesn't need them.
+        if (workflowType != LOAD) {
           throw new IllegalArgumentException(
-              "Misplaced function call detected in mapping; please review your schema.mapping setting");
+              "Misplaced function call detected on the left side of a mapping entry; "
+                  + "please review your schema.mapping setting");
         }
       } else {
         builder.put(entry);

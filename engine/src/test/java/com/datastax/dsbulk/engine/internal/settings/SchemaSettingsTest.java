@@ -804,7 +804,8 @@ class SchemaSettingsTest {
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
-            "Misplaced function call detected in mapping; please review your schema.mapping setting");
+            "Misplaced function call detected on the right side of a mapping entry; "
+                + "please review your schema.mapping setting");
   }
 
   @Test
@@ -817,7 +818,8 @@ class SchemaSettingsTest {
             () -> schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
-            "Misplaced function call detected in mapping; please review your schema.mapping setting");
+            "Misplaced function call detected on the left side of a mapping entry; "
+                + "please review your schema.mapping setting");
   }
 
   @Test
