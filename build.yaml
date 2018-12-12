@@ -28,6 +28,7 @@ schedules:
       TEST_GROUPS="short,medium"
 java:
   - openjdk8
+  - openjdk11
   # Temporarily disable builds against JDK 10, see DAT-318
   # - oraclejdk10
 os:
