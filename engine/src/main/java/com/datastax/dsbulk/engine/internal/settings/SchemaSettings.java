@@ -903,7 +903,9 @@ public class SchemaSettings {
     Set<String> variables = new HashSet<>(primaryKeyColumns.size());
     for (ColumnMetadata column : primaryKeyColumns) {
       String variable = boundVariables.get(column.getName());
-      variables.add(variable);
+      if (!variable.startsWith(INTERNAL_FUNCTION_MARKER)) {
+        variables.add(variable);
+      }
     }
     return variables;
   }
