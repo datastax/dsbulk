@@ -1003,8 +1003,8 @@ public class SchemaSettings {
     return builder.build();
   }
 
-  private static void handleFunctionForUnload(ImmutableBiMap.Builder<String, String> builder,
-                                              Map.Entry<String, String> entry) {
+  private static void handleFunctionForUnload(
+      ImmutableBiMap.Builder<String, String> builder, Map.Entry<String, String> entry) {
     // functions as variables are are only allowed when unloading, but this has already
     // been validated when generating the query, so we don't need to re-validate here;
     // function calls when unloading should be included in the final mapping so that their
