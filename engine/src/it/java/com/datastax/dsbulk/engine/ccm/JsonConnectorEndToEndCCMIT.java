@@ -42,7 +42,6 @@ import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -190,7 +189,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         "CREATE TABLE missing (\"PK\" varchar, \"CC\" varchar, \"V\" varchar, "
             + "PRIMARY KEY(\"PK\", \"CC\"))");
 
-    URL url = ClassLoader.getSystemResource("missing-case.json");
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--connector.name");
