@@ -19,11 +19,13 @@ import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import org.junit.jupiter.api.Tag;
 
 @CCMConfig(numberOfNodes = 3, createOptions = "--vnodes")
-class M3PTokenVnodeTableReadEndToEndCCMITBase extends TableReadEndToEndCCMITBase {
+@Tag("long")
+class M3PTokenVnodeTableReadEndToEndCCMIT extends TableReadEndToEndCCMITBase {
 
-  M3PTokenVnodeTableReadEndToEndCCMITBase(
+  M3PTokenVnodeTableReadEndToEndCCMIT(
       CCMCluster ccm,
       @SessionConfig(useKeyspace = NONE) Session session,
       @LogCapture(level = INFO) LogInterceptor interceptor,

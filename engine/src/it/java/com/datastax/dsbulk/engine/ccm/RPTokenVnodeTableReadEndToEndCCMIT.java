@@ -19,11 +19,15 @@ import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import org.junit.jupiter.api.Tag;
 
-@CCMConfig(numberOfNodes = 3, createOptions = "-p RandomPartitioner")
-class RPTokenTableReadEndToEndCCMITBase extends TableReadEndToEndCCMITBase {
+@CCMConfig(
+    numberOfNodes = 3,
+    createOptions = {"-p RandomPartitioner", "--vnodes"})
+@Tag("long")
+class RPTokenVnodeTableReadEndToEndCCMIT extends TableReadEndToEndCCMITBase {
 
-  RPTokenTableReadEndToEndCCMITBase(
+  RPTokenVnodeTableReadEndToEndCCMIT(
       CCMCluster ccm,
       @SessionConfig(useKeyspace = NONE) Session session,
       @LogCapture(level = INFO) LogInterceptor interceptor,
