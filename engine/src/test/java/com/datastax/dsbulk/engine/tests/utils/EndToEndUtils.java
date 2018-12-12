@@ -48,8 +48,6 @@ public class EndToEndUtils {
 
   public static final String SELECT_FROM_IP_BY_COUNTRY = "SELECT * FROM ip_by_country";
 
-  public static final String SELECT_FROM_MISSING = "SELECT * FROM missing";
-
   public static final String SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES =
       "SELECT * FROM \"MYKS\".\"WITH_SPACES\"";
 
