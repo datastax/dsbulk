@@ -981,25 +981,34 @@ public class SchemaSettings {
     ImmutableBiMap.Builder<String, String> builder = ImmutableBiMap.builder();
     for (Map.Entry<String, String> entry : fieldsToVariables.entrySet()) {
       if (isFunction(entry.getValue())) {
-        // functions as variables are are only allowed when unloading, but this has already
-        // been validated when generating the query, so we don't need to re-validate here;
-        // function calls when unloading should be included in the final mapping so that their
-        // results can be retrieved by ReadResultMapper.
-        builder.put(entry.getKey(), extractFunctionCall(entry.getValue()));
+        handleFunctionForUnload(builder, entry);
       } else if (isFunction(entry.getKey())) {
-        // functions as fields are only allowed when loading, and this needs to be validated now;
-        // and we need to remove such function calls from the final mapping since RecordMapper
-        // doesn't need them.
-        if (workflowType != LOAD) {
-          throw new IllegalArgumentException(
-              "Misplaced function call detected on the left side of a mapping entry; "
-                  + "please review your schema.mapping setting");
-        }
+        handleFunctionForLoad(workflowType);
       } else {
         builder.put(entry);
       }
     }
     return builder.build();
+  }
+
+  private static void handleFunctionForUnload(ImmutableBiMap.Builder<String, String> builder,
+                                              Map.Entry<String, String> entry) {
+    // functions as variables are are only allowed when unloading, but this has already
+    // been validated when generating the query, so we don't need to re-validate here;
+    // function calls when unloading should be included in the final mapping so that their
+    // results can be retrieved by ReadResultMapper.
+    builder.put(entry.getKey(), extractFunctionCall(entry.getValue()));
+  }
+
+  private static void handleFunctionForLoad(WorkflowType workflowType) {
+    // functions as fields are only allowed when loading, and this needs to be validated now;
+    // and we need to remove such function calls from the final mapping since RecordMapper
+    // doesn't need them.
+    if (workflowType != LOAD) {
+      throw new IllegalArgumentException(
+          "Misplaced function call detected on the left side of a mapping entry; "
+              + "please review your schema.mapping setting");
+    }
   }
 
   @NotNull
