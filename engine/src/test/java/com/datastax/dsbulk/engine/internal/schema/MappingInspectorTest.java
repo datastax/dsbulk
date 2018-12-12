@@ -28,7 +28,7 @@ class MappingInspectorTest {
         .containsEntry("fieldA", "col1")
         .containsEntry("fieldB", "col2");
     assertThat(
-        new MappingInspector("  fieldA : col1 , fieldB : col2  ", false).getExplicitVariables())
+            new MappingInspector("  fieldA : col1 , fieldB : col2  ", false).getExplicitVariables())
         .containsEntry("fieldA", "col1")
         .containsEntry("fieldB", "col2");
   }
@@ -56,18 +56,18 @@ class MappingInspectorTest {
   @Test
   void should_parse_quoted_mapping() {
     assertThat(
-        new MappingInspector("\"fieldA\"=\" \",\"\"\"fieldB\"\"\"=\"\"\"\"", false)
-            .getExplicitVariables())
+            new MappingInspector("\"fieldA\"=\" \",\"\"\"fieldB\"\"\"=\"\"\"\"", false)
+                .getExplicitVariables())
         .containsEntry("fieldA", " ")
         .containsEntry("\"fieldB\"", "\"");
     assertThat(
-        new MappingInspector("\"fieldA\":\" \",\"\"\"fieldB\"\"\":\"\"\"\"", false)
-            .getExplicitVariables())
+            new MappingInspector("\"fieldA\":\" \",\"\"\"fieldB\"\"\":\"\"\"\"", false)
+                .getExplicitVariables())
         .containsEntry("fieldA", " ")
         .containsEntry("\"fieldB\"", "\"");
     assertThat(
-        new MappingInspector(" \"fieldA\" = \" \" , \"\"\"fieldB\"\"\" = \"\"\"\" ", false)
-            .getExplicitVariables())
+            new MappingInspector(" \"fieldA\" = \" \" , \"\"\"fieldB\"\"\" = \"\"\"\" ", false)
+                .getExplicitVariables())
         .containsEntry("fieldA", " ")
         .containsEntry("\"fieldB\"", "\"");
   }
@@ -118,7 +118,7 @@ class MappingInspectorTest {
   }
 
   @Test
-  void should_detect_function() {
+  void should_detect_function_in_field() {
     MappingInspector inspector = new MappingInspector(" now() = col1, max(1, 2) = col2  ", false);
     assertThat(inspector.getExplicitVariables())
         .containsEntry(INTERNAL_FUNCTION_MARKER + "now()", "col1")
@@ -126,7 +126,15 @@ class MappingInspectorTest {
   }
 
   @Test
-  void should_detect_function_at_right_side_of_the_expression() {
+  void should_detect_function_in_field_case_sensitive() {
+    MappingInspector inspector =
+        new MappingInspector("max(\"My Col 1\", \"My Col 2\") = col2  ", false);
+    assertThat(inspector.getExplicitVariables())
+        .containsEntry(INTERNAL_FUNCTION_MARKER + "max(\"My Col 1\",\"My Col 2\")", "col2");
+  }
+
+  @Test
+  void should_detect_function_in_variable() {
     MappingInspector inspector =
         new MappingInspector(
             " col1 = now(), col2 = max(1, 2), ttl_a = ttl(a), wt_a = writetime(a)", false);
@@ -135,7 +143,14 @@ class MappingInspectorTest {
         .containsEntry("col2", INTERNAL_FUNCTION_MARKER + "max(1,2)")
         .containsEntry("ttl_a", INTERNAL_FUNCTION_MARKER + "ttl(a)")
         .containsEntry("wt_a", INTERNAL_FUNCTION_MARKER + "writetime(a)");
-    ;
+  }
+
+  @Test
+  void should_detect_function_in_variable_case_sensitive() {
+    MappingInspector inspector =
+        new MappingInspector("col2 = max(\"My Col 1\", \"My Col 2\")", false);
+    assertThat(inspector.getExplicitVariables())
+        .containsEntry("col2", INTERNAL_FUNCTION_MARKER + "max(\"My Col 1\",\"My Col 2\")");
   }
 
   @Test

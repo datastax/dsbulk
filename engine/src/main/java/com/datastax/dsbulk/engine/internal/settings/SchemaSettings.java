@@ -453,8 +453,7 @@ public class SchemaSettings {
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
       }
-      // remove function mappings as we won't need them anymore from now on
-      fieldsToVariables = removeMappingFunctions(fieldsToVariables);
+      fieldsToVariables = processMappingFunctions(fieldsToVariables, workflowType == LOAD);
     }
     assert query != null;
     assert queryInspector != null;
@@ -677,11 +676,7 @@ public class SchemaSettings {
     List<String> colNames = columns.get();
     fieldsToVariables.forEach(
         (key, value) -> {
-          if (isFunction(value)) {
-            return;
-          }
-
-          if (!isPseudoColumn(value) && !colNames.contains(value)) {
+          if (!isPseudoColumn(value) && !isFunction(value) && !colNames.contains(value)) {
             if (!config.hasPath(QUERY)) {
               throw new BulkConfigurationException(
                   String.format(
@@ -768,7 +763,7 @@ public class SchemaSettings {
   private String inferInsertQuery(BiMap<String, String> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
-    appendColumnNamesFilterOurFunctions(fieldsToVariables, sb);
+    appendColumnNames(fieldsToVariables, sb, false);
     sb.append(") VALUES (");
     Set<String> cols = maybeSortCols(fieldsToVariables);
     Iterator<String> it = cols.iterator();
@@ -779,14 +774,12 @@ public class SchemaSettings {
         // This isn't a real column name.
         continue;
       }
-
       if (!isFirst) {
         sb.append(',');
       }
       isFirst = false;
       String field = fieldsToVariables.inverse().get(col);
       if (isFunction(field)) {
-        // Assume this is a function call that should be placed directly in the query.
         sb.append(extractFunctionCall(field));
       } else {
         sb.append(':');
@@ -877,7 +870,7 @@ public class SchemaSettings {
   private String inferReadQuery(BiMap<String, String> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
     StringBuilder sb = new StringBuilder("SELECT ");
-    appendColumnNamesAndFunctions(fieldsToVariables, sb);
+    appendColumnNames(fieldsToVariables, sb, true);
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
     appendTokenFunction(sb, partitionKey);
     sb.append(" > :start AND ");
@@ -905,20 +898,8 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private static void appendColumnNamesAndFunctions(
-      BiMap<String, String> fieldsToVariables, StringBuilder sb) {
-    appendColumnNames(fieldsToVariables, sb, (b, v) -> b.append(extractFunctionCall(v)));
-  }
-
-  private static void appendColumnNamesFilterOurFunctions(
-      BiMap<String, String> fieldsToVariables, StringBuilder sb) {
-    appendColumnNames(fieldsToVariables, sb, NO_OP);
-  }
-
   private static void appendColumnNames(
-      BiMap<String, String> fieldsToVariables,
-      StringBuilder sb,
-      BiConsumer<StringBuilder, String> functionHandler) {
+      BiMap<String, String> fieldsToVariables, StringBuilder sb, boolean allowFunctions) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
     Set<String> cols = maybeSortCols(fieldsToVariables);
@@ -932,14 +913,17 @@ public class SchemaSettings {
         // This is not a real column. Skip it.
         continue;
       }
-
       if (!isFirst) {
         sb.append(',');
       }
-
       isFirst = false;
       if (isFunction(col)) {
-        functionHandler.accept(sb, col);
+        if (!allowFunctions) {
+          throw new IllegalArgumentException(
+              "Misplaced function call detected in mapping; please review your schema.mapping setting");
+        } else {
+          sb.append(extractFunctionCall(col));
+        }
       } else {
         sb.append(quoteIfNecessary(col));
       }
@@ -993,13 +977,20 @@ public class SchemaSettings {
     return col.equals(INTERNAL_TTL_VARNAME) || col.equals(INTERNAL_TIMESTAMP_VARNAME);
   }
 
-  private static BiMap<String, String> removeMappingFunctions(
-      BiMap<String, String> fieldsToVariables) {
+  private static BiMap<String, String> processMappingFunctions(
+      BiMap<String, String> fieldsToVariables, boolean allowFieldFunctions) {
     ImmutableBiMap.Builder<String, String> builder = ImmutableBiMap.builder();
     for (Map.Entry<String, String> entry : fieldsToVariables.entrySet()) {
       if (isFunction(entry.getValue())) {
+        // functions as variables are always allowed
         builder.put(entry.getKey(), extractFunctionCall(entry.getValue()));
-      } else if (!isFunction(entry.getKey())) {
+      } else if (isFunction(entry.getKey())) {
+        // functions as fields are only allowed when loading
+        if (!allowFieldFunctions) {
+          throw new IllegalArgumentException(
+              "Misplaced function call detected in mapping; please review your schema.mapping setting");
+        }
+      } else {
         builder.put(entry);
       }
     }
