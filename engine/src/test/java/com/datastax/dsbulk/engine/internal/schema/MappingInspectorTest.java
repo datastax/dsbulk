@@ -118,11 +118,39 @@ class MappingInspectorTest {
   }
 
   @Test
-  void should_detect_function() {
+  void should_detect_function_in_field() {
     MappingInspector inspector = new MappingInspector(" now() = col1, max(1, 2) = col2  ", false);
     assertThat(inspector.getExplicitVariables())
         .containsEntry(INTERNAL_FUNCTION_MARKER + "now()", "col1")
         .containsEntry(INTERNAL_FUNCTION_MARKER + "max(1,2)", "col2");
+  }
+
+  @Test
+  void should_detect_function_in_field_case_sensitive() {
+    MappingInspector inspector =
+        new MappingInspector("max(\"My Col 1\", \"My Col 2\") = col2  ", false);
+    assertThat(inspector.getExplicitVariables())
+        .containsEntry(INTERNAL_FUNCTION_MARKER + "max(\"My Col 1\",\"My Col 2\")", "col2");
+  }
+
+  @Test
+  void should_detect_function_in_variable() {
+    MappingInspector inspector =
+        new MappingInspector(
+            " col1 = now(), col2 = max(1, 2), ttl_a = ttl(a), wt_a = writetime(a)", false);
+    assertThat(inspector.getExplicitVariables())
+        .containsEntry("col1", INTERNAL_FUNCTION_MARKER + "now()")
+        .containsEntry("col2", INTERNAL_FUNCTION_MARKER + "max(1,2)")
+        .containsEntry("ttl_a", INTERNAL_FUNCTION_MARKER + "ttl(a)")
+        .containsEntry("wt_a", INTERNAL_FUNCTION_MARKER + "writetime(a)");
+  }
+
+  @Test
+  void should_detect_function_in_variable_case_sensitive() {
+    MappingInspector inspector =
+        new MappingInspector("col2 = max(\"My Col 1\", \"My Col 2\")", false);
+    assertThat(inspector.getExplicitVariables())
+        .containsEntry("col2", INTERNAL_FUNCTION_MARKER + "max(\"My Col 1\",\"My Col 2\")");
   }
 
   @Test

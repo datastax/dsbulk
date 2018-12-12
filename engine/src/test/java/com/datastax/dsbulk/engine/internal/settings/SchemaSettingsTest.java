@@ -773,6 +773,56 @@ class SchemaSettingsTest {
   }
 
   @Test
+  void should_include_function_call_in_insert_statement() {
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, table = t1, mapping = \" f1 = c1, now() = c3 \"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.LOAD, cluster, false);
+    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(getInternalState(schemaSettings, "query"))
+        .isEqualTo("INSERT INTO ks.t1(c1,c3) VALUES (:c1,now())");
+  }
+
+  @Test
+  void should_include_function_call_in_select_statement() {
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, table = t1, mapping = \" f1 = c1, f2 = now() \"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.UNLOAD, cluster, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    assertThat(getInternalState(schemaSettings, "query"))
+        .isEqualTo("SELECT c1,now() FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+  }
+
+  @Test
+  void should_error_when_misplaced_function_call_in_insert_statement() {
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, table = t1, mapping = \" f1 = c1, f2 = now() \"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.LOAD, cluster, false);
+    assertThatThrownBy(
+            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Misplaced function call detected on the right side of a mapping entry; "
+                + "please review your schema.mapping setting");
+  }
+
+  @Test
+  void should_error_when_misplaced_function_call_in_select_statement() {
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, table = t1, mapping = \" f1 = c1, now() = c3 \"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.UNLOAD, cluster, false);
+    assertThatThrownBy(
+            () -> schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Misplaced function call detected on the left side of a mapping entry; "
+                + "please review your schema.mapping setting");
+  }
+
+  @Test
   void should_create_single_read_statement_when_no_variables() {
     when(ps.getVariables()).thenReturn(newColumnDefinitions());
     BoundStatement bs = mock(BoundStatement.class);

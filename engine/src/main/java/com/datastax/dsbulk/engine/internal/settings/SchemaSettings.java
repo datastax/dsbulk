@@ -451,8 +451,7 @@ public class SchemaSettings {
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
       }
-      // remove function mappings as we won't need them anymore from now on
-      fieldsToVariables = removeMappingFunctions(fieldsToVariables);
+      fieldsToVariables = processMappingFunctions(fieldsToVariables, workflowType);
     }
     assert query != null;
     assert queryInspector != null;
@@ -675,7 +674,7 @@ public class SchemaSettings {
     List<String> colNames = columns.get();
     fieldsToVariables.forEach(
         (key, value) -> {
-          if (!isPseudoColumn(value) && !colNames.contains(value)) {
+          if (!isPseudoColumn(value) && !isFunction(value) && !colNames.contains(value)) {
             if (!config.hasPath(QUERY)) {
               throw new BulkConfigurationException(
                   String.format(
@@ -762,7 +761,7 @@ public class SchemaSettings {
   private String inferInsertQuery(BiMap<String, String> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
-    appendColumnNames(fieldsToVariables, sb);
+    appendColumnNames(fieldsToVariables, sb, false);
     sb.append(") VALUES (");
     Set<String> cols = maybeSortCols(fieldsToVariables);
     Iterator<String> it = cols.iterator();
@@ -773,14 +772,12 @@ public class SchemaSettings {
         // This isn't a real column name.
         continue;
       }
-
       if (!isFirst) {
         sb.append(',');
       }
       isFirst = false;
       String field = fieldsToVariables.inverse().get(col);
       if (isFunction(field)) {
-        // Assume this is a function call that should be placed directly in the query.
         sb.append(extractFunctionCall(field));
       } else {
         sb.append(':');
@@ -871,7 +868,7 @@ public class SchemaSettings {
   private String inferReadQuery(BiMap<String, String> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
     StringBuilder sb = new StringBuilder("SELECT ");
-    appendColumnNames(fieldsToVariables, sb);
+    appendColumnNames(fieldsToVariables, sb, true);
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
     appendTokenFunction(sb, partitionKey);
     sb.append(" > :start AND ");
@@ -899,7 +896,8 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private static void appendColumnNames(BiMap<String, String> fieldsToVariables, StringBuilder sb) {
+  private static void appendColumnNames(
+      BiMap<String, String> fieldsToVariables, StringBuilder sb, boolean allowFunctions) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
     Set<String> cols = maybeSortCols(fieldsToVariables);
@@ -913,12 +911,21 @@ public class SchemaSettings {
         // This is not a real column. Skip it.
         continue;
       }
-
       if (!isFirst) {
         sb.append(',');
       }
       isFirst = false;
-      sb.append(quoteIfNecessary(col));
+      if (isFunction(col)) {
+        if (!allowFunctions) {
+          throw new IllegalArgumentException(
+              "Misplaced function call detected on the right side of a mapping entry; "
+                  + "please review your schema.mapping setting");
+        } else {
+          sb.append(extractFunctionCall(col));
+        }
+      } else {
+        sb.append(quoteIfNecessary(col));
+      }
     }
   }
 
@@ -969,15 +976,39 @@ public class SchemaSettings {
     return col.equals(INTERNAL_TTL_VARNAME) || col.equals(INTERNAL_TIMESTAMP_VARNAME);
   }
 
-  private static BiMap<String, String> removeMappingFunctions(
-      BiMap<String, String> fieldsToVariables) {
+  private static BiMap<String, String> processMappingFunctions(
+      BiMap<String, String> fieldsToVariables, WorkflowType workflowType) {
     ImmutableBiMap.Builder<String, String> builder = ImmutableBiMap.builder();
     for (Map.Entry<String, String> entry : fieldsToVariables.entrySet()) {
-      if (!isFunction(entry.getKey())) {
+      if (isFunction(entry.getValue())) {
+        handleFunctionForUnload(builder, entry);
+      } else if (isFunction(entry.getKey())) {
+        handleFunctionForLoad(workflowType);
+      } else {
         builder.put(entry);
       }
     }
     return builder.build();
+  }
+
+  private static void handleFunctionForUnload(ImmutableBiMap.Builder<String, String> builder,
+                                              Map.Entry<String, String> entry) {
+    // functions as variables are are only allowed when unloading, but this has already
+    // been validated when generating the query, so we don't need to re-validate here;
+    // function calls when unloading should be included in the final mapping so that their
+    // results can be retrieved by ReadResultMapper.
+    builder.put(entry.getKey(), extractFunctionCall(entry.getValue()));
+  }
+
+  private static void handleFunctionForLoad(WorkflowType workflowType) {
+    // functions as fields are only allowed when loading, and this needs to be validated now;
+    // and we need to remove such function calls from the final mapping since RecordMapper
+    // doesn't need them.
+    if (workflowType != LOAD) {
+      throw new IllegalArgumentException(
+          "Misplaced function call detected on the left side of a mapping entry; "
+              + "please review your schema.mapping setting");
+    }
   }
 
   @NotNull

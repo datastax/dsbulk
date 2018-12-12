@@ -14,6 +14,10 @@ import static com.datastax.driver.core.TypeCodec.cint;
 import static com.datastax.dsbulk.commons.tests.utils.CQLUtils.createKeyspaceSimpleStrategy;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.nio.file.Files.createTempDirectory;
 
@@ -31,12 +35,15 @@ import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
+import com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode;
 import com.datastax.dsbulk.engine.tests.MockConnector;
+import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,12 +51,18 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -80,7 +93,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     "RF_1,SINGLE_PK",
     "RF_1,composite_pk",
     "rf_2,SINGLE_PK",
-    "rf_3,composite_pk",
+    "rf_2,composite_pk",
     "rf_3,SINGLE_PK",
     "rf_3,composite_pk",
   })
@@ -108,7 +121,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     "RF_1,SINGLE_PK",
     "RF_1,composite_pk",
     "rf_2,SINGLE_PK",
-    "rf_3,composite_pk",
+    "rf_2,composite_pk",
     "rf_3,SINGLE_PK",
     "rf_3,composite_pk",
   })
@@ -130,23 +143,16 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     assertUnload();
   }
 
-  @ParameterizedTest(name = "[{index}] count keyspace {0} table {1}")
-  @CsvSource({
-    "RF_1,SINGLE_PK",
-    "RF_1,composite_pk",
-    "rf_2,SINGLE_PK",
-    "rf_3,composite_pk",
-    "rf_3,SINGLE_PK",
-    "rf_3,composite_pk",
-  })
-  void full_count(String keyspace, String table) {
+  @ParameterizedTest(name = "[{index}] count keyspace {0} table {1} modes {2}")
+  @ArgumentsSource(CountWorkflowArgumentsProvider.class)
+  void full_count(String keyspace, String table, EnumSet<StatisticsMode> modes) {
 
     List<String> args = new ArrayList<>();
     args.add("count");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
     args.add("-stats");
-    args.add("global,ranges,hosts,partitions");
+    args.add(modes.stream().map(Enum::name).collect(Collectors.joining(",")));
     args.add("--schema.keyspace");
     args.add(keyspace);
     args.add("--schema.table");
@@ -155,26 +161,19 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
 
-    assertCount(keyspace, table);
+    assertCount(keyspace, table, modes);
   }
 
-  @ParameterizedTest(name = "[{index}] count keyspace {0} table {1} (custom query)")
-  @CsvSource({
-    "RF_1,SINGLE_PK",
-    "RF_1,composite_pk",
-    "rf_2,SINGLE_PK",
-    "rf_3,composite_pk",
-    "rf_3,SINGLE_PK",
-    "rf_3,composite_pk",
-  })
-  void full_count_custom_query(String keyspace, String table) {
+  @ParameterizedTest(name = "[{index}] count keyspace {0} table {1} modes {2} (custom query)")
+  @ArgumentsSource(CountWorkflowArgumentsProvider.class)
+  void full_count_custom_query(String keyspace, String table, EnumSet<StatisticsMode> modes) {
 
     List<String> args = new ArrayList<>();
     args.add("count");
     args.add("--log.directory");
     args.add(escapeUserInput(logDir));
     args.add("-stats");
-    args.add("global,ranges,hosts,partitions");
+    args.add(modes.stream().map(Enum::name).collect(Collectors.joining(",")));
     args.add("--schema.query");
     if (table.equals("SINGLE_PK")) {
       args.add(String.format("\"SELECT pk FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
@@ -185,7 +184,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
 
-    assertCount(keyspace, table);
+    assertCount(keyspace, table, modes);
   }
 
   private void assertUnload() {
@@ -193,31 +192,39 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     assertThat(records).hasSize(expectedTotal);
   }
 
-  private void assertCount(String keyspace, String table) {
+  private void assertCount(String keyspace, String table, EnumSet<StatisticsMode> modes) {
     assertThat(logs).hasMessageContaining(String.format("Reads: total: %,d", expectedTotal));
     List<String> lines = stdout.getStreamLines();
-    assertThat(lines).contains(Integer.toString(expectedTotal));
-    Map<TokenRange, Integer> ranges = allRanges.get(keyspace).get(table);
-    Map<Host, Integer> hosts = allHosts.get(keyspace).get(table);
-    Map<String, Integer> biggestPartitions = allBiggestPartitions.get(keyspace).get(table);
-    for (Map.Entry<TokenRange, Integer> entry : ranges.entrySet()) {
-      assertThat(lines)
-          .anyMatch(
-              line ->
-                  line.startsWith(
-                      String.format(
-                          "%s %s %s",
-                          entry.getKey().getStart(), entry.getKey().getEnd(), entry.getValue())));
+    if (modes.contains(global)) {
+      assertThat(lines).contains(Integer.toString(expectedTotal));
     }
-    for (Map.Entry<Host, Integer> entry : hosts.entrySet()) {
-      assertThat(lines)
-          .anyMatch(
-              line -> line.startsWith(String.format("%s %s", entry.getKey(), entry.getValue())));
+    if (modes.contains(StatisticsMode.ranges)) {
+      Map<TokenRange, Integer> ranges = allRanges.get(keyspace).get(table);
+      for (Map.Entry<TokenRange, Integer> entry : ranges.entrySet()) {
+        assertThat(lines)
+            .anyMatch(
+                line ->
+                    line.startsWith(
+                        String.format(
+                            "%s %s %s",
+                            entry.getKey().getStart(), entry.getKey().getEnd(), entry.getValue())));
+      }
     }
-    for (Map.Entry<String, Integer> entry : biggestPartitions.entrySet()) {
-      assertThat(lines)
-          .anyMatch(
-              line -> line.startsWith(String.format("%s %s", entry.getKey(), entry.getValue())));
+    if (modes.contains(StatisticsMode.hosts)) {
+      Map<Host, Integer> hosts = allHosts.get(keyspace).get(table);
+      for (Map.Entry<Host, Integer> entry : hosts.entrySet()) {
+        assertThat(lines)
+            .anyMatch(
+                line -> line.startsWith(String.format("%s %s", entry.getKey(), entry.getValue())));
+      }
+    }
+    if (modes.contains(StatisticsMode.partitions)) {
+      Map<String, Integer> biggestPartitions = allBiggestPartitions.get(keyspace).get(table);
+      for (Map.Entry<String, Integer> entry : biggestPartitions.entrySet()) {
+        assertThat(lines)
+            .anyMatch(
+                line -> line.startsWith(String.format("%s %s", entry.getKey(), entry.getValue())));
+      }
     }
   }
 
@@ -411,5 +418,33 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
         j,
         k,
         42);
+  }
+
+  private static class CountWorkflowArgumentsProvider implements ArgumentsProvider {
+
+    @Override
+    public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+      List<String> tables = Lists.newArrayList("SINGLE_PK", "composite_pk");
+      List<String> keyspaces = Lists.newArrayList("RF_1", "rf_2", "rf_3");
+      List<EnumSet<StatisticsMode>> modes =
+          Lists.newArrayList(
+              EnumSet.of(global),
+              EnumSet.of(hosts),
+              EnumSet.of(ranges),
+              EnumSet.of(partitions),
+              EnumSet.of(global, hosts),
+              EnumSet.of(global, partitions),
+              EnumSet.of(global, hosts, partitions),
+              EnumSet.allOf(StatisticsMode.class));
+      List<Arguments> args = new ArrayList<>();
+      for (String keyspace : keyspaces) {
+        for (String table : tables) {
+          for (EnumSet<StatisticsMode> mode : modes) {
+            args.add(Arguments.of(keyspace, table, mode));
+          }
+        }
+      }
+      return args.stream();
+    }
   }
 }

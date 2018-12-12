@@ -25,22 +25,31 @@ mappedEntry
     ;
 
 regularMappedEntry
-    : field ( ':' | '=' ) variable
+    : fieldOrFunction ( ':' | '=' ) variableOrFunction
     ;
 
 inferredMappedEntry
     : '*' ( ':' | '=' ) '*'
-    | '*' ( ':' | '=' ) '-' variable
-    | '*' ( ':' | '=' ) '[' '-' variable ( ',' '-' variable )* ']'
+    | '*' ( ':' | '=' ) '-' variableOrFunction
+    | '*' ( ':' | '=' ) '[' '-' variableOrFunction ( ',' '-' variableOrFunction )* ']'
     ;
 
 indexedEntry
-    : variable
+    : variableOrFunction
+    ;
+
+fieldOrFunction
+    : field
+    | function
     ;
 
 field
     : UNQUOTED_STRING
     | QUOTED_STRING
+    ;
+
+variableOrFunction
+    : variable
     | function
     ;
 

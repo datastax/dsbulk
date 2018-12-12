@@ -227,11 +227,11 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     @Override
     public void update(ReadResult result) {
       Row row = result.getRow().orElseThrow(IllegalStateException::new);
-      int size = row.getColumnDefinitions().size();
       // First compute the partition key and the token for this row.
       Token token = null;
       PartitionKey pk = null;
       if (countRanges || countHosts || countPartitions) {
+        int size = row.getColumnDefinitions().size();
         ByteBuffer[] bbs = new ByteBuffer[size];
         for (int i = 0; i < size; i++) {
           bbs[i] = row.getBytesUnsafe(i);
