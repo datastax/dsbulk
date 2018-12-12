@@ -15,8 +15,6 @@ schedules:
       include: ["/\\d+(\\.[\\dx]+)+/"]
     env_vars: |
       TEST_GROUPS="short,medium,long"
-    notify:
-      slack: dsbulk-dev
   adhoc:
     # Run short and medium suites on demand, on 3 different clusters (DSE, DDAC, OSS).
     schedule: adhoc
