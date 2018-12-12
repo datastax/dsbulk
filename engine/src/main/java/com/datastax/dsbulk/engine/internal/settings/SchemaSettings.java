@@ -103,7 +103,6 @@ public class SchemaSettings {
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
   private static final String NATIVE = "Native";
-  private static final CQLIdentifier TOKEN_FUNCTION = CQLIdentifier.fromInternal("token");
 
   private final LoaderConfig config;
 
@@ -509,6 +508,23 @@ public class SchemaSettings {
     if (!queryInspector.getKeyspaceName().isPresent()) {
       session.execute("USE " + keyspaceName);
     }
+    // Transform user-provided queries before preparation
+    if (config.hasPath(QUERY)) {
+      if (workflowType == COUNT) {
+        StringBuilder sb = new StringBuilder("SELECT ");
+        if (modes.contains(partitions)) {
+          appendPartitionKey(sb);
+        } else if (modes.contains(ranges) || modes.contains(hosts)) {
+          appendTokenFunction(sb);
+        } else {
+          sb.append(getGlobalCountSelector());
+        }
+        query =
+            sb.append(' ')
+                .append(query.substring(queryInspector.getFromClauseStartIndex()))
+                .toString();
+      }
+    }
     preparedStatement = session.prepare(query);
     if (config.hasPath(QUERY)) {
       // in the presence of user-provided queries, create the mapping *after* query preparation
@@ -522,12 +538,6 @@ public class SchemaSettings {
       // validate user-provided query
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
-      } else if (workflowType == COUNT) {
-        if (modes.contains(partitions)) {
-          validatePartitionKeyPresentInSelectClause();
-        } else if (modes.contains(ranges) || modes.contains(hosts)) {
-          validatePartitionKeyTokenPresentInSelectClause();
-        }
       }
     }
     assert fieldsToVariables != null;
@@ -764,67 +774,6 @@ public class SchemaSettings {
     }
   }
 
-  // Used for the count workflow only.
-  private void validatePartitionKeyPresentInSelectClause() {
-    // the query must contain the entire partition key in the select clause,
-    // and nothing else.
-    List<ColumnMetadata> partitionKey = table.getPartitionKey();
-    Set<CQLFragment> selectors = new HashSet<>(queryInspector.getResultSetVariables().keySet());
-    for (ColumnMetadata pk : partitionKey) {
-      CQLIdentifier pkVariable = CQLIdentifier.fromInternal(pk.getName());
-      if (!selectors.remove(pkVariable)) {
-        throw new BulkConfigurationException(
-            "Missing required partition key column "
-                + quoteIfNecessary(pk.getName())
-                + " from schema.query");
-      }
-    }
-    if (!selectors.isEmpty()) {
-      String offendingColumns =
-          selectors.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "));
-      throw new BulkConfigurationException(
-          String.format(
-              "Value for schema.query contains extraneous columns in the "
-                  + "SELECT clause: %s; it should contain only partition key columns.",
-              offendingColumns));
-    }
-    // check the total number of variables, since getResultSetVariables() may not report all of them
-    if (queryInspector.getResultSetSize() != partitionKey.size()) {
-      throw new BulkConfigurationException(
-          "Value for schema.query contains extraneous columns in the "
-              + "SELECT clause; it should contain only partition key columns.");
-    }
-  }
-
-  // Used for the count workflow only.
-  private void validatePartitionKeyTokenPresentInSelectClause() {
-    List<CQLFragment> selectors =
-        queryInspector
-            .getResultSetVariables()
-            .keySet()
-            .stream()
-            .filter(
-                v ->
-                    !(v instanceof FunctionCall)
-                        || !((FunctionCall) v).getFunctionName().equals(TOKEN_FUNCTION))
-            .collect(Collectors.toList());
-    if (!selectors.isEmpty()) {
-      String offendingColumns =
-          selectors.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "));
-      throw new BulkConfigurationException(
-          String.format(
-              "Value for schema.query contains extraneous columns in the "
-                  + "SELECT clause: %s; it should contain only one token() selector.",
-              offendingColumns));
-    }
-    // check the total number of variables, since getResultSetVariables() may not report all of them
-    if (queryInspector.getResultSetSize() != 1) {
-      throw new BulkConfigurationException(
-          "Value for schema.query contains extraneous columns in the "
-              + "SELECT clause; it should contain only one token() selector.");
-    }
-  }
-
   private ImmutableBiMap<MappingField, CQLFragment> inferFieldsToVariablesMap(
       List<CQLFragment> columns) {
 
@@ -961,13 +910,12 @@ public class SchemaSettings {
   }
 
   private String inferReadQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
-    List<ColumnMetadata> partitionKey = table.getPartitionKey();
     StringBuilder sb = new StringBuilder("SELECT ");
     appendColumnNames(fieldsToVariables, sb, true);
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
-    appendTokenFunction(sb, partitionKey);
+    appendTokenFunction(sb);
     sb.append(" > :start AND ");
-    appendTokenFunction(sb, partitionKey);
+    appendTokenFunction(sb);
     sb.append(" <= :end");
     return sb.toString();
   }
@@ -988,27 +936,32 @@ public class SchemaSettings {
         }
       } else {
         // we only need the row's token
-        appendTokenFunction(sb, partitionKey);
+        appendTokenFunction(sb);
       }
     } else {
-      // we can select anything; we use the ttl of the first regular column since it is an int and
-      // only takes 4 bytes; if no regular column exists, we use the first partition key column.
-      String selector =
-          table
-              .getColumns()
-              .stream()
-              .filter(col -> !table.getPrimaryKey().contains(col))
-              .map(col -> "TTL(" + quoteIfNecessary(col.getName()) + ")")
-              .findFirst()
-              .orElse(quoteIfNecessary(partitionKey.get(0).getName()));
+      String selector = getGlobalCountSelector();
       sb.append(selector);
     }
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
-    appendTokenFunction(sb, partitionKey);
+    appendTokenFunction(sb);
     sb.append(" > :start AND ");
-    appendTokenFunction(sb, partitionKey);
+    appendTokenFunction(sb);
     sb.append(" <= :end");
     return sb.toString();
+  }
+
+  @NotNull
+  private String getGlobalCountSelector() {
+    // When counting global rows we can select anything; we use the ttl of the first regular
+    // column since it is an int and only takes 4 bytes; if no regular column exists, we use
+    // the first partition key column.
+    return table
+        .getColumns()
+        .stream()
+        .filter(col -> !table.getPrimaryKey().contains(col))
+        .map(col -> "TTL(" + quoteIfNecessary(col.getName()) + ")")
+        .findFirst()
+        .orElse(quoteIfNecessary(table.getPartitionKey().get(0).getName()));
   }
 
   private Set<CQLIdentifier> primaryKeyVariables() {
@@ -1054,7 +1007,8 @@ public class SchemaSettings {
     }
   }
 
-  private static void appendTokenFunction(StringBuilder sb, Iterable<ColumnMetadata> partitionKey) {
+  private void appendTokenFunction(StringBuilder sb) {
+    List<ColumnMetadata> partitionKey = table.getPartitionKey();
     sb.append("token(");
     Iterator<ColumnMetadata> pks = partitionKey.iterator();
     while (pks.hasNext()) {
@@ -1065,6 +1019,18 @@ public class SchemaSettings {
       }
     }
     sb.append(')');
+  }
+
+  private void appendPartitionKey(StringBuilder sb) {
+    List<ColumnMetadata> partitionKey = table.getPartitionKey();
+    Iterator<ColumnMetadata> pks = partitionKey.iterator();
+    while (pks.hasNext()) {
+      ColumnMetadata pk = pks.next();
+      sb.append(quoteIfNecessary(pk.getName()));
+      if (pks.hasNext()) {
+        sb.append(',');
+      }
+    }
   }
 
   @NotNull

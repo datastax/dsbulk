@@ -449,12 +449,9 @@ class QueryInspectorTest {
   }
 
   @Test
-  void should_report_result_set_size() {
-    assertThat(new QueryInspector("SELECT col1 FROM ks.foo").getResultSetSize()).isOne();
-    assertThat(new QueryInspector("SELECT token(pk) FROM ks.foo").getResultSetSize()).isOne();
-    assertThat(
-            new QueryInspector("SELECT col1, max(1,true,null,1.34) FROM ks.foo").getResultSetSize())
-        .isEqualTo(2);
+  void should_report_from_clause_start_index() {
+    QueryInspector inspector = new QueryInspector("SELECT col1  \n\t   FROM ks.foo");
+    assertThat(inspector.getFromClauseStartIndex()).isEqualTo("SELECT col1  \n\t   ".length());
   }
 
   @Test

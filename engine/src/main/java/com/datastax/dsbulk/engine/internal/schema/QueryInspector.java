@@ -15,7 +15,6 @@ import com.datastax.dsbulk.commons.cql3.CqlParser;
 import com.datastax.dsbulk.commons.cql3.CqlParser.AllowedFunctionNameContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.FunctionContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.FunctionNameContext;
-import com.datastax.dsbulk.commons.cql3.CqlParser.SelectClauseContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.TermContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.UnaliasedSelectorContext;
 import com.google.common.collect.ImmutableMap;
@@ -53,7 +52,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
 
   private CQLIdentifier keyspaceName;
   private CQLIdentifier tableName;
-  private int resultSetSize;
+  private int fromClauseStartIndex = -1;
 
   public QueryInspector(String query) {
     this.query = query;
@@ -127,9 +126,12 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     return writeTimeVariables;
   }
 
-  /** @return the total number of selectors found in the SELECT clause. */
-  public int getResultSetSize() {
-    return resultSetSize;
+  /**
+   * @return the start index of the FROM clause of a SELECT statement; or -1 if the statement is not
+   *     a SELECT.
+   */
+  public int getFromClauseStartIndex() {
+    return fromClauseStartIndex;
   }
 
   // INSERT
@@ -211,13 +213,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     // do not inspect WHERE clause, we want only result set variables;
     // if the query has a token range restriction, it will be validated later.
     visitColumnFamilyName(ctx.columnFamilyName());
+    fromClauseStartIndex = ctx.K_FROM().getSymbol().getStartIndex();
     return visitSelectClause(ctx.selectClause());
-  }
-
-  @Override
-  public CQLFragment visitSelectClause(SelectClauseContext ctx) {
-    resultSetSize = ctx.selector().size();
-    return super.visitSelectClause(ctx);
   }
 
   @Override

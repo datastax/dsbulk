@@ -1167,6 +1167,48 @@ class SchemaSettingsTest {
   }
 
   @Test
+  void should_replace_select_clause_when_count_query_does_not_contain_partition_key() {
+    when(table.getClusteringColumns()).thenReturn(Collections.singletonList(col2));
+    LoaderConfig config = makeLoaderConfig("query = \"SELECT c3 FROM ks.t1 WHERE c1 = 0\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    ReadResultCounter counter =
+        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(partitions), 10);
+    assertThat(counter).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue()).isEqualTo("SELECT c1 FROM ks.t1 WHERE c1 = 0");
+  }
+
+  @Test
+  void should_replace_select_clause_when_count_query_contains_extraneous_columns_partitions() {
+    when(table.getClusteringColumns()).thenReturn(Collections.singletonList(col2));
+    LoaderConfig config = makeLoaderConfig("query = \"SELECT c1, c3 FROM ks.t1 WHERE c1 = 0\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    ReadResultCounter counter =
+        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(partitions), 10);
+    assertThat(counter).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue()).isEqualTo("SELECT c1 FROM ks.t1 WHERE c1 = 0");
+  }
+
+  @Test
+  void should_replace_select_clause_when_count_query_contains_extraneous_columns_hosts() {
+    LoaderConfig config = makeLoaderConfig("query = \"SELECT c1, c3 FROM ks.t1 WHERE c1 = 0\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    ReadResultCounter counter =
+        schemaSettings.createReadResultCounter(
+            session, codecRegistry, EnumSet.of(hosts, ranges), 10);
+    assertThat(counter).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue()).isEqualTo("SELECT token(c1) FROM ks.t1 WHERE c1 = 0");
+  }
+
+  @Test
   void should_throw_configuration_exception_when_read_statement_variables_not_recognized() {
     ColumnDefinitions definitions =
         newColumnDefinitions(newDefinition("foo", bigint()), newDefinition("bar", bigint()));
@@ -1601,80 +1643,6 @@ class SchemaSettingsTest {
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Missing required primary key column c1 from schema.mapping or schema.query");
-  }
-
-  @Test
-  void should_error_when_count_query_does_not_contain_partition_key() {
-    LoaderConfig config = makeLoaderConfig("query = \"SELECT c3 FROM ks.t1\"");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.COUNT, cluster, false);
-    assertThatThrownBy(
-            () ->
-                schemaSettings.createReadResultCounter(
-                    session, codecRegistry, EnumSet.of(partitions), 10))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Missing required partition key column c1 from schema.query");
-  }
-
-  @Test
-  void should_error_when_count_query_contains_extraneous_columns_partitions_1() {
-    LoaderConfig config = makeLoaderConfig("query = \"SELECT c1, c3 FROM ks.t1\"");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.COUNT, cluster, false);
-    assertThatThrownBy(
-            () ->
-                schemaSettings.createReadResultCounter(
-                    session, codecRegistry, EnumSet.of(partitions), 10))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Value for schema.query contains extraneous columns in the SELECT clause: c3; "
-                + "it should contain only partition key columns.");
-  }
-
-  @Test
-  void should_error_when_count_query_contains_extraneous_columns_partitions_2() {
-    LoaderConfig config =
-        makeLoaderConfig("query = \"SELECT c1, CAST (c2 AS boolean) FROM ks.t1\"");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.COUNT, cluster, false);
-    assertThatThrownBy(
-            () ->
-                schemaSettings.createReadResultCounter(
-                    session, codecRegistry, EnumSet.of(partitions), 10))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Value for schema.query contains extraneous columns in the SELECT clause; "
-                + "it should contain only partition key columns.");
-  }
-
-  @Test
-  void should_error_when_count_query_contains_extraneous_columns_hosts_1() {
-    LoaderConfig config = makeLoaderConfig("query = \"SELECT c1, c3 FROM ks.t1\"");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.COUNT, cluster, false);
-    assertThatThrownBy(
-            () ->
-                schemaSettings.createReadResultCounter(
-                    session, codecRegistry, EnumSet.of(hosts), 10))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Value for schema.query contains extraneous columns in the SELECT clause: c1, c3; "
-                + "it should contain only one token() selector.");
-  }
-
-  @Test
-  void should_error_when_count_query_contains_extraneous_columns_hosts_2() {
-    LoaderConfig config = makeLoaderConfig("query = \"SELECT 2, CAST (c2 AS boolean) FROM ks.t1\"");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.COUNT, cluster, false);
-    assertThatThrownBy(
-            () ->
-                schemaSettings.createReadResultCounter(
-                    session, codecRegistry, EnumSet.of(hosts), 10))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Value for schema.query contains extraneous columns in the SELECT clause; "
-                + "it should contain only one token() selector.");
   }
 
   @Test
