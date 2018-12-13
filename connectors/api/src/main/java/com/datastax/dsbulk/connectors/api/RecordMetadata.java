@@ -22,7 +22,7 @@ public interface RecordMetadata {
   /**
    * Returns the type of the given field.
    *
-   * @param field the field to get type type from.
+   * @param field the field to get the type from.
    * @param cqlType the CQL type associated with the given field.
    * @return the type of the given field, or {@code null} if the field isn't defined in this schema.
    */
