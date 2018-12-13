@@ -73,8 +73,7 @@ variable
     ;
 
 function
-    : TTL '(' functionArg ')'
-    | WRITETIME '(' functionArg ')'
+    : WRITETIME '(' functionArg ')'
     | functionName '(' ')'
     | functionName '(' functionArgs ')'
     ;
