@@ -16,8 +16,11 @@ import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * A CQL function call. Function calls can appear in both sides of a mapping entry, which is why
- * this class implements both {@link MappingField} and {@link CQLFragment}.
+ * A CQL function call as declared in a query or in a mapping entry.
+ *
+ * <p>In mapping declarations, function calls can appear in both sides of a mapping entry, which is
+ * why this class implements both {@link MappingField} (left side) and {@link CQLFragment} (right
+ * side).
  */
 public class FunctionCall implements MappingField, CQLFragment {
 
@@ -44,6 +47,8 @@ public class FunctionCall implements MappingField, CQLFragment {
             + "("
             + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(","))
             + ")";
+    // a function call appears in result set variables in a particular form: its internal
+    // representation is considered as its CQL form itself.
     variable = CQLIdentifier.fromInternal(internal).asCql();
   }
 
