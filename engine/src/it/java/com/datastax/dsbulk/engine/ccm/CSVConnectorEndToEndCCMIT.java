@@ -1113,6 +1113,79 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
+  void unload_and_load_timestamp_ttl_case_sensitive_custom_query_aliased() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
+    session.execute(
+        "CREATE TABLE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" (key int PRIMARY KEY, \"My Value\" text)");
+    session.execute(
+        "INSERT INTO \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" (key, \"My Value\") VALUES (1, 'foo') "
+            + "USING TIMESTAMP 123456789 AND TTL 123456789");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            escapeUserInput(
+                "SELECT key, \"My Value\", "
+                    + "writetime(\"My Value\") AS \"MyWritetime\", "
+                    + "ttl(\"My Value\") AS \"MyTtl\" "
+                    + "FROM \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\""));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    Stream<String> line = readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
+    assertThat(line)
+        .hasSize(1)
+        .hasOnlyOneElementSatisfying(
+            l ->
+                assertThat(l)
+                    .contains("1,foo,")
+                    .contains(numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
+                    .containsPattern(",\\d+"));
+    deleteDirectory(logDir);
+    session.execute("TRUNCATE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
+
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            escapeUserInput(
+                "INSERT INTO \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" (key, \"My Value\") "
+                    + "VALUES (:key, :\"My Value\") "
+                    + "USING TIMESTAMP :\"MyWritetime\" "
+                    + "AND TTL :\"MyTtl\""));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    ResultSet rs =
+        session.execute(
+            "SELECT key, \"My Value\", "
+                + "writetime(\"My Value\") AS timestamp, "
+                + "ttl(\"My Value\") AS ttl "
+                + "FROM \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" WHERE key = 1");
+    Row row = rs.one();
+    assertThat(row.getLong("timestamp")).isEqualTo(123456789L);
+    assertThat(row.getInt("ttl")).isLessThanOrEqualTo(123456789);
+  }
+
+  @Test
   void unload_and_load_timestamp_ttl_case_sensitive_mapping() throws IOException {
 
     session.execute("DROP TABLE IF EXISTS \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
