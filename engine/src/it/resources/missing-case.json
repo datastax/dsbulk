@@ -1,0 +1,20 @@
+[
+  {
+    "PK": null,
+    "CC": "CC",
+    "V": "PK is null case sensitive"
+  },
+  {
+    "CC": "CC",
+    "V": "PK is missing case sensitive"
+  },
+  {
+    "PK": "PK",
+    "CC": null,
+    "V": "CC is null case sensitive"
+  },
+  {
+    "PK": "PK",
+    "V": "CC is missing case sensitive"
+  }
+]

@@ -24,9 +24,9 @@ import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Set;
 import java.util.function.BiFunction;
 
@@ -36,20 +36,18 @@ public class DefaultRecordMapper implements RecordMapper {
   private static final String CQL_TYPE = "cqlType";
 
   private final PreparedStatement insertStatement;
-  private final int[] pkIndices;
+  private final ImmutableSet<String> primaryKeyVariables;
   private final ProtocolVersion protocolVersion;
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
+  private final boolean nullToUnset;
   private final boolean allowExtraFields;
   private final boolean allowMissingFields;
-
-  /** Whether to map null input to "unset" */
-  private final boolean nullToUnset;
-
   private final BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory;
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
+      Set<String> primaryKeyVariables,
       Mapping mapping,
       RecordMetadata recordMetadata,
       boolean nullToUnset,
@@ -57,20 +55,20 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields) {
     this(
         insertStatement,
-        DriverCoreHooks.partitionKeyIndices(insertStatement.getPreparedId()),
+        primaryKeyVariables,
         DriverCoreHooks.protocolVersion(insertStatement.getPreparedId()),
         mapping,
         recordMetadata,
         nullToUnset,
         allowExtraFields,
         allowMissingFields,
-        (mappedRecord, statement) -> new BulkBoundStatement<>(mappedRecord, insertStatement));
+        BulkBoundStatement::new);
   }
 
   @VisibleForTesting
   DefaultRecordMapper(
       PreparedStatement insertStatement,
-      int[] pkIndices,
+      Set<String> primaryKeyVariables,
       ProtocolVersion protocolVersion,
       Mapping mapping,
       RecordMetadata recordMetadata,
@@ -79,7 +77,7 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields,
       BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
     this.insertStatement = insertStatement;
-    this.pkIndices = pkIndices;
+    this.primaryKeyVariables = ImmutableSet.copyOf(primaryKeyVariables);
     this.protocolVersion = protocolVersion;
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
@@ -154,12 +152,11 @@ public class DefaultRecordMapper implements RecordMapper {
     String name = Metadata.quoteIfNecessary(variable);
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
     ByteBuffer bb = codec.serialize(raw, protocolVersion);
-    // Account for nullToUnset.
     if (isNull(bb, cqlType)) {
-      if (isPrimaryKey(variable)) {
+      if (primaryKeyVariables.contains(variable)) {
         throw new InvalidMappingException(
             "Primary key column "
-                + Metadata.quoteIfNecessary(variable)
+                + name
                 + " cannot be mapped to null. "
                 + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
       }
@@ -189,10 +186,6 @@ public class DefaultRecordMapper implements RecordMapper {
     }
   }
 
-  private boolean isPrimaryKey(String variable) {
-    return Arrays.binarySearch(pkIndices, insertStatement.getVariables().getIndexOf(variable)) >= 0;
-  }
-
   private void ensureAllFieldsPresent(Set<String> recordFields) {
     ColumnDefinitions variables = insertStatement.getVariables();
     for (int i = 0; i < variables.size(); i++) {
@@ -212,16 +205,14 @@ public class DefaultRecordMapper implements RecordMapper {
   }
 
   private void ensurePrimaryKeySet(BoundStatement bs) {
-    if (pkIndices != null) {
-      for (int pkIndex : pkIndices) {
-        if (!bs.isSet(pkIndex)) {
-          String variable = insertStatement.getVariables().getName(pkIndex);
-          throw new InvalidMappingException(
-              "Primary key column "
-                  + Metadata.quoteIfNecessary(variable)
-                  + " cannot be left unmapped. "
-                  + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
-        }
+    for (String variable : primaryKeyVariables) {
+      String name = Metadata.quoteIfNecessary(variable);
+      if (!bs.isSet(name)) {
+        throw new InvalidMappingException(
+            "Primary key column "
+                + name
+                + " cannot be left unmapped. "
+                + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
       }
     }
   }

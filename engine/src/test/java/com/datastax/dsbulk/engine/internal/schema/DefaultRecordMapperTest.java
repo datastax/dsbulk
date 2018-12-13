@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.driver.core.DataType.bigint;
+import static com.datastax.driver.core.Metadata.quoteIfNecessary;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -30,7 +31,6 @@ import static org.mockito.Mockito.when;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
@@ -77,8 +77,6 @@ class DefaultRecordMapperTest {
   private final TypeCodec codec2 = mock(StringToLongCodec.class);
   private final TypeCodec codec3 = TypeCodec.varchar();
 
-  private final int[] pkIndices = {0, 1, 2};
-
   private final List<String> nullStrings = newArrayList("");
 
   private Mapping mapping;
@@ -96,7 +94,6 @@ class DefaultRecordMapperTest {
   void setUp() {
     variableCaptor = ArgumentCaptor.forClass(String.class);
     valueCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
-
     recordMetadata =
         new TestRecordMetadata(
             ImmutableMap.of(
@@ -114,9 +111,10 @@ class DefaultRecordMapperTest {
     variables = mock(ColumnDefinitions.class);
 
     when(boundStatement.preparedStatement()).thenReturn(insertStatement);
-    when(boundStatement.isSet(0)).thenReturn(true);
-    when(boundStatement.isSet(1)).thenReturn(true);
-    when(boundStatement.isSet(2)).thenReturn(true);
+    when(boundStatement.isSet(quoteIfNecessary(C1))).thenReturn(true);
+    when(boundStatement.isSet(quoteIfNecessary(C2))).thenReturn(true);
+    when(boundStatement.isSet(quoteIfNecessary(C3))).thenReturn(true);
+
     when(insertStatement.getVariables()).thenReturn(variables);
 
     when(variables.getType(C1)).thenReturn(DataType.cint());
@@ -176,7 +174,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -217,7 +215,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -255,7 +253,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -291,7 +289,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -332,7 +330,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -355,7 +353,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            new int[] {0, 2},
+            set(C1, C3),
             V4,
             mapping,
             recordMetadata,
@@ -378,7 +376,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            new int[] {1, 2},
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -400,7 +398,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -426,7 +424,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -447,11 +445,11 @@ class DefaultRecordMapperTest {
     when(record.fields()).thenReturn(set(F1, F2, F3));
     when(variables.getIndexOf(C1)).thenReturn(3);
     when(variables.getName(3)).thenReturn(C1);
-    when(boundStatement.isSet(0)).thenReturn(false);
+    when(boundStatement.isSet(C1)).thenReturn(false);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -474,7 +472,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -499,7 +497,7 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            pkIndices,
+            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -520,7 +518,7 @@ class DefaultRecordMapperTest {
 
   private void assertParameter(int index, String expectedVariable, ByteBuffer expectedValue) {
     assertThat(variableCaptor.getAllValues().get(index))
-        .isEqualTo(Metadata.quoteIfNecessary(expectedVariable));
+        .isEqualTo(quoteIfNecessary(expectedVariable));
     assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
   }
 

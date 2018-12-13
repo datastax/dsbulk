@@ -353,6 +353,7 @@ public class SchemaSettings {
     DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, LOAD);
     return new DefaultRecordMapper(
         preparedStatement,
+        primaryKeyVariables(),
         mapping,
         recordMetadata,
         nullToUnset,
@@ -896,6 +897,19 @@ public class SchemaSettings {
     return sb.toString();
   }
 
+  private Set<String> primaryKeyVariables() {
+    Map<String, String> boundVariables = queryInspector.getBoundVariables();
+    List<ColumnMetadata> primaryKeyColumns = table.getPrimaryKey();
+    Set<String> variables = new HashSet<>(primaryKeyColumns.size());
+    for (ColumnMetadata column : primaryKeyColumns) {
+      String variable = boundVariables.get(column.getName());
+      if (!variable.startsWith(INTERNAL_FUNCTION_MARKER)) {
+        variables.add(variable);
+      }
+    }
+    return variables;
+  }
+
   private static void appendColumnNames(
       BiMap<String, String> fieldsToVariables, StringBuilder sb, boolean allowFunctions) {
     // de-dup in case the mapping has both indexed and mapped entries
@@ -991,8 +1005,8 @@ public class SchemaSettings {
     return builder.build();
   }
 
-  private static void handleFunctionForUnload(ImmutableBiMap.Builder<String, String> builder,
-                                              Map.Entry<String, String> entry) {
+  private static void handleFunctionForUnload(
+      ImmutableBiMap.Builder<String, String> builder, Map.Entry<String, String> entry) {
     // functions as variables are are only allowed when unloading, but this has already
     // been validated when generating the query, so we don't need to re-validate here;
     // function calls when unloading should be included in the final mapping so that their

@@ -138,6 +138,89 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateOutputFiles(24, unloadDir);
   }
 
+  /** DAT-307: Test to validate that missing primary keys will fail to load. */
+  @Test
+  void error_load_missing_primary_keys() throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS missing");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS missing (pk varchar, cc varchar, v varchar, PRIMARY KEY(pk, cc))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(ClassLoader.getSystemResource("missing.json")));
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("missing");
+    args.add("--connector.json.mode");
+    args.add("SINGLE_DOCUMENT");
+    args.add("--schema.allowMissingFields");
+    args.add("true");
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(1);
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    validateBadOps(4, logPath);
+    validateExceptionsLog(
+        1, "Primary key column pk cannot be mapped to null", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column cc cannot be mapped to null", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column pk cannot be left unmapped", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column cc cannot be left unmapped", "mapping-errors.log", logPath);
+    validateResultSetSize(0, "SELECT * FROM missing");
+    deleteDirectory(logDir);
+  }
+  /**
+   * DAT-307: Test to validate that missing primary keys will fail to load with case-sensitive
+   * identifiers.
+   */
+  @Test
+  void error_load_missing_primary_keys_case_sensitive() throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS missing");
+    session.execute(
+        "CREATE TABLE missing (\"PK\" varchar, \"CC\" varchar, \"V\" varchar, "
+            + "PRIMARY KEY(\"PK\", \"CC\"))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(escapeUserInput(logDir));
+    args.add("--connector.json.url");
+    args.add(escapeUserInput(ClassLoader.getSystemResource("missing-case.json")));
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("missing");
+    args.add("--connector.json.mode");
+    args.add("SINGLE_DOCUMENT");
+    args.add("--schema.allowMissingFields");
+    args.add("true");
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(1);
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    validateBadOps(4, logPath);
+    validateExceptionsLog(
+        1, "Primary key column \"PK\" cannot be mapped to null", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column \"CC\" cannot be mapped to null", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column \"PK\" cannot be left unmapped", "mapping-errors.log", logPath);
+    validateExceptionsLog(
+        1, "Primary key column \"CC\" cannot be left unmapped", "mapping-errors.log", logPath);
+    validateResultSetSize(0, "SELECT * FROM missing");
+    deleteDirectory(logDir);
+  }
+
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */
   @Test
   void full_load_unload_lz4() throws Exception {
