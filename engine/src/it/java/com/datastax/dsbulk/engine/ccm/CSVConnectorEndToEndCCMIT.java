@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.numberToInstant;
@@ -84,10 +85,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -999,11 +1000,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    Optional<String> line =
-        readAllLinesInDirectoryAsStream(unloadDir).filter(s -> s.contains("foo")).findFirst();
+    Stream<String> line = readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
-        .isPresent()
-        .hasValueSatisfying(
+        .hasSize(1)
+        .hasOnlyOneElementSatisfying(
             l ->
                 assertThat(l)
                     .contains("1,foo,")
@@ -1069,11 +1069,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    Optional<String> line =
-        readAllLinesInDirectoryAsStream(unloadDir).filter(s -> s.contains("foo")).findFirst();
+    Stream<String> line = readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
-        .isPresent()
-        .hasValueSatisfying(
+        .hasSize(1)
+        .hasOnlyOneElementSatisfying(
             l ->
                 assertThat(l)
                     .contains("1,foo,")
@@ -1142,11 +1141,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    Optional<String> line =
-        readAllLinesInDirectoryAsStream(unloadDir).filter(s -> s.contains("foo")).findFirst();
+    Stream<String> line = readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
-        .isPresent()
-        .hasValueSatisfying(
+        .hasSize(1)
+        .hasOnlyOneElementSatisfying(
             l ->
                 assertThat(l)
                     .contains("1,foo,")

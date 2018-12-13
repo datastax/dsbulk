@@ -56,6 +56,18 @@ public class FileUtils {
     }
   }
 
+  public static Stream<String> readAllLinesInDirectoryAsStreamExcludingHeaders(Path dir)
+      throws IOException {
+    return readAllLinesInDirectoryAsStreamExcludingHeaders(dir, StandardCharsets.UTF_8);
+  }
+
+  public static Stream<String> readAllLinesInDirectoryAsStreamExcludingHeaders(
+      Path dir, Charset charset) throws IOException {
+    return listAllFilesInDirectory(dir)
+        .stream()
+        .flatMap(file -> readAllLines(file, charset).skip(1));
+  }
+
   public static Stream<String> readAllLines(Path path) {
     return readAllLines(path, StandardCharsets.UTF_8);
   }
