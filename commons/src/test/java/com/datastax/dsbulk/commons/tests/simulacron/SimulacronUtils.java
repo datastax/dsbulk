@@ -421,6 +421,34 @@ public class SimulacronUtils {
             new Prime(
                 new RequestPrime(
                     whenSelectFromTable, new SuccessResult(table.rows, table.allColumnTypes()))));
+
+        // SELECT from table WHERE token...
+        Query whenSelectFromTableWhere =
+            new Query(
+                String.format(
+                    "SELECT %s FROM %s.%s WHERE token(%s) > :start AND token(%s) <= :end",
+                    table
+                        .allColumns()
+                        .stream()
+                        .map(col -> Metadata.quoteIfNecessary(col.name))
+                        .collect(Collectors.joining(",")),
+                    Metadata.quoteIfNecessary(keyspace.name),
+                    Metadata.quoteIfNecessary(table.name),
+                    table
+                        .partitionKey
+                        .stream()
+                        .map(col -> Metadata.quoteIfNecessary(col.name))
+                        .collect(Collectors.joining(",")),
+                    table
+                        .partitionKey
+                        .stream()
+                        .map(col -> Metadata.quoteIfNecessary(col.name))
+                        .collect(Collectors.joining(","))));
+        simulacron.prime(
+            new Prime(
+                new RequestPrime(
+                    whenSelectFromTableWhere,
+                    new SuccessResult(table.rows, table.allColumnTypes()))));
       }
     }
 

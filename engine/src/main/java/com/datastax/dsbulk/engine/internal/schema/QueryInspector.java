@@ -53,6 +53,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   private CQLIdentifier keyspaceName;
   private CQLIdentifier tableName;
   private int fromClauseStartIndex = -1;
+  private int fromClauseEndIndex = -1;
+  private boolean hasWhereClause = false;
 
   public QueryInspector(String query) {
     this.query = query;
@@ -134,6 +136,19 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     return fromClauseStartIndex;
   }
 
+  /**
+   * @return the end index of the FROM clause of a SELECT statement; or -1 if the statement is not a
+   *     SELECT.
+   */
+  public int getFromClauseEndIndex() {
+    return fromClauseEndIndex;
+  }
+
+  /** @return true if the statement contains a WHERE clause, false otherwise. */
+  public boolean hasWhereClause() {
+    return hasWhereClause;
+  }
+
   // INSERT
 
   @Override
@@ -210,10 +225,13 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
       throw new BulkConfigurationException(
           String.format("Invalid query: SELECT JSON is not supported: %s.", query));
     }
-    // do not inspect WHERE clause, we want only result set variables;
-    // if the query has a token range restriction, it will be validated later.
     visitColumnFamilyName(ctx.columnFamilyName());
     fromClauseStartIndex = ctx.K_FROM().getSymbol().getStartIndex();
+    fromClauseEndIndex = ctx.columnFamilyName().getStop().getStopIndex();
+    if (ctx.whereClause() != null) {
+      hasWhereClause = true;
+      visitWhereClause(ctx.whereClause());
+    }
     return visitSelectClause(ctx.selectClause());
   }
 
