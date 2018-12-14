@@ -32,6 +32,7 @@ public class DefaultMapping implements Mapping {
   private final ExtendedCodecRegistry codecRegistry;
   private final Cache<MappingToken, TypeCodec<?>> variablesToCodecs;
   private final ImmutableSet<String> writeTimeVariables;
+  private ImmutableBiMap<CQLFragment, Field> variablesToFields;
 
   public DefaultMapping(
       ImmutableBiMap<Field, CQLFragment> fieldsToVariables,
@@ -45,6 +46,7 @@ public class DefaultMapping implements Mapping {
             .map(CQLFragment::asVariable)
             .collect(ImmutableSet.toImmutableSet());
     variablesToCodecs = Caffeine.newBuilder().build();
+    variablesToFields = fieldsToVariables.inverse();
   }
 
   @Override
@@ -54,7 +56,7 @@ public class DefaultMapping implements Mapping {
 
   @Override
   public Field variableToField(@NotNull CQLFragment variable) {
-    return fieldsToVariables.inverse().get(variable);
+    return variablesToFields.get(variable);
   }
 
   @Override
