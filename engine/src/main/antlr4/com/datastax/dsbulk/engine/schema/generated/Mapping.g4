@@ -15,9 +15,9 @@
 grammar Mapping;
 
 mapping
-    : simpleEntry  ( ',' simpleEntry  )* EOF // col1, col2
-    | mappedEntry  ( ',' mappedEntry  )* EOF // fieldA = col1, fieldB = col2
-    | indexedEntry ( ',' indexedEntry )* EOF // 0 = col1, 1 = col2
+    : simpleEntry  ( ',' simpleEntry  )* EOF // col1, col2, now()
+    | mappedEntry  ( ',' mappedEntry  )* EOF // fieldA = col1, fieldB = col2, now() = col3
+    | indexedEntry ( ',' indexedEntry )* EOF // 0 = col1, 1 = col2, 2 = now()
     ;
 
 simpleEntry
@@ -97,7 +97,7 @@ functionArg
     | STRING_LITERAL
     | UNQUOTED_IDENTIFIER
     | QUOTED_IDENTIFIER
-    | ('-' )? (K_NAN | K_INFINITY)
+    | ( '-' )? ( K_NAN | K_INFINITY )
     ;
 
 // Case-insensitive alpha characters
