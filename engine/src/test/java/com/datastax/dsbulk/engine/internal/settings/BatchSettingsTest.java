@@ -151,13 +151,14 @@ class BatchSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
                 ConfigFactory.parseString(
-                    "maxBatchSize = 10, bufferSize = 5,mode = PARTITION_KEY, maxBatchStatements = null"))
+                    "maxBatchSize = 10, bufferSize = 5, mode = PARTITION_KEY, maxBatchStatements = null"))
             .withFallback(ConfigFactory.load().getConfig("dsbulk.batch"));
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "Value for batch.bufferSize (5) must be greater than or equal to buffer.maxBatchStatements OR buffer.maxBatchSize (10). See settings.md for more information.");
+            "Value for batch.bufferSize (5) must be greater than or equal to "
+                + "batch.maxBatchStatements OR batch.maxBatchSize (10). See settings.md for more information.");
   }
 
   @Test
@@ -165,13 +166,14 @@ class BatchSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
                 ConfigFactory.parseString(
-                    "maxBatchStatements = 10, bufferSize = 5,mode = PARTITION_KEY"))
+                    "maxBatchStatements = 10, bufferSize = 5, mode = PARTITION_KEY"))
             .withFallback(ConfigFactory.load().getConfig("dsbulk.batch"));
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "Value for batch.bufferSize (5) must be greater than or equal to buffer.maxBatchStatements OR buffer.maxBatchSize (10). See settings.md for more information.");
+            "Value for batch.bufferSize (5) must be greater than or equal to "
+                + "batch.maxBatchStatements OR batch.maxBatchSize (10). See settings.md for more information.");
   }
 
   @Test
