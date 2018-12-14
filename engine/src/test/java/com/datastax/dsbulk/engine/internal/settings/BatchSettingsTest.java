@@ -98,7 +98,9 @@ class BatchSettingsTest {
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "Settings batch.maxBatchStatements and batch.maxBatchSize cannot be both defined; consider using batch.maxBatchStatements exclusively, because batch.maxBatchSize is deprecated.");
+            "Settings batch.maxBatchStatements and batch.maxBatchSize cannot be both defined; "
+                + "consider using batch.maxBatchStatements exclusively, "
+                + "because batch.maxBatchSize is deprecated.");
   }
 
   @Test
@@ -249,6 +251,20 @@ class BatchSettingsTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "At least one of batch.maxSizeInBytes or batch.maxBatchStatements must be positive. See settings.md for more information.");
+  }
+
+  @Test
+  void should_throw_exception_when_max_batch_statements_and_buffer_size_are_non_positive() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                "mode = PARTITION_KEY, maxSizeInBytes = 100, bufferSize = -1, maxBatchStatements = 0"));
+    BatchSettings settings = new BatchSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Value for batch.bufferSize (0) must be positive if batch.maxBatchStatements is "
+                + "negative or zero. See settings.md for more information.");
   }
 
   @Test
