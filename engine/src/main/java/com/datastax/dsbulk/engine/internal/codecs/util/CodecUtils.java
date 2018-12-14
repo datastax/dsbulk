@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.codecs.util;
 
 import static com.datastax.driver.core.ParseUtils.unquote;
+import static java.time.temporal.ChronoUnit.MICROS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -26,7 +27,6 @@ import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.ParsePosition;
 import java.time.DateTimeException;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -233,6 +233,7 @@ public class CodecUtils {
    * @param epoch the epoch to use; cannot be {@code null}.
    * @return an {@link Instant} or {@code null} if the string was {@code null} or empty.
    * @throws ArithmeticException if the number cannot be converted to a Long.
+   * @throws DateTimeException if the number is too large to be converted to an Instant.
    */
   public static Instant numberToInstant(
       Number n, @NotNull TimeUnit timeUnit, @NotNull Instant epoch) {
@@ -241,8 +242,24 @@ public class CodecUtils {
     }
     Objects.requireNonNull(timeUnit);
     Objects.requireNonNull(epoch);
-    Duration duration = Duration.ofNanos(NANOSECONDS.convert(toLongValueExact(n), timeUnit));
-    return epoch.plus(duration);
+    Long l = toLongValueExact(n);
+    // DAT-368: avoid numeric overflows for units smaller than second
+    // (for units larger than second, numeric overflows cannot happen).
+    switch (timeUnit) {
+      case NANOSECONDS:
+        return epoch.plusNanos(l);
+      case MICROSECONDS:
+        return epoch.plus(l, MICROS);
+      case MILLISECONDS:
+        return epoch.plusMillis(l);
+      case SECONDS:
+        return epoch.plusSeconds(l);
+      default:
+        // cannot overflow because toSeconds() is capped by Long.MIN_VALUE and Long.MAX_VALUE;
+        // but may throw DateTimeException if the number of seconds is greater than
+        // Instant.MAX.getEpochSecond() or lesser than Instant.MIN.getEpochSecond().
+        return epoch.plusSeconds(timeUnit.toSeconds(l));
+    }
   }
 
   /**
