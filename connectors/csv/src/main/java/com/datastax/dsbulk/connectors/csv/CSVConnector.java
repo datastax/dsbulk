@@ -19,9 +19,13 @@ import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
+import com.datastax.dsbulk.connectors.api.Field;
+import com.datastax.dsbulk.connectors.api.MappedField;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
+import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
+import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Streams;
@@ -393,21 +397,24 @@ public class CSVConnector implements Connector {
                   try {
                     if (header) {
                       record =
-                          new DefaultRecord(
+                          DefaultRecord.mapped(
                               source,
                               () -> resource,
                               finalRecordNumber,
                               location,
-                              context.parsedHeaders(),
+                              Arrays.stream(context.parsedHeaders())
+                                  .map(DefaultMappedField::new)
+                                  .toArray(MappedField[]::new),
                               (Object[]) row.getValues());
                       // also emit indexed fields
                       Streams.forEachPair(
-                          IntStream.range(0, row.getValues().length).mapToObj(Integer::toString),
+                          IntStream.range(0, row.getValues().length)
+                              .mapToObj(DefaultIndexedField::new),
                           Arrays.stream(row.getValues()),
                           ((DefaultRecord) record)::setFieldValue);
                     } else {
                       record =
-                          new DefaultRecord(
+                          DefaultRecord.indexed(
                               source,
                               () -> resource,
                               finalRecordNumber,
@@ -510,7 +517,7 @@ public class CSVConnector implements Connector {
           open();
         }
         if (shouldWriteHeader()) {
-          writer.writeHeaders(record.fields());
+          writer.writeHeaders(record.fields().stream().map(Field::toString).toArray(String[]::new));
         }
         LOGGER.trace("Writing record {} to {}", record, url);
         writer.writeRow(record.values());

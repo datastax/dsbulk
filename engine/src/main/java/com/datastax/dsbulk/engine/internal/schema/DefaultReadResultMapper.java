@@ -12,6 +12,7 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.commons.internal.uri.URIUtils;
+import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
@@ -49,16 +50,15 @@ public class DefaultReadResultMapper implements ReadResultMapper {
                     result.getExecutionInfo().orElseThrow(IllegalStateException::new),
                     result.getStatement()));
     try {
-      DefaultRecord record = new DefaultRecord(result, resource, -1, location);
-      for (String field : mapping.fields()) {
+      DefaultRecord record = DefaultRecord.indexed(result, resource, -1, location);
+      for (Field field : mapping.fields()) {
         // do not quote variable names here as the mapping expects them unquoted
-        String variable = mapping.fieldToVariable(field);
-        DataType type = row.getColumnDefinitions().getType(variable);
+        CQLFragment variable = mapping.fieldToVariable(field);
+        DataType type = row.getColumnDefinitions().getType(variable.asVariable());
         TypeToken<?> fieldType = recordMetadata.getFieldType(field, type);
         if (fieldType != null) {
-          assert variable != null;
           TypeCodec<?> codec = mapping.codec(variable, type, fieldType);
-          Object value = row.get(variable, codec);
+          Object value = row.get(variable.asVariable(), codec);
           record.setFieldValue(field, value);
         }
       }

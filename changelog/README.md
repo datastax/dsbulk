@@ -6,13 +6,14 @@
 - [improvement] DAT-336: Extend DSBulk's rate limiting capability to reads.
 - [new feature] DAT-354: Add Basic NGDG support to DSBulk Engine.
 - [improvement] DAT-362: Improve readability of error messages printed to the console.
-- [improvement] DAT-352: Calculate batch size dynamically - Adaptive Batch Sizing
+- [improvement] DAT-352: Calculate batch size dynamically - Adaptive Batch Sizing.
 - [bug] DAT-339: CSV connector trims trailing whitespace when reading data.
 - [improvement] DAT-344: Expose settings to control how to interpret empty fields in CSV files.
 - [improvement] DAT-305: DSBulk help should show description of available commands.
 - [improvement] DAT-327: Allow functions to appear in mapping variables
 - [bug] DAT-368: Avoid overflows in CodecUtils.numberToInstant.
 - [improvement] DAT-361: Display metrics in vertices or edges per second in graph mode.
+- [improvement] DAT-367: Detect writetime variable when unloading.
 
 
 ### 1.2.0

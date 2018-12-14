@@ -27,6 +27,7 @@ import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
+import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
@@ -41,6 +42,14 @@ class DefaultReadResultMapperTest {
   private static final String C2 = "col2";
   private static final String C3 = "My Fancy Column Name";
 
+  private static final CQLIdentifier C1_ID = CQLIdentifier.fromInternal(C1);
+  private static final CQLIdentifier C2_ID = CQLIdentifier.fromInternal(C2);
+  private static final CQLIdentifier C3_ID = CQLIdentifier.fromInternal(C3);
+
+  private static final DefaultMappedField F0 = new DefaultMappedField("f0");
+  private static final DefaultMappedField F1 = new DefaultMappedField("f1");
+  private static final DefaultMappedField F2 = new DefaultMappedField("f2");
+
   private Mapping mapping;
   private RecordMetadata recordMetadata;
   private ReadResult result;
@@ -51,11 +60,11 @@ class DefaultReadResultMapperTest {
     recordMetadata =
         new TestRecordMetadata(
             ImmutableMap.of(
-                "f0",
+                F0,
                 TypeToken.of(Integer.class),
-                "f1",
+                F1,
                 TypeToken.of(String.class),
-                "f2",
+                F2,
                 TypeToken.of(String.class)));
     mapping = mock(Mapping.class);
     Row row = mock(Row.class);
@@ -66,18 +75,18 @@ class DefaultReadResultMapperTest {
     ColumnDefinitions.Definition c3 = newDefinition(C3, DataType.varchar());
     ColumnDefinitions variables = newColumnDefinitions(c1, c2, c3);
     when(row.getColumnDefinitions()).thenReturn(variables);
-    when(mapping.fields()).thenReturn(newLinkedHashSet("f0", "f1", "f2"));
-    when(mapping.fieldToVariable("f0")).thenReturn(C1);
-    when(mapping.fieldToVariable("f1")).thenReturn(C2);
-    when(mapping.fieldToVariable("f2")).thenReturn(C3);
+    when(mapping.fields()).thenReturn(newLinkedHashSet(F0, F1, F2));
+    when(mapping.fieldToVariable(F0)).thenReturn(C1_ID);
+    when(mapping.fieldToVariable(F1)).thenReturn(C2_ID);
+    when(mapping.fieldToVariable(F2)).thenReturn(C3_ID);
     TypeCodec codec1 = TypeCodec.cint();
     TypeCodec codec2 = TypeCodec.varchar();
-    when(mapping.codec(C1, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
-    when(mapping.codec(C2, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
-    when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
-    when(row.get(C1, codec1)).thenReturn(42);
-    when(row.get(C2, codec2)).thenReturn("foo");
-    when(row.get(C3, codec2)).thenReturn("bar");
+    when(mapping.codec(C1_ID, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
+    when(mapping.codec(C2_ID, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
+    when(mapping.codec(C3_ID, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
+    when(row.get(C1_ID.asVariable(), codec1)).thenReturn(42);
+    when(row.get(C2_ID.asVariable(), codec2)).thenReturn("foo");
+    when(row.get(C3_ID.asVariable(), codec2)).thenReturn("bar");
 
     // to generate locations
     BoundStatement boundStatement = mock(BoundStatement.class);
@@ -94,9 +103,9 @@ class DefaultReadResultMapperTest {
     ColumnDefinitions.Definition end = newDefinition("end", DataType.bigint());
     ColumnDefinitions boundVariables = newColumnDefinitions(start, end);
     when(ps.getVariables()).thenReturn(boundVariables);
-    when(row.getObject(C1)).thenReturn(42);
-    when(row.getObject(C2)).thenReturn("foo");
-    when(row.getObject(C3)).thenReturn("bar");
+    when(row.getObject(C1_ID.asVariable())).thenReturn(42);
+    when(row.getObject(C2_ID.asVariable())).thenReturn("foo");
+    when(row.getObject(C3_ID.asVariable())).thenReturn("bar");
     when(boundStatement.getObject("start")).thenReturn(1234L);
     when(boundStatement.getObject("end")).thenReturn(5678L);
   }
@@ -105,17 +114,17 @@ class DefaultReadResultMapperTest {
   void should_map_result_to_mapped_record_when_mapping_succeeds() {
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
     Record record = mapper.map(result);
-    assertThat(record.fields()).containsOnly("f0", "f1", "f2");
-    assertThat(record.getFieldValue("f0")).isEqualTo(42);
-    assertThat(record.getFieldValue("f1")).isEqualTo("foo");
-    assertThat(record.getFieldValue("f2")).isEqualTo("bar");
+    assertThat(record.fields()).containsOnly(F0, F1, F2);
+    assertThat(record.getFieldValue(F0)).isEqualTo(42);
+    assertThat(record.getFieldValue(F1)).isEqualTo("foo");
+    assertThat(record.getFieldValue(F2)).isEqualTo("bar");
   }
 
   @Test
   void should_map_result_to_error_record_when_mapping_fails() {
     CodecNotFoundException exception =
         new CodecNotFoundException("not really", DataType.varchar(), TypeToken.of(String.class));
-    when(mapping.codec(C3, DataType.varchar(), TypeToken.of(String.class))).thenThrow(exception);
+    when(mapping.codec(C3_ID, DataType.varchar(), TypeToken.of(String.class))).thenThrow(exception);
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError()).isSameAs(exception);

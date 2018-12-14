@@ -82,7 +82,7 @@ public class LogSettings {
           // filter out reactor exceptions as they are usually not relevant to users and
           // other more meaningful errors are generally present.
           !t.getClass().getName().startsWith("reactor.")
-              && !t.getMessage().startsWith("#block terminated");
+              && (t.getMessage() == null || !t.getMessage().startsWith("#block terminated"));
 
   /**
    * The layout pattern to use for the main log file.

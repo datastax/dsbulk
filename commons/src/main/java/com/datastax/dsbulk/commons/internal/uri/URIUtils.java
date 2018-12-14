@@ -15,6 +15,7 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.DriverCoreHooks;
 import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.GettableData;
+import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
@@ -167,7 +168,7 @@ public class URIUtils {
       String value;
       try {
         TypeCodec<Object> codec = codecRegistry.codecFor(type);
-        value = codec.format(data.getObject(name));
+        value = codec.format(data.getObject(Metadata.quoteIfNecessary(name)));
       } catch (Exception e) {
         // This is unlikely to happen. We can safely assume that all values
         // retrieved with getObject() can be formatted using

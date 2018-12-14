@@ -15,8 +15,13 @@
 grammar Mapping;
 
 mapping
-    : mappedEntry  ( ',' mappedEntry  )* EOF
-    | indexedEntry ( ',' indexedEntry )* EOF
+    : simpleEntry  ( ',' simpleEntry  )* EOF // col1, col2, now()
+    | mappedEntry  ( ',' mappedEntry  )* EOF // fieldA = col1, fieldB = col2, now() = col3
+    | indexedEntry ( ',' indexedEntry )* EOF // 0 = col1, 1 = col2, 2 = now()
+    ;
+
+simpleEntry
+    : variableOrFunction
     ;
 
 mappedEntry
@@ -35,7 +40,16 @@ inferredMappedEntry
     ;
 
 indexedEntry
-    : variableOrFunction
+    : indexOrFunction ( ':' | '=' ) variableOrFunction
+    ;
+
+indexOrFunction
+    : index
+    | function
+    ;
+
+index
+    : INTEGER
     ;
 
 fieldOrFunction
@@ -44,8 +58,8 @@ fieldOrFunction
     ;
 
 field
-    : UNQUOTED_STRING
-    | QUOTED_STRING
+    : UNQUOTED_IDENTIFIER
+    | QUOTED_IDENTIFIER
     ;
 
 variableOrFunction
@@ -54,37 +68,153 @@ variableOrFunction
     ;
 
 variable
-    : UNQUOTED_STRING
-    | QUOTED_STRING
+    : UNQUOTED_IDENTIFIER
+    | QUOTED_IDENTIFIER
     ;
 
 function
-    : functionName '(' ')'
+    : WRITETIME '(' functionArg ')'
+    | functionName '(' ')'
     | functionName '(' functionArgs ')'
     ;
 
 functionName
-    : ( identifier '.' )? identifier
+    : UNQUOTED_IDENTIFIER
+    | QUOTED_IDENTIFIER
     ;
 
 functionArgs
-    :  identifier ( ',' identifier )*
+    :  functionArg ( ',' functionArg )*
     ;
 
-identifier
-    : UNQUOTED_STRING
-    | QUOTED_STRING
+functionArg
+    : INTEGER
+    | FLOAT
+    | BOOLEAN
+    | DURATION
+    | UUID
+    | HEXNUMBER
+    | STRING_LITERAL
+    | UNQUOTED_IDENTIFIER
+    | QUOTED_IDENTIFIER
+    | ( '-' )? ( K_NAN | K_INFINITY )
+    ;
+
+// Case-insensitive alpha characters
+fragment A: ('a'|'A');
+fragment B: ('b'|'B');
+fragment C: ('c'|'C');
+fragment D: ('d'|'D');
+fragment E: ('e'|'E');
+fragment F: ('f'|'F');
+fragment G: ('g'|'G');
+fragment H: ('h'|'H');
+fragment I: ('i'|'I');
+fragment J: ('j'|'J');
+fragment K: ('k'|'K');
+fragment L: ('l'|'L');
+fragment M: ('m'|'M');
+fragment N: ('n'|'N');
+fragment O: ('o'|'O');
+fragment P: ('p'|'P');
+fragment Q: ('q'|'Q');
+fragment R: ('r'|'R');
+fragment S: ('s'|'S');
+fragment T: ('t'|'T');
+fragment U: ('u'|'U');
+fragment V: ('v'|'V');
+fragment W: ('w'|'W');
+fragment X: ('x'|'X');
+fragment Y: ('y'|'Y');
+fragment Z: ('z'|'Z');
+
+fragment DIGIT
+    : '0'..'9'
+    ;
+
+fragment LETTER
+    : ('A'..'Z' | 'a'..'z')
+    ;
+
+fragment HEX
+    : ('A'..'F' | 'a'..'f' | '0'..'9')
+    ;
+
+fragment EXPONENT
+    : E ('+' | '-')? DIGIT+
     ;
 
 fragment ALPHANUMERIC
-    : ( 'A'..'Z' | 'a'..'z' | '0'..'9' | '_' )
+    : ( LETTER | DIGIT | '_' )
     ;
 
-UNQUOTED_STRING
+fragment DURATION_UNIT
+    : Y
+    | M O
+    | W
+    | D
+    | H
+    | M
+    | S
+    | M S
+    | U S
+    | '\u00B5' S
+    | N S
+    ;
+
+WRITETIME
+    : W R I T E T I M E
+    ;
+
+BOOLEAN
+    : T R U E | F A L S E
+    ;
+
+K_NAN
+    : N A N
+    ;
+
+K_INFINITY
+    : I N F I N I T Y
+    ;
+
+INTEGER
+    : '-'? DIGIT+
+    ;
+
+FLOAT
+    : INTEGER EXPONENT
+    | INTEGER '.' DIGIT* EXPONENT?
+    ;
+
+DURATION
+    : '-'? DIGIT+ DURATION_UNIT (DIGIT+ DURATION_UNIT)*
+    | '-'? 'P' (DIGIT+ 'Y')? (DIGIT+ 'M')? (DIGIT+ 'D')? ('T' (DIGIT+ 'H')? (DIGIT+ 'M')? (DIGIT+ 'S')?)? // ISO 8601 "format with designators"
+    | '-'? 'P' DIGIT+ 'W'
+    | '-'? 'P' DIGIT DIGIT DIGIT DIGIT '-' DIGIT DIGIT '-' DIGIT DIGIT 'T' DIGIT DIGIT ':' DIGIT DIGIT ':' DIGIT DIGIT // ISO 8601 "alternative format"
+    ;
+
+HEXNUMBER
+    : '0' X HEX*
+    ;
+
+UUID
+    : HEX HEX HEX HEX HEX HEX HEX HEX '-'
+      HEX HEX HEX HEX '-'
+      HEX HEX HEX HEX '-'
+      HEX HEX HEX HEX '-'
+      HEX HEX HEX HEX HEX HEX HEX HEX HEX HEX HEX HEX
+    ;
+
+STRING_LITERAL
+    : '\'' ( ~'\'' | '\'' '\'' )* '\''
+    ;
+
+UNQUOTED_IDENTIFIER
     : ALPHANUMERIC ( ALPHANUMERIC )*
     ;
 
-QUOTED_STRING
+QUOTED_IDENTIFIER
     : '"' ( ~'"' | '"' '"' )+ '"'
     ;
 

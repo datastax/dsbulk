@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.CodecNotFoundException;
+import com.datastax.dsbulk.connectors.api.Field;
 import com.google.common.reflect.TypeToken;
 import java.util.Set;
 import org.jetbrains.annotations.NotNull;
@@ -31,12 +32,11 @@ public interface Mapping {
    * syntax of CQL identifiers; it is the caller's responsibility to check if quoting is required or
    * not.
    *
-   * @param field the field name.
-   * @return the bound statement variable name the given field maps to, or {@code null} if the field
-   *     does not map to any known bound statement variable.
+   * @param field the field to find the variable for.
+   * @return the bound statement variable the given field maps to, or {@code null} if the field does
+   *     not map to any known bound statement variable.
    */
-  @Nullable
-  String fieldToVariable(@NotNull String field);
+  CQLFragment fieldToVariable(@NotNull Field field);
 
   /**
    * Maps the given row variable to a field. Used in read workflows.
@@ -44,12 +44,12 @@ public interface Mapping {
    * <p>Note that the given variable name must be supplied unquoted, even if it requires quoting to
    * comply with the syntax of CQL identifiers.
    *
-   * @param variable the row variable name; never {@code null}.
-   * @return the field name the given variable maps to, or {@code null} if the variable does not map
-   *     to any known field.
+   * @param variable the row variable; never {@code null}.
+   * @return the field the given variable maps to, or {@code null} if the variable does not map to
+   *     any known field.
    */
   @Nullable
-  String variableToField(@NotNull String variable);
+  Field variableToField(@NotNull CQLFragment variable);
 
   /**
    * Returns the codec to use for the given bound statement or row variable.
@@ -58,7 +58,7 @@ public interface Mapping {
    * comply with the syntax of CQL identifiers.
    *
    * @param <T> the codec's Java type.
-   * @param variable the bound statement or row variable name; never {@code null}.
+   * @param variable the bound statement or row variable; never {@code null}.
    * @param cqlType the CQL type; never {@code null}.
    * @param javaType the Java type; never {@code null}.
    * @return the codec to use; never {@code null}.
@@ -66,20 +66,22 @@ public interface Mapping {
    */
   @NotNull
   <T> TypeCodec<T> codec(
-      @NotNull String variable, @NotNull DataType cqlType, @NotNull TypeToken<? extends T> javaType)
+      @NotNull CQLFragment variable,
+      @NotNull DataType cqlType,
+      @NotNull TypeToken<? extends T> javaType)
       throws CodecNotFoundException;
 
   /**
-   * Returns all the field names in this mapping.
+   * Returns all the fields in this mapping.
    *
-   * @return the field names in this mapping.
+   * @return the fields in this mapping.
    */
-  Set<String> fields();
+  Set<Field> fields();
 
   /**
-   * Returns all the variable names in this mapping.
+   * Returns all the variables in this mapping.
    *
-   * @return the variable names in this mapping.
+   * @return the variables in this mapping.
    */
-  Set<String> variables();
+  Set<CQLFragment> variables();
 }

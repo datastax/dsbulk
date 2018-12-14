@@ -14,7 +14,8 @@ import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * An item emitted by a {@link Connector}.
+ * An item emitted by a {@link Connector}. A record is composed of one or more {@linkplain Field
+ * fields}.
  *
  * <p>Records typically originate from a line in a file, or a row in a database table.
  */
@@ -70,11 +71,11 @@ public interface Record {
   URI getLocation();
 
   /**
-   * Returns a set containing all the field names in this record.
+   * Returns a set containing all the fields in this record.
    *
-   * @return a set containing all the field names in this record.
+   * @return a set containing all the fields in this record.
    */
-  Set<String> fields();
+  Set<Field> fields();
 
   /**
    * Returns a collection containing all the values in this record.
@@ -92,10 +93,10 @@ public interface Record {
    * <p>Note that a return value of {@code null} may indicate that the record contains no such
    * field, or that the field value was {@code null}.
    *
-   * @param field the field name.
+   * @param field the field.
    * @return the value associated with the given field.
    */
-  Object getFieldValue(String field);
+  Object getFieldValue(Field field);
 
   /**
    * Clear all fields in this record.

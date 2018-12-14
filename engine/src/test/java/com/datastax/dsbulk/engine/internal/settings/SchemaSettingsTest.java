@@ -62,13 +62,19 @@ import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatement;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
+import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
+import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.engine.internal.schema.CQLFragment;
+import com.datastax.dsbulk.engine.internal.schema.CQLIdentifier;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
+import com.google.common.base.CharMatcher;
 import com.google.common.collect.Sets;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
@@ -260,9 +266,9 @@ class SchemaSettingsTest {
         "2",
         C1,
         "1",
-        INTERNAL_TTL_VARNAME,
+        INTERNAL_TTL_VARNAME.asInternal(),
         "3",
-        INTERNAL_TIMESTAMP_VARNAME);
+        INTERNAL_TIMESTAMP_VARNAME.asInternal());
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
 
@@ -728,8 +734,8 @@ class SchemaSettingsTest {
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
-    assertThat(getInternalState(mapping, "writeTimeVariable"))
-        .isEqualTo(INTERNAL_TIMESTAMP_VARNAME);
+    assertThat((Set) getInternalState(mapping, "writeTimeVariables"))
+        .containsOnly(INTERNAL_TIMESTAMP_VARNAME.asVariable());
   }
 
   @Test
@@ -749,7 +755,7 @@ class SchemaSettingsTest {
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
-    assertThat(getInternalState(mapping, "writeTimeVariable")).isEqualTo("c3");
+    assertThat((Set) getInternalState(mapping, "writeTimeVariables")).containsOnly("c3");
   }
 
   @Test
@@ -768,8 +774,8 @@ class SchemaSettingsTest {
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
-    assertThat(getInternalState(mapping, "writeTimeVariable"))
-        .isEqualTo("This is a quoted \" variable name");
+    assertThat((Set) getInternalState(mapping, "writeTimeVariables"))
+        .containsOnly(CQLIdentifier.fromInternal("This is a quoted \" variable name").asVariable());
   }
 
   @Test
@@ -1149,9 +1155,7 @@ class SchemaSettingsTest {
   void should_warn_that_mapped_fields_not_supported() {
     LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1, mapping = \"c1=c1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true);
-    assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
+    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Schema mapping contains named fields, but connector only supports indexed fields");
@@ -1301,7 +1305,7 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "query=\"INSERT INTO t1 (col1) VALUES (?)\", mapping = \"f1=__timestamp\", keyspace=ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
+    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "schema.query must not be defined when mapping a field to query-timestamp");
@@ -1325,7 +1329,7 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "query=\"INSERT INTO t1 (col1) VALUES (?)\", mapping = \"f1=__ttl\", keyspace=ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
+    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("schema.query must not be defined when mapping a field to query-ttl");
   }
@@ -1653,14 +1657,19 @@ class SchemaSettingsTest {
   }
 
   private static void assertMapping(DefaultMapping mapping, String... fieldsAndVars) {
-    Map<String, String> expected = new HashMap<>();
+    Map<Field, CQLFragment> expected = new HashMap<>();
     for (int i = 0; i < fieldsAndVars.length; i += 2) {
       String first = fieldsAndVars[i];
       String second = fieldsAndVars[i + 1];
-      expected.put(first, second);
+      if (CharMatcher.inRange('0', '9').matchesAllOf(first)) {
+        expected.put(
+            new DefaultIndexedField(Integer.parseInt(first)), CQLIdentifier.fromInternal(second));
+      } else {
+        expected.put(new DefaultMappedField(first), CQLIdentifier.fromInternal(second));
+      }
     }
-    Map<String, String> fieldsToVariables =
-        (Map<String, String>) getInternalState(mapping, "fieldsToVariables");
+    Map<Field, CQLFragment> fieldsToVariables =
+        (Map<Field, CQLFragment>) getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).isEqualTo(expected);
   }
 }

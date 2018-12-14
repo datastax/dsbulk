@@ -15,6 +15,15 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils;
 import java.time.Instant;
 
+/**
+ * A special codec that maps write times to and from an external format.
+ *
+ * <p>Write times are inserted using an {@code USING TIMESTAMP} clause and can be retrieved using
+ * the {@code WRITETIME} function, as in {@code writetime(mycol)}. Write times are always expressed
+ * internally as bigints representing microseconds since the Unix Epoch.
+ *
+ * @param <T> The external type.
+ */
 public class WriteTimeCodec<T> extends ConvertingCodec<T, Long> {
 
   private final ConvertingCodec<T, Instant> innerCodec;
@@ -38,6 +47,10 @@ public class WriteTimeCodec<T> extends ConvertingCodec<T, Long> {
 
   @Override
   public T internalToExternal(Long value) {
-    throw new UnsupportedOperationException("This codec cannot be used when deserializing");
+    if (value == null) {
+      return null;
+    }
+    Instant i = CodecUtils.numberToInstant(value, MICROSECONDS, EPOCH);
+    return innerCodec.internalToExternal(i);
   }
 }

@@ -648,7 +648,8 @@ class LogManagerTest {
     URI location = new URI("file1?line=" + position);
     return new DefaultWriteResult(
         new BulkSimpleStatement<>(
-            new DefaultRecord("irrelevant", () -> resource, position, () -> location), "INSERT 1"),
+            DefaultRecord.indexed("irrelevant", () -> resource, position, () -> location),
+            "INSERT 1"),
         null);
   }
 }

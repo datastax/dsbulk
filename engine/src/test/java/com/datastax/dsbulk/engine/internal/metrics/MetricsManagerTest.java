@@ -78,8 +78,8 @@ class MetricsManagerTest {
     String source1 = "line1\n";
     String source2 = "line2\n";
     String source3 = "line3\n";
-    record1 = new DefaultRecord(source1, null, -1, () -> location1, "irrelevant");
-    record2 = new DefaultRecord(source2, null, -1, () -> location2, "irrelevant");
+    record1 = DefaultRecord.indexed(source1, null, -1, () -> location1, "irrelevant");
+    record2 = DefaultRecord.indexed(source2, null, -1, () -> location2, "irrelevant");
     record3 =
         new DefaultErrorRecord(
             source3, null, -1, () -> location3, new RuntimeException("irrelevant"));

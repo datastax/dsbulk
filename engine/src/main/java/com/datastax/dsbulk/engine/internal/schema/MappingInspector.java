@@ -9,18 +9,28 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.schema.generated.MappingBaseVisitor;
 import com.datastax.dsbulk.engine.schema.generated.MappingLexer;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser;
+import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionArgContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionContext;
+import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionNameContext;
+import com.datastax.dsbulk.engine.schema.generated.MappingParser.IndexContext;
+import com.datastax.dsbulk.engine.schema.generated.MappingParser.IndexOrFunctionContext;
+import com.datastax.dsbulk.engine.schema.generated.MappingParser.SimpleEntryContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.VariableContext;
-import com.google.common.base.CharMatcher;
 import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
@@ -29,29 +39,33 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 
-public class MappingInspector extends MappingBaseVisitor<String> {
+public class MappingInspector extends MappingBaseVisitor<MappingToken> {
 
   // A mapping spec may refer to these special variables which are used to bind
   // input fields to the write timestamp or ttl of the record.
 
-  public static final String INTERNAL_TTL_VARNAME = "dsbulk_internal_ttl";
-  public static final String INTERNAL_TIMESTAMP_VARNAME = "dsbulk_internal_timestamp";
-
-  // A marker for fields that are actually mapped to functions
-  public static final String INTERNAL_FUNCTION_MARKER = "dsbulk_internal_function=";
+  public static final CQLIdentifier INTERNAL_TTL_VARNAME =
+      CQLIdentifier.fromInternal("dsbulk_internal_ttl");
+  public static final CQLIdentifier INTERNAL_TIMESTAMP_VARNAME =
+      CQLIdentifier.fromInternal("dsbulk_internal_timestamp");
 
   private static final String EXTERNAL_TTL_VARNAME = "__ttl";
   private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
 
-  private static final CharMatcher DIGIT = CharMatcher.inRange('0', '9');
+  private static final CQLIdentifier WRITETIME = CQLIdentifier.fromInternal("writetime");
 
   private final boolean preferIndexedMapping;
 
-  private LinkedHashMap<String, String> explicitVariables;
-  private ImmutableBiMap<String, String> explicitVariablesBimap;
+  private final Set<CQLFragment> writeTimeVariablesBuilder = new LinkedHashSet<>();
+  private final ImmutableSet<CQLFragment> writeTimeVariables;
+
+  private final LinkedHashMap<MappingField, CQLFragment> explicitVariables;
+  private final ImmutableBiMap<MappingField, CQLFragment> explicitVariablesBimap;
+  private final List<CQLFragment> excludedVariables;
+
   private int currentIndex;
   private boolean inferring;
-  private List<String> excludedVariables;
+  private boolean indexed;
 
   public MappingInspector(String mapping, boolean preferIndexedMapping) {
     this.preferIndexedMapping = preferIndexedMapping;
@@ -82,82 +96,133 @@ public class MappingInspector extends MappingBaseVisitor<String> {
     parser.removeErrorListeners();
     parser.addErrorListener(listener);
     MappingParser.MappingContext ctx = parser.mapping();
+    explicitVariables = new LinkedHashMap<>();
+    excludedVariables = new ArrayList<>();
     visit(ctx);
+    checkDuplicates();
+    if (indexed) {
+      // if keys are indices, sort them by index
+      explicitVariablesBimap = ImmutableBiMap.copyOf(sortFieldsByIndex(explicitVariables));
+    } else {
+      explicitVariablesBimap = ImmutableBiMap.copyOf(explicitVariables);
+    }
+    writeTimeVariables = ImmutableSet.copyOf(writeTimeVariablesBuilder);
   }
 
-  public ImmutableBiMap<String, String> getExplicitVariables() {
+  /**
+   * @return a map from field names to variable names containing the explicit (i.e., non-inferred)
+   *     variables found in the mapping.
+   */
+  public ImmutableBiMap<MappingField, CQLFragment> getExplicitVariables() {
     return explicitVariablesBimap;
   }
 
+  /** @return true if the mapping contains an inferred entry (such as "*=*"), false otherwise. */
   public boolean isInferring() {
     return inferring;
   }
 
-  public List<String> getExcludedVariables() {
+  /** @return true if the mapping is indexed, false otherwise. */
+  public boolean isIndexed() {
+    // consider indexed also any mapping that only contains functions as fields.
+    return indexed
+        || (!inferring
+            && explicitVariables.keySet().stream().allMatch(FunctionCall.class::isInstance));
+  }
+
+  /**
+   * @return the list of variables to exclude from the inferred mapping, as in "* = -c1". Returns
+   *     empty if there is no such variable of if the mapping does not contain an inferred entry.
+   */
+  public List<CQLFragment> getExcludedVariables() {
     return excludedVariables;
   }
 
+  /**
+   * @return the variable names found in the query in a USING TIMESTAMP clause, or in the SELECT
+   *     clause where the selector is a WRITETIME function call, or empty if none was found.
+   */
+  public ImmutableSet<CQLFragment> getWriteTimeVariables() {
+    return writeTimeVariables;
+  }
+
   @Override
-  public String visitMapping(MappingParser.MappingContext ctx) {
-    explicitVariables = new LinkedHashMap<>();
-    excludedVariables = new ArrayList<>();
+  public MappingToken visitMapping(MappingParser.MappingContext ctx) {
     currentIndex = 0;
-    if (!ctx.indexedEntry().isEmpty()) {
+    if (!ctx.simpleEntry().isEmpty()) {
+      for (SimpleEntryContext entry : ctx.simpleEntry()) {
+        visitSimpleEntry(entry);
+      }
+    } else if (!ctx.indexedEntry().isEmpty()) {
+      indexed = true;
       for (MappingParser.IndexedEntryContext entry : ctx.indexedEntry()) {
         visitIndexedEntry(entry);
       }
     } else if (!ctx.mappedEntry().isEmpty()) {
+      indexed = false;
       for (MappingParser.MappedEntryContext entry : ctx.mappedEntry()) {
         visitMappedEntry(entry);
       }
     }
-    // if keys are indices, sort by index
-    if (explicitVariables.keySet().stream().allMatch(DIGIT::matchesAllOf)) {
-      LinkedHashMap<String, String> unsorted = explicitVariables;
-      explicitVariables = new LinkedHashMap<>();
-      unsorted
-          .entrySet()
-          .stream()
-          .sorted(Map.Entry.comparingByKey(Comparator.comparingInt(Integer::parseInt)))
-          .forEachOrdered(entry -> explicitVariables.put(entry.getKey(), entry.getValue()));
-    }
-    checkDuplicates();
-    explicitVariablesBimap = ImmutableBiMap.copyOf(explicitVariables);
     return null;
   }
 
   @Override
-  public String visitIndexedEntry(MappingParser.IndexedEntryContext ctx) {
-    String variable = visitVariableOrFunction(ctx.variableOrFunction());
+  public MappingToken visitSimpleEntry(SimpleEntryContext ctx) {
+    CQLFragment variable = visitVariableOrFunction(ctx.variableOrFunction());
     if (preferIndexedMapping) {
-      explicitVariables.put(Integer.toString(currentIndex++), variable);
+      indexed = true;
+      explicitVariables.put(new IndexedMappingField(currentIndex++), variable);
     } else {
-      explicitVariables.put(variable, variable);
+      indexed = false;
+      explicitVariables.put(new MappedMappingField(variable.asInternal()), variable);
     }
     return null;
   }
 
   @Override
-  public String visitRegularMappedEntry(MappingParser.RegularMappedEntryContext ctx) {
-    String field = visitFieldOrFunction(ctx.fieldOrFunction());
-    String variable = visitVariableOrFunction(ctx.variableOrFunction());
+  public MappingToken visitIndexedEntry(MappingParser.IndexedEntryContext ctx) {
+    MappingField field = visitIndexOrFunction(ctx.indexOrFunction());
+    CQLFragment variable = visitVariableOrFunction(ctx.variableOrFunction());
     explicitVariables.put(field, variable);
     return null;
   }
 
   @Override
-  public String visitInferredMappedEntry(MappingParser.InferredMappedEntryContext ctx) {
+  public MappingField visitIndexOrFunction(IndexOrFunctionContext ctx) {
+    if (ctx.index() != null) {
+      return visitIndex(ctx.index());
+    } else {
+      return visitFunction(ctx.function());
+    }
+  }
+
+  @Override
+  public IndexedMappingField visitIndex(IndexContext ctx) {
+    return new IndexedMappingField(Integer.parseInt(ctx.INTEGER().getText()));
+  }
+
+  @Override
+  public MappingToken visitRegularMappedEntry(MappingParser.RegularMappedEntryContext ctx) {
+    MappingField field = visitFieldOrFunction(ctx.fieldOrFunction());
+    CQLFragment variable = visitVariableOrFunction(ctx.variableOrFunction());
+    explicitVariables.put(field, variable);
+    return null;
+  }
+
+  @Override
+  public MappingToken visitInferredMappedEntry(MappingParser.InferredMappedEntryContext ctx) {
     checkInferring();
     inferring = true;
     for (MappingParser.VariableOrFunctionContext variableContext : ctx.variableOrFunction()) {
-      String variable = visitVariableOrFunction(variableContext);
+      CQLFragment variable = visitVariableOrFunction(variableContext);
       excludedVariables.add(variable);
     }
     return null;
   }
 
   @Override
-  public String visitFieldOrFunction(MappingParser.FieldOrFunctionContext ctx) {
+  public MappingField visitFieldOrFunction(MappingParser.FieldOrFunctionContext ctx) {
     if (ctx.field() != null) {
       return visitField(ctx.field());
     } else {
@@ -166,19 +231,18 @@ public class MappingInspector extends MappingBaseVisitor<String> {
   }
 
   @Override
-  public String visitField(MappingParser.FieldContext ctx) {
-    String field;
-    if (ctx.UNQUOTED_STRING() != null) {
-      field = ctx.UNQUOTED_STRING().getText();
+  public MappedMappingField visitField(MappingParser.FieldContext ctx) {
+    MappedMappingField field;
+    if (ctx.QUOTED_IDENTIFIER() != null) {
+      field = new MappedMappingField(StringUtils.unDoubleQuote(ctx.QUOTED_IDENTIFIER().getText()));
     } else {
-      String text = ctx.QUOTED_STRING().getText();
-      field = text.substring(1, text.length() - 1).replace("\"\"", "\"");
+      field = new MappedMappingField(ctx.UNQUOTED_IDENTIFIER().getText());
     }
     return field;
   }
 
   @Override
-  public String visitVariableOrFunction(MappingParser.VariableOrFunctionContext ctx) {
+  public CQLFragment visitVariableOrFunction(MappingParser.VariableOrFunctionContext ctx) {
     if (ctx.variable() != null) {
       return visitVariable(ctx.variable());
     } else {
@@ -187,27 +251,68 @@ public class MappingInspector extends MappingBaseVisitor<String> {
   }
 
   @Override
-  public String visitVariable(VariableContext ctx) {
-    String variable;
-    if (ctx.QUOTED_STRING() != null) {
-      String text = ctx.QUOTED_STRING().getText();
-      variable = text.substring(1, text.length() - 1).replace("\"\"", "\"");
+  public CQLIdentifier visitVariable(VariableContext ctx) {
+    CQLIdentifier variable;
+    if (ctx.QUOTED_IDENTIFIER() != null) {
+      variable = CQLIdentifier.fromCql(ctx.QUOTED_IDENTIFIER().getText());
     } else {
-      variable = ctx.getText();
+      String text = ctx.UNQUOTED_IDENTIFIER().getText();
       // Rename the user-specified __ttl and __timestamp vars to the (legal) bound variable
       // names.
-      if (variable.equals(EXTERNAL_TTL_VARNAME)) {
+      if (text.equals(EXTERNAL_TTL_VARNAME)) {
         variable = INTERNAL_TTL_VARNAME;
-      } else if (variable.equals(EXTERNAL_TIMESTAMP_VARNAME)) {
+      } else if (text.equals(EXTERNAL_TIMESTAMP_VARNAME)) {
         variable = INTERNAL_TIMESTAMP_VARNAME;
+        writeTimeVariablesBuilder.add(variable);
+      } else {
+        variable = CQLIdentifier.fromInternal(text);
       }
     }
     return variable;
   }
 
   @Override
-  public String visitFunction(FunctionContext ctx) {
-    return INTERNAL_FUNCTION_MARKER + ctx.getText();
+  public FunctionCall visitFunction(FunctionContext ctx) {
+    FunctionCall functionCall;
+    if (ctx.WRITETIME() != null) {
+      functionCall =
+          new FunctionCall(
+              WRITETIME, Collections.singletonList(visitFunctionArg(ctx.functionArg())));
+      writeTimeVariablesBuilder.add(functionCall);
+    } else {
+      List<CQLFragment> args = new ArrayList<>();
+      if (ctx.functionArgs() != null) {
+        for (FunctionArgContext arg : ctx.functionArgs().functionArg()) {
+          args.add(visitFunctionArg(arg));
+        }
+      }
+      functionCall = new FunctionCall(visitFunctionName(ctx.functionName()), args);
+    }
+    return functionCall;
+  }
+
+  @Override
+  public CQLIdentifier visitFunctionName(FunctionNameContext ctx) {
+    CQLIdentifier functionName;
+    if (ctx.QUOTED_IDENTIFIER() != null) {
+      functionName = CQLIdentifier.fromCql(ctx.QUOTED_IDENTIFIER().getText());
+    } else {
+      functionName = CQLIdentifier.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
+    }
+    return functionName;
+  }
+
+  @Override
+  public CQLFragment visitFunctionArg(FunctionArgContext ctx) {
+    CQLFragment functionArg;
+    if (ctx.QUOTED_IDENTIFIER() != null) {
+      functionArg = CQLIdentifier.fromCql(ctx.QUOTED_IDENTIFIER().getText());
+    } else if (ctx.UNQUOTED_IDENTIFIER() != null) {
+      functionArg = CQLIdentifier.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
+    } else {
+      functionArg = new CQLLiteral(ctx.getText());
+    }
+    return functionArg;
   }
 
   private void checkInferring() {
@@ -217,8 +322,30 @@ public class MappingInspector extends MappingBaseVisitor<String> {
     }
   }
 
+  public static LinkedHashMap<MappingField, CQLFragment> sortFieldsByIndex(
+      Map<MappingField, CQLFragment> unsorted) {
+    LinkedHashMap<MappingField, CQLFragment> sorted = new LinkedHashMap<>();
+    unsorted
+        .entrySet()
+        .stream()
+        .sorted(
+            Entry.comparingByKey(Comparator.comparingInt(MappingInspector::compareIndexedFields)))
+        .forEachOrdered(entry -> sorted.put(entry.getKey(), entry.getValue()));
+    return sorted;
+  }
+
+  private static int compareIndexedFields(MappingField field) {
+    if (field instanceof IndexedMappingField) {
+      return ((IndexedMappingField) field).getFieldIndex();
+    } else {
+      assert field instanceof FunctionCall;
+      // functions go after, they will be removed from the mapping anyway
+      return Integer.MIN_VALUE;
+    }
+  }
+
   private void checkDuplicates() {
-    List<String> duplicates =
+    List<MappingToken> duplicates =
         explicitVariables
             .values()
             .stream()
@@ -231,7 +358,7 @@ public class MappingInspector extends MappingBaseVisitor<String> {
     if (!duplicates.isEmpty()) {
       throw new BulkConfigurationException(
           "Invalid schema.mapping: the following variables are mapped to more than one field: "
-              + String.join(", ", duplicates)
+              + duplicates.stream().map(Object::toString).collect(Collectors.joining(", "))
               + ". "
               + "Please review schema.mapping for duplicates.");
     }
