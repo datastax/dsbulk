@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.util.Throwables.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.datastax.driver.core.exceptions.AlreadyExistsException;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
@@ -970,13 +971,33 @@ class CSVConnectorTest {
       // will cause the write workers to fail because the files already exist
       Files.createFile(file1);
       Files.createFile(file2);
+      /*
+      Two situations can happen:
+      1) the two exceptions are caught and returned by Reactor the following way:
+        reactor.core.Exceptions$CompositeException: Multiple exceptions
+          Suppressed: java.io.UncheckedIOException: Error opening file:/tmp/test2860250719180574800/output-000001.json
+          Caused by: java.nio.file.FileAlreadyExistsException: /tmp/test2860250719180574800/output-000001.json
+          Suppressed: java.io.UncheckedIOException: Error opening file:/tmp/test2860250719180574800/output-000002.json
+          Caused by: java.nio.file.FileAlreadyExistsException: /tmp/test2860250719180574800/output-000002.json
+          Suppressed: java.lang.Exception: #block terminated with an error
+      2) Only one exception is caught:
+        java.io.UncheckedIOException: Error opening file:/tmp/test2860250719180574800/output-000001.json
+          Caused by: java.nio.file.FileAlreadyExistsException: /tmp/test2860250719180574800/output-000001.json
+      */
       assertThatThrownBy(
               () ->
                   Flux.fromIterable(createRecords())
                       .repeat(100)
                       .transform(connector.write())
                       .blockLast())
-          .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
+          .satisfies(
+              t ->
+                  assertThat(
+                          t.getCause() instanceof FileAlreadyExistsException
+                              || Arrays.stream(t.getSuppressed())
+                                  .map(Throwable::getCause)
+                                  .anyMatch(AlreadyExistsException.class::isInstance))
+                      .isTrue());
       connector.close();
     } finally {
       deleteDirectory(out);
