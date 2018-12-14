@@ -29,6 +29,7 @@ class JsonNodeToInstantCodecTest {
   private JsonNodeToInstantCodec codec1;
   private JsonNodeToInstantCodec codec2;
   private JsonNodeToInstantCodec codec3;
+  private JsonNodeToInstantCodec codec4;
 
   @BeforeEach
   void setUpCodec1() {
@@ -45,6 +46,11 @@ class JsonNodeToInstantCodecTest {
             CodecTestUtils.newCodecRegistry(
                     "nullStrings = [NULL], unit = MINUTES, epoch = \"2000-01-01T00:00:00Z\"")
                 .codecFor(timestamp(), TypeToken.of(JsonNode.class));
+    codec4 =
+        (JsonNodeToInstantCodec)
+            CodecTestUtils.newCodecRegistry(
+                    "nullStrings = [NULL], unit = MINUTES, epoch = \"2000-01-01T00:00:00Z\", timestamp = UNITS_SINCE_EPOCH")
+                .codecFor(timestamp(), TypeToken.of(JsonNode.class));
   }
 
   @Test
@@ -59,8 +65,6 @@ class JsonNodeToInstantCodecTest {
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("2016-07-24T20:34+01:00"))
         .toInternal(Instant.parse("2016-07-24T19:34:00Z"))
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("2016-07-24T20:34:12.999+01:00"))
-        .toInternal(Instant.parse("2016-07-24T19:34:12.999Z"))
-        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(1469388852999L))
         .toInternal(Instant.parse("2016-07-24T19:34:12.999Z"))
         .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
         .toInternal(null)
@@ -78,11 +82,14 @@ class JsonNodeToInstantCodecTest {
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null);
     assertThat(codec3)
-        .convertsFromExternal(JSON_NODE_FACTORY.textNode("123456"))
-        .toInternal(minutesAfterMillennium)
         .convertsFromExternal(
             JSON_NODE_FACTORY.textNode(
                 CqlTemporalFormat.DEFAULT_INSTANCE.format(minutesAfterMillennium)))
+        .toInternal(minutesAfterMillennium);
+    assertThat(codec4)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(123456))
+        .toInternal(minutesAfterMillennium)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode("123456"))
         .toInternal(minutesAfterMillennium);
   }
 
@@ -113,6 +120,9 @@ class JsonNodeToInstantCodecTest {
         .toExternal(
             JSON_NODE_FACTORY.textNode(
                 CqlTemporalFormat.DEFAULT_INSTANCE.format(minutesAfterMillennium)));
+    assertThat(codec4)
+        .convertsFromInternal(minutesAfterMillennium)
+        .toExternal(JSON_NODE_FACTORY.textNode("123456"));
   }
 
   @Test

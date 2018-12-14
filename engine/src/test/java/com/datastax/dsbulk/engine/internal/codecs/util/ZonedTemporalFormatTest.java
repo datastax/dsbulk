@@ -27,6 +27,7 @@ class ZonedTemporalFormatTest {
   @Test
   void should_parse_temporal() {
     assertThat(format1.parse(null)).isNull();
+    assertThat(format1.parse("")).isNull();
     assertThat(Instant.from(format1.parse("20171123142459"))).isEqualTo(i);
     assertThat(Instant.from(format2.parse("20171123142459"))).isEqualTo(i);
     assertThat(Instant.from(format2.parse("20171123142459+02:00"))).isEqualTo(i);

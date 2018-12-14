@@ -741,7 +741,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     session.execute("DROP TABLE IF EXISTS temporals");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS temporals (key int PRIMARY KEY, vdate date, vtime time, vtimestamp timestamp, vseconds timestamp)");
+        "CREATE TABLE IF NOT EXISTS temporals (key int PRIMARY KEY, vdate date, vtime time, vtimestamp timestamp)");
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -800,7 +800,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.query");
-    args.add("SELECT key, vdate, vtime, vtimestamp, vseconds FROM temporals");
+    args.add("SELECT key, vdate, vtime, vtimestamp FROM temporals");
 
     int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
@@ -914,12 +914,11 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
     Pattern pattern =
         Pattern.compile(
-            "\\{\"key\":(.+?),\"vdate\":\"(.+?)\",\"vtime\":\"(.+?)\",\"vtimestamp\":\"(.+?)\",\"vseconds\":\"(.+?)\"}");
+            "\\{\"key\":(.+?),\"vdate\":\"(.+?)\",\"vtime\":\"(.+?)\",\"vtimestamp\":\"(.+?)\"}");
     Matcher matcher = pattern.matcher(line);
     assertThat(matcher.find()).isTrue();
     assertThat(matcher.group(2)).isEqualTo("vendredi, 9 mars 2018");
     assertThat(matcher.group(3)).isEqualTo("171232584");
-    assertThat(matcher.group(4)).isEqualTo("2018-03-09T17:12:32.584+01:00[Europe/Paris]");
-    assertThat(matcher.group(5)).isEqualTo("2018-03-09T17:12:32+01:00[Europe/Paris]");
+    assertThat(matcher.group(4)).isEqualTo("2018-03-09T17:12:32+01:00[Europe/Paris]");
   }
 }

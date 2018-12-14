@@ -44,7 +44,6 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.BooleanToNumberCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.NumberToBooleanCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.NumberToNumberCodec;
@@ -72,7 +71,6 @@ import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.math.BigDecimal;
@@ -333,16 +331,6 @@ class CodecSettingsTest {
         .isNotNull()
         .isInstanceOf(DateToUUIDCodec.class)
         .convertsFromExternal(Timestamp.from(Instant.ofEpochMilli(123456L)))
-        .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
-    assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(String.class)))
-        .isNotNull()
-        .isInstanceOf(StringToUUIDCodec.class)
-        .convertsFromExternal("123456")
-        .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
-    assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(JsonNode.class)))
-        .isNotNull()
-        .isInstanceOf(JsonNodeToUUIDCodec.class)
-        .convertsFromExternal(CodecSettings.JSON_NODE_FACTORY.textNode("123456"))
         .toInternal(TimeUUIDGenerator.MIN.generate(Instant.ofEpochMilli(123456L)));
   }
 

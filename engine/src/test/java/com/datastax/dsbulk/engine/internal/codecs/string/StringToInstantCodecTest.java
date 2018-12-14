@@ -27,6 +27,7 @@ class StringToInstantCodecTest {
   private StringToInstantCodec codec1;
   private StringToInstantCodec codec2;
   private StringToInstantCodec codec3;
+  private StringToInstantCodec codec4;
 
   @BeforeEach
   void setUpCodec1() {
@@ -42,6 +43,11 @@ class StringToInstantCodecTest {
         (StringToInstantCodec)
             CodecTestUtils.newCodecRegistry(
                     "nullStrings = [NULL], unit = MINUTES, epoch = \"2000-01-01T00:00:00Z\"")
+                .codecFor(timestamp(), TypeToken.of(String.class));
+    codec4 =
+        (StringToInstantCodec)
+            CodecTestUtils.newCodecRegistry(
+                    "nullStrings = [NULL], unit = MINUTES, epoch = \"2000-01-01T00:00:00Z\", timestamp = UNITS_SINCE_EPOCH")
                 .codecFor(timestamp(), TypeToken.of(String.class));
   }
 
@@ -70,10 +76,9 @@ class StringToInstantCodecTest {
         .convertsFromExternal("NULL")
         .toInternal(null);
     assertThat(codec3)
-        .convertsFromExternal("123456")
-        .toInternal(minutesAfterMillennium)
         .convertsFromExternal(CqlTemporalFormat.DEFAULT_INSTANCE.format(minutesAfterMillennium))
         .toInternal(minutesAfterMillennium);
+    assertThat(codec4).convertsFromExternal("123456").toInternal(minutesAfterMillennium);
   }
 
   @Test
@@ -101,6 +106,7 @@ class StringToInstantCodecTest {
     assertThat(codec3)
         .convertsFromInternal(minutesAfterMillennium)
         .toExternal(CqlTemporalFormat.DEFAULT_INSTANCE.format(minutesAfterMillennium));
+    assertThat(codec4).convertsFromInternal(minutesAfterMillennium).toExternal("123456");
   }
 
   @Test

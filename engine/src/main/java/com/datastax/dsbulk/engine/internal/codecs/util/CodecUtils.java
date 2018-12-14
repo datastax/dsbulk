@@ -33,7 +33,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.time.temporal.TemporalQueries;
 import java.util.Base64;
@@ -45,62 +44,6 @@ import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 
 public class CodecUtils {
-
-  /**
-   * Parses the given string as a temporal.
-   *
-   * <p>This method is more complex than {@link TemporalFormat#parse(String)} and targets CQL
-   * timestamps specifically, and tries different approaches to infer the timestamp from the given
-   * string.
-   *
-   * <p>It tries first to parse the string as an alphanumeric temporal, using the given parser; if
-   * that fails, then it tries to parse it as a numeric temporal, using the given parser, time unit
-   * and epoch.
-   *
-   * @param s the string to parse, may be {@code null}.
-   * @param temporalFormat the parser to use if the string is alphanumeric; cannot be {@code null}.
-   * @param numberFormat the parser to use if the string is numeric; cannot be {@code null}.
-   * @param timeUnit the time unit to use if the string is numeric; cannot be {@code null}.
-   * @param epoch the epoch to use if the string is numeric; cannot be {@code null}.
-   * @return a {@link TemporalAccessor} or {@code null} if the string was {@code null} or empty.
-   * @throws IllegalArgumentException if the string cannot be parsed.
-   */
-  public static TemporalAccessor parseTemporal(
-      String s,
-      @NotNull TemporalFormat temporalFormat,
-      @NotNull NumberFormat numberFormat,
-      @NotNull TimeUnit timeUnit,
-      @NotNull Instant epoch) {
-    Objects.requireNonNull(temporalFormat);
-    Objects.requireNonNull(numberFormat);
-    Objects.requireNonNull(timeUnit);
-    Objects.requireNonNull(epoch);
-    if (s == null || s.isEmpty()) {
-      return null;
-    }
-    TemporalAccessor temporal;
-    try {
-      // 1) try user-specified patterns
-      temporal = temporalFormat.parse(s);
-    } catch (DateTimeParseException e1) {
-      try {
-        // 2) try a number, then convert to instant since epoch
-        Number number = parseNumber(s, numberFormat);
-        // bypass overflow strategy, we don't want to alter timestamps
-        temporal = numberToInstant(number, timeUnit, epoch);
-      } catch (ParseException | ArithmeticException e2) {
-        e2.addSuppressed(e1);
-        IllegalArgumentException e3 =
-            new IllegalArgumentException(
-                String.format(
-                    "Could not parse '%s'; accepted formats are: temporal string (e.g. '%s') or numeric value (%s since %s)",
-                    s, Instant.now(), timeUnit.name().toLowerCase(), epoch));
-        e3.addSuppressed(e2);
-        throw e3;
-      }
-    }
-    return temporal;
-  }
 
   /**
    * Parses the given string as a number.
