@@ -941,21 +941,22 @@ class CodecUtilsTest {
 
     // tests for numeric overflows (DAT-368)
 
-    assertThat(numberToInstant(1544542516852384L, NANOSECONDS, EPOCH))
-        .isEqualTo(Instant.ofEpochSecond(1544542L, 516852384L));
-    assertThat(numberToInstant(1544542516852384L, MICROSECONDS, EPOCH))
-        .isEqualTo(Instant.ofEpochSecond(1544542516L, 852384000L));
-    assertThat(numberToInstant(1544542516852384L, MILLISECONDS, EPOCH))
-        .isEqualTo(Instant.ofEpochSecond(1544542516852L, 384000000L));
-    assertThat(numberToInstant(1544542516852384L, SECONDS, EPOCH))
-        .isEqualTo(Instant.ofEpochSecond(1544542516852384L, 0L));
+    long n1 = 9999999999999999L;
+    assertThat(numberToInstant(n1, NANOSECONDS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(n1 / 1_000_000_000, n1 % 1_000_000_000));
+    assertThat(numberToInstant(n1, MICROSECONDS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(n1 / 1_000_000_000 * 1_000, n1 % 1_000_000_000 * 1_000));
+    assertThat(numberToInstant(n1, MILLISECONDS, EPOCH))
+        .isEqualTo(
+            Instant.ofEpochSecond(n1 / 1_000_000_000 * 1_000_000, n1 % 1_000_000_000 * 1_000_000));
+    assertThat(numberToInstant(n1, SECONDS, EPOCH)).isEqualTo(Instant.ofEpochSecond(n1, 0));
 
-    assertThat(numberToInstant(999999999999L, MINUTES, EPOCH))
-        .isEqualTo(Instant.ofEpochSecond(999999999999L * 60, 0L));
-    assertThat(numberToInstant(999999999999L, HOURS, EPOCH))
-        .isEqualTo(Instant.ofEpochSecond(999999999999L * 60 * 60, 0L));
-    assertThat(numberToInstant(999999999L, DAYS, EPOCH))
-        .isEqualTo(Instant.ofEpochSecond(999999999L * 60 * 60 * 24, 0L));
+    long n2 = 99999999999L;
+    assertThat(numberToInstant(n2, MINUTES, EPOCH)).isEqualTo(Instant.ofEpochSecond(n2 * 60, 0L));
+    assertThat(numberToInstant(n2, HOURS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(n2 * 60 * 60, 0L));
+    assertThat(numberToInstant(n2, DAYS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(n2 * 60 * 60 * 24, 0L));
 
     assertThatThrownBy(() -> numberToInstant(999999999999L, DAYS, EPOCH))
         .isInstanceOf(DateTimeException.class)
