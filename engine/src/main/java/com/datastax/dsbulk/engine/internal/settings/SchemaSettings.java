@@ -419,6 +419,16 @@ public class SchemaSettings {
         });
   }
 
+  public RowType getRowType() {
+    if (table.getVertexMetadata() != null) {
+      return RowType.VERTEX;
+    } else if (table.getEdgeMetadata() != null) {
+      return RowType.EDGE;
+    } else {
+      return RowType.REGULAR;
+    }
+  }
+
   @NotNull
   private DefaultMapping prepareStatementAndCreateMapping(
       Session session, ExtendedCodecRegistry codecRegistry, WorkflowType workflowType) {
