@@ -78,6 +78,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
@@ -942,14 +943,12 @@ class CodecUtilsTest {
     // tests for numeric overflows (DAT-368)
 
     long n1 = 9999999999999999L;
-    assertThat(numberToInstant(n1, NANOSECONDS, EPOCH))
-        .isEqualTo(Instant.ofEpochSecond(n1 / 1_000_000_000, n1 % 1_000_000_000));
+    assertThat(numberToInstant(n1, NANOSECONDS, EPOCH)).isEqualTo(expectedInstant(n1, NANOSECONDS));
     assertThat(numberToInstant(n1, MICROSECONDS, EPOCH))
-        .isEqualTo(Instant.ofEpochSecond(n1 / 1_000_000_000 * 1_000, n1 % 1_000_000_000 * 1_000));
+        .isEqualTo(expectedInstant(n1, MICROSECONDS));
     assertThat(numberToInstant(n1, MILLISECONDS, EPOCH))
-        .isEqualTo(
-            Instant.ofEpochSecond(n1 / 1_000_000_000 * 1_000_000, n1 % 1_000_000_000 * 1_000_000));
-    assertThat(numberToInstant(n1, SECONDS, EPOCH)).isEqualTo(Instant.ofEpochSecond(n1, 0));
+        .isEqualTo(expectedInstant(n1, MILLISECONDS));
+    assertThat(numberToInstant(n1, SECONDS, EPOCH)).isEqualTo(expectedInstant(n1, SECONDS));
 
     long n2 = 99999999999L;
     assertThat(numberToInstant(n2, MINUTES, EPOCH)).isEqualTo(Instant.ofEpochSecond(n2 * 60, 0L));
@@ -961,6 +960,13 @@ class CodecUtilsTest {
     assertThatThrownBy(() -> numberToInstant(999999999999L, DAYS, EPOCH))
         .isInstanceOf(DateTimeException.class)
         .hasMessage("Instant exceeds minimum or maximum instant");
+  }
+
+  private static Instant expectedInstant(long n, TimeUnit unit) {
+    long seconds = SECONDS.convert(n, unit);
+    long remainder = n - unit.convert(seconds, SECONDS);
+    long nanoAdjustment = NANOSECONDS.convert(remainder, unit);
+    return Instant.ofEpochSecond(seconds, nanoAdjustment);
   }
 
   @Test
