@@ -41,6 +41,9 @@ import static java.time.Instant.ofEpochSecond;
 import static java.time.ZoneOffset.UTC;
 import static java.time.ZoneOffset.ofHours;
 import static java.util.Locale.US;
+import static java.util.concurrent.TimeUnit.DAYS;
+import static java.util.concurrent.TimeUnit.HOURS;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -75,6 +78,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
@@ -931,6 +935,38 @@ class CodecUtilsTest {
         .isEqualTo(EPOCH);
     assertThat(numberToInstant(123000000456L, NANOSECONDS, ofEpochSecond(-123, -456)))
         .isEqualTo(EPOCH);
+
+    assertThatThrownBy(() -> numberToInstant(1.234d, MILLISECONDS, EPOCH))
+        .isInstanceOf(ArithmeticException.class)
+        .hasMessage("Cannot convert 1.234 from Double to Long");
+
+    // tests for numeric overflows (DAT-368)
+
+    long n1 = 9999999999999999L;
+    assertThat(numberToInstant(n1, NANOSECONDS, EPOCH)).isEqualTo(expectedInstant(n1, NANOSECONDS));
+    assertThat(numberToInstant(n1, MICROSECONDS, EPOCH))
+        .isEqualTo(expectedInstant(n1, MICROSECONDS));
+    assertThat(numberToInstant(n1, MILLISECONDS, EPOCH))
+        .isEqualTo(expectedInstant(n1, MILLISECONDS));
+    assertThat(numberToInstant(n1, SECONDS, EPOCH)).isEqualTo(expectedInstant(n1, SECONDS));
+
+    long n2 = 99999999999L;
+    assertThat(numberToInstant(n2, MINUTES, EPOCH)).isEqualTo(Instant.ofEpochSecond(n2 * 60, 0L));
+    assertThat(numberToInstant(n2, HOURS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(n2 * 60 * 60, 0L));
+    assertThat(numberToInstant(n2, DAYS, EPOCH))
+        .isEqualTo(Instant.ofEpochSecond(n2 * 60 * 60 * 24, 0L));
+
+    assertThatThrownBy(() -> numberToInstant(999999999999L, DAYS, EPOCH))
+        .isInstanceOf(DateTimeException.class)
+        .hasMessage("Instant exceeds minimum or maximum instant");
+  }
+
+  private static Instant expectedInstant(long n, TimeUnit unit) {
+    long seconds = SECONDS.convert(n, unit);
+    long remainder = n - unit.convert(seconds, SECONDS);
+    long nanoAdjustment = NANOSECONDS.convert(remainder, unit);
+    return Instant.ofEpochSecond(seconds, nanoAdjustment);
   }
 
   @Test

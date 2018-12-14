@@ -715,9 +715,15 @@ Default: **-1**.
 #### --batch.mode _&lt;string&gt;_
 
 The grouping mode. Valid values are:
-- DISABLED: batching is disabled.
-- PARTITION_KEY: Groups together statements that share the same partition key. This is the default mode, and the preferred one.
-- REPLICA_SET: Groups together statements that share the same replica set. This mode might yield better results for small clusters and lower replication factors, but tends to perform equally well or worse than `PARTITION_KEY` for larger clusters or high replication factors.
+- `DISABLED`: batching is disabled.
+- `PARTITION_KEY`: groups together statements that share the same partition key. This is usually the most performant mode; however it may not work at all if the dataset is unordered, i.e., if partition keys appear randomly and cannot be grouped together.
+- `REPLICA_SET`: groups together statements that share the same replica set. This mode works in all cases, but may incur in some throughput and latency degradation, specially with large clusters or high replication factors.
+When tuning DSBulk for batching, the recommended approach is as follows:
+1. Start with `PARTITION_KEY`;
+2. If the average batch size is close to 1, try increasing `bufferSize`;
+3. If increasing `bufferSize` doesn't help, switch to `REPLICA_SET` and set `maxBatchStatements` or `maxSizeInBytes` to low values to avoid timeouts or errors;
+4. Increase `maxBatchStatements` or `maxSizeInBytes` to get the best throughput while keeping latencies acceptable.
+The default is `PARTITION_KEY`.
 
 Default: **"PARTITION_KEY"**.
 

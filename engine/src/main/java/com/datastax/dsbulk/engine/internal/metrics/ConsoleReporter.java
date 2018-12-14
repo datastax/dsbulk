@@ -21,6 +21,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import com.datastax.dsbulk.engine.internal.settings.RowType;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import java.io.OutputStream;
@@ -57,6 +58,7 @@ public class ConsoleReporter extends ScheduledReporter {
   private final InterceptingPrintStream stderr;
   private final String rateUnit;
   private final String durationUnit;
+  private final RowType rowType;
 
   ConsoleReporter(
       MetricRegistry registry,
@@ -69,7 +71,8 @@ public class ConsoleReporter extends ScheduledReporter {
       TimeUnit rateUnit,
       TimeUnit durationUnit,
       long expectedTotal,
-      ScheduledExecutorService scheduler) {
+      ScheduledExecutorService scheduler,
+      RowType rowType) {
     super(registry, REPORTER_NAME, (name, metric) -> true, rateUnit, durationUnit, scheduler);
     this.running = running;
     this.total = total;
@@ -80,6 +83,7 @@ public class ConsoleReporter extends ScheduledReporter {
     this.expectedTotal = expectedTotal;
     this.rateUnit = getAbbreviatedUnit(rateUnit);
     this.durationUnit = getAbbreviatedUnit(durationUnit);
+    this.rowType = rowType;
     // This reporter expects System.err to be an ANSI-ready stream, see LogSettings.
     stderr = new InterceptingPrintStream(System.err);
     System.setErr(stderr);
@@ -140,11 +144,11 @@ public class ConsoleReporter extends ScheduledReporter {
       String rowsPerUnitStr = format("%,.0f", rowsPerUnit);
       String mbPerUnitStr = format("%,.2f", mbPerUnit);
       String kbPerRowStr = format("%,.2f", kbPerRow);
-      String rowsPerUnitLabel = "rows/" + rateUnit;
+      String rowsPerUnitLabel = rowType.plural() + "/" + rateUnit;
       String mbPerRateUnitLabel = "mb/" + rateUnit;
       int rowsPerUnitLength = max(rowsPerUnitLabel.length(), rowsPerUnitStr.length());
       int mbPerUnitLength = max(mbPerRateUnitLabel.length(), mbPerUnitStr.length());
-      int kbPerRowLength = max("kb/row".length(), kbPerRowStr.length());
+      int kbPerRowLength = max(("kb/" + rowType.singular()).length(), kbPerRowStr.length());
       header =
           header
               .a(" | ")
@@ -152,7 +156,7 @@ public class ConsoleReporter extends ScheduledReporter {
               .a(" | ")
               .a(leftPad(mbPerRateUnitLabel, mbPerUnitLength))
               .a(" | ")
-              .a(leftPad("kb/row", kbPerRowLength));
+              .a(leftPad("kb/" + rowType.singular(), kbPerRowLength));
       message =
           message
               .reset()
@@ -209,7 +213,7 @@ public class ConsoleReporter extends ScheduledReporter {
     }
 
     // batches
-    if (header.toString().length() < LINE_LENGTH && batchSizes != null) {
+    if (batchSizes != null && header.toString().length() < LINE_LENGTH) {
       Snapshot snapshot = batchSizes.getSnapshot();
       double avgBatch = snapshot.getMean();
       String avgBatchStr = format("%,.2f", avgBatch);

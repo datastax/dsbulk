@@ -95,11 +95,21 @@ public class BatchSettings {
       int bufferConfig = config.getInt(BUFFER_SIZE);
       bufferSize = bufferConfig > 0 ? bufferConfig : maxBatchStatements;
 
+      if (maxBatchStatements <= 0 && bufferSize <= 0) {
+        throw new BulkConfigurationException(
+            String.format(
+                "Value for batch.bufferSize (%d) must be positive if "
+                    + "batch.maxBatchStatements is negative or zero. "
+                    + "See settings.md for more information.",
+                bufferSize));
+      }
+
       if (bufferSize < maxBatchStatements) {
         throw new BulkConfigurationException(
             String.format(
                 "Value for batch.bufferSize (%d) must be greater than or equal to "
-                    + "buffer.maxBatchStatements OR buffer.maxBatchSize (%d). See settings.md for more information.",
+                    + "batch.maxBatchStatements OR batch.maxBatchSize (%d). "
+                    + "See settings.md for more information.",
                 bufferSize, maxBatchStatements));
       }
     } catch (ConfigException e) {

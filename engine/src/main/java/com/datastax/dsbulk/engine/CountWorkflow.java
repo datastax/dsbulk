@@ -104,7 +104,8 @@ public class CountWorkflow implements Workflow {
             logSettings.getVerbosity(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
-            cluster.getConfiguration().getCodecRegistry());
+            cluster.getConfiguration().getCodecRegistry(),
+            schemaSettings.getRowType());
     metricsManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     ExtendedCodecRegistry codecRegistry =
