@@ -27,11 +27,11 @@ public class DefaultErrorRecord implements ErrorRecord {
   private final Throwable error;
 
   public DefaultErrorRecord(
-      Object source,
-      Supplier<URI> resource,
+      @NotNull Object source,
+      @NotNull Supplier<URI> resource,
       long position,
-      Supplier<URI> location,
-      Throwable error) {
+      @NotNull Supplier<URI> location,
+      @NotNull Throwable error) {
     this.source = source;
     this.resource = resource;
     this.position = position;
@@ -39,11 +39,13 @@ public class DefaultErrorRecord implements ErrorRecord {
     this.error = error;
   }
 
+  @NotNull
   @Override
   public Object getSource() {
     return source;
   }
 
+  @NotNull
   @Override
   public URI getResource() {
     return resource.get();
@@ -54,6 +56,7 @@ public class DefaultErrorRecord implements ErrorRecord {
     return position;
   }
 
+  @NotNull
   @Override
   public URI getLocation() {
     return location.get();
@@ -72,7 +75,7 @@ public class DefaultErrorRecord implements ErrorRecord {
   }
 
   @Override
-  public Object getFieldValue(Field field) {
+  public Object getFieldValue(@NotNull Field field) {
     return null;
   }
 
@@ -81,6 +84,7 @@ public class DefaultErrorRecord implements ErrorRecord {
     // NO-OP
   }
 
+  @NotNull
   @Override
   public Throwable getError() {
     return error;

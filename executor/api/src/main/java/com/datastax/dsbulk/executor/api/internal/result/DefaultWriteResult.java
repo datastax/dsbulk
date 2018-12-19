@@ -12,14 +12,15 @@ import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import org.jetbrains.annotations.NotNull;
 
 public final class DefaultWriteResult extends DefaultResult implements WriteResult {
 
-  public DefaultWriteResult(Statement statement, ExecutionInfo executionInfo) {
+  public DefaultWriteResult(@NotNull Statement statement, @NotNull ExecutionInfo executionInfo) {
     super(statement, executionInfo);
   }
 
-  public DefaultWriteResult(BulkExecutionException error) {
+  public DefaultWriteResult(@NotNull BulkExecutionException error) {
     super(error);
   }
 

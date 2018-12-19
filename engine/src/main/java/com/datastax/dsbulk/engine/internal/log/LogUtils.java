@@ -9,10 +9,7 @@
 package com.datastax.dsbulk.engine.internal.log;
 
 import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import java.io.PrintWriter;
-import java.net.URI;
-import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,27 +19,7 @@ public class LogUtils {
 
   private static final int MAX_SOURCE_LENGTH = 500;
 
-  public static void appendStatementInfo(UnmappableStatement statement, PrintWriter writer) {
-    URI location = statement.getLocation();
-    Record record = statement.getSource();
-    writer.println("Location: " + location);
-    writer.println("Resource: " + record.getResource());
-    writer.println("Position: " + record.getPosition());
-    writer.println("Source  : " + formatSource(record));
-  }
-
-  public static void appendRecordInfo(Record record, PrintWriter writer) {
-    appendRecordInfo(record, writer::println);
-  }
-
-  public static void appendRecordInfo(Record record, Consumer<Object> println) {
-    println.accept("Location: " + record.getLocation());
-    println.accept("Resource: " + record.getResource());
-    println.accept("Position: " + record.getPosition());
-    println.accept("Source  : " + formatSource(record));
-  }
-
-  private static String formatSource(Record record) {
+  public static String formatSource(Record record) {
     if (record == null) {
       return "<NULL>";
     }

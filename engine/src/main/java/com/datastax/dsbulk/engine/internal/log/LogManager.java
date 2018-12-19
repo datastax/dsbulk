@@ -8,8 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.log;
 
-import static com.datastax.dsbulk.engine.internal.log.LogUtils.appendRecordInfo;
-import static com.datastax.dsbulk.engine.internal.log.LogUtils.appendStatementInfo;
+import static com.datastax.dsbulk.engine.internal.log.LogUtils.formatSource;
 import static com.datastax.dsbulk.engine.internal.log.LogUtils.printAndMaybeAddNewLine;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
@@ -35,6 +34,7 @@ import com.datastax.dsbulk.commons.internal.concurrent.ScalableThreadPoolExecuto
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
 import com.datastax.dsbulk.engine.internal.schema.InvalidMappingException;
@@ -102,8 +102,9 @@ public class LogManager implements AutoCloseable {
   private final Path executionDirectory;
   private final int maxErrors;
   private final float maxErrorRatio;
-  private final StatementFormatter formatter;
-  private final StatementFormatVerbosity verbosity;
+  private final StatementFormatter statementFormatter;
+  private final StatementFormatVerbosity statementFormatVerbosity;
+  private final RowFormatter rowFormatter;
 
   private final AtomicInteger errors = new AtomicInteger(0);
   private final LongAdder totalItems = new LongAdder();
@@ -140,15 +141,17 @@ public class LogManager implements AutoCloseable {
       Path executionDirectory,
       int maxErrors,
       float maxErrorRatio,
-      StatementFormatter formatter,
-      StatementFormatVerbosity verbosity) {
+      StatementFormatter statementFormatter,
+      StatementFormatVerbosity statementFormatVerbosity,
+      RowFormatter rowFormatter) {
     this.workflowType = workflowType;
     this.cluster = cluster;
     this.executionDirectory = executionDirectory;
     this.maxErrors = maxErrors;
     this.maxErrorRatio = maxErrorRatio;
-    this.formatter = formatter;
-    this.verbosity = verbosity;
+    this.statementFormatter = statementFormatter;
+    this.statementFormatVerbosity = statementFormatVerbosity;
+    this.rowFormatter = rowFormatter;
   }
 
   public void init() {
@@ -400,7 +403,7 @@ public class LogManager implements AutoCloseable {
                 signal -> {
                   if (signal.isOnNext()) {
                     WriteResult r = signal.get();
-                    if (!r.isSuccess()) {
+                    if (r != null && !r.isSuccess()) {
                       try {
                         writeResultSink.next(r);
                         assert r.getError().isPresent();
@@ -442,7 +445,7 @@ public class LogManager implements AutoCloseable {
                 signal -> {
                   if (signal.isOnNext()) {
                     ReadResult r = signal.get();
-                    if (!r.isSuccess()) {
+                    if (r != null && !r.isSuccess()) {
                       try {
                         readResultSink.next(r);
                         assert r.getError().isPresent();
@@ -571,9 +574,7 @@ public class LogManager implements AutoCloseable {
   private FluxSink<ErrorRecord> newFailedRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
     Flux<ErrorRecord> flux =
-        processor
-            .publishOn(scheduler)
-            .doOnNext(record -> appendToDebugFile(record, CONNECTOR_ERRORS_FILE));
+        processor.publishOn(scheduler).doOnNext(this::appendFailedRecordToDebugFile);
     if (workflowType == WorkflowType.LOAD) {
       flux.doOnNext(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
           .transform(newRecordPositionTracker())
@@ -601,7 +602,7 @@ public class LogManager implements AutoCloseable {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
     processor
         .publishOn(scheduler)
-        .doOnNext(record -> appendToDebugFile(record, MAPPING_ERRORS_FILE))
+        .doOnNext(this::appendUnmappableReadResultToDebugFile)
         .subscribe();
     return processor.sink();
   }
@@ -624,7 +625,7 @@ public class LogManager implements AutoCloseable {
     processor
         .publishOn(scheduler)
         .doOnNext(this::maybeWarnInvalidMapping)
-        .doOnNext(this::appendToDebugFile)
+        .doOnNext(this::appendUnmappableStatementToDebugFile)
         .transform(newStatementToRecordMapper())
         .doOnNext(record -> appendToBadFile(record, MAPPING_BAD_FILE))
         .transform(newRecordPositionTracker())
@@ -648,7 +649,7 @@ public class LogManager implements AutoCloseable {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
     processor
         .publishOn(scheduler)
-        .doOnNext(this::appendToDebugFile)
+        .doOnNext(this::appendFailedWriteResultToDebugFile)
         .map(Result::getStatement)
         .transform(newStatementToRecordMapper())
         .doOnNext(record -> appendToBadFile(record, LOAD_BAD_FILE))
@@ -671,55 +672,99 @@ public class LogManager implements AutoCloseable {
   @NotNull
   private FluxSink<ReadResult> newReadResultSink() {
     UnicastProcessor<ReadResult> processor = UnicastProcessor.create();
-    processor.publishOn(scheduler).doOnNext(this::appendToDebugFile).subscribe();
+    processor.publishOn(scheduler).doOnNext(this::appendFailedReadResultToDebugFile).subscribe();
     return processor.sink();
   }
+
+  // Bad file management
 
   private void appendToBadFile(Record record, String file) {
     Path logFile = executionDirectory.resolve(file);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     Object source = record.getSource();
-    printAndMaybeAddNewLine(source == null ? null : source.toString(), writer);
+    printAndMaybeAddNewLine(source.toString(), writer);
     writer.flush();
   }
 
-  private void appendToDebugFile(WriteResult result) {
-    Path logFile = executionDirectory.resolve(LOAD_ERRORS_FILE);
-    appendToDebugFile(result, logFile);
+  // Executor errors (read/write failures)
+
+  // write query failed
+  private void appendFailedWriteResultToDebugFile(WriteResult result) {
+    appendStatement(result, LOAD_ERRORS_FILE);
   }
 
-  private void appendToDebugFile(ReadResult result) {
-    Path logFile = executionDirectory.resolve(UNLOAD_ERRORS_FILE);
-    appendToDebugFile(result, logFile);
+  // read query failed
+  private void appendFailedReadResultToDebugFile(ReadResult result) {
+    appendStatement(result, UNLOAD_ERRORS_FILE);
   }
 
-  private void appendToDebugFile(Result result, Path logFile) {
+  private void appendStatement(Result result, String logFileName) {
+    Path logFile = executionDirectory.resolve(logFileName);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     writer.print("Statement: ");
     String format =
-        formatter.format(result.getStatement(), verbosity, protocolVersion, codecRegistry);
+        statementFormatter.format(
+            result.getStatement(), statementFormatVerbosity, protocolVersion, codecRegistry);
     printAndMaybeAddNewLine(format, writer);
-    stackTracePrinter.printStackTrace(
-        result.getError().orElseThrow(IllegalStateException::new), writer);
+    if (result.getError().isPresent()) {
+      stackTracePrinter.printStackTrace(result.getError().get(), writer);
+    }
   }
 
-  private void appendToDebugFile(UnmappableStatement statement) {
+  // Mapping errors (failed record -> statement or row -> record mappings)
+
+  // record -> statement failed (load workflow)
+  private void appendUnmappableStatementToDebugFile(UnmappableStatement statement) {
     Path logFile = executionDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
-    appendStatementInfo(statement, writer);
+    URI location = statement.getLocation();
+    Record record = statement.getSource();
+    writer.println("Location: " + location);
+    writer.println("Resource: " + record.getResource());
+    writer.println("Position: " + record.getPosition());
+    writer.println("Source: " + formatSource(record));
     stackTracePrinter.printStackTrace(statement.getError(), writer);
   }
 
-  private void appendToDebugFile(ErrorRecord record, String file) {
-    Path logFile = executionDirectory.resolve(file);
+  // row -> record failed (unload workdlow)
+  private void appendUnmappableReadResultToDebugFile(ErrorRecord record) {
+    Path logFile = executionDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
-    appendRecordInfo(record, writer);
+    writer.println("Location: " + record.getLocation());
+    writer.println("Resource: " + record.getResource());
+    if (record.getSource() instanceof ReadResult) {
+      ReadResult source = (ReadResult) record.getSource();
+      appendStatement(source, MAPPING_ERRORS_FILE);
+      source
+          .getRow()
+          .ifPresent(
+              row -> {
+                writer.print("Row: ");
+                String format = rowFormatter.format(row, protocolVersion, codecRegistry);
+                printAndMaybeAddNewLine(format, writer);
+              });
+    }
     stackTracePrinter.printStackTrace(record.getError(), writer);
   }
+
+  // Connector errors
+
+  private void appendFailedRecordToDebugFile(ErrorRecord record) {
+    Path logFile = executionDirectory.resolve(CONNECTOR_ERRORS_FILE);
+    PrintWriter writer = openFiles.get(logFile);
+    assert writer != null;
+    writer.println("Location: " + record.getLocation());
+    writer.println("Resource: " + record.getResource());
+    writer.println("Position: " + record.getPosition());
+    writer.println("Source: " + formatSource(record));
+    stackTracePrinter.printStackTrace(record.getError(), writer);
+  }
+
+  // Utility methods
 
   private static void appendToPositionsFile(
       URI resource, List<Range<Long>> positions, PrintWriter positionsPrinter) {

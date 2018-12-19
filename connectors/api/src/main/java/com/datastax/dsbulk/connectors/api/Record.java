@@ -12,6 +12,7 @@ import java.net.URI;
 import java.util.Collection;
 import java.util.Set;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * An item emitted by a {@link Connector}. A record is composed of one or more {@linkplain Field
@@ -26,6 +27,7 @@ public interface Record {
    *
    * @return The record source.
    */
+  @NotNull
   Object getSource();
 
   /**
@@ -36,6 +38,7 @@ public interface Record {
    *
    * @return The record's resource.
    */
+  @NotNull
   URI getResource();
 
   /**
@@ -75,6 +78,7 @@ public interface Record {
    *
    * @return a set containing all the fields in this record.
    */
+  @NotNull
   Set<Field> fields();
 
   /**
@@ -96,7 +100,8 @@ public interface Record {
    * @param field the field.
    * @return the value associated with the given field.
    */
-  Object getFieldValue(Field field);
+  @Nullable
+  Object getFieldValue(@NotNull Field field);
 
   /**
    * Clear all fields in this record.

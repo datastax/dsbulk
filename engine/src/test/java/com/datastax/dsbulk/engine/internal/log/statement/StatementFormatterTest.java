@@ -26,8 +26,6 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Duration;
-import com.datastax.driver.core.LocalDate;
 import com.datastax.driver.core.PreparedId;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ProtocolVersion;
@@ -41,26 +39,14 @@ import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaStatement;
 import com.datastax.driver.core.utils.Bytes;
+import com.datastax.dsbulk.engine.internal.log.DataTypesProvider;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.net.InetAddress;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 class StatementFormatterTest {
-
-  private static final List<DataType> dataTypes =
-      new ArrayList<>(
-          Sets.filter(DataType.allPrimitiveTypes(), type -> type != DataType.counter()));
 
   private final ProtocolVersion version = ProtocolVersion.NEWEST_SUPPORTED;
 
@@ -82,11 +68,44 @@ class StatementFormatterTest {
     assertThat(s)
         .contains("SimpleStatement@")
         .contains(
-            "idempotence : true, CL : QUORUM, serial CL : SERIAL, default timestamp : 12345, read-timeout millis : 12345")
+            "idempotence: true, CL: QUORUM, serial CL: SERIAL, default timestamp: 12345, read-timeout millis: 12345")
         .contains("2 values")
         .contains("SELECT * FROM t WHERE c1 = ? AND c2 = ?")
-        .contains("0 : 'foo'")
-        .contains("1 : 42");
+        .contains("0: 'foo'")
+        .contains("1: 42");
+  }
+
+  @Test
+  void should_use_toString_when_exception_during_formatting() {
+    StatementFormatter formatter = StatementFormatter.builder().build();
+    Statement statement =
+        new SimpleStatement("SELECT", 1) {
+          @Override
+          public Object getObject(int i) {
+            throw new NullPointerException();
+          }
+        };
+    assertThat(formatter.format(statement, EXTENDED, version, codecRegistry))
+        .isEqualTo(statement.toString());
+  }
+
+  @Test
+  void should_use_generic_description_exception_during_formatting_and_toString() {
+    StatementFormatter formatter = StatementFormatter.builder().build();
+    Statement statement =
+        new SimpleStatement("SELECT", 1) {
+          @Override
+          public Object getObject(int i) {
+            throw new NullPointerException();
+          }
+
+          @Override
+          public String toString() {
+            throw new NullPointerException();
+          }
+        };
+    assertThat(formatter.format(statement, EXTENDED, version, codecRegistry))
+        .isEqualTo("statement[?]");
   }
 
   @Test
@@ -100,8 +119,8 @@ class StatementFormatterTest {
         .contains("SimpleStatement@")
         .contains("2 values")
         .contains("SELECT * FROM t WHERE c1 = ? AND c2 = ?")
-        .contains("c1 : 'foo'")
-        .contains("c2 : 42");
+        .contains("c1: 'foo'")
+        .contains("c2: 42");
   }
 
   @Test
@@ -126,8 +145,8 @@ class StatementFormatterTest {
         .contains("BuiltStatement@")
         .contains("2 values")
         .contains("SELECT * FROM t WHERE c1=? AND c2=42 AND c3=?")
-        .contains("0 : 'foo'")
-        .contains("1 : false");
+        .contains("0: 'foo'")
+        .contains("1: false");
   }
 
   @Test
@@ -139,9 +158,9 @@ class StatementFormatterTest {
         .contains("BoundStatement@")
         .contains("3 values")
         .contains("SELECT * FROM t WHERE c1 = ? AND c2 = ? AND c3 = ?")
-        .contains("c1 : 'foo'")
-        .contains("c2 : <NULL>")
-        .contains("c3 : <UNSET>");
+        .contains("c1: 'foo'")
+        .contains("c2: <NULL>")
+        .contains("c3: <UNSET>");
   }
 
   @Test
@@ -196,7 +215,7 @@ class StatementFormatterTest {
         .doesNotContain("DTP")
         .contains("2 values")
         .doesNotContain("SELECT * FROM t WHERE c1 = ? AND c2 = ?")
-        .doesNotContain("{ 0 : 'foo', 1 : 42 }");
+        .doesNotContain("{ 0: 'foo', 1: 42 }");
   }
 
   @Test
@@ -214,7 +233,7 @@ class StatementFormatterTest {
         .doesNotContain("DTP")
         .contains("2 values")
         .contains("SELECT * FROM t WHERE c1 = ? AND c2 = ?")
-        .doesNotContain("{ 0 : 'foo', 1 : 42 }");
+        .doesNotContain("{ 0: 'foo', 1: 42 }");
   }
 
   // Limits
@@ -242,7 +261,7 @@ class StatementFormatterTest {
     StatementFormatter formatter = StatementFormatter.builder().withMaxBoundValues(2).build();
     SimpleStatement statement = new SimpleStatement("query", 0, 1, 2, 3);
     String s = formatter.format(statement, EXTENDED, version, codecRegistry);
-    assertThat(s).contains("0 : 0").contains("1 : 1").contains("...");
+    assertThat(s).contains("0: 0").contains("1: 1").contains("...");
   }
 
   @Test
@@ -250,7 +269,7 @@ class StatementFormatterTest {
     StatementFormatter formatter = StatementFormatter.builder().withMaxBoundValueLength(4).build();
     SimpleStatement statement = new SimpleStatement("query", "12345");
     String s = formatter.format(statement, EXTENDED, version, codecRegistry);
-    assertThat(s).contains("0 : '123...");
+    assertThat(s).contains("0: '123...");
   }
 
   @Test
@@ -258,7 +277,7 @@ class StatementFormatterTest {
     StatementFormatter formatter = StatementFormatter.builder().withMaxBoundValueLength(4).build();
     SimpleStatement statement = new SimpleStatement("query", Bytes.fromHexString("0xCAFEBABE"));
     String s = formatter.format(statement, EXTENDED, version, codecRegistry);
-    assertThat(s).contains("0 : 0xca...");
+    assertThat(s).contains("0: 0xca...");
   }
 
   @Test
@@ -363,35 +382,31 @@ class StatementFormatterTest {
 
   // Data types
 
-  @Test
-  void should_log_all_parameter_types_simple_statements() {
+  @ParameterizedTest
+  @ArgumentsSource(DataTypesProvider.class)
+  void should_log_all_parameter_types_simple_statements(DataType type, Object value) {
     String query = "UPDATE test SET c1 = ? WHERE pk = 42";
     StatementFormatter formatter =
         StatementFormatter.builder().withMaxBoundValueLength(UNLIMITED).build();
-    for (DataType type : dataTypes) {
-      Object value = getFixedValue(type);
-      SimpleStatement statement = new SimpleStatement(query, value);
-      String s = formatter.format(statement, EXTENDED, version, codecRegistry);
-      // time cannot be used with simple statements
-      TypeCodec<Object> codec =
-          codecRegistry.codecFor(type.equals(DataType.time()) ? DataType.bigint() : type, value);
-      assertThat(s).contains(codec.format(value));
-    }
+    SimpleStatement statement = new SimpleStatement(query, value);
+    String s = formatter.format(statement, EXTENDED, version, codecRegistry);
+    // time cannot be used with simple statements
+    TypeCodec<Object> codec =
+        codecRegistry.codecFor(type.equals(DataType.time()) ? DataType.bigint() : type, value);
+    assertThat(s).contains(codec.format(value));
   }
 
-  @Test
-  void should_log_all_parameter_types_bound_statements() {
+  @ParameterizedTest
+  @ArgumentsSource(DataTypesProvider.class)
+  void should_log_all_parameter_types_bound_statements(DataType type, Object value) {
     String query = "UPDATE test SET c1 = ? WHERE pk = 42";
     StatementFormatter formatter =
         StatementFormatter.builder().withMaxBoundValueLength(UNLIMITED).build();
-    for (DataType type : dataTypes) {
-      Object value = getFixedValue(type);
-      BoundStatement statement = newBoundStatementMock(query, type);
-      TypeCodec<Object> codec = codecRegistry.codecFor(type, value);
-      statement.set(0, value, codec);
-      String s = formatter.format(statement, EXTENDED, version, codecRegistry);
-      assertThat(s).contains(codec.format(value));
-    }
+    BoundStatement statement = newBoundStatementMock(query, type);
+    TypeCodec<Object> codec = codecRegistry.codecFor(type, value);
+    statement.set(0, value, codec);
+    String s = formatter.format(statement, EXTENDED, version, codecRegistry);
+    assertThat(s).contains(codec.format(value));
   }
 
   private BoundStatement newBoundStatementMock() {
@@ -427,84 +442,5 @@ class StatementFormatterTest {
     when(cd.getName(0)).thenReturn("c1");
     when(cd.getType(0)).thenReturn(type);
     return new BoundStatement(ps);
-  }
-
-  private static Object getFixedValue(DataType type) {
-    try {
-      switch (type.getName()) {
-        case CUSTOM:
-          break;
-        case ASCII:
-          return "An ascii string";
-        case BIGINT:
-          return 42L;
-        case BLOB:
-          return ByteBuffer.wrap(new byte[] {(byte) 4, (byte) 12, (byte) 1});
-        case BOOLEAN:
-          return true;
-        case COUNTER:
-          throw new UnsupportedOperationException("Cannot 'getSomeValue' for counters");
-        case DURATION:
-          return Duration.from("1h20m3s");
-        case DECIMAL:
-          return new BigDecimal(
-              "3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679");
-        case DOUBLE:
-          return 3.142519;
-        case FLOAT:
-          return 3.142519f;
-        case INET:
-          return InetAddress.getByAddress(new byte[] {(byte) 127, (byte) 0, (byte) 0, (byte) 1});
-        case TINYINT:
-          return (byte) 25;
-        case SMALLINT:
-          return (short) 26;
-        case INT:
-          return 24;
-        case TEXT:
-          return "A text string";
-        case TIMESTAMP:
-          return new Date(1352288289L);
-        case DATE:
-          return LocalDate.fromDaysSinceEpoch(0);
-        case TIME:
-          return 54012123450000L;
-        case UUID:
-          return UUID.fromString("087E9967-CCDC-4A9B-9036-05930140A41B");
-        case VARCHAR:
-          return "A varchar string";
-        case VARINT:
-          return new BigInteger("123456789012345678901234567890");
-        case TIMEUUID:
-          return UUID.fromString("FE2B4360-28C6-11E2-81C1-0800200C9A66");
-        case LIST:
-          return new ArrayList<Object>() {
-            {
-              add(getFixedValue(type.getTypeArguments().get(0)));
-            }
-          };
-        case SET:
-          return new HashSet<Object>() {
-            {
-              add(getFixedValue(type.getTypeArguments().get(0)));
-            }
-          };
-        case MAP:
-          return new HashMap<Object, Object>() {
-            {
-              put(
-                  getFixedValue(type.getTypeArguments().get(0)),
-                  getFixedValue(type.getTypeArguments().get(1)));
-            }
-          };
-        case UDT:
-          break;
-        case TUPLE:
-          break;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-    throw new RuntimeException("Missing handling of " + type);
   }
 }

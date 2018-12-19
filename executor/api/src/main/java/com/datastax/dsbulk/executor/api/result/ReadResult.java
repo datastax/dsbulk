@@ -11,6 +11,7 @@ package com.datastax.dsbulk.executor.api.result;
 import com.datastax.driver.core.Row;
 import java.util.Optional;
 import java.util.function.Consumer;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Represents one of the many results of a read operation.
@@ -27,6 +28,7 @@ public interface ReadResult extends Result {
    *
    * @return the encapsulated {@link Row} object for this read result, if present.
    */
+  @NotNull
   Optional<Row> getRow();
 
   /**
@@ -36,7 +38,7 @@ public interface ReadResult extends Result {
    * @param consumer block to be executed if the result is a success
    * @throws NullPointerException if the result is a success and {@code consumer} is null
    */
-  default void ifSuccess(Consumer<? super Row> consumer) {
+  default void ifSuccess(@NotNull Consumer<? super Row> consumer) {
     getRow().ifPresent(consumer);
   }
 }

@@ -317,6 +317,31 @@ class LogSettingsTest {
   }
 
   @Test
+  void should_throw_exception_when_maxResultSetValues_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("row.maxResultSetValues = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Invalid value for log.row.maxResultSetValues: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_maxResultSetValueLength_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("row.maxResultSetValueLength = NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "Invalid value for log.row.maxResultSetValueLength: Expecting NUMBER, got STRING");
+  }
+
+  @Test
   void should_throw_exception_when_maxInnerStatements_not_a_number() {
     LoaderConfig config =
         new DefaultLoaderConfig(

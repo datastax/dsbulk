@@ -1356,6 +1356,22 @@ Note to Windows users: ANSI support on Windows works best when the Microsoft Vis
 
 Default: **"normal"**.
 
+#### --log.row.maxResultSetValueLength _&lt;number&gt;_
+
+The maximum length for a result set value. Result set values longer than this value will be truncated.
+
+Setting this value to `-1` makes the maximum length for a result set value unlimited (not recommended).
+
+Default: **50**.
+
+#### --log.row.maxResultSetValues _&lt;number&gt;_
+
+The maximum number of result set values to print. If the row has more result set values than this limit, the exceeding values will not be printed.
+
+Setting this value to `-1` makes the maximum number of result set values unlimited (not recommended).
+
+Default: **50**.
+
 #### --log.stmt.level _&lt;string&gt;_
 
 The desired log level. Valid values are:
@@ -1370,7 +1386,7 @@ Default: **"EXTENDED"**.
 
 The maximum length for a bound value. Bound values longer than this value will be truncated.
 
-Setting this value to `-1` disables this feature (not recommended).
+Setting this value to `-1` makes the maximum length for a bound value unlimited (not recommended).
 
 Default: **50**.
 
@@ -1378,7 +1394,7 @@ Default: **50**.
 
 The maximum number of bound values to print. If the statement has more bound values than this limit, the exceeding values will not be printed.
 
-Setting this value to `-1` disables this feature (not recommended).
+Setting this value to `-1` makes the maximum number of bound values unlimited (not recommended).
 
 Default: **50**.
 
