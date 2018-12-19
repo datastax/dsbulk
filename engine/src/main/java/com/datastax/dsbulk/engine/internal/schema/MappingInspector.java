@@ -214,8 +214,8 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public MappingToken visitInferredMappedEntry(MappingParser.InferredMappedEntryContext ctx) {
     checkInferring();
     inferring = true;
-    for (MappingParser.VariableOrFunctionContext variableContext : ctx.variableOrFunction()) {
-      CQLFragment variable = visitVariableOrFunction(variableContext);
+    for (VariableContext variableContext : ctx.variable()) {
+      CQLIdentifier variable = visitVariable(variableContext);
       excludedVariables.add(variable);
     }
     return null;

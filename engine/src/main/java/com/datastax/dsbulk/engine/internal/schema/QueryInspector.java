@@ -15,7 +15,9 @@ import com.datastax.dsbulk.commons.cql3.CqlParser;
 import com.datastax.dsbulk.commons.cql3.CqlParser.AllowedFunctionNameContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.FunctionContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.FunctionNameContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.SelectClauseContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.TermContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.UnaliasedSelectorContext;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
@@ -23,7 +25,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.antlr.v4.runtime.BaseErrorListener;
@@ -37,20 +38,22 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
 
   private static final CQLIdentifier QUESTION_MARK = CQLIdentifier.fromInternal("?");
   private static final CQLIdentifier WRITETIME = CQLIdentifier.fromInternal("writetime");
+  private static final CQLIdentifier TTL = CQLIdentifier.fromInternal("ttl");
 
   private final String query;
 
   // can't use Guava's immutable builders here as some map keys may appear twice in the query
-  private final Map<CQLIdentifier, CQLFragment> resultSetVariablesBuilder = new LinkedHashMap<>();
+  private final Map<CQLFragment, CQLFragment> resultSetVariablesBuilder = new LinkedHashMap<>();
   private final Map<CQLIdentifier, CQLFragment> boundVariablesBuilder = new LinkedHashMap<>();
   private final Set<CQLFragment> writeTimeVariablesBuilder = new LinkedHashSet<>();
 
-  private final ImmutableMap<CQLIdentifier, CQLFragment> resultSetVariables;
+  private final ImmutableMap<CQLFragment, CQLFragment> resultSetVariables;
   private final ImmutableMap<CQLIdentifier, CQLFragment> boundVariables;
   private final ImmutableSet<CQLFragment> writeTimeVariables;
 
   private CQLIdentifier keyspaceName;
   private CQLIdentifier tableName;
+  private int resultSetSize;
 
   public QueryInspector(String query) {
     this.query = query;
@@ -97,19 +100,21 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   /**
-   * @return a map of all bound variables found in the query, from column name to variable name.
-   *     Only used for write queries (INSERT, UPDATE, DELETE). This map does not include functions.
+   * @return a map of assignments found in the query, from column to value. This map only includes
+   *     assignments of columns to named bound variables (e.g. col1 = :val1) and columns to
+   *     functions (e.g. col1 = now()). Only used for write queries (INSERT, UPDATE, DELETE).
    */
-  public ImmutableMap<CQLIdentifier, CQLFragment> getBoundVariables() {
+  public ImmutableMap<CQLIdentifier, CQLFragment> getAssignments() {
     return boundVariables;
   }
 
   /**
-   * @return a map of all result set variables found in the query, from column name to alias (if no
-   *     alias is present, the column name maps to itself). Only used for read queries (SELECT).
-   *     This map does not include functions.
+   * @return a map of result set variables found in the query, from unaliased to aliased (if no
+   *     alias is present, the aliased form is identical to the unaliased one). This map includes
+   *     only regular column selections (e.g. SELECT col1) and function call selections (e.g. SELECT
+   *     token(pk)). Only used for read queries (SELECT).
    */
-  public ImmutableMap<CQLIdentifier, CQLFragment> getResultSetVariables() {
+  public ImmutableMap<CQLFragment, CQLFragment> getResultSetVariables() {
     return resultSetVariables;
   }
 
@@ -120,6 +125,11 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
    */
   public ImmutableSet<CQLFragment> getWriteTimeVariables() {
     return writeTimeVariables;
+  }
+
+  /** @return the total number of selectors found in the SELECT clause. */
+  public int getResultSetSize() {
+    return resultSetSize;
   }
 
   // INSERT
@@ -185,10 +195,9 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     } else if (ctx.shorthandColumnOperation() != null) {
       // shorthand update operation: column += :variable
       return visitTerm(ctx.shorthandColumnOperation().term());
-    } else {
-      // unsupported update operation
-      return null;
     }
+    // unsupported update operation
+    return null;
   }
 
   // SELECT
@@ -206,26 +215,60 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
+  public CQLFragment visitSelectClause(SelectClauseContext ctx) {
+    resultSetSize = ctx.selector().size();
+    return super.visitSelectClause(ctx);
+  }
+
+  @Override
   public CQLFragment visitSelector(CqlParser.SelectorContext ctx) {
-    if (ctx.unaliasedSelector().getChildCount() == 1 && ctx.unaliasedSelector().cident() != null) {
-      // selection of a column, possibly aliased
-      CQLIdentifier column = visitCident(ctx.unaliasedSelector().cident());
-      if (ctx.noncolIdent() != null) {
-        CQLIdentifier alias = visitNoncolIdent(ctx.noncolIdent());
-        resultSetVariablesBuilder.put(column, alias);
-      } else {
-        resultSetVariablesBuilder.put(column, column);
+    CQLFragment unaliased = visitUnaliasedSelector(ctx.unaliasedSelector());
+    if (unaliased != null) {
+      CQLFragment alias =
+          ctx.noncolIdent() != null ? visitNoncolIdent(ctx.noncolIdent()) : unaliased;
+      resultSetVariablesBuilder.put(unaliased, alias);
+      if (unaliased instanceof FunctionCall) {
+        FunctionCall function = (FunctionCall) unaliased;
+        if (function.getFunctionName().equals(WRITETIME)) {
+          // store the alias since it's the alias that will be returned in the result set
+          writeTimeVariablesBuilder.add(alias);
+        }
       }
-    } else if (ctx.unaliasedSelector().K_WRITETIME() != null) {
-      CQLFragment writetime;
-      if (ctx.noncolIdent() != null) {
-        writetime = visitNoncolIdent(ctx.noncolIdent());
-      } else {
-        writetime = new FunctionCall(WRITETIME, visitCident(ctx.unaliasedSelector().cident()));
-      }
-      writeTimeVariablesBuilder.add(writetime);
     }
-    // other selector types: unsupported
+    return unaliased;
+  }
+
+  @Override
+  public CQLFragment visitUnaliasedSelector(UnaliasedSelectorContext ctx) {
+    if (!ctx.fident().isEmpty()) {
+      // UDT field selection: unsupported
+      return null;
+    }
+    if (ctx.getChildCount() == 1 && ctx.cident() != null) {
+      // regular column selection
+      return visitCident(ctx.cident());
+    } else if (ctx.K_WRITETIME() != null) {
+      return new FunctionCall(WRITETIME, visitCident(ctx.cident()));
+    } else if (ctx.K_TTL() != null) {
+      return new FunctionCall(TTL, visitCident(ctx.cident()));
+    } else if (ctx.functionName() != null) {
+      // function call
+      CQLIdentifier name = visitFunctionName(ctx.functionName());
+      List<CQLFragment> args = new ArrayList<>();
+      if (ctx.selectionFunctionArgs() != null) {
+        for (UnaliasedSelectorContext arg : ctx.selectionFunctionArgs().unaliasedSelector()) {
+          CQLFragment term = visitUnaliasedSelector(arg);
+          if (term != null) {
+            args.add(term);
+          } else {
+            // unknown argument type: record as a CQL literal, it doesn't matter much
+            args.add(new CQLLiteral(arg.getText()));
+          }
+        }
+      }
+      return new FunctionCall(name, args);
+    }
+    // other selectors: unsupported
     return null;
   }
 
@@ -272,7 +315,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
 
   @Override
   public CQLFragment visitTerm(CqlParser.TermContext ctx) {
-    // term contains another term: drill down
+    // ( comparator ) term
     while (ctx.term() != null) {
       ctx = ctx.term();
     }
@@ -295,7 +338,13 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     if (ctx.functionArgs() != null) {
       for (TermContext arg : ctx.functionArgs().term()) {
         CQLFragment term = visitTerm(arg);
-        args.add(Objects.requireNonNull(term));
+        if (term != null) {
+          args.add(term);
+        } else {
+          // unknown argument type: record as a CQL literal, it doesn't matter much
+          args.add(new CQLLiteral(arg.getText()));
+        }
+        args.add(term);
       }
     }
     return new FunctionCall(functionName, args);
@@ -303,11 +352,6 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
 
   @Override
   public CQLIdentifier visitFunctionName(FunctionNameContext ctx) {
-    if (ctx.keyspaceName() != null) {
-      throw new BulkConfigurationException(
-          "Invalid query: qualified functions in SELECT clause are not supported: "
-              + ctx.getText());
-    }
     return visitAllowedFunctionName(ctx.allowedFunctionName());
   }
 

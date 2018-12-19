@@ -35,8 +35,8 @@ regularMappedEntry
 
 inferredMappedEntry
     : '*' ( ':' | '=' ) '*'
-    | '*' ( ':' | '=' ) '-' variableOrFunction
-    | '*' ( ':' | '=' ) '[' '-' variableOrFunction ( ',' '-' variableOrFunction )* ']'
+    | '*' ( ':' | '=' ) '-' variable
+    | '*' ( ':' | '=' ) '[' '-' variable ( ',' '-' variable )* ']'
     ;
 
 indexedEntry

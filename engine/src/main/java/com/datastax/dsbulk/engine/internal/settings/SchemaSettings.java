@@ -16,7 +16,9 @@ import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkGraphCompatibility;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -52,16 +54,15 @@ import com.datastax.dsbulk.engine.internal.schema.IndexedMappingField;
 import com.datastax.dsbulk.engine.internal.schema.MappedMappingField;
 import com.datastax.dsbulk.engine.internal.schema.MappingField;
 import com.datastax.dsbulk.engine.internal.schema.MappingInspector;
-import com.datastax.dsbulk.engine.internal.schema.MappingToken;
 import com.datastax.dsbulk.engine.internal.schema.QueryInspector;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
+import com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.typesafe.config.ConfigException;
 import java.time.Instant;
@@ -76,7 +77,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -103,6 +103,7 @@ public class SchemaSettings {
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
   private static final String NATIVE = "Native";
+  private static final CQLIdentifier TOKEN_FUNCTION = CQLIdentifier.fromInternal("token");
 
   private final LoaderConfig config;
 
@@ -379,7 +380,9 @@ public class SchemaSettings {
   public RecordMapper createRecordMapper(
       Session session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
       throws BulkConfigurationException {
-    DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, LOAD);
+    DefaultMapping mapping =
+        prepareStatementAndCreateMapping(
+            session, codecRegistry, LOAD, EnumSet.noneOf(StatisticsMode.class));
     return new DefaultRecordMapper(
         preparedStatement,
         primaryKeyVariables(),
@@ -395,7 +398,9 @@ public class SchemaSettings {
       throws BulkConfigurationException {
     // wo don't check that mapping records are supported when unloading, the only thing that matters
     // is the order in which fields appear in the record.
-    DefaultMapping mapping = prepareStatementAndCreateMapping(session, codecRegistry, UNLOAD);
+    DefaultMapping mapping =
+        prepareStatementAndCreateMapping(
+            session, codecRegistry, UNLOAD, EnumSet.noneOf(StatisticsMode.class));
     return new DefaultReadResultMapper(mapping, recordMetadata);
   }
 
@@ -404,7 +409,7 @@ public class SchemaSettings {
       ExtendedCodecRegistry codecRegistry,
       EnumSet<StatsSettings.StatisticsMode> modes,
       int numPartitions) {
-    prepareStatementAndCreateMapping(session, null, COUNT);
+    prepareStatementAndCreateMapping(session, null, COUNT, modes);
     Cluster cluster = session.getCluster();
     ProtocolVersion protocolVersion =
         cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
@@ -427,12 +432,14 @@ public class SchemaSettings {
         StreamSupport.stream(variables.spliterator(), false)
             .map(ColumnDefinitions.Definition::getName)
             .filter(name -> !name.equals("start") && !name.equals("end"))
+            .map(Metadata::quoteIfNecessary)
             .collect(Collectors.toList());
     if (!unrecognized.isEmpty()) {
       throw new BulkConfigurationException(
           String.format(
-              "The provided statement (schema.query) contains unrecognized bound variables: %s; only 'start' and 'end' can be used to define a token range",
-              unrecognized));
+              "The provided statement (schema.query) contains unrecognized bound variables: %s; "
+                  + "only 'start' and 'end' can be used to define a token range",
+              String.join(", ", unrecognized)));
     }
     Metadata metadata = cluster.getMetadata();
     TokenRangeReadStatementGenerator generator =
@@ -448,6 +455,7 @@ public class SchemaSettings {
         });
   }
 
+  @NotNull
   public RowType getRowType() {
     if (table.getVertexMetadata() != null) {
       return RowType.VERTEX;
@@ -460,20 +468,22 @@ public class SchemaSettings {
 
   @NotNull
   private DefaultMapping prepareStatementAndCreateMapping(
-      Session session, ExtendedCodecRegistry codecRegistry, WorkflowType workflowType) {
+      Session session,
+      ExtendedCodecRegistry codecRegistry,
+      WorkflowType workflowType,
+      EnumSet<StatsSettings.StatisticsMode> modes) {
     BiMap<MappingField, CQLFragment> fieldsToVariables = null;
     if (!config.hasPath(QUERY)) {
       // in the absence of user-provided queries, create the mapping *before* query generation and
       // preparation
       fieldsToVariables =
           createFieldsToVariablesMap(
-              () ->
-                  table
-                      .getColumns()
-                      .stream()
-                      .map(ColumnMetadata::getName)
-                      .map(CQLIdentifier::fromInternal)
-                      .collect(Collectors.toList()));
+              table
+                  .getColumns()
+                  .stream()
+                  .map(ColumnMetadata::getName)
+                  .map(CQLIdentifier::fromInternal)
+                  .collect(Collectors.toList()));
       // query generation
       if (workflowType == LOAD) {
         if (isCounterTable()) {
@@ -484,7 +494,7 @@ public class SchemaSettings {
       } else if (workflowType == UNLOAD) {
         query = inferReadQuery(fieldsToVariables);
       } else if (workflowType == COUNT) {
-        query = inferCountQuery();
+        query = inferCountQuery(modes);
       }
       LOGGER.debug("Inferred query: {}", query);
       queryInspector = new QueryInspector(query);
@@ -505,16 +515,19 @@ public class SchemaSettings {
       ColumnDefinitions variables = getVariables(workflowType);
       fieldsToVariables =
           createFieldsToVariablesMap(
-              () ->
-                  StreamSupport.stream(variables.spliterator(), false)
-                      .map(ColumnDefinitions.Definition::getName)
-                      .map(CQLIdentifier::fromInternal)
-                      .collect(Collectors.toList()));
+              StreamSupport.stream(variables.spliterator(), false)
+                  .map(ColumnDefinitions.Definition::getName)
+                  .map(CQLIdentifier::fromInternal)
+                  .collect(Collectors.toList()));
       // validate user-provided query
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
       } else if (workflowType == COUNT) {
-        validatePartitionKeyPresentInSelectClause();
+        if (modes.contains(partitions)) {
+          validatePartitionKeyPresentInSelectClause();
+        } else if (modes.contains(ranges) || modes.contains(hosts)) {
+          validatePartitionKeyTokenPresentInSelectClause();
+        }
       }
     }
     assert fieldsToVariables != null;
@@ -541,8 +554,8 @@ public class SchemaSettings {
     }
   }
 
-  private BiMap<MappingField, CQLFragment> createFieldsToVariablesMap(
-      Supplier<List<CQLFragment>> columns) throws BulkConfigurationException {
+  private BiMap<MappingField, CQLFragment> createFieldsToVariablesMap(List<CQLFragment> columns)
+      throws BulkConfigurationException {
     BiMap<MappingField, CQLFragment> fieldsToVariables;
     // create indexed mappings only for unload, and only if the connector really requires it, to
     // match the order in which the query declares variables.
@@ -703,13 +716,12 @@ public class SchemaSettings {
   }
 
   private void validateAllFieldsPresent(
-      BiMap<MappingField, CQLFragment> fieldsToVariables, Supplier<List<CQLFragment>> columns) {
-    List<CQLFragment> colNames = columns.get();
+      BiMap<MappingField, CQLFragment> fieldsToVariables, List<CQLFragment> columns) {
     fieldsToVariables.forEach(
         (key, value) -> {
           if (value instanceof CQLIdentifier
               && !isPseudoColumn(value)
-              && !colNames.contains(value)) {
+              && !columns.contains(value)) {
             if (!config.hasPath(QUERY)) {
               throw new BulkConfigurationException(
                   String.format(
@@ -729,21 +741,25 @@ public class SchemaSettings {
   private void validatePrimaryKeyPresent(BiMap<MappingField, CQLFragment> fieldsToVariables) {
     List<ColumnMetadata> partitionKey = table.getPrimaryKey();
     Set<CQLFragment> mappingVariables = fieldsToVariables.values();
-    ImmutableMap<CQLIdentifier, CQLFragment> queryVariables = queryInspector.getBoundVariables();
+    Map<CQLIdentifier, CQLFragment> queryVariables = queryInspector.getAssignments();
     for (ColumnMetadata pk : partitionKey) {
       CQLIdentifier pkVariable = CQLIdentifier.fromInternal(pk.getName());
-      MappingToken queryVariable = queryVariables.get(pkVariable);
-      if (
-      // the query did not contain such column
-      queryVariable == null
-          ||
-          // or the query did contain such column, but the mapping didn't
-          // and that column is not mapped to a function (DAT-326)
-          (!(queryVariable instanceof FunctionCall) && !mappingVariables.contains(queryVariable))) {
+      CQLFragment queryVariable = queryVariables.get(pkVariable);
+      // the provided query did not contain such column
+      if (queryVariable == null) {
         throw new BulkConfigurationException(
             "Missing required primary key column "
                 + pkVariable.asCql()
                 + " from schema.mapping or schema.query");
+      }
+      // do not check if the mapping contains a PK
+      // if the PK is mapped to a function in the query (DAT-326)
+      if (!(queryVariable instanceof FunctionCall)) {
+        // the mapping did not contain such column
+        if (!mappingVariables.contains(queryVariable)) {
+          throw new BulkConfigurationException(
+              "Missing required primary key column " + pkVariable.asCql() + " from schema.mapping");
+        }
       }
     }
   }
@@ -753,36 +769,71 @@ public class SchemaSettings {
     // the query must contain the entire partition key in the select clause,
     // and nothing else.
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
-    Set<CQLIdentifier> columns = new HashSet<>(queryInspector.getResultSetVariables().keySet());
+    Set<CQLFragment> selectors = new HashSet<>(queryInspector.getResultSetVariables().keySet());
     for (ColumnMetadata pk : partitionKey) {
       CQLIdentifier pkVariable = CQLIdentifier.fromInternal(pk.getName());
-      if (!columns.remove(pkVariable)) {
+      if (!selectors.remove(pkVariable)) {
         throw new BulkConfigurationException(
             "Missing required partition key column "
                 + quoteIfNecessary(pk.getName())
                 + " from schema.query");
       }
     }
-    if (!columns.isEmpty()) {
+    if (!selectors.isEmpty()) {
       String offendingColumns =
-          columns.stream().map(Object::toString).collect(Collectors.joining(", "));
+          selectors.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "));
       throw new BulkConfigurationException(
           String.format(
               "Value for schema.query contains extraneous columns in the "
                   + "SELECT clause: %s; it should contain only partition key columns.",
               offendingColumns));
     }
+    // check the total number of variables, since getResultSetVariables() may not report all of them
+    if (queryInspector.getResultSetSize() != partitionKey.size()) {
+      throw new BulkConfigurationException(
+          "Value for schema.query contains extraneous columns in the "
+              + "SELECT clause; it should contain only partition key columns.");
+    }
+  }
+
+  // Used for the count workflow only.
+  private void validatePartitionKeyTokenPresentInSelectClause() {
+    List<CQLFragment> selectors =
+        queryInspector
+            .getResultSetVariables()
+            .keySet()
+            .stream()
+            .filter(
+                v ->
+                    !(v instanceof FunctionCall)
+                        || !((FunctionCall) v).getFunctionName().equals(TOKEN_FUNCTION))
+            .collect(Collectors.toList());
+    if (!selectors.isEmpty()) {
+      String offendingColumns =
+          selectors.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "));
+      throw new BulkConfigurationException(
+          String.format(
+              "Value for schema.query contains extraneous columns in the "
+                  + "SELECT clause: %s; it should contain only one token() selector.",
+              offendingColumns));
+    }
+    // check the total number of variables, since getResultSetVariables() may not report all of them
+    if (queryInspector.getResultSetSize() != 1) {
+      throw new BulkConfigurationException(
+          "Value for schema.query contains extraneous columns in the "
+              + "SELECT clause; it should contain only one token() selector.");
+    }
   }
 
   private ImmutableBiMap<MappingField, CQLFragment> inferFieldsToVariablesMap(
-      Supplier<List<CQLFragment>> columns) {
+      List<CQLFragment> columns) {
 
     // use a builder to preserve iteration order
     ImmutableBiMap.Builder<MappingField, CQLFragment> fieldsToVariables =
         new ImmutableBiMap.Builder<>();
 
     int i = 0;
-    for (CQLFragment colName : columns.get()) {
+    for (CQLFragment colName : columns) {
       if (mapping == null || !mapping.getExcludedVariables().contains(colName)) {
         if (preferIndexedMapping) {
           fieldsToVariables.put(new IndexedMappingField(i), colName);
@@ -813,7 +864,7 @@ public class SchemaSettings {
         sb.append(',');
       }
       isFirst = false;
-      MappingToken field = fieldsToVariables.inverse().get(col);
+      MappingField field = fieldsToVariables.inverse().get(col);
       if (field instanceof FunctionCall) {
         // append the function call as is
         sb.append(((FunctionCall) field).asCql());
@@ -849,7 +900,7 @@ public class SchemaSettings {
       if (pks.contains(col)) {
         continue;
       }
-      MappingToken field = fieldsToVariables.inverse().get(col);
+      MappingField field = fieldsToVariables.inverse().get(col);
       if (field instanceof FunctionCall) {
         throw new BulkConfigurationException(
             "Function calls are not allowed when updating a counter table.");
@@ -921,16 +972,36 @@ public class SchemaSettings {
     return sb.toString();
   }
 
-  private String inferCountQuery() {
+  private String inferCountQuery(EnumSet<StatisticsMode> modes) {
     StringBuilder sb = new StringBuilder("SELECT ");
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
-    Iterator<ColumnMetadata> it = partitionKey.iterator();
-    while (it.hasNext()) {
-      ColumnMetadata col = it.next();
-      sb.append(quoteIfNecessary(col.getName()));
-      if (it.hasNext()) {
-        sb.append(',');
+    if (modes.contains(ranges) || modes.contains(hosts) || modes.contains(partitions)) {
+      if (modes.contains(partitions)) {
+        // we need to select the entire partition key, column by column
+        Iterator<ColumnMetadata> it = partitionKey.iterator();
+        while (it.hasNext()) {
+          ColumnMetadata col = it.next();
+          sb.append(quoteIfNecessary(col.getName()));
+          if (it.hasNext()) {
+            sb.append(',');
+          }
+        }
+      } else {
+        // we only need the row's token
+        appendTokenFunction(sb, partitionKey);
       }
+    } else {
+      // we can select anything; we use the ttl of the first regular column since it is an int and
+      // only takes 4 bytes; if no regular column exists, we use the first partition key column.
+      String selector =
+          table
+              .getColumns()
+              .stream()
+              .filter(col -> !table.getPrimaryKey().contains(col))
+              .map(col -> "TTL(" + quoteIfNecessary(col.getName()) + ")")
+              .findFirst()
+              .orElse(quoteIfNecessary(partitionKey.get(0).getName()));
+      sb.append(selector);
     }
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
     appendTokenFunction(sb, partitionKey);
@@ -941,7 +1012,7 @@ public class SchemaSettings {
   }
 
   private Set<CQLIdentifier> primaryKeyVariables() {
-    Map<CQLIdentifier, CQLFragment> boundVariables = queryInspector.getBoundVariables();
+    Map<CQLIdentifier, CQLFragment> boundVariables = queryInspector.getAssignments();
     List<ColumnMetadata> primaryKeyColumns = table.getPrimaryKey();
     Set<CQLIdentifier> variables = new HashSet<>(primaryKeyColumns.size());
     for (ColumnMetadata column : primaryKeyColumns) {
@@ -1012,7 +1083,7 @@ public class SchemaSettings {
     return cols;
   }
 
-  private static boolean isPseudoColumn(MappingToken col) {
+  private static boolean isPseudoColumn(CQLFragment col) {
     return col == INTERNAL_TTL_VARNAME || col == INTERNAL_TIMESTAMP_VARNAME;
   }
 

@@ -23,10 +23,13 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instant
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
+import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.time.Instant.EPOCH;
+import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -150,7 +153,7 @@ class SchemaSettingsTest {
     when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
     when(protocolOptions.getProtocolVersion()).thenReturn(V4);
     when(metadata.getKeyspace("ks")).thenReturn(keyspace);
-    when(metadata.getKeyspaces()).thenReturn(Collections.singletonList(keyspace));
+    when(metadata.getKeyspaces()).thenReturn(singletonList(keyspace));
     when(metadata.getTokenRanges()).thenReturn(tokenRanges);
     when(metadata.newToken(token1.toString())).thenReturn(token1);
     when(metadata.newToken(token2.toString())).thenReturn(token2);
@@ -158,15 +161,15 @@ class SchemaSettingsTest {
     when(metadata.getPartitioner()).thenReturn("Murmur3Partitioner");
     when(metadata.getReplicas(anyString(), any(Token.class))).thenReturn(Collections.emptySet());
     when(keyspace.getTable("t1")).thenReturn(table);
-    when(keyspace.getTables()).thenReturn(Collections.singletonList(table));
+    when(keyspace.getTables()).thenReturn(singletonList(table));
     when(keyspace.getName()).thenReturn("ks");
     when(session.prepare(anyString())).thenReturn(ps);
     when(table.getColumns()).thenReturn(columns);
     when(table.getColumn(C1)).thenReturn(col1);
     when(table.getColumn(C2)).thenReturn(col2);
     when(table.getColumn(C3)).thenReturn(col3);
-    when(table.getPrimaryKey()).thenReturn(Collections.singletonList(col1));
-    when(table.getPartitionKey()).thenReturn(Collections.singletonList(col1));
+    when(table.getPrimaryKey()).thenReturn(singletonList(col1));
+    when(table.getPartitionKey()).thenReturn(singletonList(col1));
     when(table.getKeyspace()).thenReturn(keyspace);
     when(table.getName()).thenReturn("t1");
     when(col1.getName()).thenReturn(C1);
@@ -1075,13 +1078,87 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_create_row_counter() {
-    when(table.getPartitionKey()).thenReturn(newArrayList(col1));
+  void should_create_row_counter_for_global_stats() {
+    when(table.getPrimaryKey()).thenReturn(newArrayList(col1, col2));
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, cluster, false);
     ReadResultCounter counter =
         schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(global), 10);
+    assertThat(counter).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo("SELECT TTL(c3) FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+  }
+
+  @Test
+  void should_create_row_counter_for_global_stats_no_regular_column() {
+    when(table.getPrimaryKey()).thenReturn(newArrayList(col1, col2, col3));
+    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    ReadResultCounter counter =
+        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(global), 10);
+    assertThat(counter).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+  }
+
+  @Test
+  void should_create_row_counter_for_partition_stats() {
+    when(table.getClusteringColumns()).thenReturn(Collections.singletonList(col2));
+    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    ReadResultCounter counter =
+        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(partitions), 10);
+    assertThat(counter).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+  }
+
+  @Test
+  void should_create_row_counter_for_hosts_stats() {
+    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    ReadResultCounter counter =
+        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(hosts), 10);
+    assertThat(counter).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+  }
+
+  @Test
+  void should_create_row_counter_for_ranges_stats() {
+    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    ReadResultCounter counter =
+        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(ranges), 10);
+    assertThat(counter).isNotNull();
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+  }
+
+  @Test
+  void should_create_row_counter_for_partitions_and_ranges_stats() {
+    when(table.getClusteringColumns()).thenReturn(Collections.singletonList(col2));
+    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    ReadResultCounter counter =
+        schemaSettings.createReadResultCounter(
+            session, codecRegistry, EnumSet.of(partitions, ranges), 10);
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -1103,7 +1180,7 @@ class SchemaSettingsTest {
     assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster, 3))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "The provided statement (schema.query) contains unrecognized bound variables: [foo, bar]; "
+            "The provided statement (schema.query) contains unrecognized bound variables: foo, bar; "
                 + "only 'start' and 'end' can be used to define a token range");
   }
 
@@ -1534,23 +1611,70 @@ class SchemaSettingsTest {
     assertThatThrownBy(
             () ->
                 schemaSettings.createReadResultCounter(
-                    session, codecRegistry, EnumSet.of(global), 10))
+                    session, codecRegistry, EnumSet.of(partitions), 10))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Missing required partition key column c1 from schema.query");
   }
 
   @Test
-  void should_error_when_count_query_contains_extraneous_columns() {
+  void should_error_when_count_query_contains_extraneous_columns_partitions_1() {
     LoaderConfig config = makeLoaderConfig("query = \"SELECT c1, c3 FROM ks.t1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, cluster, false);
     assertThatThrownBy(
             () ->
                 schemaSettings.createReadResultCounter(
-                    session, codecRegistry, EnumSet.of(global), 10))
+                    session, codecRegistry, EnumSet.of(partitions), 10))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "Value for schema.query contains extraneous columns in the SELECT clause: c3; it should contain only partition key columns.");
+            "Value for schema.query contains extraneous columns in the SELECT clause: c3; "
+                + "it should contain only partition key columns.");
+  }
+
+  @Test
+  void should_error_when_count_query_contains_extraneous_columns_partitions_2() {
+    LoaderConfig config =
+        makeLoaderConfig("query = \"SELECT c1, CAST (c2 AS boolean) FROM ks.t1\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    assertThatThrownBy(
+            () ->
+                schemaSettings.createReadResultCounter(
+                    session, codecRegistry, EnumSet.of(partitions), 10))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "Value for schema.query contains extraneous columns in the SELECT clause; "
+                + "it should contain only partition key columns.");
+  }
+
+  @Test
+  void should_error_when_count_query_contains_extraneous_columns_hosts_1() {
+    LoaderConfig config = makeLoaderConfig("query = \"SELECT c1, c3 FROM ks.t1\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    assertThatThrownBy(
+            () ->
+                schemaSettings.createReadResultCounter(
+                    session, codecRegistry, EnumSet.of(hosts), 10))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "Value for schema.query contains extraneous columns in the SELECT clause: c1, c3; "
+                + "it should contain only one token() selector.");
+  }
+
+  @Test
+  void should_error_when_count_query_contains_extraneous_columns_hosts_2() {
+    LoaderConfig config = makeLoaderConfig("query = \"SELECT 2, CAST (c2 AS boolean) FROM ks.t1\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.COUNT, cluster, false);
+    assertThatThrownBy(
+            () ->
+                schemaSettings.createReadResultCounter(
+                    session, codecRegistry, EnumSet.of(hosts), 10))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "Value for schema.query contains extraneous columns in the SELECT clause; "
+                + "it should contain only one token() selector.");
   }
 
   @Test

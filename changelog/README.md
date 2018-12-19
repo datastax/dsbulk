@@ -15,6 +15,7 @@
 - [improvement] DAT-361: Display metrics in vertices or edges per second in graph mode.
 - [improvement] DAT-367: Detect writetime variable when unloading.
 - [new feature] DAY-364: Ability to unload timestamps as units since an epoch.
+- [improvement] DAT-308: Relax constraints on queries for the Count workflow.
 
 
 ### 1.2.0
