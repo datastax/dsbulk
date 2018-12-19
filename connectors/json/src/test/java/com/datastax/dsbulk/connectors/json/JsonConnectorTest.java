@@ -17,7 +17,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.util.Throwables.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.datastax.driver.core.exceptions.AlreadyExistsException;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
@@ -716,7 +715,7 @@ class JsonConnectorTest {
                           t.getCause() instanceof FileAlreadyExistsException
                               || Arrays.stream(t.getSuppressed())
                                   .map(Throwable::getCause)
-                                  .anyMatch(AlreadyExistsException.class::isInstance))
+                                  .anyMatch(FileAlreadyExistsException.class::isInstance))
                       .isTrue());
       connector.close();
     } finally {
