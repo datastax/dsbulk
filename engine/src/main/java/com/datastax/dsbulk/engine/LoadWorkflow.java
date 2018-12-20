@@ -277,6 +277,10 @@ public class LoadWorkflow implements Workflow {
 
   @Override
   public String toString() {
-    return "Operation " + executionId;
+    if (executionId == null) {
+      return "Operation";
+    } else {
+      return "Operation " + executionId;
+    }
   }
 }
