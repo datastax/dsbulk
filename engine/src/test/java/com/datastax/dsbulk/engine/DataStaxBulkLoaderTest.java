@@ -333,7 +333,7 @@ class DataStaxBulkLoaderTest {
     new DataStaxBulkLoader(new String[] {"load", "--engine.executionId", "%4$s"}).run();
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
-        .contains("Operation null failed")
+        .contains("Operation failed")
         .contains("Could not generate execution ID with template: '%4$s'");
   }
 
