@@ -15,7 +15,6 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
-import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
@@ -27,7 +26,6 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
-import com.google.common.base.Suppliers;
 import com.google.common.collect.Streams;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
@@ -380,9 +378,9 @@ public class CSVConnector implements Connector {
               sink.onRequest(controller::signalRequested);
               long recordNumber = 1;
               LOGGER.debug("Reading {}", url);
+              URI resource = URI.create(url.toExternalForm());
               try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
                 parser.beginParsing(r);
-                URI resource = URIUtils.createResourceURI(url);
                 while (!sink.isCancelled()) {
                   com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
                   ParsingContext context = parser.getContext();
@@ -391,17 +389,13 @@ public class CSVConnector implements Connector {
                     break;
                   }
                   Record record;
-                  long finalRecordNumber = recordNumber++;
-                  Supplier<URI> location =
-                      Suppliers.memoize(() -> URIUtils.createLocationURI(url, finalRecordNumber));
                   try {
                     if (header) {
                       record =
                           DefaultRecord.mapped(
                               source,
                               () -> resource,
-                              finalRecordNumber,
-                              location,
+                              recordNumber++,
                               Arrays.stream(context.parsedHeaders())
                                   .map(DefaultMappedField::new)
                                   .toArray(MappedField[]::new),
@@ -415,16 +409,10 @@ public class CSVConnector implements Connector {
                     } else {
                       record =
                           DefaultRecord.indexed(
-                              source,
-                              () -> resource,
-                              finalRecordNumber,
-                              location,
-                              (Object[]) row.getValues());
+                              source, () -> resource, recordNumber++, (Object[]) row.getValues());
                     }
                   } catch (Exception e) {
-                    record =
-                        new DefaultErrorRecord(
-                            source, () -> resource, finalRecordNumber, location, e);
+                    record = new DefaultErrorRecord(source, () -> resource, recordNumber, e);
                   }
                   LOGGER.trace("Emitting record {}", record);
                   controller.awaitRequested(1);

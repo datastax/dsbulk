@@ -40,7 +40,7 @@ import java.nio.ByteBuffer;
  */
 public final class StatementWriter implements Appendable {
 
-  private static final int MAX_EXCEEDED = -1;
+  private static final int MAX_EXCEEDED = -2;
 
   private final StringBuilder buffer;
   private final int indentation;
@@ -244,16 +244,13 @@ public final class StatementWriter implements Appendable {
   public void appendRecord(Record record) {
     newLine();
     indent();
-    append("Location: ").append(record.getLocation());
+    append("Resource: " + record.getResource());
     newLine();
     indent();
-    append("Resource: ").append(record.getResource());
+    append("Position: " + record.getPosition());
     newLine();
     indent();
-    append("Position: ").append(record.getPosition());
-    newLine();
-    indent();
-    append("Source: ").append(LogUtils.formatSource(record));
+    append("Source: " + LogUtils.formatSource(record));
   }
 
   private void doAppendBoundValue(String name, String value) {

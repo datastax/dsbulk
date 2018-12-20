@@ -1609,8 +1609,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () ->
-                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1"));
+            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1"));
           }
         });
 
@@ -1663,8 +1662,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () ->
-                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1"));
+            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1"));
           }
         });
 
@@ -1722,8 +1720,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () ->
-                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1"));
+            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1"));
           }
         });
 
@@ -1782,8 +1779,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () ->
-                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1", ""));
+            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1", ""));
           }
         });
 
@@ -1848,9 +1844,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () ->
-                Flux.just(
-                    DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "2", "3", "4"));
+            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "2", "3", "4"));
           }
         });
 

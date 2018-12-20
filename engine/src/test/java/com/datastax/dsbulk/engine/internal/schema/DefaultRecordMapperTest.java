@@ -50,7 +50,6 @@ import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import io.netty.util.concurrent.FastThreadLocal;
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.text.NumberFormat;
 import java.time.Instant;
@@ -76,8 +75,6 @@ class DefaultRecordMapperTest {
   private static final CQLIdentifier C1_ID = CQLIdentifier.fromInternal(C1);
   private static final CQLIdentifier C2_ID = CQLIdentifier.fromInternal(C2);
   private static final CQLIdentifier C3_ID = CQLIdentifier.fromInternal(C3);
-
-  private final URI location = URI.create("file://file1?line=1");
 
   private final TypeCodec codec1 = mock(StringToIntegerCodec.class);
   private final TypeCodec codec2 = mock(StringToLongCodec.class);
@@ -139,7 +136,6 @@ class DefaultRecordMapperTest {
     when(record.getFieldValue(F3)).thenReturn("foo");
 
     when(record.getSource()).thenReturn("source");
-    when(record.getLocation()).thenReturn(location);
 
     when(mapping.fieldToVariable(F1)).thenReturn(C1_ID);
     when(mapping.fieldToVariable(F2)).thenReturn(C2_ID);
@@ -417,8 +413,6 @@ class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     assertThat(((UnmappableStatement) result).getSource()).isEqualTo(record);
-    assertThat(((UnmappableStatement) result).getLocation().toString())
-        .isEqualTo(location.toString() + "&field=field3&My+Fancy+Column+Name=foo&cqlType=varchar");
     verify(boundStatement, times(2))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
     assertParameter(0, C1, TypeCodec.cint().serialize(42, V4));

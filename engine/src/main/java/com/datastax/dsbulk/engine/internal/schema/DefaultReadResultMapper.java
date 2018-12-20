@@ -40,17 +40,9 @@ public class DefaultReadResultMapper implements ReadResultMapper {
         Suppliers.memoize(
             () ->
                 URIUtils.getRowResource(
-                    result.getRow().orElseThrow(IllegalStateException::new),
-                    result.getExecutionInfo().orElseThrow(IllegalStateException::new)));
-    Supplier<URI> location =
-        Suppliers.memoize(
-            () ->
-                URIUtils.getRowLocation(
-                    result.getRow().orElseThrow(IllegalStateException::new),
-                    result.getExecutionInfo().orElseThrow(IllegalStateException::new),
-                    result.getStatement()));
+                    row, result.getExecutionInfo().orElseThrow(IllegalStateException::new)));
     try {
-      DefaultRecord record = DefaultRecord.indexed(result, resource, -1, location);
+      DefaultRecord record = DefaultRecord.indexed(result, resource, -1);
       for (Field field : mapping.fields()) {
         // do not quote variable names here as the mapping expects them unquoted
         CQLFragment variable = mapping.fieldToVariable(field);
@@ -64,7 +56,7 @@ public class DefaultReadResultMapper implements ReadResultMapper {
       }
       return record;
     } catch (Exception e) {
-      return new DefaultErrorRecord(result, resource, -1, location, e);
+      return new DefaultErrorRecord(result, resource, -1, e);
     }
   }
 }
