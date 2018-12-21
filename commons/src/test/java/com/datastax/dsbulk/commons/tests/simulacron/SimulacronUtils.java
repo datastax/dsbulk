@@ -61,8 +61,7 @@ public class SimulacronUtils {
           .put("crc_check_chance", "double")
           .put("dclocal_read_repair_chance", "double")
           .put("default_time_to_live", "int")
-          // Simulacron does not handle maps of blobs
-          // .put("extensions", "map<varchar, blob>")
+          .put("extensions", "map<varchar, blob>")
           .put("flags", "set<varchar>")
           .put("gc_grace_seconds", "int")
           .put("id", "uuid")
