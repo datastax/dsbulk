@@ -175,40 +175,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("-stats");
     args.add(modes.stream().map(Enum::name).collect(Collectors.joining(",")));
     args.add("--schema.query");
-    if (modes.contains(partitions)) {
-      if (table.equals("SINGLE_PK")) {
-        args.add(
-            String.format(
-                "\"SELECT pk AS \\\"My PK\\\" FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
-      } else {
-        args.add(
-            String.format(
-                "\"SELECT pk1 AS \\\"My PK1\\\", pk2 AS \\\"My PK2\\\" FROM \\\"%s\\\".\\\"%s\\\"\"",
-                keyspace, table));
-      }
-    } else if (modes.contains(hosts) || modes.contains(ranges)) {
-      if (table.equals("SINGLE_PK")) {
-        args.add(
-            String.format(
-                "\"SELECT TOKEN(pk) as \\\"My TK\\\" FROM \\\"%s\\\".\\\"%s\\\"\"",
-                keyspace, table));
-      } else {
-        args.add(
-            String.format(
-                "\"SELECT TOKEN(pk1,pk2) AS \\\"My TK\\\" FROM \\\"%s\\\".\\\"%s\\\"\"",
-                keyspace, table));
-      }
-    } else {
-      if (table.equals("SINGLE_PK")) {
-        args.add(
-            String.format(
-                "\"SELECT TTL(v) as \\\"My TTL\\\" FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
-      } else {
-        args.add(
-            String.format(
-                "\"SELECT TTL(v) AS \\\"My TTL\\\" FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
-      }
-    }
+    args.add(String.format("\"SELECT * FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
 
