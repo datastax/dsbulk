@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.connectors.api;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * A {@link Record} that could not be properly processed.
  *
@@ -28,5 +30,6 @@ public interface ErrorRecord extends Record {
    *
    * @return the error that prevented this record from being processed.
    */
+  @NotNull
   Throwable getError();
 }

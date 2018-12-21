@@ -543,7 +543,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateResultSetSize(21, "SELECT * FROM ip_by_country");
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
-    validateExceptionsLog(3, "Source  :", "mapping-errors.log", logPath);
+    validateExceptionsLog(3, "Source:", "mapping-errors.log", logPath);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();

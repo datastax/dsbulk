@@ -17,6 +17,7 @@
 - [new feature] DAY-364: Ability to unload timestamps as units since an epoch.
 - [improvement] DAT-308: Relax constraints on queries for the Count workflow.
 - [improvement] DAT-319: Automatically add token range restriction to WHERE clauses.
+- [bug] DAT-369: Call to ArrayBackedRow.toString() causes fatal NPE.
 
 
 ### 1.2.0

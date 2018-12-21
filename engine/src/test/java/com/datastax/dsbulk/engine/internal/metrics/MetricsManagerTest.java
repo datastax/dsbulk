@@ -72,17 +72,20 @@ class MetricsManagerTest {
 
   @BeforeEach
   void setUp() throws Exception {
+    URI resource1 = new URI("file:///file1.csv");
+    URI resource2 = new URI("file:///file2.csv");
+    URI resource3 = new URI("file:///file3.csv");
     URI location1 = new URI("file:///file1.csv?line=1");
     URI location2 = new URI("file:///file2.csv?line=2");
     URI location3 = new URI("file:///file3.csv?line=3");
     String source1 = "line1\n";
     String source2 = "line2\n";
     String source3 = "line3\n";
-    record1 = DefaultRecord.indexed(source1, null, -1, () -> location1, "irrelevant");
-    record2 = DefaultRecord.indexed(source2, null, -1, () -> location2, "irrelevant");
+    record1 = DefaultRecord.indexed(source1, () -> resource1, -1, () -> location1, "irrelevant");
+    record2 = DefaultRecord.indexed(source2, () -> resource2, -1, () -> location2, "irrelevant");
     record3 =
         new DefaultErrorRecord(
-            source3, null, -1, () -> location3, new RuntimeException("irrelevant"));
+            source3, () -> resource3, -1, () -> location3, new RuntimeException("irrelevant"));
     Statement stmt1 = new BulkSimpleStatement<>(record1, "irrelevant");
     Statement stmt2 = new BulkSimpleStatement<>(record2, "irrelevant");
     stmt3 =
