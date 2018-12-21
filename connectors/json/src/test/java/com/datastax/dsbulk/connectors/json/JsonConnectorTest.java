@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -50,6 +51,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,6 +71,9 @@ class JsonConnectorTest {
   private final JsonNodeFactory factory = JsonNodeFactory.instance;
 
   private final ObjectMapper objectMapper = new ObjectMapper();
+
+  private final Supplier<URI> resource = () -> URI.create("file://file1.csv");
+  private final Supplier<URI> location = () -> URI.create("file://file1.csv?pos=1");
 
   @Test
   void should_read_single_file_multi_doc() throws Exception {
@@ -204,10 +209,10 @@ class JsonConnectorTest {
       connector.init();
       Flux.<Record>just(
               DefaultRecord.indexed(
-                  null,
-                  null,
+                  "source",
+                  resource,
                   -1,
-                  null,
+                  location,
                   factory.textNode("fóô"),
                   factory.textNode("bàr"),
                   factory.textNode("qïx")))
@@ -924,10 +929,10 @@ class JsonConnectorTest {
             .toArray(Field[]::new);
     records.add(
         DefaultRecord.mapped(
-            null,
-            null,
+            "source",
+            resource,
             -1,
-            null,
+            location,
             fields,
             factory.numberNode(1997),
             factory.textNode("Ford"),
@@ -936,10 +941,10 @@ class JsonConnectorTest {
             factory.numberNode(3000.00d)));
     records.add(
         DefaultRecord.mapped(
-            null,
-            null,
+            "source",
+            resource,
             -1,
-            null,
+            location,
             fields,
             factory.numberNode(1999),
             factory.textNode("Chevy"),
@@ -948,10 +953,10 @@ class JsonConnectorTest {
             factory.numberNode(4900.00d)));
     records.add(
         DefaultRecord.mapped(
-            null,
-            null,
+            "source",
+            resource,
             -1,
-            null,
+            location,
             fields,
             factory.numberNode(1996),
             factory.textNode("Jeep"),
@@ -960,10 +965,10 @@ class JsonConnectorTest {
             factory.numberNode(4799.00d)));
     records.add(
         DefaultRecord.mapped(
-            null,
-            null,
+            "source",
+            resource,
             -1,
-            null,
+            location,
             fields,
             factory.numberNode(1999),
             factory.textNode("Chevy"),
@@ -972,10 +977,10 @@ class JsonConnectorTest {
             factory.numberNode(5000.00d)));
     records.add(
         DefaultRecord.mapped(
-            null,
-            null,
+            "source",
+            resource,
             -1,
-            null,
+            location,
             fields,
             null,
             null,

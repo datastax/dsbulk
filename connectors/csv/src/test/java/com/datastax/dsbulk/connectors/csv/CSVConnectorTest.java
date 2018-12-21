@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -52,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,6 +69,9 @@ class CSVConnectorTest {
 
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
       ConfigFactory.defaultReference().getConfig("dsbulk.connector.csv");
+
+  private final Supplier<URI> resource = () -> URI.create("file://file1.csv");
+  private final Supplier<URI> location = () -> URI.create("file://file1.csv?pos=1");
 
   @Test
   void should_read_single_file() throws Exception {
@@ -202,7 +207,8 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      Flux.<Record>just(DefaultRecord.indexed(null, null, -1, null, "fóô", "bàr", "qïx"))
+      Flux.<Record>just(
+              DefaultRecord.indexed("source", resource, -1, location, "fóô", "bàr", "qïx"))
           .transform(connector.write())
           .blockLast();
       connector.close();
@@ -251,7 +257,8 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      Flux.<Record>just(DefaultRecord.indexed(null, null, -1, null, "abc", "de\nf", "ghk"))
+      Flux.<Record>just(
+              DefaultRecord.indexed("source", resource, -1, location, "abc", "de\nf", "ghk"))
           .transform(connector.write())
           .blockLast();
       connector.close();
@@ -687,7 +694,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(DefaultRecord.indexed(null, null, -1, null, " foo "))
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, location, " foo "))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -712,7 +719,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(DefaultRecord.indexed(null, null, -1, null, " foo "))
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, location, " foo "))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -820,10 +827,10 @@ class CSVConnectorTest {
     connector.init();
     Flux.<Record>just(
             DefaultRecord.mapped(
-                null,
-                null,
+                "source",
+                resource,
                 -1,
-                null,
+                location,
                 new Field[] {new DefaultMappedField("field1")},
                 new Object[] {null}))
         .transform(connector.write())
@@ -847,7 +854,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(DefaultRecord.indexed(null, null, -1, null, new Object[] {null}))
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, location, new Object[] {null}))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -1243,7 +1250,7 @@ class CSVConnectorTest {
     connector.close();
   }
 
-  private static List<Record> createRecords() {
+  private List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
     Field[] fields =
         Arrays.stream(new String[] {"Year", "Make", "Model", "Description", "Price"})
@@ -1251,13 +1258,22 @@ class CSVConnectorTest {
             .toArray(Field[]::new);
     records.add(
         DefaultRecord.mapped(
-            null, null, -1, null, fields, "1997", "Ford", "E350", "  ac, abs, moon  ", "3000.00"));
+            "source",
+            resource,
+            -1,
+            location,
+            fields,
+            "1997",
+            "Ford",
+            "E350",
+            "  ac, abs, moon  ",
+            "3000.00"));
     records.add(
         DefaultRecord.mapped(
-            null,
-            null,
+            "source",
+            resource,
             -1,
-            null,
+            location,
             fields,
             "1999",
             "Chevy",
@@ -1266,10 +1282,10 @@ class CSVConnectorTest {
             "4900.00"));
     records.add(
         DefaultRecord.mapped(
-            null,
-            null,
+            "source",
+            resource,
             -1,
-            null,
+            location,
             fields,
             "1996",
             "Jeep",
@@ -1278,10 +1294,10 @@ class CSVConnectorTest {
             "4799.00"));
     records.add(
         DefaultRecord.mapped(
-            null,
-            null,
+            "source",
+            resource,
             -1,
-            null,
+            location,
             fields,
             "1999",
             "Chevy",
@@ -1290,10 +1306,10 @@ class CSVConnectorTest {
             "5000.00"));
     records.add(
         DefaultRecord.mapped(
-            null,
-            null,
+            "source",
+            resource,
             -1,
-            null,
+            location,
             fields,
             null,
             null,
