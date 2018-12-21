@@ -18,6 +18,7 @@
 - [improvement] DAT-308: Relax constraints on queries for the Count workflow.
 - [improvement] DAT-319: Automatically add token range restriction to WHERE clauses.
 - [bug] DAT-369: Call to ArrayBackedRow.toString() causes fatal NPE.
+- [improvement] DAT-316: JsonNodeToUDTCodec should allow a Json array input.
 
 
 ### 1.2.0

@@ -8,9 +8,11 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
+import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.UserType;
+import com.datastax.driver.core.UserType.Field;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -43,8 +45,8 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
     if (isNullOrEmpty(node)) {
       return null;
     }
-    if (!node.isObject()) {
-      throw new InvalidTypeException("Expecting OBJECT node, got " + node.getNodeType());
+    if (!(node.isObject() || node.isArray())) {
+      throw new InvalidTypeException("Expecting OBJECT or ARRAY node, got " + node.getNodeType());
     }
     if (node.size() == 0) {
       return definition.newValue();
@@ -54,18 +56,33 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
           String.format("Expecting %d fields, got %d", definition.size(), node.size()));
     }
     UDTValue value = definition.newValue();
-    Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-    Collection<String> fieldNames = definition.getFieldNames();
-    while (fields.hasNext()) {
-      Map.Entry<String, JsonNode> entry = fields.next();
-      String name = entry.getKey();
-      if (!fieldNames.contains(name)) {
-        throw new InvalidTypeException(
-            String.format("Unknown field %s in UDT %s", name, definition.getName()));
+    if (node.isObject()) {
+      Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+      Collection<String> fieldNames = definition.getFieldNames();
+      while (fields.hasNext()) {
+        Map.Entry<String, JsonNode> entry = fields.next();
+        String name = entry.getKey();
+        if (!fieldNames.contains(name)) {
+          throw new InvalidTypeException(
+              String.format(
+                  "Unknown field %s in UDT %s",
+                  Metadata.quoteIfNecessary(name),
+                  Metadata.quoteIfNecessary(definition.getTypeName())));
+        }
+        ConvertingCodec<JsonNode, Object> fieldCodec = fieldCodecs.get(name);
+        Object o = fieldCodec.externalToInternal(entry.getValue());
+        value.set(Metadata.quoteIfNecessary(name), o, fieldCodec.getInternalJavaType());
       }
-      ConvertingCodec<JsonNode, Object> fieldCodec = fieldCodecs.get(name);
-      Object o = fieldCodec.externalToInternal(entry.getValue());
-      value.set(name, o, fieldCodec.getInternalJavaType());
+    } else {
+      int i = 0;
+      // The iteration order is deterministic
+      for (Field field : definition) {
+        JsonNode element = node.get(i);
+        ConvertingCodec<JsonNode, Object> fieldCodec = fieldCodecs.get(field.getName());
+        Object o = fieldCodec.externalToInternal(element);
+        value.set(i, o, fieldCodec.getInternalJavaType());
+        i++;
+      }
     }
     return value;
   }
@@ -79,7 +96,7 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
     for (UserType.Field field : definition) {
       String name = field.getName();
       ConvertingCodec<JsonNode, Object> eltCodec = fieldCodecs.get(name);
-      Object o = value.get(name, eltCodec.getInternalJavaType());
+      Object o = value.get(Metadata.quoteIfNecessary(name), eltCodec.getInternalJavaType());
       JsonNode node = eltCodec.internalToExternal(o);
       root.set(name, node);
     }
