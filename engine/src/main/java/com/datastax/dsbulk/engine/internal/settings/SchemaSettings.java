@@ -511,6 +511,12 @@ public class SchemaSettings {
     }
     // Transform user-provided queries before preparation
     if (config.hasPath(QUERY)) {
+      if ((workflowType == UNLOAD || workflowType == COUNT) && !queryInspector.hasWhereClause()) {
+        int whereClauseIndex = queryInspector.getFromClauseEndIndex() + 1;
+        StringBuilder sb = new StringBuilder(query.substring(0, whereClauseIndex));
+        appendTokenRangeRestriction(sb);
+        query = sb.append(query.substring(whereClauseIndex)).toString();
+      }
       if (workflowType == COUNT) {
         StringBuilder sb = new StringBuilder("SELECT ");
         if (modes.contains(partitions)) {
@@ -524,12 +530,6 @@ public class SchemaSettings {
             sb.append(' ')
                 .append(query.substring(queryInspector.getFromClauseStartIndex()))
                 .toString();
-      }
-      if ((workflowType == UNLOAD || workflowType == COUNT) && !queryInspector.hasWhereClause()) {
-        int whereClauseIndex = queryInspector.getFromClauseEndIndex() + 1;
-        StringBuilder sb = new StringBuilder(query.substring(0, whereClauseIndex));
-        appendTokenRangeRestriction(sb);
-        query = sb.append(query.substring(whereClauseIndex)).toString();
       }
     }
     preparedStatement = session.prepare(query);
