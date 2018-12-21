@@ -227,7 +227,8 @@ public class SchemaSettings {
           if (keyspace == null) {
             throw new BulkConfigurationException(
                 String.format(
-                    "Value for schema.query references a non-existent keyspace: %s", keyspaceName));
+                    "Value for schema.query references a non-existent keyspace: %s",
+                    keyspaceName.asCql()));
           }
         } else if (keyspace == null) {
           throw new BulkConfigurationException(
@@ -239,7 +240,7 @@ public class SchemaSettings {
         if (table == null) {
           throw new BulkConfigurationException(
               String.format(
-                  "Value for schema.query references a non-existent table: %s", tableName));
+                  "Value for schema.query references a non-existent table: %s", tableName.asCql()));
         }
 
         // If a query is provided, ttl and timestamp must not be.
@@ -523,6 +524,12 @@ public class SchemaSettings {
             sb.append(' ')
                 .append(query.substring(queryInspector.getFromClauseStartIndex()))
                 .toString();
+      }
+      if ((workflowType == UNLOAD || workflowType == COUNT) && !queryInspector.hasWhereClause()) {
+        int whereClauseIndex = queryInspector.getFromClauseEndIndex() + 1;
+        StringBuilder sb = new StringBuilder(query.substring(0, whereClauseIndex));
+        appendTokenRangeRestriction(sb);
+        query = sb.append(query.substring(whereClauseIndex)).toString();
       }
     }
     preparedStatement = session.prepare(query);
@@ -912,12 +919,17 @@ public class SchemaSettings {
   private String inferReadQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("SELECT ");
     appendColumnNames(fieldsToVariables, sb, true);
-    sb.append(" FROM ").append(keyspaceName).append('.').append(tableName).append(" WHERE ");
+    sb.append(" FROM ").append(keyspaceName).append('.').append(tableName);
+    appendTokenRangeRestriction(sb);
+    return sb.toString();
+  }
+
+  private void appendTokenRangeRestriction(StringBuilder sb) {
+    sb.append(" WHERE ");
     appendTokenFunction(sb);
     sb.append(" > :start AND ");
     appendTokenFunction(sb);
     sb.append(" <= :end");
-    return sb.toString();
   }
 
   private String inferCountQuery(EnumSet<StatisticsMode> modes) {

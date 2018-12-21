@@ -688,7 +688,11 @@ class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo(String.format("select \"%2$s\",%1$s from ks.t1", C1, C2));
+        .isEqualTo(
+            String.format(
+                "select \"%2$s\",%1$s from ks.t1 "
+                    + "WHERE token(c1) > :start AND token(c1) <= :end",
+                C1, C2));
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), "0", C2, "2", C1);
   }
 
@@ -1735,6 +1739,119 @@ class SchemaSettingsTest {
             "Provided keyspace is a graph created with a legacy graph engine: "
                 + "Legacy; attempting to load data into such a keyspace is not supported and "
                 + "may put the graph in an inconsistent state.");
+  }
+
+  @Test
+  void should_insert_where_clause_in_select_statement_simple() {
+    ColumnDefinitions definitions =
+        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    when(ps.getVariables()).thenReturn(definitions);
+    BoundStatement bs1 = mock(BoundStatement.class);
+    when(bs1.setToken("start", token1)).thenReturn(bs1);
+    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    BoundStatement bs2 = mock(BoundStatement.class);
+    when(bs2.setToken("start", token2)).thenReturn(bs2);
+    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    BoundStatement bs3 = mock(BoundStatement.class);
+    when(bs3.setToken("start", token3)).thenReturn(bs3);
+    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(ps.bind()).thenReturn(bs1, bs2, bs3);
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.UNLOAD, cluster, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster, 3);
+    assertThat(stmts).hasSize(3);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo("SELECT a,b,c FROM t1 WHERE token(c1) > :start AND token(c1) <= :end");
+  }
+
+  @Test
+  void should_insert_where_clause_in_select_statement_complex() {
+    ColumnDefinitions definitions =
+        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    when(ps.getVariables()).thenReturn(definitions);
+    BoundStatement bs1 = mock(BoundStatement.class);
+    when(bs1.setToken("start", token1)).thenReturn(bs1);
+    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    BoundStatement bs2 = mock(BoundStatement.class);
+    when(bs2.setToken("start", token2)).thenReturn(bs2);
+    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    BoundStatement bs3 = mock(BoundStatement.class);
+    when(bs3.setToken("start", token3)).thenReturn(bs3);
+    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(ps.bind()).thenReturn(bs1, bs2, bs3);
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1 LIMIT 1000\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.UNLOAD, cluster, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster, 3);
+    assertThat(stmts).hasSize(3);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            "SELECT a,b,c FROM t1 WHERE token(c1) > :start AND token(c1) <= :end LIMIT 1000");
+  }
+
+  @Test
+  void should_insert_where_clause_in_select_statement_case_sensitive() {
+    when(keyspace.getTable("\"MyTable\"")).thenReturn(table);
+    ColumnDefinitions definitions =
+        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    when(ps.getVariables()).thenReturn(definitions);
+    BoundStatement bs1 = mock(BoundStatement.class);
+    when(bs1.setToken("start", token1)).thenReturn(bs1);
+    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    BoundStatement bs2 = mock(BoundStatement.class);
+    when(bs2.setToken("start", token2)).thenReturn(bs2);
+    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    BoundStatement bs3 = mock(BoundStatement.class);
+    when(bs3.setToken("start", token3)).thenReturn(bs3);
+    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(ps.bind()).thenReturn(bs1, bs2, bs3);
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM \\\"MyTable\\\" LIMIT 1000\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.UNLOAD, cluster, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster, 3);
+    assertThat(stmts).hasSize(3);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            "SELECT a,b,c FROM \"MyTable\" WHERE token(c1) > :start AND token(c1) <= :end LIMIT 1000");
+  }
+
+  @Test
+  void should_not_insert_where_clause_in_select_statement_if_already_exists() {
+    ColumnDefinitions definitions =
+        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    when(ps.getVariables()).thenReturn(definitions);
+    BoundStatement bs1 = mock(BoundStatement.class);
+    when(bs1.setToken("start", token1)).thenReturn(bs1);
+    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    BoundStatement bs2 = mock(BoundStatement.class);
+    when(bs2.setToken("start", token2)).thenReturn(bs2);
+    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    BoundStatement bs3 = mock(BoundStatement.class);
+    when(bs3.setToken("start", token3)).thenReturn(bs3);
+    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(ps.bind()).thenReturn(bs1, bs2, bs3);
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE c1 = 1\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.UNLOAD, cluster, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster, 3);
+    assertThat(stmts).hasSize(3);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue()).isEqualTo("SELECT a,b,c FROM t1 WHERE c1 = 1");
   }
 
   @NotNull

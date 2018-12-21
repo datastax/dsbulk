@@ -22,6 +22,7 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
+import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
@@ -105,10 +106,13 @@ public class LogSettings {
 
   // Path Constants
   private static final String STMT = "stmt";
+  private static final String ROW = "row";
   private static final String MAX_QUERY_STRING_LENGTH = STMT + '.' + "maxQueryStringLength";
   private static final String MAX_BOUND_VALUE_LENGTH = STMT + '.' + "maxBoundValueLength";
   private static final String MAX_BOUND_VALUES = STMT + '.' + "maxBoundValues";
   private static final String MAX_INNER_STATEMENTS = STMT + '.' + "maxInnerStatements";
+  private static final String MAX_RESULT_SET_VALUE_LENGTH = ROW + '.' + "maxResultSetValueLength";
+  private static final String MAX_RESULT_SET_VALUES = ROW + '.' + "maxResultSetValues";
   private static final String LEVEL = STMT + '.' + "level";
   private static final String MAX_ERRORS = "maxErrors";
   private static final String VERBOSITY = "verbosity";
@@ -120,6 +124,8 @@ public class LogSettings {
   private int maxQueryStringLength;
   private int maxBoundValueLength;
   private int maxBoundValues;
+  private int maxResultSetValueLength;
+  private int maxResultSetValues;
   private int maxInnerStatements;
   private StatementFormatVerbosity level;
   private int maxErrors;
@@ -142,6 +148,8 @@ public class LogSettings {
       maxBoundValues = config.getInt(MAX_BOUND_VALUES);
       maxInnerStatements = config.getInt(MAX_INNER_STATEMENTS);
       level = config.getEnum(StatementFormatVerbosity.class, LEVEL);
+      maxResultSetValueLength = config.getInt(MAX_RESULT_SET_VALUE_LENGTH);
+      maxResultSetValues = config.getInt(MAX_RESULT_SET_VALUES);
       String maxErrorString = config.getString(MAX_ERRORS);
       if (isPercent(maxErrorString)) {
         maxErrorsRatio = Float.parseFloat(maxErrorString.replaceAll("\\s*%", "")) / 100f;
@@ -190,15 +198,23 @@ public class LogSettings {
   }
 
   public LogManager newLogManager(WorkflowType workflowType, Cluster cluster) {
-    StatementFormatter formatter =
+    StatementFormatter statementFormatter =
         StatementFormatter.builder()
             .withMaxQueryStringLength(maxQueryStringLength)
             .withMaxBoundValueLength(maxBoundValueLength)
             .withMaxBoundValues(maxBoundValues)
             .withMaxInnerStatements(maxInnerStatements)
             .build();
+    RowFormatter rowFormatter = new RowFormatter(maxResultSetValueLength, maxResultSetValues);
     return new LogManager(
-        workflowType, cluster, executionDirectory, maxErrors, maxErrorsRatio, formatter, level);
+        workflowType,
+        cluster,
+        executionDirectory,
+        maxErrors,
+        maxErrorsRatio,
+        statementFormatter,
+        level,
+        rowFormatter);
   }
 
   public Verbosity getVerbosity() {

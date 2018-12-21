@@ -18,8 +18,6 @@ import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkTemp
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
@@ -113,7 +111,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
+    validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -244,7 +242,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
+    validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -294,7 +292,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateResultSetSize(24, SELECT_FROM_IP_BY_COUNTRY);
+    validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -440,7 +438,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateResultSetSize(500, SELECT_FROM_IP_BY_COUNTRY);
+    validateResultSetSize(500, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -490,7 +488,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateResultSetSize(1, SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES);
+    validateResultSetSize(1, "SELECT * FROM \"MYKS\".\"WITH_SPACES\"");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -542,10 +540,10 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
-    validateResultSetSize(21, SELECT_FROM_IP_BY_COUNTRY);
+    validateResultSetSize(21, "SELECT * FROM ip_by_country");
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
-    validateExceptionsLog(3, "Source  :", "mapping-errors.log", logPath);
+    validateExceptionsLog(3, "Source:", "mapping-errors.log", logPath);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();

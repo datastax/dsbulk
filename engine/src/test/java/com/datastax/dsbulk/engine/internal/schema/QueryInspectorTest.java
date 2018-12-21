@@ -507,4 +507,31 @@ class QueryInspectorTest {
         .hasMessageContaining(
             "Invalid query: the number of columns to insert (3) does not match the number of terms (2)");
   }
+
+  @Test
+  void should_detect_where_clause_insertion_point_when_where_clause_absent() {
+    String query = "SELECT a,b,c FROM ks.t1";
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.hasWhereClause()).isFalse();
+    assertThat(inspector.getFromClauseEndIndex()).isEqualTo(query.length());
+  }
+
+  @Test
+  void
+      should_detect_where_clause_insertion_point_when_where_clause_absent_but_limit_clause_present() {
+    String query = "SELECT a,b,c FROM ks.t1 LIMIT 100";
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.hasWhereClause()).isFalse();
+    assertThat(inspector.getFromClauseEndIndex())
+        .isEqualTo("SELECT a,b,c FROM ks.t1".length());
+  }
+
+  @Test
+  void should_detect_where_clause_insertion_point_when_where_clause_present() {
+    String query = "SELECT a,b,c FROM ks.t1 WHERE pk = 0 LIMIT 100";
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.hasWhereClause()).isTrue();
+    assertThat(inspector.getWhereClauseInsertionPoint())
+        .isEqualTo("SELECT a,b,c FROM ks.t1".length());
+  }
 }

@@ -14,6 +14,7 @@ import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import java.util.Optional;
 import java.util.function.Consumer;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Common superinterface for {@link ReadResult} and {@link WriteResult}.
@@ -37,8 +38,10 @@ public interface Result {
    *
    * @return the statement that has been executed.
    */
+  @NotNull
   Statement getStatement();
 
+  @NotNull
   Optional<ExecutionInfo> getExecutionInfo();
 
   /**
@@ -57,6 +60,7 @@ public interface Result {
    *
    * @return an optional {@link BulkExecutionException}.
    */
+  @NotNull
   Optional<BulkExecutionException> getError();
 
   /**
@@ -65,7 +69,7 @@ public interface Result {
    * @param consumer block to be executed if an error is present
    * @throws NullPointerException if an error is present and {@code consumer} is null
    */
-  default void ifError(Consumer<? super BulkExecutionException> consumer) {
+  default void ifError(@NotNull Consumer<? super BulkExecutionException> consumer) {
     getError().ifPresent(consumer);
   }
 }

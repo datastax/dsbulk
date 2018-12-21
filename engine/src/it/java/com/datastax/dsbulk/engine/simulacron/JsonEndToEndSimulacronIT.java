@@ -338,7 +338,7 @@ class JsonEndToEndSimulacronIT {
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(2, logPath);
-    validateExceptionsLog(2, "Source  :", "mapping-errors.log", logPath);
+    validateExceptionsLog(2, "Source:", "mapping-errors.log", logPath);
   }
 
   @Test
@@ -418,7 +418,7 @@ class JsonEndToEndSimulacronIT {
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(4, logPath);
-    validateExceptionsLog(4, "Source  :", "load-errors.log", logPath);
+    validateExceptionsLog(4, "Source:", "load-errors.log", logPath);
   }
 
   @Test
@@ -463,7 +463,7 @@ class JsonEndToEndSimulacronIT {
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateBadOps(3, logPath);
-    validateExceptionsLog(3, "Source  :", "mapping-errors.log", logPath);
+    validateExceptionsLog(3, "Source:", "mapping-errors.log", logPath);
   }
 
   @Test
@@ -704,7 +704,11 @@ class JsonEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
-    validateQueryCount(simulacron, 1, "SELECT pk,c1 FROM ks1.table1", ONE);
+    validateQueryCount(
+        simulacron,
+        1,
+        "SELECT pk,c1 FROM ks1.table1 WHERE token(pk) > :start AND token(pk) <= :end",
+        ONE);
     validateOutputFiles(1, unloadDir);
     Optional<String> line = readAllLinesInDirectoryAsStream(unloadDir).findFirst();
     assertThat(line).isPresent().hasValue("{pk:1}");

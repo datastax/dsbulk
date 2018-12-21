@@ -35,10 +35,10 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @return an indexed record.
    */
   public static DefaultRecord indexed(
-      Object source,
-      Supplier<URI> resource,
+      @NotNull Object source,
+      @NotNull Supplier<URI> resource,
       long position,
-      Supplier<URI> location,
+      @NotNull Supplier<URI> location,
       Object... values) {
     return new DefaultRecord(source, resource, position, location, values);
   }
@@ -55,10 +55,10 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @return a mapped record.
    */
   public static DefaultRecord mapped(
-      Object source,
-      Supplier<URI> resource,
+      @NotNull Object source,
+      @NotNull Supplier<URI> resource,
       long position,
-      Supplier<URI> location,
+      @NotNull Supplier<URI> location,
       Field[] keys,
       Object... values) {
     return new DefaultRecord(source, resource, position, location, keys, values);
@@ -75,10 +75,10 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @return a mapped record.
    */
   public static DefaultRecord mapped(
-      Object source,
-      Supplier<URI> resource,
+      @NotNull Object source,
+      @NotNull Supplier<URI> resource,
       long position,
-      Supplier<URI> location,
+      @NotNull Supplier<URI> location,
       Map<? extends Field, ?> values) {
     return new DefaultRecord(source, resource, position, location, values);
   }
@@ -136,11 +136,13 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
     putAll(values);
   }
 
+  @NotNull
   @Override
   public Object getSource() {
     return source;
   }
 
+  @NotNull
   @Override
   public URI getResource() {
     return resource.get();
@@ -151,6 +153,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
     return position;
   }
 
+  @NotNull
   @Override
   public URI getLocation() {
     return location.get();
@@ -169,7 +172,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   }
 
   @Override
-  public Object getFieldValue(Field field) {
+  public Object getFieldValue(@NotNull Field field) {
     return get(field);
   }
 
@@ -179,7 +182,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @param field the field to set.
    * @param value The value to set.
    */
-  public void setFieldValue(Field field, Object value) {
+  public void setFieldValue(@NotNull Field field, Object value) {
     put(field, value);
   }
 

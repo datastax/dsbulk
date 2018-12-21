@@ -267,7 +267,6 @@ public final class StatementFormatter {
    * @param protocolVersion The protocol version in use.
    * @param codecRegistry The codec registry in use.
    * @return The statement as a formatted string.
-   * @throws StatementFormatException if the formatting failed.
    */
   public String format(
       Statement statement,
@@ -283,9 +282,14 @@ public final class StatementFormatter {
               new StringBuilder(), 0, printerRegistry, limits, protocolVersion, codecRegistry);
       printer.print(statement, out, verbosity);
       return out.toString();
-    } catch (RuntimeException e) {
-      LOGGER.error("Could not format statement: " + statement, e);
-      return statement.toString();
+    } catch (Exception e) {
+      try {
+        LOGGER.error("Could not format statement: " + statement, e);
+        return statement.toString();
+      } catch (Exception e1) {
+        LOGGER.error("statement.toString() failed", e1);
+        return "statement[?]";
+      }
     }
   }
 }

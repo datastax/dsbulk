@@ -19,10 +19,10 @@ public class StatementFormatterSymbols {
   public static final String nullValue = "<NULL>";
   public static final String unsetValue = "<UNSET>";
   public static final String listElementSeparator = ", ";
-  public static final String nameValueSeparator = " : ";
-  public static final String idempotent = "idempotence : %s";
-  public static final String consistencyLevel = "CL : %s";
-  public static final String serialConsistencyLevel = "serial CL : %s";
-  public static final String defaultTimestamp = "default timestamp : %s";
-  public static final String readTimeoutMillis = "read-timeout millis : %s";
+  public static final String nameValueSeparator = ": ";
+  public static final String idempotent = "idempotence: %s";
+  public static final String consistencyLevel = "CL: %s";
+  public static final String serialConsistencyLevel = "serial CL: %s";
+  public static final String defaultTimestamp = "default timestamp: %s";
+  public static final String readTimeoutMillis = "read-timeout millis: %s";
 }

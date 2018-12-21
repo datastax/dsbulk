@@ -636,9 +636,9 @@ The query to use. If not specified, then a keyspace must be provided (either wit
 
 For loading, the statement can be any `INSERT`, `UPDATE` or `DELETE` statement. `INSERT` statements are preferred for most load operations, and bound variables should correspond to mapped fields; for example, `INSERT INTO table1 (c1, c2, c3) VALUES (:fieldA, :fieldB, :fieldC)`. `UPDATE` statements are required if the target table is a counter table, and the columns are updated with incremental operations (`SET col1 = col1 + :fieldA` where `fieldA` is a field in the input data). A `DELETE` statement will remove existing data during the load operation.
 
-For unloading, the statement can be any regular `SELECT` statement; it can optionally contain a token range restriction clause of the form: `WHERE token(...) > :start and token(...) <= :end`. If such a clause is present, the engine will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas.
+For unloading, the statement can be any regular `SELECT` statement. If the statement does not contain a WHERE clause, the engine will generate a token range restriction clause of the form: `WHERE token(...) > :start and token(...) <= :end` and will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas. If the statement does contain a WHERE clause however, that clause will remain intact and the engine will not be able to parallelize the operation.
 
-For counting, the statement can be any regular `SELECT` statement; it can optionally contain a token range restriction clause of the form: `token(...) > :start and token(...) <= :end`.
+For counting, the statement must be a `SELECT` statement that contains only the table's partition key. The same remarks about the WHERE clause made above for unloading operations apply to counting operations as well.
 
 Statements can use both positional and named bound variables. Positional variables will be named after their corresponding column in the destination table. Named bound variables usually have names matching those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those of fields specified in the mapping.
 
@@ -1356,6 +1356,22 @@ Note to Windows users: ANSI support on Windows works best when the Microsoft Vis
 
 Default: **"normal"**.
 
+#### --log.row.maxResultSetValueLength _&lt;number&gt;_
+
+The maximum length for a result set value. Result set values longer than this value will be truncated.
+
+Setting this value to `-1` makes the maximum length for a result set value unlimited (not recommended).
+
+Default: **50**.
+
+#### --log.row.maxResultSetValues _&lt;number&gt;_
+
+The maximum number of result set values to print. If the row has more result set values than this limit, the exceeding values will not be printed.
+
+Setting this value to `-1` makes the maximum number of result set values unlimited (not recommended).
+
+Default: **50**.
+
 #### --log.stmt.level _&lt;string&gt;_
 
 The desired log level. Valid values are:
@@ -1370,7 +1386,7 @@ Default: **"EXTENDED"**.
 
 The maximum length for a bound value. Bound values longer than this value will be truncated.
 
-Setting this value to `-1` disables this feature (not recommended).
+Setting this value to `-1` makes the maximum length for a bound value unlimited (not recommended).
 
 Default: **50**.
 
@@ -1378,7 +1394,7 @@ Default: **50**.
 
 The maximum number of bound values to print. If the statement has more bound values than this limit, the exceeding values will not be printed.
 
-Setting this value to `-1` disables this feature (not recommended).
+Setting this value to `-1` makes the maximum number of bound values unlimited (not recommended).
 
 Default: **50**.
 

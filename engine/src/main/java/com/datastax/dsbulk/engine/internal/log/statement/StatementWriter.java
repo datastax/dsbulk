@@ -40,7 +40,7 @@ import java.nio.ByteBuffer;
  */
 public final class StatementWriter implements Appendable {
 
-  private static final int MAX_EXCEEDED = -2;
+  private static final int MAX_EXCEEDED = -1;
 
   private final StringBuilder buffer;
   private final int indentation;
@@ -223,7 +223,6 @@ public final class StatementWriter implements Appendable {
       // prevent large blobs from being converted to strings
       if (bufferLengthExceeded) {
         byteBuffer = byteBuffer.duplicate();
-        //noinspection Since15
         byteBuffer.limit(maxBufferLengthInBytes);
         // force usage of blob codec as any other codec would probably fail to format
         // a cropped byte buffer anyway
@@ -243,13 +242,18 @@ public final class StatementWriter implements Appendable {
   }
 
   public void appendRecord(Record record) {
-    LogUtils.appendRecordInfo(
-        record,
-        (o) -> {
-          newLine();
-          indent();
-          buffer.append(o);
-        });
+    newLine();
+    indent();
+    append("Location: ").append(record.getLocation());
+    newLine();
+    indent();
+    append("Resource: ").append(record.getResource());
+    newLine();
+    indent();
+    append("Position: ").append(record.getPosition());
+    newLine();
+    indent();
+    append("Source: ").append(LogUtils.formatSource(record));
   }
 
   private void doAppendBoundValue(String name, String value) {

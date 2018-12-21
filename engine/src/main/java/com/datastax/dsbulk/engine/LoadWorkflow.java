@@ -8,9 +8,11 @@
  */
 package com.datastax.dsbulk.engine;
 
+import static com.datastax.driver.core.ConsistencyLevel.ONE;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkProductCompatibility;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
@@ -37,6 +39,7 @@ import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.datastax.dsbulk.executor.reactor.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -53,6 +56,9 @@ import reactor.util.concurrent.Queues;
 public class LoadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadWorkflow.class);
+
+  private static final ExecutionInfo EMPTY_EXECUTION_INFO =
+      new ExecutionInfo(0, 0, Collections.emptyList(), ONE, Collections.emptyMap());
 
   private final SettingsManager settingsManager;
   private final AtomicBoolean closed = new AtomicBoolean(false);
@@ -239,7 +245,7 @@ public class LoadWorkflow implements Workflow {
   private Flux<Void> executeStatements(Flux<Statement> stmts, int concurrency) {
     Flux<WriteResult> results;
     if (dryRun) {
-      results = stmts.map(s -> new DefaultWriteResult(s, null));
+      results = stmts.map(s -> new DefaultWriteResult(s, EMPTY_EXECUTION_INFO));
     } else {
       results = stmts.flatMap(executor::writeReactive, concurrency);
     }
