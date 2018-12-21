@@ -46,10 +46,13 @@ public class EndToEndUtils {
           + "(country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
           + "VALUES (?,?,?,?,?,?)";
 
-  public static final String SELECT_FROM_IP_BY_COUNTRY = "SELECT * FROM ip_by_country";
+  public static final String SELECT_FROM_IP_BY_COUNTRY =
+      "SELECT * FROM ip_by_country "
+          + "WHERE token(country_code) > :start AND token(country_code) <= :end";
 
   public static final String SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES =
-      "SELECT * FROM \"MYKS\".\"WITH_SPACES\"";
+      "SELECT * FROM \"MYKS\".\"WITH_SPACES\" "
+          + "WHERE token(key) > :start AND token(key) <= :end";
 
   public static final String IP_BY_COUNTRY_MAPPING_INDEXED =
       "0=beginning_ip_address,"
