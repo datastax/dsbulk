@@ -449,12 +449,6 @@ class QueryInspectorTest {
   }
 
   @Test
-  void should_report_from_clause_start_index() {
-    QueryInspector inspector = new QueryInspector("SELECT col1  \n\t   FROM ks.foo");
-    assertThat(inspector.getFromClauseStartIndex()).isEqualTo("SELECT col1  \n\t   ".length());
-  }
-
-  @Test
   void should_error_out_if_syntax_error() {
     assertThatThrownBy(() -> new QueryInspector(" not a valid statement "))
         .isInstanceOf(BulkConfigurationException.class)
@@ -509,29 +503,32 @@ class QueryInspectorTest {
   }
 
   @Test
-  void should_detect_where_clause_insertion_point_when_where_clause_absent() {
+  void should_detect_from_clause_start_index() {
+    QueryInspector inspector = new QueryInspector("SELECT col1  \n\t   FROM ks.foo");
+    assertThat(inspector.getFromClauseStartIndex()).isEqualTo("SELECT col1  \n\t   ".length());
+  }
+
+  @Test
+  void should_detect_from_clause_end_index_when_where_clause_absent() {
     String query = "SELECT a,b,c FROM ks.t1";
     QueryInspector inspector = new QueryInspector(query);
     assertThat(inspector.hasWhereClause()).isFalse();
-    assertThat(inspector.getFromClauseEndIndex()).isEqualTo(query.length());
+    assertThat(inspector.getFromClauseEndIndex()).isEqualTo(query.length() - 1);
   }
 
   @Test
-  void
-      should_detect_where_clause_insertion_point_when_where_clause_absent_but_limit_clause_present() {
+  void should_detect_from_clause_end_index_when_where_clause_absent_but_limit_clause_present() {
     String query = "SELECT a,b,c FROM ks.t1 LIMIT 100";
     QueryInspector inspector = new QueryInspector(query);
     assertThat(inspector.hasWhereClause()).isFalse();
-    assertThat(inspector.getFromClauseEndIndex())
-        .isEqualTo("SELECT a,b,c FROM ks.t1".length());
+    assertThat(inspector.getFromClauseEndIndex()).isEqualTo("SELECT a,b,c FROM ks.t1".length() - 1);
   }
 
   @Test
-  void should_detect_where_clause_insertion_point_when_where_clause_present() {
+  void should_detect_from_clause_end_index_when_where_clause_present() {
     String query = "SELECT a,b,c FROM ks.t1 WHERE pk = 0 LIMIT 100";
     QueryInspector inspector = new QueryInspector(query);
     assertThat(inspector.hasWhereClause()).isTrue();
-    assertThat(inspector.getWhereClauseInsertionPoint())
-        .isEqualTo("SELECT a,b,c FROM ks.t1".length());
+    assertThat(inspector.getFromClauseEndIndex()).isEqualTo("SELECT a,b,c FROM ks.t1".length() - 1);
   }
 }
