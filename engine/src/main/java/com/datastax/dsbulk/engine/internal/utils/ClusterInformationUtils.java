@@ -3,11 +3,13 @@ package com.datastax.dsbulk.engine.internal.utils;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Metadata;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ClusterInformationUtils {
+  private static final int LIMIT_NODES_INFORMATION = 100;
 
   public static String getInfoAboutCluster(Cluster cluster) {
 
@@ -22,6 +24,8 @@ public class ClusterInformationUtils {
     String hostsInfo =
         allHosts
             .stream()
+            .sorted(Comparator.comparing(o -> o.getAddress().getHostAddress()))
+            .limit(LIMIT_NODES_INFORMATION)
             .map(ClusterInformationUtils::getHostInfo)
             .collect(Collectors.joining("\n"));
 
@@ -41,11 +45,7 @@ public class ClusterInformationUtils {
 
   private static String getHostInfo(Host h) {
     return String.format(
-        "address: %s, dseVersion: %s, cassandraVersion: %s, dataCenter: %s, tokens: %s",
-        h.getAddress(),
-        h.getDseVersion(),
-        h.getCassandraVersion(),
-        h.getDatacenter(),
-        h.getTokens());
+        "address: %s, dseVersion: %s, cassandraVersion: %s, dataCenter: %s",
+        h.getAddress(), h.getDseVersion(), h.getCassandraVersion(), h.getDatacenter());
   }
 }
