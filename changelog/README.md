@@ -19,6 +19,7 @@
 - [improvement] DAT-319: Automatically add token range restriction to WHERE clauses.
 - [bug] DAT-369: Call to ArrayBackedRow.toString() causes fatal NPE.
 - [improvement] DAT-316: JsonNodeToUDTCodec should allow a Json array input.
+- [new feature] DAT-340: Print basic information about the cluster
 
 
 ### 1.2.0

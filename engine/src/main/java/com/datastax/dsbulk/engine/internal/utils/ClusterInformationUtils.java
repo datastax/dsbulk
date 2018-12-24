@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClusterInformationUtils {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterInformation.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterInformationUtils.class);
   private static final int LIMIT_NODES_INFORMATION = 100;
 
   public static void printDebugInfoAboutCluster(Cluster cluster) {
