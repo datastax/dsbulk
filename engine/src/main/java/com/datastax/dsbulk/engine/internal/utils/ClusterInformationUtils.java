@@ -17,7 +17,7 @@ public class ClusterInformationUtils {
         String.format(
             "Partitioner: %s, numberOfHosts: %s",
             cluster.getMetadata().getPartitioner(), allHosts.size());
-    Set<String> dataCenters = getAllDcs(allHosts);
+    Set<String> dataCenters = getAllDataCenters(allHosts);
 
     String hostsInfo =
         allHosts
@@ -29,7 +29,7 @@ public class ClusterInformationUtils {
         "Cluster: %s\nDataCenters: %s\nHosts: \n%s", clusterInfo, dataCenters, hostsInfo);
   }
 
-  private static Set<String> getAllDcs(Set<Host> allHosts) {
+  private static Set<String> getAllDataCenters(Set<Host> allHosts) {
     return allHosts
         .stream()
         .collect(Collectors.groupingBy(Host::getDatacenter))
