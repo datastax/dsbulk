@@ -372,10 +372,10 @@ public class SchemaSettings {
           }
         }
       }
-      if (LOGGER.isDebugEnabled()) {
-        String infoAboutCluster = getInfoAboutCluster(cluster);
-        LOGGER.debug(infoAboutCluster);
-      }
+      //      if (LOGGER.isDebugEnabled()) {
+      String infoAboutCluster = getInfoAboutCluster(cluster);
+      LOGGER.debug(infoAboutCluster);
+      //      }
 
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");

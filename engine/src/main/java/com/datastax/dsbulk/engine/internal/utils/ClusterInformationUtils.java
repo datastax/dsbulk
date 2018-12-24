@@ -41,7 +41,11 @@ public class ClusterInformationUtils {
 
   private static String getHostInfo(Host h) {
     return String.format(
-        "address: %s, dseVersion: %s, cassandraVersion: %s, dataCenter: %s",
-        h.getAddress(), h.getDseVersion(), h.getCassandraVersion(), h.getDatacenter());
+        "address: %s, dseVersion: %s, cassandraVersion: %s, dataCenter: %s, tokens: %s",
+        h.getAddress(),
+        h.getDseVersion(),
+        h.getCassandraVersion(),
+        h.getDatacenter(),
+        h.getTokens());
   }
 }

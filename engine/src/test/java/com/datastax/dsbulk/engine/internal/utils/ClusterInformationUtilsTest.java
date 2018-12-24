@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Metadata;
+import com.datastax.driver.core.Token;
 import com.datastax.driver.core.VersionNumber;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -35,7 +36,8 @@ class ClusterInformationUtilsTest {
             "numberOfHosts: 1",
             "address: /1.2.3.4",
             "dseVersion: 6.7.0",
-            "dataCenter: dc1");
+            "dataCenter: dc1",
+            "tokens");
   }
 
   @Test
@@ -84,10 +86,13 @@ class ClusterInformationUtilsTest {
 
   @NotNull
   private Host createHost(String dataCenter, String address) throws UnknownHostException {
+    Token t1 = Mockito.mock(Token.class);
+    Mockito.when(t1.getValue()).thenReturn("token-value");
     Host h1 = Mockito.mock(Host.class);
     Mockito.when(h1.getDseVersion()).thenReturn(VersionNumber.parse("6.7.0"));
     Mockito.when(h1.getAddress()).thenReturn(InetAddress.getByName(address));
     Mockito.when(h1.getDatacenter()).thenReturn(dataCenter);
+    Mockito.when(h1.getTokens()).thenReturn(Sets.newLinkedHashSet(t1));
     return h1;
   }
 }
