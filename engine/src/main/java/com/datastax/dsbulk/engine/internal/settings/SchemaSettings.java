@@ -65,10 +65,12 @@ import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableSet;
 import com.typesafe.config.ConfigException;
+
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -80,6 +82,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,7 +119,7 @@ public class SchemaSettings {
   private KeyspaceMetadata keyspace;
   private String keyspaceName;
   private String tableName;
-  private String query;
+  private InferredQuery query;
   private QueryInspector queryInspector;
   private PreparedStatement preparedStatement;
   private ImmutableSet<CQLFragment> writeTimeVariables;
@@ -214,7 +217,7 @@ public class SchemaSettings {
 
       if (config.hasPath(QUERY)) {
 
-        query = config.getString(QUERY);
+        query = InferredQuery.load(config.getString(QUERY)); //todo is 100% only load??
         queryInspector = new QueryInspector(query);
 
         if (queryInspector.getKeyspaceName().isPresent()) {
@@ -520,19 +523,20 @@ public class SchemaSettings {
         } else {
           sb.append(getGlobalCountSelector());
         }
-        query =
+        query = query.copyWith(
             sb.append(' ')
-                .append(query.substring(queryInspector.getFromClauseStartIndex()))
-                .toString();
+                .append(query.getQuery().substring(queryInspector.getFromClauseStartIndex()))
+                .toString()
+        );
       }
       if ((workflowType == UNLOAD || workflowType == COUNT) && !queryInspector.hasWhereClause()) {
         int whereClauseIndex = queryInspector.getFromClauseEndIndex() + 1;
-        StringBuilder sb = new StringBuilder(query.substring(0, whereClauseIndex));
+        StringBuilder sb = new StringBuilder(query.getQuery().substring(0, whereClauseIndex));
         appendTokenRangeRestriction(sb);
-        query = sb.append(query.substring(whereClauseIndex)).toString();
+        query = query.copyWith(sb.append(query.getQuery().substring(whereClauseIndex)).toString());
       }
     }
-    preparedStatement = session.prepare(query);
+    preparedStatement = session.prepare(query.getQuery());
     if (config.hasPath(QUERY)) {
       // in the presence of user-provided queries, create the mapping *after* query preparation
       ColumnDefinitions variables = getVariables(workflowType);
@@ -802,7 +806,7 @@ public class SchemaSettings {
     return fieldsToVariables.build();
   }
 
-  private String inferInsertQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
+  private InferredQuery inferInsertQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName).append('.').append(tableName).append('(');
     appendColumnNames(fieldsToVariables, sb, false);
@@ -830,11 +834,27 @@ public class SchemaSettings {
       }
     }
     sb.append(')');
-    addTimestampAndTTL(fieldsToVariables, sb);
-    return sb.toString();
+//    addTimestampAndTTL(fieldsToVariables, sb);
+    Map<MappingField, CQLFragment> functions = extractFunctionCalls(fieldsToVariables);
+    return InferredQuery.load(sb.toString(), functions);
   }
 
-  private String inferUpdateCounterQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
+  private Map<MappingField, CQLFragment> extractFunctionCalls(BiMap<MappingField, CQLFragment> fieldsToVariables) {
+    Map<MappingField, CQLFragment> result = new HashMap<>();
+    Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
+    Iterator<CQLFragment> it = cols.iterator();
+    while (it.hasNext()) {
+      CQLFragment col = it.next();
+      MappingField field = fieldsToVariables.inverse().get(col);
+      if (field instanceof FunctionCall) {
+        result.put(field, col);
+      }
+    }
+
+    return result;
+  }
+
+  private InferredQuery inferUpdateCounterQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("UPDATE ");
     sb.append(keyspaceName).append('.').append(tableName);
     // Note: TTL and timestamp are not allowed in counter queries;
@@ -878,9 +898,10 @@ public class SchemaSettings {
       isFirst = false;
       sb.append(col.asCql()).append("=:").append(col.asCql());
     }
-    return sb.toString();
+    return InferredQuery.count(sb.toString());
   }
 
+  //todo remove
   private void addTimestampAndTTL(
       BiMap<MappingField, CQLFragment> fieldsToVariables, StringBuilder sb) {
     boolean hasTtl = ttlSeconds != -1 || fieldsToVariables.containsValue(INTERNAL_TTL_VARNAME);
@@ -916,12 +937,12 @@ public class SchemaSettings {
     }
   }
 
-  private String inferReadQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
+  private InferredQuery inferReadQuery(BiMap<MappingField, CQLFragment> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("SELECT ");
     appendColumnNames(fieldsToVariables, sb, true);
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName);
     appendTokenRangeRestriction(sb);
-    return sb.toString();
+    return InferredQuery.unload(sb.toString());
   }
 
   private void appendTokenRangeRestriction(StringBuilder sb) {
@@ -932,7 +953,7 @@ public class SchemaSettings {
     sb.append(" <= :end");
   }
 
-  private String inferCountQuery(EnumSet<StatisticsMode> modes) {
+  private InferredQuery inferCountQuery(EnumSet<StatisticsMode> modes) {
     StringBuilder sb = new StringBuilder("SELECT ");
     List<ColumnMetadata> partitionKey = table.getPartitionKey();
     if (modes.contains(ranges) || modes.contains(hosts) || modes.contains(partitions)) {
@@ -959,7 +980,7 @@ public class SchemaSettings {
     sb.append(" > :start AND ");
     appendTokenFunction(sb);
     sb.append(" <= :end");
-    return sb.toString();
+    return InferredQuery.count(sb.toString());
   }
 
   @NotNull
@@ -992,12 +1013,11 @@ public class SchemaSettings {
   private void appendColumnNames(
       BiMap<MappingField, CQLFragment> fieldsToVariables,
       StringBuilder sb,
-      boolean allowFunctions) {
+      boolean includeFunctions) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
     Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
     Iterator<CQLFragment> it = cols.iterator();
-    boolean isFirst = true;
     while (it.hasNext()) {
       // this assumes that the variable name found in the mapping
       // corresponds to a CQL column having the exact same name.
@@ -1006,16 +1026,13 @@ public class SchemaSettings {
         // This is not a real column. Skip it.
         continue;
       }
-      if (!isFirst) {
+
+      if (col instanceof FunctionCall && !includeFunctions) {
+        //skip adding function into query
+      }else {
+        sb.append(col.asCql());
         sb.append(',');
       }
-      isFirst = false;
-      if (col instanceof FunctionCall && !allowFunctions) {
-        throw new IllegalArgumentException(
-            "Misplaced function call detected on the right side of a mapping entry; "
-                + "please review your schema.mapping setting");
-      }
-      sb.append(col.asCql());
     }
   }
 

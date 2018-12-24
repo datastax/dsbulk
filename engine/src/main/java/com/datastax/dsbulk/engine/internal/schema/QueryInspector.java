@@ -17,6 +17,7 @@ import com.datastax.dsbulk.commons.cql3.CqlParser.FunctionContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.FunctionNameContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.TermContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.UnaliasedSelectorContext;
+import com.datastax.dsbulk.engine.internal.settings.InferredQuery;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
@@ -55,6 +56,10 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   private int fromClauseStartIndex = -1;
   private int fromClauseEndIndex = -1;
   private boolean hasWhereClause = false;
+
+  public QueryInspector(InferredQuery query) {
+    this(query.getQuery());//todo more validation
+  }
 
   public QueryInspector(String query) {
     this.query = query;

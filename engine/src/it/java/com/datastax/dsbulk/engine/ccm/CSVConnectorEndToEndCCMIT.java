@@ -846,6 +846,62 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
+  void load_and_unload_ttl_timestamp_per_column() throws IOException {
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "table_ttl_timestamp",
+            "--schema.mapping",
+            "*:*,now()=loaded_at,created_at=writetime(value),time_to_live=ttl(value)");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTtlAndTimestamp();
+    deleteDirectory(logDir);
+
+    args =
+        Lists.newArrayList(
+            "unload",
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--log.directory",
+            escapeUserInput(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "table_ttl_timestamp",
+            "--schema.mapping",
+            "*:*,created_at=writetime(value),time_to_live=ttl(value)",
+            "--connector.csv.maxConcurrentFiles",
+            "1");
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(3, unloadDir);
+  }
+
+  @Test
   void load_ttl_timestamp_now_in_query() {
     session.execute(
         "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
