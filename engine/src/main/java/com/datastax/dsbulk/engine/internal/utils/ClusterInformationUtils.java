@@ -31,7 +31,7 @@ public class ClusterInformationUtils {
     }
   }
 
-  public static ClusterInformation getInfoAboutCluster(Cluster cluster) {
+  static ClusterInformation getInfoAboutCluster(Cluster cluster) {
 
     Metadata metadata = cluster.getMetadata();
     Set<Host> allHosts = metadata.getAllHosts();
