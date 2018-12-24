@@ -531,4 +531,28 @@ class QueryInspectorTest {
     assertThat(inspector.hasWhereClause()).isTrue();
     assertThat(inspector.getFromClauseEndIndex()).isEqualTo("SELECT a,b,c FROM ks.t1".length() - 1);
   }
+
+  @Test
+  void should_report_named_token_range_restriction_variables() {
+    QueryInspector inspector =
+        new QueryInspector(
+            "SELECT a,b,c FROM ks.t1 WHERE token(pk) <= :finish AND token(pk) > :\"begin\"");
+    assertThat(inspector.getTokenRangeRestrictionStartVariable())
+        .contains(CQLIdentifier.fromInternal("begin"));
+    assertThat(inspector.getTokenRangeRestrictionEndVariable())
+        .contains(CQLIdentifier.fromInternal("finish"));
+  }
+
+  @Test
+  void should_report_positional_token_range_restriction_variables() {
+    assertThatThrownBy(
+            () ->
+                new QueryInspector(
+                    "SELECT a,b,c FROM ks.t1 WHERE token(pk) <= ? AND token(pk) > ?"))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "Invalid query: positional variables are not allowed in WHERE token(...) clauses, "
+                + "please une named variables instead: "
+                + "SELECT a,b,c FROM ks.t1 WHERE token(pk) <= ? AND token(pk) > ?.");
+  }
 }

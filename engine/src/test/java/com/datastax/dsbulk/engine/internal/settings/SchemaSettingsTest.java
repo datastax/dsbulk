@@ -1213,21 +1213,62 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_throw_configuration_exception_when_read_statement_variables_not_recognized() {
+  void should_detect_named_variables_in_token_range_restriction() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("foo", bigint()), newDefinition("bar", bigint()));
+        newColumnDefinitions(
+            newDefinition("My Start", bigint()), newDefinition("My End", bigint()));
     when(ps.getVariables()).thenReturn(definitions);
+    BoundStatement bs1 = mock(BoundStatement.class);
+    when(ps.bind()).thenReturn(bs1);
+    when(bs1.setToken("\"My Start\"", token1)).thenReturn(bs1);
+    when(bs1.setToken("\"My End\"", token2)).thenReturn(bs1);
     LoaderConfig config =
         makeLoaderConfig(
-            "keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE token(a) > :foo and token(a) <= :bar \"");
+            "keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE token(a) > :\\\"My Start\\\" and token(a) <= :\\\"My End\\\"\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.UNLOAD, cluster, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            "SELECT a,b,c FROM t1 WHERE token(a) > :\"My Start\" and token(a) <= :\"My End\"");
+  }
+
+  @Test
+  void should_throw_configuration_exception_when_read_statement_variables_not_recognized() {
+    ColumnDefinitions definitions = newColumnDefinitions(newDefinition("bar", bigint()));
+    when(ps.getVariables()).thenReturn(definitions);
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE foo = :bar\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.UNLOAD, cluster, false);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster, 3))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "The provided statement (schema.query) contains unrecognized bound variables: foo, bar; "
-                + "only 'start' and 'end' can be used to define a token range");
+            "The provided statement (schema.query) contains unrecognized WHERE restrictions; "
+                + "the WHERE clause is only allowed to contain one token range restriction of the form: "
+                + "WHERE token(...) > :start AND token(...) <= :end");
+  }
+
+  @Test
+  void should_throw_configuration_exception_when_read_statement_variables_not_recognized2() {
+    ColumnDefinitions definitions =
+        newColumnDefinitions(newDefinition("foo", bigint()), newDefinition("bar", bigint()));
+    when(ps.getVariables()).thenReturn(definitions);
+    LoaderConfig config =
+        makeLoaderConfig(
+            "keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE token(a) >= :foo and token(a) < :bar \"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(WorkflowType.UNLOAD, cluster, false);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster, 3))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "The provided statement (schema.query) contains unrecognized WHERE restrictions; "
+                + "the WHERE clause is only allowed to contain one token range restriction of the form: "
+                + "WHERE token(...) > :start AND token(...) <= :end");
   }
 
   @Test
@@ -1829,26 +1870,17 @@ class SchemaSettingsTest {
 
   @Test
   void should_not_insert_where_clause_in_select_statement_if_already_exists() {
-    ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    ColumnDefinitions definitions = newColumnDefinitions();
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
-    when(bs1.setToken("start", token1)).thenReturn(bs1);
-    when(bs1.setToken("end", token2)).thenReturn(bs1);
-    BoundStatement bs2 = mock(BoundStatement.class);
-    when(bs2.setToken("start", token2)).thenReturn(bs2);
-    when(bs2.setToken("end", token3)).thenReturn(bs2);
-    BoundStatement bs3 = mock(BoundStatement.class);
-    when(bs3.setToken("start", token3)).thenReturn(bs3);
-    when(bs3.setToken("end", token1)).thenReturn(bs3);
-    when(ps.bind()).thenReturn(bs1, bs2, bs3);
+    when(ps.bind()).thenReturn(bs1);
     LoaderConfig config =
         makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE c1 = 1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.UNLOAD, cluster, false);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster, 3);
-    assertThat(stmts).hasSize(3);
+    assertThat(stmts).hasSize(1);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue()).isEqualTo("SELECT a,b,c FROM t1 WHERE c1 = 1");
