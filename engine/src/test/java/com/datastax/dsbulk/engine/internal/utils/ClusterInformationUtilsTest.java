@@ -10,6 +10,8 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.VersionNumber;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.Collections;
 import org.assertj.core.util.Sets;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
@@ -27,16 +29,17 @@ class ClusterInformationUtilsTest {
     when(metadata.getAllHosts()).thenReturn(Sets.newLinkedHashSet(h1));
 
     // when
-    String infoAboutCluster = ClusterInformationUtils.getInfoAboutCluster(cluster);
+    ClusterInformation infoAboutCluster = ClusterInformationUtils.getInfoAboutCluster(cluster);
 
     // then
     assertThat(infoAboutCluster)
-        .contains(
-            "simple-partitioner",
-            "numberOfHosts: 1",
-            "address: /1.2.3.4",
-            "dseVersion: 6.7.0",
-            "dataCenter: dc1");
+        .isEqualTo(
+            new ClusterInformation(
+                "simple-partitioner",
+                1,
+                Sets.newLinkedHashSet("dc1"),
+                Collections.singletonList(
+                    "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1")));
   }
 
   @Test
@@ -51,18 +54,18 @@ class ClusterInformationUtilsTest {
     when(metadata.getAllHosts()).thenReturn(Sets.newLinkedHashSet(h1, h2));
 
     // when
-    String infoAboutCluster = ClusterInformationUtils.getInfoAboutCluster(cluster);
+    ClusterInformation infoAboutCluster = ClusterInformationUtils.getInfoAboutCluster(cluster);
 
     // then
     assertThat(infoAboutCluster)
-        .contains(
-            "simple-partitioner",
-            "numberOfHosts: 2",
-            "address: /1.2.3.4",
-            "dseVersion: 6.7.0",
-            "dataCenter: dc1",
-            "address: /1.2.3.5",
-            "DataCenters: [dc1]");
+        .isEqualTo(
+            new ClusterInformation(
+                "simple-partitioner",
+                2,
+                Sets.newLinkedHashSet("dc1"),
+                Arrays.asList(
+                    "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1",
+                    "address: /1.2.3.5, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1")));
   }
 
   @Test
@@ -77,10 +80,18 @@ class ClusterInformationUtilsTest {
     when(metadata.getAllHosts()).thenReturn(Sets.newLinkedHashSet(h1, h2));
 
     // when
-    String infoAboutCluster = ClusterInformationUtils.getInfoAboutCluster(cluster);
+    ClusterInformation infoAboutCluster = ClusterInformationUtils.getInfoAboutCluster(cluster);
 
     // then
-    assertThat(infoAboutCluster).contains("DataCenters: [dc1, dc2]");
+    assertThat(infoAboutCluster)
+        .isEqualTo(
+            new ClusterInformation(
+                "simple-partitioner",
+                2,
+                Sets.newLinkedHashSet("dc1", "dc2"),
+                Arrays.asList(
+                    "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1",
+                    "address: /1.2.3.5, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc2")));
   }
 
   @NotNull

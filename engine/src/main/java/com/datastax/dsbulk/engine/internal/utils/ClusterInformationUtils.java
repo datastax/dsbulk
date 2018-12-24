@@ -5,32 +5,48 @@ import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Metadata;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClusterInformationUtils {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterInformation.class);
   private static final int LIMIT_NODES_INFORMATION = 100;
 
-  public static String getInfoAboutCluster(Cluster cluster) {
+  public static void printDebugInfoAboutCluster(Cluster cluster) {
+    if (LOGGER.isDebugEnabled()) {
+      ClusterInformation infoAboutCluster = getInfoAboutCluster(cluster);
+
+      LOGGER.debug(
+          "Partitioner: {}, numberOfHosts: {}",
+          infoAboutCluster.getPartitioner(),
+          infoAboutCluster.getNumberOfHosts());
+      LOGGER.debug("DataCenters: {}", infoAboutCluster.getDataCenters());
+      for (String hostSummary : infoAboutCluster.getHostsInfo()) {
+        LOGGER.debug("Hosts:");
+        LOGGER.debug(hostSummary);
+      }
+    }
+  }
+
+  public static ClusterInformation getInfoAboutCluster(Cluster cluster) {
 
     Metadata metadata = cluster.getMetadata();
     Set<Host> allHosts = metadata.getAllHosts();
-    String clusterInfo =
-        String.format(
-            "Partitioner: %s, numberOfHosts: %s",
-            cluster.getMetadata().getPartitioner(), allHosts.size());
+
     Set<String> dataCenters = getAllDataCenters(allHosts);
 
-    String hostsInfo =
+    List<String> hostsInfo =
         allHosts
             .stream()
             .sorted(Comparator.comparing(o -> o.getAddress().getHostAddress()))
             .limit(LIMIT_NODES_INFORMATION)
             .map(ClusterInformationUtils::getHostInfo)
-            .collect(Collectors.joining("\n"));
-
-    return String.format(
-        "Cluster: %s\nDataCenters: %s\nHosts: \n%s", clusterInfo, dataCenters, hostsInfo);
+            .collect(Collectors.toList());
+    return new ClusterInformation(
+        cluster.getMetadata().getPartitioner(), allHosts.size(), dataCenters, hostsInfo);
   }
 
   private static Set<String> getAllDataCenters(Set<Host> allHosts) {
