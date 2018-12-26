@@ -105,7 +105,7 @@ class CodecSettingsTest {
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry =
-        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry(), false, false);
 
     assertThat(codecRegistry.codecFor(cboolean(), TypeToken.of(String.class)))
         .isNotNull()
@@ -158,7 +158,7 @@ class CodecSettingsTest {
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry =
-        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry(), false, false);
 
     assertThat(codecRegistry.codecFor(tinyint(), TypeToken.of(Short.class)))
         .isNotNull()
@@ -193,7 +193,7 @@ class CodecSettingsTest {
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry =
-        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry(), false, false);
 
     assertThat(codecRegistry.convertingCodecFor(date(), TypeToken.of(ZonedDateTime.class)))
         .convertsFromExternal(ZonedDateTime.parse("2017-11-30T00:00:00+01:00"))
@@ -274,7 +274,7 @@ class CodecSettingsTest {
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry =
-        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry(), false, false);
 
     assertThat(codecRegistry.codecFor(list(cint()), TypeToken.of(String.class)))
         .isNotNull()
@@ -305,7 +305,7 @@ class CodecSettingsTest {
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry =
-        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry(), false, false);
 
     assertThat(codecRegistry.convertingCodecFor(timeuuid(), TypeToken.of(Long.class)))
         .isNotNull()
@@ -340,7 +340,7 @@ class CodecSettingsTest {
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry =
-        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry(), false, false);
 
     assertThat(codecRegistry.convertingCodecFor(tinyint(), TypeToken.of(Boolean.class)))
         .isNotNull()
@@ -363,7 +363,7 @@ class CodecSettingsTest {
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry =
-        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry(), false, false);
     ConvertingCodec<String, Float> codec =
         codecRegistry.convertingCodecFor(cfloat(), TypeToken.of(String.class));
     assertThat(codec.internalToExternal(0.123f)).isEqualTo("0.13");
@@ -378,7 +378,7 @@ class CodecSettingsTest {
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry =
-        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry(), false, false);
     ConvertingCodec<String, Byte> codec =
         codecRegistry.convertingCodecFor(tinyint(), TypeToken.of(String.class));
     assertThat(codec.externalToInternal("128")).isEqualTo((byte) 127);

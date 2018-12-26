@@ -159,7 +159,8 @@ public class CodecSettings {
     }
   }
 
-  public ExtendedCodecRegistry createCodecRegistry(CodecRegistry codecRegistry) {
+  public ExtendedCodecRegistry createCodecRegistry(
+      CodecRegistry codecRegistry, boolean allowExtraFields, boolean allowMissingFields) {
     return new ExtendedCodecRegistry(
         codecRegistry,
         nullStrings,
@@ -176,7 +177,9 @@ public class CodecSettings {
         timeUnit,
         epoch,
         generator,
-        objectMapper);
+        objectMapper,
+        allowExtraFields,
+        allowMissingFields);
   }
 
   private static Locale parseLocale(String s) {

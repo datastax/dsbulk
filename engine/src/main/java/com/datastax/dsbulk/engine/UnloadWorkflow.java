@@ -120,7 +120,10 @@ public class UnloadWorkflow implements Workflow {
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     ExtendedCodecRegistry codecRegistry =
-        codecSettings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+        codecSettings.createCodecRegistry(
+            cluster.getConfiguration().getCodecRegistry(),
+            schemaSettings.isAllowExtraFields(),
+            schemaSettings.isAllowMissingFields());
     readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     readStatements =

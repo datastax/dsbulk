@@ -23,16 +23,22 @@ public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
   private final TupleType definition;
   private final List<ConvertingCodec<JsonNode, Object>> eltCodecs;
   private final ObjectMapper objectMapper;
+  private final boolean allowExtraFields;
+  private final boolean allowMissingFields;
 
   public JsonNodeToTupleCodec(
       TypeCodec<TupleValue> tupleCodec,
       List<ConvertingCodec<JsonNode, Object>> eltCodecs,
       ObjectMapper objectMapper,
-      List<String> nullStrings) {
+      List<String> nullStrings,
+      boolean allowExtraFields,
+      boolean allowMissingFields) {
     super(tupleCodec, nullStrings);
     this.eltCodecs = eltCodecs;
     definition = (TupleType) tupleCodec.getCqlType();
     this.objectMapper = objectMapper;
+    this.allowExtraFields = allowExtraFields;
+    this.allowMissingFields = allowMissingFields;
   }
 
   @Override
@@ -44,12 +50,25 @@ public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
       throw new InvalidTypeException("Expecting ARRAY node, got " + node.getNodeType());
     }
     int size = definition.getComponentTypes().size();
-    if (node.size() != size) {
+    if (node.size() > size && !allowExtraFields) {
+      node.fieldNames();
       throw new InvalidTypeException(
-          String.format("Expecting %d elements, got %d", size, node.size()));
+          String.format(
+              "JSON array does not match tuple definition: expecting %d elements, got %d "
+                  + "(set schema.allowExtraFields to true to allow "
+                  + "JSON arrays to contain more elements than the tuple definition).",
+              size, node.size()));
+    }
+    if (node.size() < size && !allowMissingFields) {
+      throw new InvalidTypeException(
+          String.format(
+              "JSON array does not match tuple definition: expecting %d elements, got %d "
+                  + "(set schema.allowMissingFields to true to allow "
+                  + "JSON arrays to contain fewer elements than the tuple definition).",
+              size, node.size()));
     }
     TupleValue tuple = definition.newValue();
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size && i < node.size(); i++) {
       ConvertingCodec<JsonNode, Object> eltCodec = eltCodecs.get(i);
       Object o = eltCodec.externalToInternal(node.get(i));
       tuple.set(i, o, eltCodec.getInternalJavaType());

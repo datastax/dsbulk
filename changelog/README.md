@@ -23,6 +23,7 @@
 - [improvement] DAT-372: Improve WHERE clause token range restriction detection.
 - [improvement] DAT-370: Remove record location URI.
 - [improvement] DAT-373: Allow columns and fields to be mapped more than once.
+- [improvement] DAT-315: UDT and tuple codecs should respect allowExtraFields and allowMissingFields.
 
 
 ### 1.2.0

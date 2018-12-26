@@ -33,22 +33,30 @@ class JsonNodeToTupleCodecTest {
 
   private TupleType tupleType;
 
-  private JsonNodeToTupleCodec codec;
+  private JsonNodeToTupleCodec codec1;
+  private JsonNodeToTupleCodec codec2;
+  private JsonNodeToTupleCodec codec3;
 
   @BeforeEach
   void setUp() {
     tupleType =
         newTupleType(
             V4, new CodecRegistry().register(InstantCodec.instance), timestamp(), varchar());
-    codec =
+    codec1 =
         (JsonNodeToTupleCodec)
             newCodecRegistry("nullStrings = [NULL, \"\"]")
                 .codecFor(tupleType, TypeToken.of(JsonNode.class));
+    codec2 =
+        (JsonNodeToTupleCodec)
+            newCodecRegistry("", true, false).codecFor(tupleType, TypeToken.of(JsonNode.class));
+    codec3 =
+        (JsonNodeToTupleCodec)
+            newCodecRegistry("", false, true).codecFor(tupleType, TypeToken.of(JsonNode.class));
   }
 
   @Test
   void should_convert_from_valid_external() throws Exception {
-    assertThat(codec)
+    assertThat(codec1)
         .convertsFromExternal(objectMapper.readTree("[\"2016-07-24T20:34:12.999\",\"+01:00\"]"))
         .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
         .convertsFromExternal(objectMapper.readTree("['2016-07-24T20:34:12.999','+01:00']"))
@@ -73,11 +81,41 @@ class JsonNodeToTupleCodecTest {
         .toInternal(null)
         .convertsFromExternal(objectMapper.readTree(""))
         .toInternal(null);
+    // should allow extra elements
+    assertThat(codec2)
+        .convertsFromExternal(objectMapper.readTree("[\"2016-07-24T20:34:12.999\",\"+01:00\", 42]"))
+        .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
+        .convertsFromExternal(objectMapper.readTree("[,\"\",\"\"]"))
+        .toInternal(tupleType.newValue(null, ""))
+        .convertsFromExternal(objectMapper.readTree("[null,null,null]"))
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal(objectMapper.readTree("[,,]"))
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(objectMapper.readTree(""))
+        .toInternal(null);
+    // should allow missing elements
+    assertThat(codec3)
+        .convertsFromExternal(objectMapper.readTree("[\"2016-07-24T20:34:12.999\"]"))
+        .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), null))
+        .convertsFromExternal(objectMapper.readTree("[null]"))
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal(objectMapper.readTree("[]"))
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal(objectMapper.readTree(""))
+        .toInternal(null);
   }
 
   @Test
   void should_convert_from_valid_internal() throws Exception {
-    assertThat(codec)
+    assertThat(codec1)
         .convertsFromInternal(
             tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
         .toExternal(objectMapper.readTree("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]"))
@@ -93,9 +131,15 @@ class JsonNodeToTupleCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() throws Exception {
-    assertThat(codec)
-        .cannotConvertFromExternal(objectMapper.readTree("[\"not a valid tuple\"]"))
-        .cannotConvertFromExternal(objectMapper.readTree("{\"not a valid tuple\":42}"))
-        .cannotConvertFromExternal(objectMapper.readTree("[\"2016-07-24T20:34:12.999\"]"));
+    assertThat(codec1)
+        .cannotConvertFromExternal(objectMapper.readTree("{\"not a valid tuple\":42}"));
+    // should not allow missing elements
+    assertThat(codec2)
+        .cannotConvertFromExternal(objectMapper.readTree("[\"2016-07-24T20:34:12.999Z\"]"))
+        .cannotConvertFromExternal(objectMapper.readTree("[]"));
+    // should not allow extra elements
+    assertThat(codec3)
+        .cannotConvertFromExternal(
+            objectMapper.readTree("[\"2016-07-24T20:34:12.999Z\",\"+01:00\",42]"));
   }
 }

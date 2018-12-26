@@ -177,7 +177,7 @@ class DefaultReadResultCounterTest {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    this.codecRegistry = settings.createCodecRegistry(new CodecRegistry());
+    this.codecRegistry = settings.createCodecRegistry(new CodecRegistry(), false, false);
   }
 
   @Test

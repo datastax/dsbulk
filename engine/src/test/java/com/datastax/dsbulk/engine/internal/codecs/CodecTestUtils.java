@@ -17,12 +17,17 @@ import com.typesafe.config.ConfigFactory;
 public class CodecTestUtils {
 
   public static ExtendedCodecRegistry newCodecRegistry(String conf) {
+    return newCodecRegistry(conf, false, false);
+  }
+
+  public static ExtendedCodecRegistry newCodecRegistry(
+      String conf, boolean allowExtraFields, boolean allowMissingFields) {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(conf)
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.codec")));
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    return settings.createCodecRegistry(new CodecRegistry());
+    return settings.createCodecRegistry(new CodecRegistry(), allowExtraFields, allowMissingFields);
   }
 }

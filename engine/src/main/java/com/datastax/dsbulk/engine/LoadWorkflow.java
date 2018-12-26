@@ -20,6 +20,7 @@ import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
+import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
@@ -129,11 +130,13 @@ public class LoadWorkflow implements Workflow {
             schemaSettings.getRowType());
     metricsManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
+    ExtendedCodecRegistry codecRegistry =
+        codecSettings.createCodecRegistry(
+            cluster.getConfiguration().getCodecRegistry(),
+            schemaSettings.isAllowExtraFields(),
+            schemaSettings.isAllowMissingFields());
     recordMapper =
-        schemaSettings.createRecordMapper(
-            session,
-            connector.getRecordMetadata(),
-            codecSettings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry()));
+        schemaSettings.createRecordMapper(session, connector.getRecordMetadata(), codecRegistry);
     if (batchingEnabled) {
       batcher = batchSettings.newStatementBatcher(cluster);
     }
