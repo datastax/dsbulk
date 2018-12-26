@@ -413,6 +413,12 @@ The character(s) that represent a line ending. When set to the special value `au
 
 Default: **"auto"**.
 
+#### --connector.csv.normalizeLineEndingsInQuotes _&lt;boolean&gt;_
+
+Defines whether or not the parser should replace line separators by a normalized line separator '\n' inside quoted values. This setting is honored when reading and writing. Default value is false.
+
+Default: **false**.
+
 #### --connector.csv.nullValue _&lt;string&gt;_
 
 Sets the String representation of a null value. When reading, if the parser does not read any character from the input, this value will be used instead. When writing, if the writer has a null object to write to the output, this value will be used instead. The default value is `null`, which means that, when reading, the parser will emit a `null`, and when writing, the writer won't write any character at all to the output.

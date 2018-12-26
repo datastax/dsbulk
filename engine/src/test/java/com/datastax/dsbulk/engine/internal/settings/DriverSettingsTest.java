@@ -194,7 +194,7 @@ class DriverSettingsTest {
                     String.format(
                         " auth { "
                             + "provider = DseGSSAPIAuthProvider , "
-                            + "keyTab = \"%s\", "
+                            + "keyTab = %s, "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
                         quoteJson(keyTab)))
@@ -228,7 +228,7 @@ class DriverSettingsTest {
                         " auth { "
                             + "provider = DseGSSAPIAuthProvider , "
                             + "principal = \"alice@DATASTAX.COM\", "
-                            + "keyTab = \"%s\", "
+                            + "keyTab = %s, "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
                         quoteJson(keyTab)))
@@ -264,7 +264,7 @@ class DriverSettingsTest {
                         " auth { "
                             + "provider = DseGSSAPIAuthProvider, "
                             + "principal = \"alice@DATASTAX.COM\", "
-                            + "keyTab = \"%s\", "
+                            + "keyTab = %s, "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
                         quoteJson(keyTab)))
@@ -349,11 +349,11 @@ class DriverSettingsTest {
                             + "provider = JDK, "
                             + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
                             + "keystore { "
-                            + "   path = \"%s\","
+                            + "   path = %s,"
                             + "   password = cassandra1sfun "
                             + "}, "
                             + "truststore { "
-                            + "   path = \"%s\","
+                            + "   path = %s,"
                             + "   password = cassandra1sfun"
                             + "}"
                             + "}",
@@ -383,11 +383,11 @@ class DriverSettingsTest {
                             + "provider = OpenSSL, "
                             + "cipherSuites = [ \"TLS_RSA_WITH_AES_128_CBC_SHA\", \"TLS_RSA_WITH_AES_256_CBC_SHA\" ], "
                             + "openssl { "
-                            + "   keyCertChain = \"%s\","
-                            + "   privateKey = \"%s\""
+                            + "   keyCertChain = %s,"
+                            + "   privateKey = %s"
                             + "}, "
                             + "truststore { "
-                            + "   path = \"%s\","
+                            + "   path = %s,"
                             + "   password = cassandra1sfun "
                             + "}"
                             + "}",

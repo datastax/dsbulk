@@ -62,7 +62,7 @@ public class StringUtils {
    * @return the quoted value.
    */
   public static String quoteJson(String value) {
-    StringBuilder sb = new StringBuilder();
+    StringBuilder sb = new StringBuilder("\"");
     for (int i = 0; i < value.length(); ++i) {
       char c = value.charAt(i);
       switch (c) {
@@ -95,7 +95,7 @@ public class StringUtils {
           }
       }
     }
-    return sb.toString();
+    return sb.append("\"").toString();
   }
 
   private static boolean isC0Control(int codepoint) {
