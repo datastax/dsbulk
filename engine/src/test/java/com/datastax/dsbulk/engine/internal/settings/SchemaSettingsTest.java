@@ -78,15 +78,15 @@ import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.google.common.base.CharMatcher;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
@@ -1531,7 +1531,7 @@ class SchemaSettingsTest {
   void should_error_invalid_schema_query_present_and_function_present() {
     LoaderConfig config =
         makeLoaderConfig(
-            "mapping=\"now() = c1\", query=\"INSERT INTO t1 (col1) VALUES (?)\", keyspace=ks");
+            "mapping=\"now() = c1, 0 = c2\", query=\"INSERT INTO t1 (col1) VALUES (?)\", keyspace=ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1898,7 +1898,7 @@ class SchemaSettingsTest {
   }
 
   private static void assertMapping(DefaultMapping mapping, String... fieldsAndVars) {
-    Map<Field, CQLFragment> expected = new HashMap<>();
+    Multimap<Field, CQLFragment> expected = ArrayListMultimap.create();
     for (int i = 0; i < fieldsAndVars.length; i += 2) {
       String first = fieldsAndVars[i];
       String second = fieldsAndVars[i + 1];
@@ -1909,8 +1909,8 @@ class SchemaSettingsTest {
         expected.put(new DefaultMappedField(first), CQLIdentifier.fromInternal(second));
       }
     }
-    Map<Field, CQLFragment> fieldsToVariables =
-        (Map<Field, CQLFragment>) getInternalState(mapping, "fieldsToVariables");
+    Multimap<Field, CQLFragment> fieldsToVariables =
+        (Multimap<Field, CQLFragment>) getInternalState(mapping, "fieldsToVariables");
     assertThat(fieldsToVariables).isEqualTo(expected);
   }
 }

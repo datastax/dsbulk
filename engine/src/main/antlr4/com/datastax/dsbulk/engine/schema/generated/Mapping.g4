@@ -15,9 +15,9 @@
 grammar Mapping;
 
 mapping
-    : simpleEntry  ( ',' simpleEntry  )* EOF // col1, col2, now()
+    : simpleEntry  ( ',' simpleEntry  )* EOF // col1, col2
+    | indexedEntry ( ',' indexedEntry )* EOF // 0 = col1, 1 = col2, now() = col3
     | mappedEntry  ( ',' mappedEntry  )* EOF // fieldA = col1, fieldB = col2, now() = col3
-    | indexedEntry ( ',' indexedEntry )* EOF // 0 = col1, 1 = col2, 2 = now()
     ;
 
 simpleEntry

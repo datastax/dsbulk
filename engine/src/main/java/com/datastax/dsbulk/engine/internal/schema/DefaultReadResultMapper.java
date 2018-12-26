@@ -21,6 +21,7 @@ import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.base.Suppliers;
 import com.google.common.reflect.TypeToken;
 import java.net.URI;
+import java.util.Collection;
 import java.util.function.Supplier;
 
 public class DefaultReadResultMapper implements ReadResultMapper {
@@ -44,14 +45,16 @@ public class DefaultReadResultMapper implements ReadResultMapper {
     try {
       DefaultRecord record = DefaultRecord.indexed(result, resource, -1);
       for (Field field : mapping.fields()) {
-        // do not quote variable names here as the mapping expects them unquoted
-        CQLFragment variable = mapping.fieldToVariable(field);
-        DataType type = row.getColumnDefinitions().getType(variable.asVariable());
-        TypeToken<?> fieldType = recordMetadata.getFieldType(field, type);
-        if (fieldType != null) {
-          TypeCodec<?> codec = mapping.codec(variable, type, fieldType);
-          Object value = row.get(variable.asVariable(), codec);
-          record.setFieldValue(field, value);
+        Collection<CQLFragment> variables = mapping.fieldToVariables(field);
+        // Note: in practice, there can be only one variable mapped to a given field when unloading
+        for (CQLFragment variable : variables) {
+          DataType type = row.getColumnDefinitions().getType(variable.asVariable());
+          TypeToken<?> fieldType = recordMetadata.getFieldType(field, type);
+          if (fieldType != null) {
+            TypeCodec<?> codec = mapping.codec(variable, type, fieldType);
+            Object value = row.get(variable.asVariable(), codec);
+            record.setFieldValue(field, value);
+          }
         }
       }
       return record;

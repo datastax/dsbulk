@@ -1198,8 +1198,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.table",
             "UNLOAD_AND_LOAD_TIMESTAMP_TTL",
             "--schema.mapping",
-            escapeUserInput(
-                "key, \"My Value\", " + "writetime(\"My Value\"), " + "ttl(\"My Value\")"));
+            escapeUserInput("key, \"My Value\", writetime(\"My Value\"), ttl(\"My Value\")"));
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -2387,6 +2386,62 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> lines =
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     assertThat(lines).hasSize(1).containsExactly("0,1,2");
+  }
+
+  /** Test for DAT-373. */
+  @Test
+  void duplicate_mappings() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS dat373");
+    session.execute("CREATE TABLE dat373 (pk int PRIMARY KEY, v1 int, v2 int)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            escapeUserInput(getClass().getResource("/duplicates.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "dat373",
+            "--schema.mapping",
+            "*=*, v = v1, v = v2");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    Row row = session.execute("SELECT * FROM dat373").one();
+    assertThat(row.getInt("pk")).isOne();
+    assertThat(row.getInt("v1")).isEqualTo(42);
+    assertThat(row.getInt("v2")).isEqualTo(42);
+
+    args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "dat373",
+            "--schema.mapping",
+            "pk = pk, a = v1, b = v1, c = v2, d = v2");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).containsExactly("pk,a,b,c,d", "1,42,42,42,42");
   }
 
   static void checkNumbersWritten(

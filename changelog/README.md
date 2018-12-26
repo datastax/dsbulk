@@ -21,6 +21,7 @@
 - [improvement] DAT-316: JsonNodeToUDTCodec should allow a Json array input.
 - [improvement] DAT-372: Improve WHERE clause token range restriction detection.
 - [improvement] DAT-370: Remove record location URI.
+- [improvement] DAT-373: Allow columns and fields to be mapped more than once.
 
 
 ### 1.2.0

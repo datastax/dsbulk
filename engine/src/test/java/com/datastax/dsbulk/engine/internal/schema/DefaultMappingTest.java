@@ -21,7 +21,7 @@ import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
 import com.datastax.dsbulk.engine.internal.codecs.writetime.WriteTimeCodec;
-import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import java.time.Instant;
@@ -31,8 +31,8 @@ class DefaultMappingTest {
 
   @Test
   void should_create_mapping() {
-    ImmutableBiMap<Field, CQLFragment> fieldsToVariables =
-        ImmutableBiMap.<Field, CQLFragment>builder()
+    ImmutableMultimap<Field, CQLFragment> fieldsToVariables =
+        ImmutableMultimap.<Field, CQLFragment>builder()
             .put(new DefaultMappedField("f1"), CQLIdentifier.fromInternal("c1"))
             .build();
     ExtendedCodecRegistry extendedCodecRegistry = mock(ExtendedCodecRegistry.class);
@@ -40,12 +40,12 @@ class DefaultMappingTest {
         .thenReturn(TypeCodec.varchar());
     DefaultMapping mapping =
         new DefaultMapping(fieldsToVariables, extendedCodecRegistry, ImmutableSet.of());
-    assertThat(mapping.fieldToVariable(new MappedMappingField("f1")))
-        .isEqualTo(CQLIdentifier.fromInternal("c1"));
-    assertThat(mapping.fieldToVariable(new MappedMappingField("nonexistent"))).isNull();
-    assertThat(mapping.variableToField(CQLIdentifier.fromInternal("c1")))
-        .isEqualTo(new MappedMappingField("f1"));
-    assertThat(mapping.variableToField(CQLIdentifier.fromInternal("nonexistent"))).isNull();
+    assertThat(mapping.fieldToVariables(new MappedMappingField("f1")))
+        .containsExactly(CQLIdentifier.fromInternal("c1"));
+    assertThat(mapping.fieldToVariables(new MappedMappingField("nonexistent"))).isEmpty();
+    assertThat(mapping.variableToFields(CQLIdentifier.fromInternal("c1")))
+        .containsExactly(new MappedMappingField("f1"));
+    assertThat(mapping.variableToFields(CQLIdentifier.fromInternal("nonexistent"))).isEmpty();
     assertThat(
             mapping.codec(
                 CQLIdentifier.fromInternal("f1"), DataType.varchar(), TypeToken.of(String.class)))
@@ -61,7 +61,7 @@ class DefaultMappingTest {
         .thenReturn(codec);
     DefaultMapping mapping =
         new DefaultMapping(
-            ImmutableBiMap.of(),
+            ImmutableMultimap.of(),
             extendedCodecRegistry,
             ImmutableSet.of(CQLIdentifier.fromInternal("myWriteTimeVar")));
     assertThat(

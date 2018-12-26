@@ -28,4 +28,11 @@ public class MultimapAssert<K, V>
         .isTrue();
     return this;
   }
+
+  public MultimapAssert<K, V> isEmpty() {
+    assertThat(actual.isEmpty())
+        .overridingErrorMessage("Expecting %s to be empty but it was not", actual)
+        .isTrue();
+    return this;
+  }
 }

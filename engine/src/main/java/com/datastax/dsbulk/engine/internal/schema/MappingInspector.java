@@ -8,8 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
+
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
+import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.schema.generated.MappingBaseVisitor;
 import com.datastax.dsbulk.engine.schema.generated.MappingLexer;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser;
@@ -20,12 +25,14 @@ import com.datastax.dsbulk.engine.schema.generated.MappingParser.IndexContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.IndexOrFunctionContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.SimpleEntryContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.VariableContext;
-import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.LinkedListMultimap;
+import com.google.common.collect.Multimap;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -55,20 +62,22 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   private static final CQLIdentifier WRITETIME = CQLIdentifier.fromInternal("writetime");
 
   private final boolean preferIndexedMapping;
+  private final WorkflowType workflowType;
 
   private final Set<CQLFragment> writeTimeVariablesBuilder = new LinkedHashSet<>();
   private final ImmutableSet<CQLFragment> writeTimeVariables;
 
-  private final LinkedHashMap<MappingField, CQLFragment> explicitVariables;
-  private final ImmutableBiMap<MappingField, CQLFragment> explicitVariablesBimap;
+  private final LinkedListMultimap<MappingField, CQLFragment> explicitVariablesBuilder;
+  private final ImmutableMultimap<MappingField, CQLFragment> explicitVariables;
   private final List<CQLFragment> excludedVariables;
 
   private int currentIndex;
   private boolean inferring;
   private boolean indexed;
 
-  public MappingInspector(String mapping, boolean preferIndexedMapping) {
+  public MappingInspector(String mapping, boolean preferIndexedMapping, WorkflowType workflowType) {
     this.preferIndexedMapping = preferIndexedMapping;
+    this.workflowType = workflowType;
     CodePointCharStream input = CharStreams.fromString(mapping);
     MappingLexer lexer = new MappingLexer(input);
     CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -96,16 +105,17 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
     parser.removeErrorListeners();
     parser.addErrorListener(listener);
     MappingParser.MappingContext ctx = parser.mapping();
-    explicitVariables = new LinkedHashMap<>();
+    explicitVariablesBuilder = LinkedListMultimap.create();
     excludedVariables = new ArrayList<>();
     visit(ctx);
-    checkDuplicates();
     if (indexed) {
-      // if keys are indices, sort them by index
-      explicitVariablesBimap = ImmutableBiMap.copyOf(sortFieldsByIndex(explicitVariables));
+      // if the mapping is indexed, sort the entries by ascending order of indices for a nicer
+      // output.
+      explicitVariables = ImmutableMultimap.copyOf(sortFieldsByIndex(explicitVariablesBuilder));
     } else {
-      explicitVariablesBimap = ImmutableBiMap.copyOf(explicitVariables);
+      explicitVariables = ImmutableMultimap.copyOf(explicitVariablesBuilder);
     }
+    checkDuplicates();
     writeTimeVariables = ImmutableSet.copyOf(writeTimeVariablesBuilder);
   }
 
@@ -113,8 +123,8 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
    * @return a map from field names to variable names containing the explicit (i.e., non-inferred)
    *     variables found in the mapping.
    */
-  public ImmutableBiMap<MappingField, CQLFragment> getExplicitVariables() {
-    return explicitVariablesBimap;
+  public ImmutableMultimap<MappingField, CQLFragment> getExplicitVariables() {
+    return explicitVariables;
   }
 
   /** @return true if the mapping contains an inferred entry (such as "*=*"), false otherwise. */
@@ -124,10 +134,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
 
   /** @return true if the mapping is indexed, false otherwise. */
   public boolean isIndexed() {
-    // consider indexed also any mapping that only contains functions as fields.
-    return indexed
-        || (!inferring
-            && explicitVariables.keySet().stream().allMatch(FunctionCall.class::isInstance));
+    return indexed;
   }
 
   /**
@@ -170,12 +177,17 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   @Override
   public MappingToken visitSimpleEntry(SimpleEntryContext ctx) {
     CQLFragment variable = visitVariableOrFunction(ctx.variableOrFunction());
+    if (workflowType == LOAD && variable instanceof FunctionCall) {
+      throw new BulkConfigurationException(
+          "Invalid schema.mapping: simple entries cannot contain function calls when loading, "
+              + "please use mapped entries instead.");
+    }
     if (preferIndexedMapping) {
       indexed = true;
-      explicitVariables.put(new IndexedMappingField(currentIndex++), variable);
+      explicitVariablesBuilder.put(new IndexedMappingField(currentIndex++), variable);
     } else {
       indexed = false;
-      explicitVariables.put(new MappedMappingField(variable.asInternal()), variable);
+      explicitVariablesBuilder.put(new MappedMappingField(variable.asInternal()), variable);
     }
     return null;
   }
@@ -184,7 +196,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public MappingToken visitIndexedEntry(MappingParser.IndexedEntryContext ctx) {
     MappingField field = visitIndexOrFunction(ctx.indexOrFunction());
     CQLFragment variable = visitVariableOrFunction(ctx.variableOrFunction());
-    explicitVariables.put(field, variable);
+    explicitVariablesBuilder.put(field, variable);
     return null;
   }
 
@@ -206,7 +218,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public MappingToken visitRegularMappedEntry(MappingParser.RegularMappedEntryContext ctx) {
     MappingField field = visitFieldOrFunction(ctx.fieldOrFunction());
     CQLFragment variable = visitVariableOrFunction(ctx.variableOrFunction());
-    explicitVariables.put(field, variable);
+    explicitVariablesBuilder.put(field, variable);
     return null;
   }
 
@@ -322,11 +334,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
     }
   }
 
-  public static LinkedHashMap<MappingField, CQLFragment> sortFieldsByIndex(
-      Map<MappingField, CQLFragment> unsorted) {
-    LinkedHashMap<MappingField, CQLFragment> sorted = new LinkedHashMap<>();
+  public static LinkedListMultimap<MappingField, CQLFragment> sortFieldsByIndex(
+      Multimap<MappingField, CQLFragment> unsorted) {
+    LinkedListMultimap<MappingField, CQLFragment> sorted = LinkedListMultimap.create();
     unsorted
-        .entrySet()
+        .entries()
         .stream()
         .sorted(
             Entry.comparingByKey(Comparator.comparingInt(MappingInspector::compareIndexedFields)))
@@ -345,22 +357,38 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   private void checkDuplicates() {
+    Collection<? extends MappingToken> toCheck;
+    if (workflowType == LOAD) {
+      // OK: field1 = col1, field1 = col2
+      // KO: field1 = col1, field2 = col1
+      toCheck = explicitVariables.values();
+    } else {
+      // OK: field1 = col1, field2 = col1
+      // KO: field1 = col1, field1 = col2
+      toCheck = explicitVariables.inverse().values();
+    }
     List<MappingToken> duplicates =
-        explicitVariables
-            .values()
+        toCheck
             .stream()
-            .collect(Collectors.groupingBy(v -> v, Collectors.counting()))
+            .collect(groupingBy(v -> v, counting()))
             .entrySet()
             .stream()
             .filter(entry -> entry.getValue() > 1)
             .map(Map.Entry::getKey)
             .collect(Collectors.toList());
     if (!duplicates.isEmpty()) {
+      String msg;
+      if (workflowType == LOAD) {
+        msg = "the following variables are mapped to more than one field";
+      } else {
+        msg = "the following fields are mapped to more than one variable";
+      }
+      String offending =
+          duplicates.stream().map(Object::toString).collect(Collectors.joining(", "));
       throw new BulkConfigurationException(
-          "Invalid schema.mapping: the following variables are mapped to more than one field: "
-              + duplicates.stream().map(Object::toString).collect(Collectors.joining(", "))
-              + ". "
-              + "Please review schema.mapping for duplicates.");
+          String.format(
+              "Invalid schema.mapping: %s: %s. Please review schema.mapping for duplicates.",
+              msg, offending));
     }
   }
 }

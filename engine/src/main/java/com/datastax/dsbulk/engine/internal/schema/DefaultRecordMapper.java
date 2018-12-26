@@ -25,6 +25,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.Set;
 import java.util.function.BiFunction;
 import org.jetbrains.annotations.Nullable;
@@ -94,15 +95,19 @@ public class DefaultRecordMapper implements RecordMapper {
       }
       BoundStatement bs = boundStatementFactory.apply(record, insertStatement);
       for (Field field : record.fields()) {
-        CQLFragment variable = mapping.fieldToVariable(field);
-        if (variable != null) {
-          DataType cqlType = insertStatement.getVariables().getType(variable.asVariable());
-          TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
-          if (fieldType != null) {
-            Object raw = record.getFieldValue(field);
-            bindColumn(bs, variable, raw, cqlType, fieldType);
+        Collection<CQLFragment> variables = mapping.fieldToVariables(field);
+        // Note: when loading, a field can be mapped to one or more variables.
+        if (!variables.isEmpty()) {
+          for (CQLFragment variable : variables) {
+            DataType cqlType = insertStatement.getVariables().getType(variable.asVariable());
+            TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
+            if (fieldType != null) {
+              Object raw = record.getFieldValue(field);
+              bindColumn(bs, variable, raw, cqlType, fieldType);
+            }
           }
         } else if (!allowExtraFields) {
+          // the field wasn't mapped to any known variable
           throw new InvalidMappingException(
               "Extraneous field "
                   + field
@@ -128,7 +133,7 @@ public class DefaultRecordMapper implements RecordMapper {
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
     ByteBuffer bb = codec.serialize(raw, protocolVersion);
     if (isNull(bb, cqlType)) {
-      if (primaryKeyVariables.contains(variable)) {
+      if (variable instanceof CQLIdentifier && primaryKeyVariables.contains(variable)) {
         throw new InvalidMappingException(
             "Primary key column "
                 + variable.asCql()
@@ -165,16 +170,19 @@ public class DefaultRecordMapper implements RecordMapper {
     ColumnDefinitions variables = insertStatement.getVariables();
     for (int i = 0; i < variables.size(); i++) {
       CQLIdentifier variable = CQLIdentifier.fromInternal(variables.getName(i));
-      Field field = mapping.variableToField(variable);
-      if (!recordFields.contains(field)) {
-        throw new InvalidMappingException(
-            "Required field "
-                + field
-                + " (mapped to column "
-                + variable.asCql()
-                + ") was missing from record. "
-                + "Please remove it from the mapping "
-                + "or set schema.allowMissingFields to true.");
+      Collection<Field> fields = mapping.variableToFields(variable);
+      // Note: in practice, there can be only one field mapped to a given variable when loading
+      for (Field field : fields) {
+        if (!recordFields.contains(field)) {
+          throw new InvalidMappingException(
+              "Required field "
+                  + field
+                  + " (mapped to column "
+                  + variable.asCql()
+                  + ") was missing from record. "
+                  + "Please remove it from the mapping "
+                  + "or set schema.allowMissingFields to true.");
+        }
       }
     }
   }

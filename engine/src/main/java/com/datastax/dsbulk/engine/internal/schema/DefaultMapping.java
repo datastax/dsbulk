@@ -19,23 +19,24 @@ import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.codecs.writetime.WriteTimeCodec;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 
 public class DefaultMapping implements Mapping {
 
-  private final ImmutableBiMap<Field, CQLFragment> fieldsToVariables;
+  private final ImmutableMultimap<Field, CQLFragment> fieldsToVariables;
+  private final ImmutableMultimap<CQLFragment, Field> variablesToFields;
   private final ExtendedCodecRegistry codecRegistry;
   private final Cache<MappingToken, TypeCodec<?>> variablesToCodecs;
   private final ImmutableSet<String> writeTimeVariables;
-  private ImmutableBiMap<CQLFragment, Field> variablesToFields;
 
   public DefaultMapping(
-      ImmutableBiMap<Field, CQLFragment> fieldsToVariables,
+      ImmutableMultimap<Field, CQLFragment> fieldsToVariables,
       ExtendedCodecRegistry codecRegistry,
       ImmutableSet<CQLFragment> writeTimeVariables) {
     this.fieldsToVariables = fieldsToVariables;
@@ -49,24 +50,28 @@ public class DefaultMapping implements Mapping {
     variablesToFields = fieldsToVariables.inverse();
   }
 
+  @NotNull
   @Override
-  public CQLFragment fieldToVariable(@NotNull Field field) {
+  public Collection<CQLFragment> fieldToVariables(@NotNull Field field) {
     return fieldsToVariables.get(field);
   }
 
+  @NotNull
   @Override
-  public Field variableToField(@NotNull CQLFragment variable) {
+  public Collection<Field> variableToFields(@NotNull CQLFragment variable) {
     return variablesToFields.get(variable);
   }
 
+  @NotNull
   @Override
   public Set<Field> fields() {
     return fieldsToVariables.keySet();
   }
 
+  @NotNull
   @Override
   public Set<CQLFragment> variables() {
-    return fieldsToVariables.values();
+    return variablesToFields.keySet();
   }
 
   @NotNull
