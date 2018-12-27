@@ -19,7 +19,6 @@ import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERN
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
-import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.printDebugInfoAboutCluster;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkGraphCompatibility;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -372,8 +371,6 @@ public class SchemaSettings {
           }
         }
       }
-      printDebugInfoAboutCluster(cluster);
-
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
     }

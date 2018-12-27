@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine;
 
 import static com.datastax.driver.core.ConsistencyLevel.ONE;
+import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.printDebugInfoAboutCluster;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkProductCompatibility;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -107,6 +108,7 @@ public class LoadWorkflow implements Workflow {
     executorSettings.init();
     engineSettings.init();
     cluster = driverSettings.newCluster();
+    printDebugInfoAboutCluster(cluster);
     checkProductCompatibility(cluster);
     schemaSettings.init(
         WorkflowType.LOAD, cluster, !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
