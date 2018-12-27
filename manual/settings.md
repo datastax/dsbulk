@@ -415,7 +415,7 @@ Default: **"auto"**.
 
 #### --connector.csv.normalizeLineEndingsInQuotes _&lt;boolean&gt;_
 
-Defines whether or not the parser should replace line separators by a normalized line separator '\n' inside quoted values. This setting is honored when reading and writing. Default value is false.
+Defines whether or not line separators should be replaced by a normalized line separator '\n' inside quoted values. This setting is honored when reading and writing. Note: due to a bug in the CSV parsing library, on Windows systems, the line ending detection mechanism may not function properly when this setting is false; in case of problem, set this to true. Default value is false.
 
 Default: **false**.
 
