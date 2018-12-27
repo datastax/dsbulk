@@ -15,7 +15,7 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.numberToInstant;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
@@ -155,9 +155,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_UNIQUE));
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -175,9 +175,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -201,11 +201,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--driver.protocol.compression");
     args.add("LZ4");
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_UNIQUE));
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -223,11 +223,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--driver.protocol.compression");
     args.add("LZ4");
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -251,11 +251,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--driver.protocol.compression");
     args.add("SNAPPY");
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_UNIQUE));
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -273,11 +273,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--driver.protocol.compression");
     args.add("SNAPPY");
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -324,9 +324,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(getClass().getResource("/complex.csv")));
+    args.add(quoteJson(getClass().getResource("/complex.csv")));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--codec.nullStrings");
@@ -348,9 +348,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -371,9 +371,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--codec.nullStrings");
@@ -450,9 +450,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(getClass().getResource("/counters.csv")));
+    args.add(quoteJson(getClass().getResource("/counters.csv")));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -475,9 +475,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -515,16 +515,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
           List<String> args = new ArrayList<>();
           args.add("load");
           args.add("--log.directory");
-          args.add(escapeUserInput(logDir));
+          args.add(quoteJson(logDir));
           args.add("--connector.csv.url");
-          args.add(escapeUserInput(getClass().getResource("/counters.csv")));
+          args.add(quoteJson(getClass().getResource("/counters.csv")));
           args.add("--connector.csv.header");
           args.add("false");
           args.add("--schema.keyspace");
           args.add(session.getLoggedKeyspace());
           args.add("--schema.query");
           args.add(
-              escapeUserInput(
+              quoteJson(
                   "UPDATE counters SET \"C1\" += ?, c2 = c2 + ? WHERE pk1 = ? AND \"PK2\" = ?"));
           args.add("--schema.mapping");
           args.add("pk1,PK2,C1,c2");
@@ -544,9 +544,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
           args = new ArrayList<>();
           args.add("unload");
           args.add("--log.directory");
-          args.add(escapeUserInput(logDir));
+          args.add(quoteJson(logDir));
           args.add("--connector.csv.url");
-          args.add(escapeUserInput(unloadDir));
+          args.add(quoteJson(unloadDir));
           args.add("--connector.csv.header");
           args.add("true");
           args.add("--connector.csv.maxConcurrentFiles");
@@ -556,11 +556,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
           args.add("--schema.query");
           // Exercise aliased selectors and a custom mapping
           args.add(
-              escapeUserInput(
+              quoteJson(
                   "SELECT pk1 as \"Field A\", \"PK2\" AS \"Field B\", \"C1\" AS \"Field C\", "
                       + "c2 AS \"Field D\", c3 AS \"Field E\" FROM counters"));
           args.add("--schema.mapping");
-          args.add(escapeUserInput("\"Field E\",\"Field D\",\"Field C\",\"Field B\",\"Field A\""));
+          args.add(quoteJson("\"Field E\",\"Field D\",\"Field C\",\"Field B\",\"Field A\""));
 
           status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
           assertThat(status).isZero();
@@ -590,16 +590,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
           List<String> args = new ArrayList<>();
           args.add("load");
           args.add("--log.directory");
-          args.add(escapeUserInput(logDir));
+          args.add(quoteJson(logDir));
           args.add("--connector.csv.url");
-          args.add(escapeUserInput(getClass().getResource("/counters.csv")));
+          args.add(quoteJson(getClass().getResource("/counters.csv")));
           args.add("--connector.csv.header");
           args.add("false");
           args.add("--schema.keyspace");
           args.add(session.getLoggedKeyspace());
           args.add("--schema.query");
           args.add(
-              escapeUserInput(
+              quoteJson(
                   "UPDATE counters SET \"C1\" += :\"fieldC\", c2 = c2 + :\"fieldD\" WHERE pk1 = :\"fieldA\" AND \"PK2\" = :\"fieldB\""));
           args.add("--schema.mapping");
           args.add("fieldA,fieldB,fieldC,fieldD");
@@ -619,9 +619,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
           args = new ArrayList<>();
           args.add("unload");
           args.add("--log.directory");
-          args.add(escapeUserInput(logDir));
+          args.add(quoteJson(logDir));
           args.add("--connector.csv.url");
-          args.add(escapeUserInput(unloadDir));
+          args.add(quoteJson(unloadDir));
           args.add("--connector.csv.header");
           args.add("false");
           args.add("--connector.csv.maxConcurrentFiles");
@@ -629,7 +629,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
           args.add("--schema.keyspace");
           args.add(session.getLoggedKeyspace());
           args.add("--schema.query");
-          args.add(escapeUserInput("SELECT pk1, \"PK2\", \"C1\", c2, c3 FROM counters"));
+          args.add(quoteJson("SELECT pk1, \"PK2\", \"C1\", c2, c3 FROM counters"));
 
           status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
           assertThat(status).isZero();
@@ -645,9 +645,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS));
+    args.add(quoteJson(CSV_RECORDS));
     args.add("--connector.csv.header");
     args.add("true");
     args.add("--schema.keyspace");
@@ -665,9 +665,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -695,11 +695,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("-url");
-    args.add(escapeUserInput(CSV_RECORDS_WITH_SPACES));
+    args.add(quoteJson(CSV_RECORDS_WITH_SPACES));
     args.add("--schema.mapping");
-    args.add(escapeUserInput("key=key,\"my source\"=\"my destination\""));
+    args.add(quoteJson("key=key,\"my source\"=\"my destination\""));
     args.add("-header");
     args.add("true");
     args.add("-k");
@@ -715,13 +715,13 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("-url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.mapping");
-    args.add(escapeUserInput("key=key,\"my source\"=\"my destination\""));
+    args.add(quoteJson("key=key,\"my source\"=\"my destination\""));
     args.add("-header");
     args.add("true");
     args.add("-k");
@@ -741,9 +741,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_SKIP));
+    args.add(quoteJson(CSV_RECORDS_SKIP));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -770,9 +770,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -798,7 +798,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.ignoreLeadingWhitespaces",
             "true",
             "--connector.csv.ignoreTrailingWhitespaces",
@@ -823,9 +823,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "unload",
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.ignoreLeadingWhitespaces",
             "true",
             "--connector.csv.ignoreTrailingWhitespaces",
@@ -854,7 +854,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.ignoreLeadingWhitespaces",
             "true",
             "--connector.csv.ignoreTrailingWhitespaces",
@@ -884,7 +884,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.ignoreLeadingWhitespaces",
             "true",
             "--connector.csv.ignoreTrailingWhitespaces",
@@ -914,7 +914,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.ignoreLeadingWhitespaces",
             "true",
             "--connector.csv.ignoreTrailingWhitespaces",
@@ -976,9 +976,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "unload",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.header",
             "true",
             "--schema.keyspace",
@@ -1005,9 +1005,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.header",
             "true",
             "--schema.keyspace",
@@ -1042,15 +1042,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "unload",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.header",
             "true",
             "--schema.keyspace",
             session.getLoggedKeyspace(),
             "--schema.query",
-            escapeUserInput(
+            quoteJson(
                 "SELECT key, \"My Value\", "
                     + "writetime(\"My Value\"), "
                     + "ttl(\"My Value\") "
@@ -1074,15 +1074,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.header",
             "true",
             "--schema.keyspace",
             session.getLoggedKeyspace(),
             "--schema.query",
-            escapeUserInput(
+            quoteJson(
                 "INSERT INTO \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" (key, \"My Value\") "
                     + "VALUES (:key, :\"My Value\") "
                     + "USING TIMESTAMP :\"writetime(My Value)\" "
@@ -1115,15 +1115,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "unload",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.header",
             "true",
             "--schema.keyspace",
             session.getLoggedKeyspace(),
             "--schema.query",
-            escapeUserInput(
+            quoteJson(
                 "SELECT key, \"My Value\", "
                     + "writetime(\"My Value\") AS \"MyWritetime\", "
                     + "ttl(\"My Value\") AS \"MyTtl\" "
@@ -1147,15 +1147,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.header",
             "true",
             "--schema.keyspace",
             session.getLoggedKeyspace(),
             "--schema.query",
-            escapeUserInput(
+            quoteJson(
                 "INSERT INTO \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\" (key, \"My Value\") "
                     + "VALUES (:key, :\"My Value\") "
                     + "USING TIMESTAMP :\"MyWritetime\" "
@@ -1188,9 +1188,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "unload",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.header",
             "true",
             "--schema.keyspace",
@@ -1198,8 +1198,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.table",
             "UNLOAD_AND_LOAD_TIMESTAMP_TTL",
             "--schema.mapping",
-            escapeUserInput(
-                "key, \"My Value\", " + "writetime(\"My Value\"), " + "ttl(\"My Value\")"));
+            quoteJson("key, \"My Value\", writetime(\"My Value\"), ttl(\"My Value\")"));
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -1219,9 +1218,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.header",
             "true",
             "--schema.keyspace",
@@ -1229,8 +1228,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.table",
             "UNLOAD_AND_LOAD_TIMESTAMP_TTL",
             "--schema.mapping",
-            escapeUserInput(
-                "* = * , \"writetime(My Value)\" = __timestamp, \"ttl(My Value)\" = __ttl"));
+            quoteJson("* = * , \"writetime(My Value)\" = __timestamp, \"ttl(My Value)\" = __ttl"));
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -1251,9 +1249,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_HEADER));
+    args.add(quoteJson(CSV_RECORDS_HEADER));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1276,9 +1274,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_HEADER));
+    args.add(quoteJson(CSV_RECORDS_HEADER));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1300,9 +1298,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_HEADER));
+    args.add(quoteJson(CSV_RECORDS_HEADER));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1324,13 +1322,13 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--log.maxErrors");
     args.add("9");
     args.add("--log.verbosity");
     args.add("2");
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(getClass().getResource("/ip-by-country-pk-null.csv")));
+    args.add(quoteJson(getClass().getResource("/ip-by-country-pk-null.csv")));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1338,7 +1336,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("IPBYCOUNTRY");
     args.add("--schema.mapping");
-    args.add(escapeUserInput(IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE));
+    args.add(quoteJson(IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE));
     args.add("--codec.nullStrings");
     args.add("[NULL]");
 
@@ -1362,9 +1360,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_HEADER));
+    args.add(quoteJson(CSV_RECORDS_HEADER));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1386,9 +1384,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_HEADER));
+    args.add(quoteJson(CSV_RECORDS_HEADER));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1416,7 +1414,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
     args.add(ClassLoader.getSystemResource("number.csv").toExternalForm());
     args.add("--connector.csv.header");
@@ -1442,9 +1440,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.delimiter");
@@ -1469,9 +1467,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.delimiter");
@@ -1501,7 +1499,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
     args.add(ClassLoader.getSystemResource("number.csv").toExternalForm());
     args.add("--connector.csv.header");
@@ -1533,9 +1531,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.delimiter");
@@ -1558,9 +1556,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.delimiter");
@@ -1609,15 +1607,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () ->
-                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1"));
+            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1"));
           }
         });
 
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("mock");
     args.add("--schema.keyspace");
@@ -1663,25 +1660,23 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () ->
-                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1"));
+            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1"));
           }
         });
 
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("mock");
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.query");
     args.add(
-        escapeUserInput(
-            "DELETE FROM test_delete WHERE \"PK\" = :\"Field A\" and \"CC\" = :\"Field B\""));
+        quoteJson("DELETE FROM test_delete WHERE \"PK\" = :\"Field A\" and \"CC\" = :\"Field B\""));
     args.add("--schema.mapping");
-    args.add(escapeUserInput("\"Field A\",\"Field B\""));
+    args.add(quoteJson("\"Field A\",\"Field B\""));
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_OK);
@@ -1722,15 +1717,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () ->
-                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1"));
+            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1"));
           }
         });
 
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("mock");
     args.add("--schema.keyspace");
@@ -1782,15 +1776,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () ->
-                Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "1", ""));
+            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1", ""));
           }
         });
 
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("mock");
     args.add("--schema.keyspace");
@@ -1848,16 +1841,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
           @Override
           public Supplier<? extends Publisher<Record>> read() {
-            return () ->
-                Flux.just(
-                    DefaultRecord.indexed("1,1", () -> null, 0, () -> null, "1", "2", "3", "4"));
+            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "2", "3", "4"));
           }
         });
 
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("mock");
     args.add("--schema.keyspace");
@@ -1896,7 +1887,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.ignoreLeadingWhitespaces");
     args.add("true");
     args.add("--connector.csv.ignoreTrailingWhitespaces");
@@ -1932,9 +1923,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.delimiter");
@@ -1967,9 +1958,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.delimiter");
@@ -2009,7 +2000,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.ignoreLeadingWhitespaces");
     args.add("true");
     args.add("--connector.csv.ignoreTrailingWhitespaces");
@@ -2045,9 +2036,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.delimiter");
@@ -2080,9 +2071,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.delimiter");
@@ -2121,7 +2112,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
     args.add(ClassLoader.getSystemResource("invalid-mapping.csv").toExternalForm());
     args.add("--connector.csv.header");
@@ -2143,9 +2134,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -2175,7 +2166,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
     args.add(ClassLoader.getSystemResource("invalid-mapping.csv").toExternalForm());
     args.add("--connector.csv.header");
@@ -2196,9 +2187,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -2228,11 +2219,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "-header",
             "true",
             "--connector.csv.url",
-            escapeUserInput(getClass().getResource("/function-pk.csv")),
+            quoteJson(getClass().getResource("/function-pk.csv")),
             "--schema.keyspace",
             session.getLoggedKeyspace(),
             "--schema.table",
@@ -2256,11 +2247,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "-header",
             "true",
             "--connector.csv.url",
-            escapeUserInput(getClass().getResource("/function-pk.csv")),
+            quoteJson(getClass().getResource("/function-pk.csv")),
             "--schema.keyspace",
             session.getLoggedKeyspace(),
             "--schema.query",
@@ -2282,11 +2273,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "-header",
             "true",
             "--connector.csv.url",
-            escapeUserInput(getClass().getResource("/function-pk.csv")),
+            quoteJson(getClass().getResource("/function-pk.csv")),
             "--schema.keyspace",
             session.getLoggedKeyspace(),
             "--schema.query",
@@ -2308,11 +2299,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "unload",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "-header",
             "true",
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.maxConcurrentFiles",
             "1",
             "--schema.keyspace",
@@ -2341,11 +2332,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "unload",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "-header",
             "false",
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.maxConcurrentFiles",
             "1",
             "--schema.keyspace",
@@ -2359,6 +2350,96 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     assertThat(lines).hasSize(1);
     assertThat(lines.get(0)).matches("0,1,\\d{4}-\\d{2}-\\d{2}");
+  }
+
+  /** test for DAT-372 exercising custom bound variable names in WHERE clause restrictions */
+  @Test
+  void unload_token_range_restriction() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS unload_token_range");
+    session.execute(
+        "CREATE TABLE unload_token_range (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO unload_token_range (pk, cc, v) values (0, 1, 2)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "false",
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson(
+                "SELECT pk, cc, v FROM unload_token_range "
+                    + "WHERE token(pk) > :\"My Start\" AND token(pk) <= :\"My End\""));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    List<String> lines =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).hasSize(1).containsExactly("0,1,2");
+  }
+
+  /** Test for DAT-373. */
+  @Test
+  void duplicate_mappings() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS dat373");
+    session.execute("CREATE TABLE dat373 (pk int PRIMARY KEY, v1 int, v2 int)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(getClass().getResource("/duplicates.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "dat373",
+            "--schema.mapping",
+            "*=*, v = v1, v = v2");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    Row row = session.execute("SELECT * FROM dat373").one();
+    assertThat(row.getInt("pk")).isOne();
+    assertThat(row.getInt("v1")).isEqualTo(42);
+    assertThat(row.getInt("v2")).isEqualTo(42);
+
+    args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "dat373",
+            "--schema.mapping",
+            "pk = pk, a = v1, b = v1, c = v2, d = v2");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).containsExactly("pk,a,b,c,d", "1,42,42,42,42");
   }
 
   static void checkNumbersWritten(

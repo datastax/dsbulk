@@ -13,7 +13,7 @@ import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.driver.core.TypeCodec.cint;
 import static com.datastax.dsbulk.commons.tests.utils.CQLUtils.createKeyspaceSimpleStrategy;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
@@ -104,7 +104,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("mock");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--schema.keyspace");
     args.add(keyspace);
     args.add("--schema.table");
@@ -132,7 +132,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("mock");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--schema.query");
     args.add(String.format("\"SELECT * FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
     args.add(table);
@@ -150,7 +150,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("count");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("-stats");
     args.add(modes.stream().map(Enum::name).collect(Collectors.joining(",")));
     args.add("--schema.keyspace");
@@ -171,7 +171,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("count");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("-stats");
     args.add(modes.stream().map(Enum::name).collect(Collectors.joining(",")));
     args.add("--schema.query");

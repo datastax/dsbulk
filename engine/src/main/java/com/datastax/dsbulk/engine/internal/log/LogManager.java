@@ -720,9 +720,7 @@ public class LogManager implements AutoCloseable {
     Path logFile = executionDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
-    URI location = statement.getLocation();
     Record record = statement.getSource();
-    writer.println("Location: " + location);
     writer.println("Resource: " + record.getResource());
     writer.println("Position: " + record.getPosition());
     writer.println("Source: " + formatSource(record));
@@ -734,7 +732,6 @@ public class LogManager implements AutoCloseable {
     Path logFile = executionDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
-    writer.println("Location: " + record.getLocation());
     writer.println("Resource: " + record.getResource());
     if (record.getSource() instanceof ReadResult) {
       ReadResult source = (ReadResult) record.getSource();
@@ -757,7 +754,6 @@ public class LogManager implements AutoCloseable {
     Path logFile = executionDirectory.resolve(CONNECTOR_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
-    writer.println("Location: " + record.getLocation());
     writer.println("Resource: " + record.getResource());
     writer.println("Position: " + record.getPosition());
     writer.println("Source: " + formatSource(record));

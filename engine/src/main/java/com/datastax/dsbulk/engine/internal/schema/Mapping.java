@@ -13,9 +13,9 @@ import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.google.common.reflect.TypeToken;
+import java.util.Collection;
 import java.util.Set;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Defines a bidirectional, one-to-one relationship between record fields and CQL columns.
@@ -26,30 +26,24 @@ import org.jetbrains.annotations.Nullable;
 public interface Mapping {
 
   /**
-   * Maps the given field to a bound statement variable. Used in write workflows.
-   *
-   * <p>Note that the returned name is never quoted, even if it requires quoting to conform with the
-   * syntax of CQL identifiers; it is the caller's responsibility to check if quoting is required or
-   * not.
+   * Maps the given field to one or more bound statement variables.
    *
    * @param field the field to find the variable for.
-   * @return the bound statement variable the given field maps to, or {@code null} if the field does
-   *     not map to any known bound statement variable.
+   * @return the bound statement variables the given field maps to, or an empty collection if the
+   *     field does not map to any known bound statement variable.
    */
-  CQLFragment fieldToVariable(@NotNull Field field);
+  @NotNull
+  Collection<CQLFragment> fieldToVariables(@NotNull Field field);
 
   /**
-   * Maps the given row variable to a field. Used in read workflows.
-   *
-   * <p>Note that the given variable name must be supplied unquoted, even if it requires quoting to
-   * comply with the syntax of CQL identifiers.
+   * Maps the given row variable to a field.
    *
    * @param variable the row variable; never {@code null}.
-   * @return the field the given variable maps to, or {@code null} if the variable does not map to
-   *     any known field.
+   * @return the fields the given variable maps to, or an empty collection if the variable does not
+   *     map to any known field.
    */
-  @Nullable
-  Field variableToField(@NotNull CQLFragment variable);
+  @NotNull
+  Collection<Field> variableToFields(@NotNull CQLFragment variable);
 
   /**
    * Returns the codec to use for the given bound statement or row variable.
@@ -76,6 +70,7 @@ public interface Mapping {
    *
    * @return the fields in this mapping.
    */
+  @NotNull
   Set<Field> fields();
 
   /**
@@ -83,5 +78,6 @@ public interface Mapping {
    *
    * @return the variables in this mapping.
    */
+  @NotNull
   Set<CQLFragment> variables();
 }

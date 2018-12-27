@@ -15,7 +15,6 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
-import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
@@ -27,7 +26,6 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
-import com.google.common.base.Suppliers;
 import com.google.common.collect.Streams;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
@@ -111,6 +109,7 @@ public class CSVConnector implements Connector {
       "ignoreLeadingWhitespacesInQuotes";
   private static final String IGNORE_TRAILING_WHITESPACES_IN_QUOTES =
       "ignoreTrailingWhitespacesInQuotes";
+  private static final String NORMALIZE_LINE_ENDINGS_IN_QUOTES = "normalizeLineEndingsInQuotes";
   private static final String NULL_VALUE = "nullValue";
   private static final String EMPTY_VALUE = "emptyValue";
 
@@ -136,6 +135,7 @@ public class CSVConnector implements Connector {
   private boolean ignoreTrailingWhitespaces;
   private boolean ignoreTrailingWhitespacesInQuotes;
   private boolean ignoreLeadingWhitespacesInQuotes;
+  private boolean normalizeLineEndingsInQuotes;
   private String nullValue;
   private String emptyValue;
   private int resourceCount;
@@ -174,6 +174,7 @@ public class CSVConnector implements Connector {
       ignoreTrailingWhitespaces = settings.getBoolean(IGNORE_TRAILING_WHITESPACES);
       ignoreTrailingWhitespacesInQuotes = settings.getBoolean(IGNORE_LEADING_WHITESPACES_IN_QUOTES);
       ignoreLeadingWhitespacesInQuotes = settings.getBoolean(IGNORE_TRAILING_WHITESPACES_IN_QUOTES);
+      normalizeLineEndingsInQuotes = settings.getBoolean(NORMALIZE_LINE_ENDINGS_IN_QUOTES);
       nullValue = settings.getIsNull(NULL_VALUE) ? null : settings.getString(NULL_VALUE);
       emptyValue = settings.getIsNull(EMPTY_VALUE) ? null : settings.getString(EMPTY_VALUE);
       if (!AUTO_NEWLINE.equalsIgnoreCase(newline) && (newline.isEmpty() || newline.length() > 2)) {
@@ -200,11 +201,6 @@ public class CSVConnector implements Connector {
     format.setQuoteEscape(escape);
     format.setComment(comment);
     boolean autoNewline = AUTO_NEWLINE.equalsIgnoreCase(newline);
-    if (autoNewline) {
-      format.setLineSeparator(System.lineSeparator());
-    } else {
-      format.setLineSeparator(newline);
-    }
     if (read) {
       parserSettings = new CsvParserSettings();
       parserSettings.setFormat(format);
@@ -214,17 +210,19 @@ public class CSVConnector implements Connector {
       // has fewer lines than skipRecords;
       // we'll use the skip() operator instead.
       // parserSettings.setNumberOfRowsToSkip(skipRecords);
-      if (autoNewline) {
-        parserSettings.setLineSeparatorDetectionEnabled(true);
-      }
       parserSettings.setHeaderExtractionEnabled(header);
       parserSettings.setMaxCharsPerColumn(maxCharsPerColumn);
       parserSettings.setMaxColumns(maxColumns);
-      parserSettings.setNormalizeLineEndingsWithinQuotes(false);
+      parserSettings.setNormalizeLineEndingsWithinQuotes(normalizeLineEndingsInQuotes);
       parserSettings.setIgnoreLeadingWhitespaces(ignoreLeadingWhitespaces);
       parserSettings.setIgnoreTrailingWhitespaces(ignoreTrailingWhitespaces);
       parserSettings.setIgnoreLeadingWhitespacesInQuotes(ignoreTrailingWhitespacesInQuotes);
       parserSettings.setIgnoreTrailingWhitespacesInQuotes(ignoreLeadingWhitespacesInQuotes);
+      if (autoNewline) {
+        parserSettings.setLineSeparatorDetectionEnabled(true);
+      } else {
+        format.setLineSeparator(newline);
+      }
     } else {
       writerSettings = new CsvWriterSettings();
       writerSettings.setFormat(format);
@@ -233,7 +231,12 @@ public class CSVConnector implements Connector {
       writerSettings.setIgnoreLeadingWhitespaces(ignoreLeadingWhitespaces);
       writerSettings.setIgnoreTrailingWhitespaces(ignoreTrailingWhitespaces);
       writerSettings.setMaxColumns(maxColumns);
-      writerSettings.setNormalizeLineEndingsWithinQuotes(false);
+      writerSettings.setNormalizeLineEndingsWithinQuotes(normalizeLineEndingsInQuotes);
+      if (autoNewline) {
+        format.setLineSeparator(System.lineSeparator());
+      } else {
+        format.setLineSeparator(newline);
+      }
       counter = new AtomicInteger(0);
     }
   }
@@ -380,9 +383,9 @@ public class CSVConnector implements Connector {
               sink.onRequest(controller::signalRequested);
               long recordNumber = 1;
               LOGGER.debug("Reading {}", url);
+              URI resource = URI.create(url.toExternalForm());
               try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
                 parser.beginParsing(r);
-                URI resource = URIUtils.createResourceURI(url);
                 while (!sink.isCancelled()) {
                   com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
                   ParsingContext context = parser.getContext();
@@ -391,17 +394,13 @@ public class CSVConnector implements Connector {
                     break;
                   }
                   Record record;
-                  long finalRecordNumber = recordNumber++;
-                  Supplier<URI> location =
-                      Suppliers.memoize(() -> URIUtils.createLocationURI(url, finalRecordNumber));
                   try {
                     if (header) {
                       record =
                           DefaultRecord.mapped(
                               source,
                               () -> resource,
-                              finalRecordNumber,
-                              location,
+                              recordNumber++,
                               Arrays.stream(context.parsedHeaders())
                                   .map(DefaultMappedField::new)
                                   .toArray(MappedField[]::new),
@@ -415,16 +414,10 @@ public class CSVConnector implements Connector {
                     } else {
                       record =
                           DefaultRecord.indexed(
-                              source,
-                              () -> resource,
-                              finalRecordNumber,
-                              location,
-                              (Object[]) row.getValues());
+                              source, () -> resource, recordNumber++, (Object[]) row.getValues());
                     }
                   } catch (Exception e) {
-                    record =
-                        new DefaultErrorRecord(
-                            source, () -> resource, finalRecordNumber, location, e);
+                    record = new DefaultErrorRecord(source, () -> resource, recordNumber, e);
                   }
                   LOGGER.trace("Emitting record {}", record);
                   controller.awaitRequested(1);

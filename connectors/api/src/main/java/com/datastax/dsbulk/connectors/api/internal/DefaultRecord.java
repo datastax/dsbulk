@@ -30,17 +30,12 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @param source the record source (its original form).
    * @param resource the record resource (where it comes from: file, database, etc).
    * @param position the record position inside the resource (line number, etc.).
-   * @param location the record location, usually its resource combined with its position.
    * @param values the record values.
    * @return an indexed record.
    */
   public static DefaultRecord indexed(
-      @NotNull Object source,
-      @NotNull Supplier<URI> resource,
-      long position,
-      @NotNull Supplier<URI> location,
-      Object... values) {
-    return new DefaultRecord(source, resource, position, location, values);
+      @NotNull Object source, @NotNull Supplier<URI> resource, long position, Object... values) {
+    return new DefaultRecord(source, resource, position, values);
   }
 
   /**
@@ -49,7 +44,6 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @param source the record source (its original form).
    * @param resource the record resource (where it comes from: file, database, etc).
    * @param position the record position inside the resource (line number, etc.).
-   * @param location the record location, usually its resource combined with its position.
    * @param keys the record keys.
    * @param values the record values.
    * @return a mapped record.
@@ -58,10 +52,9 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
       @NotNull Object source,
       @NotNull Supplier<URI> resource,
       long position,
-      @NotNull Supplier<URI> location,
       Field[] keys,
       Object... values) {
-    return new DefaultRecord(source, resource, position, location, keys, values);
+    return new DefaultRecord(source, resource, position, keys, values);
   }
 
   /**
@@ -70,7 +63,6 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @param source the record source (its original form).
    * @param resource the record resource (where it comes from: file, database, etc).
    * @param position the record position inside the resource (line number, etc.).
-   * @param location the record location, usually its resource combined with its position.
    * @param values the record keys and values.
    * @return a mapped record.
    */
@@ -78,26 +70,18 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
       @NotNull Object source,
       @NotNull Supplier<URI> resource,
       long position,
-      @NotNull Supplier<URI> location,
       Map<? extends Field, ?> values) {
-    return new DefaultRecord(source, resource, position, location, values);
+    return new DefaultRecord(source, resource, position, values);
   }
 
   private final Object source;
   private final Supplier<URI> resource;
   private final long position;
-  private final Supplier<URI> location;
 
-  private DefaultRecord(
-      Object source,
-      Supplier<URI> resource,
-      long position,
-      Supplier<URI> location,
-      Object... values) {
+  private DefaultRecord(Object source, Supplier<URI> resource, long position, Object... values) {
     this.source = source;
     this.resource = resource;
     this.position = position;
-    this.location = location;
     Streams.forEachPair(
         IntStream.range(0, values.length).boxed().map(DefaultIndexedField::new),
         Arrays.stream(values),
@@ -105,12 +89,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   }
 
   private DefaultRecord(
-      Object source,
-      Supplier<URI> resource,
-      long position,
-      Supplier<URI> location,
-      Field[] keys,
-      Object... values) {
+      Object source, Supplier<URI> resource, long position, Field[] keys, Object... values) {
     this.resource = resource;
     this.position = position;
     if (keys.length != values.length) {
@@ -119,20 +98,14 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
               "Expecting record to contain %d fields but found %d.", keys.length, values.length));
     }
     this.source = source;
-    this.location = location;
     Streams.forEachPair(Arrays.stream(keys), Arrays.stream(values), this::put);
   }
 
   private DefaultRecord(
-      Object source,
-      Supplier<URI> resource,
-      long position,
-      Supplier<URI> location,
-      Map<? extends Field, ?> values) {
+      Object source, Supplier<URI> resource, long position, Map<? extends Field, ?> values) {
     this.resource = resource;
     this.position = position;
     this.source = source;
-    this.location = location;
     putAll(values);
   }
 
@@ -151,12 +124,6 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   @Override
   public long getPosition() {
     return position;
-  }
-
-  @NotNull
-  @Override
-  public URI getLocation() {
-    return location.get();
   }
 
   @NotNull
@@ -190,7 +157,6 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   public String toString() {
     return MoreObjects.toStringHelper(this)
         .add("source", source)
-        .add("location", location)
         .add("entries", entrySet())
         .toString();
   }

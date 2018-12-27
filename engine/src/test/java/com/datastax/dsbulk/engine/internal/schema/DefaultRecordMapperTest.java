@@ -17,6 +17,8 @@ import static java.math.BigDecimal.ZERO;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
 import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -50,7 +52,6 @@ import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import io.netty.util.concurrent.FastThreadLocal;
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.text.NumberFormat;
 import java.time.Instant;
@@ -76,8 +77,6 @@ class DefaultRecordMapperTest {
   private static final CQLIdentifier C1_ID = CQLIdentifier.fromInternal(C1);
   private static final CQLIdentifier C2_ID = CQLIdentifier.fromInternal(C2);
   private static final CQLIdentifier C3_ID = CQLIdentifier.fromInternal(C3);
-
-  private final URI location = URI.create("file://file1?line=1");
 
   private final TypeCodec codec1 = mock(StringToIntegerCodec.class);
   private final TypeCodec codec2 = mock(StringToLongCodec.class);
@@ -139,15 +138,14 @@ class DefaultRecordMapperTest {
     when(record.getFieldValue(F3)).thenReturn("foo");
 
     when(record.getSource()).thenReturn("source");
-    when(record.getLocation()).thenReturn(location);
 
-    when(mapping.fieldToVariable(F1)).thenReturn(C1_ID);
-    when(mapping.fieldToVariable(F2)).thenReturn(C2_ID);
-    when(mapping.fieldToVariable(F3)).thenReturn(C3_ID);
+    when(mapping.fieldToVariables(F1)).thenReturn(singleton(C1_ID));
+    when(mapping.fieldToVariables(F2)).thenReturn(singleton(C2_ID));
+    when(mapping.fieldToVariables(F3)).thenReturn(singleton(C3_ID));
 
-    when(mapping.variableToField(C1_ID)).thenReturn(F1);
-    when(mapping.variableToField(C2_ID)).thenReturn(F2);
-    when(mapping.variableToField(C3_ID)).thenReturn(F3);
+    when(mapping.variableToFields(C1_ID)).thenReturn(singleton(F1));
+    when(mapping.variableToFields(C2_ID)).thenReturn(singleton(F2));
+    when(mapping.variableToFields(C3_ID)).thenReturn(singleton(F3));
 
     when(mapping.codec(C1_ID, DataType.cint(), TypeToken.of(String.class))).thenReturn(codec1);
     when(mapping.codec(C2_ID, DataType.bigint(), TypeToken.of(String.class))).thenReturn(codec2);
@@ -417,8 +415,6 @@ class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     assertThat(((UnmappableStatement) result).getSource()).isEqualTo(record);
-    assertThat(((UnmappableStatement) result).getLocation().toString())
-        .isEqualTo(location.toString() + "&field=field3&My+Fancy+Column+Name=foo&cqlType=varchar");
     verify(boundStatement, times(2))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
     assertParameter(0, C1, TypeCodec.cint().serialize(42, V4));
@@ -476,7 +472,7 @@ class DefaultRecordMapperTest {
   @Test
   void should_return_unmappable_statement_when_extra_field() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
-    when(mapping.fieldToVariable(F3)).thenReturn(null);
+    when(mapping.fieldToVariables(F3)).thenReturn(emptySet());
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,

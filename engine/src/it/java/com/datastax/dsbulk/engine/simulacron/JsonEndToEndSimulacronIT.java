@@ -16,7 +16,7 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
@@ -75,7 +75,6 @@ import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
-import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -160,9 +159,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(JSON_RECORDS_UNIQUE),
+      quoteJson(JSON_RECORDS_UNIQUE),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -200,9 +199,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(JSON_RECORDS_UNIQUE),
+      quoteJson(JSON_RECORDS_UNIQUE),
       "-dryRun",
       "true",
       "--driver.query.consistency",
@@ -238,9 +237,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(JSON_RECORDS_CRLF),
+      quoteJson(JSON_RECORDS_CRLF),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -275,9 +274,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(JSON_RECORDS_WITH_COMMENTS),
+      quoteJson(JSON_RECORDS_WITH_COMMENTS),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -312,9 +311,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(JSON_RECORDS_PARTIAL_BAD),
+      quoteJson(JSON_RECORDS_PARTIAL_BAD),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
@@ -389,9 +388,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(JSON_RECORDS_ERROR),
+      quoteJson(JSON_RECORDS_ERROR),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.policy.maxRetries",
@@ -433,9 +432,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(JSON_RECORDS_SKIP),
+      quoteJson(JSON_RECORDS_SKIP),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
@@ -485,13 +484,13 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--log.maxErrors",
       "2",
       "--log.verbosity",
       "2",
       "--connector.json.url",
-      escapeUserInput(getClass().getResource("/missing-extra.json")),
+      quoteJson(getClass().getResource("/missing-extra.json")),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -539,13 +538,13 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--log.maxErrors",
       "1",
       "--log.verbosity",
       "2",
       "--connector.json.url",
-      escapeUserInput(getClass().getResource("/missing-extra.json")),
+      quoteJson(getClass().getResource("/missing-extra.json")),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -586,9 +585,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(unloadDir),
+      quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "1",
       "--driver.query.consistency",
@@ -629,9 +628,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(unloadDir),
+      quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "4",
       "--driver.query.consistency",
@@ -681,9 +680,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(unloadDir),
+      quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "1",
       "--driver.query.consistency",
@@ -728,9 +727,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(unloadDir),
+      quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "1",
       "--driver.query.consistency",
@@ -769,9 +768,9 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
-      escapeUserInput(unloadDir),
+      quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "4",
       "--driver.query.consistency",
@@ -811,10 +810,9 @@ class JsonEndToEndSimulacronIT {
           public void configure(LoaderConfig settings, boolean read) {
             settings =
                 new DefaultLoaderConfig(
-                    ConfigFactory.parseMap(
-                            ImmutableMap.of(
-                                "url", escapeUserInput(unloadDir), "maxConcurrentFiles", "4"))
-                        .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.json")));
+                        ConfigFactory.parseString(
+                            "url = " + quoteJson(unloadDir) + ", maxConcurrentFiles = 4"))
+                    .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.json"));
             super.configure(settings, read);
           }
 
@@ -845,7 +843,7 @@ class JsonEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.name",
       "mock",
       "--driver.query.consistency",
@@ -886,7 +884,7 @@ class JsonEndToEndSimulacronIT {
       "-c",
       "json",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.json.url",
       "-",
       "--connector.json.maxConcurrentFiles",

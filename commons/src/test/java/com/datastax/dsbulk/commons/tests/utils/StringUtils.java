@@ -34,37 +34,35 @@ public class StringUtils {
   }
 
   /**
-   * CSVC Escapes and normalizes the given path.
+   * Quotes the given path as a Json string.
    *
-   * @param value the value to escape.
-   * @return the escaped value.
-   * @see #escapeUserInput(String)
+   * @param value the value to quote.
+   * @return the quoted value.
+   * @see #quoteJson(String)
    */
-  public static String escapeUserInput(Path value) {
-    return escapeUserInput(value.normalize().toAbsolutePath().toString());
+  public static String quoteJson(Path value) {
+    return quoteJson(value.normalize().toAbsolutePath().toString());
   }
 
   /**
-   * Escapes and normalizes the given URL.
+   * Quotes the given URL as a Json string.
    *
-   * @param value the value to escape.
-   * @return the escaped value.
-   * @see #escapeUserInput(String)
+   * @param value the value to quote.
+   * @return the quoted value.
+   * @see #quoteJson(String)
    */
-  public static String escapeUserInput(URL value) {
-    return escapeUserInput(value.toExternalForm());
+  public static String quoteJson(URL value) {
+    return quoteJson(value.toExternalForm());
   }
 
   /**
-   * Escapes the given string and returns an escaped string compliant with Json syntax for quoted
-   * strings. Useful in tests to escape paths and other variables as if they were provided by the
-   * user through the command line.
+   * Quotes the given string as a Json string.
    *
    * @param value the value to escape.
-   * @return the escaped value.
+   * @return the quoted value.
    */
-  public static String escapeUserInput(String value) {
-    StringBuilder sb = new StringBuilder();
+  public static String quoteJson(String value) {
+    StringBuilder sb = new StringBuilder("\"");
     for (int i = 0; i < value.length(); ++i) {
       char c = value.charAt(i);
       switch (c) {
@@ -97,7 +95,7 @@ public class StringUtils {
           }
       }
     }
-    return sb.toString();
+    return sb.append("\"").toString();
   }
 
   private static boolean isC0Control(int codepoint) {

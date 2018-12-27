@@ -10,7 +10,7 @@ package com.datastax.dsbulk.connectors.json;
 
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -73,7 +73,6 @@ class JsonConnectorTest {
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   private final Supplier<URI> resource = () -> URI.create("file://file1.csv");
-  private final Supplier<URI> location = () -> URI.create("file://file1.csv?pos=1");
 
   @Test
   void should_read_single_file_multi_doc() throws Exception {
@@ -82,7 +81,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
+                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
                             + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}",
                         url("/multi_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
@@ -100,7 +99,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
+                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
                             + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}, "
                             + "mode = SINGLE_DOCUMENT",
                         url("/single_doc.json")))
@@ -119,7 +118,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, mode = SINGLE_DOCUMENT",
+                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, mode = SINGLE_DOCUMENT",
                         url("/empty.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -137,7 +136,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, mode = MULTI_DOCUMENT",
+                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, mode = MULTI_DOCUMENT",
                         url("/empty.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -155,7 +154,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, "
+                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
                             + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}",
                         url("/multi_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
@@ -212,7 +211,6 @@ class JsonConnectorTest {
                   "source",
                   resource,
                   -1,
-                  location,
                   factory.textNode("fóô"),
                   factory.textNode("bàr"),
                   factory.textNode("qïx")))
@@ -231,8 +229,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = \"%s\", recursive = false", url("/root")))
+            ConfigFactory.parseString(String.format("url = %s, recursive = false", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -245,8 +242,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = \"%s\", recursive = false", url("/root")))
+            ConfigFactory.parseString(String.format("url = %s, recursive = false", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -261,7 +257,7 @@ class JsonConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = \"%s\", recursive = false", escapeUserInput(rootPath)))
+                    String.format("url = \"%s\", recursive = false", quoteJson(rootPath)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -274,7 +270,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = \"%s\", recursive = true", url("/root")))
+            ConfigFactory.parseString(String.format("url = %s, recursive = true", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -287,7 +283,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = \"%s\", recursive = true", url("/root")))
+            ConfigFactory.parseString(String.format("url = %s, recursive = true", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -302,7 +298,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
+                        "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
                         url("/root-custom")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -320,8 +316,8 @@ class JsonConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
-                          escapeUserInput(rootPath)))
+                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
+                          quoteJson(rootPath)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -343,8 +339,8 @@ class JsonConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", recursive = true, fileNamePattern = \"**/part-*\"",
-                          escapeUserInput(rootPath)))
+                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
+                          quoteJson(rootPath)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -370,8 +366,7 @@ class JsonConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1",
-                          escapeUserInput(out)))
+                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1", quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -402,8 +397,8 @@ class JsonConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT",
-                          escapeUserInput(out)))
+                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT",
+                          quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -436,8 +431,8 @@ class JsonConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT, serializationStrategy = NON_NULL",
-                          escapeUserInput(out)))
+                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT, serializationStrategy = NON_NULL",
+                          quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -468,8 +463,7 @@ class JsonConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 4",
-                          escapeUserInput(out)))
+                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 4", quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -498,12 +492,12 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
     try {
-      String escapedPath = escapeUserInput(out);
+      String escapedPath = quoteJson(out);
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = \"%s\", escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 3",
+                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 3",
                           escapedPath))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
@@ -534,7 +528,7 @@ class JsonConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = \"%s\", recursive = true, skipRecords = 10", url("/root")))
+                    String.format("url = %s, recursive = true, skipRecords = 10", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -548,8 +542,7 @@ class JsonConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s\", recursive = true, skipRecords = 150", url("/root")))
+                    String.format("url = %s, recursive = true, skipRecords = 150", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -563,7 +556,7 @@ class JsonConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = \"%s\", recursive = true, maxRecords = 10", url("/root")))
+                    String.format("url = %s, recursive = true, maxRecords = 10", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -577,7 +570,7 @@ class JsonConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = \"%s\", recursive = true, maxRecords = 1", url("/root")))
+                    String.format("url = %s, recursive = true, maxRecords = 1", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -592,7 +585,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", recursive = true, skipRecords = 95, maxRecords = 10",
+                        "url = %s, recursive = true, skipRecords = 95, maxRecords = 10",
                         url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -608,7 +601,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", skipRecords = 10, maxRecords = 1",
+                        "url = %s, skipRecords = 10, maxRecords = 1",
                         url("/root/ip-by-country-sample1.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -645,7 +638,7 @@ class JsonConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format("url = \"%s\", maxConcurrentFiles = 1", escapeUserInput(out)))
+                      String.format("url = %s, maxConcurrentFiles = 1", quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       assertThrows(IllegalArgumentException.class, connector::init);
@@ -662,7 +655,7 @@ class JsonConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format("url = \"%s\", maxConcurrentFiles = 1", escapeUserInput(out)))
+                      String.format("url = %s, maxConcurrentFiles = 1", quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -686,7 +679,7 @@ class JsonConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format("url = \"%s\", maxConcurrentFiles = 2", escapeUserInput(out)))
+                      String.format("url = %s, maxConcurrentFiles = 2", quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -735,7 +728,7 @@ class JsonConnectorTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = \"%s\", parserFeatures = {ALLOW_COMMENTS:true}, mode = MULTI_DOCUMENT",
+                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, mode = MULTI_DOCUMENT",
                         url("/single_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -932,7 +925,6 @@ class JsonConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             factory.numberNode(1997),
             factory.textNode("Ford"),
@@ -944,7 +936,6 @@ class JsonConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             factory.numberNode(1999),
             factory.textNode("Chevy"),
@@ -956,7 +947,6 @@ class JsonConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             factory.numberNode(1996),
             factory.textNode("Jeep"),
@@ -968,7 +958,6 @@ class JsonConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             factory.numberNode(1999),
             factory.textNode("Chevy"),
@@ -980,7 +969,6 @@ class JsonConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             null,
             null,
@@ -991,7 +979,7 @@ class JsonConnectorTest {
   }
 
   private static String url(String resource) {
-    return JsonConnectorTest.class.getResource(resource).toExternalForm();
+    return quoteJson(JsonConnectorTest.class.getResource(resource));
   }
 
   private static Path path(@SuppressWarnings("SameParameterValue") String resource)

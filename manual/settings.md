@@ -413,6 +413,12 @@ The character(s) that represent a line ending. When set to the special value `au
 
 Default: **"auto"**.
 
+#### --connector.csv.normalizeLineEndingsInQuotes _&lt;boolean&gt;_
+
+Defines whether or not line separators should be replaced by a normalized line separator '\n' inside quoted values. This setting is honored when reading and writing. Note: due to a bug in the CSV parsing library, on Windows systems, the line ending detection mechanism may not function properly when this setting is false; in case of problem, set this to true. Default value is false.
+
+Default: **false**.
+
 #### --connector.csv.nullValue _&lt;string&gt;_
 
 Sets the String representation of a null value. When reading, if the parser does not read any character from the input, this value will be used instead. When writing, if the writer has a null object to write to the output, this value will be used instead. The default value is `null`, which means that, when reading, the parser will emit a `null`, and when writing, the writer won't write any character at all to the output.
@@ -636,9 +642,9 @@ The query to use. If not specified, then a keyspace must be provided (either wit
 
 For loading, the statement can be any `INSERT`, `UPDATE` or `DELETE` statement. `INSERT` statements are preferred for most load operations, and bound variables should correspond to mapped fields; for example, `INSERT INTO table1 (c1, c2, c3) VALUES (:fieldA, :fieldB, :fieldC)`. `UPDATE` statements are required if the target table is a counter table, and the columns are updated with incremental operations (`SET col1 = col1 + :fieldA` where `fieldA` is a field in the input data). A `DELETE` statement will remove existing data during the load operation.
 
-For unloading and counting, the statement can be any regular `SELECT` statement. If the statement does not contain a WHERE clause, the engine will generate a token range restriction clause of the form: `WHERE token(...) > :start and token(...) <= :end` and will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas. If the statement does contain a WHERE clause however, that clause will remain intact; the engine will only be able to parallelize the operation if that WHERE clause also includes a `token(...) > :start and token(...) <= :end` relation.
+For unloading and counting, the statement can be any regular `SELECT` statement. If the statement does not contain a WHERE clause, the engine will generate a token range restriction clause of the form: `WHERE token(...) > :start and token(...) <= :end` and will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas. If the statement does contain a WHERE clause however, that clause will remain intact; the engine will only be able to parallelize the operation if that WHERE clause also includes a `token(...) > :start and token(...) <= :end` relation (the bound variables can have any name).
 
-Statements can use both positional and named bound variables. Positional variables will be named after their corresponding column in the destination table. Named bound variables usually have names matching those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those of fields specified in the mapping.
+Statements can use both named and positional bound variables. Named bound variables are preferred; they usually have names matching those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those of fields specified in the mapping. Positional variables can also be used, and will be named after their corresponding column in the destination table. Note however that positional variables are not allowed in a few situations: in `USING TIMESTAMP` and `USING TTL` clauses, and in WHERE clause restrictions involving the `token` function.
 
 When loading and unloading graph data, the query must be provided in plain CQL; Gremlin queries are not supported.
 

@@ -16,19 +16,19 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.Set;
 import java.util.function.BiFunction;
+import org.jetbrains.annotations.Nullable;
 
 public class DefaultRecordMapper implements RecordMapper {
 
@@ -89,73 +89,47 @@ public class DefaultRecordMapper implements RecordMapper {
 
   @Override
   public Statement map(Record record) {
-    Field field = null;
-    CQLFragment variable = null;
-    Object raw = null;
-    DataType cqlType = null;
     try {
       if (!allowMissingFields) {
         ensureAllFieldsPresent(record.fields());
       }
       BoundStatement bs = boundStatementFactory.apply(record, insertStatement);
-      for (Field f : record.fields()) {
-        field = f;
-        variable = mapping.fieldToVariable(field);
-        if (variable != null) {
-          cqlType = insertStatement.getVariables().getType(variable.asVariable());
-          TypeToken<?> fieldType = recordMetadata.getFieldType(f, cqlType);
-          if (fieldType != null) {
-            raw = record.getFieldValue(f);
-            bindColumn(bs, variable, raw, cqlType, fieldType);
+      for (Field field : record.fields()) {
+        Collection<CQLFragment> variables = mapping.fieldToVariables(field);
+        // Note: when loading, a field can be mapped to one or more variables.
+        if (!variables.isEmpty()) {
+          for (CQLFragment variable : variables) {
+            DataType cqlType = insertStatement.getVariables().getType(variable.asVariable());
+            TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
+            if (fieldType != null) {
+              Object raw = record.getFieldValue(field);
+              bindColumn(bs, variable, raw, cqlType, fieldType);
+            }
           }
         } else if (!allowExtraFields) {
-          throw new InvalidMappingException(
-              "Extraneous field "
-                  + field
-                  + " was found in record. "
-                  + "Please declare it explicitly in the mapping "
-                  + "or set schema.allowExtraFields to true.");
+          // the field wasn't mapped to any known variable
+          throw InvalidMappingException.extraneousField(field);
         }
       }
       ensurePrimaryKeySet(bs);
       record.clear();
       return bs;
     } catch (Exception e) {
-      Field finalField = field;
-      CQLFragment finalVariable = variable;
-      Object finalRaw = raw;
-      DataType finalCqlType = cqlType;
-      return new UnmappableStatement(
-          record,
-          Suppliers.memoize(
-              () ->
-                  URIUtils.addParamsToURI(
-                      record.getLocation(),
-                      FIELD,
-                      finalField == null ? "" : finalField.getFieldDescription(),
-                      finalVariable == null ? "" : finalVariable.asInternal(),
-                      finalRaw == null ? "" : finalRaw.toString(),
-                      CQL_TYPE,
-                      finalCqlType == null ? "" : finalCqlType.toString())),
-          e);
+      return new UnmappableStatement(record, e);
     }
   }
 
   private <T> void bindColumn(
       BoundStatement bs,
       CQLFragment variable,
-      T raw,
+      @Nullable T raw,
       DataType cqlType,
       TypeToken<? extends T> javaType) {
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
     ByteBuffer bb = codec.serialize(raw, protocolVersion);
     if (isNull(bb, cqlType)) {
-      if (primaryKeyVariables.contains(variable)) {
-        throw new InvalidMappingException(
-            "Primary key column "
-                + variable.asCql()
-                + " cannot be mapped to null. "
-                + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
+      if (variable instanceof CQLIdentifier && primaryKeyVariables.contains(variable)) {
+        throw InvalidMappingException.nullPrimaryKey((CQLIdentifier) variable);
       }
       if (nullToUnset) {
         return;
@@ -187,16 +161,12 @@ public class DefaultRecordMapper implements RecordMapper {
     ColumnDefinitions variables = insertStatement.getVariables();
     for (int i = 0; i < variables.size(); i++) {
       CQLIdentifier variable = CQLIdentifier.fromInternal(variables.getName(i));
-      Field field = mapping.variableToField(variable);
-      if (!recordFields.contains(field)) {
-        throw new InvalidMappingException(
-            "Required field "
-                + field
-                + " (mapped to column "
-                + variable.asCql()
-                + ") was missing from record. "
-                + "Please remove it from the mapping "
-                + "or set schema.allowMissingFields to true.");
+      Collection<Field> fields = mapping.variableToFields(variable);
+      // Note: in practice, there can be only one field mapped to a given variable when loading
+      for (Field field : fields) {
+        if (!recordFields.contains(field)) {
+          throw InvalidMappingException.missingField(field, variable);
+        }
       }
     }
   }
@@ -204,11 +174,7 @@ public class DefaultRecordMapper implements RecordMapper {
   private void ensurePrimaryKeySet(BoundStatement bs) {
     for (CQLIdentifier variable : primaryKeyVariables) {
       if (!bs.isSet(variable.asVariable())) {
-        throw new InvalidMappingException(
-            "Primary key column "
-                + variable.asCql()
-                + " cannot be left unmapped. "
-                + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
+        throw InvalidMappingException.unsetPrimaryKey(variable);
       }
     }
   }

@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
+import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.util.Sets.newLinkedHashSet;
 import static org.mockito.Mockito.mock;
@@ -76,9 +77,9 @@ class DefaultReadResultMapperTest {
     ColumnDefinitions variables = newColumnDefinitions(c1, c2, c3);
     when(row.getColumnDefinitions()).thenReturn(variables);
     when(mapping.fields()).thenReturn(newLinkedHashSet(F0, F1, F2));
-    when(mapping.fieldToVariable(F0)).thenReturn(C1_ID);
-    when(mapping.fieldToVariable(F1)).thenReturn(C2_ID);
-    when(mapping.fieldToVariable(F2)).thenReturn(C3_ID);
+    when(mapping.fieldToVariables(F0)).thenReturn(singleton(C1_ID));
+    when(mapping.fieldToVariables(F1)).thenReturn(singleton(C2_ID));
+    when(mapping.fieldToVariables(F2)).thenReturn(singleton(C3_ID));
     TypeCodec codec1 = TypeCodec.cint();
     TypeCodec codec2 = TypeCodec.varchar();
     when(mapping.codec(C1_ID, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
@@ -129,15 +130,11 @@ class DefaultReadResultMapperTest {
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError()).isSameAs(exception);
     assertThat(record.getSource()).isSameAs(result);
-    assertThat(record.getLocation())
+    assertThat(record.getResource())
         .hasScheme("cql")
         .hasHost("127.0.0.1")
         .hasPort(9042)
         .hasPath("/ks/t")
-        .hasParameter("start", "1234")
-        .hasParameter("end", "5678")
-        .hasParameter(C1, "42")
-        .hasParameter(C2, "\'foo\'")
-        .hasParameter(C3, "\'bar\'");
+        .hasNoParameters();
   }
 }

@@ -14,7 +14,7 @@ import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_CRLF;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_ERROR;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_LONG;
@@ -75,7 +75,6 @@ import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
-import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -156,13 +155,13 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--log.verbosity",
       "2",
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_UNIQUE),
+      quoteJson(CSV_RECORDS_UNIQUE),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -198,11 +197,11 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_UNIQUE),
+      quoteJson(CSV_RECORDS_UNIQUE),
       "-dryRun",
       "true",
       "--driver.query.consistency",
@@ -236,11 +235,11 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_CRLF),
+      quoteJson(CSV_RECORDS_CRLF),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -272,11 +271,11 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_PARTIAL_BAD),
+      quoteJson(CSV_RECORDS_PARTIAL_BAD),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
@@ -349,11 +348,11 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_ERROR),
+      quoteJson(CSV_RECORDS_ERROR),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.policy.maxRetries",
@@ -393,11 +392,11 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_SKIP),
+      quoteJson(CSV_RECORDS_SKIP),
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
@@ -439,11 +438,11 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_LONG),
+      quoteJson(CSV_RECORDS_LONG),
       "--connector.csv.maxCharsPerColumn",
       "10000",
       "--driver.query.consistency",
@@ -477,13 +476,13 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--log.maxErrors",
       "1%",
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_PARTIAL_BAD_LONG),
+      quoteJson(CSV_RECORDS_PARTIAL_BAD_LONG),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -517,7 +516,7 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--log.maxErrors",
       "9",
       "--log.verbosity",
@@ -525,7 +524,7 @@ class CSVEndToEndSimulacronIT {
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(getClass().getResource("/ip-by-country-pk-null.csv")),
+      quoteJson(getClass().getResource("/ip-by-country-pk-null.csv")),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -575,7 +574,7 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--log.maxErrors",
       "2",
       "--log.verbosity",
@@ -583,7 +582,7 @@ class CSVEndToEndSimulacronIT {
       "-header",
       "true",
       "--connector.csv.url",
-      escapeUserInput(getClass().getResource("/missing-extra.csv")),
+      quoteJson(getClass().getResource("/missing-extra.csv")),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -624,7 +623,7 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--log.maxErrors",
       "2",
       "--log.verbosity",
@@ -632,7 +631,7 @@ class CSVEndToEndSimulacronIT {
       "-header",
       "true",
       "--connector.csv.url",
-      escapeUserInput(getClass().getResource("/missing-extra.csv")),
+      quoteJson(getClass().getResource("/missing-extra.csv")),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -669,13 +668,13 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--log.verbosity",
       "2",
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(unloadDir),
+      quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "1",
       "--driver.query.consistency",
@@ -717,11 +716,11 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(unloadDir),
+      quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "1",
       "--connector.csv.delimiter",
@@ -763,11 +762,11 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(unloadDir),
+      quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "4",
       "--driver.query.consistency",
@@ -804,11 +803,11 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(unloadDir),
+      quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "1",
       "--driver.query.consistency",
@@ -845,11 +844,11 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(unloadDir),
+      quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "4",
       "--driver.query.consistency",
@@ -889,15 +888,11 @@ class CSVEndToEndSimulacronIT {
           public void configure(LoaderConfig settings, boolean read) {
             settings =
                 new DefaultLoaderConfig(
-                    ConfigFactory.parseMap(
-                            ImmutableMap.of(
-                                "url",
-                                escapeUserInput(unloadDir),
-                                "header",
-                                "false",
-                                "maxConcurrentFiles",
-                                "4"))
-                        .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.csv")));
+                        ConfigFactory.parseString(
+                            "url = "
+                                + quoteJson(unloadDir)
+                                + ", header = false, maxConcurrentFiles = 4"))
+                    .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.csv"));
             super.configure(settings, read);
           }
 
@@ -923,7 +918,7 @@ class CSVEndToEndSimulacronIT {
     String[] unloadArgs = {
       "unload",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "--connector.name",
       "mock",
       "--driver.query.consistency",
@@ -962,7 +957,7 @@ class CSVEndToEndSimulacronIT {
     String[] args = {
       "unload",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",

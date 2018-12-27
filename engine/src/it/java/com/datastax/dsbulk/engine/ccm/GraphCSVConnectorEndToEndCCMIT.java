@@ -13,7 +13,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Workload.graph;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
 
@@ -120,11 +120,11 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "-v",
             CUSTOMER_VERTEX_LABEL,
             "-url",
-            escapeUserInput(CUSTOMER_RECORDS),
+            quoteJson(CUSTOMER_RECORDS),
             "--connector.csv.delimiter",
             "|",
             "--log.directory",
-            escapeUserInput(logDir));
+            quoteJson(logDir));
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -142,11 +142,11 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "-v",
             CUSTOMER_VERTEX_LABEL,
             "-url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.delimiter",
             "|",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.maxConcurrentFiles",
             "1");
 
@@ -164,11 +164,11 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "-v",
             CUSTOMER_VERTEX_LABEL,
             "-url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.delimiter",
             "|",
             "--log.directory",
-            escapeUserInput(logDir));
+            quoteJson(logDir));
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -192,13 +192,13 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "-to",
             ORDER_VERTEX_LABEL,
             "-url",
-            escapeUserInput(CUSTOMER_ORDER_RECORDS),
+            quoteJson(CUSTOMER_ORDER_RECORDS),
             "-m",
             CUSTOMER_ORDER_MAPPINGS,
             "--connector.csv.delimiter",
             "|",
             "--log.directory",
-            escapeUserInput(logDir));
+            quoteJson(logDir));
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -219,13 +219,13 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "-to",
             ORDER_VERTEX_LABEL,
             "-url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "-m",
             CUSTOMER_ORDER_MAPPINGS,
             "--connector.csv.delimiter",
             "|",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "--connector.csv.maxConcurrentFiles",
             "1");
 
@@ -247,13 +247,13 @@ class GraphCSVConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "-to",
             ORDER_VERTEX_LABEL,
             "-url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "-m",
             CUSTOMER_ORDER_MAPPINGS,
             "--connector.csv.delimiter",
             "|",
             "--log.directory",
-            escapeUserInput(logDir));
+            quoteJson(logDir));
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();

@@ -59,21 +59,6 @@ public interface Record {
   long getPosition();
 
   /**
-   * Returns the record location, typically its position in a file or its location in the origin
-   * database table.
-   *
-   * <p>Locations are mostly useful to help diagnose errors, for example to locate a record that
-   * could not be written to the database.
-   *
-   * <p>Details about the returned URI, and in particular its scheme, are implementation-specific.
-   * Usually, the record's location URI is derived from its {@linkplain #getResource() resource URI}
-   * and its {@linkplain #getPosition() position}, but that is not a hard requirement.
-   *
-   * @return The record location.
-   */
-  URI getLocation();
-
-  /**
    * Returns a set containing all the fields in this record.
    *
    * @return a set containing all the fields in this record.
