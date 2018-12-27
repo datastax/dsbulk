@@ -52,7 +52,7 @@ public class ClusterInformationUtils {
     List<String> hostsInfo =
         allHosts
             .stream()
-            .sorted(Comparator.comparing(o -> o.getSocketAddress().getHostString()))
+            .sorted(Comparator.comparing(o -> o.getSocketAddress().getHostName()))
             .limit(LIMIT_NODES_INFORMATION)
             .map(ClusterInformationUtils::getHostInfo)
             .collect(Collectors.toCollection(LinkedList::new));

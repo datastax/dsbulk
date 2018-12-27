@@ -11,7 +11,7 @@ package com.datastax.dsbulk.engine.internal.utils;
 import java.util.List;
 import java.util.Set;
 
-public class ClusterInformation {
+class ClusterInformation {
   private final String partitioner;
   private final int numberOfHosts;
   private final Set<String> dataCenters;
